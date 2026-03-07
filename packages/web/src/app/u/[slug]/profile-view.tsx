@@ -1,0 +1,250 @@
+"use client";
+
+import { useMemo } from "react";
+import Link from "next/link";
+import {
+  Zap,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Database,
+  DollarSign,
+  Calendar,
+  ArrowLeft,
+} from "lucide-react";
+import { usePublicProfile } from "@/hooks/use-public-profile";
+import { formatTokens } from "@/lib/utils";
+import { getModelPricing, estimateCost, formatCost } from "@/lib/pricing";
+import { StatCard, StatGrid } from "@/components/dashboard/stat-card";
+import { UsageTrendChart } from "@/components/dashboard/usage-trend-chart";
+import { SourceDonutChart } from "@/components/dashboard/source-donut-chart";
+import { ModelBreakdownChart } from "@/components/dashboard/model-breakdown-chart";
+import { HeatmapCalendar } from "@/components/dashboard/heatmap-calendar";
+import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import type { ModelAggregate } from "@/hooks/use-usage-data";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function computeTotalCost(models: ModelAggregate[]): number {
+  let total = 0;
+  for (const m of models) {
+    const pricing = getModelPricing(m.model, m.source);
+    const cost = estimateCost(m.input, m.output, m.cached, pricing);
+    total += cost.totalCost;
+  }
+  return total;
+}
+
+function formatMemberSince(dateStr: string): string {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+interface PublicProfileViewProps {
+  slug: string;
+}
+
+export function PublicProfileView({ slug }: PublicProfileViewProps) {
+  const { user, data, daily, sources, models, loading, error, notFound } =
+    usePublicProfile({ slug, days: 30 });
+
+  const yearData = usePublicProfile({ slug, days: 365 });
+
+  const currentYear = new Date().getFullYear();
+  const estimatedCost = useMemo(() => computeTotalCost(models), [models]);
+
+  // 404
+  if (notFound) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <h1 className="text-4xl font-bold font-display text-foreground">
+            404
+          </h1>
+          <p className="text-muted-foreground">
+            No public profile found for &ldquo;{slug}&rdquo;
+          </p>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Zebra
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Error
+  if (error && !loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <p className="text-destructive">Failed to load profile: {error}</p>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Zebra
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Compact top bar */}
+      <header className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-10">
+        <div className="mx-auto max-w-5xl flex items-center justify-between px-4 md:px-6 h-14">
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-foreground hover:text-primary transition-colors"
+          >
+            <Zap className="h-5 w-5 text-primary" strokeWidth={1.5} />
+            <span className="font-bold tracking-tighter">zebra</span>
+          </Link>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-5xl px-4 md:px-6 py-6 md:py-8 space-y-4 md:space-y-6">
+        {/* Profile header */}
+        {loading && !user ? (
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-16 w-16 rounded-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-4 w-24" />
+            </div>
+          </div>
+        ) : (
+          user && (
+            <div className="flex items-center gap-4">
+              <Avatar className="h-16 w-16">
+                {user.image && (
+                  <AvatarImage src={user.image} alt={user.name ?? slug} />
+                )}
+                <AvatarFallback className="text-lg bg-primary text-primary-foreground">
+                  {(user.name ?? slug)[0]?.toUpperCase() ?? "?"}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h1 className="text-2xl font-bold font-display text-foreground">
+                  {user.name ?? slug}
+                </h1>
+                <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Calendar className="h-3.5 w-3.5" />
+                  Member since {formatMemberSince(user.created_at)}
+                </p>
+              </div>
+            </div>
+          )
+        )}
+
+        {/* Loading */}
+        {loading && <DashboardSkeleton />}
+
+        {/* Content */}
+        {!loading && data && (
+          <>
+            {/* Stat cards — top row */}
+            <StatGrid columns={3}>
+              <StatCard
+                title="Total Tokens"
+                value={formatTokens(data.summary.total_tokens)}
+                subtitle="Last 30 days"
+                icon={Zap}
+                iconColor="text-primary"
+              />
+              <StatCard
+                title="Est. Cost"
+                value={formatCost(estimatedCost)}
+                subtitle="Based on public pricing"
+                icon={DollarSign}
+                iconColor="text-chart-6"
+              />
+              <StatCard
+                title="Cache Savings"
+                value={
+                  data.summary.input_tokens > 0
+                    ? `${Math.round((data.summary.cached_input_tokens / data.summary.input_tokens) * 100)}%`
+                    : "0%"
+                }
+                subtitle={`${formatTokens(data.summary.cached_input_tokens)} cached tokens`}
+                icon={Database}
+                iconColor="text-success"
+              />
+            </StatGrid>
+
+            {/* Token breakdown — secondary row */}
+            <StatGrid columns={3}>
+              <StatCard
+                title="Input Tokens"
+                value={formatTokens(data.summary.input_tokens)}
+                subtitle="Prompts & context"
+                icon={ArrowDownToLine}
+              />
+              <StatCard
+                title="Output Tokens"
+                value={formatTokens(data.summary.output_tokens)}
+                subtitle="Responses & reasoning"
+                icon={ArrowUpFromLine}
+              />
+              <StatCard
+                title="Cached Tokens"
+                value={formatTokens(data.summary.cached_input_tokens)}
+                subtitle="Cache hits"
+                icon={Database}
+              />
+            </StatGrid>
+
+            {/* Charts row */}
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-3 md:gap-4">
+              <UsageTrendChart data={daily} />
+              <SourceDonutChart data={sources} />
+            </div>
+
+            {/* Model breakdown */}
+            <ModelBreakdownChart data={models} />
+
+            {/* Activity heatmap */}
+            <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+              <p className="mb-3 text-xs md:text-sm text-muted-foreground">
+                {currentYear} Activity
+              </p>
+              {yearData.loading ? (
+                <Skeleton className="h-[120px] w-full" />
+              ) : (
+                <HeatmapCalendar
+                  data={yearData.heatmap}
+                  year={currentYear}
+                  valueFormatter={(v) => formatTokens(v)}
+                />
+              )}
+            </div>
+          </>
+        )}
+
+        {/* Footer */}
+        <footer className="pt-4 pb-8 text-center">
+          <p className="text-xs text-muted-foreground">
+            Powered by{" "}
+            <Link href="/" className="text-primary hover:underline">
+              Zebra
+            </Link>{" "}
+            — Track your AI coding tool usage
+          </p>
+        </footer>
+      </main>
+    </div>
+  );
+}
