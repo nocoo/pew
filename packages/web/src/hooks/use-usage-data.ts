@@ -46,6 +46,12 @@ export interface SourceAggregate {
   value: number;
 }
 
+/** Heatmap data point (date + total tokens) */
+export interface HeatmapPoint {
+  date: string;
+  value: number;
+}
+
 // ---------------------------------------------------------------------------
 // Aggregation helpers
 // ---------------------------------------------------------------------------
@@ -91,6 +97,11 @@ export function toSourceAggregates(records: UsageRow[]): SourceAggregate[] {
   return Array.from(bySource.entries())
     .map(([label, value]) => ({ label, value }))
     .sort((a, b) => b.value - a.value);
+}
+
+/** Convert daily points to heatmap-compatible data */
+export function toHeatmapData(daily: DailyPoint[]): HeatmapPoint[] {
+  return daily.map((d) => ({ date: d.date, value: d.total }));
 }
 
 // ---------------------------------------------------------------------------

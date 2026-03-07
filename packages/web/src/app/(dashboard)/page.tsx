@@ -6,15 +6,21 @@ import {
   ArrowUpFromLine,
   Database,
 } from "lucide-react";
-import { useUsageData } from "@/hooks/use-usage-data";
+import { useUsageData, toHeatmapData } from "@/hooks/use-usage-data";
 import { formatTokens } from "@/lib/utils";
 import { StatCard, StatGrid } from "@/components/dashboard/stat-card";
 import { UsageTrendChart } from "@/components/dashboard/usage-trend-chart";
 import { SourceDonutChart } from "@/components/dashboard/source-donut-chart";
+import { HeatmapCalendar } from "@/components/dashboard/heatmap-calendar";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function DashboardPage() {
   const { data, daily, sources, loading, error } = useUsageData({ days: 30 });
+  const yearData = useUsageData({ days: 365 });
+
+  const currentYear = new Date().getFullYear();
+  const heatmapData = toHeatmapData(yearData.daily);
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -72,6 +78,22 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-3 md:gap-4">
             <UsageTrendChart data={daily} />
             <SourceDonutChart data={sources} />
+          </div>
+
+          {/* Activity heatmap */}
+          <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+            <p className="mb-3 text-xs md:text-sm text-muted-foreground">
+              {currentYear} Activity
+            </p>
+            {yearData.loading ? (
+              <Skeleton className="h-[120px] w-full" />
+            ) : (
+              <HeatmapCalendar
+                data={heatmapData}
+                year={currentYear}
+                valueFormatter={(v) => formatTokens(v)}
+              />
+            )}
           </div>
         </>
       )}
