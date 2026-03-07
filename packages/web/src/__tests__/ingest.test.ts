@@ -89,6 +89,49 @@ describe("POST /api/ingest", () => {
 
       expect(res.status).toBe(200);
     });
+
+    it("should accept requests with valid Bearer api_key", async () => {
+      // No session — auth returns null
+      vi.mocked(auth).mockResolvedValueOnce(null);
+      // But Bearer token lookup succeeds
+      mockClient.firstOrNull.mockResolvedValueOnce({ id: "u2" });
+      mockClient.batch.mockResolvedValueOnce([]);
+
+      const res = await POST(makeRequest([VALID_RECORD], "zk_abc123"));
+
+      expect(res.status).toBe(200);
+      // Verify user_id from api_key lookup was used
+      const statements = mockClient.batch.mock.calls[0]![0];
+      expect(statements[0].params).toContain("u2");
+    });
+
+    it("should reject requests with invalid Bearer api_key", async () => {
+      vi.mocked(auth).mockResolvedValueOnce(null);
+      // Bearer token lookup returns no user
+      mockClient.firstOrNull.mockResolvedValueOnce(null);
+
+      const res = await POST(makeRequest([VALID_RECORD], "zk_invalid"));
+
+      expect(res.status).toBe(401);
+    });
+
+    it("should prefer session auth over Bearer token", async () => {
+      // Both session and Bearer present — session takes priority
+      vi.mocked(auth).mockResolvedValueOnce({
+        user: { id: "u1", email: "test@example.com" },
+        expires: "2026-12-31",
+      } as never);
+      mockClient.batch.mockResolvedValueOnce([]);
+
+      const res = await POST(makeRequest([VALID_RECORD], "zk_some_key"));
+
+      expect(res.status).toBe(200);
+      // Should use session user, not api_key lookup
+      const statements = mockClient.batch.mock.calls[0]![0];
+      expect(statements[0].params).toContain("u1");
+      // firstOrNull should NOT have been called for api_key lookup
+      expect(mockClient.firstOrNull).not.toHaveBeenCalled();
+    });
   });
 
   describe("validation", () => {

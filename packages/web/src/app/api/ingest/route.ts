@@ -78,12 +78,31 @@ function validateRecord(r: unknown, index: number): string | null {
 // ---------------------------------------------------------------------------
 
 export async function POST(request: Request) {
-  // 1. Authenticate
+  // 1. Authenticate — try session first, fall back to Bearer api_key
+  const client = getD1Client();
+  let userId: string | undefined;
+
   const session = await auth();
-  if (!session?.user?.id) {
+  if (session?.user?.id) {
+    userId = session.user.id;
+  } else {
+    // Try Bearer api_key
+    const authHeader = request.headers.get("Authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      const apiKey = authHeader.slice(7);
+      const row = await client.firstOrNull<{ id: string }>(
+        "SELECT id FROM users WHERE api_key = ?",
+        [apiKey]
+      );
+      if (row) {
+        userId = row.id;
+      }
+    }
+  }
+
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const userId = session.user.id;
 
   // 2. Parse body
   let records: unknown[];
@@ -126,7 +145,6 @@ export async function POST(request: Request) {
   }
 
   // 4. Upsert into D1
-  const client = getD1Client();
   const statements: D1BatchStatement[] = (records as IngestRecord[]).map(
     (r) => ({
       sql: `INSERT INTO usage_records
