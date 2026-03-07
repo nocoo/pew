@@ -69,16 +69,27 @@ const syncCommand = defineCommand({
       consola.info("No new token usage found.");
     } else {
       consola.success(
-        `Synced ${pc.bold(String(result.totalDeltas))} events → ${pc.bold(String(result.totalRecords))} queue records`,
+        `Synced ${pc.bold(String(result.totalDeltas))} new events → ${pc.bold(String(result.totalRecords))} queue records`,
       );
-      const parts: string[] = [];
-      if (result.sources.claude > 0) parts.push(`Claude: ${result.sources.claude}`);
-      if (result.sources.gemini > 0) parts.push(`Gemini: ${result.sources.gemini}`);
-      if (result.sources.opencode > 0) parts.push(`OpenCode: ${result.sources.opencode}`);
-      if (result.sources.openclaw > 0) parts.push(`OpenClaw: ${result.sources.openclaw}`);
-      if (parts.length > 0) {
-        consola.info(`  ${pc.dim(parts.join("  |  "))}`);
+      const deltaParts: string[] = [];
+      if (result.sources.claude > 0) deltaParts.push(`Claude: ${result.sources.claude}`);
+      if (result.sources.gemini > 0) deltaParts.push(`Gemini: ${result.sources.gemini}`);
+      if (result.sources.opencode > 0) deltaParts.push(`OpenCode: ${result.sources.opencode}`);
+      if (result.sources.openclaw > 0) deltaParts.push(`OpenClaw: ${result.sources.openclaw}`);
+      if (deltaParts.length > 0) {
+        consola.info(`  ${pc.dim(deltaParts.join("  |  "))}`);
       }
+    }
+
+    // Always show files scanned
+    const fs = result.filesScanned;
+    const scanParts: string[] = [];
+    if (fs.claude > 0) scanParts.push(`Claude: ${fs.claude}`);
+    if (fs.gemini > 0) scanParts.push(`Gemini: ${fs.gemini}`);
+    if (fs.opencode > 0) scanParts.push(`OpenCode: ${fs.opencode}`);
+    if (fs.openclaw > 0) scanParts.push(`OpenClaw: ${fs.openclaw}`);
+    if (scanParts.length > 0) {
+      consola.info(`  Files scanned: ${pc.dim(scanParts.join("  |  "))}`);
     }
 
     // Auto-upload if logged in

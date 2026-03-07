@@ -58,6 +58,13 @@ export interface SyncResult {
     opencode: number;
     openclaw: number;
   };
+  /** Total files scanned per source */
+  filesScanned: {
+    claude: number;
+    gemini: number;
+    opencode: number;
+    openclaw: number;
+  };
 }
 
 /** Internal bucket for aggregating deltas */
@@ -83,6 +90,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
 
   const allDeltas: ParsedDelta[] = [];
   const sourceCounts = { claude: 0, gemini: 0, opencode: 0, openclaw: 0 };
+  const filesScanned = { claude: 0, gemini: 0, opencode: 0, openclaw: 0 };
 
   // ---------- Claude Code ----------
   if (opts.claudeDir) {
@@ -92,8 +100,8 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       message: "Discovering Claude Code files...",
     });
     const files = await discoverClaudeFiles(opts.claudeDir);
-    onProgress?.({
-      source: "claude-code",
+    filesScanned.claude = files.length;
+    onProgress?.({      source: "claude-code",
       phase: "parse",
       total: files.length,
       message: `Parsing ${files.length} Claude files...`,
@@ -137,6 +145,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       message: "Discovering Gemini CLI files...",
     });
     const files = await discoverGeminiFiles(opts.geminiDir);
+    filesScanned.gemini = files.length;
     onProgress?.({
       source: "gemini-cli",
       phase: "parse",
@@ -190,6 +199,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       message: "Discovering OpenCode files...",
     });
     const files = await discoverOpenCodeFiles(opts.openCodeMessageDir);
+    filesScanned.opencode = files.length;
     onProgress?.({
       source: "opencode",
       phase: "parse",
@@ -212,6 +222,12 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
         prev.size === st.size &&
         prev.mtimeMs === st.mtimeMs
       ) {
+        onProgress?.({
+          source: "opencode",
+          phase: "parse",
+          current: i + 1,
+          total: files.length,
+        });
         continue;
       }
 
@@ -251,6 +267,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       message: "Discovering OpenClaw files...",
     });
     const files = await discoverOpenClawFiles(opts.openclawDir);
+    filesScanned.openclaw = files.length;
     onProgress?.({
       source: "openclaw",
       phase: "parse",
@@ -353,5 +370,6 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     totalDeltas: allDeltas.length,
     totalRecords: records.length,
     sources: sourceCounts,
+    filesScanned,
   };
 }

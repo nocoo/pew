@@ -107,6 +107,7 @@ describe("executeSync", () => {
     expect(result.totalDeltas).toBe(1);
     expect(result.totalRecords).toBe(1);
     expect(result.sources.claude).toBe(1);
+    expect(result.filesScanned.claude).toBe(1);
 
     // Verify queue file was created
     const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
@@ -134,6 +135,7 @@ describe("executeSync", () => {
 
     expect(result.totalDeltas).toBe(1);
     expect(result.sources.gemini).toBe(1);
+    expect(result.filesScanned.gemini).toBe(1);
   });
 
   it("should sync OpenCode data files to queue", async () => {
@@ -151,6 +153,7 @@ describe("executeSync", () => {
 
     expect(result.totalDeltas).toBe(1);
     expect(result.sources.opencode).toBe(1);
+    expect(result.filesScanned.opencode).toBe(1);
   });
 
   it("should sync OpenClaw data files to queue", async () => {
@@ -168,6 +171,7 @@ describe("executeSync", () => {
 
     expect(result.totalDeltas).toBe(1);
     expect(result.sources.openclaw).toBe(1);
+    expect(result.filesScanned.openclaw).toBe(1);
   });
 
   it("should be incremental (second sync produces no new records)", async () => {
