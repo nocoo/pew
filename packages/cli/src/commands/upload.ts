@@ -214,6 +214,20 @@ async function sendBatchWithRetry(opts: {
         return { ok: true };
       }
 
+      // 429 — rate limited, retry with Retry-After if available
+      if (resp.status === 429) {
+        const retryAfter = resp.headers.get("Retry-After");
+        const retryMs = retryAfter
+          ? Math.max(Number(retryAfter) * 1000, retryDelayMs)
+          : retryDelayMs * 2 ** attempt;
+        if (attempt < maxRetries && retryMs > 0) {
+          await sleep(retryMs);
+        }
+        const body = await resp.json().catch(() => ({}));
+        lastError = `429: ${(body as Record<string, string>).error ?? "Too Many Requests"}`;
+        continue;
+      }
+
       // 4xx — client error, don't retry
       if (resp.status >= 400 && resp.status < 500) {
         const body = await resp.json().catch(() => ({}));

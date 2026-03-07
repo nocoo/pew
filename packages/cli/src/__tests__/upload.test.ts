@@ -27,7 +27,7 @@ function makeRecord(overrides: Partial<QueueRecord> = {}): QueueRecord {
 }
 
 /** Fake fetch that records calls and returns configurable responses */
-function createMockFetch(responses: Array<{ status: number; body: unknown }>) {
+function createMockFetch(responses: Array<{ status: number; body: unknown; headers?: Record<string, string> }>) {
   let callIndex = 0;
   const calls: Array<{ url: string; init: RequestInit }> = [];
 
@@ -38,9 +38,13 @@ function createMockFetch(responses: Array<{ status: number; body: unknown }>) {
     calls.push({ url: String(url), init: init ?? {} });
     const resp = responses[callIndex] ?? responses[responses.length - 1];
     callIndex++;
+    const responseHeaders: Record<string, string> = { "Content-Type": "application/json" };
+    if (resp.headers) {
+      Object.assign(responseHeaders, resp.headers);
+    }
     return new Response(JSON.stringify(resp.body), {
       status: resp.status,
-      headers: { "Content-Type": "application/json" },
+      headers: responseHeaders,
     });
   };
 
@@ -444,5 +448,57 @@ describe("executeUpload", () => {
     expect(result2.uploaded).toBe(200);
     const body2 = JSON.parse(calls2[0].init.body as string);
     expect(body2).toHaveLength(200);
+  });
+
+  // ----- 429 rate limit — should retry (not treat as fatal 4xx) -----
+
+  it("should retry on 429 and succeed on next attempt", async () => {
+    const config = new ConfigManager(dir);
+    await config.save({ token: "zk_ratelimit" });
+
+    const queue = new LocalQueue(dir);
+    await queue.appendBatch([makeRecord()]);
+
+    const { fetchFn, calls } = createMockFetch([
+      { status: 429, body: { error: "Too Many Requests" }, headers: { "Retry-After": "1" } },
+      { status: 200, body: { ingested: 1 } },
+    ]);
+
+    const result = await executeUpload({
+      stateDir: dir,
+      apiUrl: DEFAULT_HOST,
+      fetch: fetchFn,
+      retryDelayMs: 0, // no delay for tests
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.uploaded).toBe(1);
+    expect(calls).toHaveLength(2);
+  });
+
+  it("should fail after max retries on persistent 429", async () => {
+    const config = new ConfigManager(dir);
+    await config.save({ token: "zk_ratelimit_exhaust" });
+
+    const queue = new LocalQueue(dir);
+    await queue.appendBatch([makeRecord()]);
+
+    const { fetchFn, calls } = createMockFetch([
+      { status: 429, body: { error: "Too Many Requests" } },
+      { status: 429, body: { error: "Too Many Requests" } },
+      { status: 429, body: { error: "Too Many Requests" } },
+    ]);
+
+    const result = await executeUpload({
+      stateDir: dir,
+      apiUrl: DEFAULT_HOST,
+      fetch: fetchFn,
+      maxRetries: 2,
+      retryDelayMs: 0,
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/429|rate.?limit|too many|retry|failed/i);
+    expect(calls).toHaveLength(3);
   });
 });
