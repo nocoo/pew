@@ -57,6 +57,22 @@ describe("ConfigManager", () => {
     expect(manager.configPath).toBe(join(tempDir, "config.json"));
   });
 
+  it("should use config.dev.json in dev mode", () => {
+    const manager = new ConfigManager(tempDir, true);
+    expect(manager.configPath).toBe(join(tempDir, "config.dev.json"));
+  });
+
+  it("should isolate dev and prod configs", async () => {
+    const prod = new ConfigManager(tempDir, false);
+    const dev = new ConfigManager(tempDir, true);
+
+    await prod.save({ token: "prod-token" });
+    await dev.save({ token: "dev-token" });
+
+    expect((await prod.load()).token).toBe("prod-token");
+    expect((await dev.load()).token).toBe("dev-token");
+  });
+
   it("should handle corrupted config file gracefully", async () => {
     const { writeFile } = await import("node:fs/promises");
     await writeFile(join(tempDir, "config.json"), "not valid json{{{");

@@ -2,17 +2,19 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import type { ZebraConfig } from "@zebra/core";
 
-const CONFIG_FILE = "config.json";
+const PROD_CONFIG = "config.json";
+const DEV_CONFIG = "config.dev.json";
 
 /**
  * Manages the CLI configuration file.
- * Stored at ~/.config/zebra/config.json
+ * Stored at ~/.config/zebra/config.json (prod) or config.dev.json (dev).
  */
 export class ConfigManager {
   readonly configPath: string;
 
-  constructor(configDir: string) {
-    this.configPath = join(configDir, CONFIG_FILE);
+  constructor(configDir: string, dev = false) {
+    const filename = dev ? DEV_CONFIG : PROD_CONFIG;
+    this.configPath = join(configDir, filename);
   }
 
   /** Load config from disk. Returns empty config if file doesn't exist or is corrupted. */
