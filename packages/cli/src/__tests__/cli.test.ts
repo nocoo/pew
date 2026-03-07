@@ -20,12 +20,13 @@ describe("CLI main command", () => {
     const names = Object.keys(subCommands!);
     expect(names).toContain("init");
     expect(names).toContain("sync");
+    expect(names).toContain("upload");
     expect(names).toContain("status");
     expect(names).toContain("login");
   });
 
-  it("should have exactly 4 subcommands in Phase 1", () => {
+  it("should have exactly 5 subcommands", () => {
     const names = Object.keys(main.subCommands!);
-    expect(names).toHaveLength(4);
+    expect(names).toHaveLength(5);
   });
 });

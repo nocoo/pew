@@ -5,6 +5,7 @@ import { resolveDefaultPaths } from "./utils/paths.js";
 import { executeSync } from "./commands/sync.js";
 import { executeStatus } from "./commands/status.js";
 import { executeLogin } from "./commands/login.js";
+import { executeUpload } from "./commands/upload.js";
 
 const initCommand = defineCommand({
   meta: {
@@ -22,7 +23,19 @@ const syncCommand = defineCommand({
     name: "sync",
     description: "Parse local AI tool usage and upload to dashboard",
   },
-  async run() {
+  args: {
+    upload: {
+      type: "boolean",
+      description: "Upload to dashboard after syncing (default: true if logged in)",
+      default: true,
+    },
+    api: {
+      type: "string",
+      description: "Override the Zebra API URL",
+      default: "https://zebra.nocoo.dev",
+    },
+  },
+  async run({ args }) {
     const paths = resolveDefaultPaths();
     consola.start("Syncing token usage from AI coding tools...\n");
 
@@ -64,6 +77,11 @@ const syncCommand = defineCommand({
       if (parts.length > 0) {
         consola.info(`  ${pc.dim(parts.join("  |  "))}`);
       }
+    }
+
+    // Auto-upload if logged in
+    if (args.upload) {
+      await runUpload(paths.stateDir, args.api);
     }
   },
 });
@@ -158,6 +176,75 @@ const loginCommand = defineCommand({
   },
 });
 
+// ---------------------------------------------------------------------------
+// Shared upload helper (used by both `sync --upload` and standalone `upload`)
+// ---------------------------------------------------------------------------
+
+async function runUpload(stateDir: string, apiUrl: string): Promise<void> {
+  consola.log("");
+  consola.start("Uploading to dashboard...");
+
+  const uploadResult = await executeUpload({
+    stateDir,
+    apiUrl,
+    fetch: globalThis.fetch,
+    onProgress(event) {
+      if (event.phase === "uploading") {
+        consola.info(
+          `  ${pc.dim(`Batch ${event.batch}/${event.totalBatches}`)} (${event.message})`,
+        );
+      }
+    },
+  });
+
+  if (!uploadResult.success && uploadResult.error?.match(/not logged in/i)) {
+    consola.info(
+      `Not logged in — skipping upload. Run ${pc.cyan("zebra login")} to enable.`,
+    );
+    return;
+  }
+
+  if (uploadResult.success) {
+    if (uploadResult.uploaded === 0) {
+      consola.info("No pending records to upload.");
+    } else {
+      consola.success(
+        `Uploaded ${pc.bold(String(uploadResult.uploaded))} records in ${uploadResult.batches} batch(es).`,
+      );
+    }
+  } else {
+    consola.error(`Upload failed: ${uploadResult.error}`);
+    if (uploadResult.uploaded > 0) {
+      consola.info(
+        `  ${pc.yellow(String(uploadResult.uploaded))} records uploaded before failure.`,
+      );
+    }
+    process.exitCode = 1;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Upload command (standalone)
+// ---------------------------------------------------------------------------
+
+const uploadCommand = defineCommand({
+  meta: {
+    name: "upload",
+    description: "Upload pending queue records to the Zebra dashboard",
+  },
+  args: {
+    api: {
+      type: "string",
+      description: "Override the Zebra API URL",
+      default: "https://zebra.nocoo.dev",
+    },
+  },
+  async run({ args }) {
+    const paths = resolveDefaultPaths();
+    await runUpload(paths.stateDir, args.api);
+  },
+});
+
 export const main = defineCommand({
   meta: {
     name: "zebra",
@@ -167,6 +254,7 @@ export const main = defineCommand({
   subCommands: {
     init: initCommand,
     sync: syncCommand,
+    upload: uploadCommand,
     status: statusCommand,
     login: loginCommand,
   },
