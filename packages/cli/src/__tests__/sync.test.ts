@@ -254,4 +254,216 @@ describe("executeSync", () => {
     expect(result.sources.claude).toBe(1);
     expect(result.sources.gemini).toBe(1);
   });
+
+  // ===== OpenCode incremental sync + triple-check skip =====
+
+  it("should be incremental for OpenCode (second sync with no file changes skips parsing)", async () => {
+    const ocDir = join(dataDir, "opencode", "message", "ses_001");
+    await mkdir(ocDir, { recursive: true });
+    await writeFile(
+      join(ocDir, "msg_001.json"),
+      opencodeMsg(1771120749059, 14967, 437),
+    );
+
+    const r1 = await executeSync({
+      stateDir,
+      openCodeMessageDir: join(dataDir, "opencode", "message"),
+    });
+    expect(r1.totalDeltas).toBe(1);
+    expect(r1.sources.opencode).toBe(1);
+
+    // Second sync: file unchanged → triple-check (inode+size+mtime) should skip
+    const r2 = await executeSync({
+      stateDir,
+      openCodeMessageDir: join(dataDir, "opencode", "message"),
+    });
+    expect(r2.totalDeltas).toBe(0);
+    expect(r2.totalRecords).toBe(0);
+    expect(r2.sources.opencode).toBe(0);
+  });
+
+  it("should re-parse OpenCode file when content changes (mtime/size differ)", async () => {
+    const ocDir = join(dataDir, "opencode", "message", "ses_001");
+    await mkdir(ocDir, { recursive: true });
+    const filePath = join(ocDir, "msg_001.json");
+    await writeFile(filePath, opencodeMsg(1771120749059, 100, 50));
+
+    const r1 = await executeSync({
+      stateDir,
+      openCodeMessageDir: join(dataDir, "opencode", "message"),
+    });
+    expect(r1.totalDeltas).toBe(1);
+
+    // Wait a small amount to ensure mtime differs, then overwrite with new data
+    await new Promise((r) => setTimeout(r, 50));
+    await writeFile(filePath, opencodeMsg(1771120749059, 200, 100));
+
+    const r2 = await executeSync({
+      stateDir,
+      openCodeMessageDir: join(dataDir, "opencode", "message"),
+    });
+    // File changed → should re-parse and produce a delta (diff from previous totals)
+    expect(r2.totalDeltas).toBe(1);
+    expect(r2.sources.opencode).toBe(1);
+  });
+
+  // ===== OpenClaw incremental sync =====
+
+  it("should be incremental for OpenClaw (second sync with no changes produces no new data)", async () => {
+    const agentDir = join(dataDir, ".openclaw", "agents", "a1", "sessions");
+    await mkdir(agentDir, { recursive: true });
+    await writeFile(
+      join(agentDir, "session.jsonl"),
+      openclawLine("2026-03-07T10:15:00.000Z", 5000, 800) + "\n",
+    );
+
+    const r1 = await executeSync({
+      stateDir,
+      openclawDir: join(dataDir, ".openclaw"),
+    });
+    expect(r1.totalDeltas).toBe(1);
+    expect(r1.sources.openclaw).toBe(1);
+
+    // Second sync: no new data
+    const r2 = await executeSync({
+      stateDir,
+      openclawDir: join(dataDir, ".openclaw"),
+    });
+    expect(r2.totalDeltas).toBe(0);
+    expect(r2.totalRecords).toBe(0);
+  });
+
+  it("should sync only new OpenClaw lines appended after first sync", async () => {
+    const agentDir = join(dataDir, ".openclaw", "agents", "a1", "sessions");
+    await mkdir(agentDir, { recursive: true });
+    const filePath = join(agentDir, "session.jsonl");
+    await writeFile(
+      filePath,
+      openclawLine("2026-03-07T10:15:00.000Z", 5000, 800) + "\n",
+    );
+
+    const r1 = await executeSync({
+      stateDir,
+      openclawDir: join(dataDir, ".openclaw"),
+    });
+    expect(r1.totalDeltas).toBe(1);
+
+    // Append new line
+    const existing = await readFile(filePath, "utf-8");
+    await writeFile(
+      filePath,
+      existing + openclawLine("2026-03-07T11:15:00.000Z", 3000, 400) + "\n",
+    );
+
+    const r2 = await executeSync({
+      stateDir,
+      openclawDir: join(dataDir, ".openclaw"),
+    });
+    expect(r2.totalDeltas).toBe(1);
+    expect(r2.sources.openclaw).toBe(1);
+  });
+
+  // ===== Progress callback coverage =====
+
+  it("should fire progress events for all phases", async () => {
+    const claudeDir = join(dataDir, ".claude", "projects", "proj-a");
+    await mkdir(claudeDir, { recursive: true });
+    await writeFile(
+      join(claudeDir, "session.jsonl"),
+      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+    );
+
+    const events: Array<{ source: string; phase: string }> = [];
+
+    await executeSync({
+      stateDir,
+      claudeDir: join(dataDir, ".claude"),
+      onProgress: (e) => events.push({ source: e.source, phase: e.phase }),
+    });
+
+    // Should have: discover, parse (announce), parse (per-file), aggregate, done
+    expect(events.some((e) => e.source === "claude-code" && e.phase === "discover")).toBe(true);
+    expect(events.some((e) => e.source === "claude-code" && e.phase === "parse")).toBe(true);
+    expect(events.some((e) => e.source === "all" && e.phase === "aggregate")).toBe(true);
+    expect(events.some((e) => e.source === "all" && e.phase === "done")).toBe(true);
+  });
+
+  it("should fire progress events for OpenCode sync including skip optimization", async () => {
+    const ocDir = join(dataDir, "opencode", "message", "ses_001");
+    await mkdir(ocDir, { recursive: true });
+    await writeFile(
+      join(ocDir, "msg_001.json"),
+      opencodeMsg(1771120749059, 14967, 437),
+    );
+
+    // First sync to populate cursors
+    await executeSync({
+      stateDir,
+      openCodeMessageDir: join(dataDir, "opencode", "message"),
+    });
+
+    // Second sync: triple-check skip should still fire parse progress
+    const events: Array<{ source: string; phase: string; current?: number }> = [];
+    await executeSync({
+      stateDir,
+      openCodeMessageDir: join(dataDir, "opencode", "message"),
+      onProgress: (e) => events.push({ source: e.source, phase: e.phase, current: e.current }),
+    });
+
+    expect(events.some((e) => e.source === "opencode" && e.phase === "discover")).toBe(true);
+    expect(events.some((e) => e.source === "opencode" && e.phase === "parse")).toBe(true);
+    // The skip path still emits progress with current counter
+    expect(events.some((e) => e.source === "opencode" && e.phase === "parse" && e.current === 1)).toBe(true);
+  });
+
+  // ===== All four sources in one run =====
+
+  it("should sync all four sources simultaneously", async () => {
+    // Claude
+    const claudeDir = join(dataDir, ".claude", "projects", "proj-a");
+    await mkdir(claudeDir, { recursive: true });
+    await writeFile(
+      join(claudeDir, "session.jsonl"),
+      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+    );
+    // Gemini
+    const geminiDir = join(dataDir, ".gemini", "tmp", "proj-b", "chats");
+    await mkdir(geminiDir, { recursive: true });
+    await writeFile(
+      join(geminiDir, "session-2026-03-07.json"),
+      geminiSession("2026-03-07T10:15:00.000Z", 2000, 200),
+    );
+    // OpenCode
+    const ocDir = join(dataDir, "opencode", "message", "ses_001");
+    await mkdir(ocDir, { recursive: true });
+    await writeFile(
+      join(ocDir, "msg_001.json"),
+      opencodeMsg(1771120749059, 14967, 437),
+    );
+    // OpenClaw
+    const agentDir = join(dataDir, ".openclaw", "agents", "a1", "sessions");
+    await mkdir(agentDir, { recursive: true });
+    await writeFile(
+      join(agentDir, "session.jsonl"),
+      openclawLine("2026-03-07T10:15:00.000Z", 5000, 800) + "\n",
+    );
+
+    const result = await executeSync({
+      stateDir,
+      claudeDir: join(dataDir, ".claude"),
+      geminiDir: join(dataDir, ".gemini"),
+      openCodeMessageDir: join(dataDir, "opencode", "message"),
+      openclawDir: join(dataDir, ".openclaw"),
+    });
+
+    expect(result.totalDeltas).toBe(4);
+    expect(result.sources.claude).toBe(1);
+    expect(result.sources.gemini).toBe(1);
+    expect(result.sources.opencode).toBe(1);
+    expect(result.sources.openclaw).toBe(1);
+    expect(result.filesScanned.claude).toBe(1);
+    expect(result.filesScanned.gemini).toBe(1);
+    expect(result.filesScanned.opencode).toBe(1);
+    expect(result.filesScanned.openclaw).toBe(1);
+  });
 });
