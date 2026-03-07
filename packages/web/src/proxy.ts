@@ -28,10 +28,19 @@ const authHandler = auth((req) => {
   const isAuthRoute = req.nextUrl.pathname.startsWith("/api/auth");
   const isIngestRoute = req.nextUrl.pathname.startsWith("/api/ingest");
   const isPublicApiRoute = req.nextUrl.pathname.startsWith("/api/users/");
+  const isLeaderboardApi = req.nextUrl.pathname.startsWith("/api/leaderboard");
   const isPublicProfile = req.nextUrl.pathname.startsWith("/u/");
+  const isLeaderboard = req.nextUrl.pathname === "/leaderboard";
 
-  // Allow auth routes, ingest (uses Bearer token), public API, and public profiles
-  if (isAuthRoute || isIngestRoute || isPublicApiRoute || isPublicProfile) {
+  // Allow public routes through without auth
+  if (
+    isAuthRoute ||
+    isIngestRoute ||
+    isPublicApiRoute ||
+    isLeaderboardApi ||
+    isPublicProfile ||
+    isLeaderboard
+  ) {
     return NextResponse.next();
   }
 
