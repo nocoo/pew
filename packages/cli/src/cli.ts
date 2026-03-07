@@ -248,7 +248,7 @@ const uploadCommand = defineCommand({
 export const main = defineCommand({
   meta: {
     name: "zebra",
-    version: "0.1.0",
+    version: "0.1.1",
     description: "Track token usage from your local AI coding tools",
   },
   subCommands: {
