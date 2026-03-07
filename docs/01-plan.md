@@ -71,7 +71,7 @@ All development follows **TDD** — write tests first, then implement.
 - [x] `package.json` (`@nocoo/zebra`, public, bin entry)
 - [x] `tsconfig.json` (extends root, references core)
 - [x] `src/bin.ts` — entry point
-- [x] `src/cli.ts` — citty main command with 4 subcommands (init, sync, status, login)
+- [x] `src/cli.ts` — citty main command with subcommands (sync, status, login, upload)
 - [x] `src/__tests__/cli.test.ts` — CLI smoke tests (TDD: write first)
 
 ### 1.4 Web Package (`packages/web`)
@@ -116,7 +116,7 @@ All development follows **TDD** — write tests first, then implement.
 - [x] `executeSync()` — orchestrator with dependency injection, progress events
 - [x] `executeStatus()` — queue/cursor state reporting
 - [x] File discovery for all 4 sources (optimized with `withFileTypes`)
-- [x] CLI wiring — citty subcommands (init/sync/status/login)
+- [x] CLI wiring — citty subcommands (sync/status/login/upload)
 
 ### 2.5 Tests
 - [x] 128 unit tests across 14 test files
@@ -293,7 +293,6 @@ CREATE TABLE verification_tokens (
 
 ## Phase 5: Remaining Work (TODO)
 
-- [ ] `zebra init` command — install hooks for AI tools
 - [ ] `/settings` page — user profile, API key management, preferences
 - [ ] Database migration files — version-controlled schema management
 - [ ] L4 BDD E2E tests — Playwright core user flows (port 27030)

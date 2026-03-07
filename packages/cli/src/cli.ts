@@ -15,17 +15,6 @@ function isDevMode(): boolean {
   return process.argv.includes("--dev");
 }
 
-const initCommand = defineCommand({
-  meta: {
-    name: "init",
-    description: "Set up Zebra hooks for your AI coding tools",
-  },
-  async run() {
-    // TODO: Phase 2.8 — install hooks for Claude Code, Gemini CLI, OpenCode, OpenClaw
-    consola.info("zebra init — not yet implemented");
-  },
-});
-
 const syncCommand = defineCommand({
   meta: {
     name: "sync",
@@ -266,7 +255,6 @@ export const main = defineCommand({
     description: "Track token usage from your local AI coding tools",
   },
   subCommands: {
-    init: initCommand,
     sync: syncCommand,
     upload: uploadCommand,
     status: statusCommand,
