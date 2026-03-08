@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { D1Client, D1Error } from "../lib/d1";
+import { D1Client, D1Error, getD1Client, resetD1Client } from "../lib/d1";
 
 // Mock global fetch
 const mockFetch = vi.fn();
@@ -238,5 +238,44 @@ describe("D1Client", () => {
 
       expect(row).toBeNull();
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Singleton factory
+// ---------------------------------------------------------------------------
+
+describe("getD1Client / resetD1Client", () => {
+  beforeEach(() => {
+    resetD1Client();
+    vi.stubEnv("CF_ACCOUNT_ID", "acc-123");
+    vi.stubEnv("CF_D1_DATABASE_ID", "db-456");
+    vi.stubEnv("CF_D1_API_TOKEN", "tok-789");
+  });
+
+  it("should return a D1Client instance", () => {
+    const client = getD1Client();
+    expect(client).toBeInstanceOf(D1Client);
+  });
+
+  it("should return the same singleton on second call", () => {
+    const a = getD1Client();
+    const b = getD1Client();
+    expect(a).toBe(b);
+  });
+
+  it("should return a new instance after resetD1Client()", () => {
+    const a = getD1Client();
+    resetD1Client();
+    const b = getD1Client();
+    expect(a).not.toBe(b);
+  });
+
+  it("should read config from environment variables", () => {
+    // getD1Client reads CF_ACCOUNT_ID, CF_D1_DATABASE_ID, CF_D1_API_TOKEN
+    // If they are empty strings, D1Client constructor throws
+    resetD1Client();
+    vi.stubEnv("CF_ACCOUNT_ID", "");
+    expect(() => getD1Client()).toThrow("accountId is required");
   });
 });
