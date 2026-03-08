@@ -9,13 +9,55 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { D1AuthAdapter } from "@/lib/auth-adapter";
 import { getD1Client } from "@/lib/d1";
+import type { JWT } from "next-auth/jwt";
+import type { Session, User } from "next-auth";
 
-// For reverse proxy environments with HTTPS, we need secure cookies.
-// Set USE_SECURE_COOKIES=true in .env.local when using HTTPS reverse proxy in dev.
-const useSecureCookies =
-  process.env.NODE_ENV === "production" ||
-  process.env.NEXTAUTH_URL?.startsWith("https://") ||
-  process.env.USE_SECURE_COOKIES === "true";
+// ---------------------------------------------------------------------------
+// Exported helpers (testable without next-auth runtime)
+// ---------------------------------------------------------------------------
+
+/** Determine whether to use __Secure- prefixed cookies. */
+export function shouldUseSecureCookies(): boolean {
+  return (
+    process.env.NODE_ENV === "production" ||
+    process.env.NEXTAUTH_URL?.startsWith("https://") === true ||
+    process.env.USE_SECURE_COOKIES === "true"
+  );
+}
+
+/** Persist user ID into the JWT token. */
+export function jwtCallback({
+  token,
+  user,
+}: {
+  token: JWT;
+  user?: User;
+}): JWT {
+  if (user?.id) {
+    token.userId = user.id;
+  }
+  return token;
+}
+
+/** Expose user ID in the session object. */
+export function sessionCallback({
+  session,
+  token,
+}: {
+  session: Session;
+  token: JWT;
+}): Session {
+  if (token.userId && session.user) {
+    session.user.id = token.userId as string;
+  }
+  return session;
+}
+
+// ---------------------------------------------------------------------------
+// NextAuth configuration
+// ---------------------------------------------------------------------------
+
+const useSecureCookies = shouldUseSecureCookies();
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   // Trust the host header for automatic URL detection.
@@ -84,20 +126,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
   },
   callbacks: {
-    /** Persist user ID in JWT token. */
-    jwt({ token, user }) {
-      if (user?.id) {
-        token.userId = user.id;
-      }
-      return token;
-    },
-    /** Expose user ID in session. */
-    session({ session, token }) {
-      if (token.userId && session.user) {
-        session.user.id = token.userId as string;
-      }
-      return session;
-    },
+    jwt: jwtCallback,
+    session: sessionCallback,
   },
   pages: {
     signIn: "/login",
