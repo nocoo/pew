@@ -336,18 +336,18 @@ Extend `packages/worker/src/index.ts` with URL-path-based routing:
 | 9 | `test` | RED: OpenClaw session collector tests | ✅ |
 | 10 | `feat` | GREEN: Implement OpenClaw session collector | ✅ |
 
-### Phase 2: Session Sync + Queue (Commits 11-18)
+### Phase 2: Session Sync + Queue (Commits 11-18) ✅
 
 | # | Type | Description | Status |
 |---|------|-------------|--------|
-| 11 | `feat` | Add SessionQueue class | |
-| 12 | `feat` | Add SessionCursorStore class | |
-| 13 | `test` | RED: session dedup tests | |
-| 14 | `feat` | GREEN: Implement deduplicateSessionRecords | |
-| 15 | `test` | RED: session-sync orchestrator tests | |
-| 16 | `feat` | GREEN: Implement executeSessionSync | |
-| 17 | `test` | RED: session-upload tests | |
-| 18 | `feat` | GREEN: Implement executeSessionUpload | |
+| 11 | `feat` | Add SessionQueue class | ✅ |
+| 12 | `feat` | Add SessionCursorStore class | ✅ |
+| 13 | `test` | RED: session dedup tests | ✅ |
+| 14 | `feat` | GREEN: Implement deduplicateSessionRecords | ✅ |
+| 15 | `test` | RED: session-sync orchestrator tests | ✅ |
+| 16 | `feat` | GREEN: Implement executeSessionSync | ✅ |
+| 17 | `test` | RED: session-upload tests | ✅ |
+| 18 | `feat` | GREEN: Implement executeSessionUpload | ✅ |
 
 ### Phase 3: Server-side (Commits 19-26)
 
