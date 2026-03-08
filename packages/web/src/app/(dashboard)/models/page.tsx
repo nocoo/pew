@@ -6,6 +6,7 @@ import { formatTokens } from "@/lib/utils";
 import { getModelPricing, estimateCost, formatCost } from "@/lib/pricing";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CHART_COLORS } from "@/lib/palette";
+import { ModelBreakdownChart } from "@/components/dashboard/model-breakdown-chart";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -106,7 +107,7 @@ function ModelsSkeleton() {
 // ---------------------------------------------------------------------------
 
 export default function ModelsPage() {
-  const { data, loading, error } = useUsageData({ days: 30 });
+  const { data, models, loading, error } = useUsageData({ days: 30 });
 
   const modelGroups = useMemo(
     () => (data ? groupByModel(data.records) : []),
@@ -147,6 +148,9 @@ export default function ModelsPage() {
             </div>
           ) : (
             <>
+              {/* Chart */}
+              <ModelBreakdownChart data={models} />
+
               {/* Summary table */}
               <div className="rounded-xl bg-secondary p-1 overflow-x-auto">
                 <table className="w-full">
