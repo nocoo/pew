@@ -101,11 +101,11 @@ export function buildMultiRowUpsert(
              reasoning_output_tokens, total_tokens)
             VALUES ${allPlaceholders}
             ON CONFLICT (user_id, source, model, hour_start) DO UPDATE SET
-              input_tokens = excluded.input_tokens,
-              cached_input_tokens = excluded.cached_input_tokens,
-              output_tokens = excluded.output_tokens,
-              reasoning_output_tokens = excluded.reasoning_output_tokens,
-              total_tokens = excluded.total_tokens`;
+               input_tokens = usage_records.input_tokens + excluded.input_tokens,
+               cached_input_tokens = usage_records.cached_input_tokens + excluded.cached_input_tokens,
+               output_tokens = usage_records.output_tokens + excluded.output_tokens,
+               reasoning_output_tokens = usage_records.reasoning_output_tokens + excluded.reasoning_output_tokens,
+               total_tokens = usage_records.total_tokens + excluded.total_tokens`;
 
   const params: unknown[] = [];
   for (const r of records) {

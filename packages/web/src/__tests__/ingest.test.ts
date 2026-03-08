@@ -207,9 +207,9 @@ describe("POST /api/ingest", () => {
       const [sql, params] = mockClient.execute.mock.calls[0]!;
       expect(sql).toContain("INSERT INTO usage_records");
       expect(sql).toContain("ON CONFLICT");
-      // Overwrite semantics — NOT additive
-      expect(sql).toContain("input_tokens = excluded.input_tokens");
-      expect(sql).not.toContain("input_tokens + excluded.input_tokens");
+      // Additive semantics — tokens accumulate on conflict
+      expect(sql).toContain("usage_records.input_tokens + excluded.input_tokens");
+      expect(sql).toContain("usage_records.total_tokens + excluded.total_tokens");
       expect(params).toContain("u1"); // user_id
       expect(params).toContain("claude-code"); // source
     });
@@ -278,9 +278,9 @@ describe("buildMultiRowUpsert", () => {
     expect(sql).toContain("INSERT INTO usage_records");
     expect(sql).toContain("VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
     expect(sql).toContain("ON CONFLICT");
-    // Overwrite semantics
-    expect(sql).toContain("input_tokens = excluded.input_tokens");
-    expect(sql).not.toContain("input_tokens + excluded.input_tokens");
+    // Additive accumulation semantics
+    expect(sql).toContain("usage_records.input_tokens + excluded.input_tokens");
+    expect(sql).toContain("usage_records.total_tokens + excluded.total_tokens");
     expect(params).toEqual([
       "u1", "claude-code", "sonnet", "2026-03-07T10:00:00.000Z",
       100, 20, 50, 0, 150,
@@ -324,7 +324,7 @@ describe("buildMultiRowUpsert", () => {
     expect(params[10]).toBe("gemini-cli");
   });
 
-  it("should use overwrite (not additive) on conflict", () => {
+  it("should use additive accumulation on conflict", () => {
     const { sql } = buildMultiRowUpsert("u1", [
       {
         source: "claude-code",
@@ -338,13 +338,11 @@ describe("buildMultiRowUpsert", () => {
       },
     ]);
 
-    // Each token field should be overwritten, not accumulated
-    expect(sql).toContain("input_tokens = excluded.input_tokens");
-    expect(sql).toContain("cached_input_tokens = excluded.cached_input_tokens");
-    expect(sql).toContain("output_tokens = excluded.output_tokens");
-    expect(sql).toContain("reasoning_output_tokens = excluded.reasoning_output_tokens");
-    expect(sql).toContain("total_tokens = excluded.total_tokens");
-    // Must NOT contain additive pattern
-    expect(sql).not.toMatch(/input_tokens\s*=\s*input_tokens\s*\+/);
+    // Each token field should accumulate on conflict
+    expect(sql).toContain("usage_records.input_tokens + excluded.input_tokens");
+    expect(sql).toContain("usage_records.cached_input_tokens + excluded.cached_input_tokens");
+    expect(sql).toContain("usage_records.output_tokens + excluded.output_tokens");
+    expect(sql).toContain("usage_records.reasoning_output_tokens + excluded.reasoning_output_tokens");
+    expect(sql).toContain("usage_records.total_tokens + excluded.total_tokens");
   });
 });
