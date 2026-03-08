@@ -2,8 +2,9 @@
 
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
 import { Suspense } from "react";
-import { Zap, Github } from "lucide-react";
+import { Github } from "lucide-react";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 function Barcode() {
@@ -90,7 +91,7 @@ function LoginContent() {
                 }}
               />
               <div className="flex items-center gap-2">
-                <Zap className="h-4 w-4 text-primary-foreground" strokeWidth={1.5} />
+                <Image src="/logo-24.png" alt="Zebra" width={16} height={16} className="brightness-0 invert" />
                 <span className="text-sm font-semibold text-primary-foreground">zebra</span>
               </div>
               <span className="text-[10px] font-medium uppercase tracking-widest text-primary-foreground/60">
@@ -112,7 +113,7 @@ function LoginContent() {
           <div className="flex flex-1 flex-col items-center px-6 pt-6 pb-14">
             {/* Avatar placeholder */}
             <div className="h-24 w-24 overflow-hidden rounded-full bg-secondary dark:bg-[#171717] ring-1 ring-border flex items-center justify-center">
-              <Zap className="h-12 w-12 text-primary" strokeWidth={1.5} />
+              <Image src="/logo-80.png" alt="Zebra" width={80} height={80} />
             </div>
 
             <p className="mt-5 text-lg font-semibold text-foreground">AI Token Usage Tracker</p>

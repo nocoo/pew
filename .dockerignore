@@ -10,3 +10,5 @@ dist
 .env
 .env.local
 .env.*.local
+logo.png
+scripts/resize-logos.py

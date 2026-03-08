@@ -15,8 +15,16 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXTAUTH_URL ?? "https://zebra.nocoo.dev"
+  ),
   title: "Zebra Dashboard",
   description: "Track and visualize token usage from your AI coding tools",
+  openGraph: {
+    title: "Zebra Dashboard",
+    description: "Track and visualize token usage from your AI coding tools",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
