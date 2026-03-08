@@ -143,4 +143,48 @@ describe("executeLogin", () => {
     expect(result.success).toBe(false);
     expect(result.error).toContain("api_key");
   });
+
+  it("should return 404 for non-callback requests", async () => {
+    const result = await executeLogin({
+      configDir: tempDir,
+      apiUrl: "http://localhost:7030",
+      timeoutMs: 2000,
+      openBrowser: async (url) => {
+        // Extract port from the callback URL
+        const parsed = new URL(url);
+        const callbackParam = parsed.searchParams.get("callback")!;
+        const callbackUrl = new URL(callbackParam);
+        const port = callbackUrl.port;
+
+        await new Promise((r) => setTimeout(r, 100));
+
+        // Hit a non-callback path
+        const res = await fetch(`http://localhost:${port}/some-random-path`);
+        expect(res.status).toBe(404);
+
+        // Then send the real callback so the test can complete
+        callbackUrl.searchParams.set("api_key", "zk_test456");
+        callbackUrl.searchParams.set("email", "test@example.com");
+        await fetch(callbackUrl.toString());
+      },
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.email).toBe("test@example.com");
+  });
+
+  it("should fail if openBrowser rejects", async () => {
+    const result = await executeLogin({
+      configDir: tempDir,
+      apiUrl: "http://localhost:7030",
+      timeoutMs: 5000,
+      openBrowser: async () => {
+        throw new Error("xdg-open not found");
+      },
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Failed to open browser");
+    expect(result.error).toContain("xdg-open not found");
+  });
 });
