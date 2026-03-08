@@ -399,13 +399,18 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     });
   }
 
+  // ---------- Save cursor state FIRST (before queue) ----------
+  // Cursor must be persisted before the queue write so that a crash
+  // between the two operations does not cause double-counting on the
+  // next sync. Worst case: cursor saved but queue not written — data
+  // is lost for this cycle (acceptable), but never duplicated.
+  cursors.updatedAt = new Date().toISOString();
+  await cursorStore.save(cursors);
+
+  // ---------- Write to queue ----------
   if (records.length > 0) {
     await queue.appendBatch(records);
   }
-
-  // ---------- Save cursor state ----------
-  cursors.updatedAt = new Date().toISOString();
-  await cursorStore.save(cursors);
 
   onProgress?.({
     source: "all",

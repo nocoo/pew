@@ -639,12 +639,16 @@ describe("executeSync", () => {
     expect(result.totalDeltas).toBe(0);
     expect(result.totalRecords).toBe(0);
 
-    // Queue should have exactly 1 record (from the second sync's perspective,
-    // no new data, so only the second sync's successful write matters)
-    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
-    const records = queueRaw.trim().split("\n").filter((l) => l.length > 0);
-    // Should be 1 record max (from second sync if it found anything) or 0
-    expect(records.length).toBeLessThanOrEqual(1);
+    // Queue should have 0 records: first sync's queue write was blocked
+    // by our mock, and second sync found no new data to write.
+    let queueRecordCount = 0;
+    try {
+      const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
+      queueRecordCount = queueRaw.trim().split("\n").filter((l) => l.length > 0).length;
+    } catch {
+      // queue.jsonl doesn't exist — that's fine, means 0 records
+    }
+    expect(queueRecordCount).toBe(0);
   });
 
   it("should sync all four sources simultaneously", async () => {
