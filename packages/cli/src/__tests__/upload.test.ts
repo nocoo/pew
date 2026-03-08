@@ -21,7 +21,7 @@ function makeRecord(overrides: Partial<QueueRecord> = {}): QueueRecord {
     cached_input_tokens: 20,
     output_tokens: 50,
     reasoning_output_tokens: 0,
-    total_tokens: 150,
+    total_tokens: 170,
     ...overrides,
   };
 }
@@ -537,7 +537,7 @@ describe("aggregateRecords", () => {
         cached_input_tokens: 20,
         output_tokens: 50,
         reasoning_output_tokens: 0,
-        total_tokens: 150,
+        total_tokens: 170,
       }),
       makeRecord({
         source: "claude-code",
@@ -547,7 +547,7 @@ describe("aggregateRecords", () => {
         cached_input_tokens: 30,
         output_tokens: 100,
         reasoning_output_tokens: 10,
-        total_tokens: 330,
+        total_tokens: 340,
       }),
     ];
 
@@ -557,7 +557,7 @@ describe("aggregateRecords", () => {
     expect(result[0].cached_input_tokens).toBe(50);
     expect(result[0].output_tokens).toBe(150);
     expect(result[0].reasoning_output_tokens).toBe(10);
-    expect(result[0].total_tokens).toBe(480);
+    expect(result[0].total_tokens).toBe(510);
     expect(result[0].source).toBe("claude-code");
     expect(result[0].model).toBe("sonnet");
     expect(result[0].hour_start).toBe("2026-03-07T10:00:00.000Z");

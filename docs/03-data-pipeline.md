@@ -252,7 +252,7 @@ interface QueueRecord {
   cached_input_tokens: number;
   output_tokens: number;
   reasoning_output_tokens: number;
-  total_tokens: number;              // = input + output + reasoning (NOT cached)
+  total_tokens: number;              // = input + cached + output + reasoning
 }
 ```
 

@@ -36,7 +36,7 @@ const VALID_RECORD = {
   cached_input_tokens: 200,
   output_tokens: 500,
   reasoning_output_tokens: 0,
-  total_tokens: 1500,
+  total_tokens: 1700,
 };
 
 /** Stub a successful Worker response */

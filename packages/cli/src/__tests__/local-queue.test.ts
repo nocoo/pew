@@ -14,7 +14,7 @@ function makeRecord(overrides: Partial<QueueRecord> = {}): QueueRecord {
     cached_input_tokens: 1000,
     output_tokens: 2000,
     reasoning_output_tokens: 0,
-    total_tokens: 7000,
+    total_tokens: 8000,
     ...overrides,
   };
 }

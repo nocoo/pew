@@ -185,10 +185,10 @@ describe("QueueRecord type", () => {
       cached_input_tokens: 1000,
       output_tokens: 2000,
       reasoning_output_tokens: 0,
-      total_tokens: 7000,
+      total_tokens: 8000,
     };
     expect(record.source).toBe("claude-code");
-    expect(record.total_tokens).toBe(7000);
+    expect(record.total_tokens).toBe(8000);
   });
 });
 

@@ -384,6 +384,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   for (const bucket of buckets.values()) {
     const totalTokens =
       bucket.tokens.inputTokens +
+      bucket.tokens.cachedInputTokens +
       bucket.tokens.outputTokens +
       bucket.tokens.reasoningOutputTokens;
 
