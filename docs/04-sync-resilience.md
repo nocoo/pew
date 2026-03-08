@@ -7,10 +7,10 @@
 | # | Commit | Description | Status |
 |---|--------|-------------|--------|
 | 1 | `docs: add sync resilience plan` | This document | ✅ done |
-| 2 | `test: add test for per-file parser error isolation` | Failing test first | |
-| 3 | `fix: wrap per-file parser calls in try/catch` | GREEN the test | |
-| 4 | `test: add test for cursor-before-queue write order` | Failing test first | |
-| 5 | `fix: swap cursor/queue write order to prevent double-counting` | GREEN the test | |
+| 2 | `test: add tests for per-file parser error isolation` | Failing test first | ✅ done |
+| 3 | `fix: wrap per-file parser calls in try/catch for error isolation` | GREEN the test | ✅ done |
+| 4 | `test: add test for cursor-before-queue write order` | Failing test first | ✅ done |
+| 5 | `fix: swap cursor/queue write order to prevent double-counting on crash` | GREEN the test | ✅ done |
 
 ## HIGH-1: Single File Parser Error Aborts Entire Sync
 
