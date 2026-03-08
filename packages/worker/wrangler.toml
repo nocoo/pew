@@ -4,5 +4,5 @@ compatibility_date = "2026-03-01"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "zebra"
-database_id = "placeholder-replace-with-real-id"
+database_name = "zebra-db"
+database_id = "f8c733b4-6516-4431-9dcb-7dea05c38e28"
