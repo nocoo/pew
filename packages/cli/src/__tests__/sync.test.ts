@@ -582,6 +582,71 @@ describe("executeSync", () => {
     }
   });
 
+  // ===== Write-order resilience tests (HIGH-2) =====
+
+  it("should save cursors before queue so crash after cursor save does not cause double-counting", async () => {
+    // This test verifies that cursors are persisted BEFORE the queue,
+    // so if the process crashes after cursor save but before queue write,
+    // the next sync will NOT re-parse already-processed data.
+    const claudeDir = join(dataDir, ".claude", "projects", "proj-a");
+    await mkdir(claudeDir, { recursive: true });
+    await writeFile(
+      join(claudeDir, "session.jsonl"),
+      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+    );
+
+    // Import the LocalQueue module to spy on appendBatch
+    const localQueueModule = await import("../storage/local-queue.js");
+    const origAppendBatch = localQueueModule.LocalQueue.prototype.appendBatch;
+
+    // First sync: let appendBatch throw AFTER the cursor should be saved
+    // (simulating a crash between cursor save and queue write)
+    let appendBatchCalled = false;
+    const spy = vi.spyOn(localQueueModule.LocalQueue.prototype, "appendBatch")
+      .mockImplementation(async function(this: InstanceType<typeof localQueueModule.LocalQueue>, _records) {
+        appendBatchCalled = true;
+        throw new Error("Simulated crash during queue write");
+      });
+
+    try {
+      await executeSync({
+        stateDir,
+        claudeDir: join(dataDir, ".claude"),
+      }).catch(() => {
+        // Expected to throw due to queue write failure
+      });
+    } finally {
+      spy.mockRestore();
+    }
+
+    expect(appendBatchCalled).toBe(true);
+
+    // Check if cursors were saved (they should be, because cursor save
+    // should happen BEFORE queue write)
+    const { CursorStore } = await import("../storage/cursor-store.js");
+    const cursorStore = new CursorStore(stateDir);
+    const cursors = await cursorStore.load();
+    const cursorKeys = Object.keys(cursors.files);
+    expect(cursorKeys.length).toBeGreaterThan(0); // cursors were persisted
+
+    // Second sync: normal operation, should produce NO new deltas
+    // because cursors already advanced past the data
+    const result = await executeSync({
+      stateDir,
+      claudeDir: join(dataDir, ".claude"),
+    });
+
+    expect(result.totalDeltas).toBe(0);
+    expect(result.totalRecords).toBe(0);
+
+    // Queue should have exactly 1 record (from the second sync's perspective,
+    // no new data, so only the second sync's successful write matters)
+    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
+    const records = queueRaw.trim().split("\n").filter((l) => l.length > 0);
+    // Should be 1 record max (from second sync if it found anything) or 0
+    expect(records.length).toBeLessThanOrEqual(1);
+  });
+
   it("should sync all four sources simultaneously", async () => {
     // Claude
     const claudeDir = join(dataDir, ".claude", "projects", "proj-a");
