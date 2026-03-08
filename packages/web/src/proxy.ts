@@ -5,8 +5,11 @@ import type { NextRequest } from "next/server";
 // Skip auth in E2E test environment
 const SKIP_AUTH = process.env.E2E_SKIP_AUTH === "true";
 
-// Build redirect URL respecting reverse proxy headers
-function buildRedirectUrl(req: NextRequest, pathname: string): URL {
+/**
+ * Build redirect URL respecting reverse proxy headers.
+ * Exported for unit testing.
+ */
+export function buildRedirectUrl(req: NextRequest, pathname: string): URL {
   const forwardedHost = req.headers.get("x-forwarded-host");
   const forwardedProto = req.headers.get("x-forwarded-proto") || "https";
 
@@ -17,44 +20,49 @@ function buildRedirectUrl(req: NextRequest, pathname: string): URL {
   return new URL(pathname, req.nextUrl.origin);
 }
 
+/** Routes that are always public (no auth required). */
+export function isPublicRoute(pathname: string): boolean {
+  return (
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/ingest") ||
+    pathname.startsWith("/api/users/") ||
+    pathname.startsWith("/api/leaderboard") ||
+    pathname.startsWith("/u/") ||
+    pathname === "/leaderboard"
+  );
+}
+
+/**
+ * Determine the proxy action for the given request state.
+ *
+ * Returns:
+ * - "next"              → allow through
+ * - "redirect:/"        → redirect to home (logged-in user on login page)
+ * - "redirect:/login"   → redirect to login (unauthenticated user)
+ */
+export function resolveProxyAction(
+  pathname: string,
+  isLoggedIn: boolean,
+  skipAuth: boolean,
+): "next" | "redirect:/" | "redirect:/login" {
+  if (skipAuth) return "next";
+  if (isPublicRoute(pathname)) return "next";
+  if (pathname === "/login" && isLoggedIn) return "redirect:/";
+  if (pathname !== "/login" && !isLoggedIn) return "redirect:/login";
+  return "next";
+}
+
 // Next.js 16 proxy convention (replaces middleware.ts)
 const authHandler = auth((req) => {
-  if (SKIP_AUTH) {
-    return NextResponse.next();
-  }
+  const action = resolveProxyAction(
+    req.nextUrl.pathname,
+    !!req.auth,
+    SKIP_AUTH,
+  );
 
-  const isLoggedIn = !!req.auth;
-  const isLoginPage = req.nextUrl.pathname === "/login";
-  const isAuthRoute = req.nextUrl.pathname.startsWith("/api/auth");
-  const isIngestRoute = req.nextUrl.pathname.startsWith("/api/ingest");
-  const isPublicApiRoute = req.nextUrl.pathname.startsWith("/api/users/");
-  const isLeaderboardApi = req.nextUrl.pathname.startsWith("/api/leaderboard");
-  const isPublicProfile = req.nextUrl.pathname.startsWith("/u/");
-  const isLeaderboard = req.nextUrl.pathname === "/leaderboard";
-
-  // Allow public routes through without auth
-  if (
-    isAuthRoute ||
-    isIngestRoute ||
-    isPublicApiRoute ||
-    isLeaderboardApi ||
-    isPublicProfile ||
-    isLeaderboard
-  ) {
-    return NextResponse.next();
-  }
-
-  // Redirect to home if logged in and trying to access login page
-  if (isLoginPage && isLoggedIn) {
-    return NextResponse.redirect(buildRedirectUrl(req, "/"));
-  }
-
-  // Redirect to login if not logged in and trying to access protected page
-  if (!isLoginPage && !isLoggedIn) {
-    return NextResponse.redirect(buildRedirectUrl(req, "/login"));
-  }
-
-  return NextResponse.next();
+  if (action === "next") return NextResponse.next();
+  const target = action === "redirect:/" ? "/" : "/login";
+  return NextResponse.redirect(buildRedirectUrl(req, target));
 });
 
 // Export as named 'proxy' function for Next.js 16
