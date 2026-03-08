@@ -11,10 +11,10 @@ import type { SessionQueueRecord } from "@pew/core";
 
 function claudeUserLine(ts: string, sessionId = "ses-001"): string {
   return JSON.stringify({
-    type: "human",
+    type: "user",
     timestamp: ts,
     sessionId,
-    message: { text: "hello" },
+    message: { role: "user", content: "hello" },
   });
 }
 
