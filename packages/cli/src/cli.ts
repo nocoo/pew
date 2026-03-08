@@ -3,9 +3,11 @@ import { consola } from "consola";
 import pc from "picocolors";
 import { resolveDefaultPaths } from "./utils/paths.js";
 import { executeSync } from "./commands/sync.js";
+import { executeSessionSync } from "./commands/session-sync.js";
 import { executeStatus } from "./commands/status.js";
 import { executeLogin, resolveHost } from "./commands/login.js";
 import { executeUpload } from "./commands/upload.js";
+import { executeSessionUpload } from "./commands/session-upload.js";
 
 // ---------------------------------------------------------------------------
 // Dev mode detection (otter pattern)
@@ -63,7 +65,7 @@ const syncCommand = defineCommand({
       },
     });
 
-    // Summary
+    // Token summary
     consola.log("");
     if (result.totalDeltas === 0) {
       consola.info("No new token usage found.");
@@ -92,10 +94,54 @@ const syncCommand = defineCommand({
       consola.info(`  Files scanned: ${pc.dim(scanParts.join("  |  "))}`);
     }
 
+    // ---------- Session sync ----------
+    consola.log("");
+    consola.start("Syncing session statistics...\n");
+
+    const sessionResult = await executeSessionSync({
+      stateDir: paths.stateDir,
+      claudeDir: paths.claudeDir,
+      geminiDir: paths.geminiDir,
+      openCodeMessageDir: paths.openCodeMessageDir,
+      openclawDir: paths.openclawDir,
+      onProgress(event) {
+        if (event.phase === "parse" && event.current && event.total) {
+          if (
+            event.total <= 10 ||
+            event.current === event.total ||
+            event.current % Math.ceil(event.total / 4) === 0
+          ) {
+            consola.info(
+              `  ${pc.cyan(event.source)} ${event.current}/${event.total} files`,
+            );
+          }
+        }
+      },
+    });
+
+    // Session summary
+    if (sessionResult.totalSnapshots === 0) {
+      consola.info("No new sessions found.");
+    } else {
+      consola.success(
+        `Synced ${pc.bold(String(sessionResult.totalSnapshots))} sessions → ${pc.bold(String(sessionResult.totalRecords))} queue records`,
+      );
+      const sessParts: string[] = [];
+      if (sessionResult.sources.claude > 0) sessParts.push(`Claude: ${sessionResult.sources.claude}`);
+      if (sessionResult.sources.gemini > 0) sessParts.push(`Gemini: ${sessionResult.sources.gemini}`);
+      if (sessionResult.sources.opencode > 0) sessParts.push(`OpenCode: ${sessionResult.sources.opencode}`);
+      if (sessionResult.sources.openclaw > 0) sessParts.push(`OpenClaw: ${sessionResult.sources.openclaw}`);
+      if (sessParts.length > 0) {
+        consola.info(`  ${pc.dim(sessParts.join("  |  "))}`);
+      }
+    }
+
     // Auto-upload if logged in
     if (args.upload) {
       const dev = isDevMode();
-      await runUpload(paths.stateDir, resolveHost(dev), dev);
+      const host = resolveHost(dev);
+      await runUpload(paths.stateDir, host, dev);
+      await runSessionUpload(paths.stateDir, host, dev);
     }
   },
 });
@@ -199,7 +245,7 @@ const loginCommand = defineCommand({
 
 async function runUpload(stateDir: string, apiUrl: string, dev: boolean): Promise<void> {
   consola.log("");
-  consola.start("Uploading to dashboard...");
+  consola.start("Uploading tokens to dashboard...");
 
   const uploadResult = await executeUpload({
     stateDir,
@@ -224,14 +270,56 @@ async function runUpload(stateDir: string, apiUrl: string, dev: boolean): Promis
 
   if (uploadResult.success) {
     if (uploadResult.uploaded === 0) {
-      consola.info("No pending records to upload.");
+      consola.info("No pending token records to upload.");
     } else {
       consola.success(
-        `Uploaded ${pc.bold(String(uploadResult.uploaded))} records in ${uploadResult.batches} batch(es).`,
+        `Uploaded ${pc.bold(String(uploadResult.uploaded))} token records in ${uploadResult.batches} batch(es).`,
       );
     }
   } else {
-    consola.error(`Upload failed: ${uploadResult.error}`);
+    consola.error(`Token upload failed: ${uploadResult.error}`);
+    if (uploadResult.uploaded > 0) {
+      consola.info(
+        `  ${pc.yellow(String(uploadResult.uploaded))} records uploaded before failure.`,
+      );
+    }
+    process.exitCode = 1;
+  }
+}
+
+async function runSessionUpload(stateDir: string, apiUrl: string, dev: boolean): Promise<void> {
+  consola.log("");
+  consola.start("Uploading sessions to dashboard...");
+
+  const uploadResult = await executeSessionUpload({
+    stateDir,
+    apiUrl,
+    dev,
+    fetch: globalThis.fetch,
+    onProgress(event) {
+      if (event.phase === "uploading") {
+        consola.info(
+          `  ${pc.dim(`Batch ${event.batch}/${event.totalBatches}`)} (${event.message})`,
+        );
+      }
+    },
+  });
+
+  if (!uploadResult.success && uploadResult.error?.match(/not logged in/i)) {
+    // Already shown by token upload — skip redundant message
+    return;
+  }
+
+  if (uploadResult.success) {
+    if (uploadResult.uploaded === 0) {
+      consola.info("No pending session records to upload.");
+    } else {
+      consola.success(
+        `Uploaded ${pc.bold(String(uploadResult.uploaded))} session records in ${uploadResult.batches} batch(es).`,
+      );
+    }
+  } else {
+    consola.error(`Session upload failed: ${uploadResult.error}`);
     if (uploadResult.uploaded > 0) {
       consola.info(
         `  ${pc.yellow(String(uploadResult.uploaded))} records uploaded before failure.`,
