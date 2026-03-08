@@ -14,6 +14,7 @@ import {
   CalendarDays,
   AppWindow,
   Cpu,
+  MessagesSquare,
   ChevronUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -58,6 +59,7 @@ const NAV_GROUPS: NavGroup[] = [
     defaultOpen: true,
     items: [
       { href: "/details", label: "Daily Usage", icon: CalendarDays },
+      { href: "/sessions", label: "Sessions", icon: MessagesSquare },
       { href: "/apps", label: "By App", icon: AppWindow },
       { href: "/models", label: "By Model", icon: Cpu },
     ],
