@@ -1,0 +1,12 @@
+node_modules
+.next
+.next-e2e
+.next-e2e-ui
+.git
+coverage
+dist
+*.tsbuildinfo
+.DS_Store
+.env
+.env.local
+.env.*.local
