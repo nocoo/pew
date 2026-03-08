@@ -13,6 +13,22 @@ RUN bun install --frozen-lockfile
 # --- Build ---
 FROM base AS builder
 WORKDIR /app
+
+# Railway injects service env vars as Docker build args.
+# Next.js needs these at build time for page data collection.
+ARG CF_ACCOUNT_ID
+ARG CF_D1_DATABASE_ID
+ARG CF_D1_API_TOKEN
+ARG WORKER_INGEST_URL
+ARG WORKER_SECRET
+ARG AUTH_SECRET
+ENV CF_ACCOUNT_ID=$CF_ACCOUNT_ID
+ENV CF_D1_DATABASE_ID=$CF_D1_DATABASE_ID
+ENV CF_D1_API_TOKEN=$CF_D1_API_TOKEN
+ENV WORKER_INGEST_URL=$WORKER_INGEST_URL
+ENV WORKER_SECRET=$WORKER_SECRET
+ENV AUTH_SECRET=$AUTH_SECRET
+
 COPY --from=deps /app ./
 COPY . .
 RUN bun run --filter @zebra/web build
