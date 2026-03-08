@@ -215,15 +215,15 @@ describe("executeUpload", () => {
     expect(calls2).toHaveLength(0);
   });
 
-  // ----- Multi-batch (>300 records) -----
+  // ----- Multi-batch (>50 records) -----
 
-  it("should split into multiple batches for >300 records", async () => {
+  it("should split into multiple batches for >50 records", async () => {
     const config = new ConfigManager(dir);
     await config.save({ token: "zk_big_batch" });
 
     const queue = new LocalQueue(dir);
     const records: QueueRecord[] = [];
-    for (let i = 0; i < 500; i++) {
+    for (let i = 0; i < 120; i++) {
       records.push(
         makeRecord({
           model: `model-${i}`,
@@ -234,8 +234,9 @@ describe("executeUpload", () => {
     await queue.appendBatch(records);
 
     const { fetchFn, calls } = createMockFetch([
-      { status: 200, body: { ingested: 300 } },
-      { status: 200, body: { ingested: 200 } },
+      { status: 200, body: { ingested: 50 } },
+      { status: 200, body: { ingested: 50 } },
+      { status: 200, body: { ingested: 20 } },
     ]);
 
     const result = await executeUpload({
@@ -245,14 +246,16 @@ describe("executeUpload", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(result.uploaded).toBe(500);
-    expect(result.batches).toBe(2);
-    expect(calls).toHaveLength(2);
+    expect(result.uploaded).toBe(120);
+    expect(result.batches).toBe(3);
+    expect(calls).toHaveLength(3);
 
     const body1 = JSON.parse(calls[0].init.body as string);
     const body2 = JSON.parse(calls[1].init.body as string);
-    expect(body1).toHaveLength(300);
-    expect(body2).toHaveLength(200);
+    const body3 = JSON.parse(calls[2].init.body as string);
+    expect(body1).toHaveLength(50);
+    expect(body2).toHaveLength(50);
+    expect(body3).toHaveLength(20);
   });
 
   // ----- API error (4xx) — should stop and report -----
@@ -401,9 +404,9 @@ describe("executeUpload", () => {
     await config.save({ token: "zk_partial" });
 
     const queue = new LocalQueue(dir);
-    // 500 records → 2 batches (300 + 200)
+    // 120 records → 3 batches (50 + 50 + 20)
     const records: QueueRecord[] = [];
-    for (let i = 0; i < 500; i++) {
+    for (let i = 0; i < 120; i++) {
       records.push(
         makeRecord({
           model: `model-${i}`,
@@ -415,7 +418,7 @@ describe("executeUpload", () => {
 
     // First batch succeeds, second fails
     const { fetchFn } = createMockFetch([
-      { status: 200, body: { ingested: 300 } },
+      { status: 200, body: { ingested: 50 } },
       { status: 500, body: { error: "Server Error" } },
       { status: 500, body: { error: "Server Error" } },
       { status: 500, body: { error: "Server Error" } },
@@ -431,18 +434,19 @@ describe("executeUpload", () => {
 
     // Should report partial success
     expect(result.success).toBe(false);
-    expect(result.uploaded).toBe(300);
+    expect(result.uploaded).toBe(50);
 
     // Offset should NOT be saved (all-or-nothing for idempotent retry)
     const offset = await queue.loadOffset();
     expect(offset).toBe(0);
 
-    // On re-upload, all 500 records are re-aggregated and re-sent.
+    // On re-upload, all 120 records are re-aggregated and re-sent.
     // With overwrite upsert, this is safe — already-uploaded records
     // are simply overwritten with the same values.
     const { fetchFn: fetchFn2, calls: calls2 } = createMockFetch([
-      { status: 200, body: { ingested: 300 } },
-      { status: 200, body: { ingested: 200 } },
+      { status: 200, body: { ingested: 50 } },
+      { status: 200, body: { ingested: 50 } },
+      { status: 200, body: { ingested: 20 } },
     ]);
 
     const result2 = await executeUpload({
@@ -452,7 +456,7 @@ describe("executeUpload", () => {
     });
 
     expect(result2.success).toBe(true);
-    expect(result2.uploaded).toBe(500);
+    expect(result2.uploaded).toBe(120);
   });
 
   // ----- 429 rate limit — should retry (not treat as fatal 4xx) -----

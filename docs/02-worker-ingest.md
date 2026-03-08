@@ -13,7 +13,7 @@
 | 4 | `test: add L1 unit tests for worker ingest` | Worker tests | ✅ done |
 | 5 | `refactor: replace D1 REST API with worker proxy in ingest route` | Next.js route rewrite | ✅ done |
 | 6 | `test: rewrite ingest route tests for worker proxy` | Ingest test rewrite | ✅ done |
-| 7 | `feat: reduce CLI batch size from 300 to 50` | CLI + server limit change | pending |
+| 7 | `feat: reduce CLI batch size from 300 to 50` | CLI + server limit change | ✅ done |
 | 8 | `docs: update CLAUDE.md retrospective` | Lessons learned | pending |
 
 ## Problem

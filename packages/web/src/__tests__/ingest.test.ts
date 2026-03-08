@@ -170,15 +170,15 @@ describe("POST /api/ingest", () => {
       expect(res.status).toBe(400);
     });
 
-    it("should reject oversized batches (> 300 records)", async () => {
-      const records = Array.from({ length: 301 }, () => ({
+    it("should reject oversized batches (> 50 records)", async () => {
+      const records = Array.from({ length: 51 }, () => ({
         ...VALID_RECORD,
       }));
       const res = await POST(makeRequest(records));
 
       expect(res.status).toBe(400);
       const body = await res.json();
-      expect(body.error).toContain("300");
+      expect(body.error).toContain("50");
     });
 
     it("should not call Worker for invalid requests", async () => {

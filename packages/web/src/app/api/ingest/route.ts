@@ -120,9 +120,9 @@ export async function POST(request: Request) {
     );
   }
 
-  if (records.length > 300) {
+  if (records.length > 50) {
     return NextResponse.json(
-      { error: "Batch too large: max 300 records per request" },
+      { error: "Batch too large: max 50 records per request" },
       { status: 400 }
     );
   }
