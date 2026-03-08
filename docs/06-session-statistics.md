@@ -326,15 +326,15 @@ Extend `packages/worker/src/index.ts` with URL-path-based routing:
 | # | Type | Description | Status |
 |---|------|-------------|--------|
 | 1 | `docs` | Add session statistics design document | ✅ |
-| 2 | `feat` | Add session types to `@pew/core` | |
-| 3 | `test` | RED: Claude session collector tests | |
-| 4 | `feat` | GREEN: Implement Claude session collector | |
-| 5 | `test` | RED: Gemini session collector tests | |
-| 6 | `feat` | GREEN: Implement Gemini session collector | |
-| 7 | `test` | RED: OpenCode session collector tests | |
-| 8 | `feat` | GREEN: Implement OpenCode session collector | |
-| 9 | `test` | RED: OpenClaw session collector tests | |
-| 10 | `feat` | GREEN: Implement OpenClaw session collector | |
+| 2 | `feat` | Add session types to `@pew/core` | ✅ |
+| 3 | `test` | RED: Claude session collector tests | ✅ |
+| 4 | `feat` | GREEN: Implement Claude session collector | ✅ |
+| 5 | `test` | RED: Gemini session collector tests | ✅ |
+| 6 | `feat` | GREEN: Implement Gemini session collector | ✅ |
+| 7 | `test` | RED: OpenCode session collector tests | ✅ |
+| 8 | `feat` | GREEN: Implement OpenCode session collector | ✅ |
+| 9 | `test` | RED: OpenClaw session collector tests | ✅ |
+| 10 | `feat` | GREEN: Implement OpenClaw session collector | ✅ |
 
 ### Phase 2: Session Sync + Queue (Commits 11-18)
 
