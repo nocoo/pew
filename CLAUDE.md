@@ -20,6 +20,7 @@ Claude Code, Gemini CLI, OpenCode, OpenClaw
 - **TDD**: Always write tests first, then implement
 - **Commits**: Conventional Commits, atomic, auto-commit after changes
 - **`@pew/core` is NOT published**: Pure types, `import type` only, `devDependencies`
+- **Raw data is READ-ONLY**: Never modify, delete, or move user's local AI tool log files (`~/.claude/`, `~/.gemini/`, `~/.local/share/opencode/`, `~/.openclaw/`). Pew only reads these files. Write operations are limited to Pew's own state files under `~/.config/pew/`.
 
 ## CLI Dev Workflow
 
