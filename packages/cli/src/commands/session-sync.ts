@@ -16,10 +16,12 @@ import { SessionCursorStore } from "../storage/session-cursor-store.js";
 import { SessionQueue } from "../storage/session-queue.js";
 import {
   discoverClaudeFiles,
+  discoverCodexFiles,
   discoverGeminiFiles,
   discoverOpenClawFiles,
 } from "../discovery/sources.js";
 import { collectClaudeSessions } from "../parsers/claude-session.js";
+import { collectCodexSessions } from "../parsers/codex-session.js";
 import { collectGeminiSessions } from "../parsers/gemini-session.js";
 import { collectOpenCodeSessions } from "../parsers/opencode-session.js";
 import { collectOpenClawSessions } from "../parsers/openclaw-session.js";
@@ -37,6 +39,8 @@ export interface SessionSyncOptions {
   stateDir: string;
   /** Override: Claude data directory (~/.claude) */
   claudeDir?: string;
+  /** Override: Codex CLI sessions directory (~/.codex/sessions) */
+  codexSessionsDir?: string;
   /** Override: Gemini data directory (~/.gemini) */
   geminiDir?: string;
   /** Override: OpenCode message directory (~/.local/share/opencode/storage/message) */
@@ -70,6 +74,7 @@ export interface SessionSyncResult {
   totalRecords: number;
   sources: {
     claude: number;
+    codex: number;
     gemini: number;
     opencode: number;
     openclaw: number;
@@ -151,7 +156,7 @@ export async function executeSessionSync(
   const cursors = await cursorStore.load();
 
   const allSnapshots: SessionSnapshot[] = [];
-  const sourceCounts = { claude: 0, gemini: 0, opencode: 0, openclaw: 0 };
+  const sourceCounts = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0 };
 
   // ---------- Claude Code ----------
   if (opts.claudeDir) {
@@ -467,6 +472,62 @@ export async function executeSessionSync(
 
       onProgress?.({
         source: "openclaw",
+        phase: "parse",
+        current: i + 1,
+        total: files.length,
+      });
+    }
+  }
+
+  // ---------- Codex CLI ----------
+  if (opts.codexSessionsDir) {
+    onProgress?.({
+      source: "codex",
+      phase: "discover",
+      message: "Discovering Codex CLI session files...",
+    });
+    const files = await discoverCodexFiles(opts.codexSessionsDir);
+    onProgress?.({
+      source: "codex",
+      phase: "parse",
+      total: files.length,
+      message: `Scanning ${files.length} Codex session files...`,
+    });
+
+    for (let i = 0; i < files.length; i++) {
+      const filePath = files[i];
+      const st = await stat(filePath).catch(() => null);
+      if (!st) continue;
+
+      const cursor = cursors.files[filePath] as SessionFileCursor | undefined;
+      if (!fileChanged(cursor, st.mtimeMs, st.size)) {
+        onProgress?.({
+          source: "codex",
+          phase: "parse",
+          current: i + 1,
+          total: files.length,
+        });
+        continue;
+      }
+
+      const snapshots = await collectCodexSessions(filePath).catch(
+        (err: unknown) => {
+          onProgress?.({
+            source: "codex",
+            phase: "warn",
+            message: `Skipping ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
+          });
+          return [] as SessionSnapshot[];
+        },
+      );
+
+      cursors.files[filePath] = { mtimeMs: st.mtimeMs, size: st.size };
+
+      allSnapshots.push(...snapshots);
+      sourceCounts.codex += snapshots.length;
+
+      onProgress?.({
+        source: "codex",
         phase: "parse",
         current: i + 1,
         total: files.length,

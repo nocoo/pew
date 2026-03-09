@@ -119,6 +119,61 @@ function openclawLine(
 }
 
 // ---------------------------------------------------------------------------
+// Helpers: Codex CLI JSONL lines
+// ---------------------------------------------------------------------------
+
+function codexSessionMeta(
+  ts: string,
+  sessionId = "ses-codex-001",
+  cwd = "/tmp/project",
+  model = "gpt-5.4",
+): string {
+  return JSON.stringify({
+    timestamp: ts,
+    type: "session_meta",
+    payload: { id: sessionId, cwd, model },
+  });
+}
+
+function codexTurnContext(ts: string, model = "gpt-5.4"): string {
+  return JSON.stringify({
+    timestamp: ts,
+    type: "turn_context",
+    payload: { model, cwd: "/tmp/project" },
+  });
+}
+
+function codexResponseItem(
+  ts: string,
+  role: "user" | "assistant",
+): string {
+  return JSON.stringify({
+    timestamp: ts,
+    type: "response_item",
+    payload: { role },
+  });
+}
+
+function codexTokenCount(ts: string, input: number, output: number): string {
+  return JSON.stringify({
+    timestamp: ts,
+    type: "event_msg",
+    payload: {
+      type: "token_count",
+      info: {
+        total_token_usage: {
+          input_tokens: input,
+          cached_input_tokens: 0,
+          output_tokens: output,
+          reasoning_output_tokens: 0,
+          total_tokens: input + output,
+        },
+      },
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Helpers: parse queue file
 // ---------------------------------------------------------------------------
 
@@ -273,6 +328,65 @@ describe("executeSessionSync", () => {
     expect(records).toHaveLength(1);
     expect(records[0].source).toBe("openclaw");
     expect(records[0].kind).toBe("automated");
+  });
+
+  it("should sync Codex CLI session data to queue", async () => {
+    const codexDir = join(dataDir, ".codex", "sessions", "2026", "03", "07");
+    await mkdir(codexDir, { recursive: true });
+    const content = [
+      codexSessionMeta("2026-03-07T10:00:00.000Z"),
+      codexTurnContext("2026-03-07T10:00:01.000Z"),
+      codexResponseItem("2026-03-07T10:01:00.000Z", "user"),
+      codexResponseItem("2026-03-07T10:02:00.000Z", "assistant"),
+      codexTokenCount("2026-03-07T10:02:01.000Z", 3000, 500),
+      codexResponseItem("2026-03-07T10:05:00.000Z", "user"),
+      codexResponseItem("2026-03-07T10:06:00.000Z", "assistant"),
+      codexTokenCount("2026-03-07T10:06:01.000Z", 6000, 900),
+    ].join("\n") + "\n";
+    await writeFile(join(codexDir, "rollout-abc123.jsonl"), content);
+
+    const result = await executeSessionSync({
+      stateDir,
+      codexSessionsDir: join(dataDir, ".codex", "sessions"),
+    });
+
+    expect(result.totalSnapshots).toBe(1);
+    expect(result.sources.codex).toBe(1);
+
+    const records = await readSessionQueue(stateDir);
+    expect(records).toHaveLength(1);
+    expect(records[0].source).toBe("codex");
+    expect(records[0].kind).toBe("human");
+    expect(records[0].session_key).toBe("codex:ses-codex-001");
+    expect(records[0].user_messages).toBe(2);
+    expect(records[0].assistant_messages).toBe(2);
+    expect(records[0].model).toBe("gpt-5.4");
+    expect(records[0].project_ref).toBe("/tmp/project");
+  });
+
+  it("should skip unchanged Codex files on second sync", async () => {
+    const codexDir = join(dataDir, ".codex", "sessions", "2026", "03", "07");
+    await mkdir(codexDir, { recursive: true });
+    const content = [
+      codexSessionMeta("2026-03-07T10:00:00.000Z"),
+      codexResponseItem("2026-03-07T10:01:00.000Z", "user"),
+      codexResponseItem("2026-03-07T10:02:00.000Z", "assistant"),
+    ].join("\n") + "\n";
+    await writeFile(join(codexDir, "rollout-abc123.jsonl"), content);
+
+    const r1 = await executeSessionSync({
+      stateDir,
+      codexSessionsDir: join(dataDir, ".codex", "sessions"),
+    });
+    expect(r1.totalSnapshots).toBe(1);
+
+    // Second sync: same file, unchanged
+    const r2 = await executeSessionSync({
+      stateDir,
+      codexSessionsDir: join(dataDir, ".codex", "sessions"),
+    });
+    expect(r2.totalSnapshots).toBe(0);
+    expect(r2.totalRecords).toBe(0);
   });
 
   // ----- No data -----
