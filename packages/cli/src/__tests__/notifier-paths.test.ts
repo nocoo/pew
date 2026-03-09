@@ -4,7 +4,7 @@ import { resolveNotifierPaths } from "../notifier/paths.js";
 
 describe("resolveNotifierPaths", () => {
   it("should use default paths when no env overrides are set", () => {
-    const paths = resolveNotifierPaths("/home/tester");
+    const paths = resolveNotifierPaths("/home/tester", {});
 
     expect(paths.stateDir).toBe(join("/home/tester", ".config", "pew"));
     expect(paths.binDir).toBe(join("/home/tester", ".config", "pew", "bin"));
