@@ -11,15 +11,25 @@
 
 1. **纯 DI**：所有模块通过 options 对象注入依赖（fs 操作、spawn、路径），测试不依赖真实文件系统
 2. **安全优先**：所有配置写入前创建 `.bak` 备份；卸载前验证 marker，不会误删用户配置
-3. **幂等**：重复安装不改变已正确的配置；重复 notify 被 Coordinator 合并
+3. **幂等**：重复安装不改变已正确的配置；重复 notify 被跨进程 file-lock + signal 文件合并
 4. **零阻塞**：notify.cjs 和所有 hook 回调始终 exit 0，不阻塞 AI 工具
+
+### 已知局限
+
+本计划在现有 at-most-once sync 语义之上接入自动触发。`docs/10` 已明确指出当前"先保存 cursor，再写 queue"的语义在进程崩溃时会丢失增量数据。这个问题在 hook 驱动下仍然存在，但影响被两个因素缓解：
+
+1. **增量窗口更窄**：hook 驱动的触发频率远高于手动 `pew sync`，每次增量数据量更小，单次崩溃丢失的数据更少
+2. **vibeusage 生产验证**：相同的 at-most-once + hook 驱动架构在 vibeusage 中已稳定运行
+
+Queue/State 语义改造（staged commit + cursor-after-queue）将在后续阶段独立实施，与 notifier 层正交。本计划不会使数据丢失风险变得比当前手动 `pew sync` 更差。
 
 ## 文件清单
 
 ```
 packages/core/src/types.ts                          # 新增 notifier 类型
-packages/cli/src/notifier/coordinator.ts            # Coordinator（mutex + throttle + dirty follow-up）
+packages/cli/src/notifier/coordinator.ts            # Coordinator（file-lock + signal + dirty follow-up）
 packages/cli/src/notifier/notify-handler.ts         # notify.cjs 生成器
+packages/cli/src/notifier/paths.ts                  # 统一 notifier 路径解析器
 packages/cli/src/notifier/claude-hook.ts            # Claude Code hook 安装器
 packages/cli/src/notifier/gemini-hook.ts            # Gemini CLI hook 安装器
 packages/cli/src/notifier/opencode-plugin.ts        # OpenCode plugin 安装器
@@ -30,6 +40,7 @@ packages/cli/src/commands/notify.ts                 # pew notify 命令
 packages/cli/src/commands/init.ts                   # pew init 命令
 packages/cli/src/__tests__/coordinator.test.ts      # Coordinator 测试
 packages/cli/src/__tests__/notify-handler.test.ts   # notify-handler 测试
+packages/cli/src/__tests__/notifier-paths.test.ts   # 路径解析器测试
 packages/cli/src/__tests__/claude-hook.test.ts      # Claude hook 测试
 packages/cli/src/__tests__/gemini-hook.test.ts      # Gemini hook 测试
 packages/cli/src/__tests__/opencode-plugin.test.ts  # OpenCode plugin 测试
@@ -97,121 +108,158 @@ export interface NotifierOperationResult {
 
 ---
 
-## Step 2: Coordinator
+## Step 2: Coordinator（跨进程 file-lock + signal 文件）
 
 **文件**：`packages/cli/src/notifier/coordinator.ts`
 
 ### 职责
 
-Coordinator 是内存中的单例调度器，控制 sync 执行的并发和频率。不负责任何业务逻辑（不解析 token、不操作 cursor）。
+Coordinator 是**跨进程**的互斥调度器，通过文件锁 + 信号文件实现 mutex 和 dirty follow-up。不负责任何业务逻辑。
+
+### 设计原理
+
+`pew notify` 是短命进程 — 每次 hook 触发 spawn 一个新的。进程内 Coordinator 在这个场景下毫无意义：不存在"运行中收到第二个 trigger"。因此并发控制必须跨进程：
+
+1. **文件锁 (`sync.lock`)**：保证同一时刻只有一个 sync 在执行
+2. **信号文件 (`notify.signal`)**：记录最后一次 notify 的时间戳
+3. **dirty follow-up**：sync 完成后检查 signal 文件的 mtime，如果 > sync 开始时间则补跑
 
 ### 核心接口
 
 ```ts
-/** Coordinator configuration */
 interface CoordinatorOptions {
-  /** Minimum interval between sync runs (ms). Default: 20_000 */
-  throttleMs?: number;
+  /** State directory for lock and signal files */
+  stateDir: string;
   /** The actual sync function to execute */
   executeSyncFn: (triggers: SyncTrigger[]) => Promise<void>;
   /** Clock function for testability. Default: Date.now */
   now?: () => number;
+  /** Injected fs operations for testability */
+  fs?: {
+    open: typeof import("node:fs/promises").open;
+    writeFile: typeof import("node:fs/promises").writeFile;
+    stat: typeof import("node:fs/promises").stat;
+    mkdir: typeof import("node:fs/promises").mkdir;
+  };
+  /** Maximum follow-up rounds to prevent infinite loops. Default: 3 */
+  maxFollowUps?: number;
 }
 
-/** Coordinator public API */
-interface Coordinator {
-  /** Submit a trigger. Returns immediately. */
-  trigger(t: SyncTrigger): Promise<CoordinatorRunResult | null>;
-  /** Force a sync regardless of throttle. */
-  forceRun(t: SyncTrigger): Promise<CoordinatorRunResult>;
-  /** Check if a sync is currently running. */
-  isRunning(): boolean;
-  /** Shut down: wait for current run + follow-up to finish. */
-  shutdown(): Promise<void>;
-}
+/** Execute a coordinated sync run with cross-process mutex + dirty follow-up */
+async function coordinatedSync(
+  trigger: SyncTrigger,
+  opts: CoordinatorOptions,
+): Promise<CoordinatorRunResult>;
+```
+
+### 跨进程流程
+
+```
+notify.cjs (hook callback):
+  1. 写信号文件 notify.signal（每次都写，无节流）
+  2. detached spawn: pew notify --source=xxx
+  3. exit 0（立即返回，不阻塞 AI 工具）
+
+pew notify --source=xxx:
+  1. 尝试 flock(sync.lock, LOCK_EX | LOCK_NB)
+     ├── 成功 → 持有锁，继续
+     └── 失败 (EAGAIN) → 写 notify.signal 确保 dirty，exit 0
+  2. 记录 syncStartTime = Date.now()
+  3. 执行 sync
+  4. 检查 notify.signal mtime > syncStartTime？
+     ├── 是 → dirty follow-up：回到步骤 2（最多 maxFollowUps 轮）
+     └── 否 → 释放锁，exit 0
 ```
 
 ### 状态机
 
 ```
-                    trigger()
-                       │
-                       ▼
-             ┌─────────────────┐
-             │  Is sync running? │
-             └─────────────────┘
-                 │           │
-                No          Yes
-                 │           │
-                 ▼           ▼
-          ┌──────────┐  ┌──────────┐
-          │ Throttle  │  │ Set dirty│
-          │ check     │  │ = true   │
-          └──────────┘  └──────────┘
-           │       │         │
-        Passed   Blocked     │
-           │       │         │
-           ▼       ▼         │
-        ┌──────┐ return      │
-        │ RUN  │  null       │
-        └──────┘             │
-           │                 │
-           ▼                 │
-     Run complete            │
-           │                 │
-           ▼                 │
-     ┌───────────┐           │
-     │ dirty?    │◄──────────┘
-     └───────────┘
-       │       │
-      Yes      No
-       │       │
-       ▼       ▼
-   ┌──────┐  Done
-   │ RUN  │  (return result)
-   │ again│
-   └──────┘
-       │
-       ▼
-    Reset dirty
-    Return result
+pew notify 进程 A                    pew notify 进程 B
+     │                                    │
+     ▼                                    │
+  flock(LOCK_NB) → 成功                   │
+     │                                    ▼
+     ▼                               flock(LOCK_NB) → EAGAIN
+  执行 sync...                            │
+     │                                    ▼
+     │                              写 notify.signal
+     │                                    │
+     │                                    ▼
+     │                               exit 0（不等待）
+     ▼
+  sync 完成
+     │
+     ▼
+  signal.mtime > startTime？
+     │
+    是（进程 B 写过 signal）
+     │
+     ▼
+  dirty follow-up：再跑一轮 sync
+     │
+     ▼
+  signal.mtime > startTime2？
+     │
+    否
+     │
+     ▼
+  释放锁，exit 0
 ```
 
 ### 关键行为
 
 | 场景 | 行为 |
 |------|------|
-| 首次 trigger，无运行中 | 立即执行 sync |
-| 20s 内重复 trigger，无运行中 | 节流跳过，返回 `null` |
-| sync 运行中收到 trigger | 不启动新 sync，标记 `dirty = true` |
-| sync 运行中收到 N 个 trigger | 只标记一次 `dirty`，triggers 被合并 |
-| 当前 run 结束，`dirty = true` | 立即补一轮（无视 throttle），重置 dirty |
-| 当前 run 结束，`dirty = false` | 正常返回，不补跑 |
-| sync 执行抛异常 | 捕获异常，记录到 result.error，仍然检查 dirty follow-up |
-| `forceRun()` | 无视 throttle，但仍然尊重 mutex（等待当前 run 结束） |
+| 首次 notify，无 sync 在跑 | 获取锁，执行 sync |
+| sync 运行中，新 notify 到达 | 新进程获取锁失败 → 写 signal → exit 0 |
+| sync 完成，signal 有更新 | dirty follow-up，再跑一轮 |
+| sync 完成，signal 无更新 | 释放锁，正常退出 |
+| sync 运行中，N 个 notify 到达 | 所有都写 signal + exit 0，但只触发 1 轮 follow-up |
+| follow-up 运行中又有 notify | 再检查一轮（最多 maxFollowUps 次） |
+| sync 执行抛异常 | 捕获异常，记录 error，仍然检查 dirty follow-up |
+| 文件锁获取异常（非 EAGAIN） | 记录 warning，直接执行 sync（降级为无锁） |
 
-### 并发安全
+### 文件锁实现
 
-- **不使用文件锁**：Coordinator 是进程内单例，用 Promise 链实现互斥
-- **Promise 链模式**：维护一个 `runChain: Promise<void>`，每次新 run append 到链上
-- **dirty follow-up 在锁内执行**：不释放锁就检查 dirty，避免 TOCTOU race
+```ts
+// 使用 Node.js fs.open + flock (通过 fs constants)
+// Bun 和 Node.js 都支持 file.lock() / file.unlock() (Node 22+)
+// 降级方案：lockfile (mkdir-based advisory lock)
+
+const lockFile = join(stateDir, "sync.lock");
+const fd = await fs.open(lockFile, "w");
+try {
+  // 非阻塞尝试获取排他锁
+  await fd.lock("exclusive", { nonBlocking: true });
+} catch (err) {
+  if (err.code === "EAGAIN" || err.code === "EWOULDBLOCK") {
+    // 另一个进程持有锁 — 写 signal 确保 dirty，退出
+    await writeSignal(stateDir);
+    await fd.close();
+    return null;  // 表示 "已有 sync 在跑，本次 skip"
+  }
+  // 其他错误 — 降级为无锁执行
+}
+```
+
+**备注**：Node.js `FileHandle.lock()` 在 v22+ 可用。Bun 也支持。如果运行时不支持，降级为 mkdir-based advisory lock（`mkdir sync.lock.d` 成功 = 获取锁，`rmdir` = 释放锁）。
 
 ### 测试矩阵（`coordinator.test.ts`）
 
 | # | 测试用例 | 断言 |
 |---|---------|------|
-| 1 | 单次 trigger | executeSyncFn 被调用 1 次，result.triggers 包含该 trigger |
-| 2 | throttle 内重复 trigger | 第二次返回 null，executeSyncFn 只调用 1 次 |
-| 3 | throttle 过期后 trigger | executeSyncFn 被调用 2 次 |
-| 4 | sync 运行中收到 trigger | executeSyncFn 调用 2 次（原始 + follow-up），result.hadFollowUp = true |
-| 5 | sync 运行中收到多个 trigger | follow-up 的 triggers 数组包含所有延迟的 trigger |
-| 6 | sync 失败后检查 dirty | 仍然执行 follow-up |
-| 7 | forceRun 无视 throttle | 即使在 throttle 窗口内也执行 |
-| 8 | forceRun 等待当前 run | 不并行执行，串行等待 |
-| 9 | shutdown 等待完成 | 等待当前 run + follow-up 完成后 resolve |
-| 10 | isRunning 状态正确 | 运行中返回 true，结束后返回 false |
+| 1 | 单次 trigger | executeSyncFn 被调用 1 次 |
+| 2 | 获取锁失败（mock EAGAIN）| 返回 null，executeSyncFn 不被调用 |
+| 3 | sync 完成后 signal 有更新 | executeSyncFn 被调用 2 次（原始 + follow-up），result.hadFollowUp = true |
+| 4 | sync 完成后 signal 无更新 | executeSyncFn 只调用 1 次 |
+| 5 | follow-up 运行中 signal 又更新 | executeSyncFn 调用 3 次（最多 maxFollowUps） |
+| 6 | 超过 maxFollowUps 上限 | 停止 follow-up，正常退出 |
+| 7 | sync 失败后仍检查 dirty | executeSyncFn 抛异常，follow-up 仍执行 |
+| 8 | 文件锁异常（非 EAGAIN）| 降级执行，result 有 warning |
+| 9 | signal 文件不存在 | 不 follow-up |
+| 10 | runId 格式正确 | ISO 时间戳 + 随机后缀 |
 
-**提交信息**：`feat: add coordinator with mutex, throttle, and dirty follow-up`
+**提交信息**：`feat: add coordinator with file-lock mutex and signal-based dirty follow-up`
 
 ---
 
@@ -229,11 +277,32 @@ interface Coordinator {
 所有 5 个 AI 工具的 hook/plugin 最终都调用这个脚本。它的职责是：
 
 1. 解析 `--source=<source>` 参数
-2. 写入信号文件 `~/.config/pew/notify.signal`（调试用）
-3. 检查 throttle（20s），读写 `~/.config/pew/sync.throttle` 文件
-4. 如果未节流，spawn 一个 detached 子进程执行 `pew notify --source=<source>`
-5. **对 Codex**：链式调用原始 notify（读取 `~/.config/pew/codex_notify_original.json`）
-6. 始终 exit 0
+2. **写信号文件** `~/.config/pew/notify.signal`（写入当前时间戳，用于 Coordinator dirty 检测）
+3. detached spawn `<PEW_BIN> notify --source=<source>`
+4. **对 Codex**：链式调用原始 notify（读取 `~/.config/pew/codex_notify_original.json`）
+5. 始终 exit 0
+
+**注意**：notify.cjs **不做 throttle**。节流完全由 Coordinator 的文件锁控制 — 如果有 sync 在跑，新的 `pew notify` 进程写 signal 后立即退出；如果没有 sync 在跑，立即启动。这避免了 v1 设计中"throttle 窗口内丢事件"的问题。
+
+### pew 运行时发现策略
+
+notify.cjs 需要可靠地找到 `pew` 可执行文件。**在 `pew init` 时固化为绝对路径**：
+
+```js
+// notify.cjs（编译时注入）
+const PEW_BIN = "/Users/nocoo/.bun/bin/pew";  // pew init 时解析的绝对路径
+```
+
+解析优先级（在 `pew init` 执行时）：
+1. `process.argv[1]` 所在目录的 `pew` 二进制（如果 init 是通过 `pew init` 调用的）
+2. `which pew` 的结果
+3. 如果都找不到 → 报错退出 init，提示用户确保 pew 在 PATH
+
+**fallback 链**（运行时，如果绝对路径不存在）：
+1. 使用烤入的绝对路径 `PEW_BIN`
+2. fallback 到 `npx @nocoo/pew notify`（最后手段，有冷启动开销）
+
+验证：`pew init` 完成后，输出中打印实际使用的 pew 路径，方便用户确认。
 
 ### notify.cjs 源码模板要点
 
@@ -242,26 +311,51 @@ interface Coordinator {
 // PEW_NOTIFY_HANDLER — Auto-generated, do not edit
 "use strict";
 
-const { writeFileSync, readFileSync, mkdirSync, existsSync, statSync } = require("fs");
+const { writeFileSync, readFileSync, mkdirSync, existsSync } = require("fs");
 const { join } = require("path");
 const { spawn } = require("child_process");
 
-const STATE_DIR = "<stateDir>";        // 编译时注入
-const THROTTLE_MS = 20000;
+const STATE_DIR = "<stateDir>";         // 编译时注入
+const PEW_BIN = "<pewBinAbsolutePath>"; // 编译时注入
 
 // 1. 解析 --source=xxx
-// 2. 写信号文件
-// 3. throttle 检查
-// 4. spawn pew notify --source=xxx（detached, stdio:ignore, unref）
-// 5. codex 源：链式调用原始 notify
-// 6. exit 0
+const source = (process.argv.find(a => a.startsWith("--source=")) || "").split("=")[1];
+
+// 2. 写信号文件（每次都写，不节流）
+try {
+  mkdirSync(STATE_DIR, { recursive: true });
+  writeFileSync(join(STATE_DIR, "notify.signal"), Date.now().toString());
+} catch (_) {}
+
+// 3. 找到 pew 并 detached spawn
+const bin = existsSync(PEW_BIN) ? PEW_BIN : "npx";
+const args = bin === PEW_BIN
+  ? ["notify", "--source=" + source]
+  : ["@nocoo/pew", "notify", "--source=" + source];
+try {
+  const child = spawn(bin, args, {
+    detached: true, stdio: "ignore", env: { ...process.env }
+  });
+  child.unref();
+} catch (_) {}
+
+// 4. Codex 原始 notify 链式调用
+if (source === "codex") {
+  try {
+    const orig = JSON.parse(readFileSync(join(STATE_DIR, "codex_notify_original.json"), "utf8"));
+    if (orig.notify && Array.isArray(orig.notify) && orig.notify.length > 0) {
+      // 排除自引用
+      const isSelf = orig.notify.some(a => typeof a === "string" && a.includes("notify.cjs"));
+      if (!isSelf) {
+        const child = spawn(orig.notify[0], orig.notify.slice(1), {
+          detached: true, stdio: "ignore"
+        });
+        child.unref();
+      }
+    }
+  } catch (_) {}
+}
 ```
-
-**关键设计决策**：
-
-- **不复制本地 runtime**：vibeusage 把整个包复制到 `~/.vibeusage/app/`，我们不需要这么做。pew 通过 npm 全局安装，notify.cjs 直接 spawn `pew` 命令（通过 `npx @nocoo/pew notify` 或找到全局安装路径）
-- **CJS 格式**：因为要被各种 AI 工具的 hook 机制 spawn（`node <path>`），CJS 最兼容
-- **Marker 注释**：第一行 `// PEW_NOTIFY_HANDLER`，用于安全卸载时的身份验证
 
 ### 接口
 
@@ -269,8 +363,8 @@ const THROTTLE_MS = 20000;
 interface BuildNotifyHandlerOptions {
   /** State directory path to bake into the script */
   stateDir: string;
-  /** Throttle interval in ms (default: 20_000) */
-  throttleMs?: number;
+  /** Absolute path to pew binary, resolved at init time */
+  pewBin: string;
 }
 
 /** Generate the notify.cjs source code string */
@@ -291,6 +385,9 @@ async function writeNotifyHandler(opts: WriteNotifyHandlerOptions): Promise<{
   path: string;
   backupPath?: string;
 }>;
+
+/** Resolve the absolute path to the pew binary */
+async function resolvePewBin(): Promise<string>;
 ```
 
 ### 测试矩阵（`notify-handler.test.ts`）
@@ -299,13 +396,115 @@ async function writeNotifyHandler(opts: WriteNotifyHandlerOptions): Promise<{
 |---|---------|
 | 1 | 生成的源码包含 PEW_NOTIFY_HANDLER marker |
 | 2 | 生成的源码包含正确的 stateDir |
-| 3 | 生成的源码包含正确的 throttleMs |
+| 3 | 生成的源码包含正确的 pewBin 绝对路径 |
 | 4 | 生成的源码是合法的 JS（`new Function()` 不抛异常） |
 | 5 | 首次写入创建 bin 目录和文件 |
 | 6 | 相同内容重复写入返回 changed=false |
 | 7 | 内容变化时创建 backup |
+| 8 | 生成的源码对 codex source 包含原始 notify 链式调用 |
+| 9 | 生成的源码对非 codex source 不链式调用 |
+| 10 | 生成的源码在 PEW_BIN 不存在时 fallback 到 npx |
 
 **提交信息**：`feat: add notify.cjs handler generator`
+
+---
+
+## Step 3.5: 统一 Notifier 路径解析器
+
+**文件**：`packages/cli/src/notifier/paths.ts`
+
+### 职责
+
+一次性解析所有 notifier 安装器需要的路径，统一处理环境变量。避免各安装器各自解析 env var 导致不一致。
+
+### 接口
+
+```ts
+interface NotifierPaths {
+  /** ~/.config/pew/ */
+  stateDir: string;
+  /** ~/.config/pew/bin/ */
+  binDir: string;
+  /** ~/.config/pew/bin/notify.cjs */
+  notifyPath: string;
+  /** ~/.config/pew/sync.lock */
+  lockPath: string;
+  /** ~/.config/pew/notify.signal */
+  signalPath: string;
+
+  // --- Claude Code ---
+  /** ~/.claude/ */
+  claudeDir: string;
+  /** ~/.claude/settings.json */
+  claudeSettingsPath: string;
+
+  // --- Gemini CLI ---
+  /** ~/.gemini/ (or $GEMINI_HOME) */
+  geminiDir: string;
+  /** ~/.gemini/settings.json */
+  geminiSettingsPath: string;
+
+  // --- OpenCode ---
+  /** ~/.config/opencode/ (or $OPENCODE_CONFIG_DIR or $XDG_CONFIG_HOME/opencode) */
+  opencodeConfigDir: string;
+  /** ~/.config/opencode/plugin/ */
+  opencodePluginDir: string;
+
+  // --- OpenClaw ---
+  /** ~/.openclaw/ (or $OPENCLAW_STATE_DIR) */
+  openclawHome: string;
+  /** ~/.openclaw/openclaw.json (or $OPENCLAW_CONFIG_PATH) */
+  openclawConfigPath: string;
+  /** ~/.config/pew/openclaw-plugin/ */
+  openclawPluginDir: string;
+
+  // --- Codex ---
+  /** ~/.codex/ (or $CODEX_HOME) */
+  codexHome: string;
+  /** ~/.codex/config.toml */
+  codexConfigPath: string;
+  /** ~/.config/pew/codex_notify_original.json */
+  codexNotifyOriginalPath: string;
+}
+
+/**
+ * Resolve all notifier-related paths from home directory and environment variables.
+ * Pure function: no I/O, only string manipulation.
+ */
+function resolveNotifierPaths(
+  home: string,
+  env?: Record<string, string | undefined>,
+): NotifierPaths;
+```
+
+### 环境变量映射
+
+| 环境变量 | 影响的路径 | 默认值 |
+|---------|-----------|--------|
+| `$GEMINI_HOME` | `geminiDir`, `geminiSettingsPath` | `~/.gemini` |
+| `$OPENCODE_CONFIG_DIR` | `opencodeConfigDir`, `opencodePluginDir` | (see below) |
+| `$XDG_CONFIG_HOME` | `opencodeConfigDir`（当 `$OPENCODE_CONFIG_DIR` 未设时） | `~/.config` |
+| `$CODEX_HOME` | `codexHome`, `codexConfigPath` | `~/.codex` |
+| `$OPENCLAW_STATE_DIR` | `openclawHome` | `~/.openclaw` |
+| `$OPENCLAW_CONFIG_PATH` | `openclawConfigPath` | `~/.openclaw/openclaw.json` |
+
+OpenCode 配置目录解析优先级：`$OPENCODE_CONFIG_DIR` > `$XDG_CONFIG_HOME/opencode` > `~/.config/opencode`
+
+### 测试矩阵（`notifier-paths.test.ts`）
+
+| # | 测试用例 |
+|---|---------|
+| 1 | 无环境变量 → 所有路径使用默认值 |
+| 2 | $GEMINI_HOME 设置 → geminiDir 和 geminiSettingsPath 跟随 |
+| 3 | $OPENCODE_CONFIG_DIR 设置 → opencodeConfigDir 和 opencodePluginDir 跟随 |
+| 4 | $XDG_CONFIG_HOME 设置（无 $OPENCODE_CONFIG_DIR）→ opencode 路径跟随 |
+| 5 | $OPENCODE_CONFIG_DIR 优先于 $XDG_CONFIG_HOME |
+| 6 | $CODEX_HOME 设置 → codexHome 和 codexConfigPath 跟随 |
+| 7 | $OPENCLAW_STATE_DIR 设置 → openclawHome 跟随 |
+| 8 | $OPENCLAW_CONFIG_PATH 设置 → openclawConfigPath 跟随 |
+| 9 | 纯函数：相同输入始终相同输出 |
+
+**提交信息**：`feat: add unified notifier path resolver`
 
 ---
 
@@ -407,7 +606,7 @@ function getClaudeHookStatus(opts: ClaudeHookOptions): Promise<NotifierStatus>;
 
 ### 配置文件
 
-`~/.gemini/settings.json`（路径受 `$GEMINI_HOME` 影响）
+`~/.gemini/settings.json`（路径受 `$GEMINI_HOME` 影响，由 `resolveNotifierPaths` 统一解析）
 
 ### Hook 结构
 
@@ -445,6 +644,8 @@ function getClaudeHookStatus(opts: ClaudeHookOptions): Promise<NotifierStatus>;
 
 与 Claude 相同模式：`installGeminiHook` / `uninstallGeminiHook` / `getGeminiHookStatus`
 
+Options 接收 `settingsPath` 和 `notifyPath`（由 `resolveNotifierPaths` 提供）。
+
 ### 安装流程
 
 1. 读取 `settings.json`
@@ -478,15 +679,15 @@ function getClaudeHookStatus(opts: ClaudeHookOptions): Promise<NotifierStatus>;
 
 ### 机制
 
-OpenCode 使用文件放置型插件（不修改 settings.json），将 JS 文件写入 `~/.config/opencode/plugin/` 目录。
+OpenCode 使用文件放置型插件（不修改 settings.json），将 JS 文件写入 plugin 目录。
 
 ### 配置目录
 
-`$OPENCODE_CONFIG_DIR` > `$XDG_CONFIG_HOME/opencode` > `~/.config/opencode`
+由 `resolveNotifierPaths` 统一解析：`$OPENCODE_CONFIG_DIR` > `$XDG_CONFIG_HOME/opencode` > `~/.config/opencode`
 
 ### 插件文件
 
-路径：`<configDir>/plugin/pew-tracker.js`
+路径：`<opencodePluginDir>/pew-tracker.js`
 
 ```js
 // PEW_TRACKER_PLUGIN
@@ -513,7 +714,7 @@ export const PewTrackerPlugin = async ({ $ }) => {
 
 ```ts
 interface OpenCodePluginOptions {
-  /** Path to the plugin directory (e.g., ~/.config/opencode/plugin/) */
+  /** Path to the plugin directory (from resolveNotifierPaths().opencodePluginDir) */
   pluginDir: string;
   /** Path to notify.cjs */
   notifyPath: string;
@@ -612,11 +813,11 @@ Plugin ID `"pew-session-sync"` 在 `openclaw.json` 的 `plugins.entries` 中。
 
 ```ts
 interface OpenClawHookOptions {
-  /** Directory to place plugin files (e.g., ~/.config/pew/openclaw-plugin/) */
+  /** Directory to place plugin files (from resolveNotifierPaths().openclawPluginDir) */
   pluginBaseDir: string;
   /** Path to notify.cjs */
   notifyPath: string;
-  /** Path to OpenClaw config (e.g., ~/.openclaw/openclaw.json) */
+  /** Path to OpenClaw config (from resolveNotifierPaths().openclawConfigPath) */
   openclawConfigPath: string;
   /** Injected fs operations */
   fs?: { readFile, writeFile, mkdir, rm, access };
@@ -674,13 +875,15 @@ function getOpenClawHookStatus(opts: OpenClawHookOptions): Promise<NotifierStatu
 
 ### 配置文件
 
-`~/.codex/config.toml`（路径受 `$CODEX_HOME` 影响）
+`~/.codex/config.toml`（路径由 `resolveNotifierPaths` 统一解析，受 `$CODEX_HOME` 影响）
 
 ### Hook 结构
 
 ```toml
-notify = ["/usr/bin/env", "node", "~/.config/pew/bin/notify.cjs"]
+notify = ["/usr/bin/env", "node", "~/.config/pew/bin/notify.cjs", "--source=codex"]
 ```
+
+**注意 `--source=codex` 参数**：这是必须的，否则 notify.cjs 无法判断调用源是 Codex，无法正确转发到 `pew notify --source=codex`，也无法区分何时链式调用原始 notify。
 
 ### 标识方式
 
@@ -691,7 +894,7 @@ notify = ["/usr/bin/env", "node", "~/.config/pew/bin/notify.cjs"]
 Codex 的 `notify` 字段只能有一个值。如果用户已经配置了别的 notify（比如 vibeusage），pew 必须：
 
 1. **保存原始 notify** 到 `~/.config/pew/codex_notify_original.json`
-2. **替换为 pew 的 notify**
+2. **替换为 pew 的 notify**（包含 `--source=codex`）
 3. **在 notify.cjs 中链式调用原始 notify**（读取 backup JSON，spawn 原始命令）
 
 卸载时：
@@ -702,11 +905,11 @@ Codex 的 `notify` 字段只能有一个值。如果用户已经配置了别的 
 
 ```ts
 interface CodexNotifierOptions {
-  /** Path to config.toml */
+  /** Path to config.toml (from resolveNotifierPaths().codexConfigPath) */
   configPath: string;
   /** Path to notify.cjs */
   notifyPath: string;
-  /** Path to store original notify backup (e.g., ~/.config/pew/codex_notify_original.json) */
+  /** Path to store original notify backup (from resolveNotifierPaths().codexNotifyOriginalPath) */
   originalBackupPath: string;
   /** Injected fs operations */
   fs?: { readFile, writeFile, copyFile, access };
@@ -730,9 +933,9 @@ function getCodexNotifierStatus(opts: CodexNotifierOptions): Promise<NotifierSta
 
 | # | 测试用例 |
 |---|---------|
-| 1 | config.toml 无 notify 行 → 插入 |
+| 1 | config.toml 无 notify 行 → 插入（含 --source=codex） |
 | 2 | config.toml 已有其他 notify → 保存原始 + 替换 |
-| 3 | config.toml 已有 pew notify → changed=false |
+| 3 | config.toml 已有 pew notify（含 --source=codex） → changed=false |
 | 4 | 多行 TOML 数组格式处理 |
 | 5 | 卸载：有原始 backup → 恢复 |
 | 6 | 卸载：无原始 backup → 移除 notify 行 |
@@ -751,7 +954,7 @@ function getCodexNotifierStatus(opts: CodexNotifierOptions): Promise<NotifierSta
 
 ### 职责
 
-注册表聚合 5 个安装器，提供统一查询和批量操作接口。
+注册表聚合 5 个安装器，提供统一查询和批量操作接口。Registry 接收 `NotifierPaths` 并负责将正确的路径分发给各安装器。
 
 ### 接口
 
@@ -760,30 +963,35 @@ function getCodexNotifierStatus(opts: CodexNotifierOptions): Promise<NotifierSta
 interface NotifierDriver {
   source: Source;
   displayName: string;
-  install(opts: NotifierResolvedPaths): Promise<NotifierOperationResult>;
-  uninstall(opts: NotifierResolvedPaths): Promise<NotifierOperationResult>;
-  status(opts: NotifierResolvedPaths): Promise<NotifierStatus>;
-}
-
-/** Paths resolved for a specific environment */
-interface NotifierResolvedPaths {
-  /** ~/.config/pew/ */
-  stateDir: string;
-  /** ~/.config/pew/bin/notify.cjs */
-  notifyPath: string;
-  /** Home directory */
-  home: string;
-  /** Injected fs and spawn (for testability) */
-  fs?: object;
-  spawn?: Function;
+  install(paths: NotifierPaths, fs?: object, spawn?: Function): Promise<NotifierOperationResult>;
+  uninstall(paths: NotifierPaths, fs?: object, spawn?: Function): Promise<NotifierOperationResult>;
+  status(paths: NotifierPaths, fs?: object): Promise<NotifierStatus>;
 }
 
 /** Registry API */
 function getAllDrivers(): NotifierDriver[];
 function getDriver(source: Source): NotifierDriver | undefined;
-function installAll(paths: NotifierResolvedPaths): Promise<NotifierOperationResult[]>;
-function uninstallAll(paths: NotifierResolvedPaths): Promise<NotifierOperationResult[]>;
-function statusAll(paths: NotifierResolvedPaths): Promise<Record<Source, NotifierStatus>>;
+function installAll(paths: NotifierPaths, fs?: object, spawn?: Function): Promise<NotifierOperationResult[]>;
+function uninstallAll(paths: NotifierPaths, fs?: object, spawn?: Function): Promise<NotifierOperationResult[]>;
+function statusAll(paths: NotifierPaths, fs?: object): Promise<Record<Source, NotifierStatus>>;
+```
+
+每个 driver 的 `install()` 内部从 `NotifierPaths` 中提取自己需要的路径子集，调用对应安装器：
+
+```ts
+// 示例：Claude driver
+const claudeDriver: NotifierDriver = {
+  source: "claude-code",
+  displayName: "Claude Code",
+  async install(paths, fs) {
+    return installClaudeHook({
+      settingsPath: paths.claudeSettingsPath,
+      notifyPath: paths.notifyPath,
+      fs,
+    });
+  },
+  // ...
+};
 ```
 
 ### 注册的 5 个 driver
@@ -803,7 +1011,7 @@ function statusAll(paths: NotifierResolvedPaths): Promise<Record<Source, Notifie
 | 1 | getAllDrivers 返回 5 个 driver |
 | 2 | getDriver 按 source 查找 |
 | 3 | getDriver 不存在的 source → undefined |
-| 4 | installAll 调用所有 5 个 driver.install |
+| 4 | installAll 调用所有 5 个 driver.install，传入正确的路径子集 |
 | 5 | uninstallAll 调用所有 5 个 driver.uninstall |
 | 6 | statusAll 返回 5 个 source 的状态 |
 | 7 | 单个 driver 失败不影响其他 |
@@ -818,7 +1026,7 @@ function statusAll(paths: NotifierResolvedPaths): Promise<Record<Source, Notifie
 
 ### 用途
 
-这是 hook/plugin 回调的入口点。当 AI 工具的 hook 触发时，notify.cjs spawn `pew notify --source=<source>` 来执行实际的 sync。
+这是 hook/plugin 回调的入口点。当 AI 工具的 hook 触发时，notify.cjs detached spawn `pew notify --source=<source>` 来执行实际的 sync。
 
 ### CLI 接口
 
@@ -844,27 +1052,20 @@ pew notify --source=opencode
 构建 SyncTrigger { kind: "notify", source, fileHint }
     │
     ▼
-获取 Coordinator 单例
+调用 coordinatedSync(trigger, opts)
     │
-    ▼
-coordinator.trigger(trigger)
-    │
-    ├── 返回 result → 日志输出 runId
-    └── 返回 null → 已节流，静默退出
+    ├── 获取文件锁成功 → 执行 sync + dirty follow-up
+    ├── 获取文件锁失败 → 写 signal，exit 0（已有 sync 在跑）
+    └── 锁异常 → 降级无锁执行
 ```
 
-### Coordinator 单例
+### 与 Coordinator 的关系
 
-`pew notify` 命令是短命进程（每次 hook 触发就 spawn 一次），所以 Coordinator 的 throttle 和 dirty 机制不是跨进程的。对于 `pew notify`：
+`pew notify` 直接调用 `coordinatedSync()` — 一个函数调用，不是进程内单例。Coordinator 的跨进程互斥通过文件锁实现：
 
-- **进程内 Coordinator**：每次 `pew notify` 调用创建一个 Coordinator，执行一次 sync，退出
-- **跨进程节流**：由 notify.cjs 的文件时间戳 throttle 处理（20s）
-- **跨进程 mutex**：暂不实现文件锁（后续 tracker 常驻进程时再加）
-
-当前阶段 `pew notify` 每次调用等同于执行一次完整 sync。Coordinator 在这里的价值主要是：
-1. 提供统一的 `SyncTrigger` 数据结构
-2. 为将来的常驻 tracker 进程预留接口
-3. 生成 runId 用于日志
+- **互斥**：`sync.lock` 文件锁（flock）
+- **dirty follow-up**：`notify.signal` 文件 mtime 比较
+- **无 throttle**：不做时间窗口节流（由文件锁自然限流）
 
 ### execute 函数签名
 
@@ -873,21 +1074,25 @@ interface NotifyOptions {
   source: Source;
   fileHint?: string;
   stateDir: string;
-  // ... 所有 sync 需要的 DI 依赖
+  // ... 所有 sync 需要的 DI 依赖（与 SyncOptions 相同）
 }
 
-async function executeNotify(opts: NotifyOptions): Promise<CoordinatorRunResult>;
+async function executeNotify(opts: NotifyOptions): Promise<CoordinatorRunResult | null>;
 ```
+
+返回 `null` 表示有其他 sync 在跑，本次被合并。
 
 ### 测试矩阵（`notify-command.test.ts`）
 
 | # | 测试用例 |
 |---|---------|
-| 1 | 有效 source → 执行 sync |
-| 2 | 无效 source → 报错退出 |
-| 3 | sync 成功 → 返回 result 含 runId |
-| 4 | sync 失败 → result.error 有值 |
-| 5 | --file 参数透传 |
+| 1 | 有效 source，获取锁成功 → 执行 sync |
+| 2 | 有效 source，获取锁失败 → 返回 null |
+| 3 | 无效 source → 报错退出 |
+| 4 | sync 成功 → 返回 result 含 runId |
+| 5 | sync 失败 → result.error 有值 |
+| 6 | --file 参数透传到 trigger |
+| 7 | dirty follow-up 执行 |
 
 **提交信息**：`feat: add pew notify command`
 
@@ -922,10 +1127,16 @@ pew init
 1. 确保 stateDir 和 bin 目录存在
     │
     ▼
-2. 生成并写入 notify.cjs
+2. 解析 pew 绝对路径（resolvePewBin）
     │
     ▼
-3. 遍历 registry，逐个安装 hook/plugin
+3. 解析所有 notifier 路径（resolveNotifierPaths）
+    │
+    ▼
+4. 生成并写入 notify.cjs（烤入 stateDir + pewBin）
+    │
+    ▼
+5. 遍历 registry，逐个安装 hook/plugin
     │   ├── Claude Code: upsert settings.json hook
     │   ├── Gemini CLI: upsert settings.json hook + enableHooks
     │   ├── OpenCode: 写入 plugin JS 文件
@@ -933,7 +1144,7 @@ pew init
     │   └── Codex: 修改 config.toml notify 字段
     │
     ▼
-4. 汇总结果，输出安装报告
+6. 汇总结果，输出安装报告（含 pew 路径）
 ```
 
 ### 输出格式
@@ -941,12 +1152,14 @@ pew init
 ```
 Pew Init — Installing notifier hooks
 
+  pew binary: /Users/nocoo/.bun/bin/pew
+
   ✓ Claude Code    hook installed → ~/.claude/settings.json
   ✓ Gemini CLI     hook installed → ~/.gemini/settings.json
   ✓ OpenCode       plugin installed → ~/.config/opencode/plugin/pew-tracker.js
   ⚠ OpenClaw       openclaw CLI not found, skipped
   ✓ Codex          notify set → ~/.codex/config.toml
-  
+
   notify.cjs → ~/.config/pew/bin/notify.cjs
 
 Done! AI tools will now auto-sync token usage to Pew.
@@ -958,6 +1171,8 @@ Done! AI tools will now auto-sync token usage to Pew.
 pew init --dry-run
 
 Pew Init — Dry Run (no changes will be made)
+
+  pew binary: /Users/nocoo/.bun/bin/pew
 
   Claude Code    would install → ~/.claude/settings.json (exists)
   Gemini CLI     would install → ~/.gemini/settings.json (exists)
@@ -972,16 +1187,21 @@ Pew Init — Dry Run (no changes will be made)
 interface InitOptions {
   stateDir: string;
   home: string;
+  env?: Record<string, string | undefined>;
   dryRun?: boolean;
   sources?: Source[];  // 为空则安装全部
   /** Injected fs and spawn */
   fs?: object;
   spawn?: Function;
+  /** Override pew binary resolution for testing */
+  pewBin?: string;
   /** Progress callback */
   onProgress?: (event: InitProgressEvent) => void;
 }
 
 interface InitResult {
+  /** Resolved pew binary path */
+  pewBin: string;
   notifyHandler: { changed: boolean; path: string };
   hooks: NotifierOperationResult[];
 }
@@ -1001,6 +1221,8 @@ async function executeInit(opts: InitOptions): Promise<InitResult>;
 | 6 | notify.cjs 已存在且相同 → 不覆盖 |
 | 7 | 单个 hook 失败不影响其他 |
 | 8 | 结果包含所有 5 个 source 的状态 |
+| 9 | 结果包含解析的 pewBin 路径 |
+| 10 | pewBin 解析失败 → 报错，不继续安装 |
 
 **提交信息**：`feat: add pew init command with hook installation`
 
@@ -1012,22 +1234,25 @@ async function executeInit(opts: InitOptions): Promise<InitResult>;
 Step 1: core types
     │
     ▼
-Step 2: coordinator ──────────────────┐
-    │                                  │
-    ▼                                  │
-Step 3: notify-handler                 │
-    │                                  │
-    ├──────┬──────┬──────┬──────┐      │
-    ▼      ▼      ▼      ▼      ▼     │
-  Step4  Step5  Step6  Step7  Step8    │
- (claude)(gemini)(opencode)(openclaw)(codex)
-    │      │      │      │      │      │
-    └──────┴──────┴──────┴──────┘      │
-                  │                     │
-                  ▼                     │
-             Step 9: registry           │
-                  │                     │
-                  ├─────────────────────┘
+Step 2: coordinator (file-lock + signal) ─────────┐
+    │                                               │
+    ▼                                               │
+Step 3: notify-handler                              │
+    │                                               │
+    ▼                                               │
+Step 3.5: notifier paths resolver                   │
+    │                                               │
+    ├──────┬──────┬──────┬──────┐                   │
+    ▼      ▼      ▼      ▼      ▼                  │
+  Step4  Step5  Step6  Step7  Step8                 │
+ (claude)(gemini)(opencode)(openclaw)(codex)        │
+    │      │      │      │      │                   │
+    └──────┴──────┴──────┴──────┘                   │
+                  │                                  │
+                  ▼                                  │
+             Step 9: registry                        │
+                  │                                  │
+                  ├──────────────────────────────────┘
                   ▼
            Step 10: pew notify
                   │
@@ -1036,10 +1261,11 @@ Step 3: notify-handler                 │
 ```
 
 **依赖说明**：
-- Step 4-8（5 个安装器）可以并行开发，互不依赖
-- Step 9（registry）依赖 Step 4-8
-- Step 10（notify 命令）依赖 Step 2（coordinator）和间接依赖 sync 基础设施
-- Step 11（init 命令）依赖 Step 3（notify-handler）和 Step 9（registry）
+- Step 3.5（路径解析器）是新增步骤，在安装器之前，提供统一路径
+- Step 4-8（5 个安装器）可以并行开发，互不依赖，但都依赖 Step 3.5 的路径
+- Step 9（registry）依赖 Step 4-8 + Step 3.5
+- Step 10（notify 命令）依赖 Step 2（coordinator）
+- Step 11（init 命令）依赖 Step 3（notify-handler）+ Step 3.5（paths）+ Step 9（registry）
 
 ---
 
@@ -1061,7 +1287,7 @@ subCommands: {
 
 ### `packages/cli/src/utils/paths.ts` 变更
 
-新增 notifier 相关路径：
+新增 `binDir` 和 `notifyPath`（基础路径，不含 env var 解析 — 完整 notifier 路径由 `notifier/paths.ts` 处理）：
 
 ```ts
 return {
@@ -1082,18 +1308,19 @@ return {
 | hook 写入破坏用户 settings.json | 用户丢失 AI 工具配置 | 所有写入前创建 `.bak` 备份；JSON 解析失败 → 不写入 |
 | TOML 启发式解析不够健壮 | Codex notify 设置错误 | 测试覆盖单行/多行/嵌套场景；保存原始值用于恢复 |
 | `openclaw` CLI 版本变化 | 安装失败 | spawn 有 timeout；失败只 warn 不 throw |
-| notify.cjs 中 `pew` 命令找不到 | hook 触发后 sync 不执行 | fallback 到 `npx @nocoo/pew notify`；在 init 输出中提示确保 pew 在 PATH |
-| 跨进程并发 sync | 状态竞争 | 当前阶段由 notify.cjs 20s throttle 粗略控制；后续 tracker 常驻进程用文件锁 |
+| pew 二进制路径变化 | hook 触发后 sync 不执行 | init 时固化绝对路径 + npx fallback；输出中打印路径方便验证 |
+| 跨进程并发 sync | 状态竞争 | 文件锁（flock）保证互斥；signal 文件保证不丢最后一次变化 |
+| flock 在某些文件系统不可靠（NFS） | 锁失效 | 降级为 mkdir-based advisory lock；state dir 通常在本地盘 |
+| at-most-once sync 语义下崩溃丢数据 | 少量 token 数据丢失 | 见"已知局限"章节；hook 驱动缩小增量窗口；后续阶段改 staged commit |
 
 ---
 
 ## 不做的事情（明确排除）
 
 1. **不做 Plan Layer**：sync 仍然使用现有的全量扫描，不做 targeted sync
-2. **不做 Source Registry**：source 能力仍然分散在各处，后续统一
+2. **不做 Source Registry**：source 能力仍然分散在各处，后续统一（`notifier/paths.ts` 只解决 notifier 路径，不是完整 registry）
 3. **不改 Queue/Cursor 语义**：保持现有 at-most-once，后续改 staged commit
 4. **不做 Run Log**：不写 `~/.config/pew/runs/<runId>.json`，后续补
-5. **不做文件锁**：Coordinator 只做进程内互斥，跨进程锁后续加
-6. **不做 Every Code**：pew 当前只支持 5 个 source，不支持 Every Code（vibeusage 特有）
-7. **不做 OpenClaw legacy hook**：只支持新的 session plugin 模式
-8. **不做 auth 集成**：init 不处理 login 流程，用户需先 `pew login`
+5. **不做 Every Code**：pew 当前只支持 5 个 source，不支持 Every Code（vibeusage 特有）
+6. **不做 OpenClaw legacy hook**：只支持新的 session plugin 模式
+7. **不做 auth 集成**：init 不处理 login 流程，用户需先 `pew login`
