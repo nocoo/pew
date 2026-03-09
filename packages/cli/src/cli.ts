@@ -362,7 +362,7 @@ async function runSessionUpload(stateDir: string, apiUrl: string, dev: boolean):
 export const main = defineCommand({
   meta: {
     name: "pew",
-    version: "0.5.0",
+    version: "0.6.0",
     description: "Track token usage from your local AI coding tools",
   },
   subCommands: {

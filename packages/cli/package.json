@@ -1,6 +1,6 @@
 {
   "name": "@nocoo/pew",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Track token usage from your local AI coding tools",
   "type": "module",
   "bin": {
