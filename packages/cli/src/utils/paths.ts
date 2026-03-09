@@ -22,6 +22,8 @@ export function resolveDefaultPaths(home = homedir()) {
       "storage",
       "message",
     ),
+    /** OpenCode SQLite database: ~/.local/share/opencode/opencode.db */
+    openCodeDbPath: join(home, ".local", "share", "opencode", "opencode.db"),
     /** OpenClaw data: ~/.openclaw */
     openclawDir: join(home, ".openclaw"),
   };

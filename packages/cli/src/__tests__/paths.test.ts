@@ -11,6 +11,9 @@ describe("resolveDefaultPaths", () => {
     expect(paths.openCodeMessageDir).toBe(
       join("/fakehome", ".local", "share", "opencode", "storage", "message"),
     );
+    expect(paths.openCodeDbPath).toBe(
+      join("/fakehome", ".local", "share", "opencode", "opencode.db"),
+    );
     expect(paths.openclawDir).toBe(join("/fakehome", ".openclaw"));
   });
 
@@ -22,16 +25,17 @@ describe("resolveDefaultPaths", () => {
     expect(paths.claudeDir).toBe(join(home, ".claude"));
   });
 
-  it("should return exactly 5 path properties", () => {
+  it("should return exactly 6 path properties", () => {
     const paths = resolveDefaultPaths("/fakehome");
     const keys = Object.keys(paths);
-    expect(keys).toHaveLength(5);
+    expect(keys).toHaveLength(6);
     expect(keys).toEqual(
       expect.arrayContaining([
         "stateDir",
         "claudeDir",
         "geminiDir",
         "openCodeMessageDir",
+        "openCodeDbPath",
         "openclawDir",
       ]),
     );
