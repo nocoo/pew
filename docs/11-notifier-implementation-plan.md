@@ -4,20 +4,20 @@
 
 - [x] Step 1: 核心类型
 - [x] Step 2: Coordinator（跨进程 file-lock + signal 文件）
-- [ ] Step 3: notify-handler（notify.cjs 生成器）
+- [x] Step 3: notify-handler（notify.cjs 生成器）
 - [x] Step 3.5: 统一 Notifier 路径解析器
-- [ ] Step 4: Claude Code Hook 安装器
-- [ ] Step 5: Gemini CLI Hook 安装器
-- [ ] Step 6: OpenCode Plugin 安装器
+- [x] Step 4: Claude Code Hook 安装器
+- [x] Step 5: Gemini CLI Hook 安装器
+- [x] Step 6: OpenCode Plugin 安装器
 - [ ] Step 7: OpenClaw Hook 安装器
-- [ ] Step 8: Codex Notifier（TOML notify 字段）
+- [x] Step 8: Codex Notifier（TOML notify 字段）
 - [ ] Step 9: Notifier Registry
 - [ ] Step 10: `pew notify` CLI 命令
 - [ ] Step 11: `pew init` CLI 命令
 
 ### 当前状态
 
-- 当前进行中：Step 3
+- 当前进行中：Step 7
 - 参考来源：`~/workspace/personal/vibeusage` 的安装器与插件生成逻辑可复用；Coordinator/notify 并发模型按本计划重写
 - 提交策略：按步骤原子化提交，每完成一块同步更新本节
 
