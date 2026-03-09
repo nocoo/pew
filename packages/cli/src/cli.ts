@@ -43,22 +43,16 @@ const syncCommand = defineCommand({
     const paths = resolveDefaultPaths();
     consola.start("Syncing token usage from AI coding tools...\n");
 
-    // Feature flag: OpenCode SQLite reading is disabled until the parser
-    // has been validated in production. Flip to true to enable.
-    const ENABLE_OPENCODE_SQLITE = false;
-
     // Dynamic import: opencode-sqlite-db.ts uses bun:sqlite which is
     // only available at runtime under Bun, not in Vitest/Node test env.
     let openMessageDb: typeof import("./parsers/opencode-sqlite-db.js").openMessageDb | undefined;
     let openSessionDb: typeof import("./parsers/opencode-sqlite-db.js").openSessionDb | undefined;
-    if (ENABLE_OPENCODE_SQLITE) {
-      try {
-        const mod = await import("./parsers/opencode-sqlite-db.js");
-        openMessageDb = mod.openMessageDb;
-        openSessionDb = mod.openSessionDb;
-      } catch {
-        // bun:sqlite not available — SQLite sync will be skipped
-      }
+    try {
+      const mod = await import("./parsers/opencode-sqlite-db.js");
+      openMessageDb = mod.openMessageDb;
+      openSessionDb = mod.openSessionDb;
+    } catch {
+      // bun:sqlite not available — SQLite sync will be skipped
     }
 
     const result = await executeSync({
@@ -67,7 +61,7 @@ const syncCommand = defineCommand({
       codexSessionsDir: paths.codexSessionsDir,
       geminiDir: paths.geminiDir,
       openCodeMessageDir: paths.openCodeMessageDir,
-      openCodeDbPath: ENABLE_OPENCODE_SQLITE ? paths.openCodeDbPath : undefined,
+      openCodeDbPath: paths.openCodeDbPath,
       openMessageDb,
       openclawDir: paths.openclawDir,
       onProgress(event) {
@@ -127,8 +121,8 @@ const syncCommand = defineCommand({
       codexSessionsDir: paths.codexSessionsDir,
       geminiDir: paths.geminiDir,
       openCodeMessageDir: paths.openCodeMessageDir,
-      openCodeDbPath: ENABLE_OPENCODE_SQLITE ? paths.openCodeDbPath : undefined,
-      openSessionDb: ENABLE_OPENCODE_SQLITE ? openSessionDb : undefined,
+      openCodeDbPath: paths.openCodeDbPath,
+      openSessionDb,
       openclawDir: paths.openclawDir,
       onProgress(event) {
         if (event.phase === "parse" && event.current && event.total) {
