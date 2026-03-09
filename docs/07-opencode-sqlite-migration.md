@@ -91,36 +91,40 @@ Sample `data` JSON for an assistant message:
 ### Atomic Commits
 
 #### Commit 1: Add `OpenCodeSqliteCursor` type to `@pew/core`
-- [ ] `packages/core/src/types.ts` — new cursor interface
-- [ ] Update `CursorState` to include sqlite cursor field
+- [x] `packages/core/src/types.ts` — new cursor interface
+- [x] Update `CursorState` to include sqlite cursor field
 
 #### Commit 2: Add `openCodeDbPath` to paths
-- [ ] `packages/cli/src/utils/paths.ts` — add db path
+- [x] `packages/cli/src/utils/paths.ts` — add db path
 
 #### Commit 3: OpenCode SQLite token parser + tests
-- [ ] `packages/cli/src/parsers/opencode-sqlite.ts` — new parser
-- [ ] `packages/cli/src/__tests__/opencode-sqlite-parser.test.ts` — tests
-- [ ] Reuses `normalizeOpenCodeTokens()` from existing parser
-- [ ] No `diffTotals` needed — each SQLite row is an independent message
+- [x] `packages/cli/src/parsers/opencode-sqlite.ts` — new parser
+- [x] `packages/cli/src/parsers/opencode-sqlite-db.ts` — runtime `bun:sqlite` adapter (DI pattern)
+- [x] `packages/cli/src/__tests__/opencode-sqlite-parser.test.ts` — 18 tests
+- [x] Reuses `normalizeOpenCodeTokens()` from existing parser
+- [x] No `diffTotals` needed — each SQLite row is an independent message
 
 #### Commit 4: OpenCode SQLite session collector + tests
-- [ ] `packages/cli/src/parsers/opencode-sqlite-session.ts` — new collector
-- [ ] `packages/cli/src/__tests__/opencode-sqlite-session.test.ts` — tests
-- [ ] Queries `session` + `message` tables directly
+- [x] `packages/cli/src/parsers/opencode-sqlite-session.ts` — new collector
+- [x] `packages/cli/src/__tests__/opencode-sqlite-session.test.ts` — 10 tests
+- [x] Queries `session` + `message` tables directly
 
 #### Commit 5: Integrate SQLite source into token sync
-- [ ] `packages/cli/src/commands/sync.ts` — add SQLite section with dedup
-- [ ] `SyncOptions` — add `openCodeDbPath`
-- [ ] CLI entry point wiring
+- [x] `packages/cli/src/commands/sync.ts` — add SQLite section with dedup
+- [x] `SyncOptions` — add `openCodeDbPath` + `openMessageDb` (DI factory)
+- [x] CLI entry point wiring (dynamic import in `cli.ts`)
+- [x] `packages/cli/src/__tests__/sync.test.ts` — 5 new tests (24 total)
 
 #### Commit 6: Integrate SQLite source into session sync
-- [ ] `packages/cli/src/commands/session-sync.ts` — add SQLite section
-- [ ] `SessionSyncOptions` — add `openCodeDbPath`
+- [x] `packages/cli/src/commands/session-sync.ts` — add SQLite section
+- [x] `SessionSyncOptions` — add `openCodeDbPath` + `openSessionDb` (DI factory)
+- [x] `packages/cli/src/__tests__/session-sync.test.ts` — 4 new tests (17 total)
+- [x] `packages/core/src/types.ts` — add `OpenCodeSqliteSessionCursor` + field on `SessionCursorState`
 
 #### Commit 7: Build verification + doc progress update
-- [ ] Full build passes
-- [ ] All tests pass
-- [ ] Update this document with completion status
+- [x] Full build passes (core, cli, web, worker)
+- [x] All 44 test files, 581 tests pass
+- [x] Update this document with completion status
 
 ## Fix Plan — vibeusage (separate PR)
 
@@ -142,10 +146,16 @@ Changes needed:
 
 | Step | Status | Commit |
 |------|--------|--------|
-| Commit 1: Core types | pending | |
-| Commit 2: Paths | pending | |
-| Commit 3: Token parser + tests | pending | |
-| Commit 4: Session collector + tests | pending | |
-| Commit 5: Token sync integration | pending | |
-| Commit 6: Session sync integration | pending | |
-| Commit 7: Build verification | pending | |
+| Commit 1: Core types | done | `4cc8e11` |
+| Commit 2: Paths | done | `f58ca65` |
+| Commit 3: Token parser + tests | done | `d245744` |
+| Commit 4: Session collector + tests | done | `9d1ef4a` |
+| Commit 5: Token sync integration | done | `b270f37` |
+| Commit 6: Session sync integration | done | `2eb5e3b` |
+| Commit 7: Build verification | done | see below |
+
+### Build Verification (Commit 7)
+
+- **Tests**: 44 files, 581 tests — all passing
+- **TypeScript**: `tsc --noEmit` clean for core, cli, web, worker
+- **Build**: `bun run build` — all packages compile, Next.js production build succeeds
