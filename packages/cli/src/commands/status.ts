@@ -1,3 +1,4 @@
+import type { NotifierStatus, Source } from "@pew/core";
 import { CursorStore } from "../storage/cursor-store.js";
 import { LocalQueue } from "../storage/local-queue.js";
 
@@ -20,6 +21,8 @@ export interface StatusResult {
   pendingRecords: number;
   /** Breakdown by source */
   sources: Record<string, number>;
+  /** Notifier hook/plugin status by source */
+  notifiers: Partial<Record<Source, NotifierStatus>>;
 }
 
 /**
@@ -44,6 +47,7 @@ function classifySource(filePath: string, dirs: SourceDirs): string {
 export async function executeStatus(opts: {
   stateDir: string;
   sourceDirs: SourceDirs;
+  notifierStatuses?: Partial<Record<Source, NotifierStatus>>;
 }): Promise<StatusResult> {
   const { stateDir, sourceDirs } = opts;
 
@@ -66,5 +70,6 @@ export async function executeStatus(opts: {
     lastSync: cursors.updatedAt,
     pendingRecords: records.length,
     sources,
+    notifiers: opts.notifierStatuses ?? {},
   };
 }

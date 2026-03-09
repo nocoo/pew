@@ -42,6 +42,7 @@ describe("executeStatus", () => {
     expect(result.lastSync).toBeNull();
     expect(result.pendingRecords).toBe(0);
     expect(result.sources).toEqual({});
+    expect(result.notifiers).toEqual({});
   });
 
   it("should count tracked files from cursor state", async () => {
@@ -247,5 +248,21 @@ describe("executeStatus", () => {
     });
     expect(result.trackedFiles).toBe(1);
     expect(result.lastSync).toBeNull();
+  });
+
+  it("should include notifier statuses when provided", async () => {
+    const result = await executeStatus({
+      stateDir,
+      sourceDirs: defaultDirs,
+      notifierStatuses: {
+        "claude-code": "installed",
+        codex: "error",
+      },
+    });
+
+    expect(result.notifiers).toEqual({
+      "claude-code": "installed",
+      codex: "error",
+    });
   });
 });

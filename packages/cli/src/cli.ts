@@ -13,6 +13,8 @@ import { executeSessionUpload } from "./commands/session-upload.js";
 import { executeNotify } from "./commands/notify.js";
 import { executeInit } from "./commands/init.js";
 import { executeUninstall } from "./commands/uninstall.js";
+import { resolveNotifierPaths } from "./notifier/paths.js";
+import { statusAll } from "./notifier/registry.js";
 
 // ---------------------------------------------------------------------------
 // Dev mode detection (otter pattern)
@@ -189,6 +191,8 @@ const statusCommand = defineCommand({
   },
   async run() {
     const paths = resolveDefaultPaths();
+    const notifierPaths = resolveNotifierPaths(homedir(), process.env);
+    const notifierStatuses = await statusAll(notifierPaths);
     const result = await executeStatus({
       stateDir: paths.stateDir,
       sourceDirs: {
@@ -198,6 +202,7 @@ const statusCommand = defineCommand({
         openCodeMessageDir: paths.openCodeMessageDir,
         openclawDir: paths.openclawDir,
       },
+      notifierStatuses,
     });
 
     consola.log("");
@@ -216,6 +221,22 @@ const statusCommand = defineCommand({
       consola.log(pc.bold("  Files by source:"));
       for (const [source, count] of Object.entries(result.sources)) {
         consola.log(`    ${pc.cyan(source.padEnd(14))} ${count}`);
+      }
+    }
+
+    if (Object.keys(result.notifiers).length > 0) {
+      consola.log("");
+      consola.log(pc.bold("  Notifiers:"));
+      for (const [source, status] of Object.entries(result.notifiers)) {
+        const renderedStatus =
+          status === "installed"
+            ? pc.green(status)
+            : status === "error"
+              ? pc.red(status)
+              : status === "outdated"
+                ? pc.yellow(status)
+                : pc.dim(status);
+        consola.log(`    ${pc.cyan(source.padEnd(14))} ${renderedStatus}`);
       }
     }
     consola.log("");
