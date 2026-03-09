@@ -8,7 +8,8 @@ import {
   sourceLabel,
 } from "@/hooks/use-usage-data";
 import { formatTokens, cn } from "@/lib/utils";
-import { getModelPricing, estimateCost, formatCost } from "@/lib/pricing";
+import { usePricingMap, lookupPricing, estimateCost, formatCost } from "@/hooks/use-pricing";
+import type { PricingMap } from "@/hooks/use-pricing";
 import { UsageTrendChart } from "@/components/dashboard/usage-trend-chart";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { UsageRow } from "@/hooks/use-usage-data";
@@ -50,7 +51,7 @@ function formatMonth(year: number, month: number): string {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function groupByDate(records: UsageRow[]): DailyGroup[] {
+function groupByDate(records: UsageRow[], pricingMap: PricingMap): DailyGroup[] {
   const byDate = new Map<string, UsageRow[]>();
 
   for (const r of records) {
@@ -76,7 +77,7 @@ function groupByDate(records: UsageRow[]): DailyGroup[] {
         outputTokens += r.output_tokens;
         cachedTokens += r.cached_input_tokens;
         totalTokens += r.total_tokens;
-        const pricing = getModelPricing(r.model, r.source);
+        const pricing = lookupPricing(pricingMap, r.model, r.source);
         const c = estimateCost(
           r.input_tokens,
           r.output_tokens,
@@ -126,7 +127,7 @@ function extractModels(records: UsageRow[]): string[] {
 // Expandable day row
 // ---------------------------------------------------------------------------
 
-function DayRow({ group }: { group: DailyGroup }) {
+function DayRow({ group, pricingMap }: { group: DailyGroup; pricingMap: PricingMap }) {
   const [expanded, setExpanded] = useState(false);
 
   const modelRows = useMemo(() => {
@@ -146,7 +147,7 @@ function DayRow({ group }: { group: DailyGroup }) {
     for (const r of group.records) {
       const key = `${r.source}:${r.model}`;
       const existing = byKey.get(key);
-      const pricing = getModelPricing(r.model, r.source);
+      const pricing = lookupPricing(pricingMap, r.model, r.source);
       const cost = estimateCost(
         r.input_tokens,
         r.output_tokens,
@@ -363,6 +364,8 @@ export default function DetailsPage() {
     ...(sourceFilter ? { source: sourceFilter } : {}),
   });
 
+  const { pricingMap } = usePricingMap();
+
   // Filter records client-side for model filter (API only supports source filter)
   const filteredRecords = useMemo(() => {
     if (!data) return [];
@@ -394,8 +397,8 @@ export default function DetailsPage() {
   }, [filteredRecords, year, month]);
 
   const dailyGroups = useMemo(
-    () => groupByDate(filteredRecords),
-    [filteredRecords]
+    () => groupByDate(filteredRecords, pricingMap),
+    [filteredRecords, pricingMap]
   );
 
   // Extract available sources/models from unfiltered data for filter dropdowns
@@ -535,7 +538,7 @@ export default function DetailsPage() {
                 </thead>
                 <tbody>
                   {dailyGroups.map((group) => (
-                    <DayRow key={group.date} group={group} />
+                    <DayRow key={group.date} group={group} pricingMap={pricingMap} />
                   ))}
                 </tbody>
               </table>

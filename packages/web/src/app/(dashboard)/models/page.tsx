@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { useUsageData, sourceLabel, type UsageRow } from "@/hooks/use-usage-data";
 import { formatTokens } from "@/lib/utils";
-import { getModelPricing, estimateCost, formatCost } from "@/lib/pricing";
+import { usePricingMap, lookupPricing, estimateCost, formatCost } from "@/hooks/use-pricing";
+import type { PricingMap } from "@/hooks/use-pricing";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CHART_COLORS } from "@/lib/palette";
 import { ModelBreakdownChart } from "@/components/dashboard/model-breakdown-chart";
@@ -29,7 +30,7 @@ interface ModelGroup {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function groupByModel(records: UsageRow[]): ModelGroup[] {
+function groupByModel(records: UsageRow[], pricingMap: PricingMap): ModelGroup[] {
   const byModel = new Map<string, {
     sources: Set<string>;
     inputTokens: number;
@@ -44,7 +45,7 @@ function groupByModel(records: UsageRow[]): ModelGroup[] {
   for (const r of records) {
     grandTotal += r.total_tokens;
     const existing = byModel.get(r.model);
-    const pricing = getModelPricing(r.model, r.source);
+    const pricing = lookupPricing(pricingMap, r.model, r.source);
     const cost = estimateCost(r.input_tokens, r.output_tokens, r.cached_input_tokens, pricing);
 
     if (existing) {
@@ -117,9 +118,11 @@ export default function ModelsPage() {
     ...(to ? { to } : {}),
   });
 
+  const { pricingMap } = usePricingMap();
+
   const modelGroups = useMemo(
-    () => (data ? groupByModel(data.records) : []),
-    [data],
+    () => (data ? groupByModel(data.records, pricingMap) : []),
+    [data, pricingMap],
   );
 
   const grandTotal = useMemo(

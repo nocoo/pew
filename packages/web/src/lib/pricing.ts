@@ -1,10 +1,17 @@
 /**
- * Static pricing table for AI model token costs.
+ * Token pricing for AI models.
  *
  * Prices are in USD per 1M tokens.
- * Source: OpenRouter / official provider pricing (March 2026).
  *
- * Matching strategy: exact model ID → prefix match → source default.
+ * Architecture:
+ * - Static tables serve as built-in defaults (always available, zero latency).
+ * - Database table `model_pricing` allows admins to override / add entries.
+ * - `buildPricingMap()` merges DB rows on top of static defaults (server-side).
+ * - Client pages fetch the merged map from `/api/pricing` and pass it to
+ *   `lookupPricing()` for per-model resolution.
+ * - `estimateCost()` and `formatCost()` are pure helpers, unchanged.
+ *
+ * Matching strategy: exact model ID → prefix match → source default → fallback.
  */
 
 // ---------------------------------------------------------------------------
@@ -20,12 +27,33 @@ export interface ModelPricing {
   cached?: number;
 }
 
+/** A row from the model_pricing DB table */
+export interface DbPricingRow {
+  id: number;
+  model: string;
+  input: number;
+  output: number;
+  cached: number | null;
+  source: string | null;
+  note: string | null;
+  updated_at: string;
+  created_at: string;
+}
+
+/** Serialisable pricing map sent to clients via /api/pricing */
+export interface PricingMap {
+  models: Record<string, ModelPricing>;
+  prefixes: Array<{ prefix: string; pricing: ModelPricing }>;
+  sourceDefaults: Record<string, ModelPricing>;
+  fallback: ModelPricing;
+}
+
 // ---------------------------------------------------------------------------
-// Pricing table
+// Static pricing tables (built-in defaults)
 // ---------------------------------------------------------------------------
 
 /** Exact model ID → pricing */
-const MODEL_PRICES: Record<string, ModelPricing> = {
+export const DEFAULT_MODEL_PRICES: Record<string, ModelPricing> = {
   // Anthropic (Claude Code)
   "claude-sonnet-4-20250514": { input: 3, output: 15, cached: 0.3 },
   "claude-opus-4-20250514": { input: 15, output: 75, cached: 1.5 },
@@ -48,7 +76,7 @@ const MODEL_PRICES: Record<string, ModelPricing> = {
 };
 
 /** Prefix patterns for fuzzy matching */
-const PREFIX_PRICES: Array<{ prefix: string; pricing: ModelPricing }> = [
+export const DEFAULT_PREFIX_PRICES: Array<{ prefix: string; pricing: ModelPricing }> = [
   { prefix: "claude-sonnet-4", pricing: { input: 3, output: 15, cached: 0.3 } },
   { prefix: "claude-opus-4", pricing: { input: 15, output: 75, cached: 1.5 } },
   { prefix: "claude-3.5-sonnet", pricing: { input: 3, output: 15, cached: 0.3 } },
@@ -66,7 +94,7 @@ const PREFIX_PRICES: Array<{ prefix: string; pricing: ModelPricing }> = [
 ];
 
 /** Fallback pricing per source (conservative estimates) */
-const SOURCE_DEFAULTS: Record<string, ModelPricing> = {
+export const DEFAULT_SOURCE_DEFAULTS: Record<string, ModelPricing> = {
   "claude-code": { input: 3, output: 15, cached: 0.3 },
   codex: { input: 2, output: 8, cached: 0.5 },
   "gemini-cli": { input: 1.25, output: 10, cached: 0.31 },
@@ -74,32 +102,95 @@ const SOURCE_DEFAULTS: Record<string, ModelPricing> = {
   openclaw: { input: 2, output: 8, cached: 0.5 },
 };
 
-const FALLBACK: ModelPricing = { input: 3, output: 15, cached: 0.3 };
+export const DEFAULT_FALLBACK: ModelPricing = { input: 3, output: 15, cached: 0.3 };
 
 // ---------------------------------------------------------------------------
-// Lookup
+// Build a PricingMap (merge static defaults + DB overrides)
 // ---------------------------------------------------------------------------
 
 /**
- * Look up pricing for a model. Tries exact match → prefix → source default → fallback.
+ * Build the default PricingMap from static tables only.
  */
-export function getModelPricing(model: string, source?: string): ModelPricing {
+export function getDefaultPricingMap(): PricingMap {
+  return {
+    models: { ...DEFAULT_MODEL_PRICES },
+    prefixes: [...DEFAULT_PREFIX_PRICES],
+    sourceDefaults: { ...DEFAULT_SOURCE_DEFAULTS },
+    fallback: DEFAULT_FALLBACK,
+  };
+}
+
+/**
+ * Merge database pricing rows on top of static defaults.
+ * DB rows with `source` set override source defaults;
+ * DB rows without `source` override exact model prices.
+ */
+export function buildPricingMap(dbRows: DbPricingRow[]): PricingMap {
+  const map = getDefaultPricingMap();
+
+  for (const row of dbRows) {
+    const pricing: ModelPricing = {
+      input: row.input,
+      output: row.output,
+      ...(row.cached != null ? { cached: row.cached } : {}),
+    };
+
+    if (row.source) {
+      // Source-specific override: treated as a source default
+      map.sourceDefaults[row.source] = pricing;
+    }
+
+    // Always add/override the exact model entry
+    map.models[row.model] = pricing;
+  }
+
+  return map;
+}
+
+// ---------------------------------------------------------------------------
+// Lookup (works with any PricingMap — static or merged)
+// ---------------------------------------------------------------------------
+
+/**
+ * Look up pricing for a model from a PricingMap.
+ * Tries exact match → prefix → source default → fallback.
+ */
+export function lookupPricing(
+  pricingMap: PricingMap,
+  model: string,
+  source?: string
+): ModelPricing {
   // Exact match
-  const exact = MODEL_PRICES[model];
+  const exact = pricingMap.models[model];
   if (exact) return exact;
 
   // Prefix match (Gemini models often include "models/" prefix)
   const cleanModel = model.replace(/^models\//, "");
-  const prefixMatch = PREFIX_PRICES.find((p) => cleanModel.startsWith(p.prefix));
+  const prefixMatch = pricingMap.prefixes.find((p) =>
+    cleanModel.startsWith(p.prefix)
+  );
   if (prefixMatch) return prefixMatch.pricing;
 
   // Source default
   if (source) {
-    const srcDefault = SOURCE_DEFAULTS[source];
+    const srcDefault = pricingMap.sourceDefaults[source];
     if (srcDefault) return srcDefault;
   }
 
-  return FALLBACK;
+  return pricingMap.fallback;
+}
+
+// ---------------------------------------------------------------------------
+// Legacy lookup (uses static tables directly, no DB)
+// ---------------------------------------------------------------------------
+
+/**
+ * Look up pricing for a model using static defaults only.
+ * Kept for backward compatibility and for contexts where PricingMap
+ * is not available (e.g. tests, server-side without DB).
+ */
+export function getModelPricing(model: string, source?: string): ModelPricing {
+  return lookupPricing(getDefaultPricingMap(), model, source);
 }
 
 // ---------------------------------------------------------------------------
