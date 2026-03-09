@@ -1,5 +1,11 @@
 # Changelog
 
+## v0.6.1
+
+### Fixes
+
+- **Version display** — CLI help text now correctly shows v0.6.1 (v0.6.0 was published with stale build artifacts showing v0.5.0)
+
 ## v0.6.0
 
 ### Features
