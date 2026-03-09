@@ -169,6 +169,7 @@ describe("toModelAggregates", () => {
 describe("sourceLabel", () => {
   it("should return human-readable names for known sources", () => {
     expect(sourceLabel("claude-code")).toBe("Claude Code");
+    expect(sourceLabel("codex")).toBe("Codex");
     expect(sourceLabel("gemini-cli")).toBe("Gemini CLI");
     expect(sourceLabel("opencode")).toBe("OpenCode");
     expect(sourceLabel("openclaw")).toBe("OpenClaw");

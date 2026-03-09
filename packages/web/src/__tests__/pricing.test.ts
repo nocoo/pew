@@ -32,6 +32,13 @@ describe("pricing", () => {
       expect(p.output).toBe(15);
     });
 
+    it("should fall back to codex source default for unknown model", () => {
+      const p = getModelPricing("unknown-model-xyz", "codex");
+      expect(p.input).toBe(2);
+      expect(p.output).toBe(8);
+      expect(p.cached).toBe(0.5);
+    });
+
     it("should use global fallback for completely unknown model+source", () => {
       const p = getModelPricing("totally-unknown", "unknown-source");
       expect(p.input).toBe(3);

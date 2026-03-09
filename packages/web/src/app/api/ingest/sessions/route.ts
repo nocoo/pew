@@ -18,6 +18,7 @@ import { resolveUser } from "@/lib/auth-helpers";
 
 const VALID_SOURCES = new Set([
   "claude-code",
+  "codex",
   "gemini-cli",
   "opencode",
   "openclaw",

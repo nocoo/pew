@@ -147,6 +147,7 @@ export function toModelAggregates(records: UsageRow[]): ModelAggregate[] {
 
 const SOURCE_LABELS: Record<string, string> = {
   "claude-code": "Claude Code",
+  codex: "Codex",
   "gemini-cli": "Gemini CLI",
   opencode: "OpenCode",
   openclaw: "OpenClaw",
