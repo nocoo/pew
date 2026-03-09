@@ -106,6 +106,18 @@ export interface OpenCodeCursor extends FileCursorBase {
   messageKey: string | null;
 }
 
+/** Cursor for OpenCode SQLite database (incremental by time_created) */
+export interface OpenCodeSqliteCursor {
+  /** Max time_created seen from message table (epoch ms) */
+  lastTimeCreated: number;
+  /** Max time_updated seen from session table (epoch ms) */
+  lastSessionUpdated: number;
+  /** DB file inode (detect replacement/recreation) */
+  inode: number;
+  /** ISO 8601 timestamp of last update */
+  updatedAt: string;
+}
+
 /** Union of all cursor types, keyed by absolute file path */
 export type FileCursor = ByteOffsetCursor | GeminiCursor | OpenCodeCursor;
 
@@ -114,8 +126,10 @@ export interface CursorState {
   version: 1;
   /** Per-file cursors, keyed by absolute file path */
   files: Record<string, FileCursor>;
-  /** Directory-level mtimeMs cache for fast skip (OpenCode optimization) */
+  /** Directory-level mtimeMs cache for fast skip (OpenCode JSON optimization) */
   dirMtimes?: Record<string, number>;
+  /** OpenCode SQLite database cursor (separate from per-file cursors) */
+  openCodeSqlite?: OpenCodeSqliteCursor;
   /** ISO 8601 timestamp of last cursor update */
   updatedAt: string | null;
 }
