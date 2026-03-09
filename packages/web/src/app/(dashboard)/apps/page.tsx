@@ -4,7 +4,8 @@ import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useUsageData, sourceLabel, type UsageRow } from "@/hooks/use-usage-data";
 import { formatTokens } from "@/lib/utils";
-import { getModelPricing, estimateCost, formatCost } from "@/lib/pricing";
+import { usePricingMap, lookupPricing, estimateCost, formatCost } from "@/hooks/use-pricing";
+import type { PricingMap } from "@/hooks/use-pricing";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CHART_COLORS } from "@/lib/palette";
 import { PeriodSelector, periodToDateRange, periodLabel } from "@/components/dashboard/period-selector";
@@ -39,7 +40,7 @@ interface ModelRow {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function groupByApp(records: UsageRow[]): AppGroup[] {
+function groupByApp(records: UsageRow[], pricingMap: PricingMap): AppGroup[] {
   const bySource = new Map<string, UsageRow[]>();
 
   for (const r of records) {
@@ -67,7 +68,7 @@ function groupByApp(records: UsageRow[]): AppGroup[] {
         cachedTokens += r.cached_input_tokens;
         totalTokens += r.total_tokens;
 
-        const pricing = getModelPricing(r.model, r.source);
+        const pricing = lookupPricing(pricingMap, r.model, r.source);
         const cost = estimateCost(r.input_tokens, r.output_tokens, r.cached_input_tokens, pricing);
         estimatedCost += cost.totalCost;
 
@@ -245,9 +246,11 @@ export default function AppsPage() {
     ...(to ? { to } : {}),
   });
 
+  const { pricingMap } = usePricingMap();
+
   const appGroups = useMemo(
-    () => (data ? groupByApp(data.records) : []),
-    [data],
+    () => (data ? groupByApp(data.records, pricingMap) : []),
+    [data, pricingMap],
   );
 
   const subtitle = periodLabel(period);

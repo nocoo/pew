@@ -3,7 +3,15 @@ import {
   getModelPricing,
   estimateCost,
   formatCost,
+  getDefaultPricingMap,
+  buildPricingMap,
+  lookupPricing,
+  DEFAULT_MODEL_PRICES,
+  DEFAULT_PREFIX_PRICES,
+  DEFAULT_SOURCE_DEFAULTS,
+  DEFAULT_FALLBACK,
 } from "@/lib/pricing";
+import type { DbPricingRow } from "@/lib/pricing";
 
 describe("pricing", () => {
   describe("getModelPricing", () => {
@@ -146,6 +154,139 @@ describe("pricing", () => {
     it("should format large costs without decimals", () => {
       expect(formatCost(100)).toBe("$100");
       expect(formatCost(1234.56)).toBe("$1235");
+    });
+  });
+
+  describe("getDefaultPricingMap", () => {
+    it("should return a PricingMap with all static defaults", () => {
+      const map = getDefaultPricingMap();
+      expect(map.models).toEqual(DEFAULT_MODEL_PRICES);
+      expect(map.prefixes).toEqual(DEFAULT_PREFIX_PRICES);
+      expect(map.sourceDefaults).toEqual(DEFAULT_SOURCE_DEFAULTS);
+      expect(map.fallback).toEqual(DEFAULT_FALLBACK);
+    });
+
+    it("should return a fresh copy each time (mutations don't leak)", () => {
+      const map1 = getDefaultPricingMap();
+      const map2 = getDefaultPricingMap();
+      map1.models["test-model"] = { input: 999, output: 999 };
+      expect(map2.models["test-model"]).toBeUndefined();
+    });
+  });
+
+  describe("buildPricingMap", () => {
+    function makeDbRow(overrides: Partial<DbPricingRow>): DbPricingRow {
+      return {
+        id: 1,
+        model: "test-model",
+        input: 5,
+        output: 20,
+        cached: null,
+        source: null,
+        note: null,
+        updated_at: "2026-01-01T00:00:00Z",
+        created_at: "2026-01-01T00:00:00Z",
+        ...overrides,
+      };
+    }
+
+    it("should override exact model prices from DB rows", () => {
+      const row = makeDbRow({ model: "claude-sonnet-4-20250514", input: 4, output: 20, cached: 0.4 });
+      const map = buildPricingMap([row]);
+
+      expect(map.models["claude-sonnet-4-20250514"]).toEqual({ input: 4, output: 20, cached: 0.4 });
+    });
+
+    it("should add new model entries from DB rows", () => {
+      const row = makeDbRow({ model: "my-custom-model", input: 7, output: 30, cached: 0.7 });
+      const map = buildPricingMap([row]);
+
+      expect(map.models["my-custom-model"]).toEqual({ input: 7, output: 30, cached: 0.7 });
+    });
+
+    it("should override source defaults when row has source", () => {
+      const row = makeDbRow({ model: "custom-claude", source: "claude-code", input: 5, output: 25, cached: 0.5 });
+      const map = buildPricingMap([row]);
+
+      expect(map.sourceDefaults["claude-code"]).toEqual({ input: 5, output: 25, cached: 0.5 });
+      // Should also be added as exact model entry
+      expect(map.models["custom-claude"]).toEqual({ input: 5, output: 25, cached: 0.5 });
+    });
+
+    it("should omit cached from pricing when DB cached is null", () => {
+      const row = makeDbRow({ model: "no-cache-model", input: 3, output: 15, cached: null });
+      const map = buildPricingMap([row]);
+
+      expect(map.models["no-cache-model"]).toEqual({ input: 3, output: 15 });
+      expect(map.models["no-cache-model"]!.cached).toBeUndefined();
+    });
+
+    it("should preserve static defaults for models not in DB", () => {
+      const row = makeDbRow({ model: "my-custom-model", input: 7, output: 30 });
+      const map = buildPricingMap([row]);
+
+      // Original static model should still be there
+      expect(map.models["o3"]).toEqual({ input: 10, output: 40, cached: 2.5 });
+    });
+
+    it("should handle empty DB rows (returns pure defaults)", () => {
+      const map = buildPricingMap([]);
+      const defaults = getDefaultPricingMap();
+      expect(map).toEqual(defaults);
+    });
+  });
+
+  describe("lookupPricing", () => {
+    const defaultMap = getDefaultPricingMap();
+
+    it("should resolve exact model match", () => {
+      const p = lookupPricing(defaultMap, "o3");
+      expect(p).toEqual({ input: 10, output: 40, cached: 2.5 });
+    });
+
+    it("should resolve prefix match for versioned models", () => {
+      const p = lookupPricing(defaultMap, "claude-sonnet-4-20261231");
+      expect(p.input).toBe(3);
+      expect(p.output).toBe(15);
+    });
+
+    it("should strip models/ prefix for Gemini", () => {
+      const p = lookupPricing(defaultMap, "models/gemini-2.5-pro-preview-0325");
+      expect(p.input).toBe(1.25);
+      expect(p.output).toBe(10);
+    });
+
+    it("should fall back to source default for unknown model", () => {
+      const p = lookupPricing(defaultMap, "unknown-xyz", "codex");
+      expect(p.input).toBe(2);
+      expect(p.output).toBe(8);
+    });
+
+    it("should fall back to global fallback for unknown model and source", () => {
+      const p = lookupPricing(defaultMap, "unknown-xyz", "unknown-source");
+      expect(p).toEqual(DEFAULT_FALLBACK);
+    });
+
+    it("should fall back to global fallback when no source provided", () => {
+      const p = lookupPricing(defaultMap, "unknown-xyz");
+      expect(p).toEqual(DEFAULT_FALLBACK);
+    });
+
+    it("should prefer DB override over static default", () => {
+      const map = buildPricingMap([{
+        id: 1,
+        model: "o3",
+        input: 99,
+        output: 199,
+        cached: 9.9,
+        source: null,
+        note: null,
+        updated_at: "2026-01-01T00:00:00Z",
+        created_at: "2026-01-01T00:00:00Z",
+      }]);
+
+      const p = lookupPricing(map, "o3");
+      expect(p).toEqual({ input: 99, output: 199, cached: 9.9 });
     });
   });
 });

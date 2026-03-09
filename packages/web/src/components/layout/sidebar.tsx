@@ -16,6 +16,7 @@ import {
   Cpu,
   MessagesSquare,
   ChevronUp,
+  DollarSign,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/version";
@@ -27,6 +28,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useAdmin } from "@/hooks/use-admin";
 import { useSidebar } from "./sidebar-context";
 
 // ---------------------------------------------------------------------------
@@ -45,7 +47,7 @@ interface NavGroup {
   defaultOpen?: boolean;
 }
 
-const NAV_GROUPS: NavGroup[] = [
+const BASE_NAV_GROUPS: NavGroup[] = [
   {
     label: "Overview",
     defaultOpen: true,
@@ -71,7 +73,17 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
-const ALL_NAV_ITEMS = NAV_GROUPS.flatMap((g) => g.items);
+const ADMIN_NAV_GROUP: NavGroup = {
+  label: "Admin",
+  defaultOpen: true,
+  items: [
+    { href: "/admin/pricing", label: "Token Pricing", icon: DollarSign },
+  ],
+};
+
+function getNavGroups(isAdmin: boolean): NavGroup[] {
+  return isAdmin ? [...BASE_NAV_GROUPS, ADMIN_NAV_GROUP] : BASE_NAV_GROUPS;
+}
 
 // ---------------------------------------------------------------------------
 // Collapsible nav group (expanded sidebar)
@@ -153,6 +165,10 @@ export function Sidebar() {
   const pathname = usePathname();
   const { collapsed, toggle } = useSidebar();
   const { data: session } = useSession();
+  const { isAdmin } = useAdmin();
+
+  const navGroups = getNavGroups(isAdmin);
+  const allNavItems = navGroups.flatMap((g) => g.items);
 
   const userName = session?.user?.name ?? "User";
   const userEmail = session?.user?.email ?? "";
@@ -203,7 +219,7 @@ export function Sidebar() {
 
             {/* Navigation — flattened icon-only list */}
             <nav className="flex-1 flex flex-col items-center gap-1 overflow-y-auto pt-1">
-              {ALL_NAV_ITEMS.map((item) => {
+              {allNavItems.map((item) => {
                 const isActive =
                   item.href === "/"
                     ? pathname === "/"
@@ -293,7 +309,7 @@ export function Sidebar() {
 
             {/* Navigation — collapsible groups */}
             <nav className="flex-1 overflow-y-auto pt-1">
-              {NAV_GROUPS.map((group) => (
+              {navGroups.map((group) => (
                 <NavGroupSection
                   key={group.label}
                   group={group}

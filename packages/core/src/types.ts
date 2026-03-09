@@ -30,7 +30,7 @@ export interface TokenDelta {
   cachedInputTokens: number;
   /** Total output tokens generated */
   outputTokens: number;
-  /** Output tokens used for reasoning/thinking (subset of outputTokens) */
+  /** Reasoning/thinking tokens reported separately by some sources */
   reasoningOutputTokens: number;
 }
 

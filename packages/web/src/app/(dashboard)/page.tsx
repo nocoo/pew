@@ -10,7 +10,8 @@ import {
 } from "lucide-react";
 import { useUsageData, toHeatmapData } from "@/hooks/use-usage-data";
 import { formatTokens } from "@/lib/utils";
-import { getModelPricing, estimateCost, formatCost } from "@/lib/pricing";
+import { usePricingMap, lookupPricing, estimateCost, formatCost } from "@/hooks/use-pricing";
+import type { PricingMap } from "@/hooks/use-pricing";
 import { StatCard, StatGrid } from "@/components/dashboard/stat-card";
 import { UsageTrendChart } from "@/components/dashboard/usage-trend-chart";
 import { SourceDonutChart } from "@/components/dashboard/source-donut-chart";
@@ -26,10 +27,10 @@ import type { ModelAggregate } from "@/hooks/use-usage-data";
 // ---------------------------------------------------------------------------
 
 /** Compute total estimated cost from model aggregates */
-function computeTotalCost(models: ModelAggregate[]): number {
+function computeTotalCost(models: ModelAggregate[], pricingMap: PricingMap): number {
   let total = 0;
   for (const m of models) {
-    const pricing = getModelPricing(m.model, m.source);
+    const pricing = lookupPricing(pricingMap, m.model, m.source);
     const cost = estimateCost(m.input, m.output, m.cached, pricing);
     total += cost.totalCost;
   }
@@ -53,7 +54,9 @@ export default function DashboardPage() {
   const currentYear = new Date().getFullYear();
   const heatmapData = toHeatmapData(yearData.daily);
 
-  const estimatedCost = useMemo(() => computeTotalCost(models), [models]);
+  const { pricingMap } = usePricingMap();
+
+  const estimatedCost = useMemo(() => computeTotalCost(models, pricingMap), [models, pricingMap]);
 
   const subtitle = periodLabel(period);
 

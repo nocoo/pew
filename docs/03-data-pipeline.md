@@ -201,7 +201,7 @@ interface TokenDelta {
   inputTokens: number;           // total input tokens consumed
   cachedInputTokens: number;     // input tokens served from cache (subset)
   outputTokens: number;          // total output tokens generated
-  reasoningOutputTokens: number; // reasoning/thinking tokens (subset of output)
+  reasoningOutputTokens: number; // reasoning/thinking tokens reported separately
 }
 
 // packages/cli/src/parsers/claude.ts (shared by all parsers)

@@ -10,10 +10,30 @@
  *
  * Auth: shared secret (WORKER_SECRET) between Next.js and this Worker.
  * Limit: max 50 records per request (D1 Free plan: 50 queries/invocation).
+ *
+ * Validation: defense-in-depth using shared validators from @pew/core.
+ * The Next.js API routes validate first; the Worker re-validates as a
+ * second line of defense.
  */
 
+import {
+  MAX_INGEST_BATCH_SIZE,
+  validateIngestRecord,
+  validateSessionIngestRecord,
+} from "@pew/core";
+import type {
+  IngestRecord,
+  IngestRequest,
+  SessionIngestRecord,
+  SessionIngestRequest,
+  ValidationResult,
+} from "@pew/core";
+
+// Re-export types for test imports
+export type { IngestRecord, IngestRequest, SessionIngestRecord, SessionIngestRequest };
+
 // ---------------------------------------------------------------------------
-// Types
+// Worker-specific types
 // ---------------------------------------------------------------------------
 
 export interface Env {
@@ -21,48 +41,9 @@ export interface Env {
   WORKER_SECRET: string;
 }
 
-export interface IngestRecord {
-  source: string;
-  model: string;
-  hour_start: string;
-  input_tokens: number;
-  cached_input_tokens: number;
-  output_tokens: number;
-  reasoning_output_tokens: number;
-  total_tokens: number;
-}
-
-export interface IngestRequest {
-  userId: string;
-  records: IngestRecord[];
-}
-
-export interface SessionIngestRecord {
-  session_key: string;
-  source: string;
-  kind: string;
-  started_at: string;
-  last_message_at: string;
-  duration_seconds: number;
-  user_messages: number;
-  assistant_messages: number;
-  total_messages: number;
-  project_ref: string | null;
-  model: string | null;
-  snapshot_at: string;
-}
-
-export interface SessionIngestRequest {
-  userId: string;
-  records: SessionIngestRecord[];
-}
-
 // ---------------------------------------------------------------------------
-// Constants
+// SQL
 // ---------------------------------------------------------------------------
-
-/** Max records per Worker invocation (D1 Free: 50 queries/invocation). */
-export const MAX_RECORDS = 50;
 
 const TOKEN_UPSERT_SQL = `INSERT INTO usage_records
   (user_id, source, model, hour_start,
@@ -97,10 +78,21 @@ ON CONFLICT (user_id, session_key) DO UPDATE SET
 WHERE excluded.snapshot_at >= session_records.snapshot_at`;
 
 // ---------------------------------------------------------------------------
-// Validation — Token records
+// Request envelope validation (userId + records array)
 // ---------------------------------------------------------------------------
 
-function validateTokenRequest(body: unknown): { ok: true; data: IngestRequest } | { ok: false; error: string } {
+type EnvelopeResult<T> =
+  | { ok: true; userId: string; records: T[] }
+  | { ok: false; error: string };
+
+/**
+ * Validate the request envelope and each record using a shared validator.
+ * Returns typed userId + validated records, or an error string.
+ */
+function validateRequest<T>(
+  body: unknown,
+  validateRecord: (r: unknown, index: number) => ValidationResult<T>,
+): EnvelopeResult<T> {
   if (typeof body !== "object" || body === null) {
     return { ok: false, error: "Invalid request body" };
   }
@@ -115,77 +107,20 @@ function validateTokenRequest(body: unknown): { ok: true; data: IngestRequest } 
     return { ok: false, error: "Missing or empty records array" };
   }
 
-  if (obj.records.length > MAX_RECORDS) {
-    return { ok: false, error: `Batch too large: max ${MAX_RECORDS} records` };
+  if (obj.records.length > MAX_INGEST_BATCH_SIZE) {
+    return { ok: false, error: `Batch too large: max ${MAX_INGEST_BATCH_SIZE} records` };
   }
 
+  const validated: T[] = [];
   for (let i = 0; i < obj.records.length; i++) {
-    const r = obj.records[i] as Record<string, unknown>;
-    if (typeof r.source !== "string" || typeof r.model !== "string" || typeof r.hour_start !== "string") {
-      return { ok: false, error: `record[${i}]: missing required string fields` };
+    const result = validateRecord(obj.records[i], i);
+    if (!result.valid) {
+      return { ok: false, error: result.error };
     }
-    const numFields = ["input_tokens", "cached_input_tokens", "output_tokens", "reasoning_output_tokens", "total_tokens"];
-    for (const f of numFields) {
-      if (typeof r[f] !== "number") {
-        return { ok: false, error: `record[${i}]: ${f} must be a number` };
-      }
-    }
+    validated.push(result.record);
   }
 
-  return { ok: true, data: obj as unknown as IngestRequest };
-}
-
-// ---------------------------------------------------------------------------
-// Validation — Session records
-// ---------------------------------------------------------------------------
-
-function validateSessionRequest(body: unknown): { ok: true; data: SessionIngestRequest } | { ok: false; error: string } {
-  if (typeof body !== "object" || body === null) {
-    return { ok: false, error: "Invalid request body" };
-  }
-
-  const obj = body as Record<string, unknown>;
-
-  if (typeof obj.userId !== "string" || obj.userId.length === 0) {
-    return { ok: false, error: "Missing or empty userId" };
-  }
-
-  if (!Array.isArray(obj.records) || obj.records.length === 0) {
-    return { ok: false, error: "Missing or empty records array" };
-  }
-
-  if (obj.records.length > MAX_RECORDS) {
-    return { ok: false, error: `Batch too large: max ${MAX_RECORDS} records` };
-  }
-
-  for (let i = 0; i < obj.records.length; i++) {
-    const r = obj.records[i] as Record<string, unknown>;
-
-    // Required string fields
-    const requiredStrings = ["session_key", "source", "kind", "started_at", "last_message_at", "snapshot_at"];
-    for (const f of requiredStrings) {
-      if (typeof r[f] !== "string") {
-        return { ok: false, error: `record[${i}]: ${f} must be a string` };
-      }
-    }
-
-    // Required number fields
-    const requiredNumbers = ["duration_seconds", "user_messages", "assistant_messages", "total_messages"];
-    for (const f of requiredNumbers) {
-      if (typeof r[f] !== "number") {
-        return { ok: false, error: `record[${i}]: ${f} must be a number` };
-      }
-    }
-
-    // Nullable string fields (string or null)
-    for (const f of ["project_ref", "model"]) {
-      if (r[f] !== null && typeof r[f] !== "string") {
-        return { ok: false, error: `record[${i}]: ${f} must be a string or null` };
-      }
-    }
-  }
-
-  return { ok: true, data: obj as unknown as SessionIngestRequest };
+  return { ok: true, userId: obj.userId as string, records: validated };
 }
 
 // ---------------------------------------------------------------------------
@@ -193,12 +128,12 @@ function validateSessionRequest(body: unknown): { ok: true; data: SessionIngestR
 // ---------------------------------------------------------------------------
 
 async function handleTokenIngest(body: unknown, env: Env): Promise<Response> {
-  const validation = validateTokenRequest(body);
+  const validation = validateRequest<IngestRecord>(body, validateIngestRecord);
   if (!validation.ok) {
     return Response.json({ error: validation.error }, { status: 400 });
   }
 
-  const { userId, records } = validation.data;
+  const { userId, records } = validation;
 
   try {
     const stmts = records.map((r) =>
@@ -225,12 +160,12 @@ async function handleTokenIngest(body: unknown, env: Env): Promise<Response> {
 }
 
 async function handleSessionIngest(body: unknown, env: Env): Promise<Response> {
-  const validation = validateSessionRequest(body);
+  const validation = validateRequest<SessionIngestRecord>(body, validateSessionIngestRecord);
   if (!validation.ok) {
     return Response.json({ error: validation.error }, { status: 400 });
   }
 
-  const { userId, records } = validation.data;
+  const { userId, records } = validation;
 
   try {
     const stmts = records.map((r) =>

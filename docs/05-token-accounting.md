@@ -13,8 +13,8 @@ Every usage record carries five token counters:
 | `input_tokens` | Tokens the model read as context, **including** cache-creation tokens |
 | `cached_input_tokens` | Tokens served from prompt cache (subset of what the model processed) |
 | `output_tokens` | Tokens the model generated as visible response |
-| `reasoning_output_tokens` | Internal chain-of-thought tokens (subset of output) |
-| `total_tokens` | **Gross total** of all tokens the model processed |
+| `reasoning_output_tokens` | Internal chain-of-thought / thinking tokens reported separately by some sources |
+| `total_tokens` | Sum of the four tracked counters above |
 
 ### `total_tokens` Formula
 
@@ -22,13 +22,14 @@ Every usage record carries five token counters:
 total_tokens = input_tokens + cached_input_tokens + output_tokens + reasoning_output_tokens
 ```
 
-This counts **every token that passed through the model**, regardless of
-billing discount. The rationale:
+This is Pew's current accounting rule and is computed directly from the four
+stored counters. The rationale:
 
 1. **Cached tokens are real work.** The model reads the full KV cache and
    uses it for attention — the compute is reduced, not eliminated.
-2. **Matches the Claude API's own `usage.total_tokens` field**, which
-   includes `cache_read_input_tokens`.
+2. **Single consistent formula across sources.** Some tools expose
+   `reasoning` separately, some do not, and some expose a raw `total`.
+   Pew avoids source-specific branching here and always sums the tracked fields.
 3. **Intuitive semantics.** "How many tokens did I use?" should reflect
    everything the model touched, not a billing-weighted subset.
 

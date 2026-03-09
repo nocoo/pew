@@ -31,7 +31,7 @@ ENV AUTH_SECRET=$AUTH_SECRET
 
 COPY --from=deps /app ./
 COPY . .
-RUN bun run --filter @pew/web build
+RUN bun run --filter @pew/core build && bun run --filter @pew/web build
 
 # --- Production image ---
 FROM node:22-slim AS runner
@@ -41,6 +41,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 COPY --from=builder /app/packages/web/.next/standalone ./
 COPY --from=builder /app/packages/web/.next/static ./packages/web/.next/static
+COPY --from=builder /app/packages/web/public ./packages/web/public
 
 EXPOSE 3000
 ENV PORT=3000

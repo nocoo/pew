@@ -1,5 +1,40 @@
 # Changelog
 
+## v0.6.1
+
+### Fixes
+
+- **Version display** — CLI help text now correctly shows v0.6.1 (v0.6.0 was published with stale build artifacts showing v0.5.0)
+
+## v0.6.0
+
+### Features
+
+- **Shared validation layer** — `@pew/core` upgraded from pure types to runtime package with shared constants (`SOURCES`, `MAX_INGEST_BATCH_SIZE`, `MAX_STRING_LENGTH`) and validation functions (`validateIngestRecord`, `validateSessionIngestRecord`) used by both Next.js API routes and Cloudflare Worker for defense-in-depth
+- **Generic upload engine** — `createUploadEngine<T>()` factory with configurable preprocessing, retry, batching, and progress callbacks; eliminates duplicate upload logic between token and session pipelines
+
+### Fixes
+
+- **ISO date validation** — Added `$` anchor and semantic `Date.parse()` check; previously accepted trailing garbage like `2026-01-01T00:00:00Zfoo` and impossible timestamps like `9999-99-99T99:99:99`
+- **Integer enforcement** — Token and message count fields now reject floats (e.g. `1.5` tokens)
+- **String length limits** — Model, session_key, and other string fields capped at 1024 chars to prevent abuse
+- **Byte offset queue reads** — `BaseQueue.readFromOffset()` uses `Buffer.subarray()` instead of `String.slice()`, fixing incorrect cursor advancement on non-ASCII content (e.g. CJK model names)
+- **Corrupted JSONL handling** — Per-line `JSON.parse` error handling in queue reads; a single malformed line no longer blocks all subsequent uploads
+- **429 double-sleep** — Rate-limit retry no longer sleeps twice (Retry-After sleep + exponential backoff); `sleptFor429` flag skips redundant backoff
+- **Worker validation parity** — Worker now validates source enum, ISO date format, non-negative integers, and string lengths (previously accepted any values)
+
+### Refactoring
+
+- `createIngestHandler<T>()` factory reduces two Next.js ingest routes from 169+210 lines to 17+31 lines
+- `BaseQueue<T>` generic class reduces two queue implementations from 84+77 lines to 13+13 lines
+- Token upload (282→90 lines) and session upload (278→85 lines) rewritten as thin wrappers around upload engine
+- Worker rewritten from 302 to 207 lines using `@pew/core` validators
+
+### Infrastructure
+
+- `@pew/core` now has runtime exports (constants + validation), remains zero external dependencies
+- Test suite: 50 test files, 725 tests passing (+95 tests, +4 files vs v0.5.0)
+
 ## v0.5.0
 
 ### Features

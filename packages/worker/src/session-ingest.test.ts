@@ -26,7 +26,7 @@ const VALID_SESSION_RECORD = {
 const VALID_TOKEN_RECORD = {
   source: "claude-code",
   model: "claude-sonnet-4-20250514",
-  hour_start: "2026-03-08T10:00:00",
+  hour_start: "2026-03-08T10:00:00Z",
   input_tokens: 1000,
   cached_input_tokens: 200,
   output_tokens: 500,
