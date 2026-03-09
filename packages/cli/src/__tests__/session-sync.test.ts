@@ -569,7 +569,7 @@ describe("executeSessionSync", () => {
   ) {
     return (_dbPath: string) => ({
       querySessions: (lastTimeUpdated: number) =>
-        sessions.filter((s) => s.time_updated > lastTimeUpdated),
+        sessions.filter((s) => s.time_updated >= lastTimeUpdated),
       querySessionMessages: (sessionIds: string[]) =>
         messages.filter((m) => sessionIds.includes(m.session_id)),
       close: () => {},
@@ -716,5 +716,138 @@ describe("executeSessionSync", () => {
     const keys = records.map((r) => r.session_key).sort();
     expect(keys).toContain("opencode:ses_json001");
     expect(keys).toContain("opencode:ses_sql_002");
+  });
+
+  // ===== Same-millisecond boundary dedup for SQLite sessions =====
+
+  it("should not lose same-millisecond sessions at the cursor boundary", async () => {
+    // Two sessions with the exact same time_updated.
+    // After first sync processes both, the cursor should track
+    // their IDs so the second sync doesn't re-process them.
+    const sameMs = 1739600600000;
+    const sessions = [
+      { id: "ses_A", project_id: null, title: null, time_created: 1739600000000, time_updated: sameMs },
+      { id: "ses_B", project_id: null, title: null, time_created: 1739600100000, time_updated: sameMs },
+    ];
+    const messages = [
+      { session_id: "ses_A", role: "user", time_created: 1739600000000, data: sqliteMsgData({ role: "user", timeCreated: 1739600000000 }) },
+      { session_id: "ses_A", role: "assistant", time_created: 1739600100000, data: sqliteMsgData({ role: "assistant", timeCreated: 1739600100000 }) },
+      { session_id: "ses_B", role: "user", time_created: 1739600200000, data: sqliteMsgData({ role: "user", timeCreated: 1739600200000 }) },
+      { session_id: "ses_B", role: "assistant", time_created: 1739600300000, data: sqliteMsgData({ role: "assistant", timeCreated: 1739600300000 }) },
+    ];
+
+    const dbDir = join(dataDir, "opencode");
+    await mkdir(dbDir, { recursive: true });
+    const dbPath = join(dbDir, "opencode.db");
+    await writeFile(dbPath, "dummy");
+
+    // First sync: both sessions are new → 2 snapshots
+    const r1 = await executeSessionSync({
+      stateDir,
+      openCodeDbPath: dbPath,
+      openSessionDb: mockOpenSessionDb(sessions, messages),
+    });
+    expect(r1.totalSnapshots).toBe(2);
+    expect(r1.sources.opencode).toBe(2);
+
+    // Second sync: cursor's lastTimeUpdated == sameMs, lastProcessedIds == [ses_A, ses_B]
+    // The >= query returns both again, but they're filtered out by prevProcessedIds
+    const r2 = await executeSessionSync({
+      stateDir,
+      openCodeDbPath: dbPath,
+      openSessionDb: mockOpenSessionDb(sessions, messages),
+    });
+    expect(r2.totalSnapshots).toBe(0);
+    expect(r2.totalRecords).toBe(0);
+  });
+
+  it("should process a new session at the same millisecond as the cursor boundary", async () => {
+    const sameMs = 1739600600000;
+    const sessionsBatch1 = [
+      { id: "ses_A", project_id: null, title: null, time_created: 1739600000000, time_updated: sameMs },
+    ];
+    const messagesBatch1 = [
+      { session_id: "ses_A", role: "user", time_created: 1739600000000, data: sqliteMsgData({ role: "user", timeCreated: 1739600000000 }) },
+      { session_id: "ses_A", role: "assistant", time_created: 1739600100000, data: sqliteMsgData({ role: "assistant", timeCreated: 1739600100000 }) },
+    ];
+
+    const dbDir = join(dataDir, "opencode");
+    await mkdir(dbDir, { recursive: true });
+    const dbPath = join(dbDir, "opencode.db");
+    await writeFile(dbPath, "dummy");
+
+    // First sync: ses_A processed
+    const r1 = await executeSessionSync({
+      stateDir,
+      openCodeDbPath: dbPath,
+      openSessionDb: mockOpenSessionDb(sessionsBatch1, messagesBatch1),
+    });
+    expect(r1.totalSnapshots).toBe(1);
+
+    // A new session arrives with the same time_updated (rare but possible)
+    const sessionsBatch2 = [
+      ...sessionsBatch1,
+      { id: "ses_B", project_id: null, title: null, time_created: 1739600200000, time_updated: sameMs },
+    ];
+    const messagesBatch2 = [
+      ...messagesBatch1,
+      { session_id: "ses_B", role: "user", time_created: 1739600200000, data: sqliteMsgData({ role: "user", timeCreated: 1739600200000 }) },
+      { session_id: "ses_B", role: "assistant", time_created: 1739600300000, data: sqliteMsgData({ role: "assistant", timeCreated: 1739600300000 }) },
+    ];
+
+    // Second sync: ses_A deduped, ses_B is new → 1 snapshot
+    const r2 = await executeSessionSync({
+      stateDir,
+      openCodeDbPath: dbPath,
+      openSessionDb: mockOpenSessionDb(sessionsBatch2, messagesBatch2),
+    });
+    expect(r2.totalSnapshots).toBe(1);
+    expect(r2.sources.opencode).toBe(1);
+  });
+
+  // ===== Warning emissions for SQLite sessions =====
+
+  it("should emit warning when DB exists but openSessionDb adapter is missing", async () => {
+    const dbDir = join(dataDir, "opencode");
+    await mkdir(dbDir, { recursive: true });
+    const dbPath = join(dbDir, "opencode.db");
+    await writeFile(dbPath, "dummy");
+
+    const events: Array<{ source: string; phase: string; message?: string }> = [];
+
+    await executeSessionSync({
+      stateDir,
+      openCodeDbPath: dbPath,
+      // openSessionDb intentionally NOT provided
+      onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
+    });
+
+    const warnEvent = events.find(
+      (e) => e.source === "opencode-sqlite" && e.phase === "warn",
+    );
+    expect(warnEvent).toBeDefined();
+    expect(warnEvent!.message).toContain("bun:sqlite is not available");
+  });
+
+  it("should emit warning when openSessionDb returns null (DB can't be opened)", async () => {
+    const dbDir = join(dataDir, "opencode");
+    await mkdir(dbDir, { recursive: true });
+    const dbPath = join(dbDir, "opencode.db");
+    await writeFile(dbPath, "dummy");
+
+    const events: Array<{ source: string; phase: string; message?: string }> = [];
+
+    await executeSessionSync({
+      stateDir,
+      openCodeDbPath: dbPath,
+      openSessionDb: () => null,
+      onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
+    });
+
+    const warnEvent = events.find(
+      (e) => e.source === "opencode-sqlite" && e.phase === "warn",
+    );
+    expect(warnEvent).toBeDefined();
+    expect(warnEvent!.message).toContain("Failed to open");
   });
 });

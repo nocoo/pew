@@ -304,7 +304,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   }
 
   // ---------- OpenCode SQLite ----------
-  if (opts.openCodeDbPath && opts.openMessageDb) {
+  if (opts.openCodeDbPath) {
     onProgress?.({
       source: "opencode-sqlite",
       phase: "discover",
@@ -313,7 +313,15 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
 
     // Check if DB file exists
     const dbStat = await stat(opts.openCodeDbPath).catch(() => null);
-    if (dbStat) {
+
+    if (dbStat && !opts.openMessageDb) {
+      // DB file exists but adapter is missing (bun:sqlite not available)
+      onProgress?.({
+        source: "opencode-sqlite",
+        phase: "warn",
+        message: `OpenCode SQLite database found at ${opts.openCodeDbPath} but bun:sqlite is not available — SQLite token data will NOT be synced`,
+      });
+    } else if (dbStat && opts.openMessageDb) {
       const dbInode = dbStat.ino;
       const prevSqlite = cursors.openCodeSqlite;
 
@@ -322,11 +330,21 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
         prevSqlite && prevSqlite.inode === dbInode
           ? prevSqlite.lastTimeCreated
           : 0;
+      const prevProcessedIds = new Set(
+        prevSqlite && prevSqlite.inode === dbInode
+          ? (prevSqlite.lastProcessedIds ?? [])
+          : [],
+      );
 
       const handle = opts.openMessageDb(opts.openCodeDbPath);
       if (handle) {
         try {
-          const rows = handle.queryMessages(lastTimeCreated);
+          // Query uses >= to avoid missing same-millisecond rows.
+          // We dedup previously-processed IDs from the prior batch.
+          const rawRows = handle.queryMessages(lastTimeCreated);
+          const rows = prevProcessedIds.size > 0
+            ? rawRows.filter((r) => !prevProcessedIds.has(r.id))
+            : rawRows;
 
           // Collect JSON messageKeys from cursor store for dedup.
           // During the overlap window (~Feb 15-17), both JSON and SQLite
@@ -355,20 +373,25 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
           onProgress?.({
             source: "opencode-sqlite",
             phase: "parse",
-            message: `Parsed ${result.deltas.length} deltas from ${rows.length} SQLite rows${dedupSkipped > 0 ? ` (${dedupSkipped} deduped)` : ""}`,
+            message: `Parsed ${result.deltas.length} deltas from ${rawRows.length} SQLite rows${dedupSkipped > 0 ? ` (${dedupSkipped} deduped)` : ""}`,
           });
 
           allDeltas.push(...result.deltas);
           sourceCounts.opencode += result.deltas.length;
 
-          // Update SQLite cursor — advance past ALL rows (including deduped)
-          // so we don't re-query them next time. Rows are ORDER BY time_created ASC,
-          // so the last row has the highest time_created.
-          const maxTime = rows.length > 0
-            ? rows[rows.length - 1].time_created
+          // Update SQLite cursor — advance past ALL rows (including deduped).
+          // Rows are ORDER BY time_created ASC, so the last row has the
+          // highest time_created. Track IDs at the max timestamp for
+          // same-millisecond dedup on the next query.
+          const maxTime = rawRows.length > 0
+            ? rawRows[rawRows.length - 1].time_created
             : lastTimeCreated;
+          const idsAtMax = rawRows
+            .filter((r) => r.time_created === maxTime)
+            .map((r) => r.id);
           cursors.openCodeSqlite = {
             lastTimeCreated: maxTime,
+            lastProcessedIds: idsAtMax,
             lastSessionUpdated: prevSqlite?.lastSessionUpdated ?? 0,
             inode: dbInode,
             updatedAt: new Date().toISOString(),
@@ -376,6 +399,13 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
         } finally {
           handle.close();
         }
+      } else {
+        // openMessageDb returned null — DB exists but couldn't be opened
+        onProgress?.({
+          source: "opencode-sqlite",
+          phase: "warn",
+          message: `Failed to open OpenCode SQLite database at ${opts.openCodeDbPath} — SQLite token data will NOT be synced`,
+        });
       }
     }
   }

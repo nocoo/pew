@@ -110,6 +110,8 @@ export interface OpenCodeCursor extends FileCursorBase {
 export interface OpenCodeSqliteCursor {
   /** Max time_created seen from message table (epoch ms) */
   lastTimeCreated: number;
+  /** IDs of messages at exactly lastTimeCreated (for >= dedup on next query) */
+  lastProcessedIds?: string[];
   /** Max time_updated seen from session table (epoch ms) */
   lastSessionUpdated: number;
   /** DB file inode (detect replacement/recreation) */
@@ -219,6 +221,8 @@ export interface SessionFileCursor {
 export interface OpenCodeSqliteSessionCursor {
   /** Max time_updated seen from session table (epoch ms) */
   lastTimeUpdated: number;
+  /** IDs of sessions at exactly lastTimeUpdated (for >= dedup on next query) */
+  lastProcessedIds?: string[];
   /** DB file inode (detect replacement/recreation) */
   inode: number;
   /** ISO 8601 timestamp of last update */

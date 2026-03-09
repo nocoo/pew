@@ -27,8 +27,9 @@ export interface MessageRow {
 
 /**
  * Function that queries the message table.
- * Accepts lastTimeCreated and returns rows where time_created > lastTimeCreated.
- * This abstraction allows tests to inject a mock without needing bun:sqlite.
+ * Accepts lastTimeCreated and returns rows where time_created >= lastTimeCreated.
+ * Callers must filter out previously-processed IDs from the prior batch
+ * to handle same-millisecond boundary dedup.
  */
 export type QueryMessagesFn = (lastTimeCreated: number) => MessageRow[];
 

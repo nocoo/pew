@@ -11,7 +11,7 @@
 
 import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
-import type { SessionSnapshot, SessionQueueRecord, SessionFileCursor } from "@pew/core";
+import type { SessionSnapshot, SessionQueueRecord, SessionFileCursor, OpenCodeSqliteSessionCursor } from "@pew/core";
 import { SessionCursorStore } from "../storage/session-cursor-store.js";
 import { SessionQueue } from "../storage/session-queue.js";
 import {
@@ -326,7 +326,7 @@ export async function executeSessionSync(
   }
 
   // ---------- OpenCode SQLite Sessions ----------
-  if (opts.openCodeDbPath && opts.openSessionDb) {
+  if (opts.openCodeDbPath) {
     onProgress?.({
       source: "opencode-sqlite",
       phase: "discover",
@@ -334,7 +334,15 @@ export async function executeSessionSync(
     });
 
     const dbStat = await stat(opts.openCodeDbPath).catch(() => null);
-    if (dbStat) {
+
+    if (dbStat && !opts.openSessionDb) {
+      // DB file exists but adapter is missing (bun:sqlite not available)
+      onProgress?.({
+        source: "opencode-sqlite",
+        phase: "warn",
+        message: `OpenCode SQLite database found at ${opts.openCodeDbPath} but bun:sqlite is not available — SQLite session data will NOT be synced`,
+      });
+    } else if (dbStat && opts.openSessionDb) {
       const dbInode = dbStat.ino;
       const prevSqlite = cursors.openCodeSqlite;
 
@@ -343,11 +351,21 @@ export async function executeSessionSync(
         prevSqlite && prevSqlite.inode === dbInode
           ? prevSqlite.lastTimeUpdated
           : 0;
+      const prevProcessedIds = new Set(
+        prevSqlite && prevSqlite.inode === dbInode
+          ? (prevSqlite.lastProcessedIds ?? [])
+          : [],
+      );
 
       const handle = opts.openSessionDb(opts.openCodeDbPath);
       if (handle) {
         try {
-          const sessions = handle.querySessions(lastTimeUpdated);
+          // Query uses >= to avoid missing same-millisecond rows.
+          // We dedup previously-processed IDs from the prior batch.
+          const rawSessions = handle.querySessions(lastTimeUpdated);
+          const sessions = prevProcessedIds.size > 0
+            ? rawSessions.filter((s) => !prevProcessedIds.has(s.id))
+            : rawSessions;
 
           if (sessions.length > 0) {
             const sessionIds = sessions.map((s) => s.id);
@@ -357,7 +375,7 @@ export async function executeSessionSync(
             onProgress?.({
               source: "opencode-sqlite",
               phase: "parse",
-              message: `Collected ${snapshots.length} sessions from ${sessions.length} SQLite session rows`,
+              message: `Collected ${snapshots.length} sessions from ${rawSessions.length} SQLite session rows`,
             });
 
             allSnapshots.push(...snapshots);
@@ -370,19 +388,32 @@ export async function executeSessionSync(
             });
           }
 
-          // Update session cursor — advance past all queried sessions.
+          // Update session cursor — advance past ALL queried sessions.
           // Sessions are ORDER BY time_updated ASC, so last has the max.
-          const maxTimeUpdated = sessions.length > 0
-            ? sessions[sessions.length - 1].time_updated
+          // Track IDs at the max timestamp for same-millisecond dedup
+          // on the next query.
+          const maxTimeUpdated = rawSessions.length > 0
+            ? rawSessions[rawSessions.length - 1].time_updated
             : lastTimeUpdated;
+          const idsAtMax = rawSessions
+            .filter((s) => s.time_updated === maxTimeUpdated)
+            .map((s) => s.id);
           cursors.openCodeSqlite = {
             lastTimeUpdated: maxTimeUpdated,
+            lastProcessedIds: idsAtMax,
             inode: dbInode,
             updatedAt: new Date().toISOString(),
-          };
+          } satisfies OpenCodeSqliteSessionCursor;
         } finally {
           handle.close();
         }
+      } else {
+        // openSessionDb returned null — DB exists but couldn't be opened
+        onProgress?.({
+          source: "opencode-sqlite",
+          phase: "warn",
+          message: `Failed to open OpenCode SQLite database at ${opts.openCodeDbPath} — SQLite session data will NOT be synced`,
+        });
       }
     }
   }

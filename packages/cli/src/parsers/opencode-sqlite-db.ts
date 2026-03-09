@@ -22,7 +22,7 @@ export function openMessageDb(
   const stmt = db.query<MessageRow, [number]>(
     `SELECT id, session_id, time_created, json_extract(data, '$.role') as role, data
      FROM message
-     WHERE time_created > ?
+     WHERE time_created >= ?
      ORDER BY time_created ASC`,
   );
 
@@ -61,7 +61,7 @@ export function openSessionDb(
   const sessionStmt = db.query<SessionRow, [number]>(
     `SELECT id, project_id, title, time_created, time_updated
      FROM session
-     WHERE time_updated > ?
+     WHERE time_updated >= ?
      ORDER BY time_updated ASC`,
   );
 

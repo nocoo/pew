@@ -716,7 +716,7 @@ describe("executeSync", () => {
     }));
     return (_dbPath: string) => ({
       queryMessages: (lastTimeCreated: number) =>
-        enrichedRows.filter((r) => r.time_created > lastTimeCreated),
+        enrichedRows.filter((r) => r.time_created >= lastTimeCreated),
       close: () => {},
     });
   }
@@ -863,5 +863,119 @@ describe("executeSync", () => {
 
     expect(result.totalDeltas).toBe(0);
     expect(result.sources.opencode).toBe(0);
+  });
+
+  it("should not lose same-millisecond rows at the cursor boundary", async () => {
+    // Two assistant messages at the exact same time_created.
+    // After first sync processes both, the cursor should track
+    // their IDs so the second sync doesn't re-process them.
+    const sameMs = 1739600000000;
+    const rows = [
+      { id: "msg_A", session_id: "ses_001", time_created: sameMs, data: sqliteRowData({ role: "assistant", input: 100, output: 50, timeCreated: sameMs }) },
+      { id: "msg_B", session_id: "ses_001", time_created: sameMs, data: sqliteRowData({ role: "assistant", input: 200, output: 100, timeCreated: sameMs }) },
+    ];
+
+    const dbDir = join(dataDir, "opencode");
+    await mkdir(dbDir, { recursive: true });
+    const dbPath = join(dbDir, "opencode.db");
+    await writeFile(dbPath, "dummy");
+
+    // First sync: both rows are new → 2 deltas
+    const r1 = await executeSync({
+      stateDir,
+      openCodeDbPath: dbPath,
+      openMessageDb: mockOpenMessageDb(rows),
+    });
+    expect(r1.totalDeltas).toBe(2);
+    expect(r1.sources.opencode).toBe(2);
+
+    // Second sync: cursor's lastTimeCreated == sameMs, lastProcessedIds == [msg_A, msg_B]
+    // The >= query returns both rows again, but they're filtered out by prevProcessedIds
+    const r2 = await executeSync({
+      stateDir,
+      openCodeDbPath: dbPath,
+      openMessageDb: mockOpenMessageDb(rows),
+    });
+    expect(r2.totalDeltas).toBe(0);
+    expect(r2.totalRecords).toBe(0);
+  });
+
+  it("should process a new row at the same millisecond as the cursor boundary", async () => {
+    const sameMs = 1739600000000;
+    const rowsBatch1 = [
+      { id: "msg_A", session_id: "ses_001", time_created: sameMs, data: sqliteRowData({ role: "assistant", input: 100, output: 50, timeCreated: sameMs }) },
+    ];
+
+    const dbDir = join(dataDir, "opencode");
+    await mkdir(dbDir, { recursive: true });
+    const dbPath = join(dbDir, "opencode.db");
+    await writeFile(dbPath, "dummy");
+
+    // First sync: msg_A processed
+    const r1 = await executeSync({
+      stateDir,
+      openCodeDbPath: dbPath,
+      openMessageDb: mockOpenMessageDb(rowsBatch1),
+    });
+    expect(r1.totalDeltas).toBe(1);
+
+    // A new row arrives at the same millisecond (rare but possible)
+    const rowsBatch2 = [
+      ...rowsBatch1,
+      { id: "msg_B", session_id: "ses_001", time_created: sameMs, data: sqliteRowData({ role: "assistant", input: 200, output: 100, timeCreated: sameMs }) },
+    ];
+
+    // Second sync: msg_A deduped, msg_B is new → 1 delta
+    const r2 = await executeSync({
+      stateDir,
+      openCodeDbPath: dbPath,
+      openMessageDb: mockOpenMessageDb(rowsBatch2),
+    });
+    expect(r2.totalDeltas).toBe(1);
+    expect(r2.sources.opencode).toBe(1);
+  });
+
+  it("should emit warning when DB exists but openMessageDb adapter is missing", async () => {
+    const dbDir = join(dataDir, "opencode");
+    await mkdir(dbDir, { recursive: true });
+    const dbPath = join(dbDir, "opencode.db");
+    await writeFile(dbPath, "dummy");
+
+    const events: Array<{ source: string; phase: string; message?: string }> = [];
+
+    await executeSync({
+      stateDir,
+      openCodeDbPath: dbPath,
+      // openMessageDb intentionally NOT provided
+      onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
+    });
+
+    const warnEvent = events.find(
+      (e) => e.source === "opencode-sqlite" && e.phase === "warn",
+    );
+    expect(warnEvent).toBeDefined();
+    expect(warnEvent!.message).toContain("bun:sqlite is not available");
+  });
+
+  it("should emit warning when openMessageDb returns null (DB can't be opened)", async () => {
+    const dbDir = join(dataDir, "opencode");
+    await mkdir(dbDir, { recursive: true });
+    const dbPath = join(dbDir, "opencode.db");
+    await writeFile(dbPath, "dummy");
+
+    const events: Array<{ source: string; phase: string; message?: string }> = [];
+
+    await executeSync({
+      stateDir,
+      openCodeDbPath: dbPath,
+      openMessageDb: () => null,
+      onProgress: (e) => events.push({ source: e.source, phase: e.phase, message: e.message }),
+    });
+
+    const warnEvent = events.find(
+      (e) => e.source === "opencode-sqlite" && e.phase === "warn",
+    );
+    expect(warnEvent).toBeDefined();
+    expect(warnEvent!.message).toContain("Failed to open");
   });
 });
