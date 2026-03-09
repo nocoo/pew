@@ -215,11 +215,23 @@ export interface SessionFileCursor {
   size: number;
 }
 
+/** Cursor for OpenCode SQLite session data */
+export interface OpenCodeSqliteSessionCursor {
+  /** Max time_updated seen from session table (epoch ms) */
+  lastTimeUpdated: number;
+  /** DB file inode (detect replacement/recreation) */
+  inode: number;
+  /** ISO 8601 timestamp of last update */
+  updatedAt: string;
+}
+
 /** Top-level session cursor state */
 export interface SessionCursorState {
   version: 1;
   /** Per-file cursors, keyed by absolute file path */
   files: Record<string, SessionFileCursor>;
+  /** OpenCode SQLite session cursor (separate from per-file cursors) */
+  openCodeSqlite?: OpenCodeSqliteSessionCursor;
   /** ISO 8601 timestamp of last update */
   updatedAt: string | null;
 }

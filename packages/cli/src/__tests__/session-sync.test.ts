@@ -559,4 +559,162 @@ describe("executeSessionSync", () => {
     expect(events.some((e) => e.phase === "discover")).toBe(true);
     expect(events.some((e) => e.phase === "done")).toBe(true);
   });
+
+  // ===== OpenCode SQLite session integration =====
+
+  /** Helper: mock openSessionDb factory */
+  function mockOpenSessionDb(
+    sessions: Array<{ id: string; project_id: string | null; title: string | null; time_created: number; time_updated: number }>,
+    messages: Array<{ session_id: string; role: string; time_created: number; data: string }>,
+  ) {
+    return (_dbPath: string) => ({
+      querySessions: (lastTimeUpdated: number) =>
+        sessions.filter((s) => s.time_updated > lastTimeUpdated),
+      querySessionMessages: (sessionIds: string[]) =>
+        messages.filter((m) => sessionIds.includes(m.session_id)),
+      close: () => {},
+    });
+  }
+
+  /** Helper: build message data JSON blob for SQLite session tests */
+  function sqliteMsgData(opts: {
+    role: string;
+    modelID?: string;
+    timeCreated?: number;
+    timeCompleted?: number;
+  }): string {
+    return JSON.stringify({
+      role: opts.role,
+      modelID: opts.modelID ?? "claude-sonnet-4-20250514",
+      time: {
+        created: opts.timeCreated ?? 1739600000000,
+        completed: opts.timeCompleted ?? (opts.timeCreated ?? 1739600000000) + 5000,
+      },
+      tokens: opts.role === "assistant"
+        ? { total: 150, input: 100, output: 50, reasoning: 0, cache: { read: 0, write: 0 } }
+        : null,
+    });
+  }
+
+  it("should sync OpenCode SQLite sessions to queue", async () => {
+    const sessions = [
+      { id: "ses_sql_001", project_id: "proj_1", title: "Test session", time_created: 1739600000000, time_updated: 1739600600000 },
+    ];
+    const messages = [
+      { session_id: "ses_sql_001", role: "user", time_created: 1739600000000, data: sqliteMsgData({ role: "user", timeCreated: 1739600000000 }) },
+      { session_id: "ses_sql_001", role: "assistant", time_created: 1739600100000, data: sqliteMsgData({ role: "assistant", timeCreated: 1739600100000 }) },
+      { session_id: "ses_sql_001", role: "user", time_created: 1739600200000, data: sqliteMsgData({ role: "user", timeCreated: 1739600200000 }) },
+      { session_id: "ses_sql_001", role: "assistant", time_created: 1739600300000, data: sqliteMsgData({ role: "assistant", timeCreated: 1739600300000 }) },
+    ];
+
+    const dbDir = join(dataDir, "opencode");
+    await mkdir(dbDir, { recursive: true });
+    const dbPath = join(dbDir, "opencode.db");
+    await writeFile(dbPath, "dummy");
+
+    const result = await executeSessionSync({
+      stateDir,
+      openCodeDbPath: dbPath,
+      openSessionDb: mockOpenSessionDb(sessions, messages),
+    });
+
+    expect(result.totalSnapshots).toBe(1);
+    expect(result.sources.opencode).toBe(1);
+
+    const records = await readSessionQueue(stateDir);
+    expect(records).toHaveLength(1);
+    expect(records[0].source).toBe("opencode");
+    expect(records[0].session_key).toBe("opencode:ses_sql_001");
+    expect(records[0].user_messages).toBe(2);
+    expect(records[0].assistant_messages).toBe(2);
+    expect(records[0].total_messages).toBe(4);
+    expect(records[0].project_ref).toBe("proj_1");
+  });
+
+  it("should be incremental for OpenCode SQLite sessions (second sync with no new sessions)", async () => {
+    const sessions = [
+      { id: "ses_sql_001", project_id: null, title: null, time_created: 1739600000000, time_updated: 1739600600000 },
+    ];
+    const messages = [
+      { session_id: "ses_sql_001", role: "user", time_created: 1739600000000, data: sqliteMsgData({ role: "user", timeCreated: 1739600000000 }) },
+      { session_id: "ses_sql_001", role: "assistant", time_created: 1739600100000, data: sqliteMsgData({ role: "assistant", timeCreated: 1739600100000 }) },
+    ];
+
+    const dbDir = join(dataDir, "opencode");
+    await mkdir(dbDir, { recursive: true });
+    const dbPath = join(dbDir, "opencode.db");
+    await writeFile(dbPath, "dummy");
+
+    const factory = mockOpenSessionDb(sessions, messages);
+
+    const r1 = await executeSessionSync({
+      stateDir,
+      openCodeDbPath: dbPath,
+      openSessionDb: factory,
+    });
+    expect(r1.totalSnapshots).toBe(1);
+
+    // Second sync: cursor has advanced, no new sessions
+    const r2 = await executeSessionSync({
+      stateDir,
+      openCodeDbPath: dbPath,
+      openSessionDb: factory,
+    });
+    expect(r2.totalSnapshots).toBe(0);
+    expect(r2.totalRecords).toBe(0);
+  });
+
+  it("should gracefully skip when SQLite DB file does not exist for sessions", async () => {
+    const result = await executeSessionSync({
+      stateDir,
+      openCodeDbPath: "/nonexistent/opencode.db",
+      openSessionDb: mockOpenSessionDb([], []),
+    });
+
+    expect(result.totalSnapshots).toBe(0);
+    expect(result.sources.opencode).toBe(0);
+  });
+
+  it("should sync both JSON and SQLite OpenCode sessions together", async () => {
+    // JSON sessions
+    const ocDir = join(dataDir, "opencode", "message", "ses_json001");
+    await mkdir(ocDir, { recursive: true });
+    await writeFile(
+      join(ocDir, "msg_001.json"),
+      opencodeMsg({ sessionID: "ses_json001", role: "user", created: 1741320000000 }),
+    );
+    await writeFile(
+      join(ocDir, "msg_002.json"),
+      opencodeMsg({ sessionID: "ses_json001", role: "assistant", created: 1741320300000 }),
+    );
+
+    // SQLite sessions (different session)
+    const dbDir = join(dataDir, "opencode");
+    const dbPath = join(dbDir, "opencode.db");
+    await writeFile(dbPath, "dummy");
+
+    const sessions = [
+      { id: "ses_sql_002", project_id: null, title: null, time_created: 1741400000000, time_updated: 1741400600000 },
+    ];
+    const messages = [
+      { session_id: "ses_sql_002", role: "user", time_created: 1741400000000, data: sqliteMsgData({ role: "user", timeCreated: 1741400000000 }) },
+      { session_id: "ses_sql_002", role: "assistant", time_created: 1741400100000, data: sqliteMsgData({ role: "assistant", timeCreated: 1741400100000 }) },
+    ];
+
+    const result = await executeSessionSync({
+      stateDir,
+      openCodeMessageDir: join(dataDir, "opencode", "message"),
+      openCodeDbPath: dbPath,
+      openSessionDb: mockOpenSessionDb(sessions, messages),
+    });
+
+    // Should have sessions from both JSON and SQLite
+    expect(result.sources.opencode).toBe(2);
+    expect(result.totalSnapshots).toBe(2);
+
+    const records = await readSessionQueue(stateDir);
+    const keys = records.map((r) => r.session_key).sort();
+    expect(keys).toContain("opencode:ses_json001");
+    expect(keys).toContain("opencode:ses_sql_002");
+  });
 });

@@ -23,6 +23,8 @@ import { collectClaudeSessions } from "../parsers/claude-session.js";
 import { collectGeminiSessions } from "../parsers/gemini-session.js";
 import { collectOpenCodeSessions } from "../parsers/opencode-session.js";
 import { collectOpenClawSessions } from "../parsers/openclaw-session.js";
+import { collectOpenCodeSqliteSessions } from "../parsers/opencode-sqlite-session.js";
+import type { SessionRow, SessionMessageRow } from "../parsers/opencode-sqlite-session.js";
 import { deduplicateSessionRecords } from "./session-upload.js";
 
 // ---------------------------------------------------------------------------
@@ -39,6 +41,14 @@ export interface SessionSyncOptions {
   geminiDir?: string;
   /** Override: OpenCode message directory (~/.local/share/opencode/storage/message) */
   openCodeMessageDir?: string;
+  /** Override: OpenCode SQLite database path (~/.local/share/opencode/opencode.db) */
+  openCodeDbPath?: string;
+  /** Factory for opening the OpenCode SQLite DB for sessions (DI for testability) */
+  openSessionDb?: (dbPath: string) => {
+    querySessions: (lastTimeUpdated: number) => SessionRow[];
+    querySessionMessages: (sessionIds: string[]) => SessionMessageRow[];
+    close: () => void;
+  } | null;
   /** Override: OpenClaw data directory (~/.openclaw) */
   openclawDir?: string;
   /** Progress callback */
@@ -312,6 +322,70 @@ export async function executeSessionSync(
         current: i + 1,
         total: dirs.length,
       });
+    }
+  }
+
+  // ---------- OpenCode SQLite Sessions ----------
+  if (opts.openCodeDbPath && opts.openSessionDb) {
+    onProgress?.({
+      source: "opencode-sqlite",
+      phase: "discover",
+      message: "Checking OpenCode SQLite database for sessions...",
+    });
+
+    const dbStat = await stat(opts.openCodeDbPath).catch(() => null);
+    if (dbStat) {
+      const dbInode = dbStat.ino;
+      const prevSqlite = cursors.openCodeSqlite;
+
+      // If inode changed (DB recreated), reset cursor
+      const lastTimeUpdated =
+        prevSqlite && prevSqlite.inode === dbInode
+          ? prevSqlite.lastTimeUpdated
+          : 0;
+
+      const handle = opts.openSessionDb(opts.openCodeDbPath);
+      if (handle) {
+        try {
+          const sessions = handle.querySessions(lastTimeUpdated);
+
+          if (sessions.length > 0) {
+            const sessionIds = sessions.map((s) => s.id);
+            const messages = handle.querySessionMessages(sessionIds);
+            const snapshots = collectOpenCodeSqliteSessions(sessions, messages);
+
+            onProgress?.({
+              source: "opencode-sqlite",
+              phase: "parse",
+              message: `Collected ${snapshots.length} sessions from ${sessions.length} SQLite session rows`,
+            });
+
+            allSnapshots.push(...snapshots);
+            sourceCounts.opencode += snapshots.length;
+          } else {
+            onProgress?.({
+              source: "opencode-sqlite",
+              phase: "parse",
+              message: "No new SQLite sessions found",
+            });
+          }
+
+          // Update session cursor — advance past all queried sessions
+          let maxTimeUpdated = lastTimeUpdated;
+          for (const session of sessions) {
+            if (session.time_updated > maxTimeUpdated) {
+              maxTimeUpdated = session.time_updated;
+            }
+          }
+          cursors.openCodeSqlite = {
+            lastTimeUpdated: maxTimeUpdated,
+            inode: dbInode,
+            updatedAt: new Date().toISOString(),
+          };
+        } finally {
+          handle.close();
+        }
+      }
     }
   }
 

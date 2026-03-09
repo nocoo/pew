@@ -110,11 +110,22 @@ const syncCommand = defineCommand({
     consola.log("");
     consola.start("Syncing session statistics...\n");
 
+    // Dynamic import for session DB adapter (same bun:sqlite constraint)
+    let openSessionDb: typeof import("./parsers/opencode-sqlite-db.js").openSessionDb | undefined;
+    try {
+      const mod = await import("./parsers/opencode-sqlite-db.js");
+      openSessionDb = mod.openSessionDb;
+    } catch {
+      // bun:sqlite not available — SQLite session sync will be skipped
+    }
+
     const sessionResult = await executeSessionSync({
       stateDir: paths.stateDir,
       claudeDir: paths.claudeDir,
       geminiDir: paths.geminiDir,
       openCodeMessageDir: paths.openCodeMessageDir,
+      openCodeDbPath: paths.openCodeDbPath,
+      openSessionDb,
       openclawDir: paths.openclawDir,
       onProgress(event) {
         if (event.phase === "parse" && event.current && event.total) {
