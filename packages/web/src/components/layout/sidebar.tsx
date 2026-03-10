@@ -17,6 +17,7 @@ import {
   MessagesSquare,
   ChevronUp,
   DollarSign,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/version";
@@ -67,9 +68,12 @@ const BASE_NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "Account",
+    label: "Settings",
     defaultOpen: true,
-    items: [{ href: "/settings", label: "Settings", icon: Settings }],
+    items: [
+      { href: "/teams", label: "Teams", icon: Users },
+      { href: "/settings", label: "General", icon: Settings },
+    ],
   },
 ];
 

@@ -14,7 +14,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 // ---------------------------------------------------------------------------
 
 const ROUTE_LABELS: Record<string, string> = {
-  settings: "Settings",
+  settings: "General",
+  teams: "Teams",
   details: "Daily Usage",
   apps: "By App",
   models: "By Model",
