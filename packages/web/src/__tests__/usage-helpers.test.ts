@@ -7,7 +7,7 @@ import {
   sourceLabel,
   type UsageRow,
 } from "@/hooks/use-usage-data";
-import { toLocalDailyBuckets, compareWeekdayWeekend } from "@/lib/usage-helpers";
+import { toLocalDailyBuckets, compareWeekdayWeekend, computeMoMGrowth } from "@/lib/usage-helpers";
 import { getDefaultPricingMap } from "@/lib/pricing";
 import type { PricingMap } from "@/lib/pricing";
 
@@ -370,5 +370,99 @@ describe("compareWeekdayWeekend", () => {
     expect(result.weekend.totalDays).toBe(1);
     expect(result.weekday.avgTokens).toBe(0);
     expect(result.weekday.totalDays).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeMoMGrowth
+// ---------------------------------------------------------------------------
+
+describe("computeMoMGrowth", () => {
+  function makePricingMap(): PricingMap {
+    return getDefaultPricingMap();
+  }
+
+  it("should return zeros for empty input", () => {
+    const result = computeMoMGrowth([], makePricingMap(), new Date("2026-03-15"));
+
+    expect(result.currentMonth.tokens).toBe(0);
+    expect(result.currentMonth.cost).toBe(0);
+    expect(result.currentMonth.days).toBe(0);
+    expect(result.previousMonth.tokens).toBe(0);
+    expect(result.previousMonth.cost).toBe(0);
+    expect(result.previousMonth.days).toBe(0);
+    expect(result.tokenGrowth).toBe(0);
+    expect(result.costGrowth).toBe(0);
+  });
+
+  it("should split rows into current and previous month", () => {
+    const rows = [
+      // February (previous)
+      makeRow({ hour_start: "2026-02-10T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
+      makeRow({ hour_start: "2026-02-20T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
+      // March (current)
+      makeRow({ hour_start: "2026-03-05T10:00:00Z", total_tokens: 4000, input_tokens: 3200, output_tokens: 800, cached_input_tokens: 400 }),
+      makeRow({ hour_start: "2026-03-10T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
+    ];
+
+    const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"));
+
+    expect(result.previousMonth.tokens).toBe(3000);
+    expect(result.previousMonth.days).toBe(2);
+    expect(result.currentMonth.tokens).toBe(6000);
+    expect(result.currentMonth.days).toBe(2);
+    // Growth: (6000 - 3000) / 3000 * 100 = 100%
+    expect(result.tokenGrowth).toBeCloseTo(100);
+    expect(result.currentMonth.cost).toBeGreaterThan(0);
+    expect(result.previousMonth.cost).toBeGreaterThan(0);
+  });
+
+  it("should handle no previous month data (first month)", () => {
+    const rows = [
+      makeRow({ hour_start: "2026-03-05T10:00:00Z", total_tokens: 5000, input_tokens: 4000, output_tokens: 1000, cached_input_tokens: 500 }),
+    ];
+
+    const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"));
+
+    expect(result.currentMonth.tokens).toBe(5000);
+    expect(result.previousMonth.tokens).toBe(0);
+    // No previous data → growth = 0 (not Infinity)
+    expect(result.tokenGrowth).toBe(0);
+    expect(result.costGrowth).toBe(0);
+  });
+
+  it("should handle no current month data", () => {
+    const rows = [
+      makeRow({ hour_start: "2026-02-10T10:00:00Z", total_tokens: 3000, input_tokens: 2400, output_tokens: 600, cached_input_tokens: 300 }),
+    ];
+
+    const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"));
+
+    expect(result.previousMonth.tokens).toBe(3000);
+    expect(result.currentMonth.tokens).toBe(0);
+    // Growth: (0 - 3000) / 3000 * 100 = -100%
+    expect(result.tokenGrowth).toBeCloseTo(-100);
+  });
+
+  it("should default now to current date", () => {
+    // Just verify it doesn't throw without the now param
+    const result = computeMoMGrowth([], makePricingMap());
+    expect(result.tokenGrowth).toBe(0);
+  });
+
+  it("should count distinct active days per month", () => {
+    const rows = [
+      // Same day in Feb — should count as 1 day
+      makeRow({ hour_start: "2026-02-10T08:00:00Z", total_tokens: 500, input_tokens: 400, output_tokens: 100, cached_input_tokens: 50 }),
+      makeRow({ hour_start: "2026-02-10T16:00:00Z", total_tokens: 500, input_tokens: 400, output_tokens: 100, cached_input_tokens: 50 }),
+      // Two days in March
+      makeRow({ hour_start: "2026-03-01T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
+      makeRow({ hour_start: "2026-03-05T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
+    ];
+
+    const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"));
+
+    expect(result.previousMonth.days).toBe(1);
+    expect(result.currentMonth.days).toBe(2);
   });
 });

@@ -74,6 +74,16 @@ export interface WeekdayWeekendStats {
   ratio: number;
 }
 
+/** Month-over-month comparison stats. */
+export interface MoMComparison {
+  currentMonth: { tokens: number; cost: number; days: number };
+  previousMonth: { tokens: number; cost: number; days: number };
+  /** Percentage change in tokens: (current - previous) / previous * 100 */
+  tokenGrowth: number;
+  /** Percentage change in cost: (current - previous) / previous * 100 */
+  costGrowth: number;
+}
+
 // ---------------------------------------------------------------------------
 // groupByModel
 // ---------------------------------------------------------------------------
@@ -415,5 +425,82 @@ export function compareWeekdayWeekend(
     weekday: { avgTokens: weekdayAvgTokens, avgCost: weekdayAvgCost, totalDays: weekdayDays },
     weekend: { avgTokens: weekendAvgTokens, avgCost: weekendAvgCost, totalDays: weekendDays },
     ratio,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// computeMoMGrowth
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute month-over-month growth for tokens and cost.
+ *
+ * Splits rows by `hour_start` into current month and previous month,
+ * computes totals, and calculates percentage change.
+ * Returns 0 growth when previous month has no data (avoids Infinity).
+ *
+ * @param rows       — raw UsageRow[]
+ * @param pricingMap — pricing map for cost estimation
+ * @param now        — reference date (defaults to current date)
+ */
+export function computeMoMGrowth(
+  rows: UsageRow[],
+  pricingMap: PricingMap,
+  now?: Date,
+): MoMComparison {
+  const ref = now ?? new Date();
+  const currentYear = ref.getFullYear();
+  const currentMonth = ref.getMonth(); // 0-indexed
+
+  // Previous month (handles January → December of previous year)
+  const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+  const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+
+  let curTokens = 0;
+  let curCost = 0;
+  const curDays = new Set<string>();
+
+  let prevTokens = 0;
+  let prevCost = 0;
+  const prevDays = new Set<string>();
+
+  for (const r of rows) {
+    const d = new Date(r.hour_start);
+    const y = d.getUTCFullYear();
+    const m = d.getUTCMonth();
+    const dateStr = r.hour_start.slice(0, 10);
+
+    const pricing = lookupPricing(pricingMap, r.model, r.source);
+    const cost = estimateCost(
+      r.input_tokens,
+      r.output_tokens,
+      r.cached_input_tokens,
+      pricing,
+    );
+
+    if (y === currentYear && m === currentMonth) {
+      curTokens += r.total_tokens;
+      curCost += cost.totalCost;
+      curDays.add(dateStr);
+    } else if (y === prevYear && m === prevMonth) {
+      prevTokens += r.total_tokens;
+      prevCost += cost.totalCost;
+      prevDays.add(dateStr);
+    }
+  }
+
+  // Growth: (current - previous) / previous * 100; 0 if no previous
+  const tokenGrowth = prevTokens > 0
+    ? ((curTokens - prevTokens) / prevTokens) * 100
+    : 0;
+  const costGrowth = prevCost > 0
+    ? ((curCost - prevCost) / prevCost) * 100
+    : 0;
+
+  return {
+    currentMonth: { tokens: curTokens, cost: curCost, days: curDays.size },
+    previousMonth: { tokens: prevTokens, cost: prevCost, days: prevDays.size },
+    tokenGrowth,
+    costGrowth,
   };
 }
