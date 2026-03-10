@@ -220,12 +220,19 @@ export interface SessionQueueRecord {
   snapshot_at: string;
 }
 
-/** Session-specific file cursor (mtime + size dual-check) */
+/**
+ * Session-specific file cursor (mtime + optional size).
+ *
+ * Most file-based session drivers store both mtimeMs and size for a
+ * dual-check skip.  OpenCode JSON sessions discover *directories*
+ * where stat().size is unreliable across filesystems, so only mtimeMs
+ * is persisted — `size` is omitted from those cursor entries.
+ */
 export interface SessionFileCursor {
-  /** File mtime in ms */
+  /** File/dir mtime in ms */
   mtimeMs: number;
-  /** File size in bytes */
-  size: number;
+  /** File size in bytes (omitted for directory-based cursors) */
+  size?: number;
 }
 
 /** Cursor for OpenCode SQLite session data */

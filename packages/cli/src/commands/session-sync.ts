@@ -211,8 +211,8 @@ export async function executeSessionSync(
         },
       );
 
-      // Build and persist cursor (cast: driver returns concrete cursor type
-      // but the generic loop types it as SessionFileCursor | unknown)
+      // Build and persist cursor (cast narrows the registry's
+      // SessionFileCursor | unknown union back to SessionFileCursor)
       cursors.files[filePath] = driver.buildCursor(fingerprint) as SessionFileCursor;
 
       allSnapshots.push(...snapshots);

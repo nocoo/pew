@@ -385,6 +385,14 @@ describe("SessionFileCursor type", () => {
     expect(cursor.mtimeMs).toBe(1709827200000);
     expect(cursor.size).toBe(4096);
   });
+
+  it("should allow omitting size (directory-based cursors)", () => {
+    const cursor: SessionFileCursor = {
+      mtimeMs: 1709827200000,
+    };
+    expect(cursor.mtimeMs).toBe(1709827200000);
+    expect(cursor.size).toBeUndefined();
+  });
 });
 
 describe("SessionCursorState type", () => {
