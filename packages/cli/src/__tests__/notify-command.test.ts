@@ -120,23 +120,7 @@ describe("executeNotify", () => {
     expect(capturedVersion).toBe("0.7.0");
   });
 
-  it("default executeSyncFn calls both token sync and session sync", async () => {
-    // We test the default executeSyncFn by NOT providing one, and using
-    // a coordinatedSyncFn that captures and calls the provided executeSyncFn.
-    let capturedResult: SyncCycleResult | undefined;
-
-    // Mock the actual sync modules by providing a coordinatedSyncFn
-    // that invokes the default executeSyncFn
-    const coordinatedSyncFn = vi.fn(
-      async (trigger: SyncTrigger, opts: { executeSyncFn: (triggers: SyncTrigger[]) => Promise<SyncCycleResult> }) => {
-        capturedResult = await opts.executeSyncFn([trigger]);
-        return makeResult({ cycles: [capturedResult] });
-      },
-    );
-
-    // We need to mock executeSync and executeSessionSync modules.
-    // Since we can't easily mock them here, we verify the structure
-    // by providing an explicit executeSyncFn that mimics the behavior.
+  it("custom executeSyncFn result flows through coordinator to final result", async () => {
     const executeSyncFn = vi.fn(async (): Promise<SyncCycleResult> => ({
       tokenSync: { totalDeltas: 5, totalRecords: 3, filesScanned: { claude: 2 }, sources: { claude: 3 } },
       sessionSync: { totalSnapshots: 2, totalRecords: 2, filesScanned: { claude: 1 }, sources: { claude: 2 } },
