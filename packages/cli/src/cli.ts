@@ -365,7 +365,7 @@ const notifyCommand = defineCommand({
       openMessageDb,
       openSessionDb,
       openclawDir: paths.openclawDir,
-      version: "0.8.0",
+      version: "0.9.0",
     });
 
     if (result.error) {
@@ -579,7 +579,7 @@ async function runSessionUpload(stateDir: string, apiUrl: string, dev: boolean):
 export const main = defineCommand({
   meta: {
     name: "pew",
-    version: "0.8.0",
+    version: "0.9.0",
     description: "Track token usage from your local AI coding tools",
   },
   subCommands: {
