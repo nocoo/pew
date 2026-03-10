@@ -69,7 +69,7 @@ interface NavGroup {
 function resolveNavGroup(def: NavGroupDef): NavGroup {
   return {
     label: def.label,
-    defaultOpen: def.defaultOpen,
+    ...(def.defaultOpen != null && { defaultOpen: def.defaultOpen }),
     items: def.items.map((item) => ({
       href: item.href,
       label: item.label,
