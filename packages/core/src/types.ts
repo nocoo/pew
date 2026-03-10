@@ -272,6 +272,74 @@ export type SyncTrigger =
   | { kind: "startup" }
   | { kind: "scheduled" };
 
+/**
+ * Result of a single sync execution within a coordinator run.
+ *
+ * Token and session results are independently optional. This allows
+ * partial success to be recorded: e.g. token sync succeeds but session
+ * sync fails. The cycle is never all-or-nothing.
+ */
+export interface SyncCycleResult {
+  /** Token sync results (absent if token sync failed or was skipped) */
+  tokenSync?: {
+    totalDeltas: number;
+    totalRecords: number;
+    filesScanned: Record<string, number>;
+    sources: Record<string, number>;
+  };
+  /** Error from token sync phase, if it failed */
+  tokenSyncError?: string;
+
+  /** Session sync results (absent if session sync failed or was skipped) */
+  sessionSync?: {
+    totalSnapshots: number;
+    totalRecords: number;
+    filesScanned: Record<string, number>;
+    sources: Record<string, number>;
+  };
+  /** Error from session sync phase, if it failed */
+  sessionSyncError?: string;
+}
+
+/** Persisted to ~/.config/pew/runs/<runId>.json */
+export interface RunLogEntry {
+  /** Unique run identifier (ISO-timestamp-randomSuffix) */
+  runId: string;
+  /** pew CLI version (e.g. "0.7.0") */
+  version: string;
+  /** Original trigger that initiated this run */
+  trigger: SyncTrigger;
+
+  /** ISO 8601 timestamps */
+  startedAt: string;
+  completedAt: string;
+  durationMs: number;
+
+  /** Coordinator lifecycle metadata */
+  coordination: {
+    waitedForLock: boolean;
+    skippedSync: boolean;
+    hadFollowUp: boolean;
+    followUpCount: number;
+    degradedToUnlocked: boolean;
+  };
+
+  /**
+   * Sync results per cycle.
+   * Array because dirty follow-ups produce multiple cycles.
+   * Empty array if skippedSync is true.
+   *
+   * Each cycle independently records token and session results.
+   * Either sub-result may be absent if that phase failed or was skipped,
+   * with the corresponding error field explaining why.
+   */
+  cycles: SyncCycleResult[];
+
+  /** Overall run outcome */
+  status: "success" | "partial" | "error" | "skipped";
+  error?: string;
+}
+
 /** Result of a single Coordinator run */
 export interface CoordinatorRunResult {
   /** Unique ID for this run (ISO timestamp + random suffix) */
@@ -280,10 +348,16 @@ export interface CoordinatorRunResult {
   triggers: SyncTrigger[];
   /** Whether a follow-up run was triggered by dirty signal */
   hadFollowUp: boolean;
+  /** Number of follow-up cycles executed */
+  followUpCount: number;
   /** Whether this process had to wait for another sync to finish before acquiring the lock */
   waitedForLock: boolean;
   /** Whether sync was skipped because a previous follow-up already consumed the signal */
   skippedSync: boolean;
+  /** Whether the coordinator degraded to unlocked mode (lock API unavailable) */
+  degradedToUnlocked: boolean;
+  /** Sync cycle results (one per execution, multiple if follow-ups occurred) */
+  cycles: SyncCycleResult[];
   /** Error message if the run failed */
   error?: string;
 }

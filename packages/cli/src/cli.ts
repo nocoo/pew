@@ -174,6 +174,18 @@ const syncCommand = defineCommand({
       }
     }
 
+    // Always show session files scanned
+    const sfs = sessionResult.filesScanned;
+    const sessScanParts: string[] = [];
+    if (sfs.claude > 0) sessScanParts.push(`Claude: ${sfs.claude}`);
+    if (sfs.codex > 0) sessScanParts.push(`Codex: ${sfs.codex}`);
+    if (sfs.gemini > 0) sessScanParts.push(`Gemini: ${sfs.gemini}`);
+    if (sfs.opencode > 0) sessScanParts.push(`OpenCode: ${sfs.opencode}`);
+    if (sfs.openclaw > 0) sessScanParts.push(`OpenClaw: ${sfs.openclaw}`);
+    if (sessScanParts.length > 0) {
+      consola.info(`  Files scanned: ${pc.dim(sessScanParts.join("  |  "))}`);
+    }
+
     // Auto-upload if logged in
     if (args.upload) {
       const dev = isDevMode();

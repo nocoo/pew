@@ -79,6 +79,14 @@ export interface SessionSyncResult {
     opencode: number;
     openclaw: number;
   };
+  /** Total files/directories scanned per source */
+  filesScanned: {
+    claude: number;
+    codex: number;
+    gemini: number;
+    opencode: number;
+    openclaw: number;
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -157,6 +165,7 @@ export async function executeSessionSync(
 
   const allSnapshots: SessionSnapshot[] = [];
   const sourceCounts = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0 };
+  const filesScanned = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0 };
 
   // ---------- Claude Code ----------
   if (opts.claudeDir) {
@@ -166,6 +175,7 @@ export async function executeSessionSync(
       message: "Discovering Claude Code session files...",
     });
     const files = await discoverClaudeFiles(opts.claudeDir);
+    filesScanned.claude = files.length;
     onProgress?.({
       source: "claude-code",
       phase: "parse",
@@ -223,6 +233,7 @@ export async function executeSessionSync(
       message: "Discovering Gemini CLI session files...",
     });
     const files = await discoverGeminiFiles(opts.geminiDir);
+    filesScanned.gemini = files.length;
     onProgress?.({
       source: "gemini-cli",
       phase: "parse",
@@ -279,6 +290,7 @@ export async function executeSessionSync(
       message: "Discovering OpenCode session directories...",
     });
     const dirs = await discoverOpenCodeSessionDirs(opts.openCodeMessageDir);
+    filesScanned.opencode += dirs.length;
     onProgress?.({
       source: "opencode",
       phase: "parse",
@@ -348,6 +360,7 @@ export async function executeSessionSync(
         message: `OpenCode SQLite database found at ${opts.openCodeDbPath} but bun:sqlite is not available — SQLite session data will NOT be synced`,
       });
     } else if (dbStat && opts.openSessionDb) {
+      filesScanned.opencode += 1;
       const dbInode = dbStat.ino;
       const prevSqlite = cursors.openCodeSqlite;
 
@@ -431,6 +444,7 @@ export async function executeSessionSync(
       message: "Discovering OpenClaw session files...",
     });
     const files = await discoverOpenClawFiles(opts.openclawDir);
+    filesScanned.openclaw = files.length;
     onProgress?.({
       source: "openclaw",
       phase: "parse",
@@ -487,6 +501,7 @@ export async function executeSessionSync(
       message: "Discovering Codex CLI session files...",
     });
     const files = await discoverCodexFiles(opts.codexSessionsDir);
+    filesScanned.codex = files.length;
     onProgress?.({
       source: "codex",
       phase: "parse",
@@ -567,5 +582,6 @@ export async function executeSessionSync(
     totalSnapshots: allSnapshots.length,
     totalRecords: deduped.length,
     sources: sourceCounts,
+    filesScanned,
   };
 }

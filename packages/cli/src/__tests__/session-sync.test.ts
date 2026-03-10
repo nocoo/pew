@@ -233,6 +233,7 @@ describe("executeSessionSync", () => {
     expect(result.totalSnapshots).toBeGreaterThanOrEqual(1);
     expect(result.totalRecords).toBeGreaterThanOrEqual(1);
     expect(result.sources.claude).toBeGreaterThanOrEqual(1);
+    expect(result.filesScanned.claude).toBe(1);
 
     const records = await readSessionQueue(stateDir);
     expect(records.length).toBeGreaterThanOrEqual(1);
@@ -266,6 +267,7 @@ describe("executeSessionSync", () => {
 
     expect(result.totalSnapshots).toBe(1);
     expect(result.sources.gemini).toBe(1);
+    expect(result.filesScanned.gemini).toBe(1);
 
     const records = await readSessionQueue(stateDir);
     expect(records).toHaveLength(1);
@@ -292,6 +294,7 @@ describe("executeSessionSync", () => {
 
     expect(result.totalSnapshots).toBe(1);
     expect(result.sources.opencode).toBe(1);
+    expect(result.filesScanned.opencode).toBe(1);
 
     const records = await readSessionQueue(stateDir);
     expect(records).toHaveLength(1);
@@ -323,6 +326,7 @@ describe("executeSessionSync", () => {
 
     expect(result.totalSnapshots).toBe(1);
     expect(result.sources.openclaw).toBe(1);
+    expect(result.filesScanned.openclaw).toBe(1);
 
     const records = await readSessionQueue(stateDir);
     expect(records).toHaveLength(1);
@@ -352,6 +356,7 @@ describe("executeSessionSync", () => {
 
     expect(result.totalSnapshots).toBe(1);
     expect(result.sources.codex).toBe(1);
+    expect(result.filesScanned.codex).toBe(1);
 
     const records = await readSessionQueue(stateDir);
     expect(records).toHaveLength(1);
@@ -395,6 +400,9 @@ describe("executeSessionSync", () => {
     const result = await executeSessionSync({ stateDir });
     expect(result.totalSnapshots).toBe(0);
     expect(result.totalRecords).toBe(0);
+    expect(result.filesScanned).toEqual({
+      claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0,
+    });
   });
 
   // ----- Incremental: mtime+size skip -----
@@ -493,6 +501,8 @@ describe("executeSessionSync", () => {
     expect(result.sources.claude).toBeGreaterThanOrEqual(1);
     expect(result.sources.gemini).toBeGreaterThanOrEqual(1);
     expect(result.totalSnapshots).toBeGreaterThanOrEqual(2);
+    expect(result.filesScanned.claude).toBe(1);
+    expect(result.filesScanned.gemini).toBe(1);
   });
 
   // ----- Dedup: latest snapshot per session_key -----
@@ -641,6 +651,7 @@ describe("executeSessionSync", () => {
 
     expect(result.totalSnapshots).toBe(2);
     expect(result.sources.opencode).toBe(2);
+    expect(result.filesScanned.opencode).toBe(2);
 
     const records = await readSessionQueue(stateDir);
     expect(records).toHaveLength(2);
@@ -734,6 +745,7 @@ describe("executeSessionSync", () => {
 
     expect(result.totalSnapshots).toBe(1);
     expect(result.sources.opencode).toBe(1);
+    expect(result.filesScanned.opencode).toBe(1);
 
     const records = await readSessionQueue(stateDir);
     expect(records).toHaveLength(1);
@@ -825,6 +837,8 @@ describe("executeSessionSync", () => {
     // Should have sessions from both JSON and SQLite
     expect(result.sources.opencode).toBe(2);
     expect(result.totalSnapshots).toBe(2);
+    // 1 JSON dir + 1 SQLite DB = 2
+    expect(result.filesScanned.opencode).toBe(2);
 
     const records = await readSessionQueue(stateDir);
     const keys = records.map((r) => r.session_key).sort();
