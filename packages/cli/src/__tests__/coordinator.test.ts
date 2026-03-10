@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { SyncTrigger } from "@pew/core";
+import type { SyncCycleResult, SyncTrigger } from "@pew/core";
 import { coordinatedSync } from "../notifier/coordinator.js";
 
 interface FakeLockHandle {
@@ -82,6 +82,7 @@ describe("coordinatedSync", () => {
     const fake = createFakeFs(handle, { signalSize: 1 });
     const executeSyncFn = vi.fn(async () => {
       events.push("sync");
+      return {};
     });
 
     const result = await coordinatedSync(createTrigger(), {
@@ -97,6 +98,10 @@ describe("coordinatedSync", () => {
     expect(result.waitedForLock).toBe(false);
     expect(result.skippedSync).toBe(false);
     expect(result.runId).toMatch(/^2026-03-09T10:00:00\.000Z-[a-z0-9]+$/);
+    expect(result.cycles).toHaveLength(1);
+    expect(result.cycles[0]).toEqual({});
+    expect(result.followUpCount).toBe(0);
+    expect(result.degradedToUnlocked).toBe(false);
   });
 
   it("waits for the lock and runs sync after appending a signal", async () => {
@@ -108,7 +113,7 @@ describe("coordinatedSync", () => {
       }),
     );
     const fake = createFakeFs(handle, { signalSize: 1 });
-    const executeSyncFn = vi.fn(async () => {});
+    const executeSyncFn = vi.fn(async () => ({}));
 
     const result = await coordinatedSync(createTrigger(), {
       stateDir: "/tmp/pew",
@@ -120,6 +125,9 @@ describe("coordinatedSync", () => {
     expect(executeSyncFn).toHaveBeenCalledTimes(1);
     expect(result.waitedForLock).toBe(true);
     expect(result.skippedSync).toBe(false);
+    expect(result.cycles).toHaveLength(1);
+    expect(result.followUpCount).toBe(0);
+    expect(result.degradedToUnlocked).toBe(false);
   });
 
   it("skips sync for a waiter when a previous follow-up already consumed the signal", async () => {
@@ -134,7 +142,7 @@ describe("coordinatedSync", () => {
     );
     const fake = createFakeFs(handle, { signalSize: 0 });
     fakeState = fake.state;
-    const executeSyncFn = vi.fn(async () => {});
+    const executeSyncFn = vi.fn(async () => ({}));
 
     const result = await coordinatedSync(createTrigger(), {
       stateDir: "/tmp/pew",
@@ -145,6 +153,8 @@ describe("coordinatedSync", () => {
     expect(executeSyncFn).not.toHaveBeenCalled();
     expect(result.waitedForLock).toBe(true);
     expect(result.skippedSync).toBe(true);
+    expect(result.cycles).toHaveLength(0);
+    expect(result.followUpCount).toBe(0);
   });
 
   it("runs a dirty follow-up when signal bytes appear during sync", async () => {
@@ -154,6 +164,7 @@ describe("coordinatedSync", () => {
       if (executeSyncFn.mock.calls.length === 1) {
         fake.state.signalSize = 1;
       }
+      return {};
     });
 
     const result = await coordinatedSync(createTrigger(), {
@@ -164,6 +175,8 @@ describe("coordinatedSync", () => {
 
     expect(executeSyncFn).toHaveBeenCalledTimes(2);
     expect(result.hadFollowUp).toBe(true);
+    expect(result.followUpCount).toBe(1);
+    expect(result.cycles).toHaveLength(2);
     expect(fake.state.truncateCalls).toBe(2);
   });
 
@@ -172,9 +185,10 @@ describe("coordinatedSync", () => {
     const fake = createFakeFs(handle, { signalSize: 1 });
     const executeSyncFn = vi.fn(async () => {
       fake.state.signalSize = 1;
+      return {};
     });
 
-    await coordinatedSync(createTrigger(), {
+    const result = await coordinatedSync(createTrigger(), {
       stateDir: "/tmp/pew",
       executeSyncFn,
       fs: fake.fs,
@@ -182,18 +196,20 @@ describe("coordinatedSync", () => {
     });
 
     expect(executeSyncFn).toHaveBeenCalledTimes(3);
+    expect(result.cycles).toHaveLength(3);
+    expect(result.followUpCount).toBe(2);
   });
 
   it("keeps checking dirty state after a sync failure", async () => {
     const handle = createHandle(vi.fn(async () => {}));
     const fake = createFakeFs(handle, { signalSize: 1 });
     const executeSyncFn = vi
-      .fn<(_triggers: SyncTrigger[]) => Promise<void>>()
+      .fn<(_triggers: SyncTrigger[]) => Promise<SyncCycleResult>>()
       .mockImplementationOnce(async () => {
         fake.state.signalSize = 1;
         throw new Error("boom");
       })
-      .mockImplementationOnce(async () => {});
+      .mockImplementationOnce(async () => ({}));
 
     const result = await coordinatedSync(createTrigger(), {
       stateDir: "/tmp/pew",
@@ -204,6 +220,9 @@ describe("coordinatedSync", () => {
     expect(executeSyncFn).toHaveBeenCalledTimes(2);
     expect(result.error).toContain("boom");
     expect(result.hadFollowUp).toBe(true);
+    expect(result.cycles).toHaveLength(2);
+    expect(result.cycles[0]).toEqual({});
+    expect(result.cycles[1]).toEqual({});
   });
 
   it("degrades to an unlocked sync when lock API fails unexpectedly", async () => {
@@ -213,7 +232,7 @@ describe("coordinatedSync", () => {
       }),
     );
     const fake = createFakeFs(handle, { signalSize: 1 });
-    const executeSyncFn = vi.fn(async () => {});
+    const executeSyncFn = vi.fn(async () => ({}));
 
     const result = await coordinatedSync(createTrigger(), {
       stateDir: "/tmp/pew",
@@ -225,6 +244,8 @@ describe("coordinatedSync", () => {
     expect(result.waitedForLock).toBe(false);
     expect(result.skippedSync).toBe(false);
     expect(result.error).toBeUndefined();
+    expect(result.degradedToUnlocked).toBe(true);
+    expect(result.cycles).toHaveLength(1);
   });
 
   it("degrades to an unlocked sync when the runtime file handle has no lock method", async () => {
@@ -232,7 +253,7 @@ describe("coordinatedSync", () => {
       close: vi.fn(async () => {}),
     };
     const fake = createFakeFs(handle, { signalSize: 1 });
-    const executeSyncFn = vi.fn(async () => {});
+    const executeSyncFn = vi.fn(async () => ({}));
 
     const result = await coordinatedSync(createTrigger(), {
       stateDir: "/tmp/pew",
@@ -244,10 +265,12 @@ describe("coordinatedSync", () => {
     expect(handle.close).toHaveBeenCalledTimes(1);
     expect(result.waitedForLock).toBe(false);
     expect(result.skippedSync).toBe(false);
+    expect(result.degradedToUnlocked).toBe(true);
+    expect(result.cycles).toHaveLength(1);
   });
 
   it("degrades to an unlocked sync when fs.open fails before a handle is created", async () => {
-    const executeSyncFn = vi.fn(async () => {});
+    const executeSyncFn = vi.fn(async () => ({}));
 
     const result = await coordinatedSync(createTrigger(), {
       stateDir: "/tmp/pew",
@@ -262,12 +285,14 @@ describe("coordinatedSync", () => {
 
     expect(executeSyncFn).toHaveBeenCalledTimes(1);
     expect(result.error).toBeUndefined();
+    expect(result.degradedToUnlocked).toBe(true);
+    expect(result.cycles).toHaveLength(1);
   });
 
   it("treats a missing signal file as size zero", async () => {
     const handle = createHandle(vi.fn(async () => {}));
     const fake = createFakeFs(handle, { signalExists: false });
-    const executeSyncFn = vi.fn(async () => {});
+    const executeSyncFn = vi.fn(async () => ({}));
 
     const result = await coordinatedSync(createTrigger(), {
       stateDir: "/tmp/pew",
@@ -289,7 +314,7 @@ describe("coordinatedSync", () => {
     await expect(
       coordinatedSync(createTrigger(), {
         stateDir: "/tmp/pew",
-        executeSyncFn: vi.fn(async () => {}),
+        executeSyncFn: vi.fn(async () => ({})),
         fs: fake.fs,
       }),
     ).rejects.toThrow("denied");
@@ -305,7 +330,7 @@ describe("coordinatedSync", () => {
       }),
     );
     const fake = createFakeFs(handle, { signalSize: 1 });
-    const executeSyncFn = vi.fn(async () => {});
+    const executeSyncFn = vi.fn(async () => ({}));
 
     const result = await coordinatedSync(createTrigger(), {
       stateDir: "/tmp/pew",
@@ -332,6 +357,9 @@ describe("coordinatedSync", () => {
     });
 
     expect(result.error).toContain("sync failed");
+    expect(result.degradedToUnlocked).toBe(true);
+    expect(result.cycles).toHaveLength(1);
+    expect(result.cycles[0]).toEqual({});
   });
 
   it("closes the lock handle after a successful run", async () => {
@@ -340,7 +368,7 @@ describe("coordinatedSync", () => {
 
     await coordinatedSync(createTrigger(), {
       stateDir: "/tmp/pew",
-      executeSyncFn: vi.fn(async () => {}),
+      executeSyncFn: vi.fn(async () => ({})),
       fs: fake.fs,
     });
 
@@ -357,7 +385,7 @@ describe("coordinatedSync", () => {
       }),
     );
     const fake = createFakeFs(handle, { signalSize: 1 });
-    const executeSyncFn = vi.fn(async () => {});
+    const executeSyncFn = vi.fn(async () => ({}));
 
     const result = await coordinatedSync(createTrigger(), {
       stateDir: "/tmp/pew",
@@ -370,6 +398,7 @@ describe("coordinatedSync", () => {
     expect(handle.close).toHaveBeenCalledTimes(1);
     expect(result.skippedSync).toBe(true);
     expect(result.error).toContain("lock timeout");
+    expect(result.cycles).toHaveLength(0);
   });
 
   it("returns a timeout-style error when the blocking lock promise rejects", async () => {
@@ -385,12 +414,104 @@ describe("coordinatedSync", () => {
 
     const result = await coordinatedSync(createTrigger(), {
       stateDir: "/tmp/pew",
-      executeSyncFn: vi.fn(async () => {}),
+      executeSyncFn: vi.fn(async () => ({})),
       fs: fake.fs,
     });
 
     expect(result.skippedSync).toBe(true);
     expect(result.error).toContain("lock timeout");
     expect(handle.close).toHaveBeenCalledTimes(1);
+    expect(result.cycles).toHaveLength(0);
+  });
+
+  it("stores a full SyncCycleResult in cycles[0]", async () => {
+    const handle = createHandle(vi.fn(async () => {}));
+    const fake = createFakeFs(handle, { signalSize: 1 });
+    const fullCycle: SyncCycleResult = {
+      tokenSync: { filesScanned: { claude: 3 }, totalDeltas: 10, totalRecords: 5, sources: { claude: 5 } },
+      sessionSync: {
+        totalSnapshots: 2,
+        totalRecords: 2,
+        filesScanned: { claude: 1, codex: 0, gemini: 0, opencode: 0, openclaw: 0 },
+        sources: { claude: 2 },
+      },
+    };
+    const executeSyncFn = vi.fn(async () => fullCycle);
+
+    const result = await coordinatedSync(createTrigger(), {
+      stateDir: "/tmp/pew",
+      executeSyncFn,
+      fs: fake.fs,
+    });
+
+    expect(result.cycles).toHaveLength(1);
+    expect(result.cycles[0]).toEqual(fullCycle);
+    expect(result.cycles[0].tokenSync?.totalDeltas).toBe(10);
+    expect(result.cycles[0].sessionSync?.totalSnapshots).toBe(2);
+  });
+
+  it("collects multiple cycles during follow-ups", async () => {
+    const handle = createHandle(vi.fn(async () => {}));
+    const fake = createFakeFs(handle, { signalSize: 1 });
+    let callCount = 0;
+    const executeSyncFn = vi.fn(async (): Promise<SyncCycleResult> => {
+      callCount += 1;
+      if (callCount <= 2) fake.state.signalSize = 1;
+      return { tokenSync: { filesScanned: { claude: callCount }, totalDeltas: callCount, totalRecords: callCount, sources: {} } };
+    });
+
+    const result = await coordinatedSync(createTrigger(), {
+      stateDir: "/tmp/pew",
+      executeSyncFn,
+      fs: fake.fs,
+      maxFollowUps: 3,
+    });
+
+    expect(executeSyncFn).toHaveBeenCalledTimes(3);
+    expect(result.cycles).toHaveLength(3);
+    expect(result.followUpCount).toBe(2);
+    expect(result.cycles[0].tokenSync?.totalDeltas).toBe(1);
+    expect(result.cycles[1].tokenSync?.totalDeltas).toBe(2);
+    expect(result.cycles[2].tokenSync?.totalDeltas).toBe(3);
+  });
+
+  it("records an empty cycle when executeSyncFn throws unexpectedly", async () => {
+    const handle = createHandle(vi.fn(async () => {}));
+    const fake = createFakeFs(handle, { signalSize: 1 });
+    const executeSyncFn = vi.fn(async () => {
+      throw new Error("unexpected crash");
+    });
+
+    const result = await coordinatedSync(createTrigger(), {
+      stateDir: "/tmp/pew",
+      executeSyncFn,
+      fs: fake.fs,
+    });
+
+    expect(result.cycles).toHaveLength(1);
+    expect(result.cycles[0]).toEqual({});
+    expect(result.error).toContain("unexpected crash");
+  });
+
+  it("preserves a partial success cycle (tokenSync present, sessionSyncError present)", async () => {
+    const handle = createHandle(vi.fn(async () => {}));
+    const fake = createFakeFs(handle, { signalSize: 1 });
+    const partialCycle: SyncCycleResult = {
+      tokenSync: { filesScanned: { gemini: 5 }, totalDeltas: 3, totalRecords: 3, sources: { gemini: 3 } },
+      sessionSyncError: "session db locked",
+    };
+    const executeSyncFn = vi.fn(async () => partialCycle);
+
+    const result = await coordinatedSync(createTrigger(), {
+      stateDir: "/tmp/pew",
+      executeSyncFn,
+      fs: fake.fs,
+    });
+
+    expect(result.cycles).toHaveLength(1);
+    expect(result.cycles[0].tokenSync?.totalDeltas).toBe(3);
+    expect(result.cycles[0].sessionSyncError).toBe("session db locked");
+    expect(result.cycles[0].sessionSync).toBeUndefined();
+    expect(result.error).toBeUndefined();
   });
 });

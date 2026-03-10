@@ -1,6 +1,6 @@
 import { open, stat, appendFile, writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
-import type { CoordinatorRunResult, SyncTrigger } from "@pew/core";
+import type { CoordinatorRunResult, SyncCycleResult, SyncTrigger } from "@pew/core";
 
 interface LockHandle {
   lock?(mode?: string, options?: { nonBlocking?: boolean }): Promise<void>;
@@ -25,7 +25,8 @@ const defaultFs: FsOps = {
 
 export interface CoordinatorOptions {
   stateDir: string;
-  executeSyncFn: (triggers: SyncTrigger[]) => Promise<void>;
+  executeSyncFn: (triggers: SyncTrigger[]) => Promise<SyncCycleResult>;
+  version?: string;
   now?: () => number;
   fs?: FsOps;
   maxFollowUps?: number;
@@ -48,8 +49,11 @@ export async function coordinatedSync(
     runId,
     triggers: [trigger],
     hadFollowUp: false,
+    followUpCount: 0,
     waitedForLock: false,
     skippedSync: false,
+    degradedToUnlocked: false,
+    cycles: [],
   };
 
   await fs.mkdir(opts.stateDir, { recursive: true });
@@ -142,21 +146,24 @@ async function runLockedCycles({
 }: {
   stateDir: string;
   fs: FsOps;
-  executeSyncFn: (triggers: SyncTrigger[]) => Promise<void>;
+  executeSyncFn: (triggers: SyncTrigger[]) => Promise<SyncCycleResult>;
   trigger: SyncTrigger;
   maxFollowUps: number;
-}): Promise<Pick<CoordinatorRunResult, "hadFollowUp" | "skippedSync" | "error">> {
+}): Promise<Pick<CoordinatorRunResult, "hadFollowUp" | "followUpCount" | "skippedSync" | "cycles" | "error">> {
   let hadFollowUp = false;
   let error: string | undefined;
   let followUps = 0;
+  const cycles: SyncCycleResult[] = [];
 
   while (true) {
     await truncateSignal(stateDir, fs);
 
     try {
-      await executeSyncFn([trigger]);
+      const cycleResult = await executeSyncFn([trigger]);
+      cycles.push(cycleResult);
     } catch (err) {
       error ??= toErrorMessage(err);
+      cycles.push({});
     }
 
     const signalSize = await readSignalSize(stateDir, fs);
@@ -166,20 +173,26 @@ async function runLockedCycles({
     followUps += 1;
   }
 
-  return { hadFollowUp, skippedSync: false, error };
+  return { hadFollowUp, followUpCount: followUps, skippedSync: false, cycles, error };
 }
 
 async function runUnlocked(
   baseResult: CoordinatorRunResult,
   trigger: SyncTrigger,
-  executeSyncFn: (triggers: SyncTrigger[]) => Promise<void>,
+  executeSyncFn: (triggers: SyncTrigger[]) => Promise<SyncCycleResult>,
 ): Promise<CoordinatorRunResult> {
   try {
-    await executeSyncFn([trigger]);
-    return baseResult;
+    const cycleResult = await executeSyncFn([trigger]);
+    return {
+      ...baseResult,
+      degradedToUnlocked: true,
+      cycles: [cycleResult],
+    };
   } catch (err) {
     return {
       ...baseResult,
+      degradedToUnlocked: true,
+      cycles: [{}],
       error: toErrorMessage(err),
     };
   }
