@@ -79,8 +79,8 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
             className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Pew
-          </Link>
+            Back to pew
+83:           </Link>
         </div>
       </div>
     );
@@ -97,7 +97,7 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
             className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Pew
+            Back to pew
           </Link>
         </div>
       </div>
@@ -242,9 +242,9 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
           <p className="text-xs text-muted-foreground">
             Powered by{" "}
             <Link href="/" className="text-primary hover:underline">
-              Pew
+              pew
             </Link>{" "}
-            — Track your AI coding tool usage
+            — AI token usage tracker
           </p>
         </footer>
       </main>

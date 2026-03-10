@@ -18,10 +18,10 @@ export const metadata: Metadata = {
   metadataBase: new URL(
     process.env.NEXTAUTH_URL ?? "https://pew.md"
   ),
-  title: "Pew Dashboard",
+  title: "pew - AI token usage tracker",
   description: "Track and visualize token usage from your AI coding tools",
   openGraph: {
-    title: "Pew Dashboard",
+    title: "pew - AI token usage tracker",
     description: "Track and visualize token usage from your AI coding tools",
     type: "website",
   },

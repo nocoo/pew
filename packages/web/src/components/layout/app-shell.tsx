@@ -8,34 +8,10 @@ import { SidebarProvider, useSidebar } from "./sidebar-context";
 import { ThemeToggle } from "./theme-toggle";
 import { Breadcrumbs } from "./breadcrumbs";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { breadcrumbsFromPathname } from "@/lib/navigation";
 
-// ---------------------------------------------------------------------------
-// URL-based breadcrumb generation
-// ---------------------------------------------------------------------------
-
-const ROUTE_LABELS: Record<string, string> = {
-  settings: "Settings",
-  details: "Daily Usage",
-  apps: "By App",
-  models: "By Model",
-  leaderboard: "Leaderboard",
-};
-
-function breadcrumbsFromPathname(pathname: string) {
-  const segments = pathname.split("/").filter(Boolean);
-  const items: { label: string; href?: string }[] = [{ label: "Home", href: "/" }];
-
-  let href = "";
-  for (let i = 0; i < segments.length; i++) {
-    const seg = segments[i]!;
-    href += `/${seg}`;
-    const isLast = i === segments.length - 1;
-    const label = ROUTE_LABELS[seg] ?? seg.slice(0, 8);
-    items.push(isLast ? { label } : { label, href });
-  }
-
-  return items;
-}
+// Re-export for tests that already import from here
+export { ROUTE_LABELS, breadcrumbsFromPathname } from "@/lib/navigation";
 
 // ---------------------------------------------------------------------------
 // AppShell

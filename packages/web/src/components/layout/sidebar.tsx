@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import Image from "next/image";
+import type { ElementType } from "react";
 import {
   LayoutDashboard,
   Settings,
@@ -17,9 +18,15 @@ import {
   MessagesSquare,
   ChevronUp,
   DollarSign,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/version";
+import {
+  BASE_NAV_GROUPS as NAV_GROUP_DEFS,
+  ADMIN_NAV_GROUP as ADMIN_GROUP_DEF,
+  type NavGroupDef,
+} from "@/lib/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Tooltip,
@@ -32,13 +39,25 @@ import { useAdmin } from "@/hooks/use-admin";
 import { useSidebar } from "./sidebar-context";
 
 // ---------------------------------------------------------------------------
-// Navigation data model
+// Map icon names to Lucide components
 // ---------------------------------------------------------------------------
+
+const ICON_MAP: Record<string, ElementType> = {
+  LayoutDashboard,
+  Settings,
+  Trophy,
+  CalendarDays,
+  MessagesSquare,
+  AppWindow,
+  Cpu,
+  Users,
+  DollarSign,
+};
 
 interface NavItem {
   href: string;
   label: string;
-  icon: React.ElementType;
+  icon: ElementType;
 }
 
 interface NavGroup {
@@ -47,42 +66,21 @@ interface NavGroup {
   defaultOpen?: boolean;
 }
 
-const BASE_NAV_GROUPS: NavGroup[] = [
-  {
-    label: "Overview",
-    defaultOpen: true,
-    items: [
-      { href: "/", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
-    ],
-  },
-  {
-    label: "Analytics",
-    defaultOpen: true,
-    items: [
-      { href: "/details", label: "Daily Usage", icon: CalendarDays },
-      { href: "/sessions", label: "Sessions", icon: MessagesSquare },
-      { href: "/apps", label: "By App", icon: AppWindow },
-      { href: "/models", label: "By Model", icon: Cpu },
-    ],
-  },
-  {
-    label: "Account",
-    defaultOpen: true,
-    items: [{ href: "/settings", label: "Settings", icon: Settings }],
-  },
-];
-
-const ADMIN_NAV_GROUP: NavGroup = {
-  label: "Admin",
-  defaultOpen: true,
-  items: [
-    { href: "/admin/pricing", label: "Token Pricing", icon: DollarSign },
-  ],
-};
+function resolveNavGroup(def: NavGroupDef): NavGroup {
+  return {
+    label: def.label,
+    defaultOpen: def.defaultOpen,
+    items: def.items.map((item) => ({
+      href: item.href,
+      label: item.label,
+      icon: ICON_MAP[item.icon] ?? Settings,
+    })),
+  };
+}
 
 function getNavGroups(isAdmin: boolean): NavGroup[] {
-  return isAdmin ? [...BASE_NAV_GROUPS, ADMIN_NAV_GROUP] : BASE_NAV_GROUPS;
+  const base = NAV_GROUP_DEFS.map(resolveNavGroup);
+  return isAdmin ? [...base, resolveNavGroup(ADMIN_GROUP_DEF)] : base;
 }
 
 // ---------------------------------------------------------------------------

@@ -151,9 +151,11 @@ describe("pricing", () => {
       expect(formatCost(99.99)).toBe("$99.99");
     });
 
-    it("should format large costs without decimals", () => {
+    it("should format large costs with thousand separators and no decimals", () => {
       expect(formatCost(100)).toBe("$100");
-      expect(formatCost(1234.56)).toBe("$1235");
+      expect(formatCost(1234.56)).toBe("$1,235");
+      expect(formatCost(12345.67)).toBe("$12,346");
+      expect(formatCost(1234567.89)).toBe("$1,234,568");
     });
   });
 
