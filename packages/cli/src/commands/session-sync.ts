@@ -5,29 +5,28 @@
  * dual-check), collects SessionSnapshots, converts to SessionQueueRecords,
  * deduplicates, and writes to session queue.
  *
+ * Uses the two-phase driver architecture:
+ *   Phase 1: File-based drivers (generic discover → stat → skip → parse → cursor loop)
+ *   Phase 2: DB-based drivers (single run() call)
+ *
  * Fully independent from the token sync pipeline — separate cursors,
  * separate queue, separate files.
  */
 
-import { readdir, stat } from "node:fs/promises";
-import { join } from "node:path";
-import type { SessionSnapshot, SessionQueueRecord, SessionFileCursor, OpenCodeSqliteSessionCursor } from "@pew/core";
+import { stat } from "node:fs/promises";
+import type {
+  SessionSnapshot,
+  SessionQueueRecord,
+  SessionFileCursor,
+  OpenCodeSqliteSessionCursor,
+  Source,
+} from "@pew/core";
 import { SessionCursorStore } from "../storage/session-cursor-store.js";
 import { SessionQueue } from "../storage/session-queue.js";
-import {
-  discoverClaudeFiles,
-  discoverCodexFiles,
-  discoverGeminiFiles,
-  discoverOpenClawFiles,
-} from "../discovery/sources.js";
-import { collectClaudeSessions } from "../parsers/claude-session.js";
-import { collectCodexSessions } from "../parsers/codex-session.js";
-import { collectGeminiSessions } from "../parsers/gemini-session.js";
-import { collectOpenCodeSessions } from "../parsers/opencode-session.js";
-import { collectOpenClawSessions } from "../parsers/openclaw-session.js";
-import { collectOpenCodeSqliteSessions } from "../parsers/opencode-sqlite-session.js";
-import type { SessionRow, SessionMessageRow } from "../parsers/opencode-sqlite-session.js";
 import { deduplicateSessionRecords } from "./session-upload.js";
+import { createSessionDrivers } from "../drivers/registry.js";
+import type { FileFingerprint } from "../drivers/types.js";
+import type { SessionRow, SessionMessageRow } from "../parsers/opencode-sqlite-session.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -111,39 +110,15 @@ function toQueueRecord(snap: SessionSnapshot): SessionQueueRecord {
   };
 }
 
-/**
- * Check if a file has changed since the last cursor.
- * Returns true if the file should be re-scanned (full-scan).
- */
-function fileChanged(
-  cursor: SessionFileCursor | undefined,
-  mtimeMs: number,
-  size: number,
-): boolean {
-  if (!cursor) return true;
-  return cursor.mtimeMs !== mtimeMs || cursor.size !== size;
-}
-
-/**
- * Discover OpenCode session directories.
- *
- * Lists subdirectories under the message dir (e.g. ses_xxx/).
- * Returns absolute paths to session directories.
- */
-async function discoverOpenCodeSessionDirs(
-  messageDir: string,
-): Promise<string[]> {
-  let entries: import("node:fs").Dirent[];
-  try {
-    entries = await readdir(messageDir, { withFileTypes: true });
-  } catch {
-    return [];
+/** Map Source type to short result key */
+function sourceKey(source: Source): keyof SessionSyncResult["sources"] {
+  switch (source) {
+    case "claude-code": return "claude";
+    case "gemini-cli": return "gemini";
+    case "opencode": return "opencode";
+    case "openclaw": return "openclaw";
+    case "codex": return "codex";
   }
-
-  return entries
-    .filter((e) => e.isDirectory())
-    .map((e) => join(messageDir, e.name))
-    .sort();
 }
 
 // ---------------------------------------------------------------------------
@@ -167,20 +142,37 @@ export async function executeSessionSync(
   const sourceCounts = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0 };
   const filesScanned = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0 };
 
-  // ---------- Claude Code ----------
-  if (opts.claudeDir) {
+  // Build driver sets from options
+  const { fileDrivers, dbDrivers } = createSessionDrivers(opts);
+
+  // Discovery options bag
+  const discoverOpts = {
+    claudeDir: opts.claudeDir,
+    codexSessionsDir: opts.codexSessionsDir,
+    geminiDir: opts.geminiDir,
+    openCodeMessageDir: opts.openCodeMessageDir,
+    openCodeDbPath: opts.openCodeDbPath,
+    openclawDir: opts.openclawDir,
+  };
+
+  // ---------- Phase 1: File-based drivers (generic loop) ----------
+  for (const driver of fileDrivers) {
+    const key = sourceKey(driver.source);
+
     onProgress?.({
-      source: "claude-code",
+      source: driver.source,
       phase: "discover",
-      message: "Discovering Claude Code session files...",
+      message: `Discovering ${driver.source} session files...`,
     });
-    const files = await discoverClaudeFiles(opts.claudeDir);
-    filesScanned.claude = files.length;
+
+    const files = await driver.discover(discoverOpts);
+    filesScanned[key] += files.length;
+
     onProgress?.({
-      source: "claude-code",
+      source: driver.source,
       phase: "parse",
       total: files.length,
-      message: `Scanning ${files.length} Claude session files...`,
+      message: `Scanning ${files.length} ${driver.source} session files...`,
     });
 
     for (let i = 0; i < files.length; i++) {
@@ -188,10 +180,18 @@ export async function executeSessionSync(
       const st = await stat(filePath).catch(() => null);
       if (!st) continue;
 
+      const fingerprint: FileFingerprint = {
+        inode: st.ino,
+        mtimeMs: st.mtimeMs,
+        size: st.size,
+      };
+
       const cursor = cursors.files[filePath] as SessionFileCursor | undefined;
-      if (!fileChanged(cursor, st.mtimeMs, st.size)) {
+
+      // Fast skip: file/dir unchanged since last cursor?
+      if (driver.shouldSkip(cursor, fingerprint)) {
         onProgress?.({
-          source: "claude-code",
+          source: driver.source,
           phase: "parse",
           current: i + 1,
           total: files.length,
@@ -199,10 +199,11 @@ export async function executeSessionSync(
         continue;
       }
 
-      const snapshots = await collectClaudeSessions(filePath).catch(
+      // Full-scan parse
+      const snapshots = await driver.parse(filePath).catch(
         (err: unknown) => {
           onProgress?.({
-            source: "claude-code",
+            source: driver.source,
             phase: "warn",
             message: `Skipping ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
           });
@@ -210,14 +211,15 @@ export async function executeSessionSync(
         },
       );
 
-      // Update cursor with new mtime+size
-      cursors.files[filePath] = { mtimeMs: st.mtimeMs, size: st.size };
+      // Build and persist cursor (cast: driver returns concrete cursor type
+      // but the generic loop types it as SessionFileCursor | unknown)
+      cursors.files[filePath] = driver.buildCursor(fingerprint) as SessionFileCursor;
 
       allSnapshots.push(...snapshots);
-      sourceCounts.claude += snapshots.length;
+      sourceCounts[key] += snapshots.length;
 
       onProgress?.({
-        source: "claude-code",
+        source: driver.source,
         phase: "parse",
         current: i + 1,
         total: files.length,
@@ -225,329 +227,76 @@ export async function executeSessionSync(
     }
   }
 
-  // ---------- Gemini CLI ----------
-  if (opts.geminiDir) {
-    onProgress?.({
-      source: "gemini-cli",
-      phase: "discover",
-      message: "Discovering Gemini CLI session files...",
-    });
-    const files = await discoverGeminiFiles(opts.geminiDir);
-    filesScanned.gemini = files.length;
-    onProgress?.({
-      source: "gemini-cli",
-      phase: "parse",
-      total: files.length,
-      message: `Scanning ${files.length} Gemini session files...`,
-    });
-
-    for (let i = 0; i < files.length; i++) {
-      const filePath = files[i];
-      const st = await stat(filePath).catch(() => null);
-      if (!st) continue;
-
-      const cursor = cursors.files[filePath] as SessionFileCursor | undefined;
-      if (!fileChanged(cursor, st.mtimeMs, st.size)) {
-        onProgress?.({
-          source: "gemini-cli",
-          phase: "parse",
-          current: i + 1,
-          total: files.length,
-        });
-        continue;
-      }
-
-      const snapshots = await collectGeminiSessions(filePath).catch(
-        (err: unknown) => {
-          onProgress?.({
-            source: "gemini-cli",
-            phase: "warn",
-            message: `Skipping ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
-          });
-          return [] as SessionSnapshot[];
-        },
-      );
-
-      cursors.files[filePath] = { mtimeMs: st.mtimeMs, size: st.size };
-
-      allSnapshots.push(...snapshots);
-      sourceCounts.gemini += snapshots.length;
-
-      onProgress?.({
-        source: "gemini-cli",
-        phase: "parse",
-        current: i + 1,
-        total: files.length,
-      });
-    }
-  }
-
-  // ---------- OpenCode ----------
-  if (opts.openCodeMessageDir) {
-    onProgress?.({
-      source: "opencode",
-      phase: "discover",
-      message: "Discovering OpenCode session directories...",
-    });
-    const dirs = await discoverOpenCodeSessionDirs(opts.openCodeMessageDir);
-    filesScanned.opencode += dirs.length;
-    onProgress?.({
-      source: "opencode",
-      phase: "parse",
-      total: dirs.length,
-      message: `Scanning ${dirs.length} OpenCode session directories...`,
-    });
-
-    for (let i = 0; i < dirs.length; i++) {
-      const dirPath = dirs[i];
-      const st = await stat(dirPath).catch(() => null);
-      if (!st) continue;
-
-      // For directories, use mtimeMs as proxy for content changes.
-      // Size for dirs isn't reliable across filesystems, so we use
-      // mtimeMs only and set size to 0 as a sentinel.
-      const cursor = cursors.files[dirPath] as SessionFileCursor | undefined;
-      if (cursor && cursor.mtimeMs === st.mtimeMs) {
-        onProgress?.({
-          source: "opencode",
-          phase: "parse",
-          current: i + 1,
-          total: dirs.length,
-        });
-        continue;
-      }
-
-      const snapshots = await collectOpenCodeSessions(dirPath).catch(
-        (err: unknown) => {
-          onProgress?.({
-            source: "opencode",
-            phase: "warn",
-            message: `Skipping ${dirPath}: ${err instanceof Error ? err.message : String(err)}`,
-          });
-          return [] as SessionSnapshot[];
-        },
-      );
-
-      cursors.files[dirPath] = { mtimeMs: st.mtimeMs, size: 0 };
-
-      allSnapshots.push(...snapshots);
-      sourceCounts.opencode += snapshots.length;
-
-      onProgress?.({
-        source: "opencode",
-        phase: "parse",
-        current: i + 1,
-        total: dirs.length,
-      });
-    }
-  }
-
-  // ---------- OpenCode SQLite Sessions ----------
+  // ---------- Phase 2: DB-based drivers ----------
+  // SQLite warning paths are handled at the orchestrator level:
+  // - "bun:sqlite not available": registry doesn't create a driver (no openSessionDb)
+  // - "Failed to open": factory returns null, pre-probed here to emit warning
+  let activeDbDrivers = dbDrivers;
   if (opts.openCodeDbPath) {
+    const dbStat = await stat(opts.openCodeDbPath).catch(() => null);
+    if (dbStat) {
+      if (!opts.openSessionDb) {
+        // Case 1: DB file exists but bun:sqlite adapter is missing
+        onProgress?.({
+          source: "opencode-sqlite",
+          phase: "discover",
+          message: "Checking OpenCode SQLite database for sessions...",
+        });
+        onProgress?.({
+          source: "opencode-sqlite",
+          phase: "warn",
+          message: `OpenCode SQLite database found at ${opts.openCodeDbPath} but bun:sqlite is not available — SQLite session data will NOT be synced`,
+        });
+      } else {
+        // Case 2: Both provided — pre-probe if factory returns null
+        const handle = opts.openSessionDb(opts.openCodeDbPath);
+        if (!handle) {
+          onProgress?.({
+            source: "opencode-sqlite",
+            phase: "discover",
+            message: "Checking OpenCode SQLite database for sessions...",
+          });
+          onProgress?.({
+            source: "opencode-sqlite",
+            phase: "warn",
+            message: `Failed to open OpenCode SQLite database at ${opts.openCodeDbPath} — SQLite session data will NOT be synced`,
+          });
+          // Skip DB drivers — factory returns null, driver would return empty anyway
+          activeDbDrivers = [];
+        } else {
+          handle.close();
+        }
+      }
+    }
+  }
+
+  for (const driver of activeDbDrivers) {
+    const key = sourceKey(driver.source);
+
     onProgress?.({
       source: "opencode-sqlite",
       phase: "discover",
       message: "Checking OpenCode SQLite database for sessions...",
     });
 
-    const dbStat = await stat(opts.openCodeDbPath).catch(() => null);
+    // Count DB as 1 file scanned for the source
+    filesScanned[key] += 1;
 
-    if (dbStat && !opts.openSessionDb) {
-      // DB file exists but adapter is missing (bun:sqlite not available)
-      onProgress?.({
-        source: "opencode-sqlite",
-        phase: "warn",
-        message: `OpenCode SQLite database found at ${opts.openCodeDbPath} but bun:sqlite is not available — SQLite session data will NOT be synced`,
-      });
-    } else if (dbStat && opts.openSessionDb) {
-      filesScanned.opencode += 1;
-      const dbInode = dbStat.ino;
-      const prevSqlite = cursors.openCodeSqlite;
+    const prevCursor = cursors.openCodeSqlite as OpenCodeSqliteSessionCursor | undefined;
+    const result = await driver.run(prevCursor, {});
 
-      // If inode changed (DB recreated), reset cursor
-      const lastTimeUpdated =
-        prevSqlite && prevSqlite.inode === dbInode
-          ? prevSqlite.lastTimeUpdated
-          : 0;
-      const prevProcessedIds = new Set(
-        prevSqlite && prevSqlite.inode === dbInode
-          ? (prevSqlite.lastProcessedIds ?? [])
-          : [],
-      );
+    cursors.openCodeSqlite = result.cursor as OpenCodeSqliteSessionCursor;
 
-      const handle = opts.openSessionDb(opts.openCodeDbPath);
-      if (handle) {
-        try {
-          // Query uses >= to avoid missing same-millisecond rows.
-          // We dedup previously-processed IDs from the prior batch.
-          const rawSessions = handle.querySessions(lastTimeUpdated);
-          const sessions = prevProcessedIds.size > 0
-            ? rawSessions.filter((s) => !prevProcessedIds.has(s.id))
-            : rawSessions;
+    allSnapshots.push(...result.snapshots);
+    sourceCounts[key] += result.snapshots.length;
 
-          if (sessions.length > 0) {
-            const sessionIds = sessions.map((s) => s.id);
-            const messages = handle.querySessionMessages(sessionIds);
-            const snapshots = collectOpenCodeSqliteSessions(sessions, messages);
-
-            onProgress?.({
-              source: "opencode-sqlite",
-              phase: "parse",
-              message: `Collected ${snapshots.length} sessions from ${rawSessions.length} SQLite session rows`,
-            });
-
-            allSnapshots.push(...snapshots);
-            sourceCounts.opencode += snapshots.length;
-          } else {
-            onProgress?.({
-              source: "opencode-sqlite",
-              phase: "parse",
-              message: "No new SQLite sessions found",
-            });
-          }
-
-          // Update session cursor — advance past ALL queried sessions.
-          // Sessions are ORDER BY time_updated ASC, so last has the max.
-          // Track IDs at the max timestamp for same-millisecond dedup
-          // on the next query.
-          const maxTimeUpdated = rawSessions.length > 0
-            ? rawSessions[rawSessions.length - 1].time_updated
-            : lastTimeUpdated;
-          const idsAtMax = rawSessions
-            .filter((s) => s.time_updated === maxTimeUpdated)
-            .map((s) => s.id);
-          cursors.openCodeSqlite = {
-            lastTimeUpdated: maxTimeUpdated,
-            lastProcessedIds: idsAtMax,
-            inode: dbInode,
-            updatedAt: new Date().toISOString(),
-          } satisfies OpenCodeSqliteSessionCursor;
-        } finally {
-          handle.close();
-        }
-      } else {
-        // openSessionDb returned null — DB exists but couldn't be opened
-        onProgress?.({
-          source: "opencode-sqlite",
-          phase: "warn",
-          message: `Failed to open OpenCode SQLite database at ${opts.openCodeDbPath} — SQLite session data will NOT be synced`,
-        });
-      }
-    }
-  }
-
-  // ---------- OpenClaw ----------
-  if (opts.openclawDir) {
     onProgress?.({
-      source: "openclaw",
-      phase: "discover",
-      message: "Discovering OpenClaw session files...",
-    });
-    const files = await discoverOpenClawFiles(opts.openclawDir);
-    filesScanned.openclaw = files.length;
-    onProgress?.({
-      source: "openclaw",
+      source: "opencode-sqlite",
       phase: "parse",
-      total: files.length,
-      message: `Scanning ${files.length} OpenClaw session files...`,
+      message: result.snapshots.length > 0
+        ? `Collected ${result.snapshots.length} sessions from ${result.rowCount} SQLite session rows`
+        : "No new SQLite sessions found",
     });
-
-    for (let i = 0; i < files.length; i++) {
-      const filePath = files[i];
-      const st = await stat(filePath).catch(() => null);
-      if (!st) continue;
-
-      const cursor = cursors.files[filePath] as SessionFileCursor | undefined;
-      if (!fileChanged(cursor, st.mtimeMs, st.size)) {
-        onProgress?.({
-          source: "openclaw",
-          phase: "parse",
-          current: i + 1,
-          total: files.length,
-        });
-        continue;
-      }
-
-      const snapshots = await collectOpenClawSessions(filePath).catch(
-        (err: unknown) => {
-          onProgress?.({
-            source: "openclaw",
-            phase: "warn",
-            message: `Skipping ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
-          });
-          return [] as SessionSnapshot[];
-        },
-      );
-
-      cursors.files[filePath] = { mtimeMs: st.mtimeMs, size: st.size };
-
-      allSnapshots.push(...snapshots);
-      sourceCounts.openclaw += snapshots.length;
-
-      onProgress?.({
-        source: "openclaw",
-        phase: "parse",
-        current: i + 1,
-        total: files.length,
-      });
-    }
-  }
-
-  // ---------- Codex CLI ----------
-  if (opts.codexSessionsDir) {
-    onProgress?.({
-      source: "codex",
-      phase: "discover",
-      message: "Discovering Codex CLI session files...",
-    });
-    const files = await discoverCodexFiles(opts.codexSessionsDir);
-    filesScanned.codex = files.length;
-    onProgress?.({
-      source: "codex",
-      phase: "parse",
-      total: files.length,
-      message: `Scanning ${files.length} Codex session files...`,
-    });
-
-    for (let i = 0; i < files.length; i++) {
-      const filePath = files[i];
-      const st = await stat(filePath).catch(() => null);
-      if (!st) continue;
-
-      const cursor = cursors.files[filePath] as SessionFileCursor | undefined;
-      if (!fileChanged(cursor, st.mtimeMs, st.size)) {
-        onProgress?.({
-          source: "codex",
-          phase: "parse",
-          current: i + 1,
-          total: files.length,
-        });
-        continue;
-      }
-
-      const snapshots = await collectCodexSessions(filePath).catch(
-        (err: unknown) => {
-          onProgress?.({
-            source: "codex",
-            phase: "warn",
-            message: `Skipping ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
-          });
-          return [] as SessionSnapshot[];
-        },
-      );
-
-      cursors.files[filePath] = { mtimeMs: st.mtimeMs, size: st.size };
-
-      allSnapshots.push(...snapshots);
-      sourceCounts.codex += snapshots.length;
-
-      onProgress?.({
-        source: "codex",
-        phase: "parse",
-        current: i + 1,
-        total: files.length,
-      });
-    }
   }
 
   // ---------- Convert snapshots to queue records ----------

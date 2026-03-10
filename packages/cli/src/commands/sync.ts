@@ -1,10 +1,8 @@
 import { stat } from "node:fs/promises";
 import type {
-  ByteOffsetCursor,
-  CodexCursor,
   CursorState,
-  GeminiCursor,
-  OpenCodeCursor,
+  FileCursor,
+  FileCursorBase,
   OpenCodeSqliteCursor,
   QueueRecord,
   Source,
@@ -12,23 +10,11 @@ import type {
 } from "@pew/core";
 import { CursorStore } from "../storage/cursor-store.js";
 import { LocalQueue } from "../storage/local-queue.js";
-import {
-  discoverClaudeFiles,
-  discoverCodexFiles,
-  discoverGeminiFiles,
-  discoverOpenCodeFiles,
-  discoverOpenClawFiles,
-} from "../discovery/sources.js";
-import type { OpenCodeDiscoveryResult } from "../discovery/sources.js";
-import { parseClaudeFile } from "../parsers/claude.js";
-import { parseCodexFile } from "../parsers/codex.js";
-import { parseGeminiFile } from "../parsers/gemini.js";
-import { parseOpenCodeFile } from "../parsers/opencode.js";
-import { parseOpenClawFile } from "../parsers/openclaw.js";
-import { processOpenCodeMessages } from "../parsers/opencode-sqlite.js";
 import type { QueryMessagesFn } from "../parsers/opencode-sqlite.js";
 import type { ParsedDelta } from "../parsers/claude.js";
 import { toUtcHalfHourStart, bucketKey, addTokens, emptyTokenDelta } from "../utils/buckets.js";
+import { createTokenDrivers } from "../drivers/registry.js";
+import type { SyncContext, FileFingerprint } from "../drivers/types.js";
 
 /** Sync execution options */
 export interface SyncOptions {
@@ -90,6 +76,17 @@ interface Bucket {
   tokens: TokenDelta;
 }
 
+/** Map Source type to short result key */
+function sourceKey(source: Source): keyof SyncResult["sources"] {
+  switch (source) {
+    case "claude-code": return "claude";
+    case "gemini-cli": return "gemini";
+    case "opencode": return "opencode";
+    case "openclaw": return "openclaw";
+    case "codex": return "codex";
+  }
+}
+
 /**
  * Execute the sync operation: discover files, parse incrementally,
  * aggregate into half-hour buckets, and write to local queue.
@@ -107,165 +104,67 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   const sourceCounts = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0 };
   const filesScanned = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0 };
 
-  // ---------- Claude Code ----------
-  if (opts.claudeDir) {
+  // Build driver sets from options
+  const { fileDrivers, dbDrivers } = createTokenDrivers(opts);
+
+  // Shared state bag for cross-driver communication
+  const ctx: SyncContext = { dirMtimes: cursors.dirMtimes };
+
+  // Discovery options bag (drivers read their relevant directory)
+  const discoverOpts = {
+    claudeDir: opts.claudeDir,
+    codexSessionsDir: opts.codexSessionsDir,
+    geminiDir: opts.geminiDir,
+    openCodeMessageDir: opts.openCodeMessageDir,
+    openCodeDbPath: opts.openCodeDbPath,
+    openclawDir: opts.openclawDir,
+  };
+
+  // ---------- Phase 1: File-based drivers (generic loop) ----------
+  for (const driver of fileDrivers) {
+    const key = sourceKey(driver.source);
+
     onProgress?.({
-      source: "claude-code",
+      source: driver.source,
       phase: "discover",
-      message: "Discovering Claude Code files...",
+      message: `Discovering ${driver.source} files...`,
     });
-    const files = await discoverClaudeFiles(opts.claudeDir);
-    filesScanned.claude = files.length;
-    onProgress?.({      source: "claude-code",
+
+    const files = await driver.discover(discoverOpts, ctx);
+    filesScanned[key] = files.length;
+
+    // Build discover message with skipped dirs info from context
+    const skippedDirs = driver.source === "opencode" && ctx.dirMtimes
+      ? Object.keys(ctx.dirMtimes).length
+      : 0;
+    const parseMsg = driver.source === "opencode" && skippedDirs > 0
+      ? `Parsing ${files.length} ${driver.source} files (${skippedDirs} dirs skipped)...`
+      : `Parsing ${files.length} ${driver.source} files...`;
+
+    onProgress?.({
+      source: driver.source,
       phase: "parse",
       total: files.length,
-      message: `Parsing ${files.length} Claude files...`,
+      message: parseMsg,
     });
 
     for (let i = 0; i < files.length; i++) {
       const filePath = files[i];
-      const prev = cursors.files[filePath] as ByteOffsetCursor | undefined;
       const st = await stat(filePath).catch(() => null);
       if (!st) continue;
 
-      const inode = st.ino;
-      const startOffset =
-        prev && prev.inode === inode ? (prev.offset ?? 0) : 0;
-
-      const result = await parseClaudeFile({ filePath, startOffset }).catch(
-        (err: unknown) => {
-          onProgress?.({
-            source: "claude-code",
-            phase: "warn",
-            message: `Skipping ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
-          });
-          return null;
-        },
-      );
-      if (!result) continue;
-
-      cursors.files[filePath] = {
-        inode,
+      const fingerprint: FileFingerprint = {
+        inode: st.ino,
         mtimeMs: st.mtimeMs,
         size: st.size,
-        offset: result.endOffset,
-        updatedAt: new Date().toISOString(),
-      } satisfies ByteOffsetCursor;
+      };
 
-      allDeltas.push(...result.deltas);
-      sourceCounts.claude += result.deltas.length;
+      const cursor = cursors.files[filePath] as FileCursorBase | undefined;
 
-      onProgress?.({
-        source: "claude-code",
-        phase: "parse",
-        current: i + 1,
-        total: files.length,
-      });
-    }
-  }
-
-  // ---------- Gemini CLI ----------
-  if (opts.geminiDir) {
-    onProgress?.({
-      source: "gemini-cli",
-      phase: "discover",
-      message: "Discovering Gemini CLI files...",
-    });
-    const files = await discoverGeminiFiles(opts.geminiDir);
-    filesScanned.gemini = files.length;
-    onProgress?.({
-      source: "gemini-cli",
-      phase: "parse",
-      total: files.length,
-      message: `Parsing ${files.length} Gemini files...`,
-    });
-
-    for (let i = 0; i < files.length; i++) {
-      const filePath = files[i];
-      const prev = cursors.files[filePath] as GeminiCursor | undefined;
-      const st = await stat(filePath).catch(() => null);
-      if (!st) continue;
-
-      const inode = st.ino;
-      const startIndex =
-        prev && prev.inode === inode ? (prev.lastIndex ?? -1) : -1;
-      const lastTotals =
-        prev && prev.inode === inode ? (prev.lastTotals ?? null) : null;
-
-      const result = await parseGeminiFile({
-        filePath,
-        startIndex,
-        lastTotals,
-      }).catch((err: unknown) => {
+      // Fast skip: file unchanged since last cursor?
+      if (driver.shouldSkip(cursor, fingerprint)) {
         onProgress?.({
-          source: "gemini-cli",
-          phase: "warn",
-          message: `Skipping ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
-        });
-        return null;
-      });
-      if (!result) continue;
-
-      cursors.files[filePath] = {
-        inode,
-        mtimeMs: st.mtimeMs,
-        size: st.size,
-        lastIndex: result.lastIndex,
-        lastTotals: result.lastTotals,
-        lastModel: result.lastModel,
-        updatedAt: new Date().toISOString(),
-      } satisfies GeminiCursor;
-
-      allDeltas.push(...result.deltas);
-      sourceCounts.gemini += result.deltas.length;
-
-      onProgress?.({
-        source: "gemini-cli",
-        phase: "parse",
-        current: i + 1,
-        total: files.length,
-      });
-    }
-  }
-
-  // ---------- OpenCode ----------
-  if (opts.openCodeMessageDir) {
-    onProgress?.({
-      source: "opencode",
-      phase: "discover",
-      message: "Discovering OpenCode files...",
-    });
-    const discovery = await discoverOpenCodeFiles(
-      opts.openCodeMessageDir,
-      cursors.dirMtimes,
-    );
-    const files = discovery.files;
-    // Count includes files in skipped dirs (already tracked in cursors)
-    filesScanned.opencode = files.length;
-    onProgress?.({
-      source: "opencode",
-      phase: "parse",
-      total: files.length,
-      message: `Parsing ${files.length} OpenCode files (${discovery.skippedDirs} dirs skipped)...`,
-    });
-
-    for (let i = 0; i < files.length; i++) {
-      const filePath = files[i];
-      const prev = cursors.files[filePath] as OpenCodeCursor | undefined;
-      const st = await stat(filePath).catch(() => null);
-      if (!st) continue;
-
-      const inode = st.ino;
-
-      // Triple-check unchanged optimization
-      if (
-        prev &&
-        prev.inode === inode &&
-        prev.size === st.size &&
-        prev.mtimeMs === st.mtimeMs
-      ) {
-        onProgress?.({
-          source: "opencode",
+          source: driver.source,
           phase: "parse",
           current: i + 1,
           total: files.length,
@@ -273,13 +172,12 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
         continue;
       }
 
-      const lastTotals =
-        prev && prev.inode === inode ? (prev.lastTotals ?? null) : null;
-
-      const result = await parseOpenCodeFile({ filePath, lastTotals }).catch(
+      // Extract resume state and parse
+      const resume = driver.resumeState(cursor, fingerprint);
+      const result = await driver.parse(filePath, resume).catch(
         (err: unknown) => {
           onProgress?.({
-            source: "opencode",
+            source: driver.source,
             phase: "warn",
             message: `Skipping ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
           });
@@ -288,263 +186,98 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       );
       if (!result) continue;
 
-      cursors.files[filePath] = {
-        inode,
-        size: st.size,
-        mtimeMs: st.mtimeMs,
-        lastTotals: result.lastTotals,
-        messageKey: result.messageKey,
-        updatedAt: new Date().toISOString(),
-      } satisfies OpenCodeCursor;
+      // Build and persist cursor (cast: driver returns concrete cursor type
+      // but the generic loop types it as FileCursorBase)
+      cursors.files[filePath] = driver.buildCursor(fingerprint, result, cursor) as FileCursor;
 
-      if (result.delta) {
-        allDeltas.push(result.delta);
-        sourceCounts.opencode += 1;
-      }
+      // Collect deltas
+      allDeltas.push(...result.deltas);
+      sourceCounts[key] += result.deltas.length;
 
       onProgress?.({
-        source: "opencode",
+        source: driver.source,
         phase: "parse",
         current: i + 1,
         total: files.length,
       });
     }
 
-    // Persist directory mtimes for next run
-    cursors.dirMtimes = discovery.dirMtimes;
+    // Post-parse hook (e.g. OpenCode JSON deposits messageKeys into ctx)
+    driver.afterAll?.(cursors.files, ctx);
   }
 
-  // ---------- OpenCode SQLite ----------
+  // ---------- Phase 2: DB-based drivers ----------
+  // SQLite warning paths are handled at the orchestrator level because:
+  // - "bun:sqlite not available": registry doesn't create a driver (no openMessageDb)
+  // - "Failed to open": factory returns null, driver would silently return empty
+  // We pre-probe the factory here to emit warnings BEFORE running the driver,
+  // avoiding the need for double-open detection after the fact.
+  let activeDbDrivers = dbDrivers;
   if (opts.openCodeDbPath) {
+    const dbStat = await stat(opts.openCodeDbPath).catch(() => null);
+    if (dbStat) {
+      if (!opts.openMessageDb) {
+        // Case 1: DB file exists but bun:sqlite adapter is missing
+        onProgress?.({
+          source: "opencode-sqlite",
+          phase: "discover",
+          message: "Checking OpenCode SQLite database...",
+        });
+        onProgress?.({
+          source: "opencode-sqlite",
+          phase: "warn",
+          message: `OpenCode SQLite database found at ${opts.openCodeDbPath} but bun:sqlite is not available — SQLite token data will NOT be synced`,
+        });
+      } else {
+        // Case 2: Both provided — pre-probe if factory returns null
+        const handle = opts.openMessageDb(opts.openCodeDbPath);
+        if (!handle) {
+          onProgress?.({
+            source: "opencode-sqlite",
+            phase: "discover",
+            message: "Checking OpenCode SQLite database...",
+          });
+          onProgress?.({
+            source: "opencode-sqlite",
+            phase: "warn",
+            message: `Failed to open OpenCode SQLite database at ${opts.openCodeDbPath} — SQLite token data will NOT be synced`,
+          });
+          // Skip DB drivers — factory returns null, driver would return empty anyway
+          activeDbDrivers = [];
+        } else {
+          handle.close();
+        }
+      }
+    }
+  }
+
+  for (const driver of activeDbDrivers) {
+    const key = sourceKey(driver.source);
+
     onProgress?.({
       source: "opencode-sqlite",
       phase: "discover",
       message: "Checking OpenCode SQLite database...",
     });
 
-    // Check if DB file exists
-    const dbStat = await stat(opts.openCodeDbPath).catch(() => null);
+    const prevCursor = cursors.openCodeSqlite as OpenCodeSqliteCursor | undefined;
+    const result = await driver.run(prevCursor, ctx);
 
-    if (dbStat && !opts.openMessageDb) {
-      // DB file exists but adapter is missing (bun:sqlite not available)
-      onProgress?.({
-        source: "opencode-sqlite",
-        phase: "warn",
-        message: `OpenCode SQLite database found at ${opts.openCodeDbPath} but bun:sqlite is not available — SQLite token data will NOT be synced`,
-      });
-    } else if (dbStat && opts.openMessageDb) {
-      const dbInode = dbStat.ino;
-      const prevSqlite = cursors.openCodeSqlite;
+    cursors.openCodeSqlite = result.cursor as CursorState["openCodeSqlite"];
 
-      // If inode changed (DB recreated), reset cursor
-      const lastTimeCreated =
-        prevSqlite && prevSqlite.inode === dbInode
-          ? prevSqlite.lastTimeCreated
-          : 0;
-      const prevProcessedIds = new Set(
-        prevSqlite && prevSqlite.inode === dbInode
-          ? (prevSqlite.lastProcessedIds ?? [])
-          : [],
-      );
+    allDeltas.push(...result.deltas);
+    sourceCounts[key] += result.deltas.length;
 
-      const handle = opts.openMessageDb(opts.openCodeDbPath);
-      if (handle) {
-        try {
-          // Query uses >= to avoid missing same-millisecond rows.
-          // We dedup previously-processed IDs from the prior batch.
-          const rawRows = handle.queryMessages(lastTimeCreated);
-          const rows = prevProcessedIds.size > 0
-            ? rawRows.filter((r) => !prevProcessedIds.has(r.id))
-            : rawRows;
-
-          // Collect JSON messageKeys from cursor store for dedup.
-          // During the overlap window (~Feb 15-17), both JSON and SQLite
-          // sources contain the same messages. We skip any SQLite row
-          // whose messageKey is already tracked by a JSON file cursor.
-          const jsonMessageKeys = new Set<string>();
-          for (const cursor of Object.values(cursors.files)) {
-            const oc = cursor as OpenCodeCursor;
-            if (oc.messageKey) {
-              jsonMessageKeys.add(oc.messageKey);
-            }
-          }
-
-          // Filter rows: exclude assistant messages already tracked by JSON parser.
-          // row.role is extracted at the SQL level via json_extract — no need to
-          // parse the full data JSON here.
-          const filteredRows = rows.filter((row) => {
-            if (row.role !== "assistant") return true; // non-assistant rows don't produce deltas
-            const key = `${row.session_id}|${row.id}`;
-            return !jsonMessageKeys.has(key);
-          });
-
-          const dedupSkipped = rows.length - filteredRows.length;
-          const result = processOpenCodeMessages(filteredRows);
-
-          onProgress?.({
-            source: "opencode-sqlite",
-            phase: "parse",
-            message: `Parsed ${result.deltas.length} deltas from ${rawRows.length} SQLite rows${dedupSkipped > 0 ? ` (${dedupSkipped} deduped)` : ""}`,
-          });
-
-          allDeltas.push(...result.deltas);
-          sourceCounts.opencode += result.deltas.length;
-
-          // Update SQLite cursor — advance past ALL rows (including deduped).
-          // Rows are ORDER BY time_created ASC, so the last row has the
-          // highest time_created. Track IDs at the max timestamp for
-          // same-millisecond dedup on the next query.
-          const maxTime = rawRows.length > 0
-            ? rawRows[rawRows.length - 1].time_created
-            : lastTimeCreated;
-          const idsAtMax = rawRows
-            .filter((r) => r.time_created === maxTime)
-            .map((r) => r.id);
-          cursors.openCodeSqlite = {
-            lastTimeCreated: maxTime,
-            lastProcessedIds: idsAtMax,
-            lastSessionUpdated: prevSqlite?.lastSessionUpdated ?? 0,
-            inode: dbInode,
-            updatedAt: new Date().toISOString(),
-          } satisfies OpenCodeSqliteCursor;
-        } finally {
-          handle.close();
-        }
-      } else {
-        // openMessageDb returned null — DB exists but couldn't be opened
-        onProgress?.({
-          source: "opencode-sqlite",
-          phase: "warn",
-          message: `Failed to open OpenCode SQLite database at ${opts.openCodeDbPath} — SQLite token data will NOT be synced`,
-        });
-      }
-    }
-  }
-
-  // ---------- OpenClaw ----------
-  if (opts.openclawDir) {
+    const dedupSkipped = result.rowCount - (result.deltas.length > 0 ? result.deltas.length : 0);
     onProgress?.({
-      source: "openclaw",
-      phase: "discover",
-      message: "Discovering OpenClaw files...",
-    });
-    const files = await discoverOpenClawFiles(opts.openclawDir);
-    filesScanned.openclaw = files.length;
-    onProgress?.({
-      source: "openclaw",
+      source: "opencode-sqlite",
       phase: "parse",
-      total: files.length,
-      message: `Parsing ${files.length} OpenClaw files...`,
+      message: `Parsed ${result.deltas.length} deltas from ${result.rowCount} SQLite rows${dedupSkipped > 0 ? ` (${dedupSkipped} deduped)` : ""}`,
     });
-
-    for (let i = 0; i < files.length; i++) {
-      const filePath = files[i];
-      const prev = cursors.files[filePath] as ByteOffsetCursor | undefined;
-      const st = await stat(filePath).catch(() => null);
-      if (!st) continue;
-
-      const inode = st.ino;
-      const startOffset =
-        prev && prev.inode === inode ? (prev.offset ?? 0) : 0;
-
-      const result = await parseOpenClawFile({ filePath, startOffset }).catch(
-        (err: unknown) => {
-          onProgress?.({
-            source: "openclaw",
-            phase: "warn",
-            message: `Skipping ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
-          });
-          return null;
-        },
-      );
-      if (!result) continue;
-
-      cursors.files[filePath] = {
-        inode,
-        mtimeMs: st.mtimeMs,
-        size: st.size,
-        offset: result.endOffset,
-        updatedAt: new Date().toISOString(),
-      } satisfies ByteOffsetCursor;
-
-      allDeltas.push(...result.deltas);
-      sourceCounts.openclaw += result.deltas.length;
-
-      onProgress?.({
-        source: "openclaw",
-        phase: "parse",
-        current: i + 1,
-        total: files.length,
-      });
-    }
   }
 
-  // ---------- Codex CLI ----------
-  if (opts.codexSessionsDir) {
-    onProgress?.({
-      source: "codex",
-      phase: "discover",
-      message: "Discovering Codex CLI files...",
-    });
-    const files = await discoverCodexFiles(opts.codexSessionsDir);
-    filesScanned.codex = files.length;
-    onProgress?.({
-      source: "codex",
-      phase: "parse",
-      total: files.length,
-      message: `Parsing ${files.length} Codex files...`,
-    });
-
-    for (let i = 0; i < files.length; i++) {
-      const filePath = files[i];
-      const prev = cursors.files[filePath] as CodexCursor | undefined;
-      const st = await stat(filePath).catch(() => null);
-      if (!st) continue;
-
-      const inode = st.ino;
-      const startOffset =
-        prev && prev.inode === inode ? (prev.offset ?? 0) : 0;
-      const lastTotals =
-        prev && prev.inode === inode ? (prev.lastTotals ?? null) : null;
-      const lastModel =
-        prev && prev.inode === inode ? (prev.lastModel ?? null) : null;
-
-      const result = await parseCodexFile({
-        filePath,
-        startOffset,
-        lastTotals,
-        lastModel,
-      }).catch((err: unknown) => {
-        onProgress?.({
-          source: "codex",
-          phase: "warn",
-          message: `Skipping ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
-        });
-        return null;
-      });
-      if (!result) continue;
-
-      cursors.files[filePath] = {
-        inode,
-        mtimeMs: st.mtimeMs,
-        size: st.size,
-        offset: result.endOffset,
-        lastTotals: result.lastTotals,
-        lastModel: result.lastModel,
-        updatedAt: new Date().toISOString(),
-      } satisfies CodexCursor;
-
-      allDeltas.push(...result.deltas);
-      sourceCounts.codex += result.deltas.length;
-
-      onProgress?.({
-        source: "codex",
-        phase: "parse",
-        current: i + 1,
-        total: files.length,
-      });
-    }
-  }
+  // Persist context state
+  cursors.dirMtimes = ctx.dirMtimes;
 
   // ---------- Aggregate into half-hour buckets ----------
   onProgress?.({
@@ -559,8 +292,8 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     const hourStart = toUtcHalfHourStart(delta.timestamp);
     if (!hourStart) continue;
 
-    const key = bucketKey(delta.source, delta.model, hourStart);
-    let bucket = buckets.get(key);
+    const bk = bucketKey(delta.source, delta.model, hourStart);
+    let bucket = buckets.get(bk);
     if (!bucket) {
       bucket = {
         source: delta.source,
@@ -568,7 +301,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
         hourStart,
         tokens: emptyTokenDelta(),
       };
-      buckets.set(key, bucket);
+      buckets.set(bk, bucket);
     }
     addTokens(bucket.tokens, delta.tokens);
   }
