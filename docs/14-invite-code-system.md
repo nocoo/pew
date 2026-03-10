@@ -7,14 +7,15 @@
 
 | # | Commit | Description | Status |
 |---|--------|-------------|--------|
-| 1 | `docs: add invite code system plan` | This document | |
+| 1 | `docs: add invite code system plan` | This document | ✅ done |
 | 2 | `feat: add invite_codes migration script` | `004-invite-codes.sql` | |
-| 3 | `feat: add admin invites CRUD API` | `GET/POST/DELETE /api/admin/invites` | |
-| 4 | `feat: add invite verification endpoint` | `POST /api/auth/verify-invite` | |
-| 5 | `feat: gate new user registration with invite code` | `auth.ts` signIn callback + adapter | |
-| 6 | `feat: add admin invite codes management page` | `/admin/invites` page + navigation | |
-| 7 | `feat: add invite code input to login page` | Login page InviteRequired flow | |
-| 8 | `test: add L1 unit tests for invite code system` | Pure logic + API route tests | |
+| 3 | `feat: add invite code shared helpers` | `packages/web/src/lib/invite.ts` | |
+| 4 | `feat: add admin invites CRUD API` | `GET/POST/DELETE /api/admin/invites` | |
+| 5 | `feat: add invite verification endpoint` | `POST /api/auth/verify-invite` | |
+| 6 | `feat: gate new user registration with invite code` | `auth.ts` lazy init + signIn callback | |
+| 7 | `feat: add admin invite codes management page` | `/admin/invites` page + navigation | |
+| 8 | `feat: add invite code input to login page` | Login page InviteRequired flow | |
+| 9 | `test: add L1 unit tests for invite code system` | Pure logic + API route tests | |
 
 ---
 
@@ -78,79 +79,198 @@ friction-free while gating new registrations:
                           │   button)   │
                           └──────┬──────┘
                                  │
+                     signIn("google",
+                       { callbackUrl })
+                                 │
                           Google OAuth
                                  │
                           ┌──────▼──────┐
                           │  Auth.js    │
                           │  signIn     │
                           │  callback   │
+                          │  (via lazy  │
+                          │   init req) │
                           └──────┬──────┘
                                  │
                     ┌────────────┴────────────┐
                     │                         │
-             getUserByAccount           getUserByAccount
-             found (existing)           NOT found (new user)
+          getUserByAccount             getUserByAccount
+          found (existing user)        NOT found (new user)
                     │                         │
                     ▼                         ▼
                return true            Read cookie
                (allow login)          `pew-invite-code`
+                                      from req via closure
                                              │
                                   ┌──────────┴──────────┐
                                   │                      │
                              cookie exists           no cookie
-                             code valid in DB        or invalid code
-                                  │                      │
-                                  ▼                      ▼
-                             return true            return redirect
-                             (allow,                "/login?error=
-                              createUser              InviteRequired"
-                              consumes code)
-                                                         │
-                                                         ▼
-                                                  ┌──────────────┐
-                                                  │  /login      │
-                                                  │  shows invite│
-                                                  │  code input  │
-                                                  └──────┬───────┘
-                                                         │
-                                                  User enters code
-                                                         │
-                                                  POST /api/auth/
-                                                    verify-invite
-                                                         │
-                                                  Set cookie +
-                                                  retry Google OAuth
+                             + atomic UPDATE         or invalid code
+                             succeeds (changes=1)         │
+                                  │                       ▼
+                                  ▼                  return redirect
+                             return true             "/login?error=
+                             (code consumed,           InviteRequired
+                              createUser                &callbackUrl=..."
+                              proceeds)
+                                                          │
+                                                          ▼
+                                                   ┌──────────────┐
+                                                   │  /login      │
+                                                   │  shows invite│
+                                                   │  code input  │
+                                                   │  (preserves  │
+                                                   │  callbackUrl)│
+                                                   └──────┬───────┘
+                                                          │
+                                                   User enters code
+                                                          │
+                                                   POST /api/auth/
+                                                     verify-invite
+                                                          │
+                                                   Set cookie +
+                                                   re-trigger
+                                                   signIn("google",
+                                                     { callbackUrl })
 ```
+
+---
+
+### Auth.js Integration: Lazy Init + signIn Callback
+
+**This is the core architectural decision.** The Auth.js v5 `signIn` callback
+receives only `{ user, account, profile }` — it does NOT receive the request
+object, cookies, or `isNewUser` flag. However, `NextAuth()` supports a **lazy
+initializer** pattern that receives the request:
+
+```ts
+// packages/web/src/auth.ts — new pattern
+export const { handlers, auth, signIn, signOut } = NextAuth((req) => {
+  // req: NextRequest | undefined
+  // undefined when called from Server Components (no request context)
+  // NextRequest when called from route handlers, middleware, proxy
+  return {
+    providers: [Google],
+    adapter: D1AuthAdapter(getD1Client()),
+    callbacks: {
+      async signIn({ user, account }) {
+        // Close over `req` to read cookies
+        return handleInviteGate(req, account);
+      },
+      jwt: jwtCallback,
+      session: sessionCallback,
+    },
+    // ... rest of config
+  };
+});
+```
+
+The `handleInviteGate` function (in `packages/web/src/lib/invite.ts`):
+
+1. Uses `account.provider` + `account.providerAccountId` to query
+   `getUserByAccount` — if found, user exists → return `true`.
+2. If not found → read `pew-invite-code` cookie from `req.cookies`.
+3. If no cookie → return `"/login?error=InviteRequired&callbackUrl=..."`.
+4. **Atomically consume** the invite code:
+   ```sql
+   UPDATE invite_codes
+   SET used_by = 'pending:' || ?, used_at = datetime('now')
+   WHERE code = ? AND used_by IS NULL
+   ```
+   The `used_by` is set to `'pending:<email>'` because the actual user ID
+   doesn't exist yet (user hasn't been created). The `WHERE used_by IS NULL`
+   clause makes this atomic — only one concurrent request can succeed.
+5. If `changes === 0` → code was invalid or already used → return redirect URL.
+6. If `changes === 1` → code consumed → return `true` (Auth.js proceeds to
+   `createUser` → `linkAccount`).
+
+**Post-creation fixup:** The `events.createUser` callback fires after the
+adapter's `createUser()`. We use it to update the `pending:` placeholder
+with the real user ID:
+
+```ts
+events: {
+  async createUser({ user }) {
+    // Backfill the real user ID on the invite code
+    if (req) {
+      const code = req.cookies.get("pew-invite-code")?.value;
+      if (code && user.id) {
+        await getD1Client().execute(
+          "UPDATE invite_codes SET used_by = ? WHERE code = ? AND used_by LIKE 'pending:%'",
+          [user.id, code]
+        );
+      }
+    }
+  },
+},
+```
+
+**Why this is safe:**
+
+- The invite code is atomically consumed (UPDATE with WHERE used_by IS NULL)
+  BEFORE `createUser` runs — so no user can be created without a valid code.
+- The `pending:` → real ID backfill is best-effort. If it fails, the code is
+  still marked as used (just with email instead of UUID). The admin page can
+  display either format.
+- The adapter (`auth-adapter.ts`) stays completely unchanged — pure D1 layer.
 
 ### Cookie Mechanism
 
-When a user verifies their invite code via `POST /api/auth/verify-invite`:
+**Setting the cookie** — `POST /api/auth/verify-invite`:
 
-1. Server validates the code exists and `used_by IS NULL`.
-2. Server responds with `Set-Cookie: pew-invite-code=<CODE>; Path=/; HttpOnly;
-   SameSite=Lax; Secure; Max-Age=600` (10-minute expiry).
-3. Client receives 200 → triggers `signIn("google")`.
-4. In the `signIn` callback, the server reads the cookie from the request.
-5. After successful `createUser`, the invite code is consumed (UPDATE).
-6. The cookie is cleared (Max-Age=0) in the response.
+1. Server validates the code exists and `used_by IS NULL` (read-only check,
+   does NOT consume — consumption happens in signIn callback).
+2. Server responds with `Set-Cookie` using the same secure/insecure rules as
+   auth cookies:
+   ```
+   Set-Cookie: pew-invite-code=<CODE>;
+     Path=/; HttpOnly; SameSite=Lax;
+     Secure={shouldUseSecureCookies()};
+     Max-Age=600
+   ```
+3. Client receives 200 → triggers `signIn("google", { callbackUrl })`.
 
-### Invite Code Consumption
+The cookie uses `shouldUseSecureCookies()` from `auth.ts` (reused as a shared
+export) to match the auth cookie security level. This ensures the cookie works
+in both `https://pew.dev.hexly.ai` (Secure) and `http://localhost:7030`
+(non-Secure).
 
-The invite code is consumed in the Auth.js adapter's `createUser` method:
+**Cookie expiry:** 10 minutes (`Max-Age=600`). This is generous enough for the
+OAuth round-trip but short enough to not linger. No explicit cleanup is needed —
+the cookie naturally expires.
+
+### callbackUrl Preservation
+
+The current login page hardcodes `callbackUrl: "/"` in `signIn("google")`.
+Several flows depend on `callbackUrl` being preserved:
+
+- **CLI auth:** `/api/auth/cli` redirects to `/login?callbackUrl=/api/auth/cli?callback=...`
+- **Direct page access:** Proxy redirects unauthenticated users to `/login`
+  (currently loses the original URL, but `callbackUrl` support is needed for
+  future correctness).
+
+**Changes to login page (`packages/web/src/app/login/page.tsx`):**
 
 ```ts
-// After INSERT INTO users:
-const inviteCode = cookies().get("pew-invite-code")?.value;
-if (inviteCode) {
-  await client.execute(
-    "UPDATE invite_codes SET used_by = ?, used_at = datetime('now') WHERE code = ? AND used_by IS NULL",
-    [userId, inviteCode]
-  );
-}
+const searchParams = useSearchParams();
+const callbackUrl = searchParams.get("callbackUrl") ?? "/";
+
+const handleGoogleLogin = () => {
+  signIn("google", { callbackUrl });
+};
 ```
 
-The `WHERE used_by IS NULL` guard prevents double-consumption even if two
-requests arrive simultaneously with the same code.
+**InviteRequired redirect URL** (from signIn callback) must also preserve it:
+
+```ts
+// In handleInviteGate:
+const originalCallbackUrl = req?.nextUrl?.searchParams.get("callbackUrl") ?? "/";
+return `/login?error=InviteRequired&callbackUrl=${encodeURIComponent(originalCallbackUrl)}`;
+```
+
+**Note:** The signIn callback's redirect URL goes through Auth.js's
+`callbacks.redirect`, which validates it's a same-origin URL. Since `/login?...`
+is a relative path, this works without additional configuration.
 
 ---
 
@@ -170,14 +290,16 @@ Returns all invite codes with usage info.
       "code": "A3K9X2M1",
       "created_by": "user-uuid",
       "created_by_email": "admin@example.com",
-      "used_by": null,
-      "used_by_email": null,
-      "used_at": null,
+      "used_by": "other-uuid",
+      "used_by_email": "invited@example.com",
+      "used_at": "2026-03-10T14:00:00Z",
       "created_at": "2026-03-10T12:00:00Z"
     }
   ]
 }
 ```
+
+SQL joins `users` table twice (as `creator` and `consumer`) to resolve emails.
 
 #### `POST /api/admin/invites`
 
@@ -197,12 +319,18 @@ Delete an unused invite code. Returns 409 if the code has already been used.
 
 #### `POST /api/auth/verify-invite`
 
-Validate an invite code and set the cookie. Body: `{ "code": "A3K9X2M1" }`.
+Validate an invite code (read-only check) and set the cookie.
+Body: `{ "code": "A3K9X2M1" }`.
 
 - 200: `{ "valid": true }` + Set-Cookie header.
 - 400: `{ "valid": false, "error": "Invalid or already used" }`.
 
-This route falls under `/api/auth/*` which is already public in `proxy.ts`.
+This route falls under `/api/auth/*` which is already public in `proxy.ts`
+(`isPublicRoute` at `packages/web/src/proxy.ts:26`). No proxy changes needed.
+
+**Important:** This endpoint does NOT consume the code. It only verifies that
+the code exists and is unused, then sets the cookie. Actual consumption happens
+atomically in the `signIn` callback.
 
 ---
 
@@ -215,31 +343,37 @@ Follows the established pattern from `/admin/pricing`:
 - **Header**: Title "Invite Codes" + "Generate Codes" button.
 - **Generate dialog**: Number input (1-20) in a collapsible card.
 - **Table columns**: Code (monospace, with copy button) | Status (badge:
-  `unused` green / `used` gray) | Used By (email) | Created At | Actions
-  (delete button, only for unused codes).
+  `unused` green / `used` gray) | Used By (email or `pending:<email>`) |
+  Created At | Actions (delete button, only for unused codes).
 - **Auth guard**: `useAdmin()` hook, redirect non-admins to `/`.
 
 ### Navigation Update
 
-`navigation.ts` — append to `ADMIN_NAV_GROUP.items`:
+`packages/web/src/lib/navigation.ts` — append to `ADMIN_NAV_GROUP.items`:
 
 ```ts
 { href: "/admin/invites", label: "Invite Codes", icon: "Ticket" }
 ```
 
-`sidebar.tsx` — add `Ticket` to the Lucide import and `ICON_MAP`.
+`packages/web/src/components/layout/sidebar.tsx` — add `Ticket` to the Lucide
+import and `ICON_MAP`.
 
 ### Login Page Update
 
-When `?error=InviteRequired` is present in the URL:
+**`packages/web/src/app/login/page.tsx`** changes:
 
-1. Hide the default Google sign-in button.
-2. Show an invite code input field with a "Verify & Sign In" button.
-3. On submit → `POST /api/auth/verify-invite` with the code.
-4. On success → automatically trigger `signIn("google")`.
-5. On failure → show error message "Invalid or already used invite code".
+1. **Always read `callbackUrl`** from search params, default to `"/"`.
+   Pass it to `signIn("google", { callbackUrl })`.
 
-The existing `AccessDenied` and generic error handling remain unchanged.
+2. **When `?error=InviteRequired`** is present:
+   - Show an invite code input field with a "Verify & Sign In" button.
+   - On submit → `POST /api/auth/verify-invite` with the code.
+   - On success (200) → automatically trigger `signIn("google", { callbackUrl })`
+     (callbackUrl preserved from search params).
+   - On failure → show error message "Invalid or already used invite code".
+
+3. **When no error or other errors** → show the normal Google button (existing
+   behavior). Existing `AccessDenied` and generic error handling unchanged.
 
 ---
 
@@ -247,31 +381,44 @@ The existing `AccessDenied` and generic error handling remain unchanged.
 
 | Scenario | Behavior |
 |----------|----------|
-| Existing user signs in normally | signIn callback finds user → allow, no invite check |
-| New user without invite code | signIn callback rejects → redirect to `/login?error=InviteRequired` |
-| New user with valid invite code | signIn callback allows → createUser consumes code |
-| Same invite code used twice concurrently | `WHERE used_by IS NULL` ensures only one succeeds |
+| Existing user signs in normally | signIn callback queries DB, user found → allow, no invite check |
+| New user without invite code | signIn callback: no cookie → redirect `/login?error=InviteRequired&callbackUrl=...` |
+| New user with valid invite code | signIn callback: atomic UPDATE consumes code → allow → createUser proceeds |
+| Same invite code used concurrently | `WHERE used_by IS NULL` ensures only one UPDATE succeeds (changes=1 vs 0) |
 | Admin deletes a used invite code | API returns 409 Conflict, only unused codes deletable |
-| Invite code cookie expires (10 min) | User must re-verify the code |
-| E2E test mode (`E2E_SKIP_AUTH=true`) | Skip invite check entirely (same as auth skip) |
-| CLI auth (`/api/auth/cli`) | Only works for existing users (fetches api_key), no createUser → unaffected |
+| Invite code cookie expires (10 min) | User must re-verify the code via the input form |
+| E2E test mode (`E2E_SKIP_AUTH=true`) | signIn callback skips invite check (same as auth skip) |
+| CLI auth (`/api/auth/cli`) | Uses `resolveUser()` for existing users only → no createUser → unaffected |
+| `req` is undefined (Server Component) | signIn callback treats as existing-user path (safe: Server Components don't trigger OAuth) |
+| `http://localhost` dev environment | Cookie uses `SameSite=Lax; Secure=false` via `shouldUseSecureCookies()` |
+| Redirect after InviteRequired | `callbackUrl` preserved in search params through entire flow |
+| `events.createUser` backfill fails | Code still consumed (has `pending:<email>`), admin sees email instead of UUID |
 
 ---
 
 ## File Change Inventory
 
+All paths relative to `packages/web/`:
+
 | # | File | Op | Description |
 |---|------|----|-------------|
 | 1 | `docs/14-invite-code-system.md` | NEW | This plan document |
 | 2 | `scripts/migrations/004-invite-codes.sql` | NEW | Database migration |
-| 3 | `src/app/api/admin/invites/route.ts` | NEW | Admin CRUD API |
-| 4 | `src/app/api/auth/verify-invite/route.ts` | NEW | Public invite verification |
-| 5 | `src/auth.ts` | EDIT | Add signIn callback for invite gate |
-| 6 | `src/lib/auth-adapter.ts` | EDIT | Consume invite code in createUser |
-| 7 | `src/app/(dashboard)/admin/invites/page.tsx` | NEW | Admin management page |
-| 8 | `src/app/login/page.tsx` | EDIT | Add InviteRequired error + invite input |
-| 9 | `src/lib/navigation.ts` | EDIT | Add Invite Codes nav item |
-| 10 | `src/components/layout/sidebar.tsx` | EDIT | Add Ticket icon import |
+| 3 | `packages/web/src/lib/invite.ts` | NEW | Shared helpers: `generateInviteCode`, `validateInviteCode`, `handleInviteGate` |
+| 4 | `packages/web/src/app/api/admin/invites/route.ts` | NEW | Admin CRUD API |
+| 5 | `packages/web/src/app/api/auth/verify-invite/route.ts` | NEW | Public invite verification + set cookie |
+| 6 | `packages/web/src/auth.ts` | EDIT | Refactor to lazy init `NextAuth((req) => ...)`, add signIn callback + createUser event |
+| 7 | `packages/web/src/app/(dashboard)/admin/invites/page.tsx` | NEW | Admin management page |
+| 8 | `packages/web/src/app/login/page.tsx` | EDIT | Add callbackUrl preservation + InviteRequired error + invite input |
+| 9 | `packages/web/src/lib/navigation.ts` | EDIT | Add Invite Codes nav item |
+| 10 | `packages/web/src/components/layout/sidebar.tsx` | EDIT | Add Ticket icon import |
+
+**Files NOT changed:**
+
+| File | Reason |
+|------|--------|
+| `packages/web/src/lib/auth-adapter.ts` | Adapter stays pure D1 layer — invite logic lives in signIn callback |
+| `packages/web/src/proxy.ts` | `/api/auth/verify-invite` already covered by `isPublicRoute` prefix match |
 
 ---
 
@@ -279,7 +426,7 @@ The existing `AccessDenied` and generic error handling remain unchanged.
 
 ### L1 — Unit Tests (Pure Logic, No I/O)
 
-File: `src/__tests__/invite-codes.test.ts`
+File: `packages/web/src/__tests__/invite-codes.test.ts`
 
 | # | Test | What it validates |
 |---|------|-------------------|
@@ -291,7 +438,7 @@ File: `src/__tests__/invite-codes.test.ts`
 
 ### L1 — API Route Tests (Mocked D1)
 
-File: `src/__tests__/admin-invites-api.test.ts`
+File: `packages/web/src/__tests__/admin-invites-api.test.ts`
 
 | # | Test | What it validates |
 |---|------|-------------------|
@@ -304,32 +451,35 @@ File: `src/__tests__/admin-invites-api.test.ts`
 | 7 | `DELETE /api/admin/invites?id=X` returns 409 for used code | Delete guard |
 | 8 | `DELETE /api/admin/invites` returns 400 without id | Input validation |
 
-File: `src/__tests__/verify-invite-api.test.ts`
+File: `packages/web/src/__tests__/verify-invite-api.test.ts`
 
 | # | Test | What it validates |
 |---|------|-------------------|
 | 1 | `POST /api/auth/verify-invite` returns valid=true for unused code | Happy path |
 | 2 | `POST /api/auth/verify-invite` sets cookie in response | Cookie mechanism |
-| 3 | `POST /api/auth/verify-invite` returns valid=false for used code | Used code rejection |
-| 4 | `POST /api/auth/verify-invite` returns valid=false for nonexistent code | Invalid code |
-| 5 | `POST /api/auth/verify-invite` returns 400 for missing body | Input validation |
+| 3 | `POST /api/auth/verify-invite` cookie respects shouldUseSecureCookies() | Env-aware security |
+| 4 | `POST /api/auth/verify-invite` returns valid=false for used code | Used code rejection |
+| 5 | `POST /api/auth/verify-invite` returns valid=false for nonexistent code | Invalid code |
+| 6 | `POST /api/auth/verify-invite` returns 400 for missing body | Input validation |
 
-### L1 — Auth Callback Tests
+### L1 — signIn Callback Tests
 
-File: `src/__tests__/auth-invite-gate.test.ts`
+File: `packages/web/src/__tests__/auth-invite-gate.test.ts`
 
 | # | Test | What it validates |
 |---|------|-------------------|
-| 1 | signIn callback allows existing user (no invite check) | Existing user bypass |
-| 2 | signIn callback rejects new user without invite cookie | Gate enforcement |
-| 3 | signIn callback allows new user with valid invite cookie | Gate pass-through |
-| 4 | signIn callback rejects new user with used invite cookie | Used code rejection |
-| 5 | createUser consumes invite code after INSERT | Code consumption |
-| 6 | createUser with no invite cookie still creates user (E2E mode) | Test mode bypass |
+| 1 | `handleInviteGate` allows existing user (no invite check) | Existing user bypass |
+| 2 | `handleInviteGate` rejects new user without invite cookie | Gate enforcement |
+| 3 | `handleInviteGate` rejects new user with expired/missing cookie | Cookie absence |
+| 4 | `handleInviteGate` allows new user with valid invite cookie | Gate pass-through |
+| 5 | `handleInviteGate` rejects new user with already-used invite code | Atomic guard |
+| 6 | `handleInviteGate` redirect URL preserves callbackUrl | callbackUrl preservation |
+| 7 | `handleInviteGate` skips check when E2E_SKIP_AUTH=true | Test mode bypass |
+| 8 | `handleInviteGate` handles req=undefined gracefully | Server Component safety |
 
 ### L1 — Navigation Tests
 
-File: `src/__tests__/navigation.test.ts` (extend existing)
+File: `packages/web/src/__tests__/navigation.test.ts` (extend existing)
 
 | # | Test | What it validates |
 |---|------|-------------------|
@@ -346,28 +496,39 @@ Each commit is independently buildable and testable. Ordered by dependency:
 |---|------|---------|-------|------------|
 | 1 | docs | `docs: add invite code system plan` | `docs/14-invite-code-system.md` | — |
 | 2 | feat | `feat: add invite_codes migration script` | `scripts/migrations/004-invite-codes.sql` | — |
-| 3 | feat | `feat: add admin invites CRUD API` | `src/app/api/admin/invites/route.ts`, `src/lib/invite.ts` (shared helpers) | #2 |
-| 4 | feat | `feat: add invite verification endpoint` | `src/app/api/auth/verify-invite/route.ts` | #2, #3 |
-| 5 | feat | `feat: gate new user registration with invite code` | `src/auth.ts`, `src/lib/auth-adapter.ts` | #2, #4 |
-| 6 | feat | `feat: add admin invite codes management page` | `src/app/(dashboard)/admin/invites/page.tsx`, `src/lib/navigation.ts`, `src/components/layout/sidebar.tsx` | #3 |
-| 7 | feat | `feat: add invite code input to login page` | `src/app/login/page.tsx` | #4, #5 |
-| 8 | test | `test: add L1 unit tests for invite code system` | `src/__tests__/invite-codes.test.ts`, `src/__tests__/admin-invites-api.test.ts`, `src/__tests__/verify-invite-api.test.ts`, `src/__tests__/auth-invite-gate.test.ts`, `src/__tests__/navigation.test.ts` | #3, #4, #5, #6, #7 |
+| 3 | feat | `feat: add invite code shared helpers` | `packages/web/src/lib/invite.ts` | — |
+| 4 | feat | `feat: add admin invites CRUD API` | `packages/web/src/app/api/admin/invites/route.ts` | #2, #3 |
+| 5 | feat | `feat: add invite verification endpoint` | `packages/web/src/app/api/auth/verify-invite/route.ts` | #3 |
+| 6 | feat | `feat: gate new user registration with invite code` | `packages/web/src/auth.ts` | #3 |
+| 7 | feat | `feat: add admin invite codes management page` | `packages/web/src/app/(dashboard)/admin/invites/page.tsx`, `packages/web/src/lib/navigation.ts`, `packages/web/src/components/layout/sidebar.tsx` | #4 |
+| 8 | feat | `feat: add invite code input to login page` | `packages/web/src/app/login/page.tsx` | #5, #6 |
+| 9 | test | `test: add L1 unit tests for invite code system` | `packages/web/src/__tests__/invite-codes.test.ts`, `packages/web/src/__tests__/admin-invites-api.test.ts`, `packages/web/src/__tests__/verify-invite-api.test.ts`, `packages/web/src/__tests__/auth-invite-gate.test.ts`, `packages/web/src/__tests__/navigation.test.ts` | #3–#8 |
 
 ### Commit Dependency Graph
 
 ```
-#1 (docs) ─────────────────────────────────────────────┐
-#2 (migration) ────┬───────────────────────────────────┤
-                   │                                    │
-#3 (admin API) ────┼──────────┬────────────────────────┤
-                   │          │                         │
-#4 (verify API) ───┤          │                         │
-                   │          │                         │
-#5 (auth gate) ────┤          │                         │
-                   │          │                         │
-                   │   #6 (admin page + nav) ──────────┤
-                   │                                    │
-                   └── #7 (login page) ────────────────┤
-                                                        │
-                                              #8 (tests) ┘
+#1 (docs) ──────────────────────────────────────────────────┐
+#2 (migration) ─────┬──────────────────────────────────────┤
+                     │                                      │
+#3 (lib/invite.ts) ──┼──────┬────────┬─────────────────────┤
+                     │      │        │                      │
+               #4 (admin API)  #5 (verify API)  #6 (auth gate)
+                     │      │        │                      │
+               #7 (admin page + nav) │                      │
+                            │        │                      │
+                            └── #8 (login page) ───────────┤
+                                                            │
+                                                  #9 (tests) ┘
 ```
+
+---
+
+## Technical Risks & Mitigations
+
+| Risk | Severity | Mitigation |
+|------|----------|------------|
+| `NextAuth((req) => ...)` lazy init breaks existing auth | High | Preserve all existing config; only add signIn callback + createUser event. Verify with full E2E test. |
+| `req` is undefined in some contexts | Medium | `handleInviteGate` treats `req=undefined` as "allow" — safe because OAuth callbacks always have a request context. |
+| Cookie not sent during OAuth callback | Medium | Cookie uses `SameSite=Lax` which allows top-level navigations (OAuth redirects are top-level). `Path=/` ensures it's sent to all routes. |
+| `signIn` callback can't distinguish new vs existing user | Low | We query `getUserByAccount` ourselves inside the callback — same query the adapter uses. Slight duplication but necessary. |
+| `events.createUser` backfill fails | Low | Code is already consumed in signIn callback. Backfill is best-effort for admin display. |
