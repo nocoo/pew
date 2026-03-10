@@ -256,3 +256,24 @@
 @utility font-display {
   font-family: var(--font-dm-sans), "DM Sans", system-ui, sans-serif;
 }
+
+@utility font-handwriting {
+  font-family: var(--font-caveat), "Caveat", cursive;
+}
+
+/* Landing page entrance animations — respect reduced motion */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@utility animate-fade-up {
+  animation: fade-up 0.5s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+}

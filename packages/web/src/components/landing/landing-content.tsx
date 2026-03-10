@@ -3,18 +3,10 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  Terminal,
-  BarChart3,
-  Zap,
-  Shield,
-  Copy,
-  Check,
-  LogIn,
-} from "lucide-react";
+import { Copy, Check } from "lucide-react";
 
 // ---------------------------------------------------------------------------
-// Install command copy button
+// Install command — PRIMARY CTA for a CLI tool
 // ---------------------------------------------------------------------------
 
 function InstallCommand() {
@@ -30,170 +22,179 @@ function InstallCommand() {
   return (
     <button
       onClick={handleCopy}
-      className="group flex w-full max-w-md items-center gap-3 rounded-xl border border-border bg-card px-5 py-3 text-sm font-mono transition-colors hover:border-primary/40 hover:bg-card/80 cursor-pointer"
+      aria-label={`Copy install command: ${command}`}
+      className="group flex w-full items-center gap-3 rounded-lg bg-foreground/[0.04] px-5 py-3.5 font-mono text-base transition-[background-color] duration-200 hover:bg-foreground/[0.08] cursor-pointer"
     >
-      <span className="text-muted-foreground">$</span>
-      <span className="flex-1 text-left text-foreground">{command}</span>
+      <span className="text-primary select-none" aria-hidden="true">
+        $
+      </span>
+      <code className="flex-1 text-left text-foreground">{command}</code>
       {copied ? (
-        <Check className="h-4 w-4 text-success shrink-0" strokeWidth={1.5} />
+        <Check
+          className="h-4 w-4 text-success shrink-0"
+          strokeWidth={2}
+          aria-hidden="true"
+        />
       ) : (
         <Copy
-          className="h-4 w-4 text-muted-foreground group-hover:text-foreground shrink-0 transition-colors"
-          strokeWidth={1.5}
+          className="h-4 w-4 text-muted-foreground group-hover:text-foreground shrink-0 transition-[color] duration-200"
+          strokeWidth={2}
+          aria-hidden="true"
         />
       )}
+      <span className="sr-only">{copied ? "Copied" : "Click to copy"}</span>
     </button>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Supported tools
-// ---------------------------------------------------------------------------
-
-const TOOLS = [
-  { name: "Claude Code" },
-  { name: "Codex" },
-  { name: "Gemini CLI" },
-  { name: "OpenCode" },
-  { name: "OpenClaw" },
-];
-
-// ---------------------------------------------------------------------------
-// Feature items
+// Feature list — NO cards, NO grid. Varied typography, inline.
 // ---------------------------------------------------------------------------
 
 const FEATURES = [
   {
-    icon: Terminal,
-    title: "Zero config",
-    description:
-      "Reads directly from your AI tools' log files. No wrappers, no proxies.",
+    label: "Zero config",
+    detail: "reads your AI tools' log files directly",
   },
   {
-    icon: BarChart3,
-    title: "Usage dashboard",
-    description:
-      "Token usage by day, model, app, and session. Track costs at a glance.",
+    label: "Usage dashboard",
+    detail: "tokens by day, model, app, and session",
   },
   {
-    icon: Zap,
-    title: "Instant sync",
-    description:
-      "One command uploads new records. Incremental — fast every time.",
+    label: "Instant sync",
+    detail: "one command, incremental uploads",
   },
   {
-    icon: Shield,
-    title: "Privacy first",
-    description:
-      "Conversations are never read. Only token counts and metadata.",
+    label: "Privacy first",
+    detail: "only token counts — never conversations",
   },
-];
+] as const;
 
 // ---------------------------------------------------------------------------
-// Main landing content — single viewport, no scroll
+// Main landing — single viewport, centered, no scroll
 // ---------------------------------------------------------------------------
 
 export function LandingContent() {
   return (
-    <main className="mx-auto flex max-w-6xl flex-1 items-center px-6">
-      <div className="grid w-full gap-12 lg:grid-cols-2">
-        {/* Left — copy */}
-        <div className="flex flex-col gap-5">
-          <Image
-            src="/logo-256.png"
-            alt="Pew"
-            width={256}
-            height={256}
-            className="h-24 w-24"
-          />
-
-          <div className="flex flex-wrap items-center gap-1.5">
-            {TOOLS.map((tool) => (
-              <span
-                key={tool.name}
-                className="rounded-full border border-border px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground"
-              >
-                {tool.name}
-              </span>
-            ))}
-          </div>
-
-          <h1 className="font-display text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-            <span className="inline-flex items-center gap-2">
-              <span className="rounded-lg bg-primary/10 px-2.5 py-0.5 text-primary border border-primary/20">
-                pew
-              </span>
-            </span>
-            <br />
-            Track your AI{" "}
-            <span className="text-primary">token usage</span>
+    <main className="mx-auto flex max-w-xl flex-1 flex-col justify-center px-6">
+      {/* Row 1: Logo + product name side by side */}
+      <div
+        className="flex items-center gap-4 animate-fade-up"
+        style={{ animationDelay: "0ms" }}
+      >
+        <Image
+          src="/logo-256.png"
+          alt=""
+          width={256}
+          height={256}
+          className="h-16 w-16 shrink-0"
+          priority
+          aria-hidden="true"
+        />
+        <div>
+          <h1 className="font-handwriting text-5xl tracking-tight text-foreground">
+            PEW
           </h1>
-
-          <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
-            Pew reads local log files from your AI coding tools and gives you a
-            clear dashboard of token consumption, costs, and trends — without
-            touching your conversations.
+          <p className="font-display text-sm font-medium text-muted-foreground">
+            AI token usage tracker
           </p>
-
-          <Link
-            href="/login"
-            className="inline-flex w-full max-w-md items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            <LogIn className="h-4 w-4" strokeWidth={1.5} />
-            Sign in to dashboard
-          </Link>
-
-          <InstallCommand />
-
-          {/* Usage steps */}
-          <ol className="max-w-md space-y-1 text-xs text-muted-foreground">
-            <li className="flex items-baseline gap-2">
-              <span className="font-mono text-primary">1.</span>
-              <span>
-                Run{" "}
-                <code className="rounded bg-muted px-1 py-0.5 font-mono text-foreground">
-                  bunx @nocoo/pew
-                </code>{" "}
-                to scan local AI tool logs
-              </span>
-            </li>
-            <li className="flex items-baseline gap-2">
-              <span className="font-mono text-primary">2.</span>
-              <span>Sign in and grab your API key from the dashboard</span>
-            </li>
-            <li className="flex items-baseline gap-2">
-              <span className="font-mono text-primary">3.</span>
-              <span>
-                Run{" "}
-                <code className="rounded bg-muted px-1 py-0.5 font-mono text-foreground">
-                  bunx @nocoo/pew sync
-                </code>{" "}
-                to upload usage data
-              </span>
-            </li>
-          </ol>
         </div>
+      </div>
 
-        {/* Right — feature grid */}
-        <div className="grid grid-cols-2 gap-3 self-center">
-          {FEATURES.map((feat) => (
-            <div
-              key={feat.title}
-              className="rounded-2xl border border-border bg-card p-4 transition-colors hover:border-primary/20"
+      {/* Row 2: Description with tools inline */}
+      <p
+        className="mt-6 text-base leading-relaxed text-foreground/80 animate-fade-up"
+        style={{ animationDelay: "80ms", textWrap: "balance" }}
+      >
+        Track token consumption and costs from{" "}
+        <span className="font-medium text-foreground">
+          Claude Code, Codex, Gemini CLI, OpenCode
+        </span>{" "}
+        &amp;{" "}
+        <span className="font-medium text-foreground">OpenClaw</span> — without
+        reading your conversations.
+      </p>
+
+      {/* Row 3: Features — compact list, no cards */}
+      <ul
+        className="mt-5 flex flex-wrap gap-x-5 gap-y-1.5 text-sm animate-fade-up"
+        style={{ animationDelay: "160ms" }}
+        aria-label="Features"
+      >
+        {FEATURES.map((f) => (
+          <li key={f.label} className="flex items-baseline gap-1.5">
+            <span
+              className="text-primary text-xs leading-none"
+              aria-hidden="true"
             >
-              <feat.icon
-                className="mb-2 h-5 w-5 text-primary"
-                strokeWidth={1.5}
-              />
-              <h3 className="text-sm font-semibold text-foreground">
-                {feat.title}
-              </h3>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                {feat.description}
-              </p>
-            </div>
-          ))}
-        </div>
+              ●
+            </span>
+            <span>
+              <span className="font-semibold text-foreground">{f.label}</span>
+              <span className="text-muted-foreground"> — {f.detail}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      {/* Row 4: Install command — PRIMARY action */}
+      <div
+        className="mt-8 animate-fade-up"
+        style={{ animationDelay: "240ms" }}
+      >
+        <InstallCommand />
+      </div>
+
+      {/* Row 5: Steps */}
+      <ol
+        className="mt-4 space-y-1 text-sm text-muted-foreground animate-fade-up"
+        style={{ animationDelay: "320ms" }}
+        aria-label="Getting started steps"
+      >
+        <li className="flex items-baseline gap-2">
+          <span className="font-mono text-xs text-primary" aria-hidden="true">
+            1
+          </span>
+          <span>
+            Run{" "}
+            <code className="rounded bg-foreground/[0.05] px-1.5 py-0.5 font-mono text-xs text-foreground">
+              pew
+            </code>{" "}
+            to scan local logs
+          </span>
+        </li>
+        <li className="flex items-baseline gap-2">
+          <span className="font-mono text-xs text-primary" aria-hidden="true">
+            2
+          </span>
+          <span>Sign in and grab your API key</span>
+        </li>
+        <li className="flex items-baseline gap-2">
+          <span className="font-mono text-xs text-primary" aria-hidden="true">
+            3
+          </span>
+          <span>
+            Run{" "}
+            <code className="rounded bg-foreground/[0.05] px-1.5 py-0.5 font-mono text-xs text-foreground">
+              pew sync
+            </code>{" "}
+            to upload usage data
+          </span>
+        </li>
+      </ol>
+
+      {/* Row 6: Sign In — secondary action */}
+      <div
+        className="mt-6 animate-fade-up"
+        style={{ animationDelay: "400ms" }}
+      >
+        <Link
+          href="/login"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-[background-color,border-color] duration-200 hover:border-primary/40 hover:bg-primary/5"
+        >
+          Sign in to dashboard
+          <span aria-hidden="true">→</span>
+        </Link>
       </div>
     </main>
   );
