@@ -59,6 +59,13 @@ export function isNonNegativeFinite(n: unknown): n is number {
   return typeof n === "number" && Number.isFinite(n) && n >= 0;
 }
 
+/** Check if value is a valid YYYY-MM month string */
+export function isValidMonth(s: unknown): s is string {
+  return (
+    typeof s === "string" && /^\d{4}-(0[1-9]|1[0-2])$/.test(s)
+  );
+}
+
 /**
  * Check if value is a non-empty string within length limit.
  * @param maxLength - max allowed length (default MAX_STRING_LENGTH)
@@ -252,4 +259,66 @@ export function validateSessionIngestRecord(
   }
 
   return { valid: true, record: rec as unknown as SessionIngestRecord };
+}
+
+// ---------------------------------------------------------------------------
+// Budget validation
+// ---------------------------------------------------------------------------
+
+/** Validated budget input ready for DB upsert */
+export interface BudgetInput {
+  month: string;
+  budget_usd: number | null;
+  budget_tokens: number | null;
+}
+
+/**
+ * Validate a budget PUT request body.
+ * Returns a discriminated union: { valid: true, record } or { valid: false, error }.
+ */
+export function validateBudgetInput(
+  body: unknown,
+): ValidationResult<BudgetInput> {
+  if (typeof body !== "object" || body === null) {
+    return { valid: false, error: "body must be an object" };
+  }
+
+  const b = body as Record<string, unknown>;
+
+  if (!isValidMonth(b.month)) {
+    return { valid: false, error: "month required in YYYY-MM format" };
+  }
+
+  const hasBudgetUsd = "budget_usd" in b && b.budget_usd != null;
+  const hasBudgetTokens = "budget_tokens" in b && b.budget_tokens != null;
+
+  if (!hasBudgetUsd && !hasBudgetTokens) {
+    return {
+      valid: false,
+      error: "At least one of budget_usd or budget_tokens is required",
+    };
+  }
+
+  if (hasBudgetUsd && !isNonNegativeFinite(b.budget_usd)) {
+    return {
+      valid: false,
+      error: "budget_usd must be a non-negative number",
+    };
+  }
+
+  if (hasBudgetTokens && !isNonNegativeFinite(b.budget_tokens)) {
+    return {
+      valid: false,
+      error: "budget_tokens must be a non-negative number",
+    };
+  }
+
+  return {
+    valid: true,
+    record: {
+      month: b.month as string,
+      budget_usd: hasBudgetUsd ? (b.budget_usd as number) : null,
+      budget_tokens: hasBudgetTokens ? (b.budget_tokens as number) : null,
+    },
+  };
 }

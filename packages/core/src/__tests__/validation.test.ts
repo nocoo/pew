@@ -12,8 +12,10 @@ import {
   isNonNegativeInteger,
   isNullableString,
   isValidISODate,
+  isValidMonth,
   isValidSessionKind,
   isValidSource,
+  validateBudgetInput,
   validateIngestRecord,
   validateSessionIngestRecord,
 } from "../validation.js";
@@ -419,5 +421,148 @@ describe("validateSessionIngestRecord", () => {
     const rec = { ...validSessionRecord() };
     delete (rec as Record<string, unknown>).total_messages;
     expect(validateSessionIngestRecord(rec, 0).valid).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Budget validation
+// ---------------------------------------------------------------------------
+
+describe("isValidMonth", () => {
+  it("should accept valid YYYY-MM strings", () => {
+    expect(isValidMonth("2026-01")).toBe(true);
+    expect(isValidMonth("2026-03")).toBe(true);
+    expect(isValidMonth("2026-12")).toBe(true);
+    expect(isValidMonth("2025-06")).toBe(true);
+  });
+
+  it("should reject invalid month values", () => {
+    expect(isValidMonth("2026-00")).toBe(false);
+    expect(isValidMonth("2026-13")).toBe(false);
+    expect(isValidMonth("2026-99")).toBe(false);
+  });
+
+  it("should reject malformed strings", () => {
+    expect(isValidMonth("March 2026")).toBe(false);
+    expect(isValidMonth("2026")).toBe(false);
+    expect(isValidMonth("2026-3")).toBe(false);
+    expect(isValidMonth("26-03")).toBe(false);
+    expect(isValidMonth("")).toBe(false);
+    expect(isValidMonth("2026-03-01")).toBe(false); // full date, not month
+  });
+
+  it("should reject non-string inputs", () => {
+    expect(isValidMonth(null)).toBe(false);
+    expect(isValidMonth(undefined)).toBe(false);
+    expect(isValidMonth(202603)).toBe(false);
+  });
+});
+
+describe("validateBudgetInput", () => {
+  it("should accept a valid budget with both fields", () => {
+    const result = validateBudgetInput({
+      month: "2026-03",
+      budget_usd: 100,
+      budget_tokens: 5_000_000,
+    });
+    expect(result.valid).toBe(true);
+    if (result.valid) {
+      expect(result.record).toEqual({
+        month: "2026-03",
+        budget_usd: 100,
+        budget_tokens: 5_000_000,
+      });
+    }
+  });
+
+  it("should accept zero budgets", () => {
+    const result = validateBudgetInput({
+      month: "2026-03",
+      budget_usd: 0,
+      budget_tokens: 0,
+    });
+    expect(result.valid).toBe(true);
+  });
+
+  it("should accept budget_usd only", () => {
+    const result = validateBudgetInput({
+      month: "2026-03",
+      budget_usd: 50.5,
+    });
+    expect(result.valid).toBe(true);
+    if (result.valid) {
+      expect(result.record.budget_usd).toBe(50.5);
+      expect(result.record.budget_tokens).toBeNull();
+    }
+  });
+
+  it("should accept budget_tokens only", () => {
+    const result = validateBudgetInput({
+      month: "2026-03",
+      budget_tokens: 1_000_000,
+    });
+    expect(result.valid).toBe(true);
+    if (result.valid) {
+      expect(result.record.budget_usd).toBeNull();
+      expect(result.record.budget_tokens).toBe(1_000_000);
+    }
+  });
+
+  it("should reject invalid month format", () => {
+    const result = validateBudgetInput({
+      month: "March 2026",
+      budget_usd: 100,
+    });
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(result.error).toContain("month");
+    }
+  });
+
+  it("should reject missing month", () => {
+    const result = validateBudgetInput({ budget_usd: 100 });
+    expect(result.valid).toBe(false);
+  });
+
+  it("should reject negative budget_usd", () => {
+    const result = validateBudgetInput({
+      month: "2026-03",
+      budget_usd: -50,
+    });
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(result.error).toContain("budget_usd");
+    }
+  });
+
+  it("should reject negative budget_tokens", () => {
+    const result = validateBudgetInput({
+      month: "2026-03",
+      budget_tokens: -1,
+    });
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(result.error).toContain("budget_tokens");
+    }
+  });
+
+  it("should reject Infinity/NaN budget values", () => {
+    expect(
+      validateBudgetInput({ month: "2026-03", budget_usd: Infinity }).valid,
+    ).toBe(false);
+    expect(
+      validateBudgetInput({ month: "2026-03", budget_usd: NaN }).valid,
+    ).toBe(false);
+  });
+
+  it("should reject when neither budget field is provided", () => {
+    const result = validateBudgetInput({ month: "2026-03" });
+    expect(result.valid).toBe(false);
+  });
+
+  it("should reject non-object inputs", () => {
+    expect(validateBudgetInput(null).valid).toBe(false);
+    expect(validateBudgetInput("string").valid).toBe(false);
+    expect(validateBudgetInput(42).valid).toBe(false);
   });
 });
