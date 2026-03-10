@@ -103,7 +103,7 @@ describe("toWorkingHoursGrid", () => {
     ]);
   });
 
-  it("should count sessions by day-of-week and hour", () => {
+  it("should count sessions by day-of-week and hour (UTC, tzOffset=0)", () => {
     // 2026-03-08 is a Sunday, 10:00 UTC
     const records = [
       makeSession({ started_at: "2026-03-08T10:00:00Z" }),
@@ -111,7 +111,7 @@ describe("toWorkingHoursGrid", () => {
       makeSession({ started_at: "2026-03-08T14:00:00Z" }),
     ];
 
-    const grid = toWorkingHoursGrid(records);
+    const grid = toWorkingHoursGrid(records, 0);
 
     // Sunday is index 6
     const sunday = grid[6]!;
@@ -121,19 +121,64 @@ describe("toWorkingHoursGrid", () => {
     expect(sunday.hours[0]).toBe(0); // No sessions at 00:xx
   });
 
-  it("should handle sessions across multiple days", () => {
+  it("should handle sessions across multiple days (UTC, tzOffset=0)", () => {
     // 2026-03-09 is a Monday, 2026-03-10 is a Tuesday
     const records = [
       makeSession({ started_at: "2026-03-09T09:00:00Z" }),
       makeSession({ started_at: "2026-03-10T15:00:00Z" }),
     ];
 
-    const grid = toWorkingHoursGrid(records);
+    const grid = toWorkingHoursGrid(records, 0);
 
     // Monday is index 0
     expect(grid[0]!.hours[9]).toBe(1);
     // Tuesday is index 1
     expect(grid[1]!.hours[15]).toBe(1);
+  });
+
+  it("should shift hours with positive tzOffset (PST, UTC-8 = 480)", () => {
+    // 2026-03-09 Monday 02:00 UTC → Sunday 18:00 PST (shifted back 8h, crosses midnight)
+    const records = [
+      makeSession({ started_at: "2026-03-09T02:00:00Z" }),
+    ];
+
+    const grid = toWorkingHoursGrid(records, 480);
+
+    // UTC Monday 02:00 → PST Sunday 18:00
+    const sunday = grid[6]!;
+    expect(sunday.day).toBe("Sun");
+    expect(sunday.hours[18]).toBe(1);
+    // Monday should be empty
+    expect(grid[0]!.hours[2]).toBe(0);
+  });
+
+  it("should shift hours with negative tzOffset (JST, UTC+9 = -540)", () => {
+    // 2026-03-08 Sunday 22:00 UTC → 2026-03-09 Monday 07:00 JST
+    const records = [
+      makeSession({ started_at: "2026-03-08T22:00:00Z" }),
+    ];
+
+    const grid = toWorkingHoursGrid(records, -540);
+
+    // UTC Sunday 22:00 → JST Monday 07:00
+    const monday = grid[0]!;
+    expect(monday.day).toBe("Mon");
+    expect(monday.hours[7]).toBe(1);
+    // Sunday should be empty
+    expect(grid[6]!.hours[22]).toBe(0);
+  });
+
+  it("should default to UTC when tzOffset is omitted", () => {
+    // 2026-03-08 is a Sunday, 10:00 UTC
+    const records = [
+      makeSession({ started_at: "2026-03-08T10:00:00Z" }),
+    ];
+
+    const grid = toWorkingHoursGrid(records);
+
+    // Without tzOffset, defaults to 0 (UTC) — Sunday 10:00
+    const sunday = grid[6]!;
+    expect(sunday.hours[10]).toBe(1);
   });
 });
 

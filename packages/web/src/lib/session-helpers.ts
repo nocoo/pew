@@ -60,7 +60,17 @@ export type WorkingHoursDay = {
   hours: number[];
 };
 
-export function toWorkingHoursGrid(records: SessionRow[]): WorkingHoursDay[] {
+/**
+ * Build a 7×24 grid of session counts by day-of-week and hour.
+ *
+ * @param records  — raw SessionRow[] with ISO 8601 `started_at` timestamps
+ * @param tzOffset — minutes offset from UTC (positive = west of UTC, e.g. 480 for PST).
+ *                   From `new Date().getTimezoneOffset()`. Defaults to 0 (UTC).
+ */
+export function toWorkingHoursGrid(
+  records: SessionRow[],
+  tzOffset: number = 0,
+): WorkingHoursDay[] {
   // Initialize 7x24 grid of zeroes
   const grid: WorkingHoursDay[] = DAY_NAMES.map((day) => ({
     day,
@@ -68,12 +78,17 @@ export function toWorkingHoursGrid(records: SessionRow[]): WorkingHoursDay[] {
   }));
 
   for (const r of records) {
-    const d = new Date(r.started_at);
-    // JS getUTCDay(): 0=Sun, 1=Mon, ..., 6=Sat
+    // Shift UTC time by tzOffset to get local time
+    const utcMs = new Date(r.started_at).getTime();
+    const localMs = utcMs - tzOffset * 60_000;
+    const local = new Date(localMs);
+
+    // Extract day-of-week and hour from the shifted (local) time
+    // getUTCDay/getUTCHours on the shifted date gives us local day/hour
+    const jsDay = local.getUTCDay();
     // We need Mon=0 ... Sun=6
-    const jsDay = d.getUTCDay();
     const dayIndex = jsDay === 0 ? 6 : jsDay - 1;
-    const hour = d.getUTCHours();
+    const hour = local.getUTCHours();
     grid[dayIndex]!.hours[hour]!++;
   }
 

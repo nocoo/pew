@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   toSessionOverview,
   toWorkingHoursGrid,
@@ -81,7 +81,8 @@ export function useSessionData(
   }, [fetchData]);
 
   const overview = toSessionOverview(records);
-  const hoursGrid = toWorkingHoursGrid(records);
+  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []);
+  const hoursGrid = toWorkingHoursGrid(records, tzOffset);
   const dailyMessages = toMessageDailyStats(records);
 
   return {
