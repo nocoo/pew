@@ -7,7 +7,9 @@ import {
   sourceLabel,
   type UsageRow,
 } from "@/hooks/use-usage-data";
-import { toLocalDailyBuckets } from "@/lib/usage-helpers";
+import { toLocalDailyBuckets, compareWeekdayWeekend } from "@/lib/usage-helpers";
+import { getDefaultPricingMap } from "@/lib/pricing";
+import type { PricingMap } from "@/lib/pricing";
 
 // ---------------------------------------------------------------------------
 // Test data factory
@@ -249,5 +251,124 @@ describe("toLocalDailyBuckets", () => {
     expect(result[0]!.inputTokens).toBe(240);
     expect(result[0]!.outputTokens).toBe(60);
     expect(result[0]!.cachedTokens).toBe(30);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// compareWeekdayWeekend
+// ---------------------------------------------------------------------------
+
+describe("compareWeekdayWeekend", () => {
+  function makePricingMap(): PricingMap {
+    return getDefaultPricingMap();
+  }
+
+  it("should return zeros for empty input", () => {
+    const result = compareWeekdayWeekend(
+      [],
+      { from: "2026-03-02", to: "2026-03-08" }, // Mon-Sun = 5 weekdays + 2 weekend
+      makePricingMap(),
+    );
+
+    expect(result.weekday.avgTokens).toBe(0);
+    expect(result.weekday.avgCost).toBe(0);
+    expect(result.weekday.totalDays).toBe(5);
+    expect(result.weekend.avgTokens).toBe(0);
+    expect(result.weekend.avgCost).toBe(0);
+    expect(result.weekend.totalDays).toBe(2);
+    expect(result.ratio).toBe(0);
+  });
+
+  it("should compute averages for all-weekday data", () => {
+    // 2026-03-02 (Mon) to 2026-03-06 (Fri) = 5 weekdays, 0 weekend
+    // But range also has no weekend days, so weekend totalDays=0
+    const rows = [
+      makeRow({ hour_start: "2026-03-02T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
+      makeRow({ hour_start: "2026-03-04T14:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
+    ];
+
+    const result = compareWeekdayWeekend(
+      rows,
+      { from: "2026-03-02", to: "2026-03-06" },
+      makePricingMap(),
+    );
+
+    // 3000 total tokens across 5 weekdays = 600 avg
+    expect(result.weekday.avgTokens).toBe(600);
+    expect(result.weekday.totalDays).toBe(5);
+    expect(result.weekend.avgTokens).toBe(0);
+    expect(result.weekend.totalDays).toBe(0);
+    // ratio: weekday/weekend — weekend is 0, so Infinity clamped to 0 or special
+    expect(result.ratio).toBe(0); // 0 weekend → ratio=0
+  });
+
+  it("should compute averages for all-weekend data", () => {
+    // 2026-03-07 is Saturday, 2026-03-08 is Sunday
+    const rows = [
+      makeRow({ hour_start: "2026-03-07T10:00:00Z", total_tokens: 500, input_tokens: 400, output_tokens: 100, cached_input_tokens: 50 }),
+      makeRow({ hour_start: "2026-03-08T10:00:00Z", total_tokens: 700, input_tokens: 560, output_tokens: 140, cached_input_tokens: 70 }),
+    ];
+
+    const result = compareWeekdayWeekend(
+      rows,
+      { from: "2026-03-07", to: "2026-03-08" },
+      makePricingMap(),
+    );
+
+    expect(result.weekday.avgTokens).toBe(0);
+    expect(result.weekday.totalDays).toBe(0);
+    // 1200 tokens across 2 weekend days = 600 avg
+    expect(result.weekend.avgTokens).toBe(600);
+    expect(result.weekend.totalDays).toBe(2);
+    expect(result.ratio).toBe(0); // 0 weekday → ratio=0
+  });
+
+  it("should compute mixed weekday/weekend stats with calendar fill", () => {
+    // 2026-03-02 (Mon) to 2026-03-08 (Sun) = 5 weekdays + 2 weekend
+    // Data only on Mon and Sat — other days get zero-filled
+    const rows = [
+      makeRow({ hour_start: "2026-03-02T10:00:00Z", total_tokens: 5000, input_tokens: 4000, output_tokens: 1000, cached_input_tokens: 500 }),
+      makeRow({ hour_start: "2026-03-07T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
+    ];
+
+    const result = compareWeekdayWeekend(
+      rows,
+      { from: "2026-03-02", to: "2026-03-08" },
+      makePricingMap(),
+    );
+
+    // Weekday: 5000 tokens / 5 days = 1000 avg
+    expect(result.weekday.avgTokens).toBe(1000);
+    expect(result.weekday.totalDays).toBe(5);
+    // Weekend: 2000 tokens / 2 days = 1000 avg
+    expect(result.weekend.avgTokens).toBe(1000);
+    expect(result.weekend.totalDays).toBe(2);
+    // ratio: 1000/1000 = 1.0
+    expect(result.ratio).toBeCloseTo(1.0);
+    // Cost should be > 0 for both
+    expect(result.weekday.avgCost).toBeGreaterThan(0);
+    expect(result.weekend.avgCost).toBeGreaterThan(0);
+  });
+
+  it("should handle midnight boundary with tzOffset", () => {
+    // 2026-03-08 is Sunday in UTC, but in PST (UTC-8), a record at
+    // 2026-03-08T03:00Z is actually 2026-03-07T19:00 PST = Saturday.
+    // Date range: 2026-03-07 (Sat) to 2026-03-07 (Sat) in local time
+    const rows = [
+      makeRow({ hour_start: "2026-03-08T03:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
+    ];
+
+    const result = compareWeekdayWeekend(
+      rows,
+      { from: "2026-03-07", to: "2026-03-07" }, // Saturday only
+      makePricingMap(),
+      480, // PST (UTC-8)
+    );
+
+    // Saturday is weekend: 1000 tokens / 1 day = 1000
+    expect(result.weekend.avgTokens).toBe(1000);
+    expect(result.weekend.totalDays).toBe(1);
+    expect(result.weekday.avgTokens).toBe(0);
+    expect(result.weekday.totalDays).toBe(0);
   });
 });

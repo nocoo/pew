@@ -66,6 +66,14 @@ export interface LocalDailyBucket {
   totalTokens: number;
 }
 
+/** Weekday vs weekend comparison stats. */
+export interface WeekdayWeekendStats {
+  weekday: { avgTokens: number; avgCost: number; totalDays: number };
+  weekend: { avgTokens: number; avgCost: number; totalDays: number };
+  /** weekday.avgTokens / weekend.avgTokens (0 if either side has 0 days) */
+  ratio: number;
+}
+
 // ---------------------------------------------------------------------------
 // groupByModel
 // ---------------------------------------------------------------------------
@@ -314,4 +322,98 @@ export function toLocalDailyBuckets(
   return Array.from(byDate.values()).sort((a, b) =>
     a.date.localeCompare(b.date),
   );
+}
+
+// ---------------------------------------------------------------------------
+// compareWeekdayWeekend
+// ---------------------------------------------------------------------------
+
+/**
+ * Compare average daily token usage and cost between weekdays and weekends.
+ *
+ * Generates a complete calendar between `dateRange.from` and `dateRange.to`
+ * (inclusive), left-joins with local-day buckets (zero-filling missing days),
+ * then partitions by local day-of-week (0/6 = weekend, 1-5 = weekday).
+ * Averages are divided by **calendar days**, not active days.
+ *
+ * @param rows       — raw UsageRow[] (half-hour granularity for timezone accuracy)
+ * @param dateRange  — period boundaries for calendar fill (local dates "YYYY-MM-DD")
+ * @param pricingMap — pricing map for cost estimation
+ * @param tzOffset   — minutes from UTC (positive = west), default 0
+ */
+export function compareWeekdayWeekend(
+  rows: UsageRow[],
+  dateRange: { from: string; to: string },
+  pricingMap: PricingMap,
+  tzOffset: number = 0,
+): WeekdayWeekendStats {
+  // 1. Re-bucket rows into local-day totals
+  const buckets = toLocalDailyBuckets(rows, tzOffset);
+  const bucketMap = new Map(buckets.map((b) => [b.date, b]));
+
+  // 2. Also compute per-local-day cost from raw rows
+  const costByDate = new Map<string, number>();
+  for (const r of rows) {
+    const utcMs = new Date(r.hour_start).getTime();
+    const localMs = utcMs - tzOffset * 60_000;
+    const localDate = new Date(localMs).toISOString().slice(0, 10);
+    const pricing = lookupPricing(pricingMap, r.model, r.source);
+    const cost = estimateCost(
+      r.input_tokens,
+      r.output_tokens,
+      r.cached_input_tokens,
+      pricing,
+    );
+    costByDate.set(localDate, (costByDate.get(localDate) ?? 0) + cost.totalCost);
+  }
+
+  // 3. Generate complete calendar and partition
+  let weekdayTokens = 0;
+  let weekdayCost = 0;
+  let weekdayDays = 0;
+  let weekendTokens = 0;
+  let weekendCost = 0;
+  let weekendDays = 0;
+
+  const startMs = new Date(dateRange.from + "T00:00:00Z").getTime();
+  const endMs = new Date(dateRange.to + "T00:00:00Z").getTime();
+  const DAY_MS = 86_400_000;
+
+  for (let ms = startMs; ms <= endMs; ms += DAY_MS) {
+    const d = new Date(ms);
+    const dateStr = d.toISOString().slice(0, 10);
+    const dow = d.getUTCDay(); // 0=Sun, 6=Sat
+
+    const bucket = bucketMap.get(dateStr);
+    const tokens = bucket?.totalTokens ?? 0;
+    const cost = costByDate.get(dateStr) ?? 0;
+
+    if (dow === 0 || dow === 6) {
+      weekendTokens += tokens;
+      weekendCost += cost;
+      weekendDays++;
+    } else {
+      weekdayTokens += tokens;
+      weekdayCost += cost;
+      weekdayDays++;
+    }
+  }
+
+  // 4. Compute averages
+  const weekdayAvgTokens = weekdayDays > 0 ? weekdayTokens / weekdayDays : 0;
+  const weekdayAvgCost = weekdayDays > 0 ? weekdayCost / weekdayDays : 0;
+  const weekendAvgTokens = weekendDays > 0 ? weekendTokens / weekendDays : 0;
+  const weekendAvgCost = weekendDays > 0 ? weekendCost / weekendDays : 0;
+
+  // ratio: 0 if either side has 0 days
+  const ratio =
+    weekdayDays > 0 && weekendDays > 0 && weekendAvgTokens > 0
+      ? weekdayAvgTokens / weekendAvgTokens
+      : 0;
+
+  return {
+    weekday: { avgTokens: weekdayAvgTokens, avgCost: weekdayAvgCost, totalDays: weekdayDays },
+    weekend: { avgTokens: weekendAvgTokens, avgCost: weekendAvgCost, totalDays: weekendDays },
+    ratio,
+  };
 }
