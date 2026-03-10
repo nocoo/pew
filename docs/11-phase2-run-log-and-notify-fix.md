@@ -338,13 +338,6 @@ Total: ~18 new tests + 19+ updated tests.
 | `packages/cli/src/__tests__/coordinator.test.ts` | 3, 4 | Update mocks, ~14 new tests |
 | `packages/cli/src/__tests__/notify-command.test.ts` | 5 | Update mocks, ~3 new tests |
 
-## Future Phases (Roadmap)
+## Future Phases
 
-These are not part of this plan but are noted for context.
-
-| Phase | Focus | Depends On |
-|-------|-------|-----------|
-| **Phase 3** | Shared Discovery / Plan Builder (`ScanPlan`) | Phase 2 |
-| **Phase 4** | Unified Source Registry (`SourceDriver`) | Phase 3 |
-| **Phase 5** | Staged Queue + at-least-once semantics | Phase 4 |
-| **Phase 6** | Tracker-driven default + `pew runs` / `pew doctor` | Phase 2 (run log) |
+See `docs/13-phase3-unified-source-drivers.md` (Phase 3+4 merged into a single refactor).
