@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { computeTotalCost, toDailyCostPoints, computeCacheSavings } from "@/lib/cost-helpers";
+import { computeTotalCost, toDailyCostPoints, computeCacheSavings, forecastMonthlyCost } from "@/lib/cost-helpers";
+import type { DailyCostPoint } from "@/lib/cost-helpers";
 import type { ModelAggregate, UsageRow } from "@/hooks/use-usage-data";
 import { getDefaultPricingMap } from "@/lib/pricing";
 import type { PricingMap } from "@/lib/pricing";
@@ -217,5 +218,80 @@ describe("computeCacheSavings", () => {
     expect(result.savedDollars).toBeCloseTo(1.10, 2);
     expect(result.actualCachedCost).toBeCloseTo(0.184, 3);
     expect(result.netSavings).toBeCloseTo(0.916, 3);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// forecastMonthlyCost
+// ---------------------------------------------------------------------------
+
+function makeCostPoint(date: string, totalCost: number): DailyCostPoint {
+  return { date, inputCost: totalCost * 0.6, outputCost: totalCost * 0.3, cachedCost: totalCost * 0.1, totalCost };
+}
+
+describe("forecastMonthlyCost", () => {
+  it("returns null for empty data", () => {
+    const result = forecastMonthlyCost([], new Date("2026-03-15"));
+    expect(result).toBeNull();
+  });
+
+  it("returns null when fewer than 3 days elapsed", () => {
+    const points = [
+      makeCostPoint("2026-03-01", 5),
+      makeCostPoint("2026-03-02", 10),
+    ];
+    const result = forecastMonthlyCost(points, new Date("2026-03-02"));
+    expect(result).toBeNull();
+  });
+
+  it("projects mid-month cost correctly", () => {
+    // 10 days in, $10/day average = $310 projected (31 days in March)
+    const points = Array.from({ length: 10 }, (_, i) =>
+      makeCostPoint(`2026-03-${String(i + 1).padStart(2, "0")}`, 10),
+    );
+    const result = forecastMonthlyCost(points, new Date("2026-03-10"));
+    expect(result).not.toBeNull();
+    expect(result!.currentMonthCost).toBeCloseTo(100, 1);
+    expect(result!.daysElapsed).toBe(10);
+    expect(result!.daysInMonth).toBe(31);
+    expect(result!.dailyAverage).toBeCloseTo(10, 1);
+    expect(result!.projectedMonthCost).toBeCloseTo(310, 1);
+  });
+
+  it("projects end-of-month correctly", () => {
+    // All 31 days of March with $5/day = $155 total, projected $155
+    const points = Array.from({ length: 31 }, (_, i) =>
+      makeCostPoint(`2026-03-${String(i + 1).padStart(2, "0")}`, 5),
+    );
+    const result = forecastMonthlyCost(points, new Date("2026-03-31"));
+    expect(result).not.toBeNull();
+    expect(result!.currentMonthCost).toBeCloseTo(155, 1);
+    expect(result!.projectedMonthCost).toBeCloseTo(155, 1);
+  });
+
+  it("handles February (28 days in non-leap year 2026)", () => {
+    const points = Array.from({ length: 7 }, (_, i) =>
+      makeCostPoint(`2026-02-${String(i + 1).padStart(2, "0")}`, 4),
+    );
+    const result = forecastMonthlyCost(points, new Date("2026-02-07"));
+    expect(result).not.toBeNull();
+    expect(result!.daysInMonth).toBe(28);
+    expect(result!.projectedMonthCost).toBeCloseTo(112, 1); // 4 * 28
+  });
+
+  it("filters out data from other months", () => {
+    // Points from Feb and March, "now" is March 5
+    const points = [
+      makeCostPoint("2026-02-28", 100),  // should be ignored
+      makeCostPoint("2026-03-01", 10),
+      makeCostPoint("2026-03-02", 10),
+      makeCostPoint("2026-03-03", 10),
+      makeCostPoint("2026-03-04", 10),
+      makeCostPoint("2026-03-05", 10),
+    ];
+    const result = forecastMonthlyCost(points, new Date("2026-03-05"));
+    expect(result).not.toBeNull();
+    expect(result!.currentMonthCost).toBeCloseTo(50, 1);
+    expect(result!.daysElapsed).toBe(5);
   });
 });

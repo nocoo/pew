@@ -120,3 +120,48 @@ export function computeCacheSavings(
 
   return { savedDollars, actualCachedCost, netSavings, savingsPercent };
 }
+
+// ---------------------------------------------------------------------------
+// Monthly cost forecast
+// ---------------------------------------------------------------------------
+
+/** Projected end-of-month cost based on linear extrapolation. */
+export interface CostForecast {
+  currentMonthCost: number;
+  projectedMonthCost: number;
+  daysElapsed: number;
+  daysInMonth: number;
+  dailyAverage: number;
+}
+
+/**
+ * Forecast end-of-month cost via linear extrapolation.
+ *
+ * Filters `dailyCosts` to the month of `now`, computes daily average,
+ * and projects to the full month. Returns `null` if fewer than 3 days
+ * of data exist (too early to extrapolate reliably).
+ */
+export function forecastMonthlyCost(
+  dailyCosts: DailyCostPoint[],
+  now?: Date,
+): CostForecast | null {
+  const ref = now ?? new Date();
+  const year = ref.getFullYear();
+  const month = ref.getMonth(); // 0-indexed
+  const monthPrefix = `${year}-${String(month + 1).padStart(2, "0")}`;
+
+  // Filter to current month only
+  const thisMonth = dailyCosts.filter((p) => p.date.startsWith(monthPrefix));
+
+  // Days elapsed = day-of-month of `now`
+  const daysElapsed = ref.getDate();
+
+  if (daysElapsed < 3 || thisMonth.length === 0) return null;
+
+  const currentMonthCost = thisMonth.reduce((sum, p) => sum + p.totalCost, 0);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const dailyAverage = currentMonthCost / daysElapsed;
+  const projectedMonthCost = dailyAverage * daysInMonth;
+
+  return { currentMonthCost, projectedMonthCost, daysElapsed, daysInMonth, dailyAverage };
+}
