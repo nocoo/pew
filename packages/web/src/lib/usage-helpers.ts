@@ -103,6 +103,16 @@ export interface SourceTrendPoint {
   sources: Record<string, number>;
 }
 
+export interface DailyDominantSource {
+  date: string;
+  /** Source with highest total_tokens that day */
+  dominantSource: string;
+  /** Percentage of daily total (0–100) */
+  dominantShare: number;
+  /** Per-source token totals for the day */
+  sources: Record<string, number>;
+}
+
 // ---------------------------------------------------------------------------
 // groupByModel
 // ---------------------------------------------------------------------------
@@ -666,4 +676,54 @@ export function toSourceTrendPoints(rows: UsageRow[]): SourceTrendPoint[] {
     }
     return { date, sources };
   });
+}
+
+// ---------------------------------------------------------------------------
+// toDominantSourceTimeline
+// ---------------------------------------------------------------------------
+
+/**
+ * Group rows by date and identify the dominant source per day.
+ * Ties are broken alphabetically by source name.
+ */
+export function toDominantSourceTimeline(rows: UsageRow[]): DailyDominantSource[] {
+  if (rows.length === 0) return [];
+
+  // Accumulate tokens per (date, source)
+  const byDate = new Map<string, Map<string, number>>();
+
+  for (const r of rows) {
+    const date = r.hour_start.slice(0, 10);
+    let dateMap = byDate.get(date);
+    if (!dateMap) {
+      dateMap = new Map<string, number>();
+      byDate.set(date, dateMap);
+    }
+    dateMap.set(r.source, (dateMap.get(r.source) ?? 0) + r.total_tokens);
+  }
+
+  return Array.from(byDate.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, dateMap]) => {
+      const sources: Record<string, number> = {};
+      let dayTotal = 0;
+      let maxTokens = -1;
+      let dominant = "";
+
+      for (const [source, tokens] of dateMap.entries()) {
+        sources[source] = tokens;
+        dayTotal += tokens;
+        if (tokens > maxTokens || (tokens === maxTokens && source < dominant)) {
+          maxTokens = tokens;
+          dominant = source;
+        }
+      }
+
+      return {
+        date,
+        dominantSource: dominant,
+        dominantShare: dayTotal > 0 ? (maxTokens / dayTotal) * 100 : 0,
+        sources,
+      };
+    });
 }

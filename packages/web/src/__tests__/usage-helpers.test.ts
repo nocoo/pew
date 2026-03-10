@@ -7,7 +7,7 @@ import {
   sourceLabel,
   type UsageRow,
 } from "@/hooks/use-usage-data";
-import { toLocalDailyBuckets, compareWeekdayWeekend, computeMoMGrowth, computeStreak, toSourceTrendPoints } from "@/lib/usage-helpers";
+import { toLocalDailyBuckets, compareWeekdayWeekend, computeMoMGrowth, computeStreak, toSourceTrendPoints, toDominantSourceTimeline } from "@/lib/usage-helpers";
 import { getDefaultPricingMap } from "@/lib/pricing";
 import type { PricingMap } from "@/lib/pricing";
 
@@ -622,6 +622,73 @@ describe("toSourceTrendPoints", () => {
       makeRow({ source: "claude-code", hour_start: "2026-03-07T10:00:00Z", total_tokens: 200 }),
     ];
     const result = toSourceTrendPoints(rows);
+    expect(result[0]!.date).toBe("2026-03-07");
+    expect(result[1]!.date).toBe("2026-03-09");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// toDominantSourceTimeline
+// ---------------------------------------------------------------------------
+
+describe("toDominantSourceTimeline", () => {
+  it("should return empty array for empty input", () => {
+    expect(toDominantSourceTimeline([])).toEqual([]);
+  });
+
+  it("should identify clear dominant source per day", () => {
+    const rows = [
+      makeRow({ source: "claude-code", hour_start: "2026-03-07T10:00:00Z", total_tokens: 5000 }),
+      makeRow({ source: "gemini-cli", hour_start: "2026-03-07T14:00:00Z", total_tokens: 1000 }),
+      makeRow({ source: "opencode", hour_start: "2026-03-08T09:00:00Z", total_tokens: 3000 }),
+      makeRow({ source: "claude-code", hour_start: "2026-03-08T11:00:00Z", total_tokens: 1000 }),
+    ];
+    const result = toDominantSourceTimeline(rows);
+    expect(result).toHaveLength(2);
+
+    // Day 1: claude-code dominates with 5000/6000 = 83.3%
+    expect(result[0]!.date).toBe("2026-03-07");
+    expect(result[0]!.dominantSource).toBe("claude-code");
+    expect(result[0]!.dominantShare).toBeCloseTo(83.33, 0);
+    expect(result[0]!.sources["claude-code"]).toBe(5000);
+    expect(result[0]!.sources["gemini-cli"]).toBe(1000);
+
+    // Day 2: opencode dominates with 3000/4000 = 75%
+    expect(result[1]!.date).toBe("2026-03-08");
+    expect(result[1]!.dominantSource).toBe("opencode");
+    expect(result[1]!.dominantShare).toBeCloseTo(75, 0);
+  });
+
+  it("should pick first source alphabetically when tied", () => {
+    const rows = [
+      makeRow({ source: "opencode", hour_start: "2026-03-07T10:00:00Z", total_tokens: 2000 }),
+      makeRow({ source: "claude-code", hour_start: "2026-03-07T14:00:00Z", total_tokens: 2000 }),
+    ];
+    const result = toDominantSourceTimeline(rows);
+    expect(result).toHaveLength(1);
+    // Tied at 50% each — pick alphabetically first: "claude-code"
+    expect(result[0]!.dominantSource).toBe("claude-code");
+    expect(result[0]!.dominantShare).toBeCloseTo(50, 0);
+  });
+
+  it("should handle single source per day", () => {
+    const rows = [
+      makeRow({ source: "claude-code", hour_start: "2026-03-07T10:00:00Z", total_tokens: 3000 }),
+      makeRow({ source: "claude-code", hour_start: "2026-03-07T14:00:00Z", total_tokens: 2000 }),
+    ];
+    const result = toDominantSourceTimeline(rows);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.dominantSource).toBe("claude-code");
+    expect(result[0]!.dominantShare).toBeCloseTo(100, 0);
+    expect(result[0]!.sources["claude-code"]).toBe(5000);
+  });
+
+  it("should sort by date ascending", () => {
+    const rows = [
+      makeRow({ source: "claude-code", hour_start: "2026-03-09T10:00:00Z", total_tokens: 1000 }),
+      makeRow({ source: "opencode", hour_start: "2026-03-07T10:00:00Z", total_tokens: 2000 }),
+    ];
+    const result = toDominantSourceTimeline(rows);
     expect(result[0]!.date).toBe("2026-03-07");
     expect(result[1]!.date).toBe("2026-03-09");
   });
