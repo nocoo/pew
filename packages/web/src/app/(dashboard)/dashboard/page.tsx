@@ -14,6 +14,7 @@ import { useUsageData, toHeatmapData } from "@/hooks/use-usage-data";
 import { formatTokens, cn } from "@/lib/utils";
 import { usePricingMap, formatCost } from "@/hooks/use-pricing";
 import { computeTotalCost, toDailyCostPoints, computeCacheSavings, forecastMonthlyCost, toDailyCacheRates } from "@/lib/cost-helpers";
+import { compareWeekdayWeekend, computeMoMGrowth, computeStreak } from "@/lib/usage-helpers";
 import { StatCard, StatGrid } from "@/components/dashboard/stat-card";
 import { UsageTrendChart } from "@/components/dashboard/usage-trend-chart";
 import { CostTrendChart } from "@/components/dashboard/cost-trend-chart";
@@ -21,6 +22,8 @@ import { CacheRateChart } from "@/components/dashboard/cache-rate-chart";
 import { IoRatioChart } from "@/components/dashboard/io-ratio-chart";
 import { SourceDonutChart } from "@/components/dashboard/source-donut-chart";
 import { HeatmapCalendar } from "@/components/dashboard/heatmap-calendar";
+import { WeekdayWeekendChart } from "@/components/dashboard/weekday-weekend-chart";
+import { StreakBadge } from "@/components/dashboard/streak-badge";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
 import { periodToDateRange, periodLabel } from "@/lib/date-helpers";
@@ -43,6 +46,15 @@ export default function DashboardPage() {
     ...(to ? { to } : {}),
   });
   const yearData = useUsageData({ days: 365 });
+
+  // Half-hour granularity fetch for weekday/weekend + streak analysis
+  const halfHourData = useUsageData({
+    from,
+    ...(to ? { to } : {}),
+    granularity: "half-hour",
+  });
+  // Half-hour granularity for streak (needs 365 days of data)
+  const yearHalfHourData = useUsageData({ days: 365, granularity: "half-hour" });
 
   const currentYear = new Date().getFullYear();
   const heatmapData = toHeatmapData(yearData.daily);
@@ -69,6 +81,27 @@ export default function DashboardPage() {
   const dailyCacheRates = useMemo(
     () => (data ? toDailyCacheRates(data.records) : []),
     [data],
+  );
+
+  // MoM growth (needs 2 months of data — use half-hour records)
+  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []);
+
+  const mom = useMemo(
+    () => (halfHourData.data ? computeMoMGrowth(halfHourData.data.records, pricingMap) : null),
+    [halfHourData.data, pricingMap],
+  );
+
+  // Weekday vs weekend comparison
+  const weekdayWeekend = useMemo(() => {
+    if (!halfHourData.data) return null;
+    const toStr = to ?? new Date().toISOString().slice(0, 10);
+    return compareWeekdayWeekend(halfHourData.data.records, { from, to: toStr }, pricingMap, tzOffset);
+  }, [halfHourData.data, from, to, pricingMap, tzOffset]);
+
+  // Usage streak (365 days, half-hour granularity)
+  const streak = useMemo(
+    () => (yearHalfHourData.data ? computeStreak(yearHalfHourData.data.records, undefined, tzOffset) : null),
+    [yearHalfHourData.data, tzOffset],
   );
 
   const showForecast = (period === "month" || period === "all") && costForecast !== null;
@@ -109,6 +142,9 @@ export default function DashboardPage() {
               subtitle={subtitle}
               icon={Zap}
               iconColor="text-primary"
+              {...(mom && mom.previousMonth.tokens > 0
+                ? { trend: { value: Math.round(mom.tokenGrowth), label: "vs last month" } }
+                : {})}
             />
             <StatCard
               title="Est. Cost"
@@ -116,6 +152,9 @@ export default function DashboardPage() {
               subtitle="Based on public pricing"
               icon={DollarSign}
               iconColor="text-chart-6"
+              {...(mom && mom.previousMonth.cost > 0
+                ? { trend: { value: -Math.round(mom.costGrowth), label: "vs last month" } }
+                : {})}
             />
             <StatCard
               title="Cache Savings"
@@ -218,20 +257,28 @@ export default function DashboardPage() {
           {/* Efficiency row: cache rate trend */}
           <CacheRateChart data={dailyCacheRates} />
 
-          {/* Activity heatmap */}
-          <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
-            <p className="mb-3 text-xs md:text-sm text-muted-foreground">
-              {currentYear} Activity
-            </p>
-            {yearData.loading ? (
-              <Skeleton className="h-[120px] w-full" />
-            ) : (
-              <HeatmapCalendar
-                data={heatmapData}
-                year={currentYear}
-                valueFormatter={(v) => formatTokens(v)}
-              />
-            )}
+          {/* Insights row: weekday vs weekend */}
+          {weekdayWeekend && (
+            <WeekdayWeekendChart stats={weekdayWeekend} />
+          )}
+
+          {/* Activity heatmap + streak */}
+          <div className="space-y-3">
+            <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+              <p className="mb-3 text-xs md:text-sm text-muted-foreground">
+                {currentYear} Activity
+              </p>
+              {yearData.loading ? (
+                <Skeleton className="h-[120px] w-full" />
+              ) : (
+                <HeatmapCalendar
+                  data={heatmapData}
+                  year={currentYear}
+                  valueFormatter={(v) => formatTokens(v)}
+                />
+              )}
+            </div>
+            {streak && <StreakBadge streak={streak} />}
           </div>
         </>
       )}

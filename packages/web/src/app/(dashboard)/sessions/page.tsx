@@ -8,6 +8,7 @@ import { SessionOverview } from "@/components/dashboard/session-overview";
 import { StatCard, StatGrid } from "@/components/dashboard/stat-card";
 import { WorkingHoursHeatmap } from "@/components/dashboard/working-hours-heatmap";
 import { MessageStatsChart } from "@/components/dashboard/message-stats-chart";
+import { PeakHoursCard } from "@/components/dashboard/peak-hours-card";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import {
   PeriodSelector,
@@ -17,6 +18,7 @@ import {
 import type { Period } from "@/components/dashboard/period-selector";
 import { computeTokensPerHour } from "@/lib/session-helpers";
 import { computeReasoningRatio } from "@/lib/cost-helpers";
+import { detectPeakHours } from "@/lib/date-helpers";
 import { formatTokens } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -39,6 +41,13 @@ export default function SessionsPage() {
     ...(to ? { to } : {}),
   });
 
+  // Half-hour granularity for peak hour detection
+  const { data: halfHourUsage, loading: halfHourLoading } = useUsageData({
+    from,
+    ...(to ? { to } : {}),
+    granularity: "half-hour",
+  });
+
   const subtitle = periodLabel(period);
 
   const efficiency = useMemo(
@@ -52,6 +61,13 @@ export default function SessionsPage() {
   const reasoning = useMemo(
     () => (usageData ? computeReasoningRatio(usageData.summary) : null),
     [usageData],
+  );
+
+  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []);
+
+  const peakSlots = useMemo(
+    () => (halfHourUsage ? detectPeakHours(halfHourUsage.records, 3, tzOffset) : []),
+    [halfHourUsage, tzOffset],
   );
 
   return (
@@ -75,10 +91,10 @@ export default function SessionsPage() {
       )}
 
       {/* Loading state */}
-      {(loading || usageLoading) && <DashboardSkeleton />}
+      {(loading || usageLoading || halfHourLoading) && <DashboardSkeleton />}
 
       {/* Content */}
-      {!loading && !usageLoading && (
+      {!loading && !usageLoading && !halfHourLoading && (
         <>
           {/* Overview stat cards */}
           <SessionOverview data={overview} subtitle={subtitle} />
@@ -107,9 +123,10 @@ export default function SessionsPage() {
             </StatGrid>
           )}
 
-          {/* Charts row */}
-          <div className="grid grid-cols-1 gap-3 md:gap-4">
+          {/* Charts row: working hours + peak hours */}
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-3 md:gap-4">
             <WorkingHoursHeatmap data={hoursGrid} />
+            <PeakHoursCard slots={peakSlots} />
           </div>
 
           <div className="grid grid-cols-1 gap-3 md:gap-4">
