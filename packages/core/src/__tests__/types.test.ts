@@ -238,8 +238,11 @@ describe("Notifier types", () => {
       runId: "2026-03-09T10:00:00.000Z-abc123",
       triggers: [{ kind: "startup" }],
       hadFollowUp: false,
+      followUpCount: 0,
       waitedForLock: true,
       skippedSync: false,
+      degradedToUnlocked: false,
+      cycles: [],
     };
     expect(result.waitedForLock).toBe(true);
     expect(result.triggers).toHaveLength(1);

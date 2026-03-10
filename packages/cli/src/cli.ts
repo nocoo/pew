@@ -344,9 +344,11 @@ const notifyCommand = defineCommand({
     const paths = resolveDefaultPaths();
 
     let openMessageDb: typeof import("./parsers/opencode-sqlite-db.js").openMessageDb | undefined;
+    let openSessionDb: typeof import("./parsers/opencode-sqlite-db.js").openSessionDb | undefined;
     try {
       const mod = await import("./parsers/opencode-sqlite-db.js");
       openMessageDb = mod.openMessageDb;
+      openSessionDb = mod.openSessionDb;
     } catch {
       // bun:sqlite not available — SQLite sync will be skipped
     }
@@ -361,7 +363,9 @@ const notifyCommand = defineCommand({
       openCodeMessageDir: paths.openCodeMessageDir,
       openCodeDbPath: paths.openCodeDbPath,
       openMessageDb,
+      openSessionDb,
       openclawDir: paths.openclawDir,
+      version: "0.7.0",
     });
 
     if (result.error) {
