@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { Zap, Brain } from "lucide-react";
 import { useSessionData } from "@/hooks/use-session-data";
+import { useUsageData } from "@/hooks/use-usage-data";
 import { SessionOverview } from "@/components/dashboard/session-overview";
+import { StatCard, StatGrid } from "@/components/dashboard/stat-card";
 import { WorkingHoursHeatmap } from "@/components/dashboard/working-hours-heatmap";
 import { MessageStatsChart } from "@/components/dashboard/message-stats-chart";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
@@ -12,6 +15,9 @@ import {
   periodLabel,
 } from "@/components/dashboard/period-selector";
 import type { Period } from "@/components/dashboard/period-selector";
+import { computeTokensPerHour } from "@/lib/session-helpers";
+import { computeReasoningRatio } from "@/lib/cost-helpers";
+import { formatTokens } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Page
@@ -27,7 +33,26 @@ export default function SessionsPage() {
       ...(to ? { to } : {}),
     });
 
+  // Fetch usage data for token totals (needed for tokens/hour + reasoning ratio)
+  const { data: usageData, loading: usageLoading } = useUsageData({
+    from,
+    ...(to ? { to } : {}),
+  });
+
   const subtitle = periodLabel(period);
+
+  const efficiency = useMemo(
+    () =>
+      usageData
+        ? computeTokensPerHour(usageData.summary.total_tokens, overview)
+        : null,
+    [usageData, overview],
+  );
+
+  const reasoning = useMemo(
+    () => (usageData ? computeReasoningRatio(usageData.summary) : null),
+    [usageData],
+  );
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -50,13 +75,37 @@ export default function SessionsPage() {
       )}
 
       {/* Loading state */}
-      {loading && <DashboardSkeleton />}
+      {(loading || usageLoading) && <DashboardSkeleton />}
 
       {/* Content */}
-      {!loading && (
+      {!loading && !usageLoading && (
         <>
           {/* Overview stat cards */}
           <SessionOverview data={overview} subtitle={subtitle} />
+
+          {/* Efficiency metrics row */}
+          {efficiency && (
+            <StatGrid columns={2}>
+              <StatCard
+                title="Tokens / Hour"
+                value={formatTokens(Math.round(efficiency.tokensPerHour))}
+                subtitle={`${efficiency.totalCodingHours.toFixed(1)}h coding time`}
+                icon={Zap}
+                iconColor="text-chart-6"
+              />
+              <StatCard
+                title="Reasoning Ratio"
+                value={
+                  reasoning && reasoning.reasoningTokens > 0
+                    ? `${reasoning.reasoningPercent.toFixed(1)}%`
+                    : "N/A"
+                }
+                subtitle="of output tokens are reasoning"
+                icon={Brain}
+                iconColor="text-chart-5"
+              />
+            </StatGrid>
+          )}
 
           {/* Charts row */}
           <div className="grid grid-cols-1 gap-3 md:gap-4">
