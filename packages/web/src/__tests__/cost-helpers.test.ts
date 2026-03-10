@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeTotalCost, toDailyCostPoints } from "@/lib/cost-helpers";
+import { computeTotalCost, toDailyCostPoints, computeCacheSavings } from "@/lib/cost-helpers";
 import type { ModelAggregate, UsageRow } from "@/hooks/use-usage-data";
 import { getDefaultPricingMap } from "@/lib/pricing";
 import type { PricingMap } from "@/lib/pricing";
@@ -163,5 +163,59 @@ describe("toDailyCostPoints", () => {
     const result = toDailyCostPoints(rows, pm);
     expect(result).toHaveLength(1);
     expect(result[0]!.totalCost).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeCacheSavings
+// ---------------------------------------------------------------------------
+
+describe("computeCacheSavings", () => {
+  const pm = makePricingMap();
+
+  it("returns zero savings when no cached tokens", () => {
+    const models = [makeAggregate({ cached: 0 })];
+    const result = computeCacheSavings(models, pm);
+    expect(result.savedDollars).toBe(0);
+    expect(result.actualCachedCost).toBe(0);
+    expect(result.netSavings).toBe(0);
+    expect(result.savingsPercent).toBe(0);
+  });
+
+  it("computes savings for partial cache hits", () => {
+    // claude-sonnet-4-20250514: input=$3/M, cached=$0.3/M
+    // cached=200_000 → hypothetical full cost = 200k / 1M * $3 = $0.60
+    // actual cached cost = 200k / 1M * $0.3 = $0.06
+    // net savings = $0.60 - $0.06 = $0.54
+    // savingsPercent = 0.54 / 0.60 * 100 = 90%
+    const models = [makeAggregate({ cached: 200_000 })];
+    const result = computeCacheSavings(models, pm);
+    expect(result.savedDollars).toBeCloseTo(0.60, 3);
+    expect(result.actualCachedCost).toBeCloseTo(0.06, 3);
+    expect(result.netSavings).toBeCloseTo(0.54, 3);
+    expect(result.savingsPercent).toBeCloseTo(90, 1);
+  });
+
+  it("computes savings with full cache (all input cached)", () => {
+    // 1M cached tokens at sonnet-4: full=$3.00, cached=$0.30, net=$2.70
+    const models = [makeAggregate({ input: 1_000_000, cached: 1_000_000 })];
+    const result = computeCacheSavings(models, pm);
+    expect(result.savedDollars).toBeCloseTo(3.0, 2);
+    expect(result.actualCachedCost).toBeCloseTo(0.3, 2);
+    expect(result.netSavings).toBeCloseTo(2.7, 2);
+    expect(result.savingsPercent).toBeCloseTo(90, 1);
+  });
+
+  it("sums savings across multiple models", () => {
+    // sonnet-4: 200k cached → full=$0.60, cached=$0.06, net=$0.54
+    // gemini-2.5-pro: 400k cached → full=400k/1M*$1.25=$0.50, cached=400k/1M*$0.31=$0.124, net=$0.376
+    const models = [
+      makeAggregate({ model: "claude-sonnet-4-20250514", cached: 200_000 }),
+      makeAggregate({ model: "gemini-2.5-pro", source: "gemini-cli", cached: 400_000 }),
+    ];
+    const result = computeCacheSavings(models, pm);
+    expect(result.savedDollars).toBeCloseTo(1.10, 2);
+    expect(result.actualCachedCost).toBeCloseTo(0.184, 3);
+    expect(result.netSavings).toBeCloseTo(0.916, 3);
   });
 });

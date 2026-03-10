@@ -81,3 +81,42 @@ export function toDailyCostPoints(
     a.date.localeCompare(b.date),
   );
 }
+
+// ---------------------------------------------------------------------------
+// Cache savings
+// ---------------------------------------------------------------------------
+
+/** Breakdown of money saved by cache hits vs full input pricing. */
+export interface CacheSavings {
+  savedDollars: number;     // hypothetical full cost of cached tokens at input price
+  actualCachedCost: number; // what user paid at cached price
+  netSavings: number;       // savedDollars - actualCachedCost
+  savingsPercent: number;   // netSavings / savedDollars * 100
+}
+
+/**
+ * Compute how much money was saved by cache hits across all models.
+ *
+ * For each model: `savedDollars = cachedTokens / 1M * inputPrice`,
+ * `actualCachedCost = cachedTokens / 1M * cachedPrice`.
+ * `netSavings = savedDollars - actualCachedCost`.
+ */
+export function computeCacheSavings(
+  models: ModelAggregate[],
+  pricingMap: PricingMap,
+): CacheSavings {
+  let savedDollars = 0;
+  let actualCachedCost = 0;
+
+  for (const m of models) {
+    const pricing = lookupPricing(pricingMap, m.model, m.source);
+    const cachedPrice = pricing.cached ?? pricing.input * 0.1;
+    savedDollars += (m.cached / 1_000_000) * pricing.input;
+    actualCachedCost += (m.cached / 1_000_000) * cachedPrice;
+  }
+
+  const netSavings = savedDollars - actualCachedCost;
+  const savingsPercent = savedDollars > 0 ? (netSavings / savedDollars) * 100 : 0;
+
+  return { savedDollars, actualCachedCost, netSavings, savingsPercent };
+}
