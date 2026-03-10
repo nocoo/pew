@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS invite_codes (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   code       TEXT    NOT NULL UNIQUE,       -- 8-char uppercase alphanumeric
   created_by TEXT    NOT NULL REFERENCES users(id),
-  used_by    TEXT    REFERENCES users(id),  -- NULL = unused
+  used_by    TEXT,                          -- NULL = unused, user ID or 'pending:<email>'
   used_at    TEXT,                          -- ISO 8601 timestamp
   created_at TEXT    NOT NULL DEFAULT (datetime('now'))
 );
@@ -58,6 +58,14 @@ CREATE INDEX IF NOT EXISTS idx_invite_used_by ON invite_codes(used_by);
 - `used_by IS NULL` → code is available.
 - `used_by IS NOT NULL` → code has been consumed (one-time use).
 - `created_by` tracks which admin generated the code.
+
+**Why `used_by` has no foreign key constraint:** The `signIn` callback must
+consume the invite code BEFORE `createUser` runs (the user doesn't exist yet).
+We write `'pending:<email>'` as a temporary value, then backfill the real user
+ID in `events.createUser`. A `REFERENCES users(id)` FK would reject the
+`pending:` prefix since no matching user row exists. Plain `TEXT` is the
+pragmatic choice — the admin page displays either format, and the backfill
+converts most entries to real user IDs anyway.
 
 ### Code Format
 
@@ -264,9 +272,23 @@ const handleGoogleLogin = () => {
 
 ```ts
 // In handleInviteGate:
-const originalCallbackUrl = req?.nextUrl?.searchParams.get("callbackUrl") ?? "/";
+// During the OAuth callback, req.nextUrl is /api/auth/callback/google?code=...
+// The user's desired callbackUrl is stored in the Auth.js callback-url cookie,
+// NOT in the URL search params. Read from the cookie, matching the configured
+// cookie name (secure vs insecure prefix).
+const callbackUrlCookieName = shouldUseSecureCookies()
+  ? "__Secure-authjs.callback-url"
+  : "authjs.callback-url";
+const originalCallbackUrl = req?.cookies.get(callbackUrlCookieName)?.value ?? "/";
 return `/login?error=InviteRequired&callbackUrl=${encodeURIComponent(originalCallbackUrl)}`;
 ```
+
+**Why cookies, not URL params:** During the `/api/auth/callback/google` phase,
+`req.nextUrl` is the OAuth callback URL (contains `code`, `state` params from
+Google), NOT the original page. Auth.js stores the user's desired redirect
+destination in its own `authjs.callback-url` cookie (or `__Secure-authjs.callback-url`
+when secure cookies are enabled). We read from this cookie to preserve the
+callbackUrl through the InviteRequired redirect.
 
 **Note:** The signIn callback's redirect URL goes through Auth.js's
 `callbacks.redirect`, which validates it's a same-origin URL. Since `/login?...`
@@ -313,7 +335,9 @@ Generate invite codes. Body: `{ "count": 5 }` (default 1, max 20).
 
 #### `DELETE /api/admin/invites?id=123`
 
-Delete an unused invite code. Returns 409 if the code has already been used.
+Delete an unused or burned invite code. Deletable when `used_by IS NULL` (unused)
+or `used_by LIKE 'pending:%'` (burned / reclaimable). Returns 409 if the code
+has been fully consumed by a real user (non-pending `used_by`).
 
 ### Public Endpoint
 
@@ -343,8 +367,9 @@ Follows the established pattern from `/admin/pricing`:
 - **Header**: Title "Invite Codes" + "Generate Codes" button.
 - **Generate dialog**: Number input (1-20) in a collapsible card.
 - **Table columns**: Code (monospace, with copy button) | Status (badge:
-  `unused` green / `used` gray) | Used By (email or `pending:<email>`) |
-  Created At | Actions (delete button, only for unused codes).
+  `unused` green / `pending` amber / `used` gray) | Used By (email or
+  `pending:<email>`) | Created At | Actions (delete button for unused codes,
+  reclaim button for `pending:*` codes that may be burned).
 - **Auth guard**: `useAdmin()` hook, redirect non-admins to `/`.
 
 ### Navigation Update
@@ -393,6 +418,30 @@ import and `ICON_MAP`.
 | `http://localhost` dev environment | Cookie uses `SameSite=Lax; Secure=false` via `shouldUseSecureCookies()` |
 | Redirect after InviteRequired | `callbackUrl` preserved in search params through entire flow |
 | `events.createUser` backfill fails | Code still consumed (has `pending:<email>`), admin sees email instead of UUID |
+| `createUser` / `linkAccount` fails after invite consumed | Code is "burned" with `pending:<email>` status but no user created. Admin can reclaim — see Compensation Strategy below |
+
+### Compensation Strategy: Burned Invite Codes
+
+If the `signIn` callback consumes an invite code (atomic UPDATE succeeds) but
+the subsequent `createUser` or `linkAccount` call fails (e.g. D1 outage, unique
+constraint violation), the code is "burned" — marked as used with
+`pending:<email>` but no user was actually created.
+
+**Detection:** Admin page shows codes where `used_by LIKE 'pending:%'`. These
+are either (a) legitimate new users whose backfill hasn't run yet, or (b) burned
+codes from failed registrations. To distinguish: if `used_at` is older than
+10 minutes and no user exists with that email, the code is burned.
+
+**Reclaim action:** The admin `DELETE /api/admin/invites?id=X` endpoint is
+enhanced to allow deleting codes in `pending:*` state (not just `used_by IS NULL`).
+Specifically:
+- `used_by IS NULL` → deletable (unused)
+- `used_by LIKE 'pending:%'` → deletable (reclaim burned code)
+- `used_by` is a real user ID → returns 409 Conflict (legitimately used)
+
+This avoids over-engineering an automatic retry/rollback mechanism for an
+extremely rare failure case (D1 must fail between the UPDATE and createUser,
+within a single request). The admin has full visibility and manual control.
 
 ---
 
@@ -448,8 +497,9 @@ File: `packages/web/src/__tests__/admin-invites-api.test.ts`
 | 4 | `POST /api/admin/invites` rejects count > 20 | Input validation |
 | 5 | `POST /api/admin/invites` rejects count < 1 | Input validation |
 | 6 | `DELETE /api/admin/invites?id=X` deletes unused code | Delete happy path |
-| 7 | `DELETE /api/admin/invites?id=X` returns 409 for used code | Delete guard |
-| 8 | `DELETE /api/admin/invites` returns 400 without id | Input validation |
+| 7 | `DELETE /api/admin/invites?id=X` deletes burned `pending:*` code | Reclaim burned code |
+| 8 | `DELETE /api/admin/invites?id=X` returns 409 for fully used code | Delete guard |
+| 9 | `DELETE /api/admin/invites` returns 400 without id | Input validation |
 
 File: `packages/web/src/__tests__/verify-invite-api.test.ts`
 
@@ -532,3 +582,4 @@ Each commit is independently buildable and testable. Ordered by dependency:
 | Cookie not sent during OAuth callback | Medium | Cookie uses `SameSite=Lax` which allows top-level navigations (OAuth redirects are top-level). `Path=/` ensures it's sent to all routes. |
 | `signIn` callback can't distinguish new vs existing user | Low | We query `getUserByAccount` ourselves inside the callback — same query the adapter uses. Slight duplication but necessary. |
 | `events.createUser` backfill fails | Low | Code is already consumed in signIn callback. Backfill is best-effort for admin display. |
+| `createUser`/`linkAccount` fails after invite consumed | Low | Code is "burned" with `pending:` prefix. Admin can detect and reclaim via enhanced DELETE endpoint. See Compensation Strategy in Edge Cases. Extremely rare — requires D1 failure between UPDATE and createUser within one request. |
