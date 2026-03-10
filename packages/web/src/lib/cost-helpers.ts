@@ -6,7 +6,7 @@
  */
 
 import type { ModelAggregate } from "@/hooks/use-usage-data";
-import type { UsageRow } from "@/hooks/use-usage-data";
+import type { UsageRow, UsageSummary } from "@/hooks/use-usage-data";
 import { lookupPricing, estimateCost } from "@/lib/pricing";
 import type { PricingMap } from "@/lib/pricing";
 
@@ -255,4 +255,30 @@ export function toDailyCacheRates(rows: UsageRow[]): DailyCacheRate[] {
       cachedTokens,
       inputTokens,
     }));
+}
+
+// ---------------------------------------------------------------------------
+// Reasoning ratio
+// ---------------------------------------------------------------------------
+
+export interface ReasoningRatio {
+  reasoningTokens: number;
+  outputTokens: number;
+  reasoningPercent: number;  // reasoning / output * 100
+}
+
+/**
+ * Compute the percentage of output tokens that are reasoning (thinking) tokens.
+ *
+ * Indicates "thinking depth" for reasoning models (o3, claude-opus, etc.).
+ * Returns 0% when output_tokens is 0.
+ */
+export function computeReasoningRatio(summary: UsageSummary): ReasoningRatio {
+  const { output_tokens, reasoning_output_tokens } = summary;
+  return {
+    reasoningTokens: reasoning_output_tokens,
+    outputTokens: output_tokens,
+    reasoningPercent:
+      output_tokens > 0 ? (reasoning_output_tokens / output_tokens) * 100 : 0,
+  };
 }

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { computeTotalCost, toDailyCostPoints, computeCacheSavings, forecastMonthlyCost, computeCostPerToken, toDailyCacheRates } from "@/lib/cost-helpers";
+import { computeTotalCost, toDailyCostPoints, computeCacheSavings, forecastMonthlyCost, computeCostPerToken, toDailyCacheRates, computeReasoningRatio } from "@/lib/cost-helpers";
 import type { DailyCostPoint } from "@/lib/cost-helpers";
-import type { ModelAggregate, UsageRow } from "@/hooks/use-usage-data";
+import type { ModelAggregate, UsageRow, UsageSummary } from "@/hooks/use-usage-data";
 import { getDefaultPricingMap } from "@/lib/pricing";
 import type { PricingMap } from "@/lib/pricing";
 
@@ -426,5 +426,57 @@ describe("toDailyCacheRates", () => {
     expect(result[0]!.cacheRate).toBe(0);
     expect(result[0]!.inputTokens).toBe(0);
     expect(result[0]!.cachedTokens).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeReasoningRatio
+// ---------------------------------------------------------------------------
+
+function makeSummary(overrides: Partial<UsageSummary> = {}): UsageSummary {
+  return {
+    input_tokens: 1_000_000,
+    cached_input_tokens: 200_000,
+    output_tokens: 500_000,
+    reasoning_output_tokens: 0,
+    total_tokens: 1_500_000,
+    ...overrides,
+  };
+}
+
+describe("computeReasoningRatio", () => {
+  it("returns zero reasoning ratio when no reasoning tokens", () => {
+    const result = computeReasoningRatio(
+      makeSummary({ output_tokens: 500_000, reasoning_output_tokens: 0 }),
+    );
+    expect(result.reasoningTokens).toBe(0);
+    expect(result.outputTokens).toBe(500_000);
+    expect(result.reasoningPercent).toBe(0);
+  });
+
+  it("computes partial reasoning ratio", () => {
+    // 200k reasoning out of 500k output = 40%
+    const result = computeReasoningRatio(
+      makeSummary({ output_tokens: 500_000, reasoning_output_tokens: 200_000 }),
+    );
+    expect(result.reasoningTokens).toBe(200_000);
+    expect(result.outputTokens).toBe(500_000);
+    expect(result.reasoningPercent).toBeCloseTo(40, 1);
+  });
+
+  it("computes 100% reasoning ratio", () => {
+    const result = computeReasoningRatio(
+      makeSummary({ output_tokens: 300_000, reasoning_output_tokens: 300_000 }),
+    );
+    expect(result.reasoningTokens).toBe(300_000);
+    expect(result.outputTokens).toBe(300_000);
+    expect(result.reasoningPercent).toBeCloseTo(100, 1);
+  });
+
+  it("handles zero output tokens gracefully", () => {
+    const result = computeReasoningRatio(
+      makeSummary({ output_tokens: 0, reasoning_output_tokens: 0 }),
+    );
+    expect(result.reasoningPercent).toBe(0);
   });
 });
