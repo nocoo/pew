@@ -19,6 +19,7 @@ import {
   ChevronUp,
   DollarSign,
   Users,
+  Ticket,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/version";
@@ -52,6 +53,7 @@ const ICON_MAP: Record<string, ElementType> = {
   Cpu,
   Users,
   DollarSign,
+  Ticket,
 };
 
 interface NavItem {

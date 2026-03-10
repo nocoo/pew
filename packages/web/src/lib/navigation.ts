@@ -60,6 +60,7 @@ export const ADMIN_NAV_GROUP: NavGroupDef = {
   defaultOpen: true,
   items: [
     { href: "/admin/pricing", label: "Token Pricing", icon: "DollarSign" },
+    { href: "/admin/invites", label: "Invite Codes", icon: "Ticket" },
   ],
 };
 
