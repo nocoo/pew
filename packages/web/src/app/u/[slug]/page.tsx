@@ -30,10 +30,10 @@ export async function generateMetadata({
 
   return {
     title: `${displayName} — pew`,
-    description: `Public AI coding tool usage profile for ${displayName}`,
+    description: `See how ${displayName} wields AI`,
     openGraph: {
       title: `${displayName} — pew`,
-      description: `See how ${displayName} uses AI coding tools`,
+      description: `See how ${displayName} wields AI`,
     },
   };
 }

@@ -225,7 +225,7 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
             <Link href="/" className="text-primary hover:underline">
               pew
             </Link>{" "}
-            — AI token usage tracker
+            — show your tokens
           </p>
         </footer>
       </main>

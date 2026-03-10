@@ -144,7 +144,7 @@ function LoginContent() {
               <Image src="/logo-80.png" alt="Pew" width={80} height={80} />
             </div>
 
-            <p className="mt-5 text-lg font-semibold text-foreground">AI token usage tracker</p>
+            <p className="mt-5 text-lg font-semibold text-foreground">Show your tokens</p>
             <p className="mt-1 text-xs text-muted-foreground">Sign in to view your dashboard</p>
 
             {/* Error message */}

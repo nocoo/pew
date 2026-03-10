@@ -1,7 +1,7 @@
 {
   "name": "@nocoo/pew",
   "version": "0.9.0",
-  "description": "Track token usage from your local AI coding tools",
+  "description": "The contribution graph for AI-native developers",
   "type": "module",
   "bin": {
     "pew": "dist/bin.js"

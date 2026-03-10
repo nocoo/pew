@@ -73,7 +73,7 @@ export function LandingContent() {
             PEW
           </h1>
           <p className="font-display text-sm font-medium text-muted-foreground">
-            Know what your AI tools cost
+            Show your tokens
           </p>
         </div>
       </div>
@@ -83,12 +83,13 @@ export function LandingContent() {
         className="mt-5 text-sm leading-relaxed text-muted-foreground animate-fade-up"
         style={{ animationDelay: "80ms" }}
       >
-        Zero-config token tracking for{" "}
+        The contribution graph for AI-native developers.
+        Reads local logs from{" "}
         <span className="text-foreground">
           Claude Code, Codex, Gemini CLI, OpenCode
         </span>{" "}
-        &amp; <span className="text-foreground">OpenClaw</span>.
-        Only counts — never conversations.
+        &amp; <span className="text-foreground">OpenClaw</span> — only
+        counts, never conversations.
       </p>
 
       {/* Row 3: Install command — PRIMARY action */}

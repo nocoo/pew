@@ -580,7 +580,7 @@ export const main = defineCommand({
   meta: {
     name: "pew",
     version: "0.9.0",
-    description: "Track token usage from your local AI coding tools",
+    description: "The contribution graph for AI-native developers",
   },
   subCommands: {
     sync: syncCommand,
