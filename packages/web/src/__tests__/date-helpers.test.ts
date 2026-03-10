@@ -7,7 +7,27 @@ import {
   formatMemberSince,
   getMonthRange,
   formatMonth,
+  detectPeakHours,
 } from "@/lib/date-helpers";
+import type { UsageRow } from "@/hooks/use-usage-data";
+
+// ---------------------------------------------------------------------------
+// Test data factory for UsageRow
+// ---------------------------------------------------------------------------
+
+function makeRow(overrides: Partial<UsageRow> = {}): UsageRow {
+  return {
+    source: "claude-code",
+    model: "claude-sonnet-4-20250514",
+    hour_start: "2026-03-09T10:00:00.000Z",
+    input_tokens: 100_000,
+    cached_input_tokens: 20_000,
+    output_tokens: 50_000,
+    reasoning_output_tokens: 0,
+    total_tokens: 150_000,
+    ...overrides,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // PERIOD_OPTIONS constant
@@ -170,5 +190,112 @@ describe("formatMonth", () => {
 
   it("formats December 2024", () => {
     expect(formatMonth(2024, 11)).toBe("December 2024");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// detectPeakHours
+// ---------------------------------------------------------------------------
+
+describe("detectPeakHours", () => {
+  it("should return empty array for empty input", () => {
+    const result = detectPeakHours([], 3, 0);
+    expect(result).toEqual([]);
+  });
+
+  it("should return the single busiest slot for a single record (UTC)", () => {
+    // 2026-03-09 is a Monday, 10:00 UTC
+    const rows = [makeRow({ hour_start: "2026-03-09T10:00:00.000Z", total_tokens: 50_000 })];
+
+    const result = detectPeakHours(rows, 3, 0);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.dayOfWeek).toBe("Monday");
+    expect(result[0]!.timeSlot).toBe("10:00 AM – 10:30 AM");
+    expect(result[0]!.totalTokens).toBe(50_000);
+  });
+
+  it("should group same day+slot and sum tokens", () => {
+    // Two records on the same Monday 10:00 UTC slot
+    const rows = [
+      makeRow({ hour_start: "2026-03-09T10:00:00.000Z", total_tokens: 30_000 }),
+      makeRow({ hour_start: "2026-03-16T10:00:00.000Z", total_tokens: 20_000 }), // also Monday 10:00 UTC
+    ];
+
+    const result = detectPeakHours(rows, 3, 0);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.dayOfWeek).toBe("Monday");
+    expect(result[0]!.timeSlot).toBe("10:00 AM – 10:30 AM");
+    expect(result[0]!.totalTokens).toBe(50_000);
+  });
+
+  it("should return top N sorted by total descending", () => {
+    const rows = [
+      makeRow({ hour_start: "2026-03-09T10:00:00.000Z", total_tokens: 10_000 }), // Mon 10:00
+      makeRow({ hour_start: "2026-03-09T14:00:00.000Z", total_tokens: 50_000 }), // Mon 14:00
+      makeRow({ hour_start: "2026-03-10T09:00:00.000Z", total_tokens: 30_000 }), // Tue 09:00
+      makeRow({ hour_start: "2026-03-10T09:30:00.000Z", total_tokens: 25_000 }), // Tue 09:30
+    ];
+
+    const result = detectPeakHours(rows, 2, 0);
+
+    expect(result).toHaveLength(2);
+    expect(result[0]!.totalTokens).toBe(50_000); // Mon 14:00
+    expect(result[0]!.dayOfWeek).toBe("Monday");
+    expect(result[1]!.totalTokens).toBe(30_000); // Tue 09:00
+    expect(result[1]!.dayOfWeek).toBe("Tuesday");
+  });
+
+  it("should apply positive tzOffset (PST, UTC-8 = 480)", () => {
+    // 2026-03-09 Mon 02:00 UTC → PST: Sun 18:00 (shifted back 8h)
+    const rows = [makeRow({ hour_start: "2026-03-09T02:00:00.000Z", total_tokens: 40_000 })];
+
+    const result = detectPeakHours(rows, 3, 480);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.dayOfWeek).toBe("Sunday");
+    expect(result[0]!.timeSlot).toBe("6:00 PM – 6:30 PM");
+    expect(result[0]!.totalTokens).toBe(40_000);
+  });
+
+  it("should apply negative tzOffset (JST, UTC+9 = -540)", () => {
+    // 2026-03-08 Sun 22:00 UTC → JST: Mon 07:00 (shifted forward 9h)
+    const rows = [makeRow({ hour_start: "2026-03-08T22:00:00.000Z", total_tokens: 60_000 })];
+
+    const result = detectPeakHours(rows, 3, -540);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.dayOfWeek).toBe("Monday");
+    expect(result[0]!.timeSlot).toBe("7:00 AM – 7:30 AM");
+    expect(result[0]!.totalTokens).toBe(60_000);
+  });
+
+  it("should default topN to 3", () => {
+    const rows = [
+      makeRow({ hour_start: "2026-03-09T08:00:00.000Z", total_tokens: 10_000 }),
+      makeRow({ hour_start: "2026-03-09T09:00:00.000Z", total_tokens: 20_000 }),
+      makeRow({ hour_start: "2026-03-09T10:00:00.000Z", total_tokens: 30_000 }),
+      makeRow({ hour_start: "2026-03-09T11:00:00.000Z", total_tokens: 40_000 }),
+      makeRow({ hour_start: "2026-03-09T12:00:00.000Z", total_tokens: 50_000 }),
+    ];
+
+    const result = detectPeakHours(rows);
+
+    expect(result).toHaveLength(3);
+    expect(result[0]!.totalTokens).toBe(50_000);
+    expect(result[1]!.totalTokens).toBe(40_000);
+    expect(result[2]!.totalTokens).toBe(30_000);
+  });
+
+  it("should handle half-hour boundaries (:30) correctly", () => {
+    const rows = [makeRow({ hour_start: "2026-03-09T10:30:00.000Z", total_tokens: 35_000 })];
+
+    const result = detectPeakHours(rows, 3, 0);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.dayOfWeek).toBe("Monday");
+    expect(result[0]!.timeSlot).toBe("10:30 AM – 11:00 AM");
+    expect(result[0]!.totalTokens).toBe(35_000);
   });
 });
