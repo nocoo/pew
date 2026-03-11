@@ -157,8 +157,19 @@ export async function PATCH(
       return NextResponse.json({ error }, { status: 400 });
     }
 
-    const invalidAliases: AliasInput[] = [];
+    // Deduplicate by (source, project_ref) key
+    const seen = new Set<string>();
+    const deduped: AliasInput[] = [];
     for (const alias of valid) {
+      const key = `${alias.source}:${alias.project_ref}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        deduped.push(alias);
+      }
+    }
+
+    const invalidAliases: AliasInput[] = [];
+    for (const alias of deduped) {
       const exists = await client.firstOrNull<{ "1": number }>(
         `SELECT 1 FROM session_records
          WHERE user_id = ? AND source = ? AND project_ref = ?
@@ -180,7 +191,7 @@ export async function PATCH(
     }
 
     const trulyNewAliases: AliasInput[] = [];
-    for (const alias of valid) {
+    for (const alias of deduped) {
       const taken = await client.firstOrNull<{ project_id: string }>(
         `SELECT project_id FROM project_aliases
          WHERE user_id = ? AND source = ? AND project_ref = ?`,

@@ -435,6 +435,48 @@ describe("PATCH /api/projects/:id", () => {
       );
       expect(insertCalls).toHaveLength(0);
     });
+
+    it("should deduplicate add_aliases by (source, project_ref)", async () => {
+      mockClient.firstOrNull
+        .mockResolvedValueOnce({ id: "proj-1", name: "My Project" }) // project exists
+        .mockResolvedValueOnce({ "1": 1 }) // session data exists (only checked once after dedup)
+        .mockResolvedValueOnce(null) // alias not taken (truly new)
+        // Phase 2 reads:
+        .mockResolvedValueOnce({
+          id: "proj-1",
+          name: "My Project",
+          created_at: "2026-03-10T00:00:00Z",
+        });
+
+      mockClient.execute.mockResolvedValue({ meta: {} });
+      mockClient.query.mockResolvedValueOnce({
+        results: [
+          {
+            source: "claude-code",
+            project_ref: "abc123",
+            session_count: 5,
+            last_active: "2026-03-10T12:00:00Z",
+          },
+        ],
+        meta: {},
+      });
+
+      const res = await callPatch({
+        add_aliases: [
+          { source: "claude-code", project_ref: "abc123" },
+          { source: "claude-code", project_ref: "abc123" }, // duplicate
+        ],
+      });
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.aliases).toHaveLength(1);
+      // Only one INSERT should have been issued (not two)
+      const insertCalls = mockClient.execute.mock.calls.filter(
+        (call) => (call[0] as string).includes("INSERT"),
+      );
+      expect(insertCalls).toHaveLength(1);
+    });
   });
 });
 
