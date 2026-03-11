@@ -12,3 +12,8 @@ export function formatTokens(count: number): string {
   if (count < 1_000_000_000) return `${(count / 1_000_000).toFixed(1)}M`;
   return `${(count / 1_000_000_000).toFixed(1)}B`;
 }
+
+/** Format token count with full digits and comma separators (e.g. 11,832,456,789) */
+export function formatTokensFull(count: number): string {
+  return count.toLocaleString("en-US");
+}

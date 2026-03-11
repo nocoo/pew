@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cn, formatTokens } from "../lib/utils";
+import { cn, formatTokens, formatTokensFull } from "../lib/utils";
 
 describe("cn()", () => {
   it("should merge class names", () => {
@@ -42,5 +42,27 @@ describe("formatTokens()", () => {
   it("should format billions as B", () => {
     expect(formatTokens(1_000_000_000)).toBe("1.0B");
     expect(formatTokens(2_500_000_000)).toBe("2.5B");
+  });
+});
+
+describe("formatTokensFull()", () => {
+  it("should return small numbers as-is", () => {
+    expect(formatTokensFull(0)).toBe("0");
+    expect(formatTokensFull(42)).toBe("42");
+    expect(formatTokensFull(999)).toBe("999");
+  });
+
+  it("should add comma separators for thousands", () => {
+    expect(formatTokensFull(1_000)).toBe("1,000");
+    expect(formatTokensFull(45_300)).toBe("45,300");
+    expect(formatTokensFull(999_999)).toBe("999,999");
+  });
+
+  it("should add comma separators for millions", () => {
+    expect(formatTokensFull(1_200_000)).toBe("1,200,000");
+  });
+
+  it("should add comma separators for billions", () => {
+    expect(formatTokensFull(11_832_456_789)).toBe("11,832,456,789");
   });
 });

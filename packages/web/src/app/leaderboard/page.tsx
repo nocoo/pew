@@ -1,11 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Github, Trophy, Medal, Award, Users, EyeOff } from "lucide-react";
+import {
+  Github,
+  Trophy,
+  Medal,
+  Award,
+  EyeOff,
+  ChevronDown,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatTokens } from "@/lib/utils";
+import { formatTokens, formatTokensFull } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -26,6 +33,9 @@ interface Team {
   slug: string;
 }
 
+/** Scope dropdown value: "global" | "all" (admin) | team id */
+type ScopeValue = "global" | "all" | string;
+
 // ---------------------------------------------------------------------------
 // Period tabs
 // ---------------------------------------------------------------------------
@@ -35,6 +45,134 @@ const PERIODS: { value: LeaderboardPeriod; label: string }[] = [
   { value: "month", label: "This Month" },
   { value: "all", label: "All Time" },
 ];
+
+// ---------------------------------------------------------------------------
+// Scope dropdown (replaces team buttons + admin checkbox)
+// ---------------------------------------------------------------------------
+
+function ScopeDropdown({
+  value,
+  onChange,
+  teams,
+  isAdmin,
+}: {
+  value: ScopeValue;
+  onChange: (v: ScopeValue) => void;
+  teams: Team[];
+  isAdmin: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
+  const label =
+    value === "global"
+      ? "Global"
+      : value === "all"
+        ? "All Users"
+        : teams.find((t) => t.id === value)?.name ?? "Global";
+
+  // Only show dropdown if there are teams or user is admin
+  if (teams.length === 0 && !isAdmin) return null;
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        onClick={() => setOpen(!open)}
+        className={cn(
+          "flex items-center gap-2 rounded-lg bg-secondary px-3 py-1.5 text-sm font-medium transition-colors",
+          "text-foreground hover:bg-accent",
+        )}
+      >
+        {label}
+        <ChevronDown
+          className={cn(
+            "h-3.5 w-3.5 text-muted-foreground transition-transform duration-200",
+            open && "rotate-180",
+          )}
+          strokeWidth={1.5}
+        />
+      </button>
+      {open && (
+        <div className="absolute left-0 top-full z-50 mt-1 min-w-[160px] rounded-lg border border-border bg-background p-1 shadow-lg">
+          <DropdownItem
+            active={value === "global"}
+            onClick={() => {
+              onChange("global");
+              setOpen(false);
+            }}
+          >
+            Global
+          </DropdownItem>
+          {teams.map((team) => (
+            <DropdownItem
+              key={team.id}
+              active={value === team.id}
+              onClick={() => {
+                onChange(team.id);
+                setOpen(false);
+              }}
+            >
+              {team.name}
+            </DropdownItem>
+          ))}
+          {isAdmin && (
+            <>
+              <div className="mx-2 my-1 border-t border-border" />
+              <DropdownItem
+                active={value === "all"}
+                onClick={() => {
+                  onChange("all");
+                  setOpen(false);
+                }}
+              >
+                All Users
+                <span className="ml-auto text-[10px] text-muted-foreground">
+                  admin
+                </span>
+              </DropdownItem>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DropdownItem({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors",
+        active
+          ? "bg-accent text-foreground"
+          : "text-muted-foreground hover:bg-accent hover:text-foreground",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Rank decorations
@@ -58,7 +196,29 @@ function RankBadge({ rank }: { rank: number }) {
 }
 
 // ---------------------------------------------------------------------------
-// Row component
+// Check-style ruling lines (right-side texture)
+// ---------------------------------------------------------------------------
+
+function CheckRuling() {
+  return (
+    <div
+      className="pointer-events-none absolute inset-y-0 right-0 w-1/3 opacity-[0.04]"
+      aria-hidden="true"
+    >
+      {/* Horizontal ruling lines */}
+      <div className="absolute inset-0 flex flex-col justify-evenly">
+        <div className="h-px bg-foreground" />
+        <div className="h-px bg-foreground" />
+        <div className="h-px bg-foreground" />
+        <div className="h-px bg-foreground" />
+        <div className="h-px bg-foreground" />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Row component — check-style design
 // ---------------------------------------------------------------------------
 
 function LeaderboardRow({
@@ -78,12 +238,15 @@ function LeaderboardRow({
   const content = (
     <div
       className={cn(
-        "flex items-center gap-4 rounded-[var(--radius-card)] bg-secondary px-4 py-3 transition-colors animate-fade-up",
+        "relative flex items-center gap-4 overflow-hidden rounded-[var(--radius-card)] bg-secondary px-4 py-4 transition-colors animate-fade-up",
         user.slug && "hover:bg-accent cursor-pointer",
         rank <= 3 && "ring-1 ring-border/50",
       )}
       style={{ animationDelay: `${index * 40}ms` }}
     >
+      {/* Check ruling texture */}
+      <CheckRuling />
+
       {/* Rank */}
       <div className="flex w-8 shrink-0 items-center justify-center">
         <RankBadge rank={rank} />
@@ -130,10 +293,10 @@ function LeaderboardRow({
         <span title="Output tokens">{formatTokens(output_tokens)} out</span>
       </div>
 
-      {/* Total */}
-      <div className="shrink-0 text-right">
-        <span className="text-sm font-semibold text-foreground font-display">
-          {formatTokens(total_tokens)}
+      {/* Total — check-style handwriting font, full number */}
+      <div className="relative z-10 shrink-0 text-right">
+        <span className="font-handwriting text-xl tracking-tight text-foreground">
+          {formatTokensFull(total_tokens)}
         </span>
       </div>
     </div>
@@ -155,13 +318,13 @@ function LeaderboardSkeleton() {
       {Array.from({ length: 10 }).map((_, i) => (
         <div
           key={i}
-          className="flex items-center gap-4 rounded-[var(--radius-card)] bg-secondary px-4 py-3"
+          className="flex items-center gap-4 rounded-[var(--radius-card)] bg-secondary px-4 py-4"
         >
           <Skeleton className="h-5 w-8" />
           <Skeleton className="h-8 w-8 rounded-full" />
           <Skeleton className="h-4 w-32" />
           <div className="flex-1" />
-          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-6 w-28" />
         </div>
       ))}
     </div>
@@ -174,14 +337,18 @@ function LeaderboardSkeleton() {
 
 export default function LeaderboardPage() {
   const [period, setPeriod] = useState<LeaderboardPeriod>("week");
-  const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
+  const [scope, setScope] = useState<ScopeValue>("global");
   const [teams, setTeams] = useState<Team[]>([]);
-  const [showAll, setShowAll] = useState(false);
   const { isAdmin } = useAdmin();
+
+  // Derive hook params from scope
+  const teamId = scope !== "global" && scope !== "all" ? scope : null;
+  const admin = scope === "all";
+
   const { data, loading, refreshing, error } = useLeaderboard({
     period,
-    teamId: selectedTeam,
-    admin: showAll,
+    teamId,
+    admin,
   });
 
   // Fetch user's teams for the filter dropdown (only works if logged in)
@@ -200,6 +367,8 @@ export default function LeaderboardPage() {
   useEffect(() => {
     fetchTeams();
   }, [fetchTeams]);
+
+  const showHiddenBadge = scope === "all";
 
   return (
     <div className="relative flex min-h-screen flex-col bg-background">
@@ -223,7 +392,10 @@ export default function LeaderboardPage() {
           className="flex items-center gap-3 animate-fade-up"
           style={{ animationDelay: "0ms" }}
         >
-          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+          <Link
+            href="/"
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+          >
             <Image
               src="/logo-24.png"
               alt="Pew"
@@ -254,7 +426,7 @@ export default function LeaderboardPage() {
       <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-4 space-y-4">
         {/* Controls row */}
         <div
-          className="flex flex-col sm:flex-row gap-3 animate-fade-up"
+          className="flex items-center gap-3 animate-fade-up"
           style={{ animationDelay: "180ms" }}
         >
           {/* Period tabs */}
@@ -275,52 +447,13 @@ export default function LeaderboardPage() {
             ))}
           </div>
 
-          {/* Team filter */}
-          {teams.length > 0 && (
-            <div className="flex gap-1 rounded-lg bg-secondary p-1 shrink-0">
-              <button
-                onClick={() => setSelectedTeam(null)}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                  !selectedTeam
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                Global
-              </button>
-              {teams.map((team) => (
-                <button
-                  key={team.id}
-                  onClick={() => setSelectedTeam(team.id)}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                    selectedTeam === team.id
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  <Users className="h-3.5 w-3.5" strokeWidth={1.5} />
-                  {team.name}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Admin toggle */}
-          {isAdmin && (
-            <label className="flex items-center gap-2 shrink-0 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={showAll}
-                onChange={(e) => setShowAll(e.target.checked)}
-                className="h-4 w-4 rounded border-border accent-primary"
-              />
-              <span className="text-xs font-medium text-muted-foreground">
-                Show All
-              </span>
-            </label>
-          )}
+          {/* Scope dropdown (teams + admin show-all) */}
+          <ScopeDropdown
+            value={scope}
+            onChange={setScope}
+            teams={teams}
+            isAdmin={isAdmin}
+          />
         </div>
 
         {/* Error */}
@@ -350,7 +483,7 @@ export default function LeaderboardPage() {
                 <LeaderboardRow
                   key={entry.rank}
                   entry={entry}
-                  showHiddenBadge={showAll}
+                  showHiddenBadge={showHiddenBadge}
                   index={i}
                 />
               ))
