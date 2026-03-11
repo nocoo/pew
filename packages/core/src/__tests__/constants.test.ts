@@ -12,13 +12,14 @@ import {
 } from "../constants.js";
 
 describe("SOURCES", () => {
-  it("should contain exactly 5 supported AI tools", () => {
-    expect(SOURCES).toHaveLength(5);
+  it("should contain exactly 6 supported AI tools", () => {
+    expect(SOURCES).toHaveLength(6);
     expect(SOURCES).toContain("claude-code");
     expect(SOURCES).toContain("codex");
     expect(SOURCES).toContain("gemini-cli");
     expect(SOURCES).toContain("opencode");
     expect(SOURCES).toContain("openclaw");
+    expect(SOURCES).toContain("vscode-copilot");
   });
 
   it("should be readonly at type level", () => {
@@ -30,6 +31,7 @@ describe("SOURCES", () => {
       "gemini-cli",
       "opencode",
       "openclaw",
+      "vscode-copilot",
     ]);
   });
 });

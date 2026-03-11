@@ -155,3 +155,63 @@ export async function discoverCodexFiles(
     name.startsWith("rollout-") && name.endsWith(".jsonl"),
   );
 }
+
+/**
+ * Discover VSCode Copilot Chat session JSONL files.
+ *
+ * Scans multiple base directories (stable + insiders), each containing:
+ *   - workspaceStorage/\<hash\>/chatSessions/\<uuid\>.jsonl (per-workspace)
+ *   - globalStorage/emptyWindowChatSessions/\<uuid\>.jsonl  (window-less)
+ *
+ * @param baseDirs Array of VSCode User directories
+ *                 (e.g. ["~/Library/Application Support/Code/User/",
+ *                        "~/Library/Application Support/Code - Insiders/User/"])
+ */
+export async function discoverVscodeCopilotFiles(
+  baseDirs: string[],
+): Promise<string[]> {
+  const results: string[] = [];
+
+  for (const baseDir of baseDirs) {
+    // 1. globalStorage/emptyWindowChatSessions/*.jsonl
+    const globalChatDir = join(baseDir, "globalStorage", "emptyWindowChatSessions");
+    let globalEntries: import("node:fs").Dirent[];
+    try {
+      globalEntries = await readdir(globalChatDir, { withFileTypes: true });
+    } catch {
+      globalEntries = [];
+    }
+    for (const entry of globalEntries) {
+      if (entry.isFile() && entry.name.endsWith(".jsonl")) {
+        results.push(join(globalChatDir, entry.name));
+      }
+    }
+
+    // 2. workspaceStorage/*/chatSessions/*.jsonl
+    const workspaceStorageDir = join(baseDir, "workspaceStorage");
+    let workspaceDirs: import("node:fs").Dirent[];
+    try {
+      workspaceDirs = await readdir(workspaceStorageDir, { withFileTypes: true });
+    } catch {
+      workspaceDirs = [];
+    }
+    for (const wsEntry of workspaceDirs) {
+      if (!wsEntry.isDirectory()) continue;
+
+      const chatSessionsDir = join(workspaceStorageDir, wsEntry.name, "chatSessions");
+      let chatEntries: import("node:fs").Dirent[];
+      try {
+        chatEntries = await readdir(chatSessionsDir, { withFileTypes: true });
+      } catch {
+        continue;
+      }
+      for (const chatEntry of chatEntries) {
+        if (chatEntry.isFile() && chatEntry.name.endsWith(".jsonl")) {
+          results.push(join(chatSessionsDir, chatEntry.name));
+        }
+      }
+    }
+  }
+
+  return results.sort();
+}

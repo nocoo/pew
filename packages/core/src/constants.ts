@@ -19,6 +19,7 @@ export const SOURCES: readonly Source[] = Object.freeze([
   "gemini-cli",
   "opencode",
   "openclaw",
+  "vscode-copilot",
 ] as const);
 
 /** Set form for O(1) membership checks */

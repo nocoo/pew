@@ -77,6 +77,7 @@ export interface SessionSyncResult {
     gemini: number;
     opencode: number;
     openclaw: number;
+    vscodeCopilot: number;
   };
   /** Total files/directories scanned per source */
   filesScanned: {
@@ -85,6 +86,7 @@ export interface SessionSyncResult {
     gemini: number;
     opencode: number;
     openclaw: number;
+    vscodeCopilot: number;
   };
 }
 
@@ -118,6 +120,7 @@ function sourceKey(source: Source): keyof SessionSyncResult["sources"] {
     case "opencode": return "opencode";
     case "openclaw": return "openclaw";
     case "codex": return "codex";
+    case "vscode-copilot": return "vscodeCopilot";
   }
 }
 
@@ -139,8 +142,8 @@ export async function executeSessionSync(
   const cursors = await cursorStore.load();
 
   const allSnapshots: SessionSnapshot[] = [];
-  const sourceCounts = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0 };
-  const filesScanned = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0 };
+  const sourceCounts = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 };
+  const filesScanned = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 };
 
   // Build driver sets from options
   const { fileDrivers, dbDrivers } = createSessionDrivers(opts);

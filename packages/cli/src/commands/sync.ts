@@ -36,6 +36,8 @@ export interface SyncOptions {
   openMessageDb?: (dbPath: string) => { queryMessages: QueryMessagesFn; close: () => void } | null;
   /** Override: OpenClaw data directory (~/.openclaw) */
   openclawDir?: string;
+  /** Override: VSCode Copilot base directories (stable + insiders) */
+  vscodeCopilotDirs?: string[];
   /** Progress callback */
   onProgress?: (event: ProgressEvent) => void;
 }
@@ -59,6 +61,7 @@ export interface SyncResult {
     gemini: number;
     opencode: number;
     openclaw: number;
+    vscodeCopilot: number;
   };
   /** Total files scanned per source */
   filesScanned: {
@@ -67,6 +70,7 @@ export interface SyncResult {
     gemini: number;
     opencode: number;
     openclaw: number;
+    vscodeCopilot: number;
   };
 }
 
@@ -86,6 +90,7 @@ function sourceKey(source: Source): keyof SyncResult["sources"] {
     case "opencode": return "opencode";
     case "openclaw": return "openclaw";
     case "codex": return "codex";
+    case "vscode-copilot": return "vscodeCopilot";
   }
 }
 
@@ -103,8 +108,8 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   const cursors = await cursorStore.load();
 
   const allDeltas: ParsedDelta[] = [];
-  const sourceCounts = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0 };
-  const filesScanned = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0 };
+  const sourceCounts = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 };
+  const filesScanned = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 };
 
   // Build driver sets from options
   const { fileDrivers, dbDrivers } = createTokenDrivers(opts);
@@ -120,6 +125,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     openCodeMessageDir: opts.openCodeMessageDir,
     openCodeDbPath: opts.openCodeDbPath,
     openclawDir: opts.openclawDir,
+    vscodeCopilotDirs: opts.vscodeCopilotDirs,
   };
 
   // ---------- Phase 1: File-based drivers (generic loop) ----------

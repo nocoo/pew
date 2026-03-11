@@ -7,6 +7,7 @@ import {
   discoverGeminiFiles,
   discoverOpenCodeFiles,
   discoverOpenClawFiles,
+  discoverVscodeCopilotFiles,
 } from "../discovery/sources.js";
 
 describe("discoverClaudeFiles", () => {
@@ -141,5 +142,97 @@ describe("discoverOpenClawFiles", () => {
   it("should return empty array if directory does not exist", async () => {
     const files = await discoverOpenClawFiles(join(tempDir, "nonexistent"));
     expect(files).toEqual([]);
+  });
+});
+
+describe("discoverVscodeCopilotFiles", () => {
+  let tempDir: string;
+
+  beforeEach(async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "pew-discover-"));
+  });
+
+  afterEach(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it("should find JSONL files in workspaceStorage chatSessions", async () => {
+    const chatDir = join(tempDir, "Code", "User", "workspaceStorage", "abc123", "chatSessions");
+    await mkdir(chatDir, { recursive: true });
+    await writeFile(join(chatDir, "session1.jsonl"), "{}");
+    await writeFile(join(chatDir, "session2.jsonl"), "{}");
+    await writeFile(join(chatDir, "other.txt"), "not a jsonl");
+
+    const files = await discoverVscodeCopilotFiles([join(tempDir, "Code", "User")]);
+    expect(files).toHaveLength(2);
+    expect(files.every((f) => f.endsWith(".jsonl"))).toBe(true);
+  });
+
+  it("should find JSONL files in globalStorage emptyWindowChatSessions", async () => {
+    const globalDir = join(tempDir, "Code", "User", "globalStorage", "emptyWindowChatSessions");
+    await mkdir(globalDir, { recursive: true });
+    await writeFile(join(globalDir, "session1.jsonl"), "{}");
+
+    const files = await discoverVscodeCopilotFiles([join(tempDir, "Code", "User")]);
+    expect(files).toHaveLength(1);
+    expect(files[0]).toContain("emptyWindowChatSessions");
+  });
+
+  it("should scan multiple base directories (stable + insiders)", async () => {
+    const stableDir = join(tempDir, "Code", "User", "workspaceStorage", "ws1", "chatSessions");
+    const insidersDir = join(tempDir, "Code - Insiders", "User", "globalStorage", "emptyWindowChatSessions");
+    await mkdir(stableDir, { recursive: true });
+    await mkdir(insidersDir, { recursive: true });
+    await writeFile(join(stableDir, "s1.jsonl"), "{}");
+    await writeFile(join(insidersDir, "s2.jsonl"), "{}");
+
+    const files = await discoverVscodeCopilotFiles([
+      join(tempDir, "Code", "User"),
+      join(tempDir, "Code - Insiders", "User"),
+    ]);
+    expect(files).toHaveLength(2);
+  });
+
+  it("should scan multiple workspaces under workspaceStorage", async () => {
+    const ws1 = join(tempDir, "Code", "User", "workspaceStorage", "abc123", "chatSessions");
+    const ws2 = join(tempDir, "Code", "User", "workspaceStorage", "def456", "chatSessions");
+    await mkdir(ws1, { recursive: true });
+    await mkdir(ws2, { recursive: true });
+    await writeFile(join(ws1, "s1.jsonl"), "{}");
+    await writeFile(join(ws2, "s2.jsonl"), "{}");
+
+    const files = await discoverVscodeCopilotFiles([join(tempDir, "Code", "User")]);
+    expect(files).toHaveLength(2);
+  });
+
+  it("should return empty array when base directories do not exist", async () => {
+    const files = await discoverVscodeCopilotFiles([join(tempDir, "nonexistent")]);
+    expect(files).toEqual([]);
+  });
+
+  it("should return empty array for empty baseDirs array", async () => {
+    const files = await discoverVscodeCopilotFiles([]);
+    expect(files).toEqual([]);
+  });
+
+  it("should skip workspaces without chatSessions directory", async () => {
+    const wsDir = join(tempDir, "Code", "User", "workspaceStorage", "abc123");
+    await mkdir(wsDir, { recursive: true });
+    // No chatSessions subdirectory
+
+    const files = await discoverVscodeCopilotFiles([join(tempDir, "Code", "User")]);
+    expect(files).toEqual([]);
+  });
+
+  it("should combine workspaceStorage and globalStorage files", async () => {
+    const wsDir = join(tempDir, "Code", "User", "workspaceStorage", "abc123", "chatSessions");
+    const globalDir = join(tempDir, "Code", "User", "globalStorage", "emptyWindowChatSessions");
+    await mkdir(wsDir, { recursive: true });
+    await mkdir(globalDir, { recursive: true });
+    await writeFile(join(wsDir, "ws.jsonl"), "{}");
+    await writeFile(join(globalDir, "global.jsonl"), "{}");
+
+    const files = await discoverVscodeCopilotFiles([join(tempDir, "Code", "User")]);
+    expect(files).toHaveLength(2);
   });
 });

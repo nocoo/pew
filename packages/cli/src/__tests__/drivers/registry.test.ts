@@ -47,17 +47,29 @@ describe("createTokenDrivers", () => {
     expect(fileDrivers[0].source).toBe("codex");
   });
 
-  it("returns all 5 file drivers when all dirs are set", () => {
+  it("includes vscode-copilot file driver when vscodeCopilotDirs is set", () => {
+    const { fileDrivers } = createTokenDrivers({ vscodeCopilotDirs: ["/tmp/vsc"] });
+    expect(fileDrivers).toHaveLength(1);
+    expect(fileDrivers[0].source).toBe("vscode-copilot");
+  });
+
+  it("excludes vscode-copilot file driver when vscodeCopilotDirs is empty", () => {
+    const { fileDrivers } = createTokenDrivers({ vscodeCopilotDirs: [] });
+    expect(fileDrivers).toHaveLength(0);
+  });
+
+  it("returns all 6 file drivers when all dirs are set", () => {
     const { fileDrivers, dbDrivers } = createTokenDrivers({
       claudeDir: "/tmp/claude",
       geminiDir: "/tmp/gemini",
       openCodeMessageDir: "/tmp/oc",
       openclawDir: "/tmp/openclaw",
       codexSessionsDir: "/tmp/codex",
+      vscodeCopilotDirs: ["/tmp/vsc"],
     });
-    expect(fileDrivers).toHaveLength(5);
+    expect(fileDrivers).toHaveLength(6);
     const sources = fileDrivers.map((d) => d.source);
-    expect(sources).toEqual(["claude-code", "gemini-cli", "opencode", "openclaw", "codex"]);
+    expect(sources).toEqual(["claude-code", "gemini-cli", "opencode", "openclaw", "codex", "vscode-copilot"]);
     expect(dbDrivers).toHaveLength(0);
   });
 

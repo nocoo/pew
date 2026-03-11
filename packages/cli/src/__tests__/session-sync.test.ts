@@ -401,7 +401,7 @@ describe("executeSessionSync", () => {
     expect(result.totalSnapshots).toBe(0);
     expect(result.totalRecords).toBe(0);
     expect(result.filesScanned).toEqual({
-      claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0,
+      claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0,
     });
   });
 

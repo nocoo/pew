@@ -34,7 +34,16 @@ describe("resolveDefaultPaths", () => {
     expect(paths.codexSessionsDir).toBe(join("/fakehome", ".codex", "sessions"));
   });
 
-  it("should return exactly 7 path properties", () => {
+  it("should resolve vscodeCopilotDirs for stable and insiders", () => {
+    const paths = resolveDefaultPaths("/fakehome");
+    expect(paths.vscodeCopilotDirs).toBeInstanceOf(Array);
+    expect(paths.vscodeCopilotDirs).toHaveLength(2);
+    // Both dirs should contain "Code" (stable) or "Code - Insiders"
+    expect(paths.vscodeCopilotDirs[0]).toContain("Code");
+    expect(paths.vscodeCopilotDirs[1]).toContain("Code - Insiders");
+  });
+
+  it("should return exactly 10 path properties", () => {
     const keys = [
       "stateDir",
       "binDir",
@@ -45,6 +54,7 @@ describe("resolveDefaultPaths", () => {
       "openCodeMessageDir",
       "openCodeDbPath",
       "openclawDir",
+      "vscodeCopilotDirs",
     ];
     const paths = resolveDefaultPaths("/fakehome");
     expect(Object.keys(paths)).toHaveLength(keys.length);

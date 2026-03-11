@@ -69,6 +69,7 @@ export interface DiscoverOpts {
   openCodeMessageDir?: string;
   openCodeDbPath?: string;
   openclawDir?: string;
+  vscodeCopilotDirs?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -126,6 +127,19 @@ export interface CodexResumeState {
 }
 
 /**
+ * Resume state for VSCode Copilot CRDT JSONL files.
+ * Carries byte offset + persisted request metadata for cross-line correlation.
+ */
+export interface VscodeCopilotResumeState {
+  readonly kind: "vscode-copilot";
+  startOffset: number;
+  /** Persisted index→metadata mapping from prior parse */
+  requestMeta: Record<number, { modelId: string; timestamp: number }>;
+  /** Indices already emitted as records (skip on re-encounter) */
+  processedRequestIndices: number[];
+}
+
+/**
  * Union of all resume state variants.
  * Discriminated by `kind` so drivers can narrow safely.
  */
@@ -133,7 +147,8 @@ export type ResumeState =
   | ByteOffsetResumeState
   | ArrayIndexResumeState
   | OpenCodeJsonResumeState
-  | CodexResumeState;
+  | CodexResumeState
+  | VscodeCopilotResumeState;
 
 // ---------------------------------------------------------------------------
 // Progress callback (passed through from orchestrator)

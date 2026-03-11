@@ -487,7 +487,7 @@ describe("coordinatedSync", () => {
       sessionSync: {
         totalSnapshots: 2,
         totalRecords: 2,
-        filesScanned: { claude: 1, codex: 0, gemini: 0, opencode: 0, openclaw: 0 },
+        filesScanned: { claude: 1, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
         sources: { claude: 2 },
       },
     };

@@ -16,7 +16,7 @@ import {
 // Primitive validators
 // ---------------------------------------------------------------------------
 
-/** Check if value is one of the 5 supported Source values */
+/** Check if value is one of the 6 supported Source values */
 export function isValidSource(s: unknown): s is Source {
   return typeof s === "string" && VALID_SOURCES.has(s);
 }
