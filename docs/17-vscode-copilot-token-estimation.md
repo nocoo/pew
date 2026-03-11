@@ -269,6 +269,33 @@ fields are available for the vast majority of requests.
 source: "vscode-copilot"  // new Source enum value
 ```
 
+### Implementation Scope
+
+This is NOT a parser-only change. Adding VSCode Copilot support touches multiple
+layers of the stack:
+
+| Layer | File(s) | Change |
+|-------|---------|--------|
+| **Core types** | `packages/core/src/types.ts` | Add `"vscode-copilot"` to `Source` union; add `VscodeCopilotCursor` to `FileCursor` union; extend `CursorState` if needed |
+| **Parser** | `packages/cli/src/parsers/vscode-copilot.ts` | New parser module (CRDT JSONL → `UsageRecord[]`) |
+| **CLI wiring** | `packages/cli/src/parsers/index.ts` | Register new parser in discovery/dispatch |
+| **Queue schema** | `packages/core/src/types.ts` (`QueueRecord`) | Currently no `incomplete`/`estimated` flags — needs new optional fields or a separate handling strategy for partial records |
+| **Worker ingest** | `packages/worker/` | D1 `INSERT` must accept `"vscode-copilot"` as a valid source value |
+| **Web dashboard** | `packages/web/` | Source filter UI, color/icon mapping, any `Source`-exhaustive switches |
+| **Notifier** | `packages/cli/src/` | File-watch setup for `workspaceStorage/*/chatSessions/` directories |
+
+The `incomplete`/`estimated` metadata flags referenced in the Fallback Strategy
+section do not exist in the current `UsageRecord` or `QueueRecord` types. Options:
+
+1. **Add optional flags** to `QueueRecord` (`incomplete?: boolean`, `estimated?: boolean`)
+   — requires D1 schema migration and worker/web changes
+2. **Emit zero-token records** without flags — simpler, but dashboard cannot
+   distinguish "actually zero usage" from "tokens unknown"
+3. **Skip emission** for incomplete turns and log a warning — loses data but
+   avoids schema changes
+
+The choice affects storage, API, and frontend — not just the parser.
+
 ### Parser Design
 
 Unlike other parsers that process raw API responses, the VSCode Copilot parser
@@ -294,13 +321,16 @@ the saved offset. The cursor must therefore persist:
 ```typescript
 interface VscodeCopilotFileCursor {
   offset: number;                                    // byte offset for next read
-  processedRequestIndices: Set<number>;              // indices already emitted
+  processedRequestIndices: number[];                 // indices already emitted (JSON-serializable)
   requestMeta: Record<number, {                      // index → metadata mapping
     modelId: string;
     timestamp: number;
   }>;
 }
 ```
+
+All fields are plain JSON-serializable types (`number[]`, not `Set<number>`)
+to match the existing `CursorState` persistence model in `cursors.json`.
 
 On incremental read, the parser reads from `offset`, encounters new `kind=1`
 result lines, and joins against the persisted `requestMeta` to produce records.
