@@ -72,23 +72,22 @@ export async function POST(request: Request) {
       // Settings table may not exist yet — use default
     }
 
-    const countResult = await client.firstOrNull<{ cnt: number }>(
-      "SELECT COUNT(*) AS cnt FROM team_members WHERE team_id = ?",
-      [team.id],
+    // Atomic check+insert: INSERT only if team is under the member limit.
+    // This prevents race conditions where concurrent joins both pass a
+    // separate COUNT check and both INSERT, exceeding the limit.
+    const result = await client.execute(
+      `INSERT INTO team_members (id, team_id, user_id, role, joined_at)
+       SELECT ?, ?, ?, 'member', datetime('now')
+       WHERE (SELECT COUNT(*) FROM team_members WHERE team_id = ?) < ?`,
+      [crypto.randomUUID(), team.id, authResult.userId, team.id, maxMembers],
     );
-    if (countResult && countResult.cnt >= maxMembers) {
+
+    if (result.changes === 0) {
       return NextResponse.json(
         { error: `Team is full (max ${maxMembers} members)` },
         { status: 403 },
       );
     }
-
-    // Add as member
-    await client.execute(
-      `INSERT INTO team_members (id, team_id, user_id, role, joined_at)
-       VALUES (?, ?, ?, 'member', datetime('now'))`,
-      [crypto.randomUUID(), team.id, authResult.userId],
-    );
 
     return NextResponse.json({
       team_id: team.id,
