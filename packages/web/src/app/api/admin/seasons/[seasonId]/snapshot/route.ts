@@ -7,8 +7,20 @@
  *   1. Validate season exists and status is "ended"
  *   2. Aggregate usage data for all registered teams + members
  *   3. Compute ranks (total_tokens DESC)
- *   4. Idempotent: DELETE old snapshots then re-INSERT
+ *   4. Upsert snapshots (INSERT OR REPLACE), then clean up stale rows
  *   5. Return summary: team_count, member_count, created_at
+ *
+ * ⚠️ NON-ATOMIC WRITES: The D1 REST API batch() is NOT transactional —
+ * it executes statements sequentially via individual HTTP requests
+ * (see d1.ts#L104). If a failure occurs mid-batch:
+ *   - Upsert phase: some rows may be updated while others are not,
+ *     producing a mix of fresh and stale snapshot data.
+ *   - Cleanup phase: may not run, leaving stale rows alongside new ones.
+ * This is a known limitation. The upsert pattern avoids the worse
+ * "total data loss" scenario of delete-then-insert, but true atomicity
+ * requires the Cloudflare Worker D1 binding (env.DB.batch()) which
+ * provides implicit transactional semantics. Snapshot is admin-only
+ * and idempotent — a re-run will converge to correct state.
  */
 
 import { NextResponse } from "next/server";
@@ -148,7 +160,8 @@ export async function POST(
       memberRows = result.results;
     }
 
-    // 5. Upsert team snapshots (INSERT OR REPLACE avoids delete-first data loss)
+    // 5. Upsert team snapshots via INSERT OR REPLACE.
+    //    NOT atomic — see JSDoc for failure semantics. Re-running converges.
     const now = new Date().toISOString().replace("T", " ").slice(0, 19);
     const teamStatements = teamRows.results.map((row, i) => ({
       sql: `INSERT OR REPLACE INTO season_snapshots
@@ -196,10 +209,12 @@ export async function POST(
       ],
     }));
 
-    // Execute all upserts in a batch
+    // Execute all upserts in a batch (sequential HTTP calls, not transactional)
     await client.batch([...teamStatements, ...memberStatements]);
 
-    // 7. Clean up stale rows (teams/members removed since last snapshot)
+    // 7. Clean up stale rows (teams/members removed since last snapshot).
+    //    If this fails after upserts succeeded, stale rows remain but
+    //    a re-run will clean them up (idempotent convergence).
     const activeTeamIds = teamRows.results.map((r) => r.team_id);
     if (activeTeamIds.length > 0) {
       const ph = activeTeamIds.map(() => "?").join(",");
