@@ -122,6 +122,61 @@ export async function GET(
 }
 
 // ---------------------------------------------------------------------------
+// PATCH — rename team (owner only)
+// ---------------------------------------------------------------------------
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ teamId: string }> },
+) {
+  const authResult = await resolveUser(request);
+  if (!authResult) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { teamId } = await params;
+
+  let name: string;
+  try {
+    const body = await request.json();
+    name = typeof body.name === "string" ? body.name.trim() : "";
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  if (!name || name.length > 64) {
+    return NextResponse.json(
+      { error: "Team name is required (max 64 characters)" },
+      { status: 400 },
+    );
+  }
+
+  try {
+    const client = getD1Client();
+
+    // Only the owner can rename
+    const membership = await client.firstOrNull<{ role: string }>(
+      "SELECT role FROM team_members WHERE team_id = ? AND user_id = ?",
+      [teamId, authResult.userId],
+    );
+
+    if (!membership) {
+      return NextResponse.json({ error: "Not a member" }, { status: 403 });
+    }
+    if (membership.role !== "owner") {
+      return NextResponse.json({ error: "Only the team owner can rename" }, { status: 403 });
+    }
+
+    await client.execute("UPDATE teams SET name = ? WHERE id = ?", [name, teamId]);
+
+    return NextResponse.json({ ok: true, name });
+  } catch (err) {
+    console.error("Failed to rename team:", err);
+    return NextResponse.json({ error: "Failed to rename team" }, { status: 500 });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // DELETE — leave team
 // ---------------------------------------------------------------------------
 

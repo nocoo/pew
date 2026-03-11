@@ -11,6 +11,10 @@ import {
   Trash2,
   Camera,
   X,
+  ChevronDown,
+  ChevronUp,
+  Pencil,
+  UserMinus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +30,14 @@ interface Team {
   created_by: string;
   member_count: number;
   logo_url: string | null;
+}
+
+interface TeamMember {
+  userId: string;
+  name: string | null;
+  image: string | null;
+  role: string;
+  joinedAt: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -209,6 +221,317 @@ function validateSquare(file: File): Promise<boolean> {
 }
 
 // ---------------------------------------------------------------------------
+// TeamCard — single team with expandable members, rename, kick
+// ---------------------------------------------------------------------------
+
+const MAX_VISIBLE_MEMBERS = 5;
+
+function TeamCard({
+  team,
+  currentUserId,
+  onMessage,
+  onRefresh,
+}: {
+  team: Team;
+  currentUserId: string | null;
+  onMessage: (msg: { type: "success" | "error"; text: string }) => void;
+  onRefresh: () => void;
+}) {
+  const isOwner = currentUserId === team.created_by;
+  const hasOtherMembers = team.member_count > 1;
+
+  // Expandable member list (owner only)
+  const [expanded, setExpanded] = useState(false);
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+
+  // Inline rename (owner only)
+  const [editing, setEditing] = useState(false);
+  const [editName, setEditName] = useState(team.name);
+  const [saving, setSaving] = useState(false);
+  const editInputRef = useRef<HTMLInputElement>(null);
+
+  // -------------------------------------------------------------------------
+  // Fetch members on expand
+  // -------------------------------------------------------------------------
+
+  const fetchMembers = useCallback(async () => {
+    setLoadingMembers(true);
+    try {
+      const res = await fetch(`/api/teams/${team.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setMembers(data.members ?? []);
+      }
+    } catch {
+      // Silently fail
+    } finally {
+      setLoadingMembers(false);
+    }
+  }, [team.id]);
+
+  const toggleExpand = () => {
+    if (!isOwner) return;
+    const next = !expanded;
+    setExpanded(next);
+    if (next && members.length === 0) {
+      fetchMembers();
+    }
+  };
+
+  // -------------------------------------------------------------------------
+  // Rename
+  // -------------------------------------------------------------------------
+
+  const startEditing = () => {
+    setEditName(team.name);
+    setEditing(true);
+    // Focus after render
+    setTimeout(() => editInputRef.current?.focus(), 0);
+  };
+
+  const cancelEditing = () => {
+    setEditing(false);
+    setEditName(team.name);
+  };
+
+  const handleRename = async () => {
+    const trimmed = editName.trim();
+    if (!trimmed || trimmed === team.name) {
+      cancelEditing();
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/teams/${team.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+
+      if (res.ok) {
+        onMessage({ type: "success", text: "Team renamed." });
+        setEditing(false);
+        onRefresh();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        onMessage({
+          type: "error",
+          text: (data as { error?: string }).error ?? "Failed to rename.",
+        });
+      }
+    } catch {
+      onMessage({ type: "error", text: "Network error." });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // -------------------------------------------------------------------------
+  // Kick member
+  // -------------------------------------------------------------------------
+
+  const handleKick = async (userId: string, memberName: string | null) => {
+    const displayName = memberName ?? "this member";
+    if (!confirm(`Remove ${displayName} from the team?`)) return;
+
+    try {
+      const res = await fetch(`/api/teams/${team.id}/members/${userId}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        onMessage({ type: "success", text: `${displayName} removed.` });
+        // Refresh members and team list (member_count changed)
+        fetchMembers();
+        onRefresh();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        onMessage({
+          type: "error",
+          text: (data as { error?: string }).error ?? "Failed to remove member.",
+        });
+      }
+    } catch {
+      onMessage({ type: "error", text: "Network error." });
+    }
+  };
+
+  // -------------------------------------------------------------------------
+  // Leave team
+  // -------------------------------------------------------------------------
+
+  const handleLeave = async () => {
+    const msg = isOwner
+      ? "Delete this team? This cannot be undone."
+      : "Are you sure you want to leave this team?";
+    if (!confirm(msg)) return;
+
+    try {
+      const res = await fetch(`/api/teams/${team.id}`, { method: "DELETE" });
+      if (res.ok) {
+        onMessage({ type: "success", text: isOwner ? "Team deleted." : "Left team." });
+        onRefresh();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        onMessage({
+          type: "error",
+          text: (data as { error?: string }).error ?? "Failed to leave team.",
+        });
+      }
+    } catch {
+      onMessage({ type: "error", text: "Network error." });
+    }
+  };
+
+  // -------------------------------------------------------------------------
+  // Render
+  // -------------------------------------------------------------------------
+
+  const visibleMembers = members.slice(0, MAX_VISIBLE_MEMBERS);
+
+  return (
+    <div className="rounded-xl bg-secondary p-4">
+      {/* Header row */}
+      <div className="flex items-center gap-3">
+        <TeamLogo
+          team={team}
+          isOwner={isOwner}
+          onUploaded={onRefresh}
+          onMessage={onMessage}
+        />
+        <div className="flex-1 min-w-0">
+          {/* Team name — inline editable for owner */}
+          {editing ? (
+            <div className="flex items-center gap-1.5">
+              <input
+                ref={editInputRef}
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                maxLength={64}
+                className="rounded-md border border-border bg-background px-2 py-0.5 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow min-w-0 w-full"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleRename();
+                  if (e.key === "Escape") cancelEditing();
+                }}
+                onBlur={handleRename}
+                disabled={saving}
+              />
+            </div>
+          ) : (
+            <div className="flex items-center gap-1.5 group/name">
+              <p className="text-sm font-medium text-foreground truncate">{team.name}</p>
+              {isOwner && (
+                <button
+                  onClick={startEditing}
+                  className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground/0 group-hover/name:text-muted-foreground hover:!text-foreground transition-colors"
+                  title="Rename team"
+                >
+                  <Pencil className="h-3 w-3" strokeWidth={1.5} />
+                </button>
+              )}
+            </div>
+          )}
+          {/* Member count — clickable for owner to expand */}
+          {isOwner ? (
+            <button
+              onClick={toggleExpand}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <span>
+                {team.member_count} member{team.member_count !== 1 ? "s" : ""}
+              </span>
+              {expanded ? (
+                <ChevronUp className="h-3 w-3" strokeWidth={1.5} />
+              ) : (
+                <ChevronDown className="h-3 w-3" strokeWidth={1.5} />
+              )}
+            </button>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {team.member_count} member{team.member_count !== 1 ? "s" : ""}
+            </p>
+          )}
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          {/* Invite code */}
+          <div className="hidden sm:flex items-center gap-1 rounded-md bg-accent px-2 py-1">
+            <code className="text-[10px] font-mono text-muted-foreground">
+              {team.invite_code}
+            </code>
+            <CopyButton text={team.invite_code} />
+          </div>
+          {/* Leave/delete button — hidden for owner when other members exist */}
+          {!(isOwner && hasOtherMembers) && (
+            <button
+              onClick={handleLeave}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              title={isOwner ? "Delete team" : "Leave team"}
+            >
+              <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Expanded member list */}
+      {isOwner && expanded && (
+        <div className="mt-3 border-t border-border/50 pt-3">
+          {loadingMembers ? (
+            <p className="text-xs text-muted-foreground">Loading members...</p>
+          ) : visibleMembers.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No members found.</p>
+          ) : (
+            <ul className="space-y-2">
+              {visibleMembers.map((m) => (
+                <li key={m.userId} className="flex items-center gap-2.5">
+                  {/* Avatar */}
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-muted-foreground overflow-hidden">
+                    {m.image ? (
+                      <img src={m.image} alt="" className="h-6 w-6 object-cover" />
+                    ) : (
+                      <span className="text-[10px] font-medium">
+                        {(m.name ?? "?")[0]?.toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  {/* Name + role */}
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs text-foreground truncate block">
+                      {m.name ?? "Unknown"}
+                    </span>
+                  </div>
+                  {m.role === "owner" ? (
+                    <span className="text-[10px] font-medium text-muted-foreground px-1.5 py-0.5 rounded bg-accent">
+                      Owner
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => handleKick(m.userId, m.name)}
+                      className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      title={`Remove ${m.name ?? "member"}`}
+                    >
+                      <UserMinus className="h-3 w-3" strokeWidth={1.5} />
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {members.length > MAX_VISIBLE_MEMBERS && (
+            <p className="mt-2 text-[10px] text-muted-foreground">
+              +{members.length - MAX_VISIBLE_MEMBERS} more member{members.length - MAX_VISIBLE_MEMBERS !== 1 ? "s" : ""}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Teams Page
 // ---------------------------------------------------------------------------
 
@@ -311,31 +634,6 @@ export default function TeamsPage() {
       setTeamMessage({ type: "error", text: "Network error." });
     } finally {
       setJoiningTeam(false);
-    }
-  };
-
-  // ---------------------------------------------------------------------------
-  // Leave team
-  // ---------------------------------------------------------------------------
-
-  const handleLeaveTeam = async (teamId: string) => {
-    if (!confirm("Are you sure you want to leave this team?")) return;
-    setTeamMessage(null);
-
-    try {
-      const res = await fetch(`/api/teams/${teamId}`, { method: "DELETE" });
-      if (res.ok) {
-        setTeamMessage({ type: "success", text: "Left team." });
-        fetchTeams();
-      } else {
-        const data = await res.json().catch(() => ({}));
-        setTeamMessage({
-          type: "error",
-          text: (data as { error?: string }).error ?? "Failed to leave team.",
-        });
-      }
-    } catch {
-      setTeamMessage({ type: "error", text: "Network error." });
     }
   };
 
@@ -466,42 +764,13 @@ export default function TeamsPage() {
         ) : (
           <div className="space-y-2">
             {teams.map((team) => (
-              <div
+              <TeamCard
                 key={team.id}
-                className="rounded-xl bg-secondary p-4"
-              >
-                <div className="flex items-center gap-3">
-                  <TeamLogo
-                    team={team}
-                    isOwner={currentUserId === team.created_by}
-                    onUploaded={fetchTeams}
-                    onMessage={setTeamMessage}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{team.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {team.member_count} member{team.member_count !== 1 ? "s" : ""}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    {/* Invite code */}
-                    <div className="hidden sm:flex items-center gap-1 rounded-md bg-accent px-2 py-1">
-                      <code className="text-[10px] font-mono text-muted-foreground">
-                        {team.invite_code}
-                      </code>
-                      <CopyButton text={team.invite_code} />
-                    </div>
-                    {/* Leave button */}
-                    <button
-                      onClick={() => handleLeaveTeam(team.id)}
-                      className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                      title="Leave team"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-                    </button>
-                  </div>
-                </div>
-              </div>
+                team={team}
+                currentUserId={currentUserId}
+                onMessage={setTeamMessage}
+                onRefresh={fetchTeams}
+              />
             ))}
           </div>
         )}
