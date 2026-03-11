@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
 import { getD1Client } from "@/lib/d1";
+import { teamLogoUrl } from "@/lib/r2";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -43,7 +44,12 @@ export async function GET(request: Request) {
       [authResult.userId],
     );
 
-    return NextResponse.json({ teams: result.results });
+    return NextResponse.json({
+      teams: result.results.map((t) => ({
+        ...t,
+        logo_url: teamLogoUrl(t.id),
+      })),
+    });
   } catch (err) {
     // Gracefully degrade if teams table doesn't exist yet
     const msg = err instanceof Error ? err.message : String(err);
@@ -126,6 +132,7 @@ export async function POST(request: Request) {
       slug: finalSlug,
       invite_code: inviteCode,
       member_count: 1,
+      logo_url: teamLogoUrl(teamId),
     }, { status: 201 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

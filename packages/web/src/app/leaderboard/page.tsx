@@ -34,6 +34,7 @@ interface Team {
   id: string;
   name: string;
   slug: string;
+  logo_url: string;
 }
 
 /** Scope dropdown value: "global" | "all" (admin) | team id */
@@ -48,6 +49,47 @@ const PERIODS: { value: LeaderboardPeriod; label: string }[] = [
   { value: "month", label: "This Month" },
   { value: "all", label: "All Time" },
 ];
+
+// ---------------------------------------------------------------------------
+// Team logo inline icon (with fallback)
+// ---------------------------------------------------------------------------
+
+function TeamLogoIcon({
+  logoUrl,
+  name,
+  className,
+}: {
+  logoUrl: string;
+  name: string;
+  className?: string;
+}) {
+  const [error, setError] = useState(false);
+  if (error) {
+    return <Users className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground", className)} strokeWidth={1.5} />;
+  }
+  return (
+    <img
+      src={logoUrl}
+      alt={name}
+      className={cn("h-3.5 w-3.5 shrink-0 rounded-sm object-cover", className)}
+      onError={() => setError(true)}
+    />
+  );
+}
+
+/** Tiny inline logo for team badges in leaderboard rows */
+function TeamLogoBadge({ logoUrl, name }: { logoUrl: string; name: string }) {
+  const [error, setError] = useState(false);
+  if (error) return null;
+  return (
+    <img
+      src={logoUrl}
+      alt={name}
+      className="h-2.5 w-2.5 shrink-0 rounded-[2px] object-cover"
+      onError={() => setError(true)}
+    />
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Scope dropdown (replaces team buttons + admin checkbox)
@@ -88,11 +130,15 @@ function ScopeDropdown({
         ? "All Users"
         : teams.find((t) => t.id === value)?.name ?? "Global";
 
+  const selectedTeam = teams.find((t) => t.id === value);
+
   const labelIcon =
     value === "global" ? (
       <Globe className={iconClass} strokeWidth={1.5} />
     ) : value === "all" ? (
       <ShieldCheck className={iconClass} strokeWidth={1.5} />
+    ) : selectedTeam ? (
+      <TeamLogoIcon logoUrl={selectedTeam.logo_url} name={selectedTeam.name} />
     ) : (
       <Users className={iconClass} strokeWidth={1.5} />
     );
@@ -140,7 +186,7 @@ function ScopeDropdown({
                 setOpen(false);
               }}
             >
-              <Users className={iconClass} strokeWidth={1.5} />
+              <TeamLogoIcon logoUrl={team.logo_url} name={team.name} />
               {team.name}
             </DropdownItem>
           ))}
@@ -295,8 +341,9 @@ function LeaderboardRow({
               {teams.map((team) => (
                 <span
                   key={team.id}
-                  className="text-[10px] leading-tight text-muted-foreground bg-muted px-1.5 py-0.5 rounded"
+                  className="inline-flex items-center gap-1 text-[10px] leading-tight text-muted-foreground bg-muted px-1.5 py-0.5 rounded"
                 >
+                  <TeamLogoBadge logoUrl={team.logo_url} name={team.name} />
                   {team.name}
                 </span>
               ))}

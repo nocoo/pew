@@ -14,6 +14,13 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: ["pew.dev.hexly.ai"],
   images: {
     imageSizes: [16, 32, 48, 64, 80, 96, 128, 160, 256, 384],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "s.zhe.to",
+        pathname: "/apps/pew/**",
+      },
+    ],
   },
   env: {
     NEXT_PUBLIC_APP_VERSION: rootPkg.version,

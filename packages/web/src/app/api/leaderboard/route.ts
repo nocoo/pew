@@ -13,6 +13,7 @@
 import { NextResponse } from "next/server";
 import { getD1Client } from "@/lib/d1";
 import { resolveAdmin } from "@/lib/admin";
+import { teamLogoUrl } from "@/lib/r2";
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -206,7 +207,7 @@ export async function GET(request: Request) {
 
     // Fetch teams for all users in the leaderboard
     const userIds = result.results.map((r) => r.user_id);
-    const teamsByUser = new Map<string, { id: string; name: string }[]>();
+    const teamsByUser = new Map<string, { id: string; name: string; logo_url: string }[]>();
 
     if (userIds.length > 0) {
       try {
@@ -220,7 +221,7 @@ export async function GET(request: Request) {
         );
         for (const row of teamResult.results) {
           const list = teamsByUser.get(row.user_id) ?? [];
-          list.push({ id: row.team_id, name: row.team_name });
+          list.push({ id: row.team_id, name: row.team_name, logo_url: teamLogoUrl(row.team_id) });
           teamsByUser.set(row.user_id, list);
         }
       } catch {

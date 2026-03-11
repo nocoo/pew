@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
 import { getD1Client } from "@/lib/d1";
+import { deleteTeamLogo, teamLogoUrl } from "@/lib/r2";
 
 // ---------------------------------------------------------------------------
 // GET — team details with members
@@ -96,6 +97,7 @@ export async function GET(
 
     return NextResponse.json({
       ...team,
+      logo_url: teamLogoUrl(teamId),
       role: membership.role,
       members: members.results.map((m) => ({
         userId: m.user_id,
@@ -166,9 +168,15 @@ export async function DELETE(
       [teamId, authResult.userId],
     );
 
-    // If last member, delete the team
+    // If last member, delete the team and its logo
     if (memberCount <= 1) {
       await client.execute("DELETE FROM teams WHERE id = ?", [teamId]);
+      // Best-effort logo cleanup — don't fail the request if R2 is unavailable
+      try {
+        await deleteTeamLogo(teamId);
+      } catch {
+        // Silently ignore — orphaned R2 object is harmless
+      }
     }
 
     return NextResponse.json({ ok: true });
