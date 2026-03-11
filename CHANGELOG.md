@@ -1,5 +1,40 @@
 # Changelog
 
+## v1.0.0
+
+### Features
+
+- **Achievement badge system** — 6 gamified badges (On Fire, Big Day, Power User, Big Spender, Veteran, Cache Master) with bronze/silver/gold/diamond tiers, progress rings, and pill card UI on the dashboard
+- **Dashboard segments** — Dashboard restructured into 4 named sections (Achievements, Overview, Trends, Insights) with `DashboardSegment` dividers for clear visual hierarchy
+- **Budget tracking** — Full budget lifecycle: set monthly token budgets via dialog, progress bar with threshold alerts, budget status API (GET/PUT/DELETE), and Clear Budget button
+- **Time analysis** — Streak tracker (local timezone), peak hours detection, weekday vs weekend comparison chart with dual Y-axes, month-over-month growth metrics
+- **Cost analytics** — Cost trend chart, cache savings estimation, monthly cost forecast, cost-per-token breakdown, and forecast stat card on dashboard
+- **Cache & I/O visualization** — Cache rate chart showing daily hit rates, I/O ratio donut chart for input/output token balance
+- **Tool comparison** — Source trend chart (agent usage over time), model evolution chart (model adoption timeline) on Models page
+- **Landing page redesign** — Single-viewport layout with motion animations, streamlined CTA hierarchy, usage steps, theme toggle, and 512px logo
+
+### Refactoring
+
+- **Dashboard layout** — Two-column chart layout (trends left, donut/ratio right) with By Agent chart flex-stretching to fill container height; side-by-side bottom row (heatmap + weekday/weekend)
+- **Stat card grid** — Consolidated into clean 4+4 (lg) or 4+2 (md) responsive grid layout
+- **Achievement UI** — Redesigned from vertical cards to horizontal pill cards with tier-colored icons and compact progress rings; replaced InsightCards and StreakBadge
+- **Apps → Agents** — Renamed "By App" to "By Agent" across navigation, routes, and UI labels
+- **Landing page** — Stripped card grid, condensed feature descriptions, rebranded slogan to "show your tokens"
+
+### Fixes
+
+- **Budget scope** — Budget status now uses current-month tokens instead of period-scoped total
+- **Streak timezone** — Streak "today" comparison uses local timezone instead of UTC
+- **Weekday/weekend scale** — Added separate cost Y-axis for proper dual-axis scaling
+- **Login page encoding** — Added `<meta charset="utf-8">` and replaced em dash with hyphen to fix character display
+- **Proxy matcher** — Leaderboard filter dropdown uses Lucide ChevronDown with proper padding
+
+### Infrastructure
+
+- **Database rename** — Renamed `zebra-db` to `pew-db` with new APAC-region D1 instance
+- **Migration squash** — Consolidated 5 migration files into single `001-init.sql` (9 tables, 8 indexes)
+- **Test suite** — 50+ test files, 1508 tests passing, 90% coverage thresholds enforced
+
 ## v0.6.2
 
 ### Features
