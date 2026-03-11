@@ -102,7 +102,8 @@ export async function GET(request: Request) {
     conditions.push("tm.team_id = ?");
     params.push(teamId);
   } else {
-    // Public leaderboard only shows users with slugs
+    // Public leaderboard only shows users who opted in and have a slug
+    conditions.push("u.is_public = 1");
     conditions.push("u.slug IS NOT NULL");
   }
 
