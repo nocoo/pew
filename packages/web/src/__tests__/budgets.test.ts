@@ -258,3 +258,88 @@ describe("PUT /api/budgets", () => {
     expect(res.status).toBe(500);
   });
 });
+
+// ---------------------------------------------------------------------------
+// DELETE /api/budgets
+// ---------------------------------------------------------------------------
+
+describe("DELETE /api/budgets", () => {
+  let DELETE: (req: Request) => Promise<Response>;
+  let mockClient: ReturnType<typeof createMockClient>;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mockClient = createMockClient();
+    vi.mocked(d1Module.getD1Client).mockReturnValue(
+      mockClient as unknown as d1Module.D1Client,
+    );
+    const mod = await import("@/app/api/budgets/route");
+    DELETE = mod.DELETE;
+  });
+
+  it("should reject unauthenticated requests with 401", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce(null);
+
+    const res = await DELETE(
+      new Request("http://localhost:7030/api/budgets?month=2026-03", { method: "DELETE" }),
+    );
+    expect(res.status).toBe(401);
+  });
+
+  it("should return 400 when month param is missing", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+
+    const res = await DELETE(
+      new Request("http://localhost:7030/api/budgets", { method: "DELETE" }),
+    );
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain("month");
+  });
+
+  it("should return 400 for invalid month format", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+
+    const res = await DELETE(
+      new Request("http://localhost:7030/api/budgets?month=bad", { method: "DELETE" }),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("should delete budget and return ok", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    mockClient.execute.mockResolvedValueOnce({ changes: 1 });
+
+    const res = await DELETE(
+      new Request("http://localhost:7030/api/budgets?month=2026-03", { method: "DELETE" }),
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body).toEqual({ ok: true });
+    expect(mockClient.execute).toHaveBeenCalledWith(
+      expect.stringContaining("DELETE FROM user_budgets"),
+      ["u1", "2026-03"],
+    );
+  });
+
+  it("should return ok even if no budget existed (idempotent)", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    mockClient.execute.mockResolvedValueOnce({ changes: 0 });
+
+    const res = await DELETE(
+      new Request("http://localhost:7030/api/budgets?month=2026-03", { method: "DELETE" }),
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it("should return 500 on unexpected error", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    mockClient.execute.mockRejectedValueOnce(new Error("D1 boom"));
+
+    const res = await DELETE(
+      new Request("http://localhost:7030/api/budgets?month=2026-03", { method: "DELETE" }),
+    );
+    expect(res.status).toBe(500);
+  });
+});

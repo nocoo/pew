@@ -21,6 +21,7 @@ import type { Budget } from "@/hooks/use-budget";
 export interface BudgetDialogProps {
   budget: Budget | null;
   saveBudget: (input: Partial<Budget>) => Promise<void>;
+  deleteBudget: () => Promise<void>;
   className?: string;
 }
 
@@ -28,9 +29,10 @@ export interface BudgetDialogProps {
 // Component
 // ---------------------------------------------------------------------------
 
-export function BudgetDialog({ budget, saveBudget, className }: BudgetDialogProps) {
+export function BudgetDialog({ budget, saveBudget, deleteBudget, className }: BudgetDialogProps) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [costInput, setCostInput] = useState("");
   const [tokenInput, setTokenInput] = useState("");
@@ -77,6 +79,21 @@ export function BudgetDialog({ budget, saveBudget, className }: BudgetDialogProp
       setSaving(false);
     }
   }
+
+  async function handleDelete() {
+    setError(null);
+    setDeleting(true);
+    try {
+      await deleteBudget();
+      setOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to clear budget");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  const busy = saving || deleting;
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
@@ -148,16 +165,32 @@ export function BudgetDialog({ budget, saveBudget, className }: BudgetDialogProp
           </div>
 
           {/* Actions */}
-          <div className="mt-6 flex justify-end gap-2">
-            <Dialog.Close asChild>
-              <Button variant="outline" size="sm" disabled={saving}>
-                Cancel
+          <div className="mt-6 flex justify-between">
+            {budget ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDelete}
+                disabled={busy}
+                className="text-destructive hover:text-destructive"
+              >
+                {deleting && <Loader2 className="size-3.5 animate-spin" />}
+                Clear Budget
               </Button>
-            </Dialog.Close>
-            <Button size="sm" onClick={handleSave} disabled={saving}>
-              {saving && <Loader2 className="size-3.5 animate-spin" />}
-              Save
-            </Button>
+            ) : (
+              <div />
+            )}
+            <div className="flex gap-2">
+              <Dialog.Close asChild>
+                <Button variant="outline" size="sm" disabled={busy}>
+                  Cancel
+                </Button>
+              </Dialog.Close>
+              <Button size="sm" onClick={handleSave} disabled={busy}>
+                {saving && <Loader2 className="size-3.5 animate-spin" />}
+                Save
+              </Button>
+            </div>
           </div>
         </Dialog.Content>
       </Dialog.Portal>

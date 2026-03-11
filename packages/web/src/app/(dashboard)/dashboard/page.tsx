@@ -73,7 +73,7 @@ export default function DashboardPage() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   }, []);
-  const { budget, saveBudget } = useBudget(currentMonth);
+  const { budget, saveBudget, deleteBudget } = useBudget(currentMonth);
 
   const estimatedCost = useMemo(() => computeTotalCost(models, pricingMap), [models, pricingMap]);
 
@@ -162,7 +162,7 @@ export default function DashboardPage() {
               Token usage overview for your AI coding tools.
             </p>
           </div>
-          <BudgetDialog budget={budget} saveBudget={saveBudget} className="self-start mt-1" />
+           <BudgetDialog budget={budget} saveBudget={saveBudget} deleteBudget={deleteBudget} className="self-start mt-1" />
         </div>
         <PeriodSelector value={period} onChange={setPeriod} />
       </div>

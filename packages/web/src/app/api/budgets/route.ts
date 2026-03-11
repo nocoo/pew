@@ -1,5 +1,5 @@
 /**
- * GET/PUT /api/budgets — per-month budget limits for cost and token tracking.
+ * GET/PUT/DELETE /api/budgets — per-month budget limits for cost and token tracking.
  */
 
 import { NextResponse } from "next/server";
@@ -138,6 +138,44 @@ export async function PUT(request: Request) {
     console.error("Failed to save budget:", err);
     return NextResponse.json(
       { error: "Failed to save budget" },
+      { status: 500 },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// DELETE — remove budget for a given month
+// ---------------------------------------------------------------------------
+
+export async function DELETE(request: Request) {
+  const authResult = await resolveUser(request);
+  if (!authResult) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const month = searchParams.get("month");
+
+  if (!isValidMonth(month)) {
+    return NextResponse.json(
+      { error: "month query param required in YYYY-MM format" },
+      { status: 400 },
+    );
+  }
+
+  const client = getD1Client();
+
+  try {
+    await client.execute(
+      "DELETE FROM user_budgets WHERE user_id = ? AND month = ?",
+      [authResult.userId, month],
+    );
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("Failed to delete budget:", err);
+    return NextResponse.json(
+      { error: "Failed to delete budget" },
       { status: 500 },
     );
   }

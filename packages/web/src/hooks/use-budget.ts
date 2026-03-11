@@ -19,6 +19,8 @@ interface UseBudgetResult {
   error: string | null;
   /** Save (create or update) budget for the month. */
   saveBudget: (input: Partial<Budget>) => Promise<void>;
+  /** Delete (clear) budget for the month. */
+  deleteBudget: () => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -93,5 +95,31 @@ export function useBudget(month: string): UseBudgetResult {
     [month, fetchBudget],
   );
 
-  return { budget, loading, error, saveBudget };
+  // ---- Delete --------------------------------------------------------------
+
+  const deleteBudget = useCallback(async () => {
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/budgets?month=${month}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(
+          (body as { error?: string }).error ?? `HTTP ${res.status}`,
+        );
+      }
+
+      // Clear local state — no budget anymore
+      setBudget(null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Unknown error";
+      setError(msg);
+      throw err;
+    }
+  }, [month]);
+
+  return { budget, loading, error, saveBudget, deleteBudget };
 }
