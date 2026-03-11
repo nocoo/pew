@@ -80,6 +80,9 @@ function TeamLogo({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Always reset the input so the same file can be re-selected
+    if (inputRef.current) inputRef.current.value = "";
+
     // Client-side validation
     if (!file.type.startsWith("image/png") && !file.type.startsWith("image/jpeg")) {
       onMessage({ type: "error", text: "Only PNG and JPEG images are accepted." });
@@ -123,8 +126,6 @@ function TeamLogo({
       onMessage({ type: "error", text: "Network error." });
     } finally {
       setUploading(false);
-      // Reset input so the same file can be re-selected
-      if (inputRef.current) inputRef.current.value = "";
     }
   };
 

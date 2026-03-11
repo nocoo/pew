@@ -64,6 +64,12 @@ function TeamLogoIcon({
   className?: string;
 }) {
   const [error, setError] = useState(false);
+
+  // Reset error state when logoUrl changes (e.g. switching selected team)
+  useEffect(() => {
+    setError(false);
+  }, [logoUrl]);
+
   if (error) {
     return <Users className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground", className)} strokeWidth={1.5} />;
   }
@@ -80,6 +86,12 @@ function TeamLogoIcon({
 /** Tiny inline logo for team badges in leaderboard rows */
 function TeamLogoBadge({ logoUrl, name }: { logoUrl: string; name: string }) {
   const [error, setError] = useState(false);
+
+  // Reset error state when logoUrl changes
+  useEffect(() => {
+    setError(false);
+  }, [logoUrl]);
+
   if (error) return null;
   return (
     <img

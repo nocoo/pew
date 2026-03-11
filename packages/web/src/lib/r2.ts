@@ -97,7 +97,7 @@ export async function putTeamLogo(
       Key: teamLogoKey(teamId),
       Body: data,
       ContentType: "image/jpeg",
-      CacheControl: "public, max-age=3600",
+      CacheControl: "public, max-age=60",
     }),
   );
 }
