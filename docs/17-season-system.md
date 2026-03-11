@@ -90,6 +90,23 @@ CREATE INDEX IF NOT EXISTS idx_season_teams_season ON season_teams(season_id);
 CREATE INDEX IF NOT EXISTS idx_season_teams_team   ON season_teams(team_id);
 
 -- ============================================================
+-- Frozen roster: members locked at registration time
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS season_team_members (
+  id          TEXT PRIMARY KEY,           -- UUID
+  season_id   TEXT NOT NULL REFERENCES seasons(id),
+  team_id     TEXT NOT NULL REFERENCES teams(id),
+  user_id     TEXT NOT NULL REFERENCES users(id),
+  joined_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(season_id, team_id, user_id),
+  UNIQUE(season_id, user_id)             -- one team per user per season
+);
+
+CREATE INDEX IF NOT EXISTS idx_stm_season      ON season_team_members(season_id);
+CREATE INDEX IF NOT EXISTS idx_stm_season_team ON season_team_members(season_id, team_id);
+
+-- ============================================================
 -- Season snapshots (frozen results after season ends)
 -- ============================================================
 
@@ -270,8 +287,8 @@ SELECT
   SUM(ur.cached_input_tokens) AS cached_input_tokens
 FROM season_teams st
 JOIN teams t ON t.id = st.team_id
-JOIN team_members tm ON tm.team_id = st.team_id
-JOIN usage_records ur ON ur.user_id = tm.user_id
+JOIN season_team_members stm ON stm.season_id = st.season_id AND stm.team_id = st.team_id
+JOIN usage_records ur ON ur.user_id = stm.user_id
 WHERE st.season_id = ?
   AND ur.hour_start >= ?          -- season start_date as ISO datetime
   AND ur.hour_start < ?           -- season end_date + 1 day as ISO datetime
@@ -284,7 +301,7 @@ ORDER BY total_tokens DESC
 **队员明细 SQL** (当 `expand=members`)：
 ```sql
 SELECT
-  tm.user_id,
+  stm.user_id,
   u.name,
   u.nickname,
   u.image,
@@ -292,13 +309,14 @@ SELECT
   SUM(ur.input_tokens) AS input_tokens,
   SUM(ur.output_tokens) AS output_tokens,
   SUM(ur.cached_input_tokens) AS cached_input_tokens
-FROM team_members tm
-JOIN users u ON u.id = tm.user_id
-JOIN usage_records ur ON ur.user_id = tm.user_id
-WHERE tm.team_id = ?
+FROM season_team_members stm
+JOIN users u ON u.id = stm.user_id
+JOIN usage_records ur ON ur.user_id = stm.user_id
+WHERE stm.season_id = ?
+  AND stm.team_id = ?
   AND ur.hour_start >= ?
   AND ur.hour_start < ?
-GROUP BY tm.user_id
+GROUP BY stm.user_id
 ORDER BY total_tokens DESC
 ```
 
