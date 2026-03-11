@@ -467,6 +467,18 @@ export default function LeaderboardPage() {
             teams={teams}
             isAdmin={isAdmin}
           />
+
+          {/* Seasons link */}
+          <Link
+            href="/leaderboard/seasons"
+            className={cn(
+              "flex items-center gap-2 rounded-lg bg-secondary px-3 py-[10px] text-sm font-medium transition-colors shrink-0",
+              "text-muted-foreground hover:text-foreground hover:bg-accent",
+            )}
+          >
+            <Trophy className="h-3.5 w-3.5" strokeWidth={1.5} />
+            Seasons
+          </Link>
         </div>
 
         {/* Error */}
