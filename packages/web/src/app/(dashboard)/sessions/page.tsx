@@ -9,6 +9,7 @@ import { StatCard, StatGrid } from "@/components/dashboard/stat-card";
 import { WorkingHoursHeatmap } from "@/components/dashboard/working-hours-heatmap";
 import { MessageStatsChart } from "@/components/dashboard/message-stats-chart";
 import { PeakHoursCard } from "@/components/dashboard/peak-hours-card";
+import { ProjectBreakdownChart } from "@/components/dashboard/project-breakdown-chart";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import {
   PeriodSelector,
@@ -22,18 +23,67 @@ import { detectPeakHours } from "@/lib/date-helpers";
 import { formatTokens } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
+// Project filter dropdown
+// ---------------------------------------------------------------------------
+
+interface ProjectFilterProps {
+  value: string;
+  onChange: (v: string) => void;
+  /** Available project names (from breakdown data) */
+  projectNames: string[];
+}
+
+function ProjectFilter({ value, onChange, projectNames }: ProjectFilterProps) {
+  if (projectNames.length === 0) return null;
+
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className="rounded-lg bg-secondary px-3 py-1.5 text-xs font-medium text-foreground border-none outline-none cursor-pointer"
+    >
+      <option value="">All Projects</option>
+      {projectNames.map((name) => (
+        <option key={name} value={name}>
+          {name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
 export default function SessionsPage() {
   const [period, setPeriod] = useState<Period>("all");
+  const [projectFilter, setProjectFilter] = useState("");
   const { from, to } = periodToDateRange(period);
 
-  const { overview, hoursGrid, dailyMessages, loading, error } =
-    useSessionData({
-      from,
-      ...(to ? { to } : {}),
-    });
+  // Primary fetch: all sessions (no project filter) — used for breakdown + default display
+  const allData = useSessionData({
+    from,
+    ...(to ? { to } : {}),
+  });
+
+  // Secondary fetch: only fires when a project filter is active
+  const filteredData = useSessionData({
+    from,
+    ...(to ? { to } : {}),
+    ...(projectFilter ? { project: projectFilter } : {}),
+    enabled: !!projectFilter,
+  });
+
+  // Use filtered data for charts when a project filter is active,
+  // otherwise use the all-data results
+  const active = projectFilter ? filteredData : allData;
+
+  // Project names for the dropdown come from the unfiltered breakdown
+  const projectNames = useMemo(
+    () => allData.projectBreakdown.map((p) => p.projectName),
+    [allData.projectBreakdown],
+  );
 
   // Fetch usage data for token totals (needed for tokens/hour + reasoning ratio)
   const { data: usageData, loading: usageLoading } = useUsageData({
@@ -49,13 +99,14 @@ export default function SessionsPage() {
   });
 
   const subtitle = periodLabel(period);
+  const loading = active.loading || (projectFilter ? allData.loading : false);
 
   const efficiency = useMemo(
     () =>
       usageData
-        ? computeTokensPerHour(usageData.summary.total_tokens, overview)
+        ? computeTokensPerHour(usageData.summary.total_tokens, active.overview)
         : null,
-    [usageData, overview],
+    [usageData, active.overview],
   );
 
   const reasoning = useMemo(
@@ -80,13 +131,20 @@ export default function SessionsPage() {
             Session activity across your AI coding tools.
           </p>
         </div>
-        <PeriodSelector value={period} onChange={setPeriod} />
+        <div className="flex items-center gap-2">
+          <ProjectFilter
+            value={projectFilter}
+            onChange={setProjectFilter}
+            projectNames={projectNames}
+          />
+          <PeriodSelector value={period} onChange={setPeriod} />
+        </div>
       </div>
 
       {/* Error state */}
-      {error && (
+      {active.error && (
         <div className="rounded-[var(--radius-card)] bg-destructive/10 p-4 text-sm text-destructive">
-          Failed to load session data: {error}
+          Failed to load session data: {active.error}
         </div>
       )}
 
@@ -97,7 +155,7 @@ export default function SessionsPage() {
       {!loading && !usageLoading && !halfHourLoading && (
         <>
           {/* Overview stat cards */}
-          <SessionOverview data={overview} subtitle={subtitle} />
+          <SessionOverview data={active.overview} subtitle={subtitle} />
 
           {/* Efficiency metrics row */}
           {efficiency && (
@@ -123,14 +181,21 @@ export default function SessionsPage() {
             </StatGrid>
           )}
 
+          {/* Project breakdown (only when not filtering by a specific project) */}
+          {!projectFilter && (
+            <div className="grid grid-cols-1 gap-3 md:gap-4">
+              <ProjectBreakdownChart data={allData.projectBreakdown} />
+            </div>
+          )}
+
           {/* Charts row: working hours + peak hours */}
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-3 md:gap-4">
-            <WorkingHoursHeatmap data={hoursGrid} />
+            <WorkingHoursHeatmap data={active.hoursGrid} />
             <PeakHoursCard slots={peakSlots} />
           </div>
 
           <div className="grid grid-cols-1 gap-3 md:gap-4">
-            <MessageStatsChart data={dailyMessages} />
+            <MessageStatsChart data={active.dailyMessages} />
           </div>
         </>
       )}

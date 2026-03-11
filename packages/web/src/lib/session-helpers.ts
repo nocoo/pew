@@ -14,6 +14,7 @@ export type SessionRow = {
   assistant_messages: number;
   total_messages: number;
   project_ref: string | null;
+  project_name: string | null;
   model: string | null;
 };
 
@@ -150,4 +151,56 @@ export function computeTokensPerHour(
     totalCodingHours: totalHours,
     totalTokens,
   };
+}
+
+// ---------------------------------------------------------------------------
+// toProjectBreakdown
+// ---------------------------------------------------------------------------
+
+export type ProjectBreakdownItem = {
+  projectName: string;
+  sessions: number;
+  totalHours: number;
+  totalMessages: number;
+};
+
+/**
+ * Aggregate session records by project_name.
+ * Sessions with null project_name are grouped as "Unassigned".
+ * Sorted by session count descending, then by total hours descending.
+ */
+export function toProjectBreakdown(
+  records: SessionRow[],
+): ProjectBreakdownItem[] {
+  if (records.length === 0) return [];
+
+  const byProject = new Map<
+    string,
+    { sessions: number; totalSeconds: number; totalMessages: number }
+  >();
+
+  for (const r of records) {
+    const name = r.project_name ?? "Unassigned";
+    const existing = byProject.get(name);
+    if (existing) {
+      existing.sessions++;
+      existing.totalSeconds += r.duration_seconds;
+      existing.totalMessages += r.total_messages;
+    } else {
+      byProject.set(name, {
+        sessions: 1,
+        totalSeconds: r.duration_seconds,
+        totalMessages: r.total_messages,
+      });
+    }
+  }
+
+  return Array.from(byProject.entries())
+    .map(([projectName, stats]) => ({
+      projectName,
+      sessions: stats.sessions,
+      totalHours: stats.totalSeconds / 3600,
+      totalMessages: stats.totalMessages,
+    }))
+    .sort((a, b) => b.sessions - a.sessions || b.totalHours - a.totalHours);
 }

@@ -45,6 +45,7 @@ interface SessionRow {
   assistant_messages: number;
   total_messages: number;
   project_ref: string | null;
+  project_name: string | null;
   model: string | null;
 }
 
@@ -64,6 +65,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const sourceFilter = url.searchParams.get("source");
   const kindFilter = url.searchParams.get("kind");
+  const projectFilter = url.searchParams.get("project");
   const fromParam = url.searchParams.get("from");
   const toParam = url.searchParams.get("to");
 
@@ -114,35 +116,51 @@ export async function GET(request: Request) {
   }
 
   // 3. Build query
-  const conditions = ["user_id = ?", "started_at >= ?", "started_at < ?"];
+  const conditions = ["sr.user_id = ?", "sr.started_at >= ?", "sr.started_at < ?"];
   const params: unknown[] = [userId, fromDate, toDate];
 
   if (sourceFilter) {
-    conditions.push("source = ?");
+    conditions.push("sr.source = ?");
     params.push(sourceFilter);
   }
 
   if (kindFilter) {
-    conditions.push("kind = ?");
+    conditions.push("sr.kind = ?");
     params.push(kindFilter);
+  }
+
+  // Project filter: name match or "_unassigned" for null project
+  if (projectFilter) {
+    if (projectFilter === "_unassigned") {
+      conditions.push("p.name IS NULL");
+    } else {
+      conditions.push("p.name = ?");
+      params.push(projectFilter);
+    }
   }
 
   const sql = `
     SELECT
-      session_key,
-      source,
-      kind,
-      started_at,
-      last_message_at,
-      duration_seconds,
-      user_messages,
-      assistant_messages,
-      total_messages,
-      project_ref,
-      model
-    FROM session_records
+      sr.session_key,
+      sr.source,
+      sr.kind,
+      sr.started_at,
+      sr.last_message_at,
+      sr.duration_seconds,
+      sr.user_messages,
+      sr.assistant_messages,
+      sr.total_messages,
+      sr.project_ref,
+      p.name AS project_name,
+      sr.model
+    FROM session_records sr
+    LEFT JOIN project_aliases pa
+      ON pa.user_id = sr.user_id
+      AND pa.source = sr.source
+      AND pa.project_ref = sr.project_ref
+    LEFT JOIN projects p ON p.id = pa.project_id
     WHERE ${conditions.join(" AND ")}
-    ORDER BY started_at DESC
+    ORDER BY sr.started_at DESC
   `;
 
   // 4. Execute

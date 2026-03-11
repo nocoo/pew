@@ -5,10 +5,10 @@
  * Groups lines by sessionId, counts message types, computes duration.
  */
 
+import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
-import { basename, dirname } from "node:path";
 import type { SessionSnapshot, Source } from "@pew/core";
 
 /** Internal accumulator for a single session */
@@ -25,15 +25,21 @@ interface SessionAccum {
 /**
  * Extract the project reference from a Claude file path.
  *
- * Claude stores files under ~/.claude/projects/{hash}/{file}.jsonl.
- * We extract the directory name immediately after "projects/".
- * Returns null if the path doesn't contain "projects/".
+ * Claude stores files under ~/.claude/projects/{dirName}/{file}.jsonl
+ * where dirName is a path-encoded string like `-Users-nocoo-workspace-pew`.
+ *
+ * We SHA-256 hash the directory name and take the first 12 hex chars,
+ * matching the same format Codex uses (SHA-256(cwd)[0:12]). The raw
+ * directory name is NOT stored because it's a privacy-sensitive
+ * path variant (albeit irreversible due to Claude's encoding).
  */
 function extractProjectRef(filePath: string): string | null {
   const parts = filePath.split("/");
   const projectsIdx = parts.lastIndexOf("projects");
   if (projectsIdx < 0 || projectsIdx + 1 >= parts.length - 1) return null;
-  return parts[projectsIdx + 1] || null;
+  const dirName = parts[projectsIdx + 1];
+  if (!dirName) return null;
+  return createHash("sha256").update(dirName).digest("hex").slice(0, 12);
 }
 
 /**

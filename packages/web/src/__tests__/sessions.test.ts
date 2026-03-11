@@ -155,6 +155,27 @@ describe("GET /api/sessions", () => {
 
       expect(res.status).toBe(400);
     });
+
+    it("should filter by project name via HAVING on p.name", async () => {
+      mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
+
+      const res = await GET(makeRequest({ project: "pew" }));
+
+      expect(res.status).toBe(200);
+      const [sql, params] = mockClient.query.mock.calls[0]!;
+      expect(sql).toContain("p.name = ?");
+      expect(params).toContain("pew");
+    });
+
+    it("should filter for unassigned sessions when project=_unassigned", async () => {
+      mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
+
+      const res = await GET(makeRequest({ project: "_unassigned" }));
+
+      expect(res.status).toBe(200);
+      const [sql] = mockClient.query.mock.calls[0]!;
+      expect(sql).toContain("p.name IS NULL");
+    });
   });
 
   // -----------------------------------------------------------------------

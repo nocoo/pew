@@ -27,7 +27,7 @@ describe("sidebar navigation", () => {
       const settingsGroup = BASE_NAV_GROUPS.find((g) => g.label === "Settings");
       expect(settingsGroup).toBeDefined();
       const items = settingsGroup!.items.map((i) => i.label);
-      expect(items).toEqual(["Teams", "General"]);
+      expect(items).toEqual(["Teams", "Projects", "General"]);
     });
 
     it("Teams should link to /teams", () => {
@@ -127,6 +127,7 @@ describe("route labels", () => {
       dashboard: "Dashboard",
       settings: "General",
       teams: "Teams",
+      projects: "Projects",
       details: "Daily Usage",
       agents: "By Agent",
       models: "By Model",

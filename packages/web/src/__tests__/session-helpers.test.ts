@@ -4,6 +4,7 @@ import {
   toWorkingHoursGrid,
   toMessageDailyStats,
   computeTokensPerHour,
+  toProjectBreakdown,
   type SessionRow,
   type SessionOverview,
 } from "@/lib/session-helpers";
@@ -24,6 +25,7 @@ function makeSession(overrides: Partial<SessionRow> = {}): SessionRow {
     assistant_messages: 10,
     total_messages: 25,
     project_ref: null,
+    project_name: null,
     model: "claude-sonnet-4-20250514",
     ...overrides,
   };
@@ -306,5 +308,98 @@ describe("computeTokensPerHour", () => {
     expect(result.tokensPerHour).toBe(0);
     expect(result.totalCodingHours).toBe(3);
     expect(result.totalTokens).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// toProjectBreakdown
+// ---------------------------------------------------------------------------
+
+describe("toProjectBreakdown", () => {
+  it("should return empty array for empty input", () => {
+    expect(toProjectBreakdown([])).toEqual([]);
+  });
+
+  it("should group sessions by project_name", () => {
+    const records = [
+      makeSession({
+        project_name: "pew",
+        duration_seconds: 3600,
+        user_messages: 10,
+        assistant_messages: 8,
+        total_messages: 20,
+      }),
+      makeSession({
+        project_name: "pew",
+        duration_seconds: 1800,
+        user_messages: 5,
+        assistant_messages: 4,
+        total_messages: 10,
+      }),
+      makeSession({
+        project_name: "studio",
+        duration_seconds: 900,
+        user_messages: 3,
+        assistant_messages: 2,
+        total_messages: 6,
+      }),
+    ];
+
+    const breakdown = toProjectBreakdown(records);
+
+    expect(breakdown).toHaveLength(2);
+    // Sorted by session count descending
+    expect(breakdown[0]).toEqual({
+      projectName: "pew",
+      sessions: 2,
+      totalHours: 1.5,
+      totalMessages: 30,
+    });
+    expect(breakdown[1]).toEqual({
+      projectName: "studio",
+      sessions: 1,
+      totalHours: 0.25,
+      totalMessages: 6,
+    });
+  });
+
+  it("should label sessions with null project_name as 'Unassigned'", () => {
+    const records = [
+      makeSession({ project_name: null, duration_seconds: 600, total_messages: 5 }),
+      makeSession({ project_name: "my-project", duration_seconds: 1200, total_messages: 10 }),
+    ];
+
+    const breakdown = toProjectBreakdown(records);
+
+    expect(breakdown).toHaveLength(2);
+    const unassigned = breakdown.find((b) => b.projectName === "Unassigned");
+    expect(unassigned).toBeDefined();
+    expect(unassigned!.sessions).toBe(1);
+  });
+
+  it("should sort by session count descending, then by hours descending", () => {
+    const records = [
+      makeSession({ project_name: "a", duration_seconds: 100, total_messages: 1 }),
+      makeSession({ project_name: "b", duration_seconds: 3600, total_messages: 5 }),
+      makeSession({ project_name: "b", duration_seconds: 1800, total_messages: 3 }),
+      makeSession({ project_name: "c", duration_seconds: 7200, total_messages: 10 }),
+    ];
+
+    const breakdown = toProjectBreakdown(records);
+
+    expect(breakdown.map((b) => b.projectName)).toEqual(["b", "c", "a"]);
+  });
+
+  it("should handle all sessions being unassigned", () => {
+    const records = [
+      makeSession({ project_name: null, total_messages: 5 }),
+      makeSession({ project_name: null, total_messages: 3 }),
+    ];
+
+    const breakdown = toProjectBreakdown(records);
+
+    expect(breakdown).toHaveLength(1);
+    expect(breakdown[0]!.projectName).toBe("Unassigned");
+    expect(breakdown[0]!.sessions).toBe(2);
   });
 });
