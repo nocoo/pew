@@ -41,6 +41,7 @@ export async function executeNotify(
           openCodeDbPath: opts.openCodeDbPath,
           openMessageDb: opts.openMessageDb,
           openclawDir: opts.openclawDir,
+          vscodeCopilotDirs: opts.vscodeCopilotDirs,
         });
         cycle.tokenSync = {
           totalDeltas: tokenResult.totalDeltas,

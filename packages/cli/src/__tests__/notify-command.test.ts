@@ -6,8 +6,8 @@ vi.mock("../commands/sync.js", () => ({
   executeSync: vi.fn(async () => ({
     totalDeltas: 7,
     totalRecords: 4,
-    filesScanned: { claude: 3, codex: 0, gemini: 0, opencode: 0, openclaw: 0 },
-    sources: { claude: 4, codex: 0, gemini: 0, opencode: 0, openclaw: 0 },
+    filesScanned: { claude: 3, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
+    sources: { claude: 4, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
   })),
 }));
 
@@ -15,8 +15,8 @@ vi.mock("../commands/session-sync.js", () => ({
   executeSessionSync: vi.fn(async () => ({
     totalSnapshots: 3,
     totalRecords: 3,
-    filesScanned: { claude: 2, codex: 0, gemini: 0, opencode: 0, openclaw: 0 },
-    sources: { claude: 3, codex: 0, gemini: 0, opencode: 0, openclaw: 0 },
+    filesScanned: { claude: 2, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
+    sources: { claude: 3, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
   })),
 }));
 
@@ -190,14 +190,14 @@ describe("executeNotify", () => {
     vi.mocked(executeSync).mockResolvedValueOnce({
       totalDeltas: 7,
       totalRecords: 4,
-      filesScanned: { claude: 3, codex: 0, gemini: 0, opencode: 0, openclaw: 0 },
-      sources: { claude: 4, codex: 0, gemini: 0, opencode: 0, openclaw: 0 },
+      filesScanned: { claude: 3, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
+      sources: { claude: 4, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
     });
     vi.mocked(executeSessionSync).mockResolvedValueOnce({
       totalSnapshots: 3,
       totalRecords: 3,
-      filesScanned: { claude: 2, codex: 0, gemini: 0, opencode: 0, openclaw: 0 },
-      sources: { claude: 3, codex: 0, gemini: 0, opencode: 0, openclaw: 0 },
+      filesScanned: { claude: 2, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
+      sources: { claude: 3, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
     });
 
     let capturedCycle: SyncCycleResult | undefined;
@@ -219,16 +219,16 @@ describe("executeNotify", () => {
     expect(capturedCycle?.tokenSync).toEqual({
       totalDeltas: 7,
       totalRecords: 4,
-      filesScanned: { claude: 3, codex: 0, gemini: 0, opencode: 0, openclaw: 0 },
-      sources: { claude: 4, codex: 0, gemini: 0, opencode: 0, openclaw: 0 },
+      filesScanned: { claude: 3, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
+      sources: { claude: 4, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
     });
 
     // Verify cycle contains session sync results
     expect(capturedCycle?.sessionSync).toEqual({
       totalSnapshots: 3,
       totalRecords: 3,
-      filesScanned: { claude: 2, codex: 0, gemini: 0, opencode: 0, openclaw: 0 },
-      sources: { claude: 3, codex: 0, gemini: 0, opencode: 0, openclaw: 0 },
+      filesScanned: { claude: 2, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
+      sources: { claude: 3, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
     });
 
     expect(result.cycles).toHaveLength(1);
@@ -239,8 +239,8 @@ describe("executeNotify", () => {
     vi.mocked(executeSessionSync).mockResolvedValueOnce({
       totalSnapshots: 1,
       totalRecords: 1,
-      filesScanned: { claude: 1, codex: 0, gemini: 0, opencode: 0, openclaw: 0 },
-      sources: { claude: 1, codex: 0, gemini: 0, opencode: 0, openclaw: 0 },
+      filesScanned: { claude: 1, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
+      sources: { claude: 1, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
     });
 
     let capturedCycle: SyncCycleResult | undefined;
@@ -264,8 +264,8 @@ describe("executeNotify", () => {
     vi.mocked(executeSync).mockResolvedValueOnce({
       totalDeltas: 5,
       totalRecords: 3,
-      filesScanned: { claude: 2, codex: 0, gemini: 0, opencode: 0, openclaw: 0 },
-      sources: { claude: 3, codex: 0, gemini: 0, opencode: 0, openclaw: 0 },
+      filesScanned: { claude: 2, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
+      sources: { claude: 3, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
     });
     vi.mocked(executeSessionSync).mockRejectedValueOnce(new Error("session db locked"));
 
@@ -308,13 +308,13 @@ describe("executeNotify", () => {
   it("default executeSyncFn passes stateDir and source dirs to executeSync", async () => {
     vi.mocked(executeSync).mockResolvedValueOnce({
       totalDeltas: 0, totalRecords: 0,
-      filesScanned: { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0 },
-      sources: { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0 },
+      filesScanned: { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
+      sources: { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
     });
     vi.mocked(executeSessionSync).mockResolvedValueOnce({
       totalSnapshots: 0, totalRecords: 0,
-      filesScanned: { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0 },
-      sources: { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0 },
+      filesScanned: { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
+      sources: { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 },
     });
 
     await executeNotify({
