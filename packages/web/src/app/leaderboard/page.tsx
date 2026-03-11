@@ -10,6 +10,9 @@ import {
   Award,
   EyeOff,
   ChevronDown,
+  Globe,
+  Users,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatTokens, formatTokensFull } from "@/lib/utils";
@@ -76,12 +79,23 @@ function ScopeDropdown({
     return () => document.removeEventListener("mousedown", handleClick);
   }, [open]);
 
+  const iconClass = "h-3.5 w-3.5 shrink-0 text-muted-foreground";
+
   const label =
     value === "global"
       ? "Global"
       : value === "all"
         ? "All Users"
         : teams.find((t) => t.id === value)?.name ?? "Global";
+
+  const labelIcon =
+    value === "global" ? (
+      <Globe className={iconClass} strokeWidth={1.5} />
+    ) : value === "all" ? (
+      <ShieldCheck className={iconClass} strokeWidth={1.5} />
+    ) : (
+      <Users className={iconClass} strokeWidth={1.5} />
+    );
 
   // Only show dropdown if there are teams or user is admin
   if (teams.length === 0 && !isAdmin) return null;
@@ -91,10 +105,11 @@ function ScopeDropdown({
       <button
         onClick={() => setOpen(!open)}
         className={cn(
-          "flex items-center gap-2 rounded-lg bg-secondary px-3 py-1.5 text-sm font-medium transition-colors",
+          "flex items-center gap-2 rounded-lg bg-secondary px-3 py-[10px] text-sm font-medium transition-colors",
           "text-foreground hover:bg-accent",
         )}
       >
+        {labelIcon}
         {label}
         <ChevronDown
           className={cn(
@@ -113,6 +128,7 @@ function ScopeDropdown({
               setOpen(false);
             }}
           >
+            <Globe className={iconClass} strokeWidth={1.5} />
             Global
           </DropdownItem>
           {teams.map((team) => (
@@ -124,6 +140,7 @@ function ScopeDropdown({
                 setOpen(false);
               }}
             >
+              <Users className={iconClass} strokeWidth={1.5} />
               {team.name}
             </DropdownItem>
           ))}
@@ -137,6 +154,7 @@ function ScopeDropdown({
                   setOpen(false);
                 }}
               >
+                <ShieldCheck className={iconClass} strokeWidth={1.5} />
                 All Users
                 <span className="ml-auto text-[10px] text-muted-foreground">
                   admin
@@ -389,37 +407,32 @@ export default function LeaderboardPage() {
       {/* Header */}
       <header className="mx-auto w-full max-w-3xl px-6 pt-10 pb-2">
         <div
-          className="flex items-center gap-3 animate-fade-up"
+          className="flex items-center gap-5 animate-fade-up"
           style={{ animationDelay: "0ms" }}
         >
           <Link
             href="/"
-            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+            className="shrink-0 hover:opacity-80 transition-opacity"
           >
             <Image
-              src="/logo-24.png"
+              src="/logo-80.png"
               alt="Pew"
-              width={24}
-              height={24}
-              className="shrink-0"
+              width={48}
+              height={48}
             />
-            <span className="font-bold tracking-tighter text-foreground">
-              pew
-            </span>
           </Link>
+          <div className="flex flex-col">
+            <h1 className="text-2xl font-bold font-display tracking-tight text-foreground">
+              pew{" "}
+              <span className="font-normal text-muted-foreground">
+                Leaderboard
+              </span>
+            </h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Who&apos;s burning the most tokens?
+            </p>
+          </div>
         </div>
-        <h1
-          className="mt-6 text-2xl font-bold font-display animate-fade-up"
-          style={{ animationDelay: "60ms" }}
-        >
-          Leaderboard
-        </h1>
-        <p
-          className="mt-1 text-sm text-muted-foreground animate-fade-up"
-          style={{ animationDelay: "120ms" }}
-        >
-          Who&apos;s burning the most tokens?
-        </p>
       </header>
 
       {/* Main content */}
