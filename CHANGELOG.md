@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.1.1
+
+### Fixes
+
+- **Landing install command** — Changed from `bun add -g` to `npm install -g` for broader compatibility (CLI is pure Node.js, no Bun dependency required)
+- **CLI login redirect** — Use `x-forwarded-host`/`x-forwarded-proto` headers for public origin instead of container-internal `request.url` (`0.0.0.0:8080` → `pew.md`)
+
+### Infrastructure
+
+- **D1 database ID** — Fixed Railway env var pointing to deleted D1 database
+- **Retrospective** — Documented `request.url` internal hostname pitfall in CLAUDE.md
+
 ## v1.1.0
 
 ### Features

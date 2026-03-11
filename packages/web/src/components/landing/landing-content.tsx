@@ -10,7 +10,7 @@ import { Copy, Check } from "lucide-react";
 // ---------------------------------------------------------------------------
 
 function InstallCommand() {
-  const command = "bun add -g @nocoo/pew";
+  const command = "npm install -g @nocoo/pew";
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
