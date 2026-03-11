@@ -17,6 +17,9 @@ export interface Project {
   aliases: ProjectAlias[];
   session_count: number;
   last_active: string | null;
+  total_messages: number;
+  total_duration: number;
+  models: string[];
   created_at: string;
 }
 
@@ -25,6 +28,9 @@ export interface UnassignedRef {
   project_ref: string;
   session_count: number;
   last_active: string | null;
+  total_messages: number;
+  total_duration: number;
+  models: string[];
 }
 
 export interface ProjectsData {
