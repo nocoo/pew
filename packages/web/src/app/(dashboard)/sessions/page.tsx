@@ -36,7 +36,7 @@ function ProjectFilter({ value, onChange, projectNames }: ProjectFilterProps) {
     >
       <option value="">All Projects</option>
       {projectNames.map((name) => (
-        <option key={name} value={name === "Unassigned" ? "_unassigned" : name}>
+        <option key={name} value={name}>
           {name}
         </option>
       ))}
@@ -53,17 +53,18 @@ export default function SessionsPage() {
   const [projectFilter, setProjectFilter] = useState("");
   const { from, to } = periodToDateRange(period);
 
-  // First fetch: all sessions (no project filter) to get breakdown data
+  // Primary fetch: all sessions (no project filter) — used for breakdown + default display
   const allData = useSessionData({
     from,
     ...(to ? { to } : {}),
   });
 
-  // Second fetch: filtered by project (only when a filter is active)
+  // Secondary fetch: only fires when a project filter is active
   const filteredData = useSessionData({
     from,
     ...(to ? { to } : {}),
     ...(projectFilter ? { project: projectFilter } : {}),
+    enabled: !!projectFilter,
   });
 
   // Use filtered data for charts when a project filter is active,

@@ -21,6 +21,9 @@ const VALID_SOURCES = new Set([
 
 const MAX_NAME_LENGTH = 100;
 
+/** Names reserved for internal UI/API use (case-insensitive comparison). */
+const RESERVED_NAMES = new Set(["unassigned"]);
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -127,6 +130,14 @@ export async function PATCH(
     }
     trimmedName = name.trim();
 
+    // Check reserved names
+    if (RESERVED_NAMES.has(trimmedName.toLowerCase())) {
+      return NextResponse.json(
+        { error: `"${trimmedName}" is a reserved name and cannot be used` },
+        { status: 400 },
+      );
+    }
+
     const existing = await client.firstOrNull<{ id: string }>(
       "SELECT id FROM projects WHERE user_id = ? AND name = ? AND id != ?",
       [userId, trimmedName, projectId],
@@ -195,6 +206,29 @@ export async function PATCH(
     if (error) {
       return NextResponse.json({ error }, { status: 400 });
     }
+
+    // Verify each alias is actually attached to this project
+    const notFound: AliasInput[] = [];
+    for (const alias of valid) {
+      const attached = await client.firstOrNull<{ project_id: string }>(
+        `SELECT project_id FROM project_aliases
+         WHERE user_id = ? AND project_id = ? AND source = ? AND project_ref = ?`,
+        [userId, projectId, alias.source, alias.project_ref],
+      );
+      if (!attached) {
+        notFound.push(alias);
+      }
+    }
+    if (notFound.length > 0) {
+      return NextResponse.json(
+        {
+          error: "Some aliases are not attached to this project",
+          not_found_aliases: notFound,
+        },
+        { status: 400 },
+      );
+    }
+
     removeAliases = valid;
   }
 

@@ -21,6 +21,9 @@ const VALID_SOURCES = new Set([
 
 const MAX_NAME_LENGTH = 100;
 
+/** Names reserved for internal UI/API use (case-insensitive comparison). */
+const RESERVED_NAMES = new Set(["unassigned"]);
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -236,6 +239,14 @@ export async function POST(request: Request) {
 
   const client = getD1Client();
   const trimmedName = name.trim();
+
+  // Check reserved names
+  if (RESERVED_NAMES.has(trimmedName.toLowerCase())) {
+    return NextResponse.json(
+      { error: `"${trimmedName}" is a reserved name and cannot be used` },
+      { status: 400 },
+    );
+  }
 
   // -------------------------------------------------------------------------
   // Phase 1: Validate ALL inputs before any writes

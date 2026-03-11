@@ -186,6 +186,48 @@ describe("PATCH /api/projects/:id", () => {
       expect(res.status).toBe(400);
       expect(mockClient.execute).not.toHaveBeenCalled();
     });
+
+    it("should reject reserved name 'Unassigned' (case-insensitive)", async () => {
+      mockClient.firstOrNull.mockResolvedValueOnce({
+        id: "proj-1",
+        name: "Old Name",
+      }); // project exists
+
+      const res = await callPatch({ name: "Unassigned" });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("reserved");
+      expect(mockClient.execute).not.toHaveBeenCalled();
+    });
+
+    it("should reject reserved name 'unassigned' (lowercase)", async () => {
+      mockClient.firstOrNull.mockResolvedValueOnce({
+        id: "proj-1",
+        name: "Old Name",
+      });
+
+      const res = await callPatch({ name: "unassigned" });
+
+      expect(res.status).toBe(400);
+      expect(mockClient.execute).not.toHaveBeenCalled();
+    });
+
+    it("should reject remove_aliases not attached to this project", async () => {
+      mockClient.firstOrNull
+        .mockResolvedValueOnce({ id: "proj-1", name: "Old Name" }) // project exists
+        .mockResolvedValueOnce(null); // alias not found on this project
+
+      const res = await callPatch({
+        remove_aliases: [{ source: "claude-code", project_ref: "not-here" }],
+      });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.not_found_aliases).toHaveLength(1);
+      expect(body.not_found_aliases[0].project_ref).toBe("not-here");
+      expect(mockClient.execute).not.toHaveBeenCalled();
+    });
   });
 
   describe("rollback on write failure", () => {
@@ -229,7 +271,8 @@ describe("PATCH /api/projects/:id", () => {
       mockClient.firstOrNull
         .mockResolvedValueOnce({ id: "proj-1", name: "Old Name" }) // project exists
         .mockResolvedValueOnce({ "1": 1 }) // session data exists for add alias
-        .mockResolvedValueOnce(null); // alias not taken
+        .mockResolvedValueOnce(null) // alias not taken
+        .mockResolvedValueOnce({ project_id: "proj-1" }); // remove alias is attached to this project
 
       // Phase 2: add succeeds, remove fails
       mockClient.execute
@@ -431,6 +474,20 @@ describe("POST /api/projects", () => {
     it("should reject name exceeding max length", async () => {
       const res = await POST(makePostRequest({ name: "x".repeat(101) }));
       expect(res.status).toBe(400);
+    });
+
+    it("should reject reserved name 'Unassigned' (case-insensitive)", async () => {
+      const res = await POST(makePostRequest({ name: "Unassigned" }));
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("reserved");
+      expect(mockClient.execute).not.toHaveBeenCalled();
+    });
+
+    it("should reject reserved name 'UNASSIGNED' (uppercase)", async () => {
+      const res = await POST(makePostRequest({ name: "UNASSIGNED" }));
+      expect(res.status).toBe(400);
+      expect(mockClient.execute).not.toHaveBeenCalled();
     });
 
     it("should reject duplicate project name", async () => {
