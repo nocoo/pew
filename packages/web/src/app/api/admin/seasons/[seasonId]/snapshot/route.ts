@@ -7,8 +7,10 @@
  *   1. Validate season exists and status is "ended"
  *   2. Aggregate usage data for all registered teams + members
  *   3. Compute ranks (total_tokens DESC)
- *   4. Upsert snapshots (INSERT OR REPLACE), then clean up stale rows
- *   5. Return summary: team_count, member_count, created_at
+ *   4. Set snapshot_ready = 0 (readers fall back to live data during writes)
+ *   5. Upsert snapshots (INSERT OR REPLACE), then clean up stale rows
+ *   6. Set snapshot_ready = 1 (readers switch to frozen snapshot data)
+ *   7. Return summary: team_count, member_count, created_at
  *
  * ⚠️ NON-ATOMIC WRITES: The D1 REST API batch() is NOT transactional —
  * it executes statements sequentially via individual HTTP requests
@@ -160,8 +162,15 @@ export async function POST(
       memberRows = result.results;
     }
 
-    // 5. Upsert team snapshots via INSERT OR REPLACE.
-    //    NOT atomic — see JSDoc for failure semantics. Re-running converges.
+    // 5. Mark snapshot as not-ready before writing data.
+    //    Readers (leaderboard route) will serve live data while snapshot_ready=0.
+    await client.execute(
+      "UPDATE seasons SET snapshot_ready = ? WHERE id = ?",
+      [0, seasonId]
+    );
+
+    // 6a. Upsert team snapshots via INSERT OR REPLACE.
+    //     NOT atomic — see JSDoc for failure semantics. Re-running converges.
     const now = new Date().toISOString().replace("T", " ").slice(0, 19);
     const teamStatements = teamRows.results.map((row, i) => ({
       sql: `INSERT OR REPLACE INTO season_snapshots
@@ -185,7 +194,7 @@ export async function POST(
       ],
     }));
 
-    // 6. Upsert member snapshots
+    // 6b. Upsert member snapshots
     const memberStatements = memberRows.map((row) => ({
       sql: `INSERT OR REPLACE INTO season_member_snapshots
           (id, season_id, team_id, user_id, total_tokens, input_tokens, output_tokens, cached_input_tokens, created_at)
@@ -263,6 +272,13 @@ export async function POST(
         await client.batch(cleanupStatements);
       }
     }
+
+    // 8. All writes succeeded — mark snapshot as ready.
+    //    Readers will now serve frozen snapshot data instead of live data.
+    await client.execute(
+      "UPDATE seasons SET snapshot_ready = ? WHERE id = ?",
+      [1, seasonId]
+    );
 
     return NextResponse.json(
       {

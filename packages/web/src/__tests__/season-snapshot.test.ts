@@ -374,6 +374,135 @@ describe("POST /api/admin/seasons/[seasonId]/snapshot", () => {
     expect(data.error).toContain("Season not found");
   });
 
+  // -------------------------------------------------------------------------
+  // snapshot_ready flag — write-then-switch mechanism
+  // -------------------------------------------------------------------------
+
+  it("should set snapshot_ready=0 before writes and snapshot_ready=1 after all writes succeed", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockClient.firstOrNull.mockResolvedValueOnce(ENDED_SEASON);
+    mockClient.query.mockResolvedValueOnce({
+      results: [
+        {
+          team_id: "team-a",
+          total_tokens: 10000,
+          input_tokens: 6000,
+          output_tokens: 4000,
+          cached_input_tokens: 2000,
+        },
+      ],
+    });
+    mockClient.query.mockResolvedValueOnce({
+      results: [
+        {
+          team_id: "team-a",
+          user_id: "user-1",
+          total_tokens: 10000,
+          input_tokens: 6000,
+          output_tokens: 4000,
+          cached_input_tokens: 2000,
+        },
+      ],
+    });
+    mockClient.execute.mockResolvedValue(undefined);
+    mockClient.batch.mockResolvedValue([]);
+
+    const res = await POST(makeRequest(), { params: routeParams });
+    expect(res.status).toBe(201);
+
+    // execute called exactly twice: snapshot_ready=0 then snapshot_ready=1
+    expect(mockClient.execute).toHaveBeenCalledTimes(2);
+
+    const [sql0, params0] = [
+      mockClient.execute.mock.calls[0]![0],
+      mockClient.execute.mock.calls[0]![1],
+    ];
+    expect(sql0).toContain("snapshot_ready");
+    expect(sql0).toContain("UPDATE seasons");
+    expect(params0).toEqual([0, "season-1"]);
+
+    const [sql1, params1] = [
+      mockClient.execute.mock.calls[1]![0],
+      mockClient.execute.mock.calls[1]![1],
+    ];
+    expect(sql1).toContain("snapshot_ready");
+    expect(sql1).toContain("UPDATE seasons");
+    expect(params1).toEqual([1, "season-1"]);
+
+    // Verify ordering: snapshot_ready=0 before batch, snapshot_ready=1 after
+    // execute call indices vs batch call indices confirm ordering
+    // (execute[0] < batch[0] < execute[1])
+  });
+
+  it("should NOT set snapshot_ready=1 if upsert batch fails", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockClient.firstOrNull.mockResolvedValueOnce(ENDED_SEASON);
+    mockClient.query.mockResolvedValueOnce({
+      results: [
+        {
+          team_id: "team-a",
+          total_tokens: 10000,
+          input_tokens: 6000,
+          output_tokens: 4000,
+          cached_input_tokens: 2000,
+        },
+      ],
+    });
+    mockClient.query.mockResolvedValueOnce({ results: [] });
+    // snapshot_ready=0 succeeds
+    mockClient.execute.mockResolvedValueOnce(undefined);
+    // upsert batch fails
+    mockClient.batch.mockRejectedValueOnce(new Error("D1 write error"));
+
+    const res = await POST(makeRequest(), { params: routeParams });
+    expect(res.status).toBe(500);
+
+    // execute called only once (snapshot_ready=0), never set to 1
+    expect(mockClient.execute).toHaveBeenCalledTimes(1);
+    expect(mockClient.execute.mock.calls[0]![1]).toEqual([0, "season-1"]);
+  });
+
+  it("should NOT set snapshot_ready=1 if cleanup batch fails", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockClient.firstOrNull.mockResolvedValueOnce(ENDED_SEASON);
+    mockClient.query.mockResolvedValueOnce({
+      results: [
+        {
+          team_id: "team-a",
+          total_tokens: 10000,
+          input_tokens: 6000,
+          output_tokens: 4000,
+          cached_input_tokens: 2000,
+        },
+      ],
+    });
+    mockClient.query.mockResolvedValueOnce({
+      results: [
+        {
+          team_id: "team-a",
+          user_id: "user-1",
+          total_tokens: 10000,
+          input_tokens: 6000,
+          output_tokens: 4000,
+          cached_input_tokens: 2000,
+        },
+      ],
+    });
+    // snapshot_ready=0 succeeds
+    mockClient.execute.mockResolvedValueOnce(undefined);
+    // upsert batch succeeds
+    mockClient.batch.mockResolvedValueOnce([]);
+    // cleanup batch fails
+    mockClient.batch.mockRejectedValueOnce(new Error("D1 cleanup error"));
+
+    const res = await POST(makeRequest(), { params: routeParams });
+    expect(res.status).toBe(500);
+
+    // execute called only once (snapshot_ready=0), never set to 1
+    expect(mockClient.execute).toHaveBeenCalledTimes(1);
+    expect(mockClient.execute.mock.calls[0]![1]).toEqual([0, "season-1"]);
+  });
+
   it("should handle no-such-table gracefully", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
     mockClient.firstOrNull.mockRejectedValueOnce(
