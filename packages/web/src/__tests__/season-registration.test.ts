@@ -75,16 +75,15 @@ describe("POST /api/seasons/[seasonId]/register", () => {
       // User is team owner
       .mockResolvedValueOnce({ role: "owner" })
       // No existing registration
+      .mockResolvedValueOnce(null)
+      // Pre-validation: no member conflict
       .mockResolvedValueOnce(null);
     // Fetch current team members
     mockClient.query.mockResolvedValueOnce({
       results: [{ user_id: "user-1" }, { user_id: "user-2" }],
     });
-    // INSERT season_teams + 2x INSERT season_team_members
-    mockClient.execute
-      .mockResolvedValueOnce({ changes: 1, duration: 0.01 })
-      .mockResolvedValueOnce({ changes: 1, duration: 0.01 })
-      .mockResolvedValueOnce({ changes: 1, duration: 0.01 });
+    // Batch write succeeds
+    mockClient.batch.mockResolvedValueOnce(undefined);
 
     const res = await POST(makeRequest("POST", undefined, { team_id: "team-1" }), {
       params: regParams,
@@ -94,14 +93,40 @@ describe("POST /api/seasons/[seasonId]/register", () => {
     expect(json.season_id).toBe("season-1");
     expect(json.team_id).toBe("team-1");
 
-    // Verify frozen roster inserts
+    // Verify frozen roster: fetch members then batch write
     expect(mockClient.query).toHaveBeenCalledWith(
       "SELECT user_id FROM team_members WHERE team_id = ?",
       ["team-1"]
     );
-    expect(mockClient.execute).toHaveBeenCalledTimes(3);
-    const secondCall = mockClient.execute.mock.calls[1]!;
-    expect(secondCall[0]).toContain("season_team_members");
+    expect(mockClient.batch).toHaveBeenCalledTimes(1);
+    const batchStatements = mockClient.batch.mock.calls[0]![0] as Array<{ sql: string; params: unknown[] }>;
+    // 1 season_teams INSERT + 2 season_team_members INSERTs
+    expect(batchStatements).toHaveLength(3);
+    expect(batchStatements[0]!.sql).toContain("season_teams");
+    expect(batchStatements[1]!.sql).toContain("season_team_members");
+    expect(batchStatements[2]!.sql).toContain("season_team_members");
+  });
+
+  it("should reject when a member is already registered on another team", async () => {
+    resolveUser.mockResolvedValueOnce(USER);
+    mockClient.firstOrNull
+      .mockResolvedValueOnce({ id: "season-1", start_date: "2099-01-01", end_date: "2099-12-31" })
+      .mockResolvedValueOnce({ role: "owner" })
+      .mockResolvedValueOnce(null)
+      // Pre-validation: user-2 is already on another team
+      .mockResolvedValueOnce({ user_id: "user-2" });
+    mockClient.query.mockResolvedValueOnce({
+      results: [{ user_id: "user-1" }, { user_id: "user-2" }],
+    });
+
+    const res = await POST(makeRequest("POST", undefined, { team_id: "team-1" }), {
+      params: regParams,
+    });
+    expect(res.status).toBe(409);
+    const json = await res.json();
+    expect(json.error).toContain("already registered");
+    // No batch write should have happened
+    expect(mockClient.batch).not.toHaveBeenCalled();
   });
 
   it("should reject when season is active", async () => {

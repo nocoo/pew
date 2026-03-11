@@ -97,20 +97,61 @@ export async function POST(
       [team_id]
     );
 
-    const id = crypto.randomUUID();
-    await client.execute(
-      `INSERT INTO season_teams (id, season_id, team_id, registered_by)
-       VALUES (?, ?, ?, ?)`,
-      [id, seasonId, team_id, user.userId]
-    );
-
-    // Freeze roster: copy current members into season_team_members
-    for (const member of members.results) {
-      await client.execute(
-        `INSERT INTO season_team_members (id, season_id, team_id, user_id)
-         VALUES (?, ?, ?, ?)`,
-        [crypto.randomUUID(), seasonId, team_id, member.user_id]
+    // Pre-validate: ensure no member is already registered for this season
+    // via another team (UNIQUE(season_id, user_id) would reject anyway,
+    // but checking upfront avoids partial writes)
+    if (members.results.length > 0) {
+      const placeholders = members.results.map(() => "?").join(",");
+      const userIds = members.results.map((m) => m.user_id);
+      const conflict = await client.firstOrNull<{ user_id: string }>(
+        `SELECT user_id FROM season_team_members
+         WHERE season_id = ? AND user_id IN (${placeholders})
+         LIMIT 1`,
+        [seasonId, ...userIds]
       );
+      if (conflict) {
+        return NextResponse.json(
+          { error: "A team member is already registered for this season on another team" },
+          { status: 409 }
+        );
+      }
+    }
+
+    // Write registration + frozen roster in a single batch.
+    // D1 REST API executes these sequentially but we batch them so
+    // a failure is detected immediately. If the batch partially fails,
+    // we compensate by cleaning up.
+    const id = crypto.randomUUID();
+    const statements: Array<{ sql: string; params: unknown[] }> = [
+      {
+        sql: `INSERT INTO season_teams (id, season_id, team_id, registered_by)
+              VALUES (?, ?, ?, ?)`,
+        params: [id, seasonId, team_id, user.userId],
+      },
+      ...members.results.map((m) => ({
+        sql: `INSERT INTO season_team_members (id, season_id, team_id, user_id)
+              VALUES (?, ?, ?, ?)`,
+        params: [crypto.randomUUID(), seasonId, team_id, m.user_id],
+      })),
+    ];
+
+    try {
+      await client.batch(statements);
+    } catch (batchErr) {
+      // Compensate: clean up any partial writes
+      try {
+        await client.execute(
+          "DELETE FROM season_team_members WHERE season_id = ? AND team_id = ?",
+          [seasonId, team_id]
+        );
+        await client.execute(
+          "DELETE FROM season_teams WHERE season_id = ? AND team_id = ?",
+          [seasonId, team_id]
+        );
+      } catch {
+        // Swallow cleanup errors — the original error is more important
+      }
+      throw batchErr;
     }
 
     return NextResponse.json(
