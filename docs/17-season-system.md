@@ -21,7 +21,7 @@
 | 11 | `test: add L1 tests for season snapshot` | Snapshot creation + idempotency tests | done |
 | 12 | `feat: add season list API` | `GET /api/seasons` | done |
 | 13 | `test: add L1 tests for season list API` | Public season listing tests | done |
-| 14 | `feat: add season leaderboard page` | `/leaderboard/seasons` + `/leaderboard/seasons/[seasonId]` | |
+| 14 | `feat: add season leaderboard page` | `/leaderboard/seasons` + `/leaderboard/seasons/[seasonId]` | done |
 | 15 | `feat: add season navigation to leaderboard` | Season tab in leaderboard controls | |
 | 16 | `feat: add admin season management page` | `/admin/seasons` CRUD UI | |
 | 17 | `feat: add season registration UI for team owners` | Team detail page register button | |
