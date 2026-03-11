@@ -25,7 +25,7 @@ interface Team {
   invite_code: string;
   created_by: string;
   member_count: number;
-  logo_url: string;
+  logo_url: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -72,8 +72,6 @@ function TeamLogo({
   onMessage: (msg: { type: "success" | "error"; text: string }) => void;
 }) {
   const [uploading, setUploading] = useState(false);
-  const [logoError, setLogoError] = useState(false);
-  const [logoVer, setLogoVer] = useState(() => Date.now());
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -112,8 +110,6 @@ function TeamLogo({
 
       if (res.ok) {
         onMessage({ type: "success", text: "Logo updated!" });
-        setLogoError(false);
-        setLogoVer(Date.now());
         onUploaded();
       } else {
         const data = await res.json().catch(() => ({}));
@@ -137,7 +133,6 @@ function TeamLogo({
       const res = await fetch(`/api/teams/${team.id}/logo`, { method: "DELETE" });
       if (res.ok) {
         onMessage({ type: "success", text: "Logo removed." });
-        setLogoError(true);
         onUploaded();
       } else {
         const data = await res.json().catch(() => ({}));
@@ -151,17 +146,16 @@ function TeamLogo({
     }
   };
 
-  const logoSrc = `${team.logo_url}?v=${logoVer}`;
+  const hasLogo = !!team.logo_url;
 
   return (
     <div className="relative group shrink-0">
       <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-muted-foreground overflow-hidden">
-        {!logoError ? (
+        {hasLogo ? (
           <img
-            src={logoSrc}
+            src={team.logo_url!}
             alt={`${team.name} logo`}
             className="h-9 w-9 object-cover"
-            onError={() => setLogoError(true)}
           />
         ) : (
           <Users className="h-4 w-4" strokeWidth={1.5} />
@@ -177,7 +171,7 @@ function TeamLogo({
           >
             <Camera className="h-3.5 w-3.5 text-white" strokeWidth={1.5} />
           </button>
-          {!logoError && (
+          {hasLogo && (
             <button
               onClick={handleRemoveLogo}
               className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-white opacity-0 group-hover:opacity-100 transition-opacity"

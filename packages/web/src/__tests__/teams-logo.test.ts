@@ -16,8 +16,7 @@ vi.mock("@/lib/auth-helpers", () => ({
 
 vi.mock("@/lib/r2", () => ({
   putTeamLogo: vi.fn(),
-  deleteTeamLogo: vi.fn(),
-  teamLogoUrl: vi.fn((id: string) => `https://s.zhe.to/apps/pew/teams-logo/${id}.jpg`),
+  deleteTeamLogoByUrl: vi.fn(),
 }));
 
 vi.mock("sharp", () => {
@@ -34,9 +33,9 @@ const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
   resolveUser: ReturnType<typeof vi.fn>;
 };
 
-const { putTeamLogo, deleteTeamLogo } = (await import("@/lib/r2")) as unknown as {
+const { putTeamLogo, deleteTeamLogoByUrl } = (await import("@/lib/r2")) as unknown as {
   putTeamLogo: ReturnType<typeof vi.fn>;
-  deleteTeamLogo: ReturnType<typeof vi.fn>;
+  deleteTeamLogoByUrl: ReturnType<typeof vi.fn>;
 };
 
 const sharp = (await import("sharp")).default as unknown as ReturnType<typeof vi.fn>;
@@ -101,7 +100,10 @@ describe("POST /api/teams/[teamId]/logo", () => {
       jpeg: vi.fn().mockReturnThis(),
       toBuffer: vi.fn().mockResolvedValue(Buffer.from("fake-jpeg")),
     } as never);
-    putTeamLogo.mockResolvedValue(undefined);
+    putTeamLogo.mockResolvedValue("https://s.zhe.to/apps/pew/teams-logo/t1/abc123.jpg");
+    deleteTeamLogoByUrl.mockResolvedValue(undefined);
+    // firstOrNull: first call returns role, second returns old logo_url
+    mockClient.firstOrNull.mockResolvedValue(null);
     const mod = await import("@/app/api/teams/[teamId]/logo/route");
     POST = mod.POST;
   });
@@ -223,17 +225,42 @@ describe("POST /api/teams/[teamId]/logo", () => {
     expect((await res.json()).error).toContain("Missing file");
   });
 
-  it("should upload successfully for owner with valid image", async () => {
+  it("should upload successfully, persist URL to DB, and delete old logo", async () => {
     resolveUser.mockResolvedValueOnce({ userId: "u1" });
+    const newUrl = "https://s.zhe.to/apps/pew/teams-logo/t1/new123.jpg";
+    const oldUrl = "https://s.zhe.to/apps/pew/teams-logo/t1/old456.jpg";
+    putTeamLogo.mockResolvedValueOnce(newUrl);
+    // firstOrNull call 1: role check
     mockClient.firstOrNull.mockResolvedValueOnce({ role: "owner" });
+    // firstOrNull call 2: old logo_url
+    mockClient.firstOrNull.mockResolvedValueOnce({ logo_url: oldUrl });
 
     const res = await POST(makeUploadRequest("t1"), makeParams());
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.logo_url).toBe("https://s.zhe.to/apps/pew/teams-logo/t1.jpg");
+    expect(body.logo_url).toBe(newUrl);
     expect(putTeamLogo).toHaveBeenCalledOnce();
     expect(putTeamLogo).toHaveBeenCalledWith("t1", expect.any(Buffer));
+    // Should persist to DB
+    expect(mockClient.execute).toHaveBeenCalledWith(
+      "UPDATE teams SET logo_url = ? WHERE id = ?",
+      [newUrl, "t1"],
+    );
+    // Should delete old logo
+    expect(deleteTeamLogoByUrl).toHaveBeenCalledWith(oldUrl);
+  });
+
+  it("should skip old logo deletion when team had no logo", async () => {
+    resolveUser.mockResolvedValueOnce({ userId: "u1" });
+    putTeamLogo.mockResolvedValueOnce("https://s.zhe.to/apps/pew/teams-logo/t1/new123.jpg");
+    mockClient.firstOrNull.mockResolvedValueOnce({ role: "owner" });
+    mockClient.firstOrNull.mockResolvedValueOnce({ logo_url: null });
+
+    const res = await POST(makeUploadRequest("t1"), makeParams());
+
+    expect(res.status).toBe(200);
+    expect(deleteTeamLogoByUrl).not.toHaveBeenCalled();
   });
 
   it("should return 500 when R2 upload fails", async () => {
@@ -250,6 +277,7 @@ describe("POST /api/teams/[teamId]/logo", () => {
   it("should accept JPEG content type", async () => {
     resolveUser.mockResolvedValueOnce({ userId: "u1" });
     mockClient.firstOrNull.mockResolvedValueOnce({ role: "owner" });
+    mockClient.firstOrNull.mockResolvedValueOnce({ logo_url: null });
 
     const res = await POST(
       makeUploadRequest("t1", { type: "image/jpeg" }),
@@ -274,7 +302,7 @@ describe("DELETE /api/teams/[teamId]/logo", () => {
     vi.mocked(d1Module.getD1Client).mockReturnValue(
       mockClient as unknown as d1Module.D1Client,
     );
-    deleteTeamLogo.mockResolvedValue(undefined);
+    deleteTeamLogoByUrl.mockResolvedValue(undefined);
     const mod = await import("@/app/api/teams/[teamId]/logo/route");
     DELETE = mod.DELETE;
   });
@@ -307,22 +335,43 @@ describe("DELETE /api/teams/[teamId]/logo", () => {
     expect((await res.json()).error).toContain("owner");
   });
 
-  it("should delete successfully for owner", async () => {
+  it("should delete successfully, clear DB, and remove R2 object", async () => {
+    const logoUrl = "https://s.zhe.to/apps/pew/teams-logo/t1/abc123.jpg";
     resolveUser.mockResolvedValueOnce({ userId: "u1" });
+    // firstOrNull call 1: role check
     mockClient.firstOrNull.mockResolvedValueOnce({ role: "owner" });
+    // firstOrNull call 2: current logo_url
+    mockClient.firstOrNull.mockResolvedValueOnce({ logo_url: logoUrl });
 
     const res = await DELETE(makeDeleteRequest("t1"), makeParams());
 
     expect(res.status).toBe(200);
     expect((await res.json()).ok).toBe(true);
-    expect(deleteTeamLogo).toHaveBeenCalledOnce();
-    expect(deleteTeamLogo).toHaveBeenCalledWith("t1");
+    // Should clear in DB
+    expect(mockClient.execute).toHaveBeenCalledWith(
+      "UPDATE teams SET logo_url = NULL WHERE id = ?",
+      ["t1"],
+    );
+    // Should delete from R2
+    expect(deleteTeamLogoByUrl).toHaveBeenCalledWith(logoUrl);
+  });
+
+  it("should succeed even when team has no logo", async () => {
+    resolveUser.mockResolvedValueOnce({ userId: "u1" });
+    mockClient.firstOrNull.mockResolvedValueOnce({ role: "owner" });
+    mockClient.firstOrNull.mockResolvedValueOnce({ logo_url: null });
+
+    const res = await DELETE(makeDeleteRequest("t1"), makeParams());
+
+    expect(res.status).toBe(200);
+    expect(deleteTeamLogoByUrl).not.toHaveBeenCalled();
   });
 
   it("should return 500 when R2 delete fails", async () => {
     resolveUser.mockResolvedValueOnce({ userId: "u1" });
     mockClient.firstOrNull.mockResolvedValueOnce({ role: "owner" });
-    deleteTeamLogo.mockRejectedValueOnce(new Error("R2 unavailable"));
+    mockClient.firstOrNull.mockResolvedValueOnce({ logo_url: "https://s.zhe.to/apps/pew/teams-logo/t1/abc.jpg" });
+    deleteTeamLogoByUrl.mockRejectedValueOnce(new Error("R2 unavailable"));
 
     const res = await DELETE(makeDeleteRequest("t1"), makeParams());
 

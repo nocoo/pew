@@ -6,7 +6,6 @@
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
 import { getD1Client } from "@/lib/d1";
-import { teamLogoUrl } from "@/lib/r2";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -20,6 +19,7 @@ interface TeamRow {
   created_by: string;
   created_at: string;
   member_count: number;
+  logo_url: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -35,7 +35,7 @@ export async function GET(request: Request) {
   try {
     const client = getD1Client();
     const result = await client.query<TeamRow>(
-      `SELECT t.id, t.name, t.slug, t.invite_code, t.created_by, t.created_at,
+      `SELECT t.id, t.name, t.slug, t.invite_code, t.created_by, t.created_at, t.logo_url,
          (SELECT COUNT(*) FROM team_members WHERE team_id = t.id) AS member_count
        FROM teams t
        JOIN team_members tm ON tm.team_id = t.id
@@ -47,7 +47,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       teams: result.results.map((t) => ({
         ...t,
-        logo_url: teamLogoUrl(t.id),
+        logo_url: t.logo_url ?? null,
       })),
     });
   } catch (err) {
@@ -132,7 +132,7 @@ export async function POST(request: Request) {
       slug: finalSlug,
       invite_code: inviteCode,
       member_count: 1,
-      logo_url: teamLogoUrl(teamId),
+      logo_url: null,
     }, { status: 201 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);

@@ -2,15 +2,17 @@
  * Cloudflare R2 client for team logo storage.
  *
  * Uses the same R2 bucket/credentials as otter's icon storage.
- * Logos are stored at: apps/pew/teams-logo/{teamId}.jpg
- * Served via: https://s.zhe.to/apps/pew/teams-logo/{teamId}.jpg
+ * Logos are stored at: apps/pew/teams-logo/{teamId}/{uniqueId}.jpg
+ * Served via: https://s.zhe.to/apps/pew/teams-logo/{teamId}/{uniqueId}.jpg
+ *
+ * Each upload gets a unique filename so CDN caches never serve stale logos.
+ * The full URL is persisted in the teams.logo_url column.
  */
 
 import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
-  HeadObjectCommand,
 } from "@aws-sdk/client-s3";
 
 // ---------------------------------------------------------------------------
@@ -74,62 +76,60 @@ export function __resetR2ClientForTests(): void {
 // Public API
 // ---------------------------------------------------------------------------
 
-/** R2 object key for a team logo */
-export function teamLogoKey(teamId: string): string {
-  return `${LOGO_PREFIX}/${teamId}.jpg`;
+/** Generate a unique R2 key for a new team logo upload. */
+export function generateLogoKey(teamId: string): string {
+  const uniqueId = crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+  return `${LOGO_PREFIX}/${teamId}/${uniqueId}.jpg`;
 }
 
-/** Public CDN URL for a team logo */
-export function teamLogoUrl(teamId: string): string {
-  return `${CDN_BASE}/${teamLogoKey(teamId)}`;
+/** Public CDN URL for a given R2 key. */
+export function logoKeyToUrl(key: string): string {
+  return `${CDN_BASE}/${key}`;
 }
 
-/** Store a team logo JPG in R2 (overwrites existing) */
+/** Extract R2 key from a full CDN URL. Returns null if not a valid logo URL. */
+export function logoUrlToKey(url: string): string | null {
+  const prefix = `${CDN_BASE}/`;
+  if (!url.startsWith(prefix)) return null;
+  return url.slice(prefix.length);
+}
+
+/**
+ * Store a team logo JPG in R2 with immutable caching.
+ * Returns the full CDN URL.
+ */
 export async function putTeamLogo(
   teamId: string,
   data: Buffer,
-): Promise<void> {
+): Promise<string> {
   const { client, bucket } = getClient();
+  const key = generateLogoKey(teamId);
 
   await client.send(
     new PutObjectCommand({
       Bucket: bucket,
-      Key: teamLogoKey(teamId),
+      Key: key,
       Body: data,
       ContentType: "image/jpeg",
-      CacheControl: "public, max-age=60",
+      CacheControl: "public, max-age=31536000, immutable",
     }),
   );
+
+  return logoKeyToUrl(key);
 }
 
-/** Delete a team logo from R2 */
-export async function deleteTeamLogo(teamId: string): Promise<void> {
+/** Delete a team logo from R2 by its CDN URL. No-op if url is null/invalid. */
+export async function deleteTeamLogoByUrl(url: string | null): Promise<void> {
+  if (!url) return;
+  const key = logoUrlToKey(url);
+  if (!key) return;
+
   const { client, bucket } = getClient();
 
   await client.send(
     new DeleteObjectCommand({
       Bucket: bucket,
-      Key: teamLogoKey(teamId),
+      Key: key,
     }),
   );
-}
-
-/** Check if a team logo exists in R2 */
-export async function teamLogoExists(teamId: string): Promise<boolean> {
-  const { client, bucket } = getClient();
-
-  try {
-    await client.send(
-      new HeadObjectCommand({
-        Bucket: bucket,
-        Key: teamLogoKey(teamId),
-      }),
-    );
-    return true;
-  } catch (error: unknown) {
-    if (error instanceof Error && error.name === "NotFound") {
-      return false;
-    }
-    throw error;
-  }
 }

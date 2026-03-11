@@ -142,7 +142,8 @@ CREATE TABLE IF NOT EXISTS teams (
   slug        TEXT NOT NULL UNIQUE,
   invite_code TEXT NOT NULL UNIQUE,
   created_by  TEXT NOT NULL REFERENCES users(id),
-  created_at  TEXT NOT NULL
+  created_at  TEXT NOT NULL,
+  logo_url    TEXT
 );
 
 CREATE TABLE IF NOT EXISTS team_members (

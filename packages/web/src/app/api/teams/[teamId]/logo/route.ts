@@ -4,14 +4,15 @@
  *
  * Accepts multipart/form-data with a single "file" field.
  * Validates: PNG or JPEG, square aspect ratio, max 2 MB.
- * Converts to JPEG quality 80, stores in R2 at apps/pew/teams-logo/{teamId}.jpg.
+ * Converts to JPEG quality 80, 256x256, stores in R2 with a unique filename.
+ * The full CDN URL is persisted in teams.logo_url.
  */
 
 import { NextResponse } from "next/server";
 import sharp from "sharp";
 import { resolveUser } from "@/lib/auth-helpers";
 import { getD1Client } from "@/lib/d1";
-import { putTeamLogo, deleteTeamLogo, teamLogoUrl } from "@/lib/r2";
+import { putTeamLogo, deleteTeamLogoByUrl } from "@/lib/r2";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -127,9 +128,10 @@ export async function POST(
     .jpeg({ quality: JPEG_QUALITY })
     .toBuffer();
 
-  // Upload to R2
+  // Upload to R2 (returns new unique CDN URL)
+  let newLogoUrl: string;
   try {
-    await putTeamLogo(teamId, jpegBuffer);
+    newLogoUrl = await putTeamLogo(teamId, jpegBuffer);
   } catch (err) {
     console.error("Failed to upload team logo to R2:", err);
     return NextResponse.json(
@@ -138,9 +140,28 @@ export async function POST(
     );
   }
 
-  return NextResponse.json({
-    logo_url: teamLogoUrl(teamId),
-  });
+  // Read old logo URL before updating
+  const oldTeam = await client.firstOrNull<{ logo_url: string | null }>(
+    "SELECT logo_url FROM teams WHERE id = ?",
+    [teamId],
+  );
+
+  // Persist new URL to DB
+  await client.execute("UPDATE teams SET logo_url = ? WHERE id = ?", [
+    newLogoUrl,
+    teamId,
+  ]);
+
+  // Best-effort delete old R2 object
+  if (oldTeam?.logo_url) {
+    try {
+      await deleteTeamLogoByUrl(oldTeam.logo_url);
+    } catch {
+      // Orphaned R2 object is harmless
+    }
+  }
+
+  return NextResponse.json({ logo_url: newLogoUrl });
 }
 
 // ---------------------------------------------------------------------------
@@ -176,14 +197,28 @@ export async function DELETE(
     );
   }
 
-  try {
-    await deleteTeamLogo(teamId);
-  } catch (err) {
-    console.error("Failed to delete team logo from R2:", err);
-    return NextResponse.json(
-      { error: "Failed to remove logo" },
-      { status: 500 },
-    );
+  // Read current logo URL
+  const team = await client.firstOrNull<{ logo_url: string | null }>(
+    "SELECT logo_url FROM teams WHERE id = ?",
+    [teamId],
+  );
+
+  // Clear logo_url in DB
+  await client.execute("UPDATE teams SET logo_url = NULL WHERE id = ?", [
+    teamId,
+  ]);
+
+  // Best-effort delete from R2
+  if (team?.logo_url) {
+    try {
+      await deleteTeamLogoByUrl(team.logo_url);
+    } catch (err) {
+      console.error("Failed to delete team logo from R2:", err);
+      return NextResponse.json(
+        { error: "Failed to remove logo" },
+        { status: 500 },
+      );
+    }
   }
 
   return NextResponse.json({ ok: true });

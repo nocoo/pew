@@ -133,9 +133,9 @@ describe("GET /api/leaderboard", () => {
         })
         .mockResolvedValueOnce({
           results: [
-            { user_id: "u1", team_id: "t1", team_name: "Team Alpha" },
-            { user_id: "u2", team_id: "t1", team_name: "Team Alpha" },
-            { user_id: "u2", team_id: "t2", team_name: "Team Beta" },
+            { user_id: "u1", team_id: "t1", team_name: "Team Alpha", logo_url: "https://s.zhe.to/apps/pew/teams-logo/t1/abc.jpg" },
+            { user_id: "u2", team_id: "t1", team_name: "Team Alpha", logo_url: "https://s.zhe.to/apps/pew/teams-logo/t1/abc.jpg" },
+            { user_id: "u2", team_id: "t2", team_name: "Team Beta", logo_url: "https://s.zhe.to/apps/pew/teams-logo/t2/def.jpg" },
           ],
         });
 
@@ -153,7 +153,7 @@ describe("GET /api/leaderboard", () => {
           image: "https://example.com/alice.jpg",
           slug: "alice",
         },
-        teams: [{ id: "t1", name: "Team Alpha", logo_url: "https://s.zhe.to/apps/pew/teams-logo/t1.jpg" }],
+        teams: [{ id: "t1", name: "Team Alpha", logo_url: "https://s.zhe.to/apps/pew/teams-logo/t1/abc.jpg" }],
         total_tokens: 5000000,
         input_tokens: 3000000,
         output_tokens: 1500000,
@@ -163,8 +163,8 @@ describe("GET /api/leaderboard", () => {
       expect(body.entries[1].rank).toBe(2);
       expect(body.entries[1].user.name).toBe("Bob");
       expect(body.entries[1].teams).toEqual([
-        { id: "t1", name: "Team Alpha", logo_url: "https://s.zhe.to/apps/pew/teams-logo/t1.jpg" },
-        { id: "t2", name: "Team Beta", logo_url: "https://s.zhe.to/apps/pew/teams-logo/t2.jpg" },
+        { id: "t1", name: "Team Alpha", logo_url: "https://s.zhe.to/apps/pew/teams-logo/t1/abc.jpg" },
+        { id: "t2", name: "Team Beta", logo_url: "https://s.zhe.to/apps/pew/teams-logo/t2/def.jpg" },
       ]);
     });
 
@@ -627,14 +627,14 @@ describe("GET /api/leaderboard", () => {
         })
         .mockResolvedValueOnce({
           results: [
-            { user_id: "u1", team_id: "t1", team_name: "Eng" },
+            { user_id: "u1", team_id: "t1", team_name: "Eng", logo_url: "https://s.zhe.to/apps/pew/teams-logo/t1/xyz.jpg" },
           ],
         });
 
       const res = await GET(makeRequest());
       const body = await res.json();
 
-      expect(body.entries[0].teams).toEqual([{ id: "t1", name: "Eng", logo_url: "https://s.zhe.to/apps/pew/teams-logo/t1.jpg" }]);
+      expect(body.entries[0].teams).toEqual([{ id: "t1", name: "Eng", logo_url: "https://s.zhe.to/apps/pew/teams-logo/t1/xyz.jpg" }]);
       // Second query should be the teams lookup
       const teamsSql = mockClient.query.mock.calls[1]![0] as string;
       expect(teamsSql).toContain("team_members");

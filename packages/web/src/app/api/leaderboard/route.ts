@@ -13,7 +13,6 @@
 import { NextResponse } from "next/server";
 import { getD1Client } from "@/lib/d1";
 import { resolveAdmin } from "@/lib/admin";
-import { teamLogoUrl } from "@/lib/r2";
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -45,6 +44,7 @@ interface UserTeamRow {
   user_id: string;
   team_id: string;
   team_name: string;
+  logo_url: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -207,13 +207,13 @@ export async function GET(request: Request) {
 
     // Fetch teams for all users in the leaderboard
     const userIds = result.results.map((r) => r.user_id);
-    const teamsByUser = new Map<string, { id: string; name: string; logo_url: string }[]>();
+    const teamsByUser = new Map<string, { id: string; name: string; logo_url: string | null }[]>();
 
     if (userIds.length > 0) {
       try {
         const placeholders = userIds.map(() => "?").join(",");
         const teamResult = await client.query<UserTeamRow>(
-          `SELECT tm.user_id, t.id AS team_id, t.name AS team_name
+          `SELECT tm.user_id, t.id AS team_id, t.name AS team_name, t.logo_url
            FROM team_members tm
            JOIN teams t ON t.id = tm.team_id
            WHERE tm.user_id IN (${placeholders})`,
@@ -221,7 +221,7 @@ export async function GET(request: Request) {
         );
         for (const row of teamResult.results) {
           const list = teamsByUser.get(row.user_id) ?? [];
-          list.push({ id: row.team_id, name: row.team_name, logo_url: teamLogoUrl(row.team_id) });
+          list.push({ id: row.team_id, name: row.team_name, logo_url: row.logo_url ?? null });
           teamsByUser.set(row.user_id, list);
         }
       } catch {

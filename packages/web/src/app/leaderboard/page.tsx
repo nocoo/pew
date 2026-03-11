@@ -34,7 +34,7 @@ interface Team {
   id: string;
   name: string;
   slug: string;
-  logo_url: string;
+  logo_url: string | null;
 }
 
 /** Scope dropdown value: "global" | "all" (admin) | team id */
@@ -59,7 +59,7 @@ function TeamLogoIcon({
   name,
   className,
 }: {
-  logoUrl: string;
+  logoUrl: string | null;
   name: string;
   className?: string;
 }) {
@@ -70,7 +70,7 @@ function TeamLogoIcon({
     setError(false);
   }, [logoUrl]);
 
-  if (error) {
+  if (!logoUrl || error) {
     return <Users className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground", className)} strokeWidth={1.5} />;
   }
   return (
@@ -84,7 +84,7 @@ function TeamLogoIcon({
 }
 
 /** Tiny inline logo for team badges in leaderboard rows */
-function TeamLogoBadge({ logoUrl, name }: { logoUrl: string; name: string }) {
+function TeamLogoBadge({ logoUrl, name }: { logoUrl: string | null; name: string }) {
   const [error, setError] = useState(false);
 
   // Reset error state when logoUrl changes
@@ -92,7 +92,7 @@ function TeamLogoBadge({ logoUrl, name }: { logoUrl: string; name: string }) {
     setError(false);
   }, [logoUrl]);
 
-  if (error) return null;
+  if (!logoUrl || error) return null;
   return (
     <img
       src={logoUrl}

@@ -16,7 +16,7 @@ export interface LeaderboardEntry {
     slug: string | null;
     is_public?: boolean;
   };
-  teams: { id: string; name: string; logo_url: string }[];
+  teams: { id: string; name: string; logo_url: string | null }[];
   total_tokens: number;
   input_tokens: number;
   output_tokens: number;
