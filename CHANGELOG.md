@@ -1,5 +1,35 @@
 # Changelog
 
+## v1.1.0
+
+### Features
+
+- **Public leaderboard overhaul** — Leaderboard moved out of dashboard layout into standalone public page with landing-page-style design (logo, GitHub link, theme toggle, fade-up animations)
+- **Privacy toggle** — `is_public` column on users table; settings page toggle controls leaderboard visibility; public profiles gated by opt-in
+- **Admin leaderboard mode** — Admin users see all users regardless of `is_public` status via scope dropdown (Global / Teams / All Users)
+- **Sidebar external links** — Navigation items support `external?: boolean` flag, rendering as `<a target="_blank">` with ArrowUpRight icon
+- **Leaderboard UI polish** — Period tabs (This Week / This Month / All Time), scope dropdown with Lucide icons (Globe / Users / ShieldCheck), check-style ruling on rows, handwriting font (`text-3xl`) for token numbers with full comma formatting
+
+### Fixes
+
+- **Login card clipping** — Auto-height fix prevents footer from clipping the login button
+- **Admin fallback** — Admin bare endpoint returns `is_public: false` instead of `null`
+- **Migration backfill** — Settings and leaderboard fallback for existing users without `is_public`
+- **Smooth dashboard resize** — Dashboard resize and sidebar logo rendering improvements
+- **Handwriting vertical alignment** — `leading-none` on `text-3xl` token numbers fixes baseline shift
+- **Leaderboard skeleton flash** — `use-leaderboard` hook keeps stale data visible during refetch (`refreshing` state)
+
+### Refactoring
+
+- **Leaderboard layout** — Extracted from dashboard into `app/leaderboard/page.tsx` as standalone route
+- **Default leaderboard limit** — Changed from 50 to 10
+
+### Infrastructure
+
+- **D1 migration** — `005-is-public.sql` adds `is_public INTEGER NOT NULL DEFAULT 0` to users table
+- **Squashed schema** — `001-init.sql` updated with `is_public` column
+- **Test suite** — 1545 tests passing, proxy tests updated for `/leaderboard`, L1 tests for `is_public` settings and admin leaderboard
+
 ## v1.0.0
 
 ### Features

@@ -365,7 +365,7 @@ const notifyCommand = defineCommand({
       openMessageDb,
       openSessionDb,
       openclawDir: paths.openclawDir,
-      version: "1.0.0",
+      version: "1.1.0",
     });
 
     if (result.error) {
@@ -579,7 +579,7 @@ async function runSessionUpload(stateDir: string, apiUrl: string, dev: boolean):
 export const main = defineCommand({
   meta: {
     name: "pew",
-    version: "1.0.0",
+    version: "1.1.0",
     description: "The contribution graph for AI-native developers",
   },
   subCommands: {
