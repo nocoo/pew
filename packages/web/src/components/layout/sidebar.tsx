@@ -20,6 +20,7 @@ import {
   DollarSign,
   Users,
   Ticket,
+  ArrowUpRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/version";
@@ -60,6 +61,7 @@ interface NavItem {
   href: string;
   label: string;
   icon: ElementType;
+  external?: boolean;
 }
 
 interface NavGroup {
@@ -76,6 +78,7 @@ function resolveNavGroup(def: NavGroupDef): NavGroup {
       href: item.href,
       label: item.label,
       icon: ICON_MAP[item.icon] ?? Settings,
+      ...(item.external != null && { external: item.external }),
     })),
   };
 }
@@ -131,22 +134,50 @@ function NavGroupSection({
                   ? pathname === "/dashboard"
                   : pathname.startsWith(item.href);
 
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-normal transition-colors",
-                    isActive
-                      ? "bg-accent text-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                  )}
-                >
+              const classes = cn(
+                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-normal transition-colors",
+                isActive
+                  ? "bg-accent text-foreground"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+              );
+
+              const inner = (
+                <>
                   <item.icon
                     className="h-4 w-4 shrink-0"
                     strokeWidth={1.5}
                   />
                   <span className="flex-1 text-left">{item.label}</span>
+                  {item.external && (
+                    <ArrowUpRight
+                      className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50"
+                      strokeWidth={1.5}
+                    />
+                  )}
+                </>
+              );
+
+              if (item.external) {
+                return (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={classes}
+                  >
+                    {inner}
+                  </a>
+                );
+              }
+
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={classes}
+                >
+                  {inner}
                 </Link>
               );
             })}
@@ -225,20 +256,34 @@ export function Sidebar() {
                     ? pathname === "/dashboard"
                     : pathname.startsWith(item.href);
 
+                const classes = cn(
+                  "relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
+                  isActive
+                    ? "bg-accent text-foreground"
+                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                );
+
+                const linkContent = (
+                  <item.icon className="h-4 w-4" strokeWidth={1.5} />
+                );
+
                 return (
                   <Tooltip key={item.href}>
                     <TooltipTrigger asChild>
-                      <Link
-                        href={item.href}
-                        className={cn(
-                          "relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
-                          isActive
-                            ? "bg-accent text-foreground"
-                            : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                        )}
-                      >
-                        <item.icon className="h-4 w-4" strokeWidth={1.5} />
-                      </Link>
+                      {item.external ? (
+                        <a
+                          href={item.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={classes}
+                        >
+                          {linkContent}
+                        </a>
+                      ) : (
+                        <Link href={item.href} className={classes}>
+                          {linkContent}
+                        </Link>
+                      )}
                     </TooltipTrigger>
                     <TooltipContent side="right" sideOffset={8}>
                       {item.label}

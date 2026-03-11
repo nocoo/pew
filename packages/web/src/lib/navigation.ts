@@ -14,6 +14,8 @@ export interface NavItemDef {
   label: string;
   /** Lucide icon name for lookup in sidebar.tsx */
   icon: string;
+  /** When true, opens in new tab with <a> instead of <Link> */
+  external?: boolean;
 }
 
 export interface NavGroupDef {
@@ -32,7 +34,7 @@ export const BASE_NAV_GROUPS: NavGroupDef[] = [
     defaultOpen: true,
     items: [
       { href: "/dashboard", label: "Dashboard", icon: "LayoutDashboard" },
-      { href: "/leaderboard", label: "Leaderboard", icon: "Trophy" },
+      { href: "/leaderboard", label: "Leaderboard", icon: "Trophy", external: true },
     ],
   },
   {

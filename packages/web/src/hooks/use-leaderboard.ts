@@ -42,6 +42,8 @@ interface UseLeaderboardOptions {
 interface UseLeaderboardResult {
   data: LeaderboardData | null;
   loading: boolean;
+  /** True when refetching with stale data still visible */
+  refreshing: boolean;
   error: string | null;
   refetch: () => void;
 }
@@ -52,10 +54,16 @@ export function useLeaderboard(
   const { period = "week", limit, teamId, admin } = options;
   const [data, setData] = useState<LeaderboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
+    // Initial load → loading=true; subsequent fetches → refreshing=true
+    if (data === null) {
+      setLoading(true);
+    } else {
+      setRefreshing(true);
+    }
     setError(null);
 
     try {
@@ -84,12 +92,14 @@ export function useLeaderboard(
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [period, limit, teamId, admin]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  return { data, loading, error, refetch: fetchData };
+  return { data, loading, refreshing, error, refetch: fetchData };
 }

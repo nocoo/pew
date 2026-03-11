@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Zap, Trophy, Medal, Award, Users, EyeOff } from "lucide-react";
+import Image from "next/image";
+import { Github, Trophy, Medal, Award, Users, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatTokens } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ThemeToggle } from "@/components/layout/theme-toggle";
 import {
   useLeaderboard,
   type LeaderboardPeriod,
@@ -59,18 +61,28 @@ function RankBadge({ rank }: { rank: number }) {
 // Row component
 // ---------------------------------------------------------------------------
 
-function LeaderboardRow({ entry, showHiddenBadge }: { entry: LeaderboardEntry; showHiddenBadge?: boolean }) {
-  const { rank, user, teams, total_tokens, input_tokens, output_tokens } = entry;
+function LeaderboardRow({
+  entry,
+  showHiddenBadge,
+  index,
+}: {
+  entry: LeaderboardEntry;
+  showHiddenBadge?: boolean;
+  index: number;
+}) {
+  const { rank, user, teams, total_tokens, input_tokens, output_tokens } =
+    entry;
   const displayName = user.name ?? "Anonymous";
   const initial = displayName[0]?.toUpperCase() ?? "?";
 
   const content = (
     <div
       className={cn(
-        "flex items-center gap-4 rounded-[var(--radius-card)] bg-secondary px-4 py-3 transition-colors",
+        "flex items-center gap-4 rounded-[var(--radius-card)] bg-secondary px-4 py-3 transition-colors animate-fade-up",
         user.slug && "hover:bg-accent cursor-pointer",
         rank <= 3 && "ring-1 ring-border/50",
       )}
+      style={{ animationDelay: `${index * 40}ms` }}
     >
       {/* Rank */}
       <div className="flex w-8 shrink-0 items-center justify-center">
@@ -80,9 +92,7 @@ function LeaderboardRow({ entry, showHiddenBadge }: { entry: LeaderboardEntry; s
       {/* Avatar + Name + Teams */}
       <div className="flex flex-1 items-center gap-3 min-w-0">
         <Avatar className="h-8 w-8 shrink-0">
-          {user.image && (
-            <AvatarImage src={user.image} alt={displayName} />
-          )}
+          {user.image && <AvatarImage src={user.image} alt={displayName} />}
           <AvatarFallback className="text-xs bg-primary text-primary-foreground">
             {initial}
           </AvatarFallback>
@@ -168,7 +178,7 @@ export default function LeaderboardPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [showAll, setShowAll] = useState(false);
   const { isAdmin } = useAdmin();
-  const { data, loading, error } = useLeaderboard({
+  const { data, loading, refreshing, error } = useLeaderboard({
     period,
     teamId: selectedTeam,
     admin: showAll,
@@ -192,31 +202,61 @@ export default function LeaderboardPage() {
   }, [fetchTeams]);
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Compact top bar — matches profile-view.tsx */}
-      <header className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="mx-auto max-w-5xl flex items-center justify-between px-4 md:px-6 h-14">
-          <Link
-            href="/"
-            className="flex items-center gap-2 text-foreground hover:text-primary transition-colors"
-          >
-            <Zap className="h-5 w-5 text-primary" strokeWidth={1.5} />
-            <span className="font-bold tracking-tighter">pew</span>
+    <div className="relative flex min-h-screen flex-col bg-background">
+      {/* Top-right icons — same pattern as landing page */}
+      <div className="absolute right-6 top-4 z-50 flex items-center gap-1">
+        <a
+          href="https://github.com/nicnocquee/pew"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-[color] duration-200 hover:text-foreground"
+          aria-label="View source on GitHub"
+        >
+          <Github className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+        </a>
+        <ThemeToggle />
+      </div>
+
+      {/* Header */}
+      <header className="mx-auto w-full max-w-3xl px-6 pt-10 pb-2">
+        <div
+          className="flex items-center gap-3 animate-fade-up"
+          style={{ animationDelay: "0ms" }}
+        >
+          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+            <Image
+              src="/logo-24.png"
+              alt="Pew"
+              width={24}
+              height={24}
+              className="shrink-0"
+            />
+            <span className="font-bold tracking-tighter text-foreground">
+              pew
+            </span>
           </Link>
         </div>
+        <h1
+          className="mt-6 text-2xl font-bold font-display animate-fade-up"
+          style={{ animationDelay: "60ms" }}
+        >
+          Leaderboard
+        </h1>
+        <p
+          className="mt-1 text-sm text-muted-foreground animate-fade-up"
+          style={{ animationDelay: "120ms" }}
+        >
+          Who&apos;s burning the most tokens?
+        </p>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 md:px-6 py-6 md:py-8 space-y-4 md:space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold font-display">Leaderboard</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Who&apos;s burning the most tokens?
-          </p>
-        </div>
-
+      {/* Main content */}
+      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-4 space-y-4">
         {/* Controls row */}
-        <div className="flex flex-col sm:flex-row gap-3">
+        <div
+          className="flex flex-col sm:flex-row gap-3 animate-fade-up"
+          style={{ animationDelay: "180ms" }}
+        >
           {/* Period tabs */}
           <div className="flex gap-1 rounded-lg bg-secondary p-1 flex-1">
             {PERIODS.map((p) => (
@@ -290,35 +330,45 @@ export default function LeaderboardPage() {
           </div>
         )}
 
-        {/* Loading */}
-        {loading && <LeaderboardSkeleton />}
+        {/* Loading — skeleton only on initial load */}
+        {loading && !data && <LeaderboardSkeleton />}
 
-        {/* Content */}
-        {!loading && data && (
-          <div className="space-y-2">
+        {/* Content — stays visible during refreshing with opacity transition */}
+        {data && (
+          <div
+            className={cn(
+              "space-y-2 transition-opacity duration-200",
+              refreshing && "opacity-60",
+            )}
+          >
             {data.entries.length === 0 ? (
               <div className="rounded-[var(--radius-card)] bg-secondary p-8 text-center text-sm text-muted-foreground">
                 No usage data for this period yet.
               </div>
             ) : (
-              data.entries.map((entry) => (
-                <LeaderboardRow key={entry.rank} entry={entry} showHiddenBadge={showAll} />
+              data.entries.map((entry, i) => (
+                <LeaderboardRow
+                  key={entry.rank}
+                  entry={entry}
+                  showHiddenBadge={showAll}
+                  index={i}
+                />
               ))
             )}
           </div>
         )}
-
-        {/* Footer */}
-        <footer className="pt-4 pb-8 text-center">
-          <p className="text-xs text-muted-foreground">
-            Powered by{" "}
-            <Link href="/" className="text-primary hover:underline">
-              pew
-            </Link>{" "}
-            — AI token usage tracker
-          </p>
-        </footer>
       </main>
+
+      {/* Footer — same pattern as landing page */}
+      <footer className="px-6 py-3">
+        <p className="text-center text-xs text-muted-foreground">
+          Powered by{" "}
+          <Link href="/" className="text-primary hover:underline">
+            pew
+          </Link>{" "}
+          &mdash; AI token usage tracker
+        </p>
+      </footer>
     </div>
   );
 }

@@ -56,6 +56,22 @@ describe("sidebar navigation", () => {
       expect(allHrefs).toContain("/settings");
     });
 
+    it("should mark leaderboard as external", () => {
+      const overviewGroup = BASE_NAV_GROUPS.find((g) => g.label === "Overview")!;
+      const leaderboard = overviewGroup.items.find((i) => i.label === "Leaderboard");
+      expect(leaderboard).toBeDefined();
+      expect(leaderboard!.external).toBe(true);
+    });
+
+    it("should not mark other items as external", () => {
+      const nonExternal = BASE_NAV_GROUPS.flatMap((g) => g.items).filter(
+        (i) => i.label !== "Leaderboard"
+      );
+      for (const item of nonExternal) {
+        expect(item.external).toBeUndefined();
+      }
+    });
+
     it("should have no duplicate hrefs", () => {
       const allHrefs = BASE_NAV_GROUPS.flatMap((g) => g.items.map((i) => i.href));
       expect(new Set(allHrefs).size).toBe(allHrefs.length);
