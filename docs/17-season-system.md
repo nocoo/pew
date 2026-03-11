@@ -19,7 +19,7 @@
 | 9 | `test: add L1 tests for season leaderboard` | Leaderboard aggregation + ranking tests | done |
 | 10 | `feat: add season snapshot API` | `POST /api/admin/seasons/[seasonId]/snapshot` | done |
 | 11 | `test: add L1 tests for season snapshot` | Snapshot creation + idempotency tests | done |
-| 12 | `feat: add season list API` | `GET /api/seasons` | |
+| 12 | `feat: add season list API` | `GET /api/seasons` | done |
 | 13 | `test: add L1 tests for season list API` | Public season listing tests | |
 | 14 | `feat: add season leaderboard page` | `/leaderboard/seasons` + `/leaderboard/seasons/[seasonId]` | |
 | 15 | `feat: add season navigation to leaderboard` | Season tab in leaderboard controls | |
