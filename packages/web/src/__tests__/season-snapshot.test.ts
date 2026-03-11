@@ -126,16 +126,8 @@ describe("POST /api/admin/seasons/[seasonId]/snapshot", () => {
         },
       ],
     });
-    // DELETE old snapshots (member + team)
-    mockClient.execute.mockResolvedValueOnce(undefined);
-    mockClient.execute.mockResolvedValueOnce(undefined);
-    // INSERT team snapshots (2 teams)
-    mockClient.execute.mockResolvedValueOnce(undefined);
-    mockClient.execute.mockResolvedValueOnce(undefined);
-    // INSERT member snapshots (3 members)
-    mockClient.execute.mockResolvedValueOnce(undefined);
-    mockClient.execute.mockResolvedValueOnce(undefined);
-    mockClient.execute.mockResolvedValueOnce(undefined);
+    // batch calls (upsert + cleanup)
+    mockClient.batch.mockResolvedValue([]);
 
     const res = await POST(makeRequest(), { params: routeParams });
     const data = await res.json();
@@ -145,6 +137,18 @@ describe("POST /api/admin/seasons/[seasonId]/snapshot", () => {
     expect(data.member_count).toBe(3);
     expect(data.season_id).toBe("season-1");
     expect(data.created_at).toBeDefined();
+
+    // Verify batch was called for upserts (first call: team + member upserts)
+    expect(mockClient.batch).toHaveBeenCalled();
+    const firstBatchCall = mockClient.batch.mock.calls[0]![0] as {
+      sql: string;
+    }[];
+    // 2 team upserts + 3 member upserts = 5 statements
+    expect(firstBatchCall).toHaveLength(5);
+    expect(firstBatchCall[0]!.sql).toContain("INSERT OR REPLACE INTO season_snapshots");
+    expect(firstBatchCall[2]!.sql).toContain(
+      "INSERT OR REPLACE INTO season_member_snapshots"
+    );
   });
 
   it("should create member snapshots for all team members", async () => {
@@ -183,8 +187,7 @@ describe("POST /api/admin/seasons/[seasonId]/snapshot", () => {
         },
       ],
     });
-    // DELETEs + INSERTs
-    mockClient.execute.mockResolvedValue(undefined);
+    mockClient.batch.mockResolvedValue([]);
 
     const res = await POST(makeRequest(), { params: routeParams });
     const data = await res.json();
@@ -192,14 +195,14 @@ describe("POST /api/admin/seasons/[seasonId]/snapshot", () => {
     expect(res.status).toBe(201);
     expect(data.member_count).toBe(2);
 
-    // Verify member INSERT calls: 2 DELETEs + 1 team INSERT + 2 member INSERTs = 5
-    // Check that member INSERT SQL contains season_member_snapshots
-    const executeCalls = mockClient.execute.mock.calls;
-    const memberInserts = executeCalls.filter((call) =>
-      (call[0] as string).includes("season_member_snapshots")
+    // Verify upsert batch: 1 team + 2 members = 3 statements
+    const upsertBatch = mockClient.batch.mock.calls[0]![0] as {
+      sql: string;
+    }[];
+    const memberUpserts = upsertBatch.filter((s) =>
+      s.sql.includes("season_member_snapshots")
     );
-    // 1 DELETE + 2 INSERTs = 3 calls to season_member_snapshots
-    expect(memberInserts.length).toBe(3);
+    expect(memberUpserts).toHaveLength(2);
   });
 
   it("should compute correct ranks by total_tokens DESC", async () => {
@@ -231,27 +234,30 @@ describe("POST /api/admin/seasons/[seasonId]/snapshot", () => {
         },
       ],
     });
-    // No members (simplified)
+    // No members
     mockClient.query.mockResolvedValueOnce({ results: [] });
-    // DELETEs + INSERTs
-    mockClient.execute.mockResolvedValue(undefined);
+    mockClient.batch.mockResolvedValue([]);
 
     await POST(makeRequest(), { params: routeParams });
 
-    // Verify team INSERT calls contain correct ranks
-    const executeCalls = mockClient.execute.mock.calls;
-    const teamInserts = executeCalls.filter((call) =>
-      (call[0] as string).includes("INSERT INTO season_snapshots")
+    // Verify upsert batch has 3 team statements with correct ranks
+    const upsertBatch = mockClient.batch.mock.calls[0]![0] as {
+      sql: string;
+      params: unknown[];
+    }[];
+    const teamUpserts = upsertBatch.filter((s) =>
+      s.sql.includes("INSERT OR REPLACE INTO season_snapshots")
     );
 
-    expect(teamInserts.length).toBe(3);
-    // Rank is the 4th param (index 3) in the INSERT params array
-    expect((teamInserts[0]![1] as unknown[])[3]).toBe(1); // team-a: rank 1
-    expect((teamInserts[1]![1] as unknown[])[3]).toBe(2); // team-b: rank 2
-    expect((teamInserts[2]![1] as unknown[])[3]).toBe(3); // team-c: rank 3
+    expect(teamUpserts).toHaveLength(3);
+    // Rank is the 6th param (index 5) in the INSERT OR REPLACE params:
+    // [seasonId, team_id, uuid, seasonId, team_id, rank, ...]
+    expect(teamUpserts[0]!.params[5]).toBe(1); // team-a: rank 1
+    expect(teamUpserts[1]!.params[5]).toBe(2); // team-b: rank 2
+    expect(teamUpserts[2]!.params[5]).toBe(3); // team-c: rank 3
   });
 
-  it("should be idempotent (re-run produces same result)", async () => {
+  it("should be idempotent (upsert overwrites existing data)", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
     mockClient.firstOrNull.mockResolvedValueOnce(ENDED_SEASON);
     mockClient.query.mockResolvedValueOnce({
@@ -277,31 +283,63 @@ describe("POST /api/admin/seasons/[seasonId]/snapshot", () => {
         },
       ],
     });
-    mockClient.execute.mockResolvedValue(undefined);
+    mockClient.batch.mockResolvedValue([]);
 
     const res = await POST(makeRequest(), { params: routeParams });
     const data = await res.json();
 
     expect(res.status).toBe(201);
 
-    // Verify DELETE is called before INSERT (idempotent cleanup)
-    const executeCalls = mockClient.execute.mock.calls;
-    const deleteIdx = executeCalls.findIndex((call) =>
-      (call[0] as string).includes("DELETE FROM season_snapshots")
-    );
-    const insertIdx = executeCalls.findIndex((call) =>
-      (call[0] as string).includes("INSERT INTO season_snapshots")
-    );
-    expect(deleteIdx).toBeLessThan(insertIdx);
-    expect(deleteIdx).toBeGreaterThanOrEqual(0);
-
-    // Also verify member snapshots are deleted before re-insert
-    const memberDeleteIdx = executeCalls.findIndex((call) =>
-      (call[0] as string).includes("DELETE FROM season_member_snapshots")
-    );
-    expect(memberDeleteIdx).toBeLessThan(insertIdx);
+    // Uses INSERT OR REPLACE (upsert) so re-running is safe
+    const upsertBatch = mockClient.batch.mock.calls[0]![0] as {
+      sql: string;
+    }[];
+    expect(upsertBatch[0]!.sql).toContain("INSERT OR REPLACE");
     expect(data.team_count).toBe(1);
     expect(data.member_count).toBe(1);
+  });
+
+  it("should clean up stale team and member rows after upsert", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockClient.firstOrNull.mockResolvedValueOnce(ENDED_SEASON);
+    // Only one team left (team-b was removed)
+    mockClient.query.mockResolvedValueOnce({
+      results: [
+        {
+          team_id: "team-a",
+          total_tokens: 15000,
+          input_tokens: 10000,
+          output_tokens: 5000,
+          cached_input_tokens: 3000,
+        },
+      ],
+    });
+    mockClient.query.mockResolvedValueOnce({
+      results: [
+        {
+          team_id: "team-a",
+          user_id: "user-1",
+          total_tokens: 15000,
+          input_tokens: 10000,
+          output_tokens: 5000,
+          cached_input_tokens: 3000,
+        },
+      ],
+    });
+    mockClient.batch.mockResolvedValue([]);
+
+    await POST(makeRequest(), { params: routeParams });
+
+    // Second batch call should clean up stale teams
+    const cleanupBatch = mockClient.batch.mock.calls[1]![0] as {
+      sql: string;
+      params: unknown[];
+    }[];
+    expect(cleanupBatch).toHaveLength(2);
+    expect(cleanupBatch[0]!.sql).toContain("DELETE FROM season_member_snapshots");
+    expect(cleanupBatch[0]!.sql).toContain("NOT IN");
+    expect(cleanupBatch[1]!.sql).toContain("DELETE FROM season_snapshots");
+    expect(cleanupBatch[1]!.sql).toContain("NOT IN");
   });
 
   it("should reject non-ended season", async () => {

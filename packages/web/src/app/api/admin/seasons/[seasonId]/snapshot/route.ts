@@ -148,55 +148,105 @@ export async function POST(
       memberRows = result.results;
     }
 
-    // 5. Idempotent: delete old snapshots
-    await client.execute(
-      "DELETE FROM season_member_snapshots WHERE season_id = ?",
-      [seasonId]
-    );
-    await client.execute(
-      "DELETE FROM season_snapshots WHERE season_id = ?",
-      [seasonId]
-    );
-
-    // 6. Insert team snapshots with computed ranks
+    // 5. Upsert team snapshots (INSERT OR REPLACE avoids delete-first data loss)
     const now = new Date().toISOString().replace("T", " ").slice(0, 19);
-    for (const [i, row] of teamRows.results.entries()) {
-      await client.execute(
-        `INSERT INTO season_snapshots
+    const teamStatements = teamRows.results.map((row, i) => ({
+      sql: `INSERT OR REPLACE INTO season_snapshots
           (id, season_id, team_id, rank, total_tokens, input_tokens, output_tokens, cached_input_tokens, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          uuid(),
-          seasonId,
-          row.team_id,
-          i + 1,
-          row.total_tokens,
-          row.input_tokens,
-          row.output_tokens,
-          row.cached_input_tokens,
-          now,
-        ]
-      );
+        VALUES (
+          COALESCE((SELECT id FROM season_snapshots WHERE season_id = ? AND team_id = ?), ?),
+          ?, ?, ?, ?, ?, ?, ?, ?
+        )`,
+      params: [
+        seasonId,
+        row.team_id,
+        uuid(),
+        seasonId,
+        row.team_id,
+        i + 1,
+        row.total_tokens,
+        row.input_tokens,
+        row.output_tokens,
+        row.cached_input_tokens,
+        now,
+      ],
+    }));
+
+    // 6. Upsert member snapshots
+    const memberStatements = memberRows.map((row) => ({
+      sql: `INSERT OR REPLACE INTO season_member_snapshots
+          (id, season_id, team_id, user_id, total_tokens, input_tokens, output_tokens, cached_input_tokens, created_at)
+        VALUES (
+          COALESCE((SELECT id FROM season_member_snapshots WHERE season_id = ? AND team_id = ? AND user_id = ?), ?),
+          ?, ?, ?, ?, ?, ?, ?, ?
+        )`,
+      params: [
+        seasonId,
+        row.team_id,
+        row.user_id,
+        uuid(),
+        seasonId,
+        row.team_id,
+        row.user_id,
+        row.total_tokens,
+        row.input_tokens,
+        row.output_tokens,
+        row.cached_input_tokens,
+        now,
+      ],
+    }));
+
+    // Execute all upserts in a batch
+    await client.batch([...teamStatements, ...memberStatements]);
+
+    // 7. Clean up stale rows (teams/members removed since last snapshot)
+    const activeTeamIds = teamRows.results.map((r) => r.team_id);
+    if (activeTeamIds.length > 0) {
+      const ph = activeTeamIds.map(() => "?").join(",");
+      await client.batch([
+        {
+          sql: `DELETE FROM season_member_snapshots WHERE season_id = ? AND team_id NOT IN (${ph})`,
+          params: [seasonId, ...activeTeamIds],
+        },
+        {
+          sql: `DELETE FROM season_snapshots WHERE season_id = ? AND team_id NOT IN (${ph})`,
+          params: [seasonId, ...activeTeamIds],
+        },
+      ]);
+    } else {
+      // No teams — clear all snapshots for this season
+      await client.batch([
+        {
+          sql: "DELETE FROM season_member_snapshots WHERE season_id = ?",
+          params: [seasonId],
+        },
+        {
+          sql: "DELETE FROM season_snapshots WHERE season_id = ?",
+          params: [seasonId],
+        },
+      ]);
     }
 
-    // 7. Insert member snapshots
-    for (const row of memberRows) {
-      await client.execute(
-        `INSERT INTO season_member_snapshots
-          (id, season_id, team_id, user_id, total_tokens, input_tokens, output_tokens, cached_input_tokens, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          uuid(),
-          seasonId,
-          row.team_id,
-          row.user_id,
-          row.total_tokens,
-          row.input_tokens,
-          row.output_tokens,
-          row.cached_input_tokens,
-          now,
-        ]
-      );
+    // Also clean stale member rows within active teams
+    if (memberRows.length > 0) {
+      // Group member user_ids by team
+      const membersByTeam = new Map<string, string[]>();
+      for (const row of memberRows) {
+        const ids = membersByTeam.get(row.team_id) ?? [];
+        ids.push(row.user_id);
+        membersByTeam.set(row.team_id, ids);
+      }
+      const cleanupStatements = [];
+      for (const [teamId, userIds] of membersByTeam) {
+        const ph = userIds.map(() => "?").join(",");
+        cleanupStatements.push({
+          sql: `DELETE FROM season_member_snapshots WHERE season_id = ? AND team_id = ? AND user_id NOT IN (${ph})`,
+          params: [seasonId, teamId, ...userIds],
+        });
+      }
+      if (cleanupStatements.length > 0) {
+        await client.batch(cleanupStatements);
+      }
     }
 
     return NextResponse.json(
