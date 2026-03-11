@@ -80,6 +80,20 @@ export async function PUT(request: Request) {
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // Per-key semantic validation
+  // ---------------------------------------------------------------------------
+
+  if (key === "max_team_members") {
+    const parsed = parseInt(value, 10);
+    if (!Number.isFinite(parsed) || parsed < 1 || String(parsed) !== value) {
+      return NextResponse.json(
+        { error: "max_team_members must be a positive integer" },
+        { status: 400 },
+      );
+    }
+  }
+
   const client = getD1Client();
 
   try {

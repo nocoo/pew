@@ -186,4 +186,38 @@ describe("PUT /api/admin/settings", () => {
     const res = await PUT(makePut({ key: "foo", value: "bar" }));
     expect(res.status).toBe(500);
   });
+
+  // -------------------------------------------------------------------------
+  // Per-key semantic validation — max_team_members must be a positive integer
+  // -------------------------------------------------------------------------
+
+  it.each(["0", "-1", "-100", "abc", "3.5", "1.0", " 5", "5 ", ""])(
+    "should reject invalid max_team_members value: %j",
+    async (badValue) => {
+      resolveAdmin.mockResolvedValueOnce({ userId: "admin1", email: "a@b.com" });
+      const res = await PUT(makePut({ key: "max_team_members", value: badValue }));
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("max_team_members");
+    },
+  );
+
+  it.each(["1", "5", "10", "100", "999"])(
+    "should accept valid max_team_members value: %j",
+    async (goodValue) => {
+      resolveAdmin.mockResolvedValueOnce({ userId: "admin1", email: "a@b.com" });
+      mockClient.execute.mockResolvedValueOnce({ changes: 1 });
+      const res = await PUT(makePut({ key: "max_team_members", value: goodValue }));
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.value).toBe(goodValue);
+    },
+  );
+
+  it("should allow unknown keys without extra validation", async () => {
+    resolveAdmin.mockResolvedValueOnce({ userId: "admin1", email: "a@b.com" });
+    mockClient.execute.mockResolvedValueOnce({ changes: 1 });
+    const res = await PUT(makePut({ key: "some_future_setting", value: "anything" }));
+    expect(res.status).toBe(200);
+  });
 });
