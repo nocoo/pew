@@ -458,3 +458,33 @@ API consumption and matches billing. No incremental diffing needed.
 copilot/claude-opus-4.6       (multiplier: 3x)
 copilot/claude-opus-4.6-1m    (multiplier: 6x, 1M context)
 ```
+
+---
+
+## Implementation Status
+
+### Completed (branch: `tokenvscodetokenlog`)
+
+All CLI-side integration is complete and tested:
+
+| Layer | File(s) | Status |
+|-------|---------|--------|
+| Core types | `packages/core/src/types.ts` | `"vscode-copilot"` in `Source` union, `VscodeCopilotCursor` in `FileCursor` union |
+| Parser | `packages/cli/src/parsers/vscode-copilot.ts` | CRDT JSONL parser (19 tests) |
+| Discovery | `packages/cli/src/discovery/sources.ts` | `discoverVscodeCopilotFiles()` multi-dir scanning (8 tests) |
+| Paths | `packages/cli/src/utils/paths.ts` | `resolveVscodeCopilotDirs()` platform-aware resolution |
+| Token driver | `packages/cli/src/drivers/token/vscode-copilot-token-driver.ts` | `FileTokenDriver<VscodeCopilotCursor>` implementation (9 tests) |
+| Registry | `packages/cli/src/drivers/registry.ts` | Registered with array-length guard |
+| Sync orchestrator | `packages/cli/src/commands/sync.ts` | `vscodeCopilotDirs` option, source counts, filesScanned |
+| Session sync | `packages/cli/src/commands/session-sync.ts` | Counts initialized (no session driver yet) |
+| CLI | `packages/cli/src/cli.ts` | `isSource()`, `executeSync`/`executeNotify`/`executeStatus` wiring, output lines |
+| Notify | `packages/cli/src/commands/notify.ts` | Pass-through of `vscodeCopilotDirs` |
+| Status | `packages/cli/src/commands/status.ts` | `classifySource()` for multi-dir array |
+
+### Not Yet Implemented
+
+| Layer | Notes |
+|-------|-------|
+| Worker ingest | D1 TEXT column accepts any source string — no change needed |
+| Web dashboard | Filter/color/icon for `"vscode-copilot"` — separate PR |
+| Session driver | No session tracking for VSCode Copilot (no hook mechanism) |
