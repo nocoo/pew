@@ -227,3 +227,29 @@ function format12h(hour: number, minute: number): string {
   const m = minute === 0 ? "00" : String(minute).padStart(2, "0");
   return `${h12}:${m} ${period}`;
 }
+
+// ---------------------------------------------------------------------------
+// Duration formatting
+// ---------------------------------------------------------------------------
+
+/**
+ * Format a duration in seconds as a compact human-readable string.
+ *
+ * Examples:
+ * - 0       → "—"
+ * - 30      → "< 1m"
+ * - 150     → "2m"
+ * - 3700    → "1h 1m"
+ * - 86400   → "24h"
+ * - 90061   → "25h 1m"
+ */
+export function formatDuration(seconds: number): string {
+  if (seconds <= 0) return "—";
+  if (seconds < 60) return "< 1m";
+  const totalMinutes = Math.floor(seconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `${minutes}m`;
+  if (minutes === 0) return `${hours}h`;
+  return `${hours}h ${minutes}m`;
+}
