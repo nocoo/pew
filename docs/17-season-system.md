@@ -15,7 +15,7 @@
 | 5 | `test: add L1 tests for admin seasons API` | Admin seasons CRUD unit tests | done |
 | 6 | `feat: add season registration API` | `POST/DELETE /api/seasons/[seasonId]/register` | done |
 | 7 | `test: add L1 tests for season registration` | Registration + auth unit tests | done |
-| 8 | `feat: add season leaderboard API` | `GET /api/seasons/[seasonId]/leaderboard` | |
+| 8 | `feat: add season leaderboard API` | `GET /api/seasons/[seasonId]/leaderboard` | done |
 | 9 | `test: add L1 tests for season leaderboard` | Leaderboard aggregation + ranking tests | |
 | 10 | `feat: add season snapshot API` | `POST /api/admin/seasons/[seasonId]/snapshot` | |
 | 11 | `test: add L1 tests for season snapshot` | Snapshot creation + idempotency tests | |
