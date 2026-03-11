@@ -12,7 +12,7 @@
 | 2 | `feat: add seasons and season_teams migration` | `006-seasons.sql` | done |
 | 3 | `feat: add season types to @pew/core` | Season-related type definitions | done |
 | 4 | `feat: add admin seasons CRUD API` | `GET/POST/PATCH /api/admin/seasons` | done |
-| 5 | `test: add L1 tests for admin seasons API` | Admin seasons CRUD unit tests | |
+| 5 | `test: add L1 tests for admin seasons API` | Admin seasons CRUD unit tests | done |
 | 6 | `feat: add season registration API` | `POST/DELETE /api/seasons/[seasonId]/register` | |
 | 7 | `test: add L1 tests for season registration` | Registration + auth unit tests | |
 | 8 | `feat: add season leaderboard API` | `GET /api/seasons/[seasonId]/leaderboard` | |
