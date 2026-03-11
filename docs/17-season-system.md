@@ -350,6 +350,7 @@ ORDER BY total_tokens DESC
       "cached_input_tokens": 3000000,
       "members": [
         {
+          "user_id": "user-uuid-1",
           "name": "Alice",
           "image": "https://...",
           "total_tokens": 8000000,
@@ -358,6 +359,7 @@ ORDER BY total_tokens DESC
           "cached_input_tokens": 2000000
         },
         {
+          "user_id": "user-uuid-2",
           "name": "Bob",
           "image": "https://...",
           "total_tokens": 7000000,
@@ -385,7 +387,7 @@ ORDER BY total_tokens DESC
 2. 聚合所有参赛战队的 token 数据（同 leaderboard 实时聚合逻辑）
 3. 计算排名
 4. 写入 `season_snapshots`（队伍级别）和 `season_member_snapshots`（队员级别）
-5. 幂等：如果 snapshot 已存在，先删除旧数据再重新生成（支持重跑修正）
+5. 幂等：使用 upsert（INSERT ... ON CONFLICT DO UPDATE）写入新数据，然后清理本次未涉及的旧行（DELETE WHERE updated_at < batch_ts）。注意：D1 REST API 的 batch 不是事务性的，如果中途失败，已写入的行会保留，重跑即可修正
 
 **Response (201):**
 ```json
