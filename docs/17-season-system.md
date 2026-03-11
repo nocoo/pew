@@ -24,7 +24,7 @@
 | 14 | `feat: add season leaderboard page` | `/leaderboard/seasons` + `/leaderboard/seasons/[seasonId]` | done |
 | 15 | `feat: add season navigation to leaderboard` | Season tab in leaderboard controls | done |
 | 16 | `feat: add admin season management page` | `/admin/seasons` CRUD UI | done |
-| 17 | `feat: add season registration UI for team owners` | Team detail page register button | |
+| 17 | `feat: add season registration UI for team owners` | Team detail page register button | done |
 
 ---
 

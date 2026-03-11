@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import {
   Users,
   Plus,
@@ -8,6 +9,7 @@ import {
   Copy,
   Check,
   Trash2,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -316,12 +318,17 @@ export default function TeamsPage() {
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-muted-foreground shrink-0">
                     <Users className="h-4 w-4" strokeWidth={1.5} />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{team.name}</p>
+                  <Link
+                    href={`/teams/${team.id}`}
+                    className="flex-1 min-w-0 group"
+                  >
+                    <p className="text-sm font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                      {team.name}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {team.member_count} member{team.member_count !== 1 ? "s" : ""}
                     </p>
-                  </div>
+                  </Link>
                   <div className="flex items-center gap-1 shrink-0">
                     {/* Invite code */}
                     <div className="hidden sm:flex items-center gap-1 rounded-md bg-accent px-2 py-1">
@@ -338,6 +345,14 @@ export default function TeamsPage() {
                     >
                       <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
                     </button>
+                    {/* Navigate to detail */}
+                    <Link
+                      href={`/teams/${team.id}`}
+                      className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                      title="View team"
+                    >
+                      <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} />
+                    </Link>
                   </div>
                 </div>
               </div>

@@ -94,6 +94,22 @@ export async function GET(
       }
     }
 
+    // Fetch season registrations for this team (graceful if table missing)
+    let registeredSeasonIds: string[] = [];
+    try {
+      const regResult = await client.query<{ season_id: string }>(
+        "SELECT season_id FROM season_teams WHERE team_id = ?",
+        [teamId],
+      );
+      registeredSeasonIds = regResult.results.map((r) => r.season_id);
+    } catch (regErr) {
+      const regMsg = regErr instanceof Error ? regErr.message : "";
+      if (!regMsg.includes("no such table")) {
+        console.error("Failed to query season registrations:", regErr);
+      }
+      // Gracefully degrade — season tables may not exist yet
+    }
+
     return NextResponse.json({
       ...team,
       role: membership.role,
@@ -104,6 +120,7 @@ export async function GET(
         role: m.role,
         joinedAt: m.joined_at,
       })),
+      registered_season_ids: registeredSeasonIds,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
