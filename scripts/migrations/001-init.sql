@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
   image           TEXT,
   slug            TEXT UNIQUE,
   nickname        TEXT,
+  is_public       INTEGER NOT NULL DEFAULT 0,
   api_key         TEXT UNIQUE,
   created_at      TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at      TEXT NOT NULL DEFAULT (datetime('now'))

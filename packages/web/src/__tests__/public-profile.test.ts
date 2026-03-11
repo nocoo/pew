@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "@/app/api/users/[slug]/route";
+import { generateMetadata } from "@/app/u/[slug]/page";
 import * as d1Module from "@/lib/d1";
 
 // Mock D1
@@ -99,6 +100,7 @@ describe("GET /api/users/[slug]", () => {
         name: "Test",
         image: null,
         slug: "test",
+        is_public: 1,
         created_at: "2026-01-01",
       });
       const [req, ctx] = makeRequest("test", { days: "0" });
@@ -115,6 +117,7 @@ describe("GET /api/users/[slug]", () => {
         name: "Test",
         image: null,
         slug: "test",
+        is_public: 1,
         created_at: "2026-01-01",
       });
       const [req, ctx] = makeRequest("test", { days: "500" });
@@ -129,6 +132,7 @@ describe("GET /api/users/[slug]", () => {
         name: "Test",
         image: null,
         slug: "test",
+        is_public: 1,
         created_at: "2026-01-01",
       });
       const [req, ctx] = makeRequest("test", { source: "bad-source" });
@@ -146,6 +150,7 @@ describe("GET /api/users/[slug]", () => {
       name: "Test User",
       image: "https://example.com/avatar.jpg",
       slug: "testuser",
+      is_public: 1,
       created_at: "2026-01-15T10:00:00Z",
     };
 
@@ -224,6 +229,7 @@ describe("GET /api/users/[slug]", () => {
         name: "Test",
         image: null,
         slug: "test",
+        is_public: 1,
         created_at: "2026-01-01",
       });
       mockClient.query.mockRejectedValueOnce(new Error("D1 down"));
@@ -235,5 +241,147 @@ describe("GET /api/users/[slug]", () => {
       const body = await res.json();
       expect(body.error).toBe("Failed to load profile data");
     });
+  });
+
+  describe("is_public gate", () => {
+    it("should return profile when user is_public = 1", async () => {
+      mockClient.firstOrNull.mockResolvedValueOnce({
+        id: "u1",
+        name: "Public User",
+        image: null,
+        slug: "pubuser",
+        is_public: 1,
+        created_at: "2026-01-01",
+      });
+      mockClient.query.mockResolvedValueOnce({ results: [] });
+
+      const [req, ctx] = makeRequest("pubuser");
+      const res = await GET(req, ctx);
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.user.name).toBe("Public User");
+    });
+
+    it("should return 404 when user is_public = 0", async () => {
+      mockClient.firstOrNull.mockResolvedValueOnce({
+        id: "u1",
+        name: "Private User",
+        image: null,
+        slug: "privuser",
+        is_public: 0,
+        created_at: "2026-01-01",
+      });
+
+      const [req, ctx] = makeRequest("privuser");
+      const res = await GET(req, ctx);
+
+      expect(res.status).toBe(404);
+      const body = await res.json();
+      expect(body.error).toBe("User not found");
+    });
+
+    it("should return 404 when user not found", async () => {
+      mockClient.firstOrNull.mockResolvedValueOnce(null);
+
+      const [req, ctx] = makeRequest("ghost");
+      const res = await GET(req, ctx);
+
+      expect(res.status).toBe(404);
+    });
+
+    it("should fall back to showing profile when is_public column missing", async () => {
+      // First call throws "no such column", fallback returns user without is_public
+      mockClient.firstOrNull
+        .mockRejectedValueOnce(new Error("no such column: is_public"))
+        .mockResolvedValueOnce({
+          id: "u1",
+          name: "Legacy User",
+          image: null,
+          slug: "legacy",
+          created_at: "2026-01-01",
+        });
+      mockClient.query.mockResolvedValueOnce({ results: [] });
+
+      const [req, ctx] = makeRequest("legacy");
+      const res = await GET(req, ctx);
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.user.name).toBe("Legacy User");
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// generateMetadata for /u/[slug]
+// ---------------------------------------------------------------------------
+
+describe("generateMetadata for /u/[slug]", () => {
+  let mockClient: ReturnType<typeof createMockClient>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockClient = createMockClient();
+    vi.mocked(d1Module.getD1Client).mockReturnValue(
+      mockClient as unknown as d1Module.D1Client,
+    );
+  });
+
+  it("should include user name in title when is_public = 1", async () => {
+    mockClient.firstOrNull.mockResolvedValueOnce({
+      name: "Alice",
+      slug: "alice",
+      is_public: 1,
+    });
+
+    const meta = await generateMetadata({
+      params: Promise.resolve({ slug: "alice" }),
+    });
+
+    expect(meta.title).toBe("Alice — pew");
+    expect(meta.description).toContain("Alice");
+  });
+
+  it("should return generic title when is_public = 0 (no name leak)", async () => {
+    mockClient.firstOrNull.mockResolvedValueOnce({
+      name: "Secret Person",
+      slug: "secret",
+      is_public: 0,
+    });
+
+    const meta = await generateMetadata({
+      params: Promise.resolve({ slug: "secret" }),
+    });
+
+    expect(meta.title).toBe("Profile — pew");
+    expect(meta.description).not.toContain("Secret Person");
+  });
+
+  it("should return generic title when user not found", async () => {
+    mockClient.firstOrNull.mockResolvedValueOnce(null);
+
+    const meta = await generateMetadata({
+      params: Promise.resolve({ slug: "nobody" }),
+    });
+
+    expect(meta.title).toBe("Profile — pew");
+  });
+
+  it("should fall back to showing name when is_public column missing (legacy)", async () => {
+    // First call throws "no such column", fallback returns user without is_public
+    mockClient.firstOrNull
+      .mockRejectedValueOnce(new Error("no such column: is_public"))
+      .mockResolvedValueOnce({
+        name: "Legacy User",
+        slug: "legacy",
+      });
+
+    const meta = await generateMetadata({
+      params: Promise.resolve({ slug: "legacy" }),
+    });
+
+    // Legacy behavior: show name (no is_public column means pre-migration)
+    expect(meta.title).toBe("Legacy User — pew");
   });
 });

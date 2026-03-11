@@ -70,13 +70,14 @@ describe("GET /api/settings", () => {
     mockClient.firstOrNull.mockResolvedValueOnce({
       nickname: "Alice",
       slug: "alice",
+      is_public: 0,
     });
 
     const res = await GET(makeRequest("GET"));
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body).toEqual({ nickname: "Alice", slug: "alice" });
+    expect(body).toEqual({ nickname: "Alice", slug: "alice", is_public: false });
   });
 
   it("should return 404 when user not found", async () => {
@@ -90,7 +91,9 @@ describe("GET /api/settings", () => {
 
   it("should fall back when nickname column does not exist", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    // Full query fails (nickname missing), level 1 also fails (nickname missing), level 2 succeeds
     mockClient.firstOrNull
+      .mockRejectedValueOnce(new Error("no such column: nickname"))
       .mockRejectedValueOnce(new Error("no such column: nickname"))
       .mockResolvedValueOnce({ slug: "alice" });
 
@@ -98,18 +101,77 @@ describe("GET /api/settings", () => {
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body).toEqual({ nickname: null, slug: "alice" });
+    expect(body).toEqual({ nickname: null, slug: "alice", is_public: false });
   });
 
   it("should return 404 in fallback when user not found", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    // Full query fails, level 1 also fails (nickname missing), level 2 returns null
     mockClient.firstOrNull
+      .mockRejectedValueOnce(new Error("no such column: nickname"))
       .mockRejectedValueOnce(new Error("no such column: nickname"))
       .mockResolvedValueOnce(null);
 
     const res = await GET(makeRequest("GET"));
 
     expect(res.status).toBe(404);
+  });
+
+  it("should return is_public: true when DB value is 1", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    mockClient.firstOrNull.mockResolvedValueOnce({
+      nickname: "Alice",
+      slug: "alice",
+      is_public: 1,
+    });
+
+    const res = await GET(makeRequest("GET"));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.is_public).toBe(true);
+  });
+
+  it("should return is_public: false in fallback when column missing", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    mockClient.firstOrNull
+      .mockRejectedValueOnce(new Error("no such column: is_public"))
+      .mockResolvedValueOnce({ slug: "alice" });
+
+    const res = await GET(makeRequest("GET"));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.is_public).toBe(false);
+  });
+
+  it("should preserve nickname in fallback when only is_public column is missing", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    // First query fails (is_public missing), level 1 fallback succeeds (nickname exists)
+    mockClient.firstOrNull
+      .mockRejectedValueOnce(new Error("no such column: is_public"))
+      .mockResolvedValueOnce({ nickname: "Alice", slug: "alice" });
+
+    const res = await GET(makeRequest("GET"));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body).toEqual({ nickname: "Alice", slug: "alice", is_public: false });
+  });
+
+  it("should fall back to slug-only when both nickname and is_public columns are missing", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    // First query fails (is_public), level 1 fails (nickname), level 2 succeeds
+    mockClient.firstOrNull
+      .mockRejectedValueOnce(new Error("no such column: is_public"))
+      .mockRejectedValueOnce(new Error("no such column: nickname"))
+      .mockResolvedValueOnce({ slug: "alice" });
+
+    const res = await GET(makeRequest("GET"));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body).toEqual({ nickname: null, slug: "alice", is_public: false });
   });
 
   it("should return 500 on unexpected error", async () => {
@@ -192,7 +254,7 @@ describe("PATCH /api/settings", () => {
   it("should allow null nickname (clear)", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
     mockClient.execute.mockResolvedValueOnce({ changes: 1 });
-    mockClient.firstOrNull.mockResolvedValueOnce({ nickname: null, slug: "alice" });
+    mockClient.firstOrNull.mockResolvedValueOnce({ nickname: null, slug: "alice", is_public: 0 });
 
     const res = await PATCH(makeRequest("PATCH", { nickname: null }));
 
@@ -263,7 +325,7 @@ describe("PATCH /api/settings", () => {
   it("should allow null slug (clear)", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
     mockClient.execute.mockResolvedValueOnce({ changes: 1 });
-    mockClient.firstOrNull.mockResolvedValueOnce({ nickname: "Alice", slug: null });
+    mockClient.firstOrNull.mockResolvedValueOnce({ nickname: "Alice", slug: null, is_public: 0 });
 
     const res = await PATCH(makeRequest("PATCH", { slug: null }));
 
@@ -284,19 +346,88 @@ describe("PATCH /api/settings", () => {
     // slug uniqueness check
     mockClient.firstOrNull
       .mockResolvedValueOnce(null) // slug not taken
-      .mockResolvedValueOnce({ nickname: "Bob", slug: "bob" }); // read-back
+      .mockResolvedValueOnce({ nickname: "Bob", slug: "bob", is_public: 0 }); // read-back
     mockClient.execute.mockResolvedValueOnce({ changes: 1 });
 
     const res = await PATCH(makeRequest("PATCH", { nickname: "Bob", slug: "bob" }));
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(body).toEqual({ nickname: "Bob", slug: "bob" });
+    expect(body).toEqual({ nickname: "Bob", slug: "bob", is_public: false });
     // SQL should have both sets
     const [sql] = mockClient.execute.mock.calls[0]!;
     expect(sql).toContain("nickname = ?");
     expect(sql).toContain("slug = ?");
     expect(sql).toContain("updated_at = datetime('now')");
+  });
+
+  // -- is_public validation --
+
+  it("should accept is_public: true", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    mockClient.execute.mockResolvedValueOnce({ changes: 1 });
+    mockClient.firstOrNull.mockResolvedValueOnce({ nickname: null, slug: null, is_public: 1 });
+
+    const res = await PATCH(makeRequest("PATCH", { is_public: true }));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.is_public).toBe(true);
+    const [sql, params] = mockClient.execute.mock.calls[0]!;
+    expect(sql).toContain("is_public = ?");
+    expect(params).toContain(1);
+  });
+
+  it("should accept is_public: false", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    mockClient.execute.mockResolvedValueOnce({ changes: 1 });
+    mockClient.firstOrNull.mockResolvedValueOnce({ nickname: null, slug: null, is_public: 0 });
+
+    const res = await PATCH(makeRequest("PATCH", { is_public: false }));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.is_public).toBe(false);
+    const [, params] = mockClient.execute.mock.calls[0]!;
+    expect(params).toContain(0);
+  });
+
+  it("should reject non-boolean is_public (string)", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+
+    const res = await PATCH(makeRequest("PATCH", { is_public: "true" }));
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("is_public must be a boolean");
+  });
+
+  it("should reject non-boolean is_public (number)", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+
+    const res = await PATCH(makeRequest("PATCH", { is_public: 1 }));
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("is_public must be a boolean");
+  });
+
+  it("should allow updating is_public together with slug and nickname", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    mockClient.firstOrNull
+      .mockResolvedValueOnce(null) // slug not taken
+      .mockResolvedValueOnce({ nickname: "Bob", slug: "bob", is_public: 1 }); // read-back
+    mockClient.execute.mockResolvedValueOnce({ changes: 1 });
+
+    const res = await PATCH(
+      makeRequest("PATCH", { nickname: "Bob", slug: "bob", is_public: true }),
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body).toEqual({ nickname: "Bob", slug: "bob", is_public: true });
+    const [sql] = mockClient.execute.mock.calls[0]!;
+    expect(sql).toContain("nickname = ?");
+    expect(sql).toContain("slug = ?");
+    expect(sql).toContain("is_public = ?");
   });
 
   it("should return 503 when nickname column does not exist", async () => {

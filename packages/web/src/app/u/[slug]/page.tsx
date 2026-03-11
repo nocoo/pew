@@ -9,7 +9,13 @@ import { PublicProfileView } from "./profile-view";
 interface UserMeta {
   name: string | null;
   slug: string;
+  is_public?: number | null;
 }
+
+const GENERIC_METADATA: Metadata = {
+  title: "Profile — pew",
+  description: "Public profile on pew",
+};
 
 export async function generateMetadata({
   params,
@@ -19,14 +25,38 @@ export async function generateMetadata({
   const { slug } = await params;
 
   const client = getD1Client();
-  const user = await client
-    .firstOrNull<UserMeta>(
-      "SELECT name, slug FROM users WHERE slug = ?",
-      [slug],
-    )
-    .catch(() => null);
 
-  const displayName = user?.name ?? slug;
+  let user: UserMeta | null = null;
+  let hasIsPublicColumn = true;
+
+  try {
+    user = await client.firstOrNull<UserMeta>(
+      "SELECT name, slug, is_public FROM users WHERE slug = ?",
+      [slug],
+    );
+  } catch (err: unknown) {
+    // Fallback: is_public column doesn't exist yet (pre-migration)
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("no such column")) {
+      hasIsPublicColumn = false;
+      user = await client
+        .firstOrNull<UserMeta>(
+          "SELECT name, slug FROM users WHERE slug = ?",
+          [slug],
+        )
+        .catch(() => null);
+    } else {
+      // Unexpected error — return generic metadata (don't leak name)
+      return GENERIC_METADATA;
+    }
+  }
+
+  // If user not found or not public, return generic metadata (don't leak name)
+  if (!user || (hasIsPublicColumn && !user.is_public)) {
+    return GENERIC_METADATA;
+  }
+
+  const displayName = user.name ?? slug;
 
   return {
     title: `${displayName} — pew`,

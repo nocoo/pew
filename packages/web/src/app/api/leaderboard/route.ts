@@ -3,14 +3,16 @@
  *
  * Query params:
  *   period — "week" | "month" | "all" (default: "week")
- *   limit  — max entries to return (default: 50, max: 100)
+ *   limit  — max entries to return (default: 10 public / 50 admin, max: 100)
  *   team   — team ID for team-scoped leaderboard (optional)
+ *   admin  — "true" to bypass public filter (requires admin auth)
  *
  * Returns { period, entries[] } where each entry has user info + total tokens.
  */
 
 import { NextResponse } from "next/server";
 import { getD1Client } from "@/lib/d1";
+import { resolveAdmin } from "@/lib/admin";
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -18,7 +20,8 @@ import { getD1Client } from "@/lib/d1";
 
 const VALID_PERIODS = new Set(["week", "month", "all"]);
 const MAX_LIMIT = 100;
-const DEFAULT_LIMIT = 50;
+const DEFAULT_LIMIT = 10;
+const ADMIN_DEFAULT_LIMIT = 50;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -30,6 +33,7 @@ interface LeaderboardRow {
   nickname: string | null;
   image: string | null;
   slug: string | null;
+  is_public: number | null;
   total_tokens: number;
   input_tokens: number;
   output_tokens: number;
@@ -68,6 +72,7 @@ export async function GET(request: Request) {
   const period = url.searchParams.get("period") ?? "week";
   const limitParam = url.searchParams.get("limit");
   const teamId = url.searchParams.get("team");
+  const adminParam = url.searchParams.get("admin");
 
   // Validate period
   if (!VALID_PERIODS.has(period)) {
@@ -90,6 +95,17 @@ export async function GET(request: Request) {
     limit = parsed;
   }
 
+  // Admin mode: bypass public filters if caller is a verified admin
+  let isAdminMode = false;
+  if (adminParam === "true") {
+    const admin = await resolveAdmin(request);
+    isAdminMode = admin !== null;
+    // Admin defaults to higher limit when no explicit limit is set
+    if (isAdminMode && !limitParam) {
+      limit = ADMIN_DEFAULT_LIMIT;
+    }
+  }
+
   const client = getD1Client();
   const fromDate = periodStartDate(period);
 
@@ -107,6 +123,10 @@ export async function GET(request: Request) {
     teamJoin = "JOIN team_members tm ON tm.user_id = ur.user_id";
     conditions.push("tm.team_id = ?");
     params.push(teamId);
+  } else if (!isAdminMode) {
+    // Public leaderboard only shows users who opted in and have a slug
+    conditions.push("u.is_public = 1");
+    conditions.push("u.slug IS NOT NULL");
   }
 
   params.push(limit);
@@ -119,6 +139,7 @@ export async function GET(request: Request) {
       ${withNickname ? "u.nickname," : ""}
       u.image,
       u.slug,
+      ${isAdminMode ? "u.is_public," : ""}
       SUM(ur.total_tokens) AS total_tokens,
       SUM(ur.input_tokens) AS input_tokens,
       SUM(ur.output_tokens) AS output_tokens,
@@ -137,19 +158,32 @@ export async function GET(request: Request) {
     try {
       result = await client.query<LeaderboardRow>(buildSql(true), params);
     } catch (firstErr) {
-      // Fallback: nickname column or team_members table may not exist yet
       const msg = firstErr instanceof Error ? firstErr.message : "";
-      if (msg.includes("no such column") || msg.includes("no such table")) {
-        // Retry without nickname and without team join
-        const fallbackConditions = ["1=1"];
-        const fallbackParams: unknown[] = [];
-        if (fromDate) {
-          fallbackConditions.push("ur.hour_start >= ?");
-          fallbackParams.push(fromDate);
-        }
-        fallbackParams.push(limit);
+      if (!msg.includes("no such column") && !msg.includes("no such table")) {
+        throw firstErr;
+      }
 
-        const fallbackSql = `
+      // Level 1: retry without nickname (keeps is_public, admin, team semantics)
+      try {
+        result = await client.query<LeaderboardRow>(buildSql(false), params);
+      } catch (secondErr) {
+        const msg2 = secondErr instanceof Error ? secondErr.message : "";
+        if (!msg2.includes("no such column") && !msg2.includes("no such table")) {
+          throw secondErr;
+        }
+
+        // Level 2: strip everything new — no nickname, no is_public, no team join.
+        // This is the pre-migration baseline: slug IS NOT NULL only.
+        const bareConditions = ["1=1"];
+        const bareParams: unknown[] = [];
+        if (fromDate) {
+          bareConditions.push("ur.hour_start >= ?");
+          bareParams.push(fromDate);
+        }
+        bareConditions.push("u.slug IS NOT NULL");
+        bareParams.push(limit);
+
+        const bareSql = `
           SELECT
             ur.user_id,
             u.name,
@@ -161,14 +195,12 @@ export async function GET(request: Request) {
             SUM(ur.cached_input_tokens) AS cached_input_tokens
           FROM usage_records ur
           JOIN users u ON u.id = ur.user_id
-          WHERE ${fallbackConditions.join(" AND ")}
+          WHERE ${bareConditions.join(" AND ")}
           GROUP BY ur.user_id
           ORDER BY total_tokens DESC
           LIMIT ?
         `;
-        result = await client.query<LeaderboardRow>(fallbackSql, fallbackParams);
-      } else {
-        throw firstErr;
+        result = await client.query<LeaderboardRow>(bareSql, bareParams);
       }
     }
 
@@ -202,6 +234,9 @@ export async function GET(request: Request) {
         name: row.nickname ?? row.name,
         image: row.image,
         slug: row.slug,
+        ...(isAdminMode && {
+          is_public: row.is_public == null ? null : row.is_public === 1,
+        }),
       },
       teams: teamsByUser.get(row.user_id) ?? [],
       total_tokens: row.total_tokens,

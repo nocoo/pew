@@ -37,6 +37,7 @@ interface UserRow {
   name: string | null;
   image: string | null;
   slug: string;
+  is_public: number | null;
   created_at: string;
 }
 
@@ -71,13 +72,35 @@ export async function GET(
 
   const client = getD1Client();
 
-  // 2. Look up user by slug
-  const user = await client.firstOrNull<UserRow>(
-    "SELECT id, name, image, slug, created_at FROM users WHERE slug = ?",
-    [slug],
-  );
+  // 2. Look up user by slug (with is_public gate)
+  let user: UserRow | null = null;
+  let hasIsPublicColumn = true;
+
+  try {
+    user = await client.firstOrNull<UserRow>(
+      "SELECT id, name, image, slug, created_at, is_public FROM users WHERE slug = ?",
+      [slug],
+    );
+  } catch (err: unknown) {
+    // Fallback: is_public column doesn't exist yet (pre-migration)
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("no such column")) {
+      hasIsPublicColumn = false;
+      user = await client.firstOrNull<UserRow>(
+        "SELECT id, name, image, slug, created_at FROM users WHERE slug = ?",
+        [slug],
+      );
+    } else {
+      throw err;
+    }
+  }
 
   if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  // Return 404 if user is not public (don't leak existence)
+  if (hasIsPublicColumn && !user.is_public) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 

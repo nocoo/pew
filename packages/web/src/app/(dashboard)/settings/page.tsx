@@ -17,6 +17,7 @@ import { Separator } from "@/components/ui/separator";
 interface UserSettings {
   nickname: string | null;
   slug: string | null;
+  is_public: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -30,6 +31,7 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [nickname, setNickname] = useState("");
   const [slug, setSlug] = useState("");
+  const [isPublic, setIsPublic] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -49,6 +51,7 @@ export default function SettingsPage() {
         setSettings(data);
         setNickname(data.nickname ?? "");
         setSlug(data.slug ?? "");
+        setIsPublic(data.is_public ?? false);
       }
     } catch {
       // Silently fail on initial load
@@ -75,6 +78,9 @@ export default function SettingsPage() {
       if (slug !== (settings?.slug ?? "")) {
         body.slug = slug || null;
       }
+      if (isPublic !== (settings?.is_public ?? false)) {
+        body.is_public = isPublic;
+      }
 
       if (Object.keys(body).length === 0) {
         setSaveMessage({ type: "success", text: "No changes to save." });
@@ -91,6 +97,7 @@ export default function SettingsPage() {
       if (res.ok) {
         const data = await res.json();
         setSettings(data);
+        setIsPublic(data.is_public ?? false);
         setSaveMessage({ type: "success", text: "Settings saved." });
       } else {
         const data = await res.json().catch(() => ({}));
@@ -195,6 +202,45 @@ export default function SettingsPage() {
             <p className="mt-1 text-[10px] text-muted-foreground">
               Your public profile URL. Lowercase letters, numbers, and hyphens only.
             </p>
+          </div>
+
+          {/* Public visibility toggle */}
+          <div className="flex items-start gap-3">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isPublic}
+              onClick={() => setIsPublic(!isPublic)}
+              className={cn(
+                "relative mt-0.5 inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+                isPublic ? "bg-primary" : "bg-border",
+              )}
+            >
+              <span
+                className={cn(
+                  "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-background shadow-sm ring-0 transition-transform",
+                  isPublic ? "translate-x-4" : "translate-x-0",
+                )}
+              />
+            </button>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-foreground">
+                Show my profile publicly
+              </p>
+              <p className="mt-0.5 text-[10px] text-muted-foreground">
+                When enabled, your profile appears on the leaderboard and is accessible at your public URL.
+              </p>
+              {isPublic && !slug && (
+                <p className="mt-1 text-[10px] text-amber-500">
+                  You need a slug to have a public profile URL.
+                </p>
+              )}
+              {!isPublic && slug && (
+                <p className="mt-1 text-[10px] text-muted-foreground/70">
+                  Set a slug to customize your profile URL when you go public.
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Save button */}

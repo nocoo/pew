@@ -10,9 +10,18 @@ import { getD1Client } from "@/lib/d1";
 // Types
 // ---------------------------------------------------------------------------
 
+/** Shape returned to the client. */
 interface UserSettings {
   nickname: string | null;
   slug: string | null;
+  is_public: boolean;
+}
+
+/** Raw D1 row — is_public is stored as INTEGER (0/1). */
+interface UserSettingsRow {
+  nickname: string | null;
+  slug: string | null;
+  is_public: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -28,8 +37,8 @@ export async function GET(request: Request) {
   const client = getD1Client();
 
   try {
-    const row = await client.firstOrNull<UserSettings>(
-      "SELECT nickname, slug FROM users WHERE id = ?",
+    const row = await client.firstOrNull<UserSettingsRow>(
+      "SELECT nickname, slug, is_public FROM users WHERE id = ?",
       [authResult.userId],
     );
 
@@ -37,22 +46,47 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json(row);
+    return NextResponse.json({
+      nickname: row.nickname,
+      slug: row.slug,
+      is_public: row.is_public === 1,
+    } satisfies UserSettings);
   } catch (err) {
-    // Fallback if nickname column doesn't exist yet
+    // Layered fallback: strip missing columns one at a time so we preserve
+    // as much data as possible.
     const msg = err instanceof Error ? err.message : "";
-    if (msg.includes("no such column")) {
-      const row = await client.firstOrNull<{ slug: string | null }>(
-        "SELECT slug FROM users WHERE id = ?",
+    if (!msg.includes("no such column")) {
+      console.error("Failed to load settings:", err);
+      return NextResponse.json({ error: "Failed to load settings" }, { status: 500 });
+    }
+
+    // Level 1: is_public missing but nickname exists
+    try {
+      const row = await client.firstOrNull<{ nickname: string | null; slug: string | null }>(
+        "SELECT nickname, slug FROM users WHERE id = ?",
         [authResult.userId],
       );
       if (!row) {
         return NextResponse.json({ error: "User not found" }, { status: 404 });
       }
-      return NextResponse.json({ nickname: null, slug: row.slug });
+      return NextResponse.json({ nickname: row.nickname, slug: row.slug, is_public: false });
+    } catch (err2) {
+      const msg2 = err2 instanceof Error ? err2.message : "";
+      if (!msg2.includes("no such column")) {
+        console.error("Failed to load settings:", err2);
+        return NextResponse.json({ error: "Failed to load settings" }, { status: 500 });
+      }
     }
-    console.error("Failed to load settings:", err);
-    return NextResponse.json({ error: "Failed to load settings" }, { status: 500 });
+
+    // Level 2: both nickname and is_public missing
+    const row = await client.firstOrNull<{ slug: string | null }>(
+      "SELECT slug FROM users WHERE id = ?",
+      [authResult.userId],
+    );
+    if (!row) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+    return NextResponse.json({ nickname: null, slug: row.slug, is_public: false });
   }
 }
 
@@ -133,6 +167,18 @@ export async function PATCH(request: Request) {
     params.push(slug);
   }
 
+  if ("is_public" in body) {
+    const isPublic = body.is_public;
+    if (typeof isPublic !== "boolean") {
+      return NextResponse.json(
+        { error: "is_public must be a boolean" },
+        { status: 400 },
+      );
+    }
+    sets.push("is_public = ?");
+    params.push(isPublic ? 1 : 0);
+  }
+
   if (sets.length === 0) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
@@ -149,12 +195,16 @@ export async function PATCH(request: Request) {
     );
 
     // Return updated settings
-    const row = await client.firstOrNull<UserSettings>(
-      "SELECT nickname, slug FROM users WHERE id = ?",
+    const row = await client.firstOrNull<UserSettingsRow>(
+      "SELECT nickname, slug, is_public FROM users WHERE id = ?",
       [authResult.userId],
     );
 
-    return NextResponse.json(row);
+    return NextResponse.json(
+      row
+        ? { nickname: row.nickname, slug: row.slug, is_public: row.is_public === 1 } satisfies UserSettings
+        : null,
+    );
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("no such column")) {
