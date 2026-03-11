@@ -19,8 +19,8 @@
 | 10 | `refactor: move leaderboard out of dashboard layout` | `(dashboard)/leaderboard/` → `app/leaderboard/` | |
 | 11 | `feat: redesign leaderboard as standalone public page` | New layout matching `/u/[slug]` style | |
 | 12 | `feat: add admin toggle to leaderboard page` | `useAdmin()` hook + "Show All" switch on UI | |
-| 13 | `feat: gate public profile by is_public` | `/api/users/[slug]` returns 404 when `is_public != 1` | |
-| 14 | `test: add L1 tests for public profile is_public gate` | Profile API unit tests | |
+| 13 | `feat: gate public profile by is_public` | API + server metadata both return 404 when private | |
+| 14 | `test: add L1 tests for public profile is_public gate` | Profile API + metadata unit tests | |
 | 15 | `feat: update proxy to allow public leaderboard page` | `isPublicRoute` includes `/leaderboard` | |
 | 16 | `test: update proxy tests for /leaderboard` | Public route assertions | |
 | 17 | `refactor: change default leaderboard limit to 10` | Public default 10, admin default 50 | |
@@ -68,12 +68,12 @@ The current leaderboard and public profile system has three issues:
 ALTER TABLE users ADD COLUMN is_public INTEGER NOT NULL DEFAULT 0;
 ```
 
-- `0` = private (default for all existing users)
+- `0` = private (default for all new users)
 - `1` = public (opt-in via settings)
 
-After migration, existing users with a slug are **NOT** automatically public.
-They must explicitly enable `is_public` in Settings. This is a breaking change
-for anyone currently on the leaderboard — documented in the migration commit.
+After migration, existing users with a slug are automatically backfilled to
+`is_public = 1` to preserve their current public visibility. New users must
+explicitly enable `is_public` in Settings.
 
 ### Rollback
 
@@ -249,10 +249,12 @@ describe("team filter")
 
 ### Commit 8: `feat: add admin mode to leaderboard API`
 
-Add `admin=true` query param that bypasses the `is_public` filter.
+Add `admin=true` query param that bypasses the `is_public` filter and returns
+an enriched response shape with visibility metadata.
 
 **Files changed:**
 - `packages/web/src/app/api/leaderboard/route.ts`
+- `packages/web/src/hooks/use-leaderboard.ts`
 
 **Behavior:**
 - When `admin=true` is present, call `resolveAdmin(request)` to verify the
@@ -270,7 +272,7 @@ import { resolveAdmin } from "@/lib/admin";
 
 **SQL for admin mode:**
 ```sql
-SELECT ... FROM usage_records ur
+SELECT ..., u.is_public FROM usage_records ur
 JOIN users u ON u.id = ur.user_id
 WHERE 1=1
   AND ur.hour_start >= ?   -- if period != all
@@ -278,6 +280,50 @@ GROUP BY ur.user_id
 ORDER BY total_tokens DESC
 LIMIT ?
 ```
+
+**Response shape change (admin mode only):**
+
+In admin mode, each entry gains an `is_public` field so the UI can render a
+"hidden" badge on private users:
+
+```typescript
+// Admin response entry
+{
+  rank: 1,
+  user: { name: "Alice", image: "...", slug: "alice", is_public: true },
+  total_tokens: 5000000,
+  ...
+}
+
+// Public response entry (unchanged)
+{
+  rank: 1,
+  user: { name: "Alice", image: "...", slug: "alice" },
+  total_tokens: 5000000,
+  ...
+}
+```
+
+**Client type update** (`use-leaderboard.ts`):
+
+```typescript
+export interface LeaderboardEntry {
+  rank: number;
+  user: {
+    name: string | null;
+    image: string | null;
+    slug: string | null;
+    is_public?: boolean;   // ← new, only present in admin mode
+  };
+  total_tokens: number;
+  input_tokens: number;
+  output_tokens: number;
+  cached_input_tokens: number;
+}
+```
+
+The `is_public` field is optional — only emitted when `admin=true` and the
+caller is a verified admin. Public responses omit it entirely.
 
 ---
 
@@ -292,6 +338,8 @@ LIMIT ?
 describe("admin mode")
   ✓ should show all users when admin=true and caller is admin
   ✓ should NOT include is_public or slug filter in admin SQL
+  ✓ should include is_public in response entries when admin
+  ✓ should NOT include is_public in response entries when not admin
   ✓ should apply normal filters when admin=true but caller is not admin
   ✓ should apply normal filters when admin=true but caller is unauthenticated
   ✓ should use limit=50 default in admin mode
@@ -379,18 +427,25 @@ Add an admin-only "Show All Users" toggle to the leaderboard page.
 - When admin: show a small toggle/switch labeled "Show All" in the controls row
 - Toggle state is passed as `admin=true` query param to the API
 - Non-admin users never see this toggle
-- Visual indicator: rows without `is_public` show a subtle "hidden" badge
+- Visual indicator: rows where `entry.user.is_public === false` show a subtle
+  "hidden" badge (the `is_public` field is available in admin response entries
+  per commit 8's response shape change)
 
 ---
 
 ### Commit 13: `feat: gate public profile by is_public`
 
-Update the public profile API to check `is_public` before returning data.
+Update the public profile API **and** the server-side metadata generation to
+check `is_public` before returning data. Both paths must be gated — the API
+alone is not enough because `generateMetadata()` in the Next.js page server
+component queries D1 directly (bypassing the API), and would leak the user's
+name via `<title>` and Open Graph tags even when the API returns 404.
 
 **Files changed:**
 - `packages/web/src/app/api/users/[slug]/route.ts`
+- `packages/web/src/app/u/[slug]/page.tsx`
 
-**Changes:**
+**API route changes (`route.ts`):**
 
 Current user lookup:
 ```sql
@@ -414,6 +469,39 @@ if (!user.is_public) {
 error and retry without it (preserving current behavior — all users with slugs
 are visible).
 
+**Metadata generation changes (`page.tsx`):**
+
+Current query:
+```sql
+SELECT name, slug FROM users WHERE slug = ?
+```
+
+New query:
+```sql
+SELECT name, slug, is_public FROM users WHERE slug = ?
+```
+
+After lookup — if user is null, `is_public` is falsy, or the column-missing
+fallback fires and returns a row without `is_public`:
+```typescript
+// If user not found or not public, return generic metadata (don't leak name)
+if (!user || !user.is_public) {
+  return { title: "Profile — pew", description: "Public profile on pew" };
+}
+```
+
+This ensures that crawlers, link previews, and `view-source:` all see the same
+generic metadata for private profiles — no name leakage through any path.
+
+**`no such column` fallback for metadata:** If `is_public` column doesn't
+exist yet, the `.catch(() => null)` already handles this — the query fails,
+user becomes null, and generic metadata is returned. However this temporarily
+hides ALL profile metadata until the migration runs. To preserve current
+behavior pre-migration, use a two-query fallback:
+1. Try `SELECT name, slug, is_public FROM users WHERE slug = ?`
+2. On `no such column`, retry `SELECT name, slug FROM users WHERE slug = ?`
+   and treat result as public (legacy behavior)
+
 ---
 
 ### Commit 14: `test: add L1 tests for public profile is_public gate`
@@ -429,6 +517,12 @@ describe("GET /api/users/[slug]")
   ✓ should return 404 when user is_public = 0
   ✓ should return 404 when user not found
   ✓ should fall back to showing profile when is_public column missing
+
+describe("generateMetadata for /u/[slug]")
+  ✓ should include user name in title when is_public = 1
+  ✓ should return generic title when is_public = 0 (no name leak)
+  ✓ should return generic title when user not found
+  ✓ should fall back to showing name when is_public column missing (legacy)
 ```
 
 ---
@@ -486,12 +580,41 @@ describe("resolveProxyAction")
 
 **Files changed:**
 - `packages/web/src/app/api/leaderboard/route.ts`
+- `packages/web/src/hooks/use-leaderboard.ts`
 
-**Changes:**
+**API changes (`route.ts`):**
 - `DEFAULT_LIMIT` from `50` → `10` for public requests
-- Admin requests default to `50`
+- Admin requests default to `50` (set in the admin code path, not the global constant)
 - `MAX_LIMIT` stays at `100`
-- Update the `useLeaderboard` hook default if needed
+
+**Hook changes (`use-leaderboard.ts`):**
+
+The hook currently hardcodes `limit = 50` as the default and always serializes
+it into the request URL. This means the API's new default of 10 would be dead
+code — the client always overrides it with 50.
+
+Fix: change the hook default from `50` to `undefined`, and only include
+`limit` in the query params when explicitly set by the caller:
+
+```typescript
+// Before
+const { period = "week", limit = 50, teamId } = options;
+// ...
+const params = new URLSearchParams({ period, limit: String(limit) });
+
+// After
+const { period = "week", limit, teamId } = options;
+// ...
+const params = new URLSearchParams({ period });
+if (limit !== undefined) {
+  params.set("limit", String(limit));
+}
+```
+
+This lets the API's `DEFAULT_LIMIT` (10 for public, 50 for admin) take effect
+when the caller doesn't specify a limit. The leaderboard page component does
+NOT need to change — it currently doesn't pass `limit` to the hook, so it
+will automatically pick up the new server default.
 
 **Rationale:** Public leaderboard is a showcase (top 10), not a comprehensive
 data export. Admin mode retains the higher default for operational oversight.
@@ -505,8 +628,8 @@ data export. Admin mode retains the higher default for operational oversight.
 | File | Coverage |
 |------|----------|
 | `settings.test.ts` | `is_public` GET/PATCH validation + storage |
-| `leaderboard.test.ts` | `is_public` filter, admin bypass, default limit, fallbacks |
-| `public-profile.test.ts` | `is_public` gate, 404 behavior, column fallback |
+| `leaderboard.test.ts` | `is_public` filter, admin bypass, `is_public` in admin response, default limit, fallbacks |
+| `public-profile.test.ts` | API `is_public` gate, metadata `is_public` gate, 404 behavior, column fallbacks |
 | `proxy.test.ts` | `/leaderboard` public route + proxy action |
 
 ### Manual Verification
@@ -515,38 +638,43 @@ After deployment:
 
 1. **New user flow:** Sign up → Settings shows `is_public: false` → Not on
    leaderboard → Enable toggle → Appears on leaderboard
-2. **Existing user regression:** Users with slugs disappear from leaderboard
-   after migration (expected — they must re-opt-in)
+2. **Existing user continuity:** Users with slugs remain on leaderboard after
+   migration (backfill sets `is_public = 1`)
 3. **Public access:** Open `/leaderboard` in incognito → page loads without
    login
 4. **Admin toggle:** Admin opens `/leaderboard` → sees "Show All" toggle →
-   enable → sees all users including private ones
-5. **Profile gate:** Navigate to `/u/{slug}` for a private user → 404
+   enable → sees all users including private ones, private users show badge
+5. **Profile gate:** Navigate to `/u/{slug}` for a private user → 404, page
+   title shows generic "Profile — pew" (no name leak)
 6. **Profile access:** Navigate to `/u/{slug}` for a public user → profile
-   loads
+   loads with personalized metadata
 
 ---
 
 ## Migration Notes
 
-### Breaking Change
+### Backfill Strategy
 
-After deploying commit 6 and running the migration, **all existing users will
-disappear from the public leaderboard** because `is_public` defaults to `0`.
-Users must visit Settings and enable the toggle to reappear.
+After adding the `is_public` column (defaults to `0`), immediately backfill
+existing users who already have a slug. These users set their slug with the
+understanding that it made them public — changing that expectation silently
+would be a product regression.
 
-**Mitigation options:**
-- (a) Announce via in-app banner before migration
-- (b) Auto-set `is_public = 1` for users who already have a slug:
-  ```sql
-  UPDATE users SET is_public = 1 WHERE slug IS NOT NULL;
-  ```
-- (c) Accept the reset — it's a small user base in closed beta
+```sql
+-- Run immediately after ALTER TABLE
+UPDATE users SET is_public = 1 WHERE slug IS NOT NULL;
+```
+
+New users after the migration get `is_public = 0` by default and must
+explicitly opt in via Settings.
 
 ### Deploy Order
 
 1. Deploy code (commits 2-17) — all `no such column` fallbacks ensure the app
    works without the migration
-2. Run migration: `wrangler d1 execute pew-prod --command "ALTER TABLE users ADD COLUMN is_public INTEGER NOT NULL DEFAULT 0;"`
-3. Optionally run: `UPDATE users SET is_public = 1 WHERE slug IS NOT NULL;`
-4. Verify via admin leaderboard toggle
+2. Run migration:
+   ```bash
+   wrangler d1 execute pew-prod --command "ALTER TABLE users ADD COLUMN is_public INTEGER NOT NULL DEFAULT 0;"
+   wrangler d1 execute pew-prod --command "UPDATE users SET is_public = 1 WHERE slug IS NOT NULL;"
+   ```
+3. Verify via admin leaderboard toggle
