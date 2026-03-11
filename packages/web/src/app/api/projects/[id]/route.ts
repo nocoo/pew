@@ -179,6 +179,7 @@ export async function PATCH(
       );
     }
 
+    const trulyNewAliases: AliasInput[] = [];
     for (const alias of valid) {
       const taken = await client.firstOrNull<{ project_id: string }>(
         `SELECT project_id FROM project_aliases
@@ -193,8 +194,14 @@ export async function PATCH(
           { status: 409 },
         );
       }
+      // Only mark as "new" if not already attached to this project.
+      // Pre-existing aliases are silently accepted but excluded from
+      // the write set and rollback tracking to avoid data loss.
+      if (!taken) {
+        trulyNewAliases.push(alias);
+      }
     }
-    addAliases = valid;
+    addAliases = trulyNewAliases;
   }
 
   // Validate remove_aliases
@@ -252,7 +259,7 @@ export async function PATCH(
 
     for (const alias of addAliases) {
       await client.execute(
-        `INSERT OR IGNORE INTO project_aliases (user_id, project_id, source, project_ref, created_at)
+        `INSERT INTO project_aliases (user_id, project_id, source, project_ref, created_at)
          VALUES (?, ?, ?, ?, datetime('now'))`,
         [userId, projectId, alias.source, alias.project_ref],
       );

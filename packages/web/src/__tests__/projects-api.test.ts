@@ -271,7 +271,7 @@ describe("PATCH /api/projects/:id", () => {
       mockClient.firstOrNull
         .mockResolvedValueOnce({ id: "proj-1", name: "Old Name" }) // project exists
         .mockResolvedValueOnce({ "1": 1 }) // session data exists for add alias
-        .mockResolvedValueOnce(null) // alias not taken
+        .mockResolvedValueOnce(null) // alias not taken (truly new)
         .mockResolvedValueOnce({ project_id: "proj-1" }); // remove alias is attached to this project
 
       // Phase 2: add succeeds, remove fails
@@ -293,6 +293,40 @@ describe("PATCH /api/projects/:id", () => {
       expect(rollbackCall![0]).toContain(
         "DELETE FROM project_aliases",
       );
+    });
+
+    it("should NOT delete pre-existing alias during rollback when add_aliases includes it", async () => {
+      // Scenario: alias already attached to this project, request "adds" it again,
+      // then a later write fails. The pre-existing alias must survive rollback.
+      mockClient.firstOrNull
+        .mockResolvedValueOnce({ id: "proj-1", name: "Old Name" }) // project exists
+        .mockResolvedValueOnce({ "1": 1 }) // session data exists for alias
+        .mockResolvedValueOnce({ project_id: "proj-1" }) // alias already on this project (pre-existing)
+        .mockResolvedValueOnce({ project_id: "proj-1" }); // remove alias is attached
+
+      // Phase 2: no INSERT for pre-existing alias; remove fails
+      mockClient.execute
+        .mockRejectedValueOnce(new Error("D1 error")); // DELETE remove_alias fails
+
+      const res = await callPatch({
+        add_aliases: [{ source: "claude-code", project_ref: "abc123" }],
+        remove_aliases: [{ source: "opencode", project_ref: "def456" }],
+      });
+
+      expect(res.status).toBe(500);
+
+      // No INSERT was attempted for the pre-existing alias, so rollback
+      // must NOT issue a DELETE for it. Only the failed remove triggers rollback.
+      // execute calls: 1 = failed DELETE for remove_alias
+      // Rollback should NOT delete the pre-existing alias — verify no DELETE
+      // for the pre-existing alias (claude-code, abc123)
+      for (const call of mockClient.execute.mock.calls) {
+        const sql = call[0] as string;
+        const params = call[1] as string[];
+        if (sql.includes("DELETE FROM project_aliases") && params.includes("abc123")) {
+          throw new Error("Rollback incorrectly deleted pre-existing alias");
+        }
+      }
     });
   });
 
@@ -330,7 +364,7 @@ describe("PATCH /api/projects/:id", () => {
       mockClient.firstOrNull
         .mockResolvedValueOnce({ id: "proj-1", name: "My Project" }) // project exists
         .mockResolvedValueOnce({ "1": 1 }) // session data exists
-        .mockResolvedValueOnce(null) // alias not taken
+        .mockResolvedValueOnce(null) // alias not taken (truly new)
         // Phase 2 reads:
         .mockResolvedValueOnce({
           id: "proj-1",
@@ -362,6 +396,44 @@ describe("PATCH /api/projects/:id", () => {
       expect(body.aliases).toEqual([
         { source: "claude-code", project_ref: "abc123" },
       ]);
+    });
+
+    it("should skip INSERT for alias already attached to this project", async () => {
+      mockClient.firstOrNull
+        .mockResolvedValueOnce({ id: "proj-1", name: "My Project" }) // project exists
+        .mockResolvedValueOnce({ "1": 1 }) // session data exists
+        .mockResolvedValueOnce({ project_id: "proj-1" }) // alias already on this project
+        // Phase 2 reads:
+        .mockResolvedValueOnce({
+          id: "proj-1",
+          name: "My Project",
+          created_at: "2026-03-10T00:00:00Z",
+        });
+
+      mockClient.execute.mockResolvedValue({ meta: {} });
+      mockClient.query.mockResolvedValueOnce({
+        results: [
+          {
+            source: "claude-code",
+            project_ref: "abc123",
+            session_count: 5,
+            last_active: "2026-03-10T12:00:00Z",
+          },
+        ],
+        meta: {},
+      });
+
+      const res = await callPatch({
+        add_aliases: [{ source: "claude-code", project_ref: "abc123" }],
+      });
+
+      expect(res.status).toBe(200);
+      // No INSERT should have been issued for the pre-existing alias.
+      // Only the updated_at touch should fire.
+      const insertCalls = mockClient.execute.mock.calls.filter(
+        (call) => (call[0] as string).includes("INSERT"),
+      );
+      expect(insertCalls).toHaveLength(0);
     });
   });
 });

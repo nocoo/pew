@@ -90,8 +90,9 @@ export function useSessionData(
     }, [fromDate, toDate, source, project, enabled]);
 
   useEffect(() => {
+    if (!enabled) return;
     fetchData();
-  }, [fetchData]);
+  }, [fetchData, enabled]);
 
   // Reset state when disabled to avoid stale data
   useEffect(() => {
