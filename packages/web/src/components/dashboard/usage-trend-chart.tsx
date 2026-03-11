@@ -6,13 +6,13 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { formatTokens } from "@/lib/utils";
 import { chart, chartAxis, CHART_COLORS } from "@/lib/palette";
 import type { DailyPoint } from "@/hooks/use-usage-data";
+import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 
 // Safe color references (CHART_COLORS is guaranteed 8 elements)
 const colorOutput = CHART_COLORS[1]!;
@@ -138,7 +138,7 @@ export function UsageTrendChart({ data, className }: UsageTrendChartProps) {
       </div>
 
       <div className="h-[240px] md:h-[280px]">
-        <ResponsiveContainer width="100%" height="100%">
+        <DashboardResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={data}
             margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
@@ -219,7 +219,7 @@ export function UsageTrendChart({ data, className }: UsageTrendChartProps) {
               fill="url(#gradCached)"
             />
           </AreaChart>
-        </ResponsiveContainer>
+        </DashboardResponsiveContainer>
       </div>
     </div>
   );

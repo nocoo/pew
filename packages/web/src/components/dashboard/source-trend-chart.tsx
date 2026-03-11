@@ -7,13 +7,13 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
 import { cn, formatTokens } from "@/lib/utils";
 import { chartAxis, CHART_COLORS } from "@/lib/palette";
 import { sourceLabel } from "@/hooks/use-usage-data";
 import type { SourceTrendPoint } from "@/lib/usage-helpers";
+import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -191,7 +191,7 @@ export function SourceTrendChart({ data, className }: SourceTrendChartProps) {
       </div>
 
       <div className="h-[240px] md:h-[280px]">
-        <ResponsiveContainer width="100%" height="100%">
+        <DashboardResponsiveContainer width="100%" height="100%">
           <LineChart
             data={chartData}
             margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
@@ -231,7 +231,7 @@ export function SourceTrendChart({ data, className }: SourceTrendChartProps) {
               />
             ))}
           </LineChart>
-        </ResponsiveContainer>
+        </DashboardResponsiveContainer>
       </div>
     </div>
   );

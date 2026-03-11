@@ -7,13 +7,13 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { chartAxis, CHART_COLORS } from "@/lib/palette";
 import { shortModel } from "@/lib/model-helpers";
 import type { ModelEra } from "@/lib/model-helpers";
+import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -166,7 +166,7 @@ export function ModelEvolutionChart({
       </div>
 
       <div className="h-[240px] md:h-[280px]">
-        <ResponsiveContainer width="100%" height="100%">
+        <DashboardResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={chartData}
             margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
@@ -231,7 +231,7 @@ export function ModelEvolutionChart({
               />
             ))}
           </AreaChart>
-        </ResponsiveContainer>
+        </DashboardResponsiveContainer>
       </div>
     </div>
   );

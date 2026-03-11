@@ -4,7 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
-import Image from "next/image";
 import type { ElementType } from "react";
 import {
   LayoutDashboard,
@@ -29,6 +28,7 @@ import {
   type NavGroupDef,
 } from "@/lib/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import {
   Tooltip,
   TooltipContent,
@@ -187,8 +187,9 @@ export function Sidebar() {
           /* -- Collapsed (icon-only) view -- */
           <div className="flex h-screen w-[68px] flex-col items-center">
             {/* Logo */}
-            <div className="flex h-14 w-full items-center justify-start pl-5 pr-3">
-              <Image
+            <div className="flex h-14 w-full items-center justify-start pl-6 pr-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src="/logo-24.png"
                 alt="Pew"
                 width={24}
@@ -279,7 +280,8 @@ export function Sidebar() {
             <div className="px-3 h-14 flex items-center">
               <div className="flex w-full items-center justify-between px-3">
                 <div className="flex items-center gap-3">
-                  <Image
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
                     src="/logo-24.png"
                     alt="Pew"
                     width={24}
@@ -289,9 +291,12 @@ export function Sidebar() {
                   <span className="text-lg font-bold tracking-tighter">
                     pew
                   </span>
-                  <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium text-muted-foreground font-mono leading-none">
+                  <Badge
+                    variant="secondary"
+                    className="px-1.5 py-0 text-[10px] font-normal text-muted-foreground"
+                  >
                     v{APP_VERSION}
-                  </span>
+                  </Badge>
                 </div>
                 <button
                   onClick={toggle}

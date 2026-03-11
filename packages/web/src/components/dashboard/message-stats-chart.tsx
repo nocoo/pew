@@ -6,12 +6,12 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { chartAxis, CHART_COLORS } from "@/lib/palette";
 import type { MessageDailyStat } from "@/lib/session-helpers";
+import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -131,7 +131,7 @@ export function MessageStatsChart({ data, className }: MessageStatsChartProps) {
       </div>
 
       <div className="h-[240px] md:h-[280px]">
-        <ResponsiveContainer width="100%" height="100%">
+        <DashboardResponsiveContainer width="100%" height="100%">
           <BarChart
             data={data}
             margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
@@ -169,7 +169,7 @@ export function MessageStatsChart({ data, className }: MessageStatsChartProps) {
               radius={[4, 4, 0, 0]}
             />
           </BarChart>
-        </ResponsiveContainer>
+        </DashboardResponsiveContainer>
       </div>
     </div>
   );

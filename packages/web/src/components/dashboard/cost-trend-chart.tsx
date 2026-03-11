@@ -6,13 +6,13 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { formatCost } from "@/lib/pricing";
 import { chart, chartAxis, CHART_COLORS, chartMuted } from "@/lib/palette";
 import type { DailyCostPoint } from "@/lib/cost-helpers";
+import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 
 // Stable color references
 const colorOutput = CHART_COLORS[1]!;
@@ -152,7 +152,7 @@ export function CostTrendChart({ data, className }: CostTrendChartProps) {
       </div>
 
       <div className="h-[240px] md:h-[280px]">
-        <ResponsiveContainer width="100%" height="100%">
+        <DashboardResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={data}
             margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
@@ -217,7 +217,7 @@ export function CostTrendChart({ data, className }: CostTrendChartProps) {
               fill="url(#gradCostCached)"
             />
           </AreaChart>
-        </ResponsiveContainer>
+        </DashboardResponsiveContainer>
       </div>
     </div>
   );

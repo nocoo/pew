@@ -6,7 +6,6 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
 import { cn } from "@/lib/utils";
@@ -15,6 +14,7 @@ import { chart, chartAxis, CHART_COLORS } from "@/lib/palette";
 import { shortModel } from "@/lib/model-helpers";
 import type { ModelAggregate } from "@/hooks/use-usage-data";
 import { sourceLabel } from "@/hooks/use-usage-data";
+import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 
 // Safe color references
 const colorOutput = CHART_COLORS[1]!;
@@ -152,7 +152,7 @@ export function ModelBreakdownChart({
       </div>
 
       <div style={{ height: chartHeight }}>
-        <ResponsiveContainer width="100%" height="100%">
+        <DashboardResponsiveContainer width="100%" height="100%">
           <BarChart
             data={chartData}
             layout="vertical"
@@ -199,7 +199,7 @@ export function ModelBreakdownChart({
               radius={[0, 4, 4, 0]}
             />
           </BarChart>
-        </ResponsiveContainer>
+        </DashboardResponsiveContainer>
       </div>
     </div>
   );

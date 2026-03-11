@@ -6,7 +6,6 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  ResponsiveContainer,
   CartesianGrid,
   Cell,
 } from "recharts";
@@ -16,6 +15,7 @@ import { chartAxis, chartPositive, chartNegative, CHART_COLORS } from "@/lib/pal
 import { shortModel } from "@/lib/model-helpers";
 import { sourceLabel } from "@/hooks/use-usage-data";
 import type { ModelCostEfficiency } from "@/lib/cost-helpers";
+import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 
 // Color scale: green (cheap) → amber (mid) → red (expensive)
 const colorCheap = chartPositive;
@@ -158,7 +158,7 @@ export function CostPerTokenChart({
       </div>
 
       <div style={{ height: chartHeight }}>
-        <ResponsiveContainer width="100%" height="100%">
+        <DashboardResponsiveContainer width="100%" height="100%">
           <BarChart
             data={chartData}
             layout="vertical"
@@ -201,7 +201,7 @@ export function CostPerTokenChart({
               })}
             </Bar>
           </BarChart>
-        </ResponsiveContainer>
+        </DashboardResponsiveContainer>
       </div>
     </div>
   );

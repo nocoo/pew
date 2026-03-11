@@ -4,13 +4,13 @@ import {
   PieChart,
   Pie,
   Tooltip,
-  ResponsiveContainer,
   Cell,
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { formatTokens } from "@/lib/utils";
 import { CHART_COLORS } from "@/lib/palette";
 import type { SourceAggregate } from "@/hooks/use-usage-data";
+import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -95,7 +95,7 @@ export function SourceDonutChart({ data, className }: SourceDonutChartProps) {
 
       <div className="flex flex-1 flex-col items-center">
         <div className="flex-1 w-full max-w-[220px] min-h-[140px]">
-          <ResponsiveContainer width="100%" height="100%">
+          <DashboardResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={chartData}
@@ -113,7 +113,7 @@ export function SourceDonutChart({ data, className }: SourceDonutChartProps) {
               </Pie>
               <Tooltip content={<DonutTooltip />} />
             </PieChart>
-          </ResponsiveContainer>
+          </DashboardResponsiveContainer>
         </div>
 
         {/* Legend */}

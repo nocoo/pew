@@ -6,7 +6,6 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
 import { cn } from "@/lib/utils";
@@ -14,6 +13,7 @@ import { formatTokens } from "@/lib/utils";
 import { formatCost } from "@/lib/pricing";
 import { chart, chartAxis, chartMuted } from "@/lib/palette";
 import type { WeekdayWeekendStats } from "@/lib/usage-helpers";
+import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -133,7 +133,7 @@ export function WeekdayWeekendChart({
       </div>
 
       <div className="h-[180px] w-full">
-        <ResponsiveContainer width="100%" height="100%">
+        <DashboardResponsiveContainer width="100%" height="100%">
           <BarChart data={data} barGap={4} barCategoryGap="30%">
             <CartesianGrid
               strokeDasharray="3 3"
@@ -179,7 +179,7 @@ export function WeekdayWeekendChart({
               radius={[4, 4, 0, 0]}
             />
           </BarChart>
-        </ResponsiveContainer>
+        </DashboardResponsiveContainer>
       </div>
 
       {/* Legend */}

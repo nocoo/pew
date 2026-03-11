@@ -4,12 +4,12 @@ import {
   PieChart,
   Pie,
   Tooltip,
-  ResponsiveContainer,
   Cell,
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { formatTokens } from "@/lib/utils";
 import { chart } from "@/lib/palette";
+import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -117,7 +117,7 @@ export function IoRatioChart({
 
       <div className="flex flex-col items-center">
         <div className="relative h-[180px] w-[180px]">
-          <ResponsiveContainer width="100%" height="100%">
+          <DashboardResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
                 data={chartData}
@@ -135,7 +135,7 @@ export function IoRatioChart({
               </Pie>
               <Tooltip content={<IoTooltip />} />
             </PieChart>
-          </ResponsiveContainer>
+          </DashboardResponsiveContainer>
           {/* Center label showing I/O ratio */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <span className="text-lg font-semibold text-foreground">

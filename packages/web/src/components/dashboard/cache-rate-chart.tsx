@@ -6,7 +6,6 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  ResponsiveContainer,
   CartesianGrid,
   ReferenceLine,
 } from "recharts";
@@ -14,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { formatTokens } from "@/lib/utils";
 import { chart, chartAxis } from "@/lib/palette";
 import type { DailyCacheRate } from "@/lib/cost-helpers";
+import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -128,7 +128,7 @@ export function CacheRateChart({ data, className }: CacheRateChartProps) {
       </div>
 
       <div className="h-[200px] md:h-[240px]">
-        <ResponsiveContainer width="100%" height="100%">
+        <DashboardResponsiveContainer width="100%" height="100%">
           <LineChart
             data={data}
             margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
@@ -170,7 +170,7 @@ export function CacheRateChart({ data, className }: CacheRateChartProps) {
               activeDot={{ r: 4, fill: chart.jade }}
             />
           </LineChart>
-        </ResponsiveContainer>
+        </DashboardResponsiveContainer>
       </div>
     </div>
   );
