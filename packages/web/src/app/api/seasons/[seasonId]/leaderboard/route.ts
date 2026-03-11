@@ -27,6 +27,7 @@ interface SeasonRow {
   slug: string;
   start_date: string;
   end_date: string;
+  snapshot_ready: number;
 }
 
 interface TeamTokenRow {
@@ -104,9 +105,9 @@ export async function GET(
   const client = getD1Client();
 
   try {
-    // Fetch season
+    // Fetch season (includes snapshot_ready flag)
     const season = await client.firstOrNull<SeasonRow>(
-      "SELECT id, name, slug, start_date, end_date FROM seasons WHERE id = ?",
+      "SELECT id, name, slug, start_date, end_date, snapshot_ready FROM seasons WHERE id = ?",
       [seasonId]
     );
 
@@ -119,13 +120,9 @@ export async function GET(
 
     const status = deriveSeasonStatus(season.start_date, season.end_date);
 
-    // Check if snapshot exists
-    const snapshotCount = await client.firstOrNull<{ cnt: number }>(
-      "SELECT COUNT(*) AS cnt FROM season_snapshots WHERE season_id = ?",
-      [seasonId]
-    );
-
-    const hasSnapshot = (snapshotCount?.cnt ?? 0) > 0;
+    // Use snapshot_ready flag instead of querying season_snapshots table.
+    // This avoids reading partially-written snapshot data during non-atomic writes.
+    const hasSnapshot = season.snapshot_ready === 1;
 
     const fromDate = startDateInclusive(season.start_date);
     const toDate = endDateExclusive(season.end_date);

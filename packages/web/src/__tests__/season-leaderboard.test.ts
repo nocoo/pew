@@ -36,22 +36,34 @@ function makeRequest(
 
 const routeParams = Promise.resolve({ seasonId: "season-1" });
 
-// Active season: start in the past, end in the future
+// Active season: start in the past, end in the future (no snapshot)
 const ACTIVE_SEASON = {
   id: "season-1",
   name: "Season 1",
   slug: "s1",
   start_date: "2026-03-01",
   end_date: "2026-03-31",
+  snapshot_ready: 0,
 };
 
-// Ended season
+// Ended season with snapshot ready
 const ENDED_SEASON = {
   id: "season-2",
   name: "Season 2",
   slug: "s2",
   start_date: "2026-01-01",
   end_date: "2026-01-31",
+  snapshot_ready: 1,
+};
+
+// Ended season without snapshot
+const ENDED_SEASON_NO_SNAPSHOT = {
+  id: "season-2",
+  name: "Season 2",
+  slug: "s2",
+  start_date: "2026-01-01",
+  end_date: "2026-01-31",
+  snapshot_ready: 0,
 };
 
 // ---------------------------------------------------------------------------
@@ -70,10 +82,8 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
   });
 
   it("should return teams ranked by total_tokens", async () => {
-    // Season lookup
+    // Season lookup (snapshot_ready=0 → live aggregation)
     mockClient.firstOrNull.mockResolvedValueOnce(ACTIVE_SEASON);
-    // Snapshot count = 0 (live aggregation)
-    mockClient.firstOrNull.mockResolvedValueOnce({ cnt: 0 });
     // Live aggregation: two teams
     mockClient.query.mockResolvedValueOnce({
       results: [
@@ -112,7 +122,6 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
 
   it("should only include usage within season date range", async () => {
     mockClient.firstOrNull.mockResolvedValueOnce(ACTIVE_SEASON);
-    mockClient.firstOrNull.mockResolvedValueOnce({ cnt: 0 });
     mockClient.query.mockResolvedValueOnce({ results: [] });
 
     await GET(makeRequest(), { params: routeParams });
@@ -133,7 +142,6 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
       end_date: "2026-03-15",
     };
     mockClient.firstOrNull.mockResolvedValueOnce(season);
-    mockClient.firstOrNull.mockResolvedValueOnce({ cnt: 0 });
     mockClient.query.mockResolvedValueOnce({ results: [] });
 
     await GET(makeRequest(), { params: routeParams });
@@ -145,7 +153,6 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
 
   it("should return empty entries for season with no registered teams", async () => {
     mockClient.firstOrNull.mockResolvedValueOnce(ACTIVE_SEASON);
-    mockClient.firstOrNull.mockResolvedValueOnce({ cnt: 0 });
     mockClient.query.mockResolvedValueOnce({ results: [] });
 
     const res = await GET(makeRequest(), { params: routeParams });
@@ -158,7 +165,6 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
 
   it("should return member breakdown when expand=members", async () => {
     mockClient.firstOrNull.mockResolvedValueOnce(ACTIVE_SEASON);
-    mockClient.firstOrNull.mockResolvedValueOnce({ cnt: 0 });
     // Team aggregation
     mockClient.query.mockResolvedValueOnce({
       results: [
@@ -220,7 +226,6 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
 
   it("should NOT return members when expand is not set", async () => {
     mockClient.firstOrNull.mockResolvedValueOnce(ACTIVE_SEASON);
-    mockClient.firstOrNull.mockResolvedValueOnce({ cnt: 0 });
     mockClient.query.mockResolvedValueOnce({
       results: [
         {
@@ -243,9 +248,8 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
   });
 
   it("should read from snapshot tables when snapshot exists", async () => {
+    // ENDED_SEASON has snapshot_ready=1
     mockClient.firstOrNull.mockResolvedValueOnce(ENDED_SEASON);
-    // Snapshot count > 0
-    mockClient.firstOrNull.mockResolvedValueOnce({ cnt: 2 });
     // Snapshot data
     mockClient.query.mockResolvedValueOnce({
       results: [
@@ -288,7 +292,6 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
 
   it("should include user_id in snapshot member breakdown", async () => {
     mockClient.firstOrNull.mockResolvedValueOnce(ENDED_SEASON);
-    mockClient.firstOrNull.mockResolvedValueOnce({ cnt: 1 });
     // Snapshot team data
     mockClient.query.mockResolvedValueOnce({
       results: [
@@ -336,9 +339,8 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
   });
 
   it("should aggregate live when no snapshot exists", async () => {
-    mockClient.firstOrNull.mockResolvedValueOnce(ENDED_SEASON);
-    // No snapshot
-    mockClient.firstOrNull.mockResolvedValueOnce({ cnt: 0 });
+    // ENDED_SEASON_NO_SNAPSHOT has snapshot_ready=0
+    mockClient.firstOrNull.mockResolvedValueOnce(ENDED_SEASON_NO_SNAPSHOT);
     mockClient.query.mockResolvedValueOnce({ results: [] });
 
     const res = await GET(makeRequest(), { params: routeParams });
@@ -350,6 +352,18 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
     // Verify the live aggregation query was used (queries usage_records)
     const sql = mockClient.query.mock.calls[0]![0] as string;
     expect(sql).toContain("usage_records");
+  });
+
+  it("should read snapshot_ready from season row instead of separate COUNT query", async () => {
+    mockClient.firstOrNull.mockResolvedValueOnce(ACTIVE_SEASON);
+    mockClient.query.mockResolvedValueOnce({ results: [] });
+
+    await GET(makeRequest(), { params: routeParams });
+
+    // Only one firstOrNull call (season lookup) — no separate COUNT(*) query
+    expect(mockClient.firstOrNull).toHaveBeenCalledTimes(1);
+    const sql = mockClient.firstOrNull.mock.calls[0]![0] as string;
+    expect(sql).toContain("snapshot_ready");
   });
 
   it("should return 404 for non-existent season", async () => {
