@@ -69,7 +69,7 @@ describe("createTokenDrivers", () => {
     });
     expect(fileDrivers).toHaveLength(6);
     const sources = fileDrivers.map((d) => d.source);
-    expect(sources).toEqual(["claude-code", "gemini-cli", "opencode", "openclaw", "codex", "vscode-copilot"]);
+    expect(sources).toEqual(["claude-code", "codex", "gemini-cli", "opencode", "openclaw", "vscode-copilot"]);
     expect(dbDrivers).toHaveLength(0);
   });
 
@@ -161,7 +161,7 @@ describe("createSessionDrivers", () => {
     });
     expect(fileDrivers).toHaveLength(5);
     const sources = fileDrivers.map((d) => d.source);
-    expect(sources).toEqual(["claude-code", "gemini-cli", "opencode", "openclaw", "codex"]);
+    expect(sources).toEqual(["claude-code", "codex", "gemini-cli", "opencode", "openclaw"]);
     expect(dbDrivers).toHaveLength(0);
   });
 

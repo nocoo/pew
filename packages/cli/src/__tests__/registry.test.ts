@@ -52,10 +52,10 @@ describe("notifier registry", () => {
     expect(drivers).toHaveLength(5);
     expect(drivers.map((driver) => driver.source)).toEqual([
       "claude-code",
+      "codex",
       "gemini-cli",
       "opencode",
       "openclaw",
-      "codex",
     ]);
   });
 

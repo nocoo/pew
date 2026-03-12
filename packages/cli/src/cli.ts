@@ -244,7 +244,7 @@ const statusCommand = defineCommand({
     if (Object.keys(result.sources).length > 0) {
       consola.log("");
       consola.log(pc.bold("  Files by source:"));
-      for (const [source, count] of Object.entries(result.sources)) {
+      for (const [source, count] of Object.entries(result.sources).sort(([a], [b]) => a.localeCompare(b))) {
         consola.log(`    ${pc.cyan(source.padEnd(14))} ${count}`);
       }
     }
@@ -252,7 +252,7 @@ const statusCommand = defineCommand({
     if (Object.keys(result.notifiers).length > 0) {
       consola.log("");
       consola.log(pc.bold("  Notifiers:"));
-      for (const [source, status] of Object.entries(result.notifiers)) {
+      for (const [source, status] of Object.entries(result.notifiers).sort(([a], [b]) => a.localeCompare(b))) {
         const renderedStatus =
           status === "installed"
             ? pc.green(status)
