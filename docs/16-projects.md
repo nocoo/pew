@@ -11,8 +11,8 @@ Each AI tool generates `project_ref` differently:
 
 | Tool | Raw Source | Hashed by | `project_ref` Format |
 |------|-----------|-----------|---------------------|
-| Claude Code | Path-encoded dir name in `~/.claude/projects/` | **Pew** — `SHA-256(dirName)[0:12]` | `a1b2c3d4e5f6` |
-| Codex | `session_meta.payload.cwd` (absolute path) | **Pew** — `SHA-256(cwd)[0:12]` | `a1b2c3d4e5f6` |
+| Claude Code | Path-encoded dir name in `~/.claude/projects/` | **pew** — `SHA-256(dirName)[0:12]` | `a1b2c3d4e5f6` |
+| Codex | `session_meta.payload.cwd` (absolute path) | **pew** — `SHA-256(cwd)[0:12]` | `a1b2c3d4e5f6` |
 | Gemini CLI | `projectHash` field in session JSON | **Gemini CLI** (pre-hashed) | opaque string |
 | OpenCode (SQLite) | `session.project_id` column (SHA-1) | **OpenCode** (pre-hashed) | 40-char hex |
 | OpenCode (JSON) | None — legacy data before 2026-02-15 | N/A | `null` |
@@ -25,7 +25,7 @@ values because the hashing inputs differ (encoded dir name vs. absolute path).
 > **Note on Claude Code encoding**: Claude stores projects under directory
 > names like `-Users-nocoo-workspace-personal-pew` (path with `/` and `.`
 > replaced by `-`). This encoding is **not reversible** (cannot distinguish
-> original `-`, `.`, and `/`), so Pew hashes the directory name itself rather
+> original `-`, `.`, and `/`), so pew hashes the directory name itself rather
 > than attempting to reconstruct the absolute path. This means Claude Code and
 > Codex working on the same directory will produce **different** `project_ref`
 > values — users can group them into a single project via the alias system.

@@ -1,5 +1,5 @@
 /**
- * Auth.js v5 configuration for Pew SaaS.
+ * Auth.js v5 configuration for pew SaaS.
  *
  * Uses JWT strategy (no session table needed) with Google OAuth.
  * User data stored in Cloudflare D1 via custom adapter.

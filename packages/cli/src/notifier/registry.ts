@@ -51,6 +51,28 @@ const DRIVERS: NotifierDriver[] = [
       }),
   },
   {
+    source: "codex",
+    displayName: "Codex",
+    install: (paths) =>
+      installCodexNotifier({
+        configPath: paths.codexConfigPath,
+        notifyPath: paths.notifyPath,
+        originalBackupPath: paths.codexNotifyOriginalPath,
+      }),
+    uninstall: (paths) =>
+      uninstallCodexNotifier({
+        configPath: paths.codexConfigPath,
+        notifyPath: paths.notifyPath,
+        originalBackupPath: paths.codexNotifyOriginalPath,
+      }),
+    status: (paths) =>
+      getCodexNotifierStatus({
+        configPath: paths.codexConfigPath,
+        notifyPath: paths.notifyPath,
+        originalBackupPath: paths.codexNotifyOriginalPath,
+      }),
+  },
+  {
     source: "gemini-cli",
     displayName: "Gemini CLI",
     install: (paths) =>
@@ -110,28 +132,6 @@ const DRIVERS: NotifierDriver[] = [
         pluginBaseDir: paths.openclawPluginDir,
         notifyPath: paths.notifyPath,
         openclawConfigPath: paths.openclawConfigPath,
-      }),
-  },
-  {
-    source: "codex",
-    displayName: "Codex",
-    install: (paths) =>
-      installCodexNotifier({
-        configPath: paths.codexConfigPath,
-        notifyPath: paths.notifyPath,
-        originalBackupPath: paths.codexNotifyOriginalPath,
-      }),
-    uninstall: (paths) =>
-      uninstallCodexNotifier({
-        configPath: paths.codexConfigPath,
-        notifyPath: paths.notifyPath,
-        originalBackupPath: paths.codexNotifyOriginalPath,
-      }),
-    status: (paths) =>
-      getCodexNotifierStatus({
-        configPath: paths.codexConfigPath,
-        notifyPath: paths.notifyPath,
-        originalBackupPath: paths.codexNotifyOriginalPath,
       }),
   },
 ];

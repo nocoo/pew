@@ -1,5 +1,5 @@
 /**
- * Pew Ingest Worker — Cloudflare Worker with native D1 bindings.
+ * pew Ingest Worker — Cloudflare Worker with native D1 bindings.
  *
  * Receives pre-validated records from Next.js and performs
  * atomic batch upserts via env.DB.batch().

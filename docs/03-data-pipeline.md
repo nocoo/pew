@@ -1,6 +1,6 @@
 # Data Pipeline & Token Collection
 
-> Complete reference for Pew's token collection pipeline: raw log formats,
+> Complete reference for pew's token collection pipeline: raw log formats,
 > unified types, aggregation, upload protocol, and database schema.
 
 ## Pipeline Overview
@@ -25,7 +25,7 @@ State files:
 
 ## Stage 1 — Raw Log Files
 
-Each AI tool writes logs in its own format. Pew discovers and parses them
+Each AI tool writes logs in its own format. pew discovers and parses them
 incrementally using per-file cursors.
 
 ### 1.1 Claude Code

@@ -1,5 +1,5 @@
 /**
- * Core type definitions for the Pew token usage tracking system.
+ * Core type definitions for the pew token usage tracking system.
  *
  * Architecture:
  *   CLI (Parsers) → UsageRecord → HourBucket → Upload to SaaS

@@ -69,7 +69,7 @@ records exceed 50, the CLI automatically sends multiple HTTP batches.
 
 ## Free Tier Budget
 
-| Resource | Free Limit | Pew Estimate | OK? |
+| Resource | Free Limit | pew Estimate | OK? |
 |----------|-----------|---------------|-----|
 | Worker requests | 100K/day | ~tens/day | yes |
 | Worker CPU | 10ms/invocation | batch 50 → ~1-2ms | yes |

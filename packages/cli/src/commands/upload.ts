@@ -1,5 +1,5 @@
 /**
- * CLI upload command — sends local token queue records to the Pew SaaS.
+ * CLI upload command — sends local token queue records to the pew SaaS.
  *
  * Thin wrapper around the generic upload engine with token-specific
  * preprocessing (aggregation by source/model/hour_start).
@@ -21,7 +21,7 @@ import type { QueueRecord } from "@pew/core";
 export interface UploadOptions {
   /** Directory for config file and queue state */
   stateDir: string;
-  /** Base URL of the Pew SaaS */
+  /** Base URL of the pew SaaS */
   apiUrl: string;
   /** Whether dev mode is active (uses config.dev.json) */
   dev?: boolean;

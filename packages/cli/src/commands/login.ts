@@ -29,7 +29,7 @@ export function resolveHost(dev: boolean): string {
 export interface LoginOptions {
   /** Directory for config file */
   configDir: string;
-  /** Base URL of the Pew SaaS */
+  /** Base URL of the pew SaaS */
   apiUrl: string;
   /** Whether dev mode is active (uses config.dev.json) */
   dev?: boolean;
@@ -150,7 +150,7 @@ export async function executeLogin(options: LoginOptions): Promise<LoginResult> 
 function htmlPage(title: string, message: string): string {
   return `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><title>Pew - ${title}</title>
+<head><meta charset="utf-8"><title>pew - ${title}</title>
 <style>
   body { font-family: -apple-system, sans-serif; text-align: center; padding: 60px 20px; background: #0a0a0a; color: #fafafa; }
   h1 { font-size: 2rem; margin-bottom: 1rem; }

@@ -8,7 +8,7 @@
 
 ## Context
 
-Pew currently tracks 6 AI coding tools (Claude Code, Codex, Gemini CLI, OpenCode, OpenClaw, VS Code Copilot),
+pew currently tracks 6 AI coding tools (Claude Code, Codex, Gemini CLI, OpenCode, OpenClaw, VS Code Copilot),
 all of which write structured logs locally with **exact** token counts provided by
 their respective APIs.
 
@@ -334,7 +334,7 @@ result lines, and joins against the persisted `requestMeta` to produce records.
 
 ### Token Mapping
 
-| VSCode Field | Pew `TokenDelta` Field | Notes |
+| VSCode Field | pew `TokenDelta` Field | Notes |
 |-------------|----------------------|-------|
 | `promptTokens` | `inputTokens` | Exact. No cache breakdown available |
 | `outputTokens` | `outputTokens` | Exact |
@@ -365,7 +365,7 @@ correlation across incremental reads.
    does not cause data loss. If a file is truncated below the cursor offset,
    the inode/size check will detect it and trigger a full re-read.
 4. **cachedInputTokens / reasoningOutputTokens**: Set to 0. VSCode does not
-   report these breakdowns. This means Pew will **undercount** for VSCode
+    report these breakdowns. This means pew will **undercount** for VSCode
    Copilot compared to sources that do report cache/reasoning tokens — the
    numbers are a lower bound, never an overcount.
 

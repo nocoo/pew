@@ -238,7 +238,7 @@ function buildPluginMeta(): string {
   return `${JSON.stringify(
     {
       id: PLUGIN_ID,
-      name: "Pew OpenClaw Session Sync",
+      name: "pew OpenClaw Session Sync",
       description: "Trigger pew sync on OpenClaw agent/session lifecycle events.",
       configSchema: {
         type: "object",

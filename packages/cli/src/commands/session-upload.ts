@@ -1,5 +1,5 @@
 /**
- * CLI session upload command — sends local session queue records to the Pew SaaS.
+ * CLI session upload command — sends local session queue records to the pew SaaS.
  *
  * Thin wrapper around the generic upload engine with session-specific
  * preprocessing (deduplication: keep only latest snapshot per session_key).
@@ -21,7 +21,7 @@ import type { SessionQueueRecord } from "@pew/core";
 export interface SessionUploadOptions {
   /** Directory for config file and queue state */
   stateDir: string;
-  /** Base URL of the Pew SaaS */
+  /** Base URL of the pew SaaS */
   apiUrl: string;
   /** Whether dev mode is active (uses config.dev.json) */
   dev?: boolean;

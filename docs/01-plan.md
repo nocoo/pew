@@ -1,11 +1,11 @@
-# Pew — Implementation Plan
+# pew — Implementation Plan
 
 > Monorepo skeleton for token usage tracking CLI + SaaS dashboard.
 > Mirror structure from `../otter`, token collection logic from `../vibeusage`.
 
 ## Overview
 
-Pew collects token usage from 6 local AI coding tools and provides a SaaS dashboard
+pew collects token usage from 6 local AI coding tools and provides a SaaS dashboard
 with auth, data display, public profiles, and leaderboards.
 
 ### Supported AI Tools

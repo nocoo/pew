@@ -1,5 +1,5 @@
 /**
- * Generic upload engine — sends queued records to a Pew SaaS endpoint.
+ * Generic upload engine — sends queued records to a pew SaaS endpoint.
  *
  * This is the shared pipeline used by both token and session upload commands.
  * It handles:
@@ -37,7 +37,7 @@ export interface UploadEngineConfig<T> {
 export interface UploadExecuteOptions {
   /** Directory for config file and queue state */
   stateDir: string;
-  /** Base URL of the Pew SaaS */
+  /** Base URL of the pew SaaS */
   apiUrl: string;
   /** Whether dev mode is active (uses config.dev.json) */
   dev?: boolean;

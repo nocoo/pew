@@ -667,7 +667,7 @@ export function toSourceTrendPoints(rows: UsageRow[]): SourceTrendPoint[] {
 
   // Build result with zero-fill for missing sources
   const dates = Array.from(byDate.keys()).sort();
-  const sourceKeys = Array.from(allSources);
+  const sourceKeys = Array.from(allSources).sort();
 
   return dates.map((date) => {
     const dateMap = byDate.get(date)!;

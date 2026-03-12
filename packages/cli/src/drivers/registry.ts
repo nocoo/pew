@@ -80,6 +80,9 @@ export function createTokenDrivers(opts: TokenDriverRegistryOpts): TokenDriverSe
   if (opts.claudeDir) {
     fileDrivers.push(claudeTokenDriver);
   }
+  if (opts.codexSessionsDir) {
+    fileDrivers.push(codexTokenDriver);
+  }
   if (opts.geminiDir) {
     fileDrivers.push(geminiTokenDriver);
   }
@@ -88,9 +91,6 @@ export function createTokenDrivers(opts: TokenDriverRegistryOpts): TokenDriverSe
   }
   if (opts.openclawDir) {
     fileDrivers.push(openClawTokenDriver);
-  }
-  if (opts.codexSessionsDir) {
-    fileDrivers.push(codexTokenDriver);
   }
   if (opts.vscodeCopilotDirs && opts.vscodeCopilotDirs.length > 0) {
     fileDrivers.push(vscodeCopilotTokenDriver);
@@ -141,6 +141,9 @@ export function createSessionDrivers(opts: SessionDriverRegistryOpts): SessionDr
   if (opts.claudeDir) {
     fileDrivers.push(claudeSessionDriver);
   }
+  if (opts.codexSessionsDir) {
+    fileDrivers.push(codexSessionDriver);
+  }
   if (opts.geminiDir) {
     fileDrivers.push(geminiSessionDriver);
   }
@@ -149,9 +152,6 @@ export function createSessionDrivers(opts: SessionDriverRegistryOpts): SessionDr
   }
   if (opts.openclawDir) {
     fileDrivers.push(openClawSessionDriver);
-  }
-  if (opts.codexSessionsDir) {
-    fileDrivers.push(codexSessionDriver);
   }
   if (opts.openCodeDbPath && opts.openSessionDb) {
     dbDrivers.push(

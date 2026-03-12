@@ -5,7 +5,7 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 export const metadata = {
   title: "Privacy Policy — pew",
   description:
-    "How Pew collects and handles your AI coding tool usage data.",
+    "How pew collects and handles your AI coding tool usage data.",
 };
 
 export default function PrivacyPage() {
@@ -39,7 +39,7 @@ export default function PrivacyPage() {
           <section>
             <h3 className="font-semibold mb-2 text-base">Overview</h3>
             <p className="text-muted-foreground leading-relaxed">
-              Pew tracks AI coding tool usage statistics. It is designed to{" "}
+              pew tracks AI coding tool usage statistics. It is designed to{" "}
               <strong className="text-foreground">never</strong> collect the
               content of your work — no prompts, no code, no project names, no
               file paths.
@@ -49,10 +49,10 @@ export default function PrivacyPage() {
           {/* What we collect */}
           <section>
             <h3 className="font-semibold mb-2 text-base">
-              What Pew collects
+              What pew collects
             </h3>
             <p className="text-muted-foreground leading-relaxed mb-3">
-              Pew collects two categories of usage metadata from your local AI
+               pew collects two categories of usage metadata from your local AI
               tool log files:
             </p>
 
@@ -102,7 +102,7 @@ export default function PrivacyPage() {
               Project references (hashed)
             </h3>
             <p className="text-muted-foreground leading-relaxed mb-2">
-              Pew groups sessions by project but never transmits project names
+              pew groups sessions by project but never transmits project names
               or file paths. The process:
             </p>
             <ol className="list-decimal list-inside text-muted-foreground space-y-1 ml-2">
@@ -127,7 +127,7 @@ export default function PrivacyPage() {
           {/* What we don't collect */}
           <section>
             <h3 className="font-semibold mb-2 text-base">
-              What Pew does NOT collect
+              What pew does NOT collect
             </h3>
             <ul className="list-disc list-inside text-muted-foreground space-y-1 ml-2">
               <li>
@@ -136,7 +136,7 @@ export default function PrivacyPage() {
               <li>File paths — hashed before transmission</li>
               <li>Project names — only opaque hashes are transmitted</li>
               <li>
-                Code or repository content — Pew reads only AI tool
+                Code or repository content — pew reads only AI tool
                 log/metadata files
               </li>
               <li>
@@ -164,7 +164,7 @@ export default function PrivacyPage() {
               <li>Upload queue and API key configuration</li>
             </ul>
             <p className="text-muted-foreground leading-relaxed mt-2">
-              Pew <strong className="text-foreground">never</strong> modifies,
+              pew <strong className="text-foreground">never</strong> modifies,
               deletes, or moves your AI tool log files. It only reads them.
             </p>
           </section>
@@ -173,7 +173,7 @@ export default function PrivacyPage() {
           <section>
             <h3 className="font-semibold mb-2 text-base">Open source</h3>
             <p className="text-muted-foreground leading-relaxed">
-              Pew is open source under the MIT license. You can audit exactly
+              pew is open source under the MIT license. You can audit exactly
               what data is collected by reading the{" "}
               <a
                 href="https://github.com/nicnocquee/pew"

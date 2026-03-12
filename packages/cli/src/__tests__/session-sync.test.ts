@@ -1128,7 +1128,7 @@ describe("executeSessionSync", () => {
     expect(result.sources.codex).toBe(1);
 
     // Verify progress events were emitted for each source
-    for (const source of ["claude-code", "gemini-cli", "opencode", "openclaw", "codex"]) {
+    for (const source of ["claude-code", "codex", "gemini-cli", "opencode", "openclaw"]) {
       const sourceEvents = events.filter((e) => e.source === source);
       expect(sourceEvents.some((e) => e.phase === "discover"), `${source} should have discover`).toBe(true);
       expect(sourceEvents.some((e) => e.phase === "parse"), `${source} should have parse`).toBe(true);
@@ -1235,7 +1235,7 @@ describe("executeSessionSync", () => {
     expect(r2.totalSnapshots).toBe(0);
 
     // Verify skip-path parse progress was emitted for each file-based source
-    for (const source of ["claude-code", "gemini-cli", "openclaw", "codex"]) {
+    for (const source of ["claude-code", "codex", "gemini-cli", "openclaw"]) {
       const skipParseEvents = events.filter(
         (e) => e.source === source && e.phase === "parse" && e.current !== undefined,
       );

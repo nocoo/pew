@@ -231,11 +231,11 @@ const statusCommand = defineCommand({
     });
 
     consola.log("");
-    consola.log(pc.bold("Pew Status"));
+    consola.log(pc.bold("pew status"));
     consola.log(pc.dim("─".repeat(40)));
     consola.log(`  Tracked files:   ${pc.cyan(String(result.trackedFiles))}`);
     consola.log(
-      `  Last sync:       ${result.lastSync ? pc.green(result.lastSync) : pc.dim("never")}`,
+      `  Last sync:       ${result.lastSync ? pc.green(new Date(result.lastSync).toLocaleString()) : pc.dim("never")}`,
     );
     consola.log(
       `  Pending upload:  ${result.pendingRecords > 0 ? pc.yellow(String(result.pendingRecords)) : pc.dim("0")} records`,
@@ -244,7 +244,7 @@ const statusCommand = defineCommand({
     if (Object.keys(result.sources).length > 0) {
       consola.log("");
       consola.log(pc.bold("  Files by source:"));
-      for (const [source, count] of Object.entries(result.sources)) {
+      for (const [source, count] of Object.entries(result.sources).sort(([a], [b]) => a.localeCompare(b))) {
         consola.log(`    ${pc.cyan(source.padEnd(14))} ${count}`);
       }
     }
@@ -252,7 +252,7 @@ const statusCommand = defineCommand({
     if (Object.keys(result.notifiers).length > 0) {
       consola.log("");
       consola.log(pc.bold("  Notifiers:"));
-      for (const [source, status] of Object.entries(result.notifiers)) {
+      for (const [source, status] of Object.entries(result.notifiers).sort(([a], [b]) => a.localeCompare(b))) {
         const renderedStatus =
           status === "installed"
             ? pc.green(status)
@@ -271,7 +271,7 @@ const statusCommand = defineCommand({
 const loginCommand = defineCommand({
   meta: {
     name: "login",
-    description: "Connect your CLI to the Pew dashboard via browser OAuth",
+    description: "Connect your CLI to the pew dashboard via browser OAuth",
   },
   args: {
     force: {
@@ -438,7 +438,7 @@ const initCommand = defineCommand({
     });
 
     consola.log("");
-    consola.log(pc.bold(args.dryRun ? "Pew Init (Dry Run)" : "Pew Init"));
+    consola.log(pc.bold(args.dryRun ? "pew init (dry run)" : "pew init"));
     consola.log(`  pew binary: ${pc.cyan(result.pewBin)}`);
     consola.log(`  notify.cjs: ${pc.dim(result.notifyHandler.path)}`);
     for (const hook of result.hooks) {
@@ -489,7 +489,7 @@ const uninstallCommand = defineCommand({
     });
 
     consola.log("");
-    consola.log(pc.bold(args.dryRun ? "Pew Uninstall (Dry Run)" : "Pew Uninstall"));
+    consola.log(pc.bold(args.dryRun ? "pew uninstall (dry run)" : "pew uninstall"));
     consola.log(`  notify.cjs: ${pc.dim(result.notifyHandler.path)}  ${result.notifyHandler.detail}`);
     consola.log(`  codex backup: ${pc.dim(result.codexBackup.path)}  ${result.codexBackup.detail}`);
     for (const hook of result.hooks) {
@@ -609,8 +609,12 @@ export const main = defineCommand({
     init: initCommand,
     uninstall: uninstallCommand,
   },
-  run() {
-    // Show usage when invoked without a subcommand (avoids citty's "No command specified" error)
-    showUsage(main);
+  run({ rawArgs }) {
+    // Show usage only when invoked directly without a subcommand.
+    // citty still calls the parent run() after executing a subcommand,
+    // but rawArgs will be non-empty (e.g. ["status"]) in that case.
+    if (rawArgs.length === 0) {
+      showUsage(main);
+    }
   },
 });

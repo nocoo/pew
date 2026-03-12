@@ -2,9 +2,9 @@
 
 **Last updated:** 2026-03-12
 
-Pew tracks AI coding tool usage statistics. It is designed to **never** collect the content of your work — no prompts, no code, no project names, no file paths.
+pew tracks AI coding tool usage statistics. It is designed to **never** collect the content of your work — no prompts, no code, no project names, no file paths.
 
-## What Pew collects
+## What pew collects
 
 ### Token usage (aggregated)
 
@@ -32,7 +32,7 @@ Token data is **aggregated into 30-minute buckets** before leaving your machine.
 
 ### Project references (hashed)
 
-Pew groups sessions by project, but **never transmits project names or file paths**. Instead:
+pew groups sessions by project, but **never transmits project names or file paths**. Instead:
 
 1. Each parser extracts a raw project identifier (e.g. a directory name, a working directory path, an upstream project ID).
 2. The identifier is hashed: `SHA-256(raw)[0:16]` — a one-way, irreversible 16-character hex string.
@@ -50,12 +50,12 @@ The server stores only the hash. You can optionally assign these opaque hashes t
 
 This is standard OAuth data required for authentication.
 
-## What Pew does NOT collect
+## What pew does NOT collect
 
 - **Conversation content** — prompts, responses, tool calls, code — never parsed, never stored
 - **File paths** — hashed before transmission; raw paths exist only in local cursor files
 - **Project names** — only opaque hashes are transmitted
-- **Code or repository content** — Pew reads only AI tool log/metadata files
+- **Code or repository content** — pew reads only AI tool log/metadata files
 - **Hardware identifiers** — Device ID is a random UUID, not derived from your machine
 
 ## What stays on your machine
@@ -70,7 +70,7 @@ Cursor files contain absolute file paths (needed to track read progress), but th
 
 ## Raw data is read-only
 
-Pew **never modifies, deletes, or moves** your AI tool log files (`~/.claude/`, `~/.gemini/`, `~/.local/share/opencode/`, `~/.openclaw/`). It only reads them.
+pew **never modifies, deletes, or moves** your AI tool log files (`~/.claude/`, `~/.gemini/`, `~/.local/share/opencode/`, `~/.openclaw/`). It only reads them.
 
 ## Data storage
 
@@ -78,7 +78,7 @@ Usage data is stored in Cloudflare D1 (SQLite). OAuth tokens are stored as part 
 
 ## Open source
 
-Pew is open source under the MIT license. You can audit exactly what data is collected by reading the source code — specifically:
+pew is open source under the MIT license. You can audit exactly what data is collected by reading the source code — specifically:
 
 - `packages/cli/src/parsers/` — what data is extracted from each AI tool
 - `packages/cli/src/utils/hash-project-ref.ts` — the hashing function

@@ -2,7 +2,7 @@
  * Privacy-safe project reference hashing.
  *
  * All project references are SHA-256 hashed before upload to ensure
- * Pew never transmits plaintext project names, paths, or other
+ * pew never transmits plaintext project names, paths, or other
  * identifying information. The hash is truncated to 16 hex chars
  * (64 bits) — enough for uniqueness, short enough for display.
  *

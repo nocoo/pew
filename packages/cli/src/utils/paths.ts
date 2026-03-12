@@ -39,15 +39,15 @@ function resolveVscodeCopilotDirs(home: string): string[] {
 }
 
 /**
- * Resolve default paths for Pew state and AI tool data.
+ * Resolve default paths for pew state and AI tool data.
  * All paths can be overridden for testing.
  */
 export function resolveDefaultPaths(home = homedir()) {
   const codexHome = process.env.CODEX_HOME || join(home, ".codex");
   return {
-    /** Pew state directory: ~/.config/pew/ */
+    /** pew state directory: ~/.config/pew/ */
     stateDir: join(home, ".config", "pew"),
-    /** Pew bin directory: ~/.config/pew/bin/ */
+    /** pew bin directory: ~/.config/pew/bin/ */
     binDir: join(home, ".config", "pew", "bin"),
     /** notify.cjs path: ~/.config/pew/bin/notify.cjs */
     notifyPath: join(home, ".config", "pew", "bin", "notify.cjs"),
