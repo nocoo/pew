@@ -80,6 +80,13 @@ function AppShellInner({ children }: AppShellProps) {
           </div>
           <div className="flex items-center gap-1">
             <a
+              href="/privacy"
+              aria-label="Privacy policy"
+              className="flex h-8 items-center justify-center rounded-lg px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            >
+              Privacy
+            </a>
+            <a
               href="https://github.com/nocoo/pew"
               target="_blank"
               rel="noopener noreferrer"

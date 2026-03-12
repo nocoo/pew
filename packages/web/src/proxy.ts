@@ -24,6 +24,7 @@ export function buildRedirectUrl(req: NextRequest, pathname: string): URL {
 export function isPublicRoute(pathname: string): boolean {
   return (
     pathname === "/" ||
+    pathname === "/privacy" ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/ingest") ||
     pathname.startsWith("/api/users/") ||

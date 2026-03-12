@@ -247,7 +247,10 @@ function LoginContent() {
 
             {/* Terms */}
             <p className="mt-3 text-center text-[10px] leading-relaxed text-muted-foreground/60">
-              By signing in you agree to our terms and privacy policy
+              By signing in you agree to our{" "}
+              <a href="/privacy" className="underline hover:text-muted-foreground transition-colors">
+                privacy policy
+              </a>
             </p>
           </div>
 

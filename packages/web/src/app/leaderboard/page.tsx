@@ -572,6 +572,10 @@ export default function LeaderboardPage() {
             pew
           </Link>{" "}
           &mdash; AI token usage tracker
+          <span className="mx-1.5">·</span>
+          <Link href="/privacy" className="hover:text-foreground transition-colors">
+            Privacy
+          </Link>
         </p>
       </footer>
     </div>

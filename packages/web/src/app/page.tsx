@@ -26,6 +26,10 @@ export default function LandingPage() {
       <footer className="px-6 py-3">
         <p className="text-center text-xs text-muted-foreground">
           © {new Date().getFullYear()} pew.md
+          <span className="mx-1.5">·</span>
+          <a href="/privacy" className="hover:text-foreground transition-colors">
+            Privacy
+          </a>
         </p>
       </footer>
     </div>
