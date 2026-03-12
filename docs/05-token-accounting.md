@@ -1,6 +1,6 @@
 # Token Accounting
 
-> Specification for how Pew counts, aggregates, and reports token usage.
+> Specification for how pew counts, aggregates, and reports token usage.
 > Covers per-source field mappings, the `total_tokens` formula, and a
 > cross-reference with vibeusage's accounting model.
 
@@ -22,14 +22,14 @@ Every usage record carries five token counters:
 total_tokens = input_tokens + cached_input_tokens + output_tokens + reasoning_output_tokens
 ```
 
-This is Pew's current accounting rule and is computed directly from the four
+This is pew's current accounting rule and is computed directly from the four
 stored counters. The rationale:
 
 1. **Cached tokens are real work.** The model reads the full KV cache and
    uses it for attention — the compute is reduced, not eliminated.
 2. **Single consistent formula across sources.** Some tools expose
    `reasoning` separately, some do not, and some expose a raw `total`.
-   Pew avoids source-specific branching here and always sums the tracked fields.
+   pew avoids source-specific branching here and always sums the tracked fields.
 3. **Intuitive semantics.** "How many tokens did I use?" should reflect
    everything the model touched, not a billing-weighted subset.
 
@@ -139,24 +139,24 @@ Fallback              input + output + reasoning                  everything els
 
 For Claude and OpenCode (the dominant sources), vibeusage's
 `billable_total_tokens` uses `input + cached + output + reasoning` — the
-same formula Pew uses for `total_tokens`.
+same formula pew uses for `total_tokens`.
 
 ### Naming Clarification
 
 vibeusage's name `billable_total_tokens` is **misleading**. It does not
 reflect billing cost (which would require per-field price weighting like
 `input × $3 + cached × $0.30 + output × $15`). It is a **gross token
-count** — the same concept Pew calls `total_tokens`.
+count** — the same concept pew calls `total_tokens`.
 
 ### Expected Alignment
 
 When both tools process the same log files for the same time range:
 
-- **Claude / OpenCode sources**: Pew's `total_tokens` should equal
+- **Claude / OpenCode sources**: pew's `total_tokens` should equal
   vibeusage's `billable_total_tokens` (both use `input + cached + output + reasoning`).
-- **Gemini source**: Pew's `total_tokens` uses the component sum;
+- **Gemini source**: pew's `total_tokens` uses the component sum;
   vibeusage uses the raw `total_tokens` from the API. These may diverge
   if Gemini's raw total includes fields not captured by the four
   components.
 - **Other sources**: vibeusage excludes cached from its fallback formula,
-  so its number will be lower than Pew's.
+  so its number will be lower than pew's.

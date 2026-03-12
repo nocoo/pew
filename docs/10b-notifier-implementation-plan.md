@@ -925,7 +925,7 @@ OpenClaw 使用 session plugin，需要：
 ```json
 {
   "id": "pew-session-sync",
-  "name": "Pew OpenClaw Session Sync",
+  "name": "pew OpenClaw Session Sync",
   "description": "Trigger pew sync on OpenClaw agent/session lifecycle events.",
   "configSchema": { "type": "object", "additionalProperties": false, "properties": {} }
 }
@@ -1279,7 +1279,7 @@ pew init
 ### 输出格式
 
 ```
-Pew Init — Installing notifier hooks
+pew Init — Installing notifier hooks
 
   pew binary: /Users/nocoo/.bun/bin/pew
 
@@ -1291,7 +1291,7 @@ Pew Init — Installing notifier hooks
 
   notify.cjs → ~/.config/pew/bin/notify.cjs
 
-Done! AI tools will now auto-sync token usage to Pew.
+Done! AI tools will now auto-sync token usage to pew.
 ```
 
 ### dry-run 模式
@@ -1299,7 +1299,7 @@ Done! AI tools will now auto-sync token usage to Pew.
 ```
 pew init --dry-run
 
-Pew Init — Dry Run (no changes will be made)
+pew Init — Dry Run (no changes will be made)
 
   pew binary: /Users/nocoo/.bun/bin/pew
 
@@ -1439,7 +1439,7 @@ expect(names).toContain("init");
 ```ts
 return {
   // ... 现有路径
-  /** Pew bin directory: ~/.config/pew/bin/ */
+  /** pew bin directory: ~/.config/pew/bin/ */
   binDir: join(home, ".config", "pew", "bin"),
   /** notify.cjs path: ~/.config/pew/bin/notify.cjs */
   notifyPath: join(home, ".config", "pew", "bin", "notify.cjs"),

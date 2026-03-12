@@ -1,6 +1,6 @@
 ## Project
 
-Pew is a monorepo (Bun workspaces) for tracking token usage from local AI coding tools.
+pew is a monorepo (Bun workspaces) for tracking token usage from local AI coding tools.
 
 - `packages/core` — shared TypeScript types (`@pew/core`, private, zero runtime deps)
 - `packages/cli` — CLI tool (`@nocoo/pew`, published to npm, citty + consola + picocolors)
@@ -20,7 +20,7 @@ Claude Code, Codex, Gemini CLI, OpenCode, OpenClaw, VS Code Copilot
 - **TDD**: Always write tests first, then implement
 - **Commits**: Conventional Commits, atomic, auto-commit after changes
 - **`@pew/core` is NOT published**: Pure types, `import type` only, `devDependencies`
-- **Raw data is READ-ONLY**: Never modify, delete, or move user's local AI tool log files (`~/.claude/`, `~/.gemini/`, `~/.local/share/opencode/`, `~/.openclaw/`). Pew only reads these files. Write operations are limited to Pew's own state files under `~/.config/pew/`.
+- **Raw data is READ-ONLY**: Never modify, delete, or move user's local AI tool log files (`~/.claude/`, `~/.gemini/`, `~/.local/share/opencode/`, `~/.openclaw/`). pew only reads these files. Write operations are limited to pew's own state files under `~/.config/pew/`.
 
 ## CLI Dev Workflow
 
