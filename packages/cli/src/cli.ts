@@ -62,17 +62,7 @@ const syncCommand = defineCommand({
     const paths = resolveDefaultPaths();
     consola.start("Syncing token usage from AI coding tools...\n");
 
-    // Dynamic import: opencode-sqlite-db.ts uses bun:sqlite which is
-    // only available at runtime under Bun, not in Vitest/Node test env.
-    let openMessageDb: typeof import("./parsers/opencode-sqlite-db.js").openMessageDb | undefined;
-    let openSessionDb: typeof import("./parsers/opencode-sqlite-db.js").openSessionDb | undefined;
-    try {
-      const mod = await import("./parsers/opencode-sqlite-db.js");
-      openMessageDb = mod.openMessageDb;
-      openSessionDb = mod.openSessionDb;
-    } catch {
-      // bun:sqlite not available — SQLite sync will be skipped
-    }
+    const { openMessageDb, openSessionDb } = await import("./parsers/opencode-sqlite-db.js");
 
     // Ensure a stable device ID exists for multi-device dedup
     const configManager = new ConfigManager(paths.stateDir, args.dev);
@@ -101,6 +91,9 @@ const syncCommand = defineCommand({
               `  ${pc.cyan(event.source)} ${event.current}/${event.total} files`,
             );
           }
+        }
+        if (event.phase === "warn" && event.message) {
+          consola.warn(`  ${pc.yellow(event.message)}`);
         }
       },
     });
@@ -162,6 +155,9 @@ const syncCommand = defineCommand({
               `  ${pc.cyan(event.source)} ${event.current}/${event.total} files`,
             );
           }
+        }
+        if (event.phase === "warn" && event.message) {
+          consola.warn(`  ${pc.yellow(event.message)}`);
         }
       },
     });
@@ -356,15 +352,7 @@ const notifyCommand = defineCommand({
 
     const paths = resolveDefaultPaths();
 
-    let openMessageDb: typeof import("./parsers/opencode-sqlite-db.js").openMessageDb | undefined;
-    let openSessionDb: typeof import("./parsers/opencode-sqlite-db.js").openSessionDb | undefined;
-    try {
-      const mod = await import("./parsers/opencode-sqlite-db.js");
-      openMessageDb = mod.openMessageDb;
-      openSessionDb = mod.openSessionDb;
-    } catch {
-      // bun:sqlite not available — SQLite sync will be skipped
-    }
+    const { openMessageDb, openSessionDb } = await import("./parsers/opencode-sqlite-db.js");
 
     // Ensure a stable device ID exists for multi-device dedup
     const notifyConfigManager = new ConfigManager(paths.stateDir);

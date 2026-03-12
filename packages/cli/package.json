@@ -36,12 +36,14 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "better-sqlite3": "^12.6.2",
     "citty": "^0.1.0",
     "consola": "^3.4.0",
     "picocolors": "^1.1.0"
   },
   "devDependencies": {
     "@pew/core": "workspace:*",
+    "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^22.0.0"
   }
 }

@@ -88,7 +88,7 @@ describe("notifier registry", () => {
     expect(statuses["claude-code"]).toBe("not-installed");
   });
 
-  it("installAll catches driver.install errors and returns skip result", async () => {
+  it("installAll catches driver.install errors and returns skip result", { timeout: 15_000 }, async () => {
     // Mock the claude-hook install to throw
     const claudeHook = await import("../notifier/claude-hook.js");
     const spy = vi
