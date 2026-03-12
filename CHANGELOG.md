@@ -1,5 +1,44 @@
 # Changelog
 
+## v1.3.0
+
+### Features
+
+- **VS Code Copilot support** — Full end-to-end integration as the 6th supported AI tool: CRDT JSONL parser, multi-directory file discovery, token driver, session driver, CLI sync/notify/status wiring, and dashboard source enumerations
+- **Team owner controls** — Member list view, kick members, rename team, leave guard for owners
+- **Team logo upload** — R2-backed logo upload with unique keys, compensating R2 delete on DB failure, cache busting, and error state reset
+
+### Fixes
+
+- **Worker ON CONFLICT mismatch** — Redeployed Worker after migration 006 added `device_id` to UNIQUE constraint (was causing all token ingests to silently fail with 500)
+
+### Infrastructure
+
+- **npm keywords** — Added `openclaw`, `copilot`, `vscode-copilot` for discoverability
+- **Documentation** — All tool lists updated to reflect 6 supported AI tools across CLAUDE.md, docs, and test assertions
+- **Retrospective** — Documented Worker deploy-after-migration lesson in CLAUDE.md
+
+## v1.2.0
+
+### Features
+
+- **Projects page** — Two-layer project model (projects + aliases) with session-based project stats, project breakdown chart, and project filter on sessions page
+- **Multi-device sync** — Added `device_id` column to usage records for per-device deduplication
+- **Team member limit** — `app_settings` table with configurable `max_team_members` (default 5)
+
+### Fixes
+
+- **Team join race condition** — Atomic INSERT...SELECT prevents duplicate team memberships
+- **Project alias deduplication** — PATCH projects deduplicates `add_aliases` to prevent UNIQUE constraint errors
+- **Project rollback safety** — Rollback logic in projects API prevents partial updates; pre-existing aliases preserved during rollback
+- **Admin settings validation** — `max_team_members` validated as positive integer
+- **UI polish** — Unified lowercase "pew" brand with handwriting font, leaderboard z-index and font sizing fixes
+
+### Infrastructure
+
+- **D1 migration 006** — `device_id TEXT NOT NULL DEFAULT 'default'` on `usage_records` with updated UNIQUE constraint (5 columns)
+- **Squashed schema sync** — `001-init.sql` updated with projects, device index, and renumbered migrations
+
 ## v1.1.1
 
 ### Fixes
