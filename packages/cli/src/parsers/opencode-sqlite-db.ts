@@ -1,21 +1,77 @@
-import Database from "better-sqlite3";
 import type { MessageRow, QueryMessagesFn } from "./opencode-sqlite.js";
 import type { SessionRow, SessionMessageRow } from "./opencode-sqlite-session.js";
+
+/**
+ * Unified SQLite database interface that works across Bun and Node.js runtimes.
+ * - In Bun: uses native bun:sqlite (fast, no native deps)
+ * - In Node.js: uses better-sqlite3 (requires native compilation)
+ */
+interface SqliteDb {
+  prepare(sql: string): SqliteStmt;
+  close(): void;
+}
+
+interface SqliteStmt {
+  all(...params: unknown[]): unknown[];
+}
+
+// Cache the resolved SQLite implementation
+let cachedSqliteImpl: ((dbPath: string) => SqliteDb) | null = null;
+let sqliteLoadAttempted = false;
+
+/**
+ * Synchronously get a SQLite database opener.
+ * Uses bun:sqlite under Bun, better-sqlite3 under Node.js.
+ * Returns null if neither is available.
+ */
+function getSqliteOpener(): ((dbPath: string) => SqliteDb) | null {
+  if (sqliteLoadAttempted) return cachedSqliteImpl;
+  sqliteLoadAttempted = true;
+
+  const isBun = typeof globalThis.Bun !== "undefined";
+
+  if (isBun) {
+    // Bun: use bun:sqlite (synchronous require works in Bun)
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { Database } = require("bun:sqlite");
+      cachedSqliteImpl = (dbPath: string) => new Database(dbPath, { readonly: true });
+      return cachedSqliteImpl;
+    } catch {
+      // bun:sqlite not available (shouldn't happen in Bun)
+    }
+  } else {
+    // Node.js: use better-sqlite3
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const BetterSqlite3 = require("better-sqlite3");
+      cachedSqliteImpl = (dbPath: string) => new BetterSqlite3(dbPath, { readonly: true });
+      return cachedSqliteImpl;
+    } catch {
+      // better-sqlite3 not available (native module issues)
+    }
+  }
+
+  return null;
+}
 
 /**
  * Open an OpenCode SQLite database in read-only mode
  * and return a queryMessages function for use with parseOpenCodeSqlite().
  *
- * Uses better-sqlite3 for cross-runtime SQLite access (works under both
- * Node.js and Bun, unlike bun:sqlite which is Bun-only).
+ * Uses bun:sqlite under Bun runtime and better-sqlite3 under Node.js
+ * for cross-runtime SQLite access.
  * Returns null if the database cannot be opened.
  */
 export function openMessageDb(
   dbPath: string,
 ): { queryMessages: QueryMessagesFn; close: () => void } | null {
-  let db: InstanceType<typeof Database>;
+  const opener = getSqliteOpener();
+  if (!opener) return null;
+
+  let db: SqliteDb;
   try {
-    db = new Database(dbPath, { readonly: true });
+    db = opener(dbPath);
   } catch {
     return null;
   }
@@ -52,9 +108,12 @@ export function openSessionDb(
   querySessionMessages: QuerySessionMessagesFn;
   close: () => void;
 } | null {
-  let db: InstanceType<typeof Database>;
+  const opener = getSqliteOpener();
+  if (!opener) return null;
+
+  let db: SqliteDb;
   try {
-    db = new Database(dbPath, { readonly: true });
+    db = opener(dbPath);
   } catch {
     return null;
   }
