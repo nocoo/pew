@@ -84,10 +84,10 @@ column default `'default'`. This is **not** a UUID and must be handled distinctl
 
 ## Database Changes
 
-### Migration 007: `device_aliases`
+### Migration 009: `device_aliases`
 
 ```sql
--- scripts/migrations/007-device-aliases.sql
+-- scripts/migrations/009-device-aliases.sql
 CREATE TABLE IF NOT EXISTS device_aliases (
   user_id    TEXT NOT NULL REFERENCES users(id),
   device_id  TEXT NOT NULL,
@@ -459,7 +459,7 @@ Interactions (all inline, no modals — matches Projects pattern):
 
 | Operation | Path |
 |-----------|------|
-| **New** | `scripts/migrations/007-device-aliases.sql` |
+| **New** | `scripts/migrations/009-device-aliases.sql` |
 | **Edit** | `packages/core/src/types.ts` (add Device-related types) |
 | **New** | `packages/web/src/app/api/usage/by-device/route.ts` |
 | **New** | `packages/web/src/app/api/devices/route.ts` |
@@ -548,7 +548,7 @@ Covered by existing E2E infrastructure if needed later.
 
 | # | Commit | Scope |
 |---|--------|-------|
-| 1 | `feat: add device_aliases migration` | `scripts/migrations/007-device-aliases.sql` |
+| 1 | `feat: add device_aliases migration` | `scripts/migrations/009-device-aliases.sql` |
 | 2 | `feat: add device-related types to core` | `packages/core/src/types.ts` |
 | 3 | `test: add by-device API tests` | `__tests__/by-device.test.ts` (TDD — tests first) |
 | 4 | `feat: add GET /api/usage/by-device endpoint` | API route (make tests pass) |
