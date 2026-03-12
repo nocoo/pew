@@ -1,7 +1,9 @@
 import { stat } from "node:fs/promises";
 import type { Source } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
-import { normalizeOpenCodeTokens, coerceEpochMs } from "./opencode.js";
+import { normalizeOpenCodeTokens } from "./opencode.js";
+import { isAllZero } from "../utils/token-delta.js";
+import { coerceEpochMs } from "../utils/time.js";
 
 /** Result of parsing OpenCode SQLite database */
 export interface OpenCodeSqliteResult {
@@ -32,21 +34,6 @@ export interface MessageRow {
  * to handle same-millisecond boundary dedup.
  */
 export type QueryMessagesFn = (lastTimeCreated: number) => MessageRow[];
-
-/** Check if a TokenDelta is all zeros */
-function isAllZero(d: {
-  inputTokens: number;
-  cachedInputTokens: number;
-  outputTokens: number;
-  reasoningOutputTokens: number;
-}): boolean {
-  return (
-    d.inputTokens === 0 &&
-    d.cachedInputTokens === 0 &&
-    d.outputTokens === 0 &&
-    d.reasoningOutputTokens === 0
-  );
-}
 
 /**
  * Parse message rows from OpenCode's SQLite database for token usage records.

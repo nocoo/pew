@@ -3,21 +3,12 @@ import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import type { Source, TokenDelta } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
+import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
 
 /** Result of parsing an OpenClaw JSONL session file */
 export interface OpenClawFileResult {
   deltas: ParsedDelta[];
   endOffset: number;
-}
-
-/** Check if a TokenDelta is all zeros */
-function isAllZero(d: TokenDelta): boolean {
-  return (
-    d.inputTokens === 0 &&
-    d.cachedInputTokens === 0 &&
-    d.outputTokens === 0 &&
-    d.reasoningOutputTokens === 0
-  );
 }
 
 /**
@@ -80,10 +71,9 @@ export async function parseOpenClawFile(opts: {
         typeof msg.model === "string" ? msg.model.trim() : "unknown";
 
       const tokens: TokenDelta = {
-        inputTokens: Number(usage.input || 0),
-        cachedInputTokens:
-          Number(usage.cacheRead || 0) + Number(usage.cacheWrite || 0),
-        outputTokens: Number(usage.output || 0),
+        inputTokens: toNonNegInt(usage.input),
+        cachedInputTokens: toNonNegInt(usage.cacheRead) + toNonNegInt(usage.cacheWrite),
+        outputTokens: toNonNegInt(usage.output),
         reasoningOutputTokens: 0,
       };
 

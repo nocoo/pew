@@ -2,30 +2,14 @@ import { readFile } from "node:fs/promises";
 import type { Source, TokenDelta } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
 import { diffTotals } from "./gemini.js";
+import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
+import { coerceEpochMs } from "../utils/time.js";
 
 /** Result of parsing a single OpenCode message file */
 export interface OpenCodeFileResult {
   delta: ParsedDelta | null;
   messageKey: string | null;
   lastTotals: TokenDelta | null;
-}
-
-/** Coerce to non-negative integer */
-function toNonNegInt(v: unknown): number {
-  const n = Number(v);
-  if (!Number.isFinite(n) || n < 0) return 0;
-  return Math.floor(n);
-}
-
-/**
- * Coerce an epoch value to milliseconds.
- * Values < 1e12 are treated as seconds and multiplied by 1000.
- */
-export function coerceEpochMs(v: unknown): number {
-  const n = Number(v);
-  if (!Number.isFinite(n) || n <= 0) return 0;
-  if (n < 1e12) return Math.floor(n * 1000);
-  return Math.floor(n);
 }
 
 /**
@@ -52,16 +36,6 @@ export function normalizeOpenCodeTokens(
     outputTokens: toNonNegInt(tokens.output),
     reasoningOutputTokens: toNonNegInt(tokens.reasoning),
   };
-}
-
-/** Check if a TokenDelta is all zeros */
-function isAllZero(d: TokenDelta): boolean {
-  return (
-    d.inputTokens === 0 &&
-    d.cachedInputTokens === 0 &&
-    d.outputTokens === 0 &&
-    d.reasoningOutputTokens === 0
-  );
 }
 
 /**

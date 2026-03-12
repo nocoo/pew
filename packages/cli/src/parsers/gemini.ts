@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import type { Source, TokenDelta } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
+import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
 
 /** Result of parsing a Gemini session JSON file */
 export interface GeminiFileResult {
@@ -8,13 +9,6 @@ export interface GeminiFileResult {
   lastIndex: number;
   lastTotals: TokenDelta | null;
   lastModel: string | null;
-}
-
-/** Coerce to non-negative integer */
-function toNonNegInt(v: unknown): number {
-  const n = Number(v);
-  if (!Number.isFinite(n) || n < 0) return 0;
-  return Math.floor(n);
 }
 
 /**
@@ -37,16 +31,6 @@ export function normalizeGeminiTokens(
     outputTokens: toNonNegInt(tokens.output) + toNonNegInt(tokens.tool),
     reasoningOutputTokens: toNonNegInt(tokens.thoughts),
   };
-}
-
-/** Check if a TokenDelta is all zeros */
-function isAllZero(d: TokenDelta): boolean {
-  return (
-    d.inputTokens === 0 &&
-    d.cachedInputTokens === 0 &&
-    d.outputTokens === 0 &&
-    d.reasoningOutputTokens === 0
-  );
 }
 
 /** Compute total from a TokenDelta (for reset detection) */

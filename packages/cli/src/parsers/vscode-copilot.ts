@@ -25,6 +25,7 @@ import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import type { Source, TokenDelta } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
+import { toNonNegInt } from "../utils/token-delta.js";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -72,13 +73,6 @@ export interface VscodeCopilotFileResult {
 /** Strip "copilot/" prefix from model IDs (e.g. "copilot/claude-opus-4.6" → "claude-opus-4.6") */
 function normalizeModelId(raw: string): string {
   return raw.startsWith("copilot/") ? raw.slice(8) : raw;
-}
-
-/** Coerce to non-negative integer, returning 0 for invalid values */
-function toNonNegInt(v: unknown): number {
-  const n = Number(v);
-  if (!Number.isFinite(n) || n < 0) return 0;
-  return Math.floor(n);
 }
 
 /** Extract modelId and timestamp from a request object */

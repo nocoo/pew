@@ -2,6 +2,7 @@ import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import type { Source, TokenDelta } from "@pew/core";
+import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
 
 /** A parsed token delta with metadata for bucket aggregation */
 export interface ParsedDelta {
@@ -15,13 +16,6 @@ export interface ParsedDelta {
 export interface ClaudeFileResult {
   deltas: ParsedDelta[];
   endOffset: number;
-}
-
-/** Coerce to non-negative integer, returning 0 for invalid values */
-function toNonNegInt(v: unknown): number {
-  const n = Number(v);
-  if (!Number.isFinite(n) || n < 0) return 0;
-  return Math.floor(n);
 }
 
 /**
@@ -42,16 +36,6 @@ export function normalizeClaudeUsage(u: Record<string, unknown>): TokenDelta {
     outputTokens: toNonNegInt(u?.output_tokens),
     reasoningOutputTokens: 0,
   };
-}
-
-/** Check if a TokenDelta is all zeros */
-function isAllZero(delta: TokenDelta): boolean {
-  return (
-    delta.inputTokens === 0 &&
-    delta.cachedInputTokens === 0 &&
-    delta.outputTokens === 0 &&
-    delta.reasoningOutputTokens === 0
-  );
 }
 
 /**

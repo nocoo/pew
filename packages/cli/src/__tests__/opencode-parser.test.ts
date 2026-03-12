@@ -5,8 +5,8 @@ import { join } from "node:path";
 import {
   parseOpenCodeFile,
   normalizeOpenCodeTokens,
-  coerceEpochMs,
 } from "../parsers/opencode.js";
+import { coerceEpochMs } from "../utils/time.js";
 
 /** Helper: create an OpenCode message JSON */
 function opencodeMsg(overrides: Record<string, unknown> = {}): string {

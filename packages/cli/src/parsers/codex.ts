@@ -16,6 +16,7 @@ import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import type { Source, TokenDelta } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
+import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
 
 /** Result of parsing a single Codex JSONL rollout file */
 export interface CodexFileResult {
@@ -25,23 +26,6 @@ export interface CodexFileResult {
   lastTotals: TokenDelta | null;
   /** Last seen model identifier */
   lastModel: string | null;
-}
-
-/** Check if a TokenDelta is all zeros */
-function isAllZero(d: TokenDelta): boolean {
-  return (
-    d.inputTokens === 0 &&
-    d.cachedInputTokens === 0 &&
-    d.outputTokens === 0 &&
-    d.reasoningOutputTokens === 0
-  );
-}
-
-/** Coerce to non-negative integer */
-function toNonNegInt(v: unknown): number {
-  const n = Number(v);
-  if (!Number.isFinite(n) || n < 0) return 0;
-  return Math.floor(n);
 }
 
 /**
