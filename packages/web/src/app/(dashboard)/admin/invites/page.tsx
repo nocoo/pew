@@ -1,12 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Copy, Check } from "lucide-react";
+import { Plus, Trash2, Copy, Check, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { InviteCodeRow } from "@/app/api/admin/invites/route";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+type StatusFilter = "all" | "available";
 
 // ---------------------------------------------------------------------------
 // Skeleton
@@ -99,10 +105,26 @@ export default function AdminInvitesPage() {
     text: string;
   } | null>(null);
 
+  // Filter
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+
   // Generation
   const [showGenerate, setShowGenerate] = useState(false);
   const [genCount, setGenCount] = useState(1);
   const [generating, setGenerating] = useState(false);
+
+  // Copy all available
+  const [copiedAll, setCopiedAll] = useState(false);
+
+  // Derived: available codes + filtered rows
+  const availableCodes = useMemo(
+    () => rows.filter((r) => !r.used_by),
+    [rows]
+  );
+  const filteredRows = useMemo(
+    () => (statusFilter === "available" ? availableCodes : rows),
+    [statusFilter, availableCodes, rows]
+  );
 
   // ---------------------------------------------------------------------------
   // Redirect non-admins
@@ -339,15 +361,60 @@ export default function AdminInvitesPage() {
         </div>
       )}
 
+      {/* Toolbar: segment filter + copy available */}
+      {!loading && rows.length > 0 && (
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 rounded-lg bg-secondary p-1">
+            {(["all", "available"] as const).map((opt) => (
+              <button
+                key={opt}
+                onClick={() => setStatusFilter(opt)}
+                className={cn(
+                  "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+                  statusFilter === opt
+                    ? "bg-card text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {opt === "all"
+                  ? `All (${rows.length})`
+                  : `Available (${availableCodes.length})`}
+              </button>
+            ))}
+          </div>
+          {availableCodes.length > 0 && (
+            <button
+              onClick={async () => {
+                const md = availableCodes.map((r) => `- ${r.code}`).join("\n");
+                await navigator.clipboard.writeText(md);
+                setCopiedAll(true);
+                setTimeout(() => setCopiedAll(false), 2000);
+              }}
+              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+              title="Copy all available codes as Markdown list"
+            >
+              {copiedAll ? (
+                <Check className="h-3 w-3 text-success" strokeWidth={1.5} />
+              ) : (
+                <ClipboardList className="h-3 w-3" strokeWidth={1.5} />
+              )}
+              {copiedAll ? "Copied!" : "Copy Available"}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Loading */}
       {loading && <InvitesSkeleton />}
 
       {/* Table */}
       {!loading && (
         <>
-          {rows.length === 0 ? (
+          {filteredRows.length === 0 ? (
             <div className="rounded-[var(--radius-card)] bg-secondary p-8 text-center text-sm text-muted-foreground">
-              No invite codes yet. Generate some to get started.
+              {statusFilter === "available"
+                ? "No available invite codes."
+                : "No invite codes yet. Generate some to get started."}
             </div>
           ) : (
             <div className="rounded-xl bg-secondary p-1 overflow-x-auto">
@@ -375,7 +442,7 @@ export default function AdminInvitesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((row) => (
+                  {filteredRows.map((row) => (
                     <tr
                       key={row.id}
                       className="border-b border-border/50 last:border-0 hover:bg-accent/50 transition-colors"
