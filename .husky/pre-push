@@ -1,12 +1,33 @@
 #!/usr/bin/env sh
 
-# L3: API E2E Tests (port 17030)
+# pre-push: Full quality gate — UT + Lint + E2E
+# This catches issues from remote merges/rebases that bypass pre-commit.
+
+# 1. Unit Tests + Coverage (90% threshold)
+bun run test:coverage 2>&1
+TEST_EXIT=$?
+
+if [ $TEST_EXIT -ne 0 ]; then
+  echo "❌ pre-push FAILED: Unit tests or coverage threshold (90%) not met."
+  exit 1
+fi
+
+# 2. Full Lint (TypeScript strict type checking + ESLint)
+bun run lint 2>&1
+LINT_EXIT=$?
+
+if [ $LINT_EXIT -ne 0 ]; then
+  echo "❌ pre-push FAILED: TypeScript type check or ESLint errors."
+  exit 1
+fi
+
+# 3. L3 API E2E Tests (port 17030)
 bun run test:e2e 2>&1
 E2E_EXIT=$?
 
 if [ $E2E_EXIT -ne 0 ]; then
-  echo "❌ L3 FAILED: API E2E tests did not pass."
+  echo "❌ pre-push FAILED: API E2E tests did not pass."
   exit 1
 fi
 
-echo "✅ L3 (API E2E) passed."
+echo "✅ pre-push passed: UT + Coverage ≥90% + Lint + E2E"

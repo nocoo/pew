@@ -1,30 +1,12 @@
 #!/usr/bin/env sh
 
-# L1: Unit Tests + Coverage (90% threshold enforced by vitest.config.ts)
+# pre-commit: Unit Tests + Coverage (90% threshold enforced by vitest.config.ts)
 bun run test:coverage 2>&1
 TEST_EXIT=$?
 
 if [ $TEST_EXIT -ne 0 ]; then
-  echo "❌ L1 FAILED: Unit tests or coverage threshold (90%) not met."
+  echo "❌ pre-commit FAILED: Unit tests or coverage threshold (90%) not met."
   exit 1
 fi
 
-# L2a: TypeScript strict type checking (full project — tsc needs complete context)
-bun run lint:typecheck 2>&1
-TSC_EXIT=$?
-
-if [ $TSC_EXIT -ne 0 ]; then
-  echo "❌ L2 FAILED: TypeScript type check failed."
-  exit 1
-fi
-
-# L2b: ESLint on staged files only (via lint-staged)
-bunx lint-staged 2>&1
-LINT_EXIT=$?
-
-if [ $LINT_EXIT -ne 0 ]; then
-  echo "❌ L2 FAILED: ESLint errors in staged files."
-  exit 1
-fi
-
-echo "✅ L1 (UT + Coverage ≥90%) + L2 (TypeCheck + ESLint) passed."
+echo "✅ pre-commit passed: UT + Coverage ≥90%"
