@@ -14,12 +14,15 @@ const { resolveUser } = await import("@/lib/auth-helpers") as unknown as {
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
-function makeRequest(body: unknown, token?: string): Request {
+function makeRequest(body: unknown, token?: string, clientVersion?: string): Request {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
+  }
+  if (clientVersion) {
+    headers["X-Pew-Client-Version"] = clientVersion;
   }
   return new Request("http://localhost:7030/api/ingest", {
     method: "POST",
@@ -38,6 +41,9 @@ const VALID_RECORD = {
   reasoning_output_tokens: 0,
   total_tokens: 1700,
 };
+
+/** Version that satisfies the server-side MIN_CLIENT_VERSION gate */
+const VALID_VERSION = "1.6.0";
 
 /** Stub a successful Worker response */
 function stubWorkerOk(ingested = 1) {
@@ -76,7 +82,7 @@ describe("POST /api/ingest", () => {
       });
       stubWorkerOk();
 
-      const res = await POST(makeRequest([VALID_RECORD]));
+      const res = await POST(makeRequest([VALID_RECORD], undefined, VALID_VERSION));
 
       expect(res.status).toBe(200);
     });
@@ -88,7 +94,7 @@ describe("POST /api/ingest", () => {
       });
       stubWorkerOk();
 
-      const res = await POST(makeRequest([VALID_RECORD], "pk_abc123"));
+      const res = await POST(makeRequest([VALID_RECORD], "pk_abc123", VALID_VERSION));
 
       expect(res.status).toBe(200);
       // Verify Worker was called with userId from resolveUser
@@ -104,7 +110,7 @@ describe("POST /api/ingest", () => {
       });
       stubWorkerOk();
 
-      const res = await POST(makeRequest([VALID_RECORD], "pk_some_key"));
+      const res = await POST(makeRequest([VALID_RECORD], "pk_some_key", VALID_VERSION));
 
       expect(res.status).toBe(200);
       const [, fetchInit] = mockFetch.mock.calls[0]!;
@@ -122,7 +128,7 @@ describe("POST /api/ingest", () => {
     });
 
     it("should reject non-array body", async () => {
-      const res = await POST(makeRequest({ not: "array" }));
+      const res = await POST(makeRequest({ not: "array" }, undefined, VALID_VERSION));
 
       expect(res.status).toBe(400);
       const body = await res.json();
@@ -130,7 +136,7 @@ describe("POST /api/ingest", () => {
     });
 
     it("should reject empty array", async () => {
-      const res = await POST(makeRequest([]));
+      const res = await POST(makeRequest([], undefined, VALID_VERSION));
 
       expect(res.status).toBe(400);
       const body = await res.json();
@@ -139,7 +145,7 @@ describe("POST /api/ingest", () => {
 
     it("should reject records with invalid source", async () => {
       const res = await POST(
-        makeRequest([{ ...VALID_RECORD, source: "invalid-tool" }])
+        makeRequest([{ ...VALID_RECORD, source: "invalid-tool" }], undefined, VALID_VERSION)
       );
 
       expect(res.status).toBe(400);
@@ -149,14 +155,14 @@ describe("POST /api/ingest", () => {
 
     it("should reject records with missing model", async () => {
       const { model: _, ...noModel } = VALID_RECORD;
-      const res = await POST(makeRequest([noModel]));
+      const res = await POST(makeRequest([noModel], undefined, VALID_VERSION));
 
       expect(res.status).toBe(400);
     });
 
     it("should reject records with invalid hour_start format", async () => {
       const res = await POST(
-        makeRequest([{ ...VALID_RECORD, hour_start: "not-a-date" }])
+        makeRequest([{ ...VALID_RECORD, hour_start: "not-a-date" }], undefined, VALID_VERSION)
       );
 
       expect(res.status).toBe(400);
@@ -164,7 +170,7 @@ describe("POST /api/ingest", () => {
 
     it("should reject records with negative token values", async () => {
       const res = await POST(
-        makeRequest([{ ...VALID_RECORD, input_tokens: -1 }])
+        makeRequest([{ ...VALID_RECORD, input_tokens: -1 }], undefined, VALID_VERSION)
       );
 
       expect(res.status).toBe(400);
@@ -174,7 +180,7 @@ describe("POST /api/ingest", () => {
       const records = Array.from({ length: 51 }, () => ({
         ...VALID_RECORD,
       }));
-      const res = await POST(makeRequest(records));
+      const res = await POST(makeRequest(records, undefined, VALID_VERSION));
 
       expect(res.status).toBe(400);
       const body = await res.json();
@@ -182,7 +188,7 @@ describe("POST /api/ingest", () => {
     });
 
     it("should not call Worker for invalid requests", async () => {
-      const res = await POST(makeRequest([]));
+      const res = await POST(makeRequest([], undefined, VALID_VERSION));
 
       expect(res.status).toBe(400);
       expect(mockFetch).not.toHaveBeenCalled();
@@ -200,7 +206,7 @@ describe("POST /api/ingest", () => {
     it("should forward records to Worker via fetch", async () => {
       stubWorkerOk();
 
-      const res = await POST(makeRequest([VALID_RECORD]));
+      const res = await POST(makeRequest([VALID_RECORD], undefined, VALID_VERSION));
 
       expect(res.status).toBe(200);
       expect(mockFetch).toHaveBeenCalledOnce();
@@ -224,7 +230,7 @@ describe("POST /api/ingest", () => {
         { ...VALID_RECORD, source: "gemini-cli", model: "gemini-2.5-pro" },
         { ...VALID_RECORD, source: "opencode", model: "o3" },
       ];
-      const res = await POST(makeRequest(records));
+      const res = await POST(makeRequest(records, undefined, VALID_VERSION));
 
       expect(res.status).toBe(200);
       expect(mockFetch).toHaveBeenCalledOnce();
@@ -237,7 +243,7 @@ describe("POST /api/ingest", () => {
     it("should return ingested count in response", async () => {
       stubWorkerOk(2);
 
-      const res = await POST(makeRequest([VALID_RECORD, VALID_RECORD]));
+      const res = await POST(makeRequest([VALID_RECORD, VALID_RECORD], undefined, VALID_VERSION));
 
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -247,7 +253,7 @@ describe("POST /api/ingest", () => {
     it("should return 500 when Worker returns error", async () => {
       stubWorkerError(500, "D1 batch failed: table not found");
 
-      const res = await POST(makeRequest([VALID_RECORD]));
+      const res = await POST(makeRequest([VALID_RECORD], undefined, VALID_VERSION));
 
       expect(res.status).toBe(500);
       const body = await res.json();
@@ -257,11 +263,64 @@ describe("POST /api/ingest", () => {
     it("should return 500 when fetch itself throws", async () => {
       mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
-      const res = await POST(makeRequest([VALID_RECORD]));
+      const res = await POST(makeRequest([VALID_RECORD], undefined, VALID_VERSION));
 
       expect(res.status).toBe(500);
       const body = await res.json();
       expect(body.error).toContain("ingest");
+    });
+  });
+
+  describe("version gate", () => {
+    beforeEach(() => {
+      vi.mocked(resolveUser).mockResolvedValue({
+        userId: "u1",
+        email: "test@example.com",
+      });
+    });
+
+    it("should reject requests without X-Pew-Client-Version header", async () => {
+      const res = await POST(makeRequest([VALID_RECORD]));
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("Client version too old");
+      expect(body.error).toContain("pew reset");
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("should reject requests with version below MIN_CLIENT_VERSION", async () => {
+      const res = await POST(makeRequest([VALID_RECORD], undefined, "1.5.1"));
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("Client version too old");
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it("should accept requests with version equal to MIN_CLIENT_VERSION", async () => {
+      stubWorkerOk();
+
+      const res = await POST(makeRequest([VALID_RECORD], undefined, "1.6.0"));
+
+      expect(res.status).toBe(200);
+    });
+
+    it("should accept requests with version above MIN_CLIENT_VERSION", async () => {
+      stubWorkerOk();
+
+      const res = await POST(makeRequest([VALID_RECORD], undefined, "2.0.0"));
+
+      expect(res.status).toBe(200);
+    });
+
+    it("should check version after auth (unauthenticated gets 401, not 400)", async () => {
+      vi.mocked(resolveUser).mockResolvedValueOnce(null);
+
+      // No version header, but auth should fail first
+      const res = await POST(makeRequest([VALID_RECORD]));
+
+      expect(res.status).toBe(401);
     });
   });
 });

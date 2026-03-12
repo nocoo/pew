@@ -51,6 +51,8 @@ export interface UploadExecuteOptions {
   retryDelayMs?: number;
   /** Progress callback */
   onProgress?: (event: UploadProgressEvent) => void;
+  /** CLI version string sent as X-Pew-Client-Version header for server-side version gate */
+  clientVersion?: string;
 }
 
 export interface UploadProgressEvent {
@@ -93,6 +95,7 @@ export function createUploadEngine<T>(config: UploadEngineConfig<T>) {
       maxRetries = DEFAULT_MAX_RETRIES,
       retryDelayMs = DEFAULT_RETRY_DELAY_MS,
       onProgress,
+      clientVersion,
     } = opts;
 
     // 1. Load API key
@@ -149,6 +152,7 @@ export function createUploadEngine<T>(config: UploadEngineConfig<T>) {
         fetchFn,
         maxRetries,
         retryDelayMs,
+        clientVersion,
       });
 
       if (!result.ok) {
@@ -199,8 +203,9 @@ async function sendBatchWithRetry<T>(opts: {
   fetchFn: typeof globalThis.fetch;
   maxRetries: number;
   retryDelayMs: number;
+  clientVersion?: string;
 }): Promise<SendResult> {
-  const { endpoint, token, batch, fetchFn, maxRetries, retryDelayMs } = opts;
+  const { endpoint, token, batch, fetchFn, maxRetries, retryDelayMs, clientVersion } = opts;
 
   let lastError = "";
   let sleptFor429 = false;
@@ -213,12 +218,17 @@ async function sendBatchWithRetry<T>(opts: {
     sleptFor429 = false; // Reset for next iteration
 
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+      if (clientVersion) {
+        headers["X-Pew-Client-Version"] = clientVersion;
+      }
+
       const resp = await fetchFn(endpoint, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers,
         body: JSON.stringify(batch),
       });
 

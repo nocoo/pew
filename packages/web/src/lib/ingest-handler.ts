@@ -13,7 +13,7 @@
 
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
-import { MAX_INGEST_BATCH_SIZE } from "@pew/core";
+import { MAX_INGEST_BATCH_SIZE, MIN_CLIENT_VERSION } from "@pew/core";
 import type { ValidationResult } from "@pew/core";
 
 // ---------------------------------------------------------------------------
@@ -61,6 +61,18 @@ export function createIngestHandler<T>(
     }
 
     const { userId } = authResult;
+
+    // 1b. Version gate — reject old clients with token inflation bugs
+    const clientVersion = request.headers.get("X-Pew-Client-Version");
+    if (!clientVersion || compareSemver(clientVersion, MIN_CLIENT_VERSION) < 0) {
+      return NextResponse.json(
+        {
+          error:
+            "Client version too old. Run: npx @nocoo/pew@latest && pew reset",
+        },
+        { status: 400 },
+      );
+    }
 
     // 2. Parse body
     let records: unknown[];
@@ -143,4 +155,28 @@ export function createIngestHandler<T>(
 
     return NextResponse.json({ ingested: records.length });
   };
+}
+
+// ---------------------------------------------------------------------------
+// Semver comparison (minimal — handles "major.minor.patch" only)
+// ---------------------------------------------------------------------------
+
+/**
+ * Compare two semver strings. Returns:
+ *   -1 if a < b
+ *    0 if a === b
+ *    1 if a > b
+ *
+ * Non-numeric or missing segments are treated as 0.
+ */
+export function compareSemver(a: string, b: string): -1 | 0 | 1 {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    const va = pa[i] || 0;
+    const vb = pb[i] || 0;
+    if (va < vb) return -1;
+    if (va > vb) return 1;
+  }
+  return 0;
 }

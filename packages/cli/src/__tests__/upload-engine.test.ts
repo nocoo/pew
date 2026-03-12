@@ -595,4 +595,55 @@ describe("upload-engine", () => {
     ];
     expect(authHeader).toBe("Bearer pk_dev_token");
   });
+
+  // ---- Version header ----
+
+  it("should send X-Pew-Client-Version header when clientVersion is set", async () => {
+    const { queue, config } = createTestEngine(dir);
+    const cm = new ConfigManager(dir);
+    await cm.save({ token: "pk_test" });
+
+    await queue.append(makeRecord(1));
+
+    const { fetchFn, calls } = createMockFetch([
+      { status: 200, body: { ingested: 1 } },
+    ]);
+
+    const engine = createUploadEngine(config);
+    const result = await engine.execute({
+      stateDir: dir,
+      apiUrl: DEFAULT_HOST,
+      fetch: fetchFn,
+      clientVersion: "1.6.0",
+    });
+
+    expect(result.success).toBe(true);
+
+    const headers = calls[0].init.headers as Record<string, string>;
+    expect(headers["X-Pew-Client-Version"]).toBe("1.6.0");
+  });
+
+  it("should not send X-Pew-Client-Version header when clientVersion is omitted", async () => {
+    const { queue, config } = createTestEngine(dir);
+    const cm = new ConfigManager(dir);
+    await cm.save({ token: "pk_test" });
+
+    await queue.append(makeRecord(1));
+
+    const { fetchFn, calls } = createMockFetch([
+      { status: 200, body: { ingested: 1 } },
+    ]);
+
+    const engine = createUploadEngine(config);
+    const result = await engine.execute({
+      stateDir: dir,
+      apiUrl: DEFAULT_HOST,
+      fetch: fetchFn,
+    });
+
+    expect(result.success).toBe(true);
+
+    const headers = calls[0].init.headers as Record<string, string>;
+    expect(headers["X-Pew-Client-Version"]).toBeUndefined();
+  });
 });

@@ -34,6 +34,8 @@ export interface UploadOptions {
   retryDelayMs?: number;
   /** Progress callback */
   onProgress?: (event: UploadProgressEvent) => void;
+  /** CLI version string for server-side version gate */
+  clientVersion?: string;
 }
 
 export type { UploadResult, UploadProgressEvent };

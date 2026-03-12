@@ -34,6 +34,8 @@ export interface SessionUploadOptions {
   retryDelayMs?: number;
   /** Progress callback */
   onProgress?: (event: SessionUploadProgressEvent) => void;
+  /** CLI version string for server-side version gate */
+  clientVersion?: string;
 }
 
 export type SessionUploadProgressEvent = UploadProgressEvent;

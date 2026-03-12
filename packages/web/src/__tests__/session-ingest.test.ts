@@ -13,12 +13,15 @@ const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
 
-function makeRequest(body: unknown, token?: string): Request {
+function makeRequest(body: unknown, token?: string, clientVersion?: string): Request {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
+  }
+  if (clientVersion) {
+    headers["X-Pew-Client-Version"] = clientVersion;
   }
   return new Request("http://localhost:7030/api/ingest/sessions", {
     method: "POST",
@@ -41,6 +44,9 @@ const VALID_SESSION = {
   model: "claude-sonnet-4-20250514",
   snapshot_at: "2026-03-08T11:00:00Z",
 };
+
+/** Version that satisfies the server-side MIN_CLIENT_VERSION gate */
+const VALID_VERSION = "1.6.0";
 
 function stubWorkerOk(ingested = 1) {
   mockFetch.mockResolvedValueOnce(
@@ -86,7 +92,7 @@ describe("POST /api/ingest/sessions", () => {
       });
       stubWorkerOk();
 
-      const res = await POST(makeRequest([VALID_SESSION]));
+      const res = await POST(makeRequest([VALID_SESSION], undefined, VALID_VERSION));
 
       expect(res.status).toBe(200);
     });
@@ -105,7 +111,7 @@ describe("POST /api/ingest/sessions", () => {
     });
 
     it("should reject non-array body", async () => {
-      const res = await POST(makeRequest({ not: "array" }));
+      const res = await POST(makeRequest({ not: "array" }, undefined, VALID_VERSION));
 
       expect(res.status).toBe(400);
       const body = await res.json();
@@ -113,7 +119,7 @@ describe("POST /api/ingest/sessions", () => {
     });
 
     it("should reject empty array", async () => {
-      const res = await POST(makeRequest([]));
+      const res = await POST(makeRequest([], undefined, VALID_VERSION));
 
       expect(res.status).toBe(400);
       const body = await res.json();
@@ -124,7 +130,7 @@ describe("POST /api/ingest/sessions", () => {
       const records = Array.from({ length: 51 }, () => ({
         ...VALID_SESSION,
       }));
-      const res = await POST(makeRequest(records));
+      const res = await POST(makeRequest(records, undefined, VALID_VERSION));
 
       expect(res.status).toBe(400);
       const body = await res.json();
@@ -133,7 +139,7 @@ describe("POST /api/ingest/sessions", () => {
 
     it("should reject records with invalid source", async () => {
       const res = await POST(
-        makeRequest([{ ...VALID_SESSION, source: "invalid-tool" }]),
+        makeRequest([{ ...VALID_SESSION, source: "invalid-tool" }], undefined, VALID_VERSION),
       );
 
       expect(res.status).toBe(400);
@@ -143,7 +149,7 @@ describe("POST /api/ingest/sessions", () => {
 
     it("should reject records with missing session_key", async () => {
       const { session_key: _, ...noKey } = VALID_SESSION;
-      const res = await POST(makeRequest([noKey]));
+      const res = await POST(makeRequest([noKey], undefined, VALID_VERSION));
 
       expect(res.status).toBe(400);
       const body = await res.json();
@@ -152,7 +158,7 @@ describe("POST /api/ingest/sessions", () => {
 
     it("should reject records with invalid kind", async () => {
       const res = await POST(
-        makeRequest([{ ...VALID_SESSION, kind: "invalid" }]),
+        makeRequest([{ ...VALID_SESSION, kind: "invalid" }], undefined, VALID_VERSION),
       );
 
       expect(res.status).toBe(400);
@@ -162,7 +168,7 @@ describe("POST /api/ingest/sessions", () => {
 
     it("should reject records with non-ISO started_at", async () => {
       const res = await POST(
-        makeRequest([{ ...VALID_SESSION, started_at: "not-a-date" }]),
+        makeRequest([{ ...VALID_SESSION, started_at: "not-a-date" }], undefined, VALID_VERSION),
       );
 
       expect(res.status).toBe(400);
@@ -172,7 +178,7 @@ describe("POST /api/ingest/sessions", () => {
 
     it("should reject records with negative duration_seconds", async () => {
       const res = await POST(
-        makeRequest([{ ...VALID_SESSION, duration_seconds: -1 }]),
+        makeRequest([{ ...VALID_SESSION, duration_seconds: -1 }], undefined, VALID_VERSION),
       );
 
       expect(res.status).toBe(400);
@@ -182,7 +188,7 @@ describe("POST /api/ingest/sessions", () => {
 
     it("should reject records with non-number user_messages", async () => {
       const res = await POST(
-        makeRequest([{ ...VALID_SESSION, user_messages: "ten" }]),
+        makeRequest([{ ...VALID_SESSION, user_messages: "ten" }], undefined, VALID_VERSION),
       );
 
       expect(res.status).toBe(400);
@@ -193,7 +199,7 @@ describe("POST /api/ingest/sessions", () => {
     it("should accept records with null project_ref", async () => {
       stubWorkerOk();
       const res = await POST(
-        makeRequest([{ ...VALID_SESSION, project_ref: null }]),
+        makeRequest([{ ...VALID_SESSION, project_ref: null }], undefined, VALID_VERSION),
       );
 
       expect(res.status).toBe(200);
@@ -202,14 +208,14 @@ describe("POST /api/ingest/sessions", () => {
     it("should accept records with null model", async () => {
       stubWorkerOk();
       const res = await POST(
-        makeRequest([{ ...VALID_SESSION, model: null }]),
+        makeRequest([{ ...VALID_SESSION, model: null }], undefined, VALID_VERSION),
       );
 
       expect(res.status).toBe(200);
     });
 
     it("should not call Worker for invalid requests", async () => {
-      const res = await POST(makeRequest([]));
+      const res = await POST(makeRequest([], undefined, VALID_VERSION));
 
       expect(res.status).toBe(400);
       expect(mockFetch).not.toHaveBeenCalled();
@@ -231,7 +237,7 @@ describe("POST /api/ingest/sessions", () => {
     it("should forward records to Worker /ingest/sessions", async () => {
       stubWorkerOk();
 
-      const res = await POST(makeRequest([VALID_SESSION]));
+      const res = await POST(makeRequest([VALID_SESSION], undefined, VALID_VERSION));
 
       expect(res.status).toBe(200);
       expect(mockFetch).toHaveBeenCalledOnce();
@@ -257,7 +263,7 @@ describe("POST /api/ingest/sessions", () => {
         { ...VALID_SESSION, session_key: "gemini-cli:def456" },
         { ...VALID_SESSION, session_key: "opencode:ghi789" },
       ];
-      const res = await POST(makeRequest(records));
+      const res = await POST(makeRequest(records, undefined, VALID_VERSION));
 
       expect(res.status).toBe(200);
       expect(mockFetch).toHaveBeenCalledOnce();
@@ -270,7 +276,7 @@ describe("POST /api/ingest/sessions", () => {
     it("should return ingested count in response", async () => {
       stubWorkerOk(2);
 
-      const res = await POST(makeRequest([VALID_SESSION, VALID_SESSION]));
+      const res = await POST(makeRequest([VALID_SESSION, VALID_SESSION], undefined, VALID_VERSION));
 
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -280,7 +286,7 @@ describe("POST /api/ingest/sessions", () => {
     it("should return 500 when Worker returns error", async () => {
       stubWorkerError(500, "D1 batch failed: table not found");
 
-      const res = await POST(makeRequest([VALID_SESSION]));
+      const res = await POST(makeRequest([VALID_SESSION], undefined, VALID_VERSION));
 
       expect(res.status).toBe(500);
       const body = await res.json();
@@ -290,7 +296,7 @@ describe("POST /api/ingest/sessions", () => {
     it("should return 500 when fetch itself throws", async () => {
       mockFetch.mockRejectedValueOnce(new Error("Network error"));
 
-      const res = await POST(makeRequest([VALID_SESSION]));
+      const res = await POST(makeRequest([VALID_SESSION], undefined, VALID_VERSION));
 
       expect(res.status).toBe(500);
       const body = await res.json();
@@ -304,7 +310,7 @@ describe("POST /api/ingest/sessions", () => {
       );
       stubWorkerOk();
 
-      const res = await POST(makeRequest([VALID_SESSION]));
+      const res = await POST(makeRequest([VALID_SESSION], undefined, VALID_VERSION));
 
       expect(res.status).toBe(200);
       const [url] = mockFetch.mock.calls[0]!;

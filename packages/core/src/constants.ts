@@ -43,3 +43,16 @@ export const MAX_INGEST_BATCH_SIZE = 50;
 
 /** Maximum string field length (model names, session keys, etc.) */
 export const MAX_STRING_LENGTH = 1024;
+
+// ---------------------------------------------------------------------------
+// Version gate
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimum CLI version allowed to upload data.
+ *
+ * Older clients have token inflation bugs (SUM-on-restart, device ID
+ * duplication) — the server rejects uploads from versions below this
+ * threshold with an actionable error message.
+ */
+export const MIN_CLIENT_VERSION = "1.6.0";

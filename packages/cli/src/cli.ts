@@ -19,6 +19,12 @@ import { statusAll } from "./notifier/registry.js";
 import { ConfigManager } from "./config/manager.js";
 
 // ---------------------------------------------------------------------------
+// CLI version — single source of truth within CLI runtime
+// ---------------------------------------------------------------------------
+
+const CLI_VERSION = "1.5.1";
+
+// ---------------------------------------------------------------------------
 // Dev mode detection (otter pattern)
 // ---------------------------------------------------------------------------
 
@@ -393,7 +399,7 @@ const notifyCommand = defineCommand({
       openSessionDb: openSessionDb2,
       openclawDir: paths.openclawDir,
       vscodeCopilotDirs: paths.vscodeCopilotDirs,
-      version: "1.5.1",
+      version: CLI_VERSION,
     });
 
     if (result.error) {
@@ -527,6 +533,7 @@ async function runUpload(stateDir: string, apiUrl: string, dev: boolean): Promis
     apiUrl,
     dev,
     fetch: globalThis.fetch,
+    clientVersion: CLI_VERSION,
     onProgress(event) {
       if (event.phase === "uploading") {
         consola.info(
@@ -571,6 +578,7 @@ async function runSessionUpload(stateDir: string, apiUrl: string, dev: boolean):
     apiUrl,
     dev,
     fetch: globalThis.fetch,
+    clientVersion: CLI_VERSION,
     onProgress(event) {
       if (event.phase === "uploading") {
         consola.info(
@@ -646,8 +654,7 @@ const resetCommand = defineCommand({
 export const main = defineCommand({
   meta: {
     name: "pew",
-    version: "1.5.1",
-    description: "The contribution graph for AI-native developers",
+    version: CLI_VERSION,    description: "The contribution graph for AI-native developers",
   },
   subCommands: {
     sync: syncCommand,
