@@ -13,6 +13,7 @@ import { executeSessionUpload } from "./commands/session-upload.js";
 import { executeNotify } from "./commands/notify.js";
 import { executeInit } from "./commands/init.js";
 import { executeUninstall } from "./commands/uninstall.js";
+import { executeReset } from "./commands/reset.js";
 import { resolveNotifierPaths } from "./notifier/paths.js";
 import { statusAll } from "./notifier/registry.js";
 import { ConfigManager } from "./config/manager.js";
@@ -603,6 +604,45 @@ async function runSessionUpload(stateDir: string, apiUrl: string, dev: boolean):
   }
 }
 
+const resetCommand = defineCommand({
+  meta: {
+    name: "reset",
+    description: "Clear all sync/upload state for a clean re-sync",
+  },
+  args: {
+    dev: {
+      type: "boolean",
+      description: "Use dev configuration",
+      default: false,
+    },
+  },
+  async run() {
+    const paths = resolveDefaultPaths();
+    consola.start("Resetting pew state...\n");
+
+    const result = await executeReset({ stateDir: paths.stateDir });
+
+    const deleted = result.files.filter((f) => f.deleted);
+    const skipped = result.files.filter((f) => !f.deleted);
+
+    if (deleted.length > 0) {
+      for (const f of deleted) {
+        consola.log(`  ${pc.green("✓")} ${f.file}`);
+      }
+    }
+    if (skipped.length > 0) {
+      for (const f of skipped) {
+        consola.log(`  ${pc.dim("•")} ${pc.dim(f.file)} (not found)`);
+      }
+    }
+
+    consola.log("");
+    consola.success(
+      `Cleared ${deleted.length} state file(s). Run ${pc.cyan("pew sync")} to rebuild.`,
+    );
+  },
+});
+
 export const main = defineCommand({
   meta: {
     name: "pew",
@@ -616,6 +656,7 @@ export const main = defineCommand({
     notify: notifyCommand,
     init: initCommand,
     uninstall: uninstallCommand,
+    reset: resetCommand,
   },
   run({ rawArgs }) {
     // Show usage only when invoked directly without a subcommand.
