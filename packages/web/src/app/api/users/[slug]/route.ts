@@ -23,6 +23,7 @@ const VALID_SOURCES = new Set([
   "gemini-cli",
   "opencode",
   "openclaw",
+  "vscode-copilot",
 ]);
 
 const MAX_DAYS = 365;

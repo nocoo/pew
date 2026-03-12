@@ -86,10 +86,10 @@ export function LandingContent() {
         The contribution graph for AI-native developers.
         Reads local logs from{" "}
         <span className="text-foreground">
-          Claude Code, Codex, Gemini CLI, OpenCode
+          Claude Code, Codex, Gemini CLI, OpenCode, OpenClaw
         </span>{" "}
-        &amp; <span className="text-foreground">OpenClaw</span> — only
-        counts, never conversations.
+        &amp; <span className="text-foreground">VS Code Copilot</span> —
+        only counts, never conversations.
       </p>
 
       {/* Row 3: Install command — PRIMARY action */}

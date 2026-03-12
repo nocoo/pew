@@ -176,6 +176,7 @@ describe("sourceLabel", () => {
     expect(sourceLabel("gemini-cli")).toBe("Gemini CLI");
     expect(sourceLabel("opencode")).toBe("OpenCode");
     expect(sourceLabel("openclaw")).toBe("OpenClaw");
+    expect(sourceLabel("vscode-copilot")).toBe("VS Code Copilot");
   });
 
   it("should return raw string for unknown sources", () => {

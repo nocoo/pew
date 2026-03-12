@@ -28,6 +28,7 @@ const SOURCE_LABELS: Record<string, string> = {
   "gemini-cli": "Gemini CLI",
   opencode: "OpenCode",
   openclaw: "OpenClaw",
+  "vscode-copilot": "VS Code Copilot",
 };
 
 function sourceLabel(source: string): string {
