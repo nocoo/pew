@@ -3,7 +3,9 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import {
+  Github,
   Trophy,
   Medal,
   Award,
@@ -13,6 +15,7 @@ import {
   Zap,
   Camera,
   Calendar,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatTokens, formatTokensFull } from "@/lib/utils";
@@ -107,6 +110,27 @@ function StatusBadge({ status }: { status: SeasonStatus }) {
 }
 
 // ---------------------------------------------------------------------------
+// Check-style ruling lines (right-side texture)
+// ---------------------------------------------------------------------------
+
+function CheckRuling() {
+  return (
+    <div
+      className="pointer-events-none absolute inset-y-0 right-0 w-1/3 opacity-[0.04]"
+      aria-hidden="true"
+    >
+      <div className="absolute inset-0 flex flex-col justify-evenly">
+        <div className="h-px bg-foreground" />
+        <div className="h-px bg-foreground" />
+        <div className="h-px bg-foreground" />
+        <div className="h-px bg-foreground" />
+        <div className="h-px bg-foreground" />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Rank decorations
 // ---------------------------------------------------------------------------
 
@@ -149,12 +173,15 @@ function TeamRow({
       <button
         onClick={() => hasMembers && setExpanded(!expanded)}
         className={cn(
-          "relative flex w-full items-center gap-4 rounded-[var(--radius-card)] bg-secondary px-4 py-4 text-left transition-colors",
+          "relative flex w-full items-center gap-4 overflow-hidden rounded-[var(--radius-card)] bg-secondary px-4 py-4 text-left transition-colors",
           hasMembers && "hover:bg-accent cursor-pointer",
           entry.rank <= 3 && "ring-1 ring-border/50",
           expanded && "rounded-b-none",
         )}
       >
+        {/* Check ruling texture */}
+        <CheckRuling />
+
         {/* Rank */}
         <div className="flex w-8 shrink-0 items-center justify-center">
           <RankBadge rank={entry.rank} />
@@ -189,8 +216,8 @@ function TeamRow({
         </div>
 
         {/* Total */}
-        <div className="shrink-0 text-right">
-          <span className="font-handwriting text-3xl leading-none tracking-tight text-foreground">
+        <div className="relative z-10 shrink-0 text-right">
+          <span className="font-handwriting text-[39px] leading-none tracking-tight text-foreground">
             {formatTokensFull(entry.total_tokens)}
           </span>
         </div>
@@ -284,60 +311,105 @@ export default function SeasonLeaderboardPage() {
   const isLoading = resolving || (loading && !data);
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Top bar */}
-      <div className="fixed top-4 right-4 z-50 flex items-center gap-2">
+    <div className="relative flex min-h-screen flex-col bg-background">
+      {/* Top-right icons — same pattern as main leaderboard */}
+      <div className="absolute right-6 top-4 z-50 flex items-center gap-1">
+        <a
+          href="/privacy"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-[color] duration-200 hover:text-foreground"
+          aria-label="Privacy policy"
+        >
+          <ShieldCheck className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+        </a>
+        <a
+          href="https://github.com/nicnocquee/pew"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-[color] duration-200 hover:text-foreground"
+          aria-label="View source on GitHub"
+        >
+          <Github className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+        </a>
         <ThemeToggle />
       </div>
 
-      <main className="flex-1 mx-auto w-full max-w-3xl px-6 py-12">
-        {/* Back link */}
-        <Link
-          href="/leaderboard/seasons"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+      {/* Header */}
+      <header className="mx-auto w-full max-w-3xl px-6 pt-10 pb-2">
+        <div
+          className="flex items-center gap-5 animate-fade-up"
+          style={{ animationDelay: "0ms" }}
         >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Seasons
-        </Link>
+          <Link
+            href="/"
+            className="shrink-0 hover:opacity-80 transition-opacity"
+          >
+            <Image
+              src="/logo-80.png"
+              alt="pew"
+              width={48}
+              height={48}
+            />
+          </Link>
+          <div className="flex flex-col">
+            {data ? (
+              <>
+                <h1 className="tracking-tight text-foreground">
+                  <span className="text-[47px] font-bold font-handwriting leading-none mr-2">
+                    {data.season.name}
+                  </span>
+                </h1>
+                <div className="mt-0.5 flex items-center gap-2 flex-wrap">
+                  <StatusBadge status={data.season.status} />
+                  {data.season.is_snapshot ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                      <Camera className="h-3 w-3" />
+                      Final Results
+                    </span>
+                  ) : data.season.status === "active" ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-400">
+                      <Zap className="h-3 w-3" />
+                      Live
+                    </span>
+                  ) : null}
+                  <span className="text-sm text-muted-foreground inline-flex items-center gap-1">
+                    <Calendar className="h-3.5 w-3.5" />
+                    {data.season.start_date} &mdash; {data.season.end_date}
+                  </span>
+                </div>
+              </>
+            ) : isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-10 w-48" />
+                <Skeleton className="h-4 w-56" />
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </header>
 
-        {/* Header — show skeleton or real data */}
-        {data ? (
-          <div className="mb-8 animate-fade-up">
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-3xl font-bold font-display tracking-tight">
-                {data.season.name}
-              </h1>
-              <StatusBadge status={data.season.status} />
-              {data.season.is_snapshot ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-                  <Camera className="h-3 w-3" />
-                  Final Results
-                </span>
-              ) : data.season.status === "active" ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-400">
-                  <Zap className="h-3 w-3" />
-                  Live
-                </span>
-              ) : null}
-            </div>
-            <p className="mt-2 text-sm text-muted-foreground inline-flex items-center gap-1">
-              <Calendar className="h-3.5 w-3.5" />
-              {data.season.start_date} &mdash; {data.season.end_date}
-            </p>
-          </div>
-        ) : isLoading ? (
-          <div className="mb-8 space-y-3">
-            <div className="flex items-center gap-3">
-              <Skeleton className="h-8 w-48" />
-              <Skeleton className="h-5 w-16 rounded-full" />
-            </div>
-            <Skeleton className="h-4 w-56" />
-          </div>
-        ) : null}
+      {/* Main content */}
+      <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-4 space-y-4">
+        {/* Controls row */}
+        <div
+          className="relative z-20 flex items-center gap-3 animate-fade-up"
+          style={{ animationDelay: "180ms" }}
+        >
+          {/* Back link */}
+          <Link
+            href="/leaderboard/seasons"
+            className={cn(
+              "flex items-center gap-2 rounded-lg bg-secondary px-3 py-[10px] text-sm font-medium transition-colors",
+              "text-muted-foreground hover:text-foreground hover:bg-accent",
+            )}
+          >
+            <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.5} />
+            Back to Seasons
+          </Link>
+        </div>
 
         {/* Error */}
         {(resolveError || error) && (
-          <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive mb-6">
+          <div className="rounded-[var(--radius-card)] bg-destructive/10 p-4 text-sm text-destructive">
             {resolveError || error}
           </div>
         )}
@@ -369,6 +441,17 @@ export default function SeasonLeaderboardPage() {
           </div>
         )}
       </main>
+
+      {/* Footer */}
+      <footer className="px-6 py-3">
+        <p className="text-center text-xs text-muted-foreground">
+          &copy; {new Date().getFullYear()} pew.md
+          <span className="mx-1.5">&middot;</span>
+          <a href="/privacy" className="hover:text-foreground transition-colors">
+            Privacy
+          </a>
+        </p>
+      </footer>
     </div>
   );
 }
