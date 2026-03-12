@@ -23,11 +23,11 @@ describe("sidebar navigation", () => {
       expect(labels).not.toContain("Account");
     });
 
-    it("Settings group should contain Teams before General", () => {
+    it("Settings group should contain Teams, Projects, Devices, then General", () => {
       const settingsGroup = BASE_NAV_GROUPS.find((g) => g.label === "Settings");
       expect(settingsGroup).toBeDefined();
       const items = settingsGroup!.items.map((i) => i.label);
-      expect(items).toEqual(["Teams", "Projects", "General"]);
+      expect(items).toEqual(["Teams", "Projects", "Devices", "General"]);
     });
 
     it("Teams should link to /teams", () => {
@@ -52,7 +52,9 @@ describe("sidebar navigation", () => {
       expect(allHrefs).toContain("/sessions");
       expect(allHrefs).toContain("/agents");
       expect(allHrefs).toContain("/models");
+      expect(allHrefs).toContain("/devices");
       expect(allHrefs).toContain("/teams");
+      expect(allHrefs).toContain("/manage-devices");
       expect(allHrefs).toContain("/settings");
     });
 
@@ -75,6 +77,41 @@ describe("sidebar navigation", () => {
     it("should have no duplicate hrefs", () => {
       const allHrefs = BASE_NAV_GROUPS.flatMap((g) => g.items.map((i) => i.href));
       expect(new Set(allHrefs).size).toBe(allHrefs.length);
+    });
+
+    // Device navigation entries
+    it("Analytics group should include By Device after By Model", () => {
+      const analyticsGroup = BASE_NAV_GROUPS.find((g) => g.label === "Analytics")!;
+      const items = analyticsGroup.items.map((i) => i.label);
+      const modelIdx = items.indexOf("By Model");
+      const deviceIdx = items.indexOf("By Device");
+      expect(deviceIdx).toBeGreaterThan(-1);
+      expect(deviceIdx).toBe(modelIdx + 1);
+    });
+
+    it("By Device should link to /devices with Monitor icon", () => {
+      const analyticsGroup = BASE_NAV_GROUPS.find((g) => g.label === "Analytics")!;
+      const byDevice = analyticsGroup.items.find((i) => i.label === "By Device");
+      expect(byDevice).toBeDefined();
+      expect(byDevice!.href).toBe("/devices");
+      expect(byDevice!.icon).toBe("Monitor");
+    });
+
+    it("Settings group should include Devices after Projects", () => {
+      const settingsGroup = BASE_NAV_GROUPS.find((g) => g.label === "Settings")!;
+      const items = settingsGroup.items.map((i) => i.label);
+      const projectsIdx = items.indexOf("Projects");
+      const devicesIdx = items.indexOf("Devices");
+      expect(devicesIdx).toBeGreaterThan(-1);
+      expect(devicesIdx).toBe(projectsIdx + 1);
+    });
+
+    it("Devices should link to /manage-devices with MonitorSmartphone icon", () => {
+      const settingsGroup = BASE_NAV_GROUPS.find((g) => g.label === "Settings")!;
+      const devices = settingsGroup.items.find((i) => i.label === "Devices");
+      expect(devices).toBeDefined();
+      expect(devices!.href).toBe("/manage-devices");
+      expect(devices!.icon).toBe("MonitorSmartphone");
     });
   });
 
@@ -122,6 +159,14 @@ describe("route labels", () => {
     expect(ROUTE_LABELS["teams"]).toBe("Teams");
   });
 
+  it("should map devices to By Device", () => {
+    expect(ROUTE_LABELS["devices"]).toBe("By Device");
+  });
+
+  it("should map manage-devices to Devices", () => {
+    expect(ROUTE_LABELS["manage-devices"]).toBe("Devices");
+  });
+
   it("should include all expected routes", () => {
     expect(ROUTE_LABELS).toEqual({
       dashboard: "Dashboard",
@@ -131,6 +176,8 @@ describe("route labels", () => {
       details: "Daily Usage",
       agents: "By Agent",
       models: "By Model",
+      devices: "By Device",
+      "manage-devices": "Devices",
       leaderboard: "Leaderboard",
       seasons: "Seasons",
     });
@@ -178,5 +225,21 @@ describe("breadcrumbsFromPathname", () => {
   it("should truncate unknown segment labels to 8 chars", () => {
     const crumbs = breadcrumbsFromPathname("/longersegmentname");
     expect(crumbs[1]!.label).toBe("longerse");
+  });
+
+  it("should return breadcrumbs for /devices", () => {
+    const crumbs = breadcrumbsFromPathname("/devices");
+    expect(crumbs).toEqual([
+      { label: "Home", href: "/dashboard" },
+      { label: "By Device" },
+    ]);
+  });
+
+  it("should return breadcrumbs for /manage-devices", () => {
+    const crumbs = breadcrumbsFromPathname("/manage-devices");
+    expect(crumbs).toEqual([
+      { label: "Home", href: "/dashboard" },
+      { label: "Devices" },
+    ]);
   });
 });

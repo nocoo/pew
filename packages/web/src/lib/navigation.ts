@@ -45,6 +45,7 @@ export const BASE_NAV_GROUPS: NavGroupDef[] = [
       { href: "/sessions", label: "Sessions", icon: "MessagesSquare" },
       { href: "/agents", label: "By Agent", icon: "AppWindow" },
       { href: "/models", label: "By Model", icon: "Cpu" },
+      { href: "/devices", label: "By Device", icon: "Monitor" },
     ],
   },
   {
@@ -53,6 +54,7 @@ export const BASE_NAV_GROUPS: NavGroupDef[] = [
     items: [
       { href: "/teams", label: "Teams", icon: "Users" },
       { href: "/projects", label: "Projects", icon: "FolderKanban" },
+      { href: "/manage-devices", label: "Devices", icon: "MonitorSmartphone" },
       { href: "/settings", label: "General", icon: "Settings" },
     ],
   },
@@ -84,6 +86,8 @@ export const ROUTE_LABELS: Record<string, string> = {
   details: "Daily Usage",
   agents: "By Agent",
   models: "By Model",
+  devices: "By Device",
+  "manage-devices": "Devices",
   leaderboard: "Leaderboard",
   seasons: "Seasons",
 };

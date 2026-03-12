@@ -277,6 +277,64 @@ export interface SessionCursorState {
 }
 
 // ---------------------------------------------------------------------------
+// Device types (multi-device analytics & management)
+// ---------------------------------------------------------------------------
+
+/** Per-device aggregated stats returned by GET /api/usage/by-device */
+export interface DeviceAggregate {
+  device_id: string;
+  alias: string | null;
+  first_seen: string;
+  last_seen: string;
+  total_tokens: number;
+  input_tokens: number;
+  output_tokens: number;
+  cached_input_tokens: number;
+  reasoning_output_tokens: number;
+  estimated_cost: number;
+  sources: string[];
+  models: string[];
+}
+
+/** Daily timeline point with device dimension */
+export interface DeviceTimelinePoint {
+  date: string;
+  device_id: string;
+  total_tokens: number;
+  input_tokens: number;
+  output_tokens: number;
+  cached_input_tokens: number;
+}
+
+/** Response from GET /api/usage/by-device */
+export interface ByDeviceResponse {
+  devices: DeviceAggregate[];
+  timeline: DeviceTimelinePoint[];
+}
+
+/** Device summary returned by GET /api/devices (management endpoint) */
+export interface DeviceSummary {
+  device_id: string;
+  alias: string | null;
+  first_seen: string;
+  last_seen: string;
+  total_tokens: number;
+  sources: string[];
+  model_count: number;
+}
+
+/** Response from GET /api/devices */
+export interface DevicesResponse {
+  devices: DeviceSummary[];
+}
+
+/** Request body for PUT /api/devices */
+export interface UpdateDeviceRequest {
+  device_id: string;
+  alias: string;
+}
+
+// ---------------------------------------------------------------------------
 // CLI Config
 // ---------------------------------------------------------------------------
 
