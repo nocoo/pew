@@ -12,12 +12,16 @@
     "dev": "bun run --cwd packages/web dev",
     "build": "bun run --filter '*' build",
     "lint": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/cli/tsconfig.json && tsc --noEmit -p packages/web/tsconfig.json && tsc --noEmit -p packages/worker/tsconfig.json && eslint .",
+    "lint:typecheck": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/cli/tsconfig.json && tsc --noEmit -p packages/web/tsconfig.json && tsc --noEmit -p packages/worker/tsconfig.json",
     "test:e2e": "bun run scripts/run-e2e.ts",
     "test:e2e:cli": "vitest run --config vitest.e2e-cli.config.ts",
     "test:e2e:ui": "bun run scripts/run-e2e-ui.ts",
     "sync": "bun run build && NODE_TLS_REJECT_UNAUTHORIZED=0 bun packages/cli/dist/bin.js sync --dev",
     "sync:prod": "bun run build && bun packages/cli/dist/bin.js sync",
     "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": "eslint"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -27,6 +31,7 @@
     "eslint": "^10.0.3",
     "eslint-plugin-react-hooks": "^7.0.1",
     "husky": "^9.1.7",
+    "lint-staged": "^16.3.3",
     "typescript": "^5.7.0",
     "typescript-eslint": "^8.57.0",
     "vitest": "^3.0.0"

@@ -9,13 +9,22 @@ if [ $TEST_EXIT -ne 0 ]; then
   exit 1
 fi
 
-# L2: TypeScript strict type checking + ESLint (zero errors, zero warnings)
-bun run lint 2>&1
-LINT_EXIT=$?
+# L2a: TypeScript strict type checking (full project — tsc needs complete context)
+bun run lint:typecheck 2>&1
+TSC_EXIT=$?
 
-if [ $LINT_EXIT -ne 0 ]; then
-  echo "❌ L2 FAILED: Type check or lint failed."
+if [ $TSC_EXIT -ne 0 ]; then
+  echo "❌ L2 FAILED: TypeScript type check failed."
   exit 1
 fi
 
-echo "✅ L1 (UT + Coverage ≥90%) + L2 (Lint) passed."
+# L2b: ESLint on staged files only (via lint-staged)
+bunx lint-staged 2>&1
+LINT_EXIT=$?
+
+if [ $LINT_EXIT -ne 0 ]; then
+  echo "❌ L2 FAILED: ESLint errors in staged files."
+  exit 1
+fi
+
+echo "✅ L1 (UT + Coverage ≥90%) + L2 (TypeCheck + ESLint) passed."
