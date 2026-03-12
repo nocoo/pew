@@ -5,7 +5,6 @@
  * Groups lines by sessionId, counts message types, computes duration.
  */
 
-import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";

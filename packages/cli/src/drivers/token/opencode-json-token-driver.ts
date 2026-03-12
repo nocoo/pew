@@ -30,9 +30,6 @@ interface OpenCodeJsonParseResult extends TokenParseResult {
   lastTotals: TokenDelta | null;
 }
 
-/** Internally tracked dirMtimes from latest discovery */
-let lastDirMtimes: Record<string, number> | undefined;
-
 export const openCodeJsonTokenDriver: FileTokenDriver<OpenCodeCursor> = {
   kind: "file",
   source: "opencode",
@@ -45,7 +42,6 @@ export const openCodeJsonTokenDriver: FileTokenDriver<OpenCodeCursor> = {
     );
     // Store dirMtimes back into context for orchestrator persistence
     ctx.dirMtimes = discovery.dirMtimes;
-    lastDirMtimes = discovery.dirMtimes;
     return discovery.files;
   },
 

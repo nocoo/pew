@@ -159,6 +159,7 @@ function TeamLogo({
     <div className="relative group shrink-0">
       <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent text-muted-foreground overflow-hidden">
         {hasLogo ? (
+          // eslint-disable-next-line @next/next/no-img-element -- external team logos
           <img
             src={team.logo_url!}
             alt={`${team.name} logo`}
@@ -483,6 +484,7 @@ function TeamCard({
                   {/* Avatar */}
                   <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-muted-foreground overflow-hidden">
                     {m.image ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- external user avatars
                       <img src={m.image} alt="" className="h-6 w-6 object-cover" />
                     ) : (
                       <span className="text-[10px] font-medium">

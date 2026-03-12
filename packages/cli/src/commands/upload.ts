@@ -10,7 +10,6 @@ import { createUploadEngine } from "./upload-engine.js";
 import type {
   UploadResult,
   UploadProgressEvent,
-  UploadExecuteOptions,
 } from "./upload-engine.js";
 import type { QueueRecord } from "@pew/core";
 

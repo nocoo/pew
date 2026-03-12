@@ -23,7 +23,7 @@
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
-import type { Source, TokenDelta } from "@pew/core";
+import type { Source } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
 import { toNonNegInt } from "../utils/token-delta.js";
 

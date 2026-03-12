@@ -123,6 +123,7 @@ export async function POST(request: Request) {
           [code]
         );
         if (!existing) break;
+        // eslint-disable-next-line no-constant-condition -- retry loop for unique code generation
       } while (true);
 
       await client.execute(

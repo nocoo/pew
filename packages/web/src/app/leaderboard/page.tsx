@@ -64,16 +64,19 @@ function TeamLogoIcon({
   className?: string;
 }) {
   const [error, setError] = useState(false);
+  const [prevUrl, setPrevUrl] = useState(logoUrl);
 
-  // Reset error state when logoUrl changes (e.g. switching selected team)
-  useEffect(() => {
+  // Reset error state when logoUrl changes (derived state, no effect needed)
+  if (logoUrl !== prevUrl) {
+    setPrevUrl(logoUrl);
     setError(false);
-  }, [logoUrl]);
+  }
 
   if (!logoUrl || error) {
     return <Users className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground", className)} strokeWidth={1.5} />;
   }
   return (
+    // eslint-disable-next-line @next/next/no-img-element -- external team logos, can't use next/image
     <img
       src={logoUrl}
       alt={name}
@@ -86,14 +89,17 @@ function TeamLogoIcon({
 /** Tiny inline logo for team badges in leaderboard rows */
 function TeamLogoBadge({ logoUrl, name }: { logoUrl: string | null; name: string }) {
   const [error, setError] = useState(false);
+  const [prevUrl, setPrevUrl] = useState(logoUrl);
 
-  // Reset error state when logoUrl changes
-  useEffect(() => {
+  // Reset error state when logoUrl changes (derived state, no effect needed)
+  if (logoUrl !== prevUrl) {
+    setPrevUrl(logoUrl);
     setError(false);
-  }, [logoUrl]);
+  }
 
   if (!logoUrl || error) return null;
   return (
+    // eslint-disable-next-line @next/next/no-img-element -- external team logos, can't use next/image
     <img
       src={logoUrl}
       alt={name}
@@ -441,9 +447,11 @@ export default function LeaderboardPage() {
     }
   }, []);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- async fetch, setState is after await */
   useEffect(() => {
     fetchTeams();
   }, [fetchTeams]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const showHiddenBadge = scope === "all";
 

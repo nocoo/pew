@@ -93,7 +93,7 @@ export async function parseGeminiFile(opts: {
   const { filePath } = opts;
   let { startIndex, lastTotals } = opts;
   const deltas: ParsedDelta[] = [];
-  let lastModel: string | null = null;
+  const lastModel: string | null = null;
 
   let raw: string;
   try {

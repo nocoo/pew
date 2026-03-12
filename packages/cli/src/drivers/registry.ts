@@ -11,7 +11,6 @@
 
 import type { FileCursorBase, SessionFileCursor } from "@pew/core";
 import type {
-  DiscoverOpts,
   FileTokenDriver,
   DbTokenDriver,
   FileSessionDriver,

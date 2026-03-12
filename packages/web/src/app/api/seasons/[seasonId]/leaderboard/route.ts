@@ -148,7 +148,7 @@ export async function GET(
         [seasonId]
       );
 
-      let membersByTeam = new Map<string, MemberSnapshotRow[]>();
+      const membersByTeam = new Map<string, MemberSnapshotRow[]>();
       if (expandMembers) {
         const memberSnapshots = await client.query<MemberSnapshotRow>(
           `SELECT
@@ -221,7 +221,7 @@ export async function GET(
         [fromDate, toDate, seasonId]
       );
 
-      let membersByTeam = new Map<string, MemberRow[]>();
+      const membersByTeam = new Map<string, MemberRow[]>();
       if (expandMembers && teamRows.results.length > 0) {
         const teamIds = teamRows.results.map((r) => r.team_id);
         const placeholders = teamIds.map(() => "?").join(",");

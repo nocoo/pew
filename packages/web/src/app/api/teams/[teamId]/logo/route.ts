@@ -122,7 +122,7 @@ export async function POST(
   }
 
   // Persist new URL to DB — compensate by deleting the new R2 object on failure
-  let oldLogoUrl: string | null = null;
+  let oldLogoUrl: string | null;
   try {
     const oldTeam = await client.firstOrNull<{ logo_url: string | null }>(
       "SELECT logo_url FROM teams WHERE id = ?",

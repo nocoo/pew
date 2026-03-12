@@ -73,7 +73,7 @@ function DayRow({ group, pricingMap }: { group: DailyGroup; pricingMap: PricingM
     }
 
     return Array.from(byKey.values()).sort((a, b) => b.total - a.total);
-  }, [group.records]);
+  }, [group.records, pricingMap]);
 
   return (
     <>

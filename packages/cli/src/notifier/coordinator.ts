@@ -69,6 +69,7 @@ export async function coordinatedSync(
   return result;
 }
 
+/* eslint-disable no-useless-assignment -- `closeHandled`/`acquiredLock` are read in `finally` block */
 async function runCoordinator(
   trigger: SyncTrigger,
   opts: CoordinatorOptions,
@@ -104,7 +105,7 @@ async function runCoordinator(
       await appendSignal(opts.stateDir, fs);
       try {
         if (typeof lockHandle.lock !== "function") {
-          throw new Error("lock unsupported");
+          throw new Error("lock unsupported", { cause: error });
         }
         await withTimeout(lockHandle.lock("exclusive"), lockTimeoutMs);
       } catch {
@@ -156,6 +157,7 @@ async function runCoordinator(
     }
   }
 }
+/* eslint-enable no-useless-assignment */
 
 async function runLockedCycles({
   stateDir,

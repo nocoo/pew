@@ -26,7 +26,7 @@ export async function generateMetadata({
 
   const client = getD1Client();
 
-  let user: UserMeta | null = null;
+  let user: UserMeta | null;
   let hasIsPublicColumn = true;
 
   try {

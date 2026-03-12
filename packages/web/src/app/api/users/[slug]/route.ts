@@ -74,7 +74,7 @@ export async function GET(
   const client = getD1Client();
 
   // 2. Look up user by slug (with is_public gate)
-  let user: UserRow | null = null;
+  let user: UserRow | null;
   let hasIsPublicColumn = true;
 
   try {
