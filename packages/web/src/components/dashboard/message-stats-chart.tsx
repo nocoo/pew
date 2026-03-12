@@ -55,8 +55,8 @@ function ChartTooltip({
   if (!active || !payload?.length) return null;
 
   const labels: Record<string, string> = {
-    user: "User",
-    assistant: "Assistant",
+    user: "Human",
+    assistant: "Agent",
   };
 
   return (
@@ -87,7 +87,7 @@ function ChartTooltip({
 // ---------------------------------------------------------------------------
 
 /**
- * Stacked bar chart showing daily user vs assistant message counts.
+ * Stacked bar chart showing daily human vs agent message counts.
  */
 export function MessageStatsChart({ data, className }: MessageStatsChartProps) {
   if (!data.length) {
@@ -116,8 +116,8 @@ export function MessageStatsChart({ data, className }: MessageStatsChartProps) {
         </p>
         <div className="flex items-center gap-4">
           {[
-            { key: "user", label: "User", color: colorUser },
-            { key: "assistant", label: "Assistant", color: colorAssistant },
+            { key: "user", label: "Human", color: colorUser },
+            { key: "assistant", label: "Agent", color: colorAssistant },
           ].map(({ key, label, color }) => (
             <div key={key} className="flex items-center gap-1.5">
               <div
