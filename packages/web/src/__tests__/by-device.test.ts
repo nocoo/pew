@@ -16,51 +16,22 @@ vi.mock("@/lib/auth-helpers", () => ({
   resolveUser: vi.fn(),
 }));
 
-// Mock pricing
-vi.mock("@/lib/pricing", () => ({
-  getDefaultPricingMap: vi.fn(() => ({
-    models: {
-      "claude-sonnet-4-20250514": { input: 3, output: 15, cached: 0.3 },
-      o3: { input: 10, output: 40, cached: 2.5 },
-    },
-    prefixes: [],
-    sourceDefaults: {
-      "claude-code": { input: 3, output: 15, cached: 0.3 },
-      opencode: { input: 2, output: 8, cached: 0.5 },
-    },
-    fallback: { input: 3, output: 15, cached: 0.3 },
-  })),
-  lookupPricing: vi.fn((_map: unknown, model: string) => {
-    if (model === "claude-sonnet-4-20250514")
-      return { input: 3, output: 15, cached: 0.3 };
-    if (model === "o3") return { input: 10, output: 40, cached: 2.5 };
-    return { input: 3, output: 15, cached: 0.3 };
-  }),
-  estimateCost: vi.fn(
-    (
-      input: number,
-      output: number,
-      cached: number,
-      pricing: { input: number; output: number; cached?: number }
-    ) => {
-      const M = 1_000_000;
-      const cachedPrice = pricing.cached ?? pricing.input * 0.1;
-      const nonCachedInput = Math.max(0, input - cached);
-      const inputCost = (nonCachedInput / M) * pricing.input;
-      const outputCost = (output / M) * pricing.output;
-      const cachedCost = (cached / M) * cachedPrice;
-      return {
-        inputCost,
-        outputCost,
-        cachedCost,
-        totalCost: inputCost + outputCost + cachedCost,
-      };
-    }
-  ),
-}));
+// Mock pricing — use real implementations for lookupPricing/estimateCost,
+// but mock buildPricingMap to verify DB rows are passed through.
+vi.mock("@/lib/pricing", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/lib/pricing")>();
+  return {
+    ...original,
+    buildPricingMap: vi.fn(original.buildPricingMap),
+  };
+});
 
 const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
   resolveUser: ReturnType<typeof vi.fn>;
+};
+
+const { buildPricingMap } = (await import("@/lib/pricing")) as unknown as {
+  buildPricingMap: ReturnType<typeof vi.fn>;
 };
 
 function createMockClient() {
@@ -188,6 +159,8 @@ describe("GET /api/usage/by-device", () => {
         ],
         meta: {},
       });
+      // Pricing DB query (no overrides)
+      mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
 
       const res = await GET(
         makeRequest({ from: "2026-03-01", to: "2026-03-11" })
@@ -234,6 +207,8 @@ describe("GET /api/usage/by-device", () => {
         meta: {},
       });
       mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
+      // Pricing DB query (no overrides)
+      mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
 
       const res = await GET(makeRequest({ from: "2026-03-01", to: "2026-03-11" }));
       const body = await res.json();
@@ -276,6 +251,8 @@ describe("GET /api/usage/by-device", () => {
       });
       mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
       mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
+      // Pricing DB query (no overrides)
+      mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
 
       const res = await GET(makeRequest({ from: "2026-03-01", to: "2026-03-11" }));
       const body = await res.json();
@@ -317,6 +294,8 @@ describe("GET /api/usage/by-device", () => {
         meta: {},
       });
       mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
+      // Pricing DB query (no overrides)
+      mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
 
       const res = await GET(makeRequest({ from: "2026-01-01", to: "2026-03-01" }));
       const body = await res.json();
@@ -345,6 +324,8 @@ describe("GET /api/usage/by-device", () => {
         meta: {},
       });
       mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
+      mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
+      // Pricing DB query (no overrides)
       mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
 
       const res = await GET(makeRequest({ from: "2026-03-01", to: "2026-03-11" }));
@@ -377,6 +358,128 @@ describe("GET /api/usage/by-device", () => {
       const res = await GET(makeRequest());
 
       expect(res.status).toBe(500);
+    });
+
+    it("should use DB pricing overrides for estimated_cost", async () => {
+      // Summary: one device using a custom-priced model
+      mockClient.query.mockResolvedValueOnce({
+        results: [
+          {
+            device_id: "aaaa-1111",
+            alias: null,
+            first_seen: "2026-03-01T00:00:00Z",
+            last_seen: "2026-03-10T12:00:00Z",
+            total_tokens: 2_000_000,
+            input_tokens: 1_000_000,
+            output_tokens: 1_000_000,
+            cached_input_tokens: 0,
+            reasoning_output_tokens: 0,
+            sources: "claude-code",
+            models: "claude-sonnet-4-20250514",
+          },
+        ],
+        meta: {},
+      });
+      // Cost detail
+      mockClient.query.mockResolvedValueOnce({
+        results: [
+          {
+            device_id: "aaaa-1111",
+            source: "claude-code",
+            model: "claude-sonnet-4-20250514",
+            input_tokens: 1_000_000,
+            output_tokens: 1_000_000,
+            cached_input_tokens: 0,
+          },
+        ],
+        meta: {},
+      });
+      // Timeline
+      mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
+      // Pricing DB query — override claude-sonnet-4 to $100/$200 per 1M
+      mockClient.query.mockResolvedValueOnce({
+        results: [
+          {
+            id: 1,
+            model: "claude-sonnet-4-20250514",
+            input: 100,
+            output: 200,
+            cached: null,
+            source: null,
+            note: null,
+            updated_at: "2026-03-01T00:00:00Z",
+            created_at: "2026-03-01T00:00:00Z",
+          },
+        ],
+        meta: {},
+      });
+
+      const res = await GET(
+        makeRequest({ from: "2026-03-01", to: "2026-03-11" })
+      );
+      const body = await res.json();
+
+      // With DB override: (1M input * $100/1M) + (1M output * $200/1M) = $300
+      // Without override: (1M * $3/1M) + (1M * $15/1M) = $18
+      expect(body.devices[0].estimated_cost).toBe(300);
+
+      // Verify buildPricingMap was called with the DB rows
+      expect(buildPricingMap).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ model: "claude-sonnet-4-20250514", input: 100, output: 200 }),
+        ])
+      );
+    });
+
+    it("should fall back to static defaults when model_pricing table is missing", async () => {
+      // Summary
+      mockClient.query.mockResolvedValueOnce({
+        results: [
+          {
+            device_id: "aaaa-1111",
+            alias: null,
+            first_seen: "2026-03-01T00:00:00Z",
+            last_seen: "2026-03-10T12:00:00Z",
+            total_tokens: 2_000_000,
+            input_tokens: 1_000_000,
+            output_tokens: 1_000_000,
+            cached_input_tokens: 0,
+            reasoning_output_tokens: 0,
+            sources: "claude-code",
+            models: "claude-sonnet-4-20250514",
+          },
+        ],
+        meta: {},
+      });
+      // Cost detail
+      mockClient.query.mockResolvedValueOnce({
+        results: [
+          {
+            device_id: "aaaa-1111",
+            source: "claude-code",
+            model: "claude-sonnet-4-20250514",
+            input_tokens: 1_000_000,
+            output_tokens: 1_000_000,
+            cached_input_tokens: 0,
+          },
+        ],
+        meta: {},
+      });
+      // Timeline
+      mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
+      // Pricing DB query — table doesn't exist
+      mockClient.query.mockRejectedValueOnce(
+        new Error("no such table: model_pricing")
+      );
+
+      const res = await GET(
+        makeRequest({ from: "2026-03-01", to: "2026-03-11" })
+      );
+      const body = await res.json();
+
+      // Falls back to static: (1M * $3/1M) + (1M * $15/1M) = $18
+      expect(res.status).toBe(200);
+      expect(body.devices[0].estimated_cost).toBe(18);
     });
   });
 });

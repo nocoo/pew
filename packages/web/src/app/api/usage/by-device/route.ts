@@ -15,8 +15,10 @@ import { resolveUser } from "@/lib/auth-helpers";
 import { getD1Client } from "@/lib/d1";
 import {
   getDefaultPricingMap,
+  buildPricingMap,
   lookupPricing,
   estimateCost,
+  type DbPricingRow,
 } from "@/lib/pricing";
 
 // ---------------------------------------------------------------------------
@@ -175,8 +177,19 @@ export async function GET(request: Request) {
       params
     );
 
-    // 4. Compute estimated_cost per device from cost detail rows
-    const pricingMap = getDefaultPricingMap();
+    // 4. Build pricing map (merge static defaults + DB overrides)
+    let pricingMap;
+    try {
+      const { results: pricingRows } = await client.query<DbPricingRow>(
+        "SELECT * FROM model_pricing ORDER BY model ASC"
+      );
+      pricingMap = buildPricingMap(pricingRows);
+    } catch {
+      // Table might not exist yet — fall back to static defaults
+      pricingMap = getDefaultPricingMap();
+    }
+
+    // 5. Compute estimated_cost per device from cost detail rows
     const costByDevice = new Map<string, number>();
 
     for (const row of costResult.results) {
@@ -193,7 +206,7 @@ export async function GET(request: Request) {
       );
     }
 
-    // 5. Assemble response
+    // 6. Assemble response
     const devices = summaryResult.results.map((row) => ({
       device_id: row.device_id,
       alias: row.alias,
