@@ -327,8 +327,13 @@ export async function executeSessionSync(
   const deduped = deduplicateSessionRecords(records);
 
   // ---------- Save cursor state FIRST (before queue) ----------
-  // Same safety invariant as token sync: cursor saved before queue
-  // so a crash never causes duplicate writes.
+  // IMPORTANT: This is the OPPOSITE order from token sync (sync.ts), and
+  // intentionally so.  Token sync uses queue.overwrite() (idempotent), so
+  // "queue-then-cursor" is safe — a crash just replays an overwrite.
+  // Session sync uses queue.appendBatch(), so "queue-then-cursor" would
+  // re-append duplicates on crash.  "Cursor-then-queue" means a crash
+  // between the two loses the batch (not yet queued), but source files
+  // are immutable so `pew reset` can always rebuild from scratch.
   cursors.updatedAt = new Date().toISOString();
   await cursorStore.save(cursors);
 
