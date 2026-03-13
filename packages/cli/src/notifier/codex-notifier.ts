@@ -203,9 +203,10 @@ function removeNotify(text: string): string {
 /**
  * Parse a TOML string array literal, e.g. `["a", "b", 'c']`.
  *
- * Handles TOML escape sequences in double-quoted strings (`\"`, `\\`, `\n`,
- * `\t`).  Single-quoted strings are literal (no escape processing), per the
- * TOML spec.
+ * Handles all TOML escape sequences in double-quoted strings:
+ *   `\"` `\\` `\n` `\t` `\r` `\b` `\f` `\uXXXX` `\UXXXXXXXX`
+ *
+ * Single-quoted strings are literal (no escape processing), per the TOML spec.
  */
 function parseTomlStringArray(text: string): string[] | null {
   if (!text.startsWith("[") || !text.endsWith("]")) return null;
@@ -236,6 +237,32 @@ function parseTomlStringArray(text: string): string[] | null {
       if (next === "n") { current += "\n"; i++; continue; }
       if (next === "t") { current += "\t"; i++; continue; }
       if (next === "r") { current += "\r"; i++; continue; }
+      if (next === "b") { current += "\b"; i++; continue; }
+      if (next === "f") { current += "\f"; i++; continue; }
+
+      // \uXXXX — 4-digit Unicode escape
+      if (next === "u") {
+        const hex = inner.slice(i + 2, i + 6);
+        if (/^[0-9a-fA-F]{4}$/.test(hex)) {
+          current += String.fromCodePoint(parseInt(hex, 16));
+          i += 5; // skip \uXXXX
+          continue;
+        }
+      }
+
+      // \UXXXXXXXX — 8-digit Unicode escape
+      if (next === "U") {
+        const hex = inner.slice(i + 2, i + 10);
+        if (/^[0-9a-fA-F]{8}$/.test(hex)) {
+          const codePoint = parseInt(hex, 16);
+          if (codePoint <= 0x10FFFF) {
+            current += String.fromCodePoint(codePoint);
+            i += 9; // skip \UXXXXXXXX
+            continue;
+          }
+        }
+      }
+
       // Unknown escape: preserve the backslash as-is (defensive)
       current += char;
       continue;

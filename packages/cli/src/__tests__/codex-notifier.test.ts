@@ -273,6 +273,83 @@ describe("Codex notifier installer", () => {
     expect(backup.notify).toEqual(["C:\\Users\\foo\\notify.exe", "--flag"]);
   });
 
+  it("parses \\b and \\f escape sequences in double-quoted strings", async () => {
+    // \b = backspace (U+0008), \f = form feed (U+000C)
+    await writeFile(
+      configPath,
+      'notify = ["a\\bb", "c\\fd"]\n',
+      "utf8",
+    );
+
+    const result = await installCodexNotifier({
+      configPath,
+      notifyPath,
+      originalBackupPath,
+    });
+    const backup = JSON.parse(await readFile(originalBackupPath, "utf8"));
+
+    expect(result.changed).toBe(true);
+    expect(backup.notify).toEqual(["a\bb", "c\fd"]);
+  });
+
+  it("parses \\uXXXX unicode escape sequences in double-quoted strings", async () => {
+    // \u00E9 = é, \u0041 = A
+    await writeFile(
+      configPath,
+      'notify = ["caf\\u00E9", "\\u0041BC"]\n',
+      "utf8",
+    );
+
+    const result = await installCodexNotifier({
+      configPath,
+      notifyPath,
+      originalBackupPath,
+    });
+    const backup = JSON.parse(await readFile(originalBackupPath, "utf8"));
+
+    expect(result.changed).toBe(true);
+    expect(backup.notify).toEqual(["café", "ABC"]);
+  });
+
+  it("parses \\UXXXXXXXX unicode escape sequences in double-quoted strings", async () => {
+    // \U0001F600 = 😀 (grinning face emoji)
+    await writeFile(
+      configPath,
+      'notify = ["hi\\U0001F600"]\n',
+      "utf8",
+    );
+
+    const result = await installCodexNotifier({
+      configPath,
+      notifyPath,
+      originalBackupPath,
+    });
+    const backup = JSON.parse(await readFile(originalBackupPath, "utf8"));
+
+    expect(result.changed).toBe(true);
+    expect(backup.notify).toEqual(["hi\u{1F600}"]);
+  });
+
+  it("preserves backslash for invalid unicode escapes", async () => {
+    // \u00GG is not valid hex, should preserve the backslash literally
+    await writeFile(
+      configPath,
+      'notify = ["bad\\u00GG"]\n',
+      "utf8",
+    );
+
+    const result = await installCodexNotifier({
+      configPath,
+      notifyPath,
+      originalBackupPath,
+    });
+    const backup = JSON.parse(await readFile(originalBackupPath, "utf8"));
+
+    expect(result.changed).toBe(true);
+    // Unknown/invalid escape: backslash preserved
+    expect(backup.notify).toEqual(["bad\\u00GG"]);
+  });
+
   it("correctly restores a backup containing escaped quotes on uninstall", async () => {
     // Simulate: pew was installed, original had escaped quotes
     await writeFile(
