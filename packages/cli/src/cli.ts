@@ -14,6 +14,7 @@ import { executeNotify } from "./commands/notify.js";
 import { executeInit } from "./commands/init.js";
 import { executeUninstall } from "./commands/uninstall.js";
 import { executeReset } from "./commands/reset.js";
+import { executeUpdate } from "./commands/update.js";
 import { resolveNotifierPaths } from "./notifier/paths.js";
 import { statusAll } from "./notifier/registry.js";
 import { ConfigManager } from "./config/manager.js";
@@ -644,6 +645,32 @@ const resetCommand = defineCommand({
   },
 });
 
+const updateCommand = defineCommand({
+  meta: {
+    name: "update",
+    description: "Update pew to the latest version from npm",
+  },
+  async run() {
+    consola.start(`Updating pew from v${CLI_VERSION}...\n`);
+
+    const result = await executeUpdate({ currentVersion: CLI_VERSION });
+
+    if (result.success) {
+      if (result.output) {
+        consola.log(pc.dim(result.output));
+      }
+      consola.log("");
+      consola.success("pew has been updated to the latest version.");
+    } else {
+      consola.error(`Update failed: ${result.error}`);
+      consola.info(
+        `  You can also update manually: ${pc.cyan("npm install -g @nocoo/pew@latest")}`,
+      );
+      process.exitCode = 1;
+    }
+  },
+});
+
 export const main = defineCommand({
   meta: {
     name: "pew",
@@ -657,6 +684,7 @@ export const main = defineCommand({
     init: initCommand,
     uninstall: uninstallCommand,
     reset: resetCommand,
+    update: updateCommand,
   },
   run({ rawArgs }) {
     // Show usage only when invoked directly without a subcommand.
