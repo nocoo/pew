@@ -397,7 +397,7 @@ function LeaderboardRow({
 
 function LeaderboardSkeleton() {
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {Array.from({ length: 10 }).map((_, i) => (
         <div
           key={i}
@@ -569,7 +569,7 @@ export default function LeaderboardPage() {
         {data && (
           <div
             className={cn(
-              "space-y-2 transition-opacity duration-200",
+              "space-y-3 transition-opacity duration-200",
               refreshing && "opacity-60",
             )}
           >

@@ -242,7 +242,7 @@ export default function SeasonsPage() {
 
         {/* Loading */}
         {loading && !data && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (
               <SeasonCardSkeleton key={i} />
             ))}
@@ -251,7 +251,7 @@ export default function SeasonsPage() {
 
         {/* Content */}
         {data && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {data.seasons.length === 0 ? (
               <div className="rounded-[var(--radius-card)] bg-secondary p-8 text-center text-sm text-muted-foreground">
                 <Trophy className="mx-auto h-12 w-12 mb-4 opacity-30" />
