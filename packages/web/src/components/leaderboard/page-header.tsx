@@ -4,14 +4,27 @@ import Image from "next/image";
 /**
  * Shared page header for leaderboard pages — logo + title slot.
  *
+ * Features a subtle gradient background inspired by WoW Armory's hero header:
+ * a dark-to-transparent gradient with a faint teal glow at the top, creating
+ * visual separation from the body while staying within pew's Basalt palette.
+ *
  * Each page provides its own title content via the `children` prop so that
  * the season detail page can show the season name instead of a generic title.
  */
 export function PageHeader({ children }: { children: React.ReactNode }) {
   return (
-    <header className="pt-10 pb-2">
+    <header className="relative pt-10 pb-4 overflow-hidden">
+      {/* Gradient overlay — faint teal glow fading into body background */}
       <div
-        className="flex items-center gap-5 animate-fade-up"
+        className="pointer-events-none absolute inset-0 -top-16"
+        aria-hidden="true"
+        style={{
+          background:
+            "radial-gradient(ellipse 80% 60% at 50% 0%, hsl(186 60% 35% / 0.08) 0%, transparent 70%)",
+        }}
+      />
+      <div
+        className="relative flex items-center gap-5 animate-fade-up"
         style={{ animationDelay: "0ms" }}
       >
         <Link
