@@ -125,7 +125,7 @@ function SortHeader({
       <button
         onClick={() => onSort(sortKey)}
         className={cn(
-          "flex items-center gap-1 hover:text-foreground transition-colors",
+          "inline-flex items-center gap-1 hover:text-foreground transition-colors ml-auto",
           isActive && "text-foreground"
         )}
       >
