@@ -30,6 +30,12 @@ const BASE_URL = `http://localhost:${E2E_PORT}`;
 const TEST_USER_ID = "e2e-test-user-id";
 const TEST_USER_EMAIL = "e2e@test.local";
 
+/** Headers for ingest requests — includes version gate header */
+const INGEST_HEADERS = {
+  "Content-Type": "application/json",
+  "X-Pew-Client-Version": "1.7.0",
+};
+
 // D1 client for direct DB access (seed/cleanup)
 function getD1(): D1Client {
   return new D1Client({
@@ -95,10 +101,21 @@ afterAll(async () => {
 // ===========================================================================
 
 describe("POST /api/ingest", () => {
-  it("should reject empty array", async () => {
+  it("should reject requests without client version header", async () => {
     const res = await fetch(`${BASE_URL}/api/ingest`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      body: JSON.stringify([makeRecord()]),
+    });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain("version");
+  });
+
+  it("should reject empty array", async () => {
+    const res = await fetch(`${BASE_URL}/api/ingest`, {
+      method: "POST",
+      headers: INGEST_HEADERS,
       body: JSON.stringify([]),
     });
     expect(res.status).toBe(400);
@@ -109,7 +126,7 @@ describe("POST /api/ingest", () => {
   it("should reject non-array body", async () => {
     const res = await fetch(`${BASE_URL}/api/ingest`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: INGEST_HEADERS,
       body: JSON.stringify({ source: "claude-code" }),
     });
     expect(res.status).toBe(400);
@@ -120,7 +137,7 @@ describe("POST /api/ingest", () => {
   it("should reject invalid source", async () => {
     const res = await fetch(`${BASE_URL}/api/ingest`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: INGEST_HEADERS,
       body: JSON.stringify([makeRecord({ source: "invalid-tool" })]),
     });
     expect(res.status).toBe(400);
@@ -131,7 +148,7 @@ describe("POST /api/ingest", () => {
   it("should reject negative tokens", async () => {
     const res = await fetch(`${BASE_URL}/api/ingest`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: INGEST_HEADERS,
       body: JSON.stringify([makeRecord({ input_tokens: -1 })]),
     });
     expect(res.status).toBe(400);
@@ -143,7 +160,7 @@ describe("POST /api/ingest", () => {
     const record = makeRecord();
     const res = await fetch(`${BASE_URL}/api/ingest`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: INGEST_HEADERS,
       body: JSON.stringify([record]),
     });
     expect(res.status).toBe(200);
@@ -165,7 +182,7 @@ describe("POST /api/ingest", () => {
     const record = makeRecord();
     const res = await fetch(`${BASE_URL}/api/ingest`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: INGEST_HEADERS,
       body: JSON.stringify([record]),
     });
     expect(res.status).toBe(200);
@@ -205,7 +222,7 @@ describe("POST /api/ingest", () => {
 
     const res = await fetch(`${BASE_URL}/api/ingest`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: INGEST_HEADERS,
       body: JSON.stringify(records),
     });
     expect(res.status).toBe(200);
