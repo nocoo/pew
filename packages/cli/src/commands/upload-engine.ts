@@ -117,6 +117,11 @@ export function createUploadEngine<T>(config: UploadEngineConfig<T>) {
       await queue.readFromOffset(currentOffset);
 
     if (rawRecords.length === 0) {
+      // Even with zero valid records, advance the offset past any corrupted
+      // lines so we don't re-read (and re-warn about) them on every run.
+      if (newOffset !== currentOffset) {
+        await queue.saveOffset(newOffset);
+      }
       return { success: true, uploaded: 0, batches: 0 };
     }
 
