@@ -33,6 +33,11 @@ function isDevMode(): boolean {
   return process.argv.includes("--dev");
 }
 
+/** Shared handler for corrupted JSONL lines in queue files */
+function handleCorruptLine(line: string, _error: unknown): void {
+  consola.warn(`  ${pc.yellow("Skipping corrupt queue line:")} ${pc.dim(line.slice(0, 80))}${line.length > 80 ? "…" : ""}`);
+}
+
 function isSource(value: string): value is Source {
   return [
     "claude-code",
@@ -97,6 +102,7 @@ const syncCommand = defineCommand({
       openMessageDb,
       openclawDir: paths.openclawDir,
       vscodeCopilotDirs: paths.vscodeCopilotDirs,
+      onCorruptLine: handleCorruptLine,
       onProgress(event) {
         if (event.phase === "parse" && event.current && event.total) {
           // Only log at 25% intervals or small counts
@@ -162,6 +168,7 @@ const syncCommand = defineCommand({
       openCodeDbPath: paths.openCodeDbPath,
       openSessionDb,
       openclawDir: paths.openclawDir,
+      onCorruptLine: handleCorruptLine,
       onProgress(event) {
         if (event.phase === "parse" && event.current && event.total) {
           if (
@@ -242,6 +249,7 @@ const statusCommand = defineCommand({
         vscodeCopilotDirs: paths.vscodeCopilotDirs,
       },
       notifierStatuses,
+      onCorruptLine: handleCorruptLine,
     });
 
     consola.log("");
@@ -535,6 +543,7 @@ async function runUpload(stateDir: string, apiUrl: string, dev: boolean): Promis
     dev,
     fetch: globalThis.fetch,
     clientVersion: CLI_VERSION,
+    onCorruptLine: handleCorruptLine,
     onProgress(event) {
       if (event.phase === "uploading") {
         consola.info(
@@ -580,6 +589,7 @@ async function runSessionUpload(stateDir: string, apiUrl: string, dev: boolean):
     dev,
     fetch: globalThis.fetch,
     clientVersion: CLI_VERSION,
+    onCorruptLine: handleCorruptLine,
     onProgress(event) {
       if (event.phase === "uploading") {
         consola.info(

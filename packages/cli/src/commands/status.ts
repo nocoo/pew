@@ -1,6 +1,7 @@
 import type { NotifierStatus, Source } from "@pew/core";
 import { CursorStore } from "../storage/cursor-store.js";
 import { LocalQueue } from "../storage/local-queue.js";
+import type { OnCorruptLine } from "../storage/base-queue.js";
 
 /** Resolved source directory paths used for file classification */
 export interface SourceDirs {
@@ -52,11 +53,12 @@ export async function executeStatus(opts: {
   stateDir: string;
   sourceDirs: SourceDirs;
   notifierStatuses?: Partial<Record<Source, NotifierStatus>>;
+  onCorruptLine?: OnCorruptLine;
 }): Promise<StatusResult> {
   const { stateDir, sourceDirs } = opts;
 
   const cursorStore = new CursorStore(stateDir);
-  const queue = new LocalQueue(stateDir);
+  const queue = new LocalQueue(stateDir, opts.onCorruptLine);
 
   const cursors = await cursorStore.load();
   const offset = await queue.loadOffset();

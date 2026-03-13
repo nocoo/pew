@@ -10,6 +10,7 @@ import type {
 } from "@pew/core";
 import { CursorStore } from "../storage/cursor-store.js";
 import { LocalQueue } from "../storage/local-queue.js";
+import type { OnCorruptLine } from "../storage/base-queue.js";
 import type { QueryMessagesFn } from "../parsers/opencode-sqlite.js";
 import type { ParsedDelta } from "../parsers/claude.js";
 import { toUtcHalfHourStart, bucketKey, addTokens, emptyTokenDelta } from "../utils/buckets.js";
@@ -41,6 +42,8 @@ export interface SyncOptions {
   vscodeCopilotDirs?: string[];
   /** Progress callback */
   onProgress?: (event: ProgressEvent) => void;
+  /** Callback invoked when a corrupted JSONL line is found in the queue */
+  onCorruptLine?: OnCorruptLine;
 }
 
 /** Progress event for UI display */
@@ -105,7 +108,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   const { stateDir, onProgress } = opts;
 
   const cursorStore = new CursorStore(stateDir);
-  const queue = new LocalQueue(stateDir);
+  const queue = new LocalQueue(stateDir, opts.onCorruptLine);
   const cursors = await cursorStore.load();
 
   // Full-scan detection: if cursors were completely empty at start (first run

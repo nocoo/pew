@@ -23,6 +23,7 @@ import type {
 } from "@pew/core";
 import { SessionCursorStore } from "../storage/session-cursor-store.js";
 import { SessionQueue } from "../storage/session-queue.js";
+import type { OnCorruptLine } from "../storage/base-queue.js";
 import { deduplicateSessionRecords } from "./session-upload.js";
 import { createSessionDrivers } from "../drivers/registry.js";
 import { hashProjectRef } from "../utils/hash-project-ref.js";
@@ -57,6 +58,8 @@ export interface SessionSyncOptions {
   openclawDir?: string;
   /** Progress callback */
   onProgress?: (event: SessionProgressEvent) => void;
+  /** Callback invoked when a corrupted JSONL line is found in the queue */
+  onCorruptLine?: OnCorruptLine;
 }
 
 /** Progress event for UI display */
@@ -151,7 +154,7 @@ export async function executeSessionSync(
   const { stateDir, onProgress } = opts;
 
   const cursorStore = new SessionCursorStore(stateDir);
-  const queue = new SessionQueue(stateDir);
+  const queue = new SessionQueue(stateDir, opts.onCorruptLine);
   const cursors = await cursorStore.load();
 
   const allSnapshots: SessionSnapshot[] = [];

@@ -6,6 +6,7 @@
  */
 
 import { LocalQueue } from "../storage/local-queue.js";
+import type { OnCorruptLine } from "../storage/base-queue.js";
 import { createUploadEngine } from "./upload-engine.js";
 import type {
   UploadResult,
@@ -36,6 +37,8 @@ export interface UploadOptions {
   onProgress?: (event: UploadProgressEvent) => void;
   /** CLI version string for server-side version gate */
   clientVersion?: string;
+  /** Callback invoked when a corrupted JSONL line is found in the queue */
+  onCorruptLine?: OnCorruptLine;
 }
 
 export type { UploadResult, UploadProgressEvent };
@@ -78,7 +81,7 @@ export function aggregateRecords(records: QueueRecord[]): QueueRecord[] {
 // ---------------------------------------------------------------------------
 
 export async function executeUpload(opts: UploadOptions): Promise<UploadResult> {
-  const queue = new LocalQueue(opts.stateDir);
+  const queue = new LocalQueue(opts.stateDir, opts.onCorruptLine);
 
   const engine = createUploadEngine<QueueRecord>({
     queue,
