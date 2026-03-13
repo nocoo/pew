@@ -109,13 +109,44 @@ interface Project {
   aliases: ProjectAlias[];
   tags: string[];              // NEW
   session_count: number;
-  last_active: string | null;
+  last_active: string | null;           // period-scoped when from/to active
+  absolute_last_active: string | null;  // NEW — always all-time, never period-scoped
   total_messages: number;
   total_duration: number;
   models: string[];
   created_at: string;
 }
 ```
+
+> **Why `absolute_last_active`?** The stat grid's "Active (7d)" card must
+> compare against wall-clock `now - 7d` regardless of the selected period
+> (section 4.4). But `last_active` is period-scoped when `from`/`to` are
+> provided (section 5). Returning a separate all-time field avoids a second
+> API call. The field is populated from an unconditional `MAX(sr.last_message_at)`
+> in Query 2 — a second aggregate without the date filter in the JOIN ON:
+>
+> ```sql
+> MAX(sr.last_message_at) AS last_active,                    -- period-scoped
+> MAX(sr_all.last_message_at) AS absolute_last_active        -- all-time
+> ```
+>
+> When no `from`/`to` is provided, both fields are identical.
+
+**Updated ProjectAlias shape:**
+
+```typescript
+interface ProjectAlias {
+  source: string;
+  project_ref: string;
+  session_count: number;  // NEW — period-scoped, 0 when no sessions in range
+}
+```
+
+> **Why per-alias `session_count`?** The summary table's Tools column must
+> show only sources active in the selected period (section 4.4). The frontend
+> filters aliases by `session_count > 0` for the source chips. Without this
+> field, the frontend has no way to distinguish period-active from period-
+> inactive aliases. The value comes directly from Query 2 (section 5).
 
 ### 2.2. `PATCH /api/projects/:id` — Tag mutations
 
@@ -248,7 +279,7 @@ Three cards matching the `/devices` pattern:
 |------|-------|--------|
 | Projects | Count of named projects | `projects.length` |
 | Most Active | Name of project with highest session count | Client-side sort by `session_count` desc, take first. **Do not** rely on API order — `GET /api/projects` returns projects ordered by `created_at DESC`, not by activity. |
-| Active (7d) | Count of projects with `last_active` within 7 wall-clock days | Always computed from wall-clock `now - 7d`, regardless of the period selector. This matches the `/devices` page pattern (`page.tsx:45`). When a period is active, this card still shows real recency — it is intentionally **not** scoped by `from`/`to`. |
+| Active (7d) | Count of projects with `absolute_last_active` within 7 wall-clock days | Always computed from wall-clock `now - 7d` using `absolute_last_active` (not period-scoped `last_active`). This matches the `/devices` page pattern (`page.tsx:45`). When a period is active, this card still shows real recency — it is intentionally **not** scoped by `from`/`to`. |
 
 #### Project Breakdown Chart
 
@@ -308,10 +339,11 @@ Full-width table at the bottom with columns:
 
 > **Tools column scoping**: When a period is active, the Tools column must show
 > only the sources that had sessions in the selected period, not the full
-> historical alias list. The API already returns per-alias `session_count` in
-> Query 2 (section 5) — the frontend filters to aliases with `session_count > 0`
-> for the chips. When no period is active (all-time), all aliased sources are
-> shown. This keeps every column in the table consistent with the period scope.
+> historical alias list. Each alias in the response now carries `session_count`
+> (see updated `ProjectAlias` type in section 2.1) — the frontend filters to
+> `alias.session_count > 0` for the chips. When no period is active (all-time),
+> all aliased sources are shown. This keeps every column in the table consistent
+> with the period scope.
 
 #### Tag Interaction in Summary Table
 
@@ -414,7 +446,7 @@ with zero sessions in the period silently disappear.
 **Correct pattern — date filter in the JOIN ON clause:**
 
 ```sql
--- Query 2 (aliases with period-scoped stats)
+-- Query 2 (aliases with period-scoped stats + absolute last_active)
 SELECT
   pa.project_id,
   pa.source,
@@ -422,7 +454,8 @@ SELECT
   COUNT(sr.id) AS session_count,
   MAX(sr.last_message_at) AS last_active,
   SUM(COALESCE(sr.total_messages, 0)) AS total_messages,
-  SUM(COALESCE(sr.duration_seconds, 0)) AS total_duration
+  SUM(COALESCE(sr.duration_seconds, 0)) AS total_duration,
+  MAX(sr_all.last_message_at) AS absolute_last_active   -- all-time, not period-scoped
 FROM project_aliases pa
 LEFT JOIN session_records sr
   ON sr.user_id = pa.user_id
@@ -430,9 +463,21 @@ LEFT JOIN session_records sr
   AND sr.project_ref = pa.project_ref
   AND sr.started_at >= ?             -- date range in JOIN ON
   AND sr.started_at < ?              -- NOT in WHERE
+LEFT JOIN session_records sr_all
+  ON sr_all.user_id = pa.user_id
+  AND sr_all.source = pa.source
+  AND sr_all.project_ref = pa.project_ref
+  -- no date filter: gives all-time last_active
 WHERE pa.user_id = ?
 GROUP BY pa.project_id, pa.source, pa.project_ref
 ```
+
+> **Two LEFT JOINs on `session_records`**: `sr` is period-scoped (provides
+> `session_count`, `last_active`, `total_messages`, `total_duration`).
+> `sr_all` is unconditional (provides `absolute_last_active`). When no
+> `from`/`to` is provided, the `sr` join has no date conditions and the
+> two joins are equivalent — omit `sr_all` entirely in that case to avoid
+> the performance cost of a redundant join.
 
 ```sql
 -- Query 3 (unassigned refs with period-scoped stats)
