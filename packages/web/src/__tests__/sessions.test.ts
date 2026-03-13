@@ -28,14 +28,6 @@ function createMockClient() {
   };
 }
 
-const EMPTY_SUMMARY = {
-  total_count: 0,
-  total_duration_seconds: 0,
-  total_user_messages: 0,
-  total_assistant_messages: 0,
-  total_messages: 0,
-};
-
 function makeRequest(params: Record<string, string> = {}): Request {
   const url = new URL("http://localhost:7030/api/sessions");
   for (const [k, v] of Object.entries(params)) {
@@ -87,14 +79,12 @@ describe("GET /api/sessions", () => {
     });
 
     it("should query with default date range (last 30 days)", async () => {
-      mockClient.query
-        .mockResolvedValueOnce({ results: [], meta: {} })
-        .mockResolvedValueOnce({ results: [EMPTY_SUMMARY], meta: {} });
+      mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
 
       const res = await GET(makeRequest());
 
       expect(res.status).toBe(200);
-      expect(mockClient.query).toHaveBeenCalledTimes(2);
+      expect(mockClient.query).toHaveBeenCalledOnce();
       const [sql, params] = mockClient.query.mock.calls[0]!;
       expect(sql).toContain("WHERE");
       expect(sql).toContain("user_id = ?");
@@ -104,9 +94,7 @@ describe("GET /api/sessions", () => {
     });
 
     it("should accept custom from/to date range", async () => {
-      mockClient.query
-        .mockResolvedValueOnce({ results: [], meta: {} })
-        .mockResolvedValueOnce({ results: [EMPTY_SUMMARY], meta: {} });
+      mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
 
       const res = await GET(
         makeRequest({ from: "2026-03-01", to: "2026-03-07" }),
@@ -119,9 +107,7 @@ describe("GET /api/sessions", () => {
     });
 
     it("should filter by source", async () => {
-      mockClient.query
-        .mockResolvedValueOnce({ results: [], meta: {} })
-        .mockResolvedValueOnce({ results: [EMPTY_SUMMARY], meta: {} });
+      mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
 
       const res = await GET(makeRequest({ source: "claude-code" }));
 
@@ -140,9 +126,7 @@ describe("GET /api/sessions", () => {
     });
 
     it("should filter by kind", async () => {
-      mockClient.query
-        .mockResolvedValueOnce({ results: [], meta: {} })
-        .mockResolvedValueOnce({ results: [EMPTY_SUMMARY], meta: {} });
+      mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
 
       const res = await GET(makeRequest({ kind: "human" }));
 
@@ -173,9 +157,7 @@ describe("GET /api/sessions", () => {
     });
 
     it("should filter by project name via HAVING on p.name", async () => {
-      mockClient.query
-        .mockResolvedValueOnce({ results: [], meta: {} })
-        .mockResolvedValueOnce({ results: [EMPTY_SUMMARY], meta: {} });
+      mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
 
       const res = await GET(makeRequest({ project: "pew" }));
 
@@ -186,9 +168,7 @@ describe("GET /api/sessions", () => {
     });
 
     it("should filter for unassigned sessions when project=_unassigned", async () => {
-      mockClient.query
-        .mockResolvedValueOnce({ results: [], meta: {} })
-        .mockResolvedValueOnce({ results: [EMPTY_SUMMARY], meta: {} });
+      mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
 
       const res = await GET(makeRequest({ project: "_unassigned" }));
 
@@ -211,50 +191,37 @@ describe("GET /api/sessions", () => {
     });
 
     it("should return session records", async () => {
-      mockClient.query
-        .mockResolvedValueOnce({
-          results: [
-            {
-              session_key: "claude-code:abc",
-              source: "claude-code",
-              kind: "human",
-              started_at: "2026-03-08T10:00:00Z",
-              last_message_at: "2026-03-08T10:30:00Z",
-              duration_seconds: 1800,
-              user_messages: 12,
-              assistant_messages: 10,
-              total_messages: 25,
-              project_ref: "a1b2",
-              model: "claude-sonnet-4-20250514",
-            },
-            {
-              session_key: "opencode:def",
-              source: "opencode",
-              kind: "human",
-              started_at: "2026-03-08T11:00:00Z",
-              last_message_at: "2026-03-08T11:45:00Z",
-              duration_seconds: 2700,
-              user_messages: 8,
-              assistant_messages: 7,
-              total_messages: 18,
-              project_ref: null,
-              model: "o3",
-            },
-          ],
-          meta: {},
-        })
-        .mockResolvedValueOnce({
-          results: [
-            {
-              total_count: 2,
-              total_duration_seconds: 4500,
-              total_user_messages: 20,
-              total_assistant_messages: 17,
-              total_messages: 43,
-            },
-          ],
-          meta: {},
-        });
+      mockClient.query.mockResolvedValueOnce({
+        results: [
+          {
+            session_key: "claude-code:abc",
+            source: "claude-code",
+            kind: "human",
+            started_at: "2026-03-08T10:00:00Z",
+            last_message_at: "2026-03-08T10:30:00Z",
+            duration_seconds: 1800,
+            user_messages: 12,
+            assistant_messages: 10,
+            total_messages: 25,
+            project_ref: "a1b2",
+            model: "claude-sonnet-4-20250514",
+          },
+          {
+            session_key: "opencode:def",
+            source: "opencode",
+            kind: "human",
+            started_at: "2026-03-08T11:00:00Z",
+            last_message_at: "2026-03-08T11:45:00Z",
+            duration_seconds: 2700,
+            user_messages: 8,
+            assistant_messages: 7,
+            total_messages: 18,
+            project_ref: null,
+            model: "o3",
+          },
+        ],
+        meta: {},
+      });
 
       const res = await GET(makeRequest());
 
@@ -266,50 +233,37 @@ describe("GET /api/sessions", () => {
     });
 
     it("should include summary stats", async () => {
-      mockClient.query
-        .mockResolvedValueOnce({
-          results: [
-            {
-              session_key: "claude-code:abc",
-              source: "claude-code",
-              kind: "human",
-              started_at: "2026-03-08T10:00:00Z",
-              last_message_at: "2026-03-08T10:30:00Z",
-              duration_seconds: 1800,
-              user_messages: 12,
-              assistant_messages: 10,
-              total_messages: 25,
-              project_ref: "a1b2",
-              model: "claude-sonnet-4-20250514",
-            },
-            {
-              session_key: "opencode:def",
-              source: "opencode",
-              kind: "human",
-              started_at: "2026-03-08T11:00:00Z",
-              last_message_at: "2026-03-08T11:45:00Z",
-              duration_seconds: 2700,
-              user_messages: 8,
-              assistant_messages: 7,
-              total_messages: 18,
-              project_ref: null,
-              model: "o3",
-            },
-          ],
-          meta: {},
-        })
-        .mockResolvedValueOnce({
-          results: [
-            {
-              total_count: 2,
-              total_duration_seconds: 4500,
-              total_user_messages: 20,
-              total_assistant_messages: 17,
-              total_messages: 43,
-            },
-          ],
-          meta: {},
-        });
+      mockClient.query.mockResolvedValueOnce({
+        results: [
+          {
+            session_key: "claude-code:abc",
+            source: "claude-code",
+            kind: "human",
+            started_at: "2026-03-08T10:00:00Z",
+            last_message_at: "2026-03-08T10:30:00Z",
+            duration_seconds: 1800,
+            user_messages: 12,
+            assistant_messages: 10,
+            total_messages: 25,
+            project_ref: "a1b2",
+            model: "claude-sonnet-4-20250514",
+          },
+          {
+            session_key: "opencode:def",
+            source: "opencode",
+            kind: "human",
+            started_at: "2026-03-08T11:00:00Z",
+            last_message_at: "2026-03-08T11:45:00Z",
+            duration_seconds: 2700,
+            user_messages: 8,
+            assistant_messages: 7,
+            total_messages: 18,
+            project_ref: null,
+            model: "o3",
+          },
+        ],
+        meta: {},
+      });
 
       const res = await GET(makeRequest());
       const body = await res.json();
@@ -323,9 +277,7 @@ describe("GET /api/sessions", () => {
     });
 
     it("should return empty records when no data", async () => {
-      mockClient.query
-        .mockResolvedValueOnce({ results: [], meta: {} })
-        .mockResolvedValueOnce({ results: [EMPTY_SUMMARY], meta: {} });
+      mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
 
       const res = await GET(makeRequest());
       const body = await res.json();
@@ -336,9 +288,7 @@ describe("GET /api/sessions", () => {
     });
 
     it("should order by started_at DESC", async () => {
-      mockClient.query
-        .mockResolvedValueOnce({ results: [], meta: {} })
-        .mockResolvedValueOnce({ results: [EMPTY_SUMMARY], meta: {} });
+      mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
 
       const res = await GET(makeRequest());
 
@@ -346,18 +296,6 @@ describe("GET /api/sessions", () => {
       const [sql] = mockClient.query.mock.calls[0]!;
       expect(sql).toContain("ORDER BY");
       expect(sql).toContain("started_at DESC");
-    });
-
-    it("should apply a protective LIMIT to the SQL query", async () => {
-      mockClient.query
-        .mockResolvedValueOnce({ results: [], meta: {} })
-        .mockResolvedValueOnce({ results: [EMPTY_SUMMARY], meta: {} });
-
-      const res = await GET(makeRequest());
-
-      expect(res.status).toBe(200);
-      const [sql] = mockClient.query.mock.calls[0]!;
-      expect(sql).toContain("LIMIT");
     });
 
     it("should return 500 on D1 error", async () => {
@@ -368,143 +306,6 @@ describe("GET /api/sessions", () => {
       expect(res.status).toBe(500);
       const body = await res.json();
       expect(body.error).toContain("session");
-    });
-  });
-
-  // -----------------------------------------------------------------------
-  // Truncation metadata
-  // -----------------------------------------------------------------------
-
-  describe("truncation metadata", () => {
-    beforeEach(() => {
-      vi.mocked(resolveUser).mockResolvedValue({
-        userId: "u1",
-        email: "test@example.com",
-      });
-    });
-
-    it("should return truncated=false and total_count when results fit within limit", async () => {
-      const records = Array.from({ length: 3 }, (_, i) => ({
-        session_key: `k${i}`,
-        source: "claude-code",
-        kind: "human",
-        started_at: "2026-03-08T10:00:00Z",
-        last_message_at: "2026-03-08T10:30:00Z",
-        duration_seconds: 600,
-        user_messages: 5,
-        assistant_messages: 4,
-        total_messages: 10,
-        project_ref: null,
-        project_name: null,
-        model: null,
-      }));
-
-      // First call: the records query; second call: the summary query
-      mockClient.query
-        .mockResolvedValueOnce({ results: records, meta: {} })
-        .mockResolvedValueOnce({
-          results: [
-            {
-              total_count: 3,
-              total_duration_seconds: 1800,
-              total_user_messages: 15,
-              total_assistant_messages: 12,
-              total_messages: 30,
-            },
-          ],
-          meta: {},
-        });
-
-      const res = await GET(makeRequest());
-      const body = await res.json();
-
-      expect(body.truncated).toBe(false);
-      expect(body.total_count).toBe(3);
-    });
-
-    it("should return truncated=true when results hit MAX_ROWS limit", async () => {
-      // Simulate exactly MAX_ROWS (5000) records returned — means there are likely more
-      const records = Array.from({ length: 5000 }, (_, i) => ({
-        session_key: `k${i}`,
-        source: "claude-code",
-        kind: "human",
-        started_at: "2026-03-08T10:00:00Z",
-        last_message_at: "2026-03-08T10:30:00Z",
-        duration_seconds: 60,
-        user_messages: 2,
-        assistant_messages: 2,
-        total_messages: 4,
-        project_ref: null,
-        project_name: null,
-        model: null,
-      }));
-
-      mockClient.query
-        .mockResolvedValueOnce({ results: records, meta: {} })
-        .mockResolvedValueOnce({
-          results: [
-            {
-              total_count: 7500,
-              total_duration_seconds: 450000,
-              total_user_messages: 15000,
-              total_assistant_messages: 15000,
-              total_messages: 30000,
-            },
-          ],
-          meta: {},
-        });
-
-      const res = await GET(makeRequest());
-      const body = await res.json();
-
-      expect(body.truncated).toBe(true);
-      expect(body.total_count).toBe(7500);
-      expect(body.records).toHaveLength(5000);
-    });
-
-    it("should compute summary from the summary query, not from truncated records", async () => {
-      // 2 records returned (truncated from a larger set for simplicity)
-      const records = [
-        {
-          session_key: "k0",
-          source: "claude-code",
-          kind: "human",
-          started_at: "2026-03-08T10:00:00Z",
-          last_message_at: "2026-03-08T10:30:00Z",
-          duration_seconds: 1800,
-          user_messages: 12,
-          assistant_messages: 10,
-          total_messages: 25,
-          project_ref: null,
-          project_name: null,
-          model: null,
-        },
-      ];
-
-      mockClient.query
-        .mockResolvedValueOnce({ results: records, meta: {} })
-        .mockResolvedValueOnce({
-          results: [
-            {
-              total_count: 100,
-              total_duration_seconds: 180000,
-              total_user_messages: 1200,
-              total_assistant_messages: 1000,
-              total_messages: 2500,
-            },
-          ],
-          meta: {},
-        });
-
-      const res = await GET(makeRequest());
-      const body = await res.json();
-
-      // Summary should reflect the full dataset, not just the 1 returned record
-      expect(body.summary.total_sessions).toBe(100);
-      expect(body.summary.total_duration_seconds).toBe(180000);
-      expect(body.summary.total_user_messages).toBe(1200);
-      expect(body.summary.total_assistant_messages).toBe(1000);
-      expect(body.summary.total_messages).toBe(2500);
     });
   });
 });

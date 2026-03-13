@@ -177,7 +177,7 @@ GROUP BY sr.source, sr.project_ref
 
 | Change | Impact | Effort | Status |
 |--------|--------|--------|--------|
-| ~~Split sessions list (Q5) into paginated query + separate summary query~~ Protective LIMIT 5000 instead | Prevents unbounded scans; client recomputes aggregates from raw records so true pagination would break charts | Low | ✅ Done (`e878607`) |
+| ~~Split sessions list (Q5) into paginated query + separate summary query~~ ~~Protective LIMIT 5000~~ | Reverted — LIMIT 5000 silently truncated data, breaking client-side stats. No optimization applied; full scan retained. | — | ❌ Reverted |
 | Cache leaderboard results (60s TTL) | 246 executions -> ~10 | Low | ✅ Done (`c1cb97a`) |
 
 ### Priority 2: New indexes

@@ -32,11 +32,8 @@ const VALID_KINDS = new Set(["human", "automated"]);
 const DATE_RE = /^\d{4}-\d{2}-\d{2}/;
 
 // ---------------------------------------------------------------------------
-// Limits
+// Types
 // ---------------------------------------------------------------------------
-
-/** Protective upper bound — prevents extreme full-table scans. */
-const MAX_ROWS = 5000;
 
 interface SessionRow {
   session_key: string;
@@ -165,58 +162,35 @@ export async function GET(request: Request) {
     LEFT JOIN projects p ON p.id = pa.project_id
     WHERE ${conditions.join(" AND ")}
     ORDER BY sr.started_at DESC
-    LIMIT ${MAX_ROWS}
   `;
 
-  // 4. Execute — records query + summary query in parallel
+  // 4. Execute
   const client = getD1Client();
 
-  const summarySql = `
-    SELECT
-      COUNT(*)                  AS total_count,
-      SUM(sr.duration_seconds)  AS total_duration_seconds,
-      SUM(sr.user_messages)     AS total_user_messages,
-      SUM(sr.assistant_messages) AS total_assistant_messages,
-      SUM(sr.total_messages)    AS total_messages
-    FROM session_records sr
-    LEFT JOIN project_aliases pa
-      ON pa.user_id = sr.user_id
-      AND pa.source = sr.source
-      AND pa.project_ref = sr.project_ref
-    LEFT JOIN projects p ON p.id = pa.project_id
-    WHERE ${conditions.join(" AND ")}
-  `;
-
   try {
-    const [recordsResult, summaryResult] = await Promise.all([
-      client.query<SessionRow>(sql, params),
-      client.query<{
-        total_count: number;
-        total_duration_seconds: number;
-        total_user_messages: number;
-        total_assistant_messages: number;
-        total_messages: number;
-      }>(summarySql, params),
-    ]);
+    const result = await client.query<SessionRow>(sql, params);
+    const records = result.results;
 
-    const records = recordsResult.results;
-    const summaryRow = summaryResult.results[0]!;
-    const truncated = records.length >= MAX_ROWS;
+    // Compute summary
+    const summary = records.reduce(
+      (acc, r) => ({
+        total_sessions: acc.total_sessions + 1,
+        total_duration_seconds: acc.total_duration_seconds + r.duration_seconds,
+        total_user_messages: acc.total_user_messages + r.user_messages,
+        total_assistant_messages:
+          acc.total_assistant_messages + r.assistant_messages,
+        total_messages: acc.total_messages + r.total_messages,
+      }),
+      {
+        total_sessions: 0,
+        total_duration_seconds: 0,
+        total_user_messages: 0,
+        total_assistant_messages: 0,
+        total_messages: 0,
+      },
+    );
 
-    const summary = {
-      total_sessions: summaryRow.total_count,
-      total_duration_seconds: summaryRow.total_duration_seconds ?? 0,
-      total_user_messages: summaryRow.total_user_messages ?? 0,
-      total_assistant_messages: summaryRow.total_assistant_messages ?? 0,
-      total_messages: summaryRow.total_messages ?? 0,
-    };
-
-    return NextResponse.json({
-      records,
-      summary,
-      total_count: summaryRow.total_count,
-      truncated,
-    });
+    return NextResponse.json({ records, summary });
   } catch (err) {
     console.error("Failed to query sessions:", err);
     return NextResponse.json(
