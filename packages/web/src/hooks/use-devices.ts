@@ -16,6 +16,9 @@ interface UseDevicesResult {
     deviceId: string,
     alias: string
   ) => Promise<{ success: boolean; error?: string }>;
+  deleteDevice: (
+    deviceId: string
+  ) => Promise<{ success: boolean; error?: string }>;
 }
 
 /**
@@ -85,5 +88,35 @@ export function useDevices(): UseDevicesResult {
     [fetchData]
   );
 
-  return { data, loading, error, refetch: fetchData, updateAlias };
+  const deleteDevice = useCallback(
+    async (
+      deviceId: string
+    ): Promise<{ success: boolean; error?: string }> => {
+      try {
+        const res = await fetch("/api/devices", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ device_id: deviceId }),
+        });
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          const errorMsg =
+            (body as { error?: string }).error ?? `HTTP ${res.status}`;
+          return { success: false, error: errorMsg };
+        }
+
+        // Refetch full list after deletion
+        await fetchData();
+        return { success: true };
+      } catch (err) {
+        const errorMsg =
+          err instanceof Error ? err.message : "Unknown error";
+        return { success: false, error: errorMsg };
+      }
+    },
+    [fetchData]
+  );
+
+  return { data, loading, error, refetch: fetchData, updateAlias, deleteDevice };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Monitor, Info } from "lucide-react";
+import { Monitor, Info, Trash2 } from "lucide-react";
 import { cn, formatTokens } from "@/lib/utils";
 import { sourceLabel } from "@/hooks/use-usage-data";
 import { deviceLabel, shortDeviceId } from "@/lib/device-helpers";
@@ -15,18 +15,34 @@ import type { DeviceSummary } from "@pew/core";
 function DeviceCard({
   device,
   onUpdateAlias,
+  onDelete,
 }: {
   device: DeviceSummary;
   onUpdateAlias: (alias: string) => Promise<{ success: boolean; error?: string }>;
+  onDelete?: (() => Promise<{ success: boolean; error?: string }>) | undefined;
 }) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [aliasError, setAliasError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const label = deviceLabel(device);
   const isDefault = device.device_id === "default";
   const hasAlias = device.alias !== null;
+  const isEmpty = device.total_tokens === 0 && device.first_seen === null;
+
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    setDeleting(true);
+    const result = await onDelete();
+    setDeleting(false);
+    if (!result.success) {
+      setAliasError(result.error ?? "Failed to delete");
+    }
+    setConfirmDelete(false);
+  };
 
   const handleStartEdit = () => {
     setEditValue(device.alias ?? "");
@@ -134,10 +150,24 @@ function DeviceCard({
             <span className="font-mono text-[10px] text-muted-foreground/60">
               {isDefault ? "default" : shortDeviceId(device.device_id)}
             </span>
-            <span>·</span>
-            <span>First seen {fmtDate(device.first_seen)}</span>
-            <span>·</span>
-            <span>Last seen {relativeTime(device.last_seen)}</span>
+            {device.first_seen && (
+              <>
+                <span>·</span>
+                <span>First seen {fmtDate(device.first_seen)}</span>
+              </>
+            )}
+            {device.last_seen && (
+              <>
+                <span>·</span>
+                <span>Last seen {relativeTime(device.last_seen)}</span>
+              </>
+            )}
+            {isEmpty && (
+              <>
+                <span>·</span>
+                <span className="italic">No usage data</span>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -153,32 +183,70 @@ function DeviceCard({
       )}
 
       {/* Stats row */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-        {/* Tools */}
-        {device.sources.length > 0 && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-muted-foreground">Tools:</span>
-            <div className="flex gap-1">
-              {device.sources.map((s) => (
-                <span
-                  key={s}
-                  className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
-                >
-                  {sourceLabel(s)}
-                </span>
-              ))}
+      {!isEmpty && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          {/* Tools */}
+          {device.sources.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">Tools:</span>
+              <div className="flex gap-1">
+                {device.sources.map((s) => (
+                  <span
+                    key={s}
+                    className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                  >
+                    {sourceLabel(s)}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        <span className="text-xs text-muted-foreground">
-          {device.model_count} {device.model_count === 1 ? "model" : "models"}
-        </span>
+          <span className="text-xs text-muted-foreground">
+            {device.model_count} {device.model_count === 1 ? "model" : "models"}
+          </span>
 
-        <span className="text-xs text-muted-foreground">
-          {formatTokens(device.total_tokens)} tokens
-        </span>
-      </div>
+          <span className="text-xs text-muted-foreground">
+            {formatTokens(device.total_tokens)} tokens
+          </span>
+        </div>
+      )}
+
+      {/* Delete button for empty devices */}
+      {isEmpty && onDelete && (
+        <div className="flex items-center gap-2">
+          {confirmDelete ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Delete this device?</span>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className={cn(
+                  "rounded-lg bg-destructive/10 px-3 py-1 text-xs font-medium text-destructive hover:bg-destructive/20 transition-colors",
+                  deleting && "opacity-50"
+                )}
+              >
+                {deleting ? "Deleting..." : "Confirm"}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                disabled={deleting}
+                className="rounded-lg bg-accent px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-accent/80 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              <Trash2 className="h-3 w-3" strokeWidth={1.5} />
+              Delete
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -188,7 +256,7 @@ function DeviceCard({
 // ---------------------------------------------------------------------------
 
 export default function ManageDevicesPage() {
-  const { data, loading, error, updateAlias } = useDevices();
+  const { data, loading, error, updateAlias, deleteDevice } = useDevices();
 
   // ---------------------------------------------------------------------------
   // Render
@@ -267,6 +335,11 @@ export default function ManageDevicesPage() {
                 device={device}
                 onUpdateAlias={(alias) =>
                   updateAlias(device.device_id, alias)
+                }
+                onDelete={
+                  device.total_tokens === 0 && device.first_seen === null
+                    ? () => deleteDevice(device.device_id)
+                    : undefined
                 }
               />
             ))}

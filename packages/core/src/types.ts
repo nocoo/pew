@@ -337,8 +337,8 @@ export interface ByDeviceResponse {
 export interface DeviceSummary {
   device_id: string;
   alias: string | null;
-  first_seen: string;
-  last_seen: string;
+  first_seen: string | null;
+  last_seen: string | null;
   total_tokens: number;
   sources: string[];
   model_count: number;
