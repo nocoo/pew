@@ -93,13 +93,13 @@ export async function GET(request: Request) {
        LEFT JOIN (
          SELECT user_id, SUM(total_tokens) AS tokens_7d
          FROM usage_records
-         WHERE hour_start >= datetime('now', '-7 days')
+          WHERE datetime(hour_start) >= datetime('now', '-7 days')
          GROUP BY user_id
        ) tok7 ON tok7.user_id = u.id
        LEFT JOIN (
          SELECT user_id, SUM(total_tokens) AS tokens_30d
          FROM usage_records
-         WHERE hour_start >= datetime('now', '-30 days')
+         WHERE datetime(hour_start) >= datetime('now', '-30 days')
          GROUP BY user_id
        ) tok30 ON tok30.user_id = u.id
        LEFT JOIN (
