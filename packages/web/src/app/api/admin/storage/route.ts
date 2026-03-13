@@ -21,10 +21,8 @@ export interface StorageUserRow {
   team_count: number;
   device_count: number;
   total_tokens: number;
-  input_tokens: number;
-  output_tokens: number;
-  cached_input_tokens: number;
-  reasoning_output_tokens: number;
+  tokens_7d: number;
+  tokens_30d: number;
   usage_row_count: number;
   session_count: number;
   total_messages: number;
@@ -53,7 +51,7 @@ export async function GET(request: Request) {
   const client = getD1Client();
 
   try {
-    // Per-user aggregated stats via two sub-queries joined to users
+    // Per-user aggregated stats via sub-queries joined to users
     const { results: users } = await client.query<StorageUserRow>(
       `SELECT
          u.id              AS user_id,
@@ -63,10 +61,8 @@ export async function GET(request: Request) {
          COALESCE(tm_cnt.team_count, 0)            AS team_count,
          COALESCE(dev_cnt.device_count, 0)          AS device_count,
          COALESCE(tok.total_tokens, 0)              AS total_tokens,
-         COALESCE(tok.input_tokens, 0)              AS input_tokens,
-         COALESCE(tok.output_tokens, 0)             AS output_tokens,
-         COALESCE(tok.cached_input_tokens, 0)       AS cached_input_tokens,
-         COALESCE(tok.reasoning_output_tokens, 0)   AS reasoning_output_tokens,
+         COALESCE(tok7.tokens_7d, 0)                AS tokens_7d,
+         COALESCE(tok30.tokens_30d, 0)              AS tokens_30d,
          COALESCE(tok.usage_row_count, 0)           AS usage_row_count,
          COALESCE(sess.session_count, 0)            AS session_count,
          COALESCE(sess.total_messages, 0)           AS total_messages,
@@ -88,16 +84,24 @@ export async function GET(request: Request) {
          SELECT
            user_id,
            SUM(total_tokens)              AS total_tokens,
-           SUM(input_tokens)              AS input_tokens,
-           SUM(output_tokens)             AS output_tokens,
-           SUM(cached_input_tokens)       AS cached_input_tokens,
-           SUM(reasoning_output_tokens)   AS reasoning_output_tokens,
            COUNT(*)                        AS usage_row_count,
            MIN(hour_start)                AS first_seen,
            MAX(hour_start)                AS last_seen
          FROM usage_records
          GROUP BY user_id
        ) tok ON tok.user_id = u.id
+       LEFT JOIN (
+         SELECT user_id, SUM(total_tokens) AS tokens_7d
+         FROM usage_records
+         WHERE hour_start >= datetime('now', '-7 days')
+         GROUP BY user_id
+       ) tok7 ON tok7.user_id = u.id
+       LEFT JOIN (
+         SELECT user_id, SUM(total_tokens) AS tokens_30d
+         FROM usage_records
+         WHERE hour_start >= datetime('now', '-30 days')
+         GROUP BY user_id
+       ) tok30 ON tok30.user_id = u.id
        LEFT JOIN (
          SELECT
            user_id,

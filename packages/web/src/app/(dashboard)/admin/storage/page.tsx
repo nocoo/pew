@@ -32,8 +32,8 @@ type SortKey =
   | "team_count"
   | "device_count"
   | "total_tokens"
-  | "input_tokens"
-  | "output_tokens"
+  | "tokens_7d"
+  | "tokens_30d"
   | "session_count"
   | "total_messages"
   | "total_duration_seconds"
@@ -387,16 +387,16 @@ export default function AdminStoragePage() {
                         className="text-right"
                       />
                       <SortHeader
-                        label="Input"
-                        sortKey="input_tokens"
+                        label="7d"
+                        sortKey="tokens_7d"
                         currentSort={sortKey}
                         currentDir={sortDir}
                         onSort={handleSort}
                         className="text-right hidden md:table-cell"
                       />
                       <SortHeader
-                        label="Output"
-                        sortKey="output_tokens"
+                        label="30d"
+                        sortKey="tokens_30d"
                         currentSort={sortKey}
                         currentDir={sortDir}
                         onSort={handleSort}
@@ -493,29 +493,29 @@ export default function AdminStoragePage() {
                             </TooltipContent>
                           </Tooltip>
                         </td>
-                        {/* Input tokens */}
+                        {/* 7d tokens */}
                         <td className="px-4 py-3 text-right hidden md:table-cell">
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <span className="text-sm text-muted-foreground tabular-nums cursor-default">
-                                {formatTokens(user.input_tokens)}
+                                {formatTokens(user.tokens_7d)}
                               </span>
                             </TooltipTrigger>
                             <TooltipContent>
-                              {formatTokensFull(user.input_tokens)}
+                              {formatTokensFull(user.tokens_7d)}
                             </TooltipContent>
                           </Tooltip>
                         </td>
-                        {/* Output tokens */}
+                        {/* 30d tokens */}
                         <td className="px-4 py-3 text-right hidden md:table-cell">
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <span className="text-sm text-muted-foreground tabular-nums cursor-default">
-                                {formatTokens(user.output_tokens)}
+                                {formatTokens(user.tokens_30d)}
                               </span>
                             </TooltipTrigger>
                             <TooltipContent>
-                              {formatTokensFull(user.output_tokens)}
+                              {formatTokensFull(user.tokens_30d)}
                             </TooltipContent>
                           </Tooltip>
                         </td>
