@@ -21,8 +21,15 @@ import { getLocalToday } from "@/lib/date-helpers";
  * Applies `tzOffset` (minutes, from `new Date().getTimezoneOffset()`) to shift
  * the timestamp from UTC to local time. When `tzOffset` is 0, this is
  * equivalent to `hourStart.slice(0, 10)`.
+ *
+ * When the input is already a bare date ("YYYY-MM-DD", length 10), it was
+ * produced by `date(hour_start)` in a day-granularity query and is already
+ * a UTC-aggregated bucket. Applying a timezone shift would move it to the
+ * wrong day, so we return it as-is.
  */
 export function toLocalDateStr(hourStart: string, tzOffset: number): string {
+  // Bare date from day-granularity query — already aggregated, don't shift
+  if (hourStart.length === 10) return hourStart;
   if (tzOffset === 0) return hourStart.slice(0, 10);
   const utcMs = new Date(hourStart).getTime();
   const localMs = utcMs - tzOffset * 60_000;

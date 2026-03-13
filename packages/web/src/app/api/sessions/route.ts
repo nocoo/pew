@@ -111,7 +111,12 @@ export async function GET(request: Request) {
         { status: 400 },
       );
     }
-    toDate = new Date(toParam).toISOString();
+    // Bare date "YYYY-MM-DD" → inclusive: bump +1 UTC day for `< toDate`
+    const toD = new Date(toParam);
+    if (toParam.length === 10) {
+      toD.setUTCDate(toD.getUTCDate() + 1);
+    }
+    toDate = toD.toISOString();
   } else {
     toDate = new Date().toISOString();
   }

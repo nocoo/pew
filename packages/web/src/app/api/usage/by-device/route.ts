@@ -78,7 +78,12 @@ function parseDateRange(fromParam: string | null, toParam: string | null) {
 
   if (toParam) {
     if (!DATE_RE.test(toParam)) return null;
-    toDate = new Date(toParam).toISOString();
+    // Bare date "YYYY-MM-DD" → inclusive: bump +1 UTC day for `< toDate`
+    const toD = new Date(toParam);
+    if (toParam.length === 10) {
+      toD.setUTCDate(toD.getUTCDate() + 1);
+    }
+    toDate = toD.toISOString();
   } else {
     toDate = new Date().toISOString();
   }

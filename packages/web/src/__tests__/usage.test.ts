@@ -95,7 +95,8 @@ describe("GET /api/usage", () => {
       expect(res.status).toBe(200);
       const [, params] = mockClient.query.mock.calls[0]!;
       expect(params![1]).toBe("2026-03-01T00:00:00.000Z");
-      expect(params![2]).toBe("2026-03-07T00:00:00.000Z");
+      // Bare-date `to` is treated as inclusive: bumped +1 day for `< toDate`
+      expect(params![2]).toBe("2026-03-08T00:00:00.000Z");
     });
 
     it("should filter by source", async () => {

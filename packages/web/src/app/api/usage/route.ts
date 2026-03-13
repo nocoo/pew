@@ -106,7 +106,13 @@ export async function GET(request: Request) {
         { status: 400 }
       );
     }
-    toDate = new Date(toParam).toISOString();
+    // When `to` is a bare date like "2026-03-13", treat it as inclusive:
+    // bump to next day so that `hour_start < toDate` covers the entire day.
+    const toD = new Date(toParam);
+    if (toParam.length === 10) {
+      toD.setUTCDate(toD.getUTCDate() + 1);
+    }
+    toDate = toD.toISOString();
   } else {
     toDate = new Date().toISOString();
   }
