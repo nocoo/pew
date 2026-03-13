@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.7.1
+
+### Fixes
+
+- **Timezone: daily aggregation** — Apply timezone offset to 7 daily aggregation functions (`toDailyPoints`, `toDailyCostPoints`, `toDailyCacheRates`, `groupByDate`, `toSourceTrendPoints`, `toDominantSourceTimeline`, `toModelEvolutionPoints`) with shared `toLocalDateStr()` helper
+- **Timezone: current month tokens** — Apply timezone offset to `computeCurrentMonthTokens` month boundary filtering
+- **Timezone: east-of-UTC date range** — Pad `periodToDateRange` `from`-boundary for east-of-UTC timezones to prevent missing edge-day data
+- **Timezone: working hours label** — Remove stale "UTC" label from working hours heatmap (data is already local)
+- **Timezone: month-over-month growth** — Apply timezone offset to `computeMoMGrowth` month assignment (was using UTC year/month)
+- **Timezone: session daily stats** — Apply timezone offset to `toMessageDailyStats` day bucketing
+
+### Infrastructure
+
+- **Timezone helper** — Centralized `toLocalDateStr(hourStart, tzOffset)` utility in `usage-helpers.ts` for consistent UTC→local date conversion
+- **Test suite** — 26 new timezone-aware tests across 6 test files
+
 ## v1.7.0
 
 ### Features
