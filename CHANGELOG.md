@@ -1,5 +1,36 @@
 # Changelog
 
+## v1.7.0
+
+### Features
+
+- **`pew update` command** — Self-update via `npm install -g @nocoo/pew@latest` with version comparison and restart guidance
+- **`pew reset` command** — Clear all sync/upload state files for a clean full rescan
+- **Version gate** — Server rejects uploads from CLI versions below `MIN_CLIENT_VERSION` (1.6.0) via `X-Pew-Client-Version` header
+- **Atomic queue overwrite** — `BaseQueue.overwrite()` method for crash-safe full-scan writes (write-tmp-rename pattern)
+
+### Fixes
+
+- **Token inflation on inode change** — Full rescan now triggered when file inode changes (e.g. log rotation), preventing SUM-on-overwrite double-counting
+- **Token inflation on no-op sync** — No-op sync no longer re-marks already-uploaded records as pending
+- **Token inflation on file cursor loss** — `knownFilePaths` tracking distinguishes "new file" from "cursor entry lost", triggering full rescan on the latter
+- **Token inflation on SQLite cursor loss** — `knownDbSources` tracking detects OpenCode SQLite cursor loss and triggers full rescan
+- **Cursor backfill edge case** — `knownDbSources` backfill triggers full rescan when SQLite cursor is already lost (not silently initialized to empty)
+- **Shared device ID** — `deviceId` migrated from per-env config to shared `~/.config/pew/device.json` (dev/prod use same device ID)
+- **Reset command cleanup** — Removed unused `--dev` argument from reset command
+- **Full-scan/incremental dual-branch** — Queue uses full-scan (overwrite) vs incremental (append) branches to prevent SUM inflation from replayed data
+
+### Docs
+
+- **Token inflation audit** — `docs/19-token-inflation-audit.md` with root cause analysis, fix plan, and implementation details
+- **E2E validation record** — `docs/20-e2e-validation-record.md` documenting full pipeline verification against live D1
+- **Session queue growth analysis** — `docs/21-session-queue-growth.md` analyzing unbounded append-only queue growth
+
+### Infrastructure
+
+- **E2E verified** — Token pipeline (5 sources × 6 fields = 30 values) and session pipeline (4 sources × 5 fields = 20 values) exact match between local and D1, idempotent across 4 syncs
+- **Test suite** — 115 test files, 1862 tests passing
+
 ## v1.5.1
 
 ### Fixes
