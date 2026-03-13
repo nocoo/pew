@@ -10,6 +10,7 @@ import type {
 } from "@pew/core";
 import { CursorStore } from "../storage/cursor-store.js";
 import { LocalQueue } from "../storage/local-queue.js";
+import type { OnCorruptLine } from "../storage/base-queue.js";
 import type { QueryMessagesFn } from "../parsers/opencode-sqlite.js";
 import type { ParsedDelta } from "../parsers/claude.js";
 import { toUtcHalfHourStart, bucketKey, addTokens, emptyTokenDelta } from "../utils/buckets.js";
@@ -41,6 +42,8 @@ export interface SyncOptions {
   vscodeCopilotDirs?: string[];
   /** Progress callback */
   onProgress?: (event: ProgressEvent) => void;
+  /** Callback invoked when a corrupted JSONL line is found in the queue */
+  onCorruptLine?: OnCorruptLine;
 }
 
 /** Progress event for UI display */
@@ -105,7 +108,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   const { stateDir, onProgress } = opts;
 
   const cursorStore = new CursorStore(stateDir);
-  const queue = new LocalQueue(stateDir);
+  const queue = new LocalQueue(stateDir, opts.onCorruptLine);
   const cursors = await cursorStore.load();
 
   // Full-scan detection: if cursors were completely empty at start (first run
@@ -511,7 +514,14 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   }
 
   // ---------- Write to queue (overwrite, not append) ----------
-  // Full-scan/incremental dual-branch prevents token inflation on cursor reset.
+  // Design note: this is O(total_queue) not O(delta), which is intentional.
+  //
+  // Records are aggregated buckets keyed by (source, model, hour_start,
+  // device_id).  Practical size is bounded: ~tools × models × hours × devices,
+  // typically a few hundred rows (<1 MB) for a single user.  The overwrite +
+  // offset-reset pattern guarantees idempotent upload: the server upserts via
+  // ON CONFLICT … DO UPDATE SET, so re-sending the full queue is safe and
+  // ensures eventual consistency even if a previous upload was partial.
   //
   // Full scan (empty cursors): records are the complete picture from all log
   // files → overwrite queue entirely (discard any stale accumulated values).

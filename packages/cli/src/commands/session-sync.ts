@@ -23,6 +23,7 @@ import type {
 } from "@pew/core";
 import { SessionCursorStore } from "../storage/session-cursor-store.js";
 import { SessionQueue } from "../storage/session-queue.js";
+import type { OnCorruptLine } from "../storage/base-queue.js";
 import { deduplicateSessionRecords } from "./session-upload.js";
 import { createSessionDrivers } from "../drivers/registry.js";
 import { hashProjectRef } from "../utils/hash-project-ref.js";
@@ -57,6 +58,8 @@ export interface SessionSyncOptions {
   openclawDir?: string;
   /** Progress callback */
   onProgress?: (event: SessionProgressEvent) => void;
+  /** Callback invoked when a corrupted JSONL line is found in the queue */
+  onCorruptLine?: OnCorruptLine;
 }
 
 /** Progress event for UI display */
@@ -151,7 +154,7 @@ export async function executeSessionSync(
   const { stateDir, onProgress } = opts;
 
   const cursorStore = new SessionCursorStore(stateDir);
-  const queue = new SessionQueue(stateDir);
+  const queue = new SessionQueue(stateDir, opts.onCorruptLine);
   const cursors = await cursorStore.load();
 
   const allSnapshots: SessionSnapshot[] = [];
@@ -326,16 +329,25 @@ export async function executeSessionSync(
   });
   const deduped = deduplicateSessionRecords(records);
 
-  // ---------- Save cursor state FIRST (before queue) ----------
-  // Same safety invariant as token sync: cursor saved before queue
-  // so a crash never causes duplicate writes.
-  cursors.updatedAt = new Date().toISOString();
-  await cursorStore.save(cursors);
-
-  // ---------- Write to session queue ----------
+  // ---------- Write to session queue FIRST (before cursor) ----------
+  // Queue must be persisted before cursor so that a crash between the two
+  // never loses data.  Worst case: queue appended + cursor not saved →
+  // next sync re-scans unchanged files → re-appends duplicates.  These
+  // duplicates are harmless because:
+  //   1. Client-side: upload engine calls deduplicateSessionRecords()
+  //      (preprocess) which collapses by session_key, keeping latest
+  //      snapshot_at.
+  //   2. Server-side: ON CONFLICT (user_id, session_key) with a
+  //      monotonic WHERE guard ensures idempotent upserts.
+  // This matches the same "prefer duplicates over data loss" invariant
+  // used by token sync (sync.ts).
   if (deduped.length > 0) {
     await queue.appendBatch(deduped);
   }
+
+  // ---------- Save cursor state AFTER queue ----------
+  cursors.updatedAt = new Date().toISOString();
+  await cursorStore.save(cursors);
 
   onProgress?.({
     source: "all",

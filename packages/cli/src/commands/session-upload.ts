@@ -6,6 +6,7 @@
  */
 
 import { SessionQueue } from "../storage/session-queue.js";
+import type { OnCorruptLine } from "../storage/base-queue.js";
 import { createUploadEngine } from "./upload-engine.js";
 import type {
   UploadResult,
@@ -36,6 +37,8 @@ export interface SessionUploadOptions {
   onProgress?: (event: SessionUploadProgressEvent) => void;
   /** CLI version string for server-side version gate */
   clientVersion?: string;
+  /** Callback invoked when a corrupted JSONL line is found in the queue */
+  onCorruptLine?: OnCorruptLine;
 }
 
 export type SessionUploadProgressEvent = UploadProgressEvent;
@@ -75,7 +78,7 @@ export function deduplicateSessionRecords(
 export async function executeSessionUpload(
   opts: SessionUploadOptions,
 ): Promise<SessionUploadResult> {
-  const queue = new SessionQueue(opts.stateDir);
+  const queue = new SessionQueue(opts.stateDir, opts.onCorruptLine);
 
   const engine = createUploadEngine<SessionQueueRecord>({
     queue,

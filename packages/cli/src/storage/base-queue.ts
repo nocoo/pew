@@ -1,6 +1,9 @@
 import { readFile, writeFile, appendFile, rename, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 
+/** Optional callback invoked when a corrupted JSONL line is skipped */
+export type OnCorruptLine = (line: string, error: unknown) => void;
+
 /**
  * Generic append-only JSONL queue with byte-offset tracking.
  *
@@ -17,11 +20,18 @@ export class BaseQueue<T> {
   readonly queuePath: string;
   private readonly statePath: string;
   private readonly dir: string;
+  private readonly onCorruptLine?: OnCorruptLine;
 
-  constructor(storeDir: string, queueFile: string, stateFile: string) {
+  constructor(
+    storeDir: string,
+    queueFile: string,
+    stateFile: string,
+    onCorruptLine?: OnCorruptLine,
+  ) {
     this.dir = storeDir;
     this.queuePath = join(storeDir, queueFile);
     this.statePath = join(storeDir, stateFile);
+    this.onCorruptLine = onCorruptLine;
   }
 
   /** Ensure the directory exists */
@@ -66,7 +76,10 @@ export class BaseQueue<T> {
    * Returns parsed records and the new offset (end of file in bytes).
    *
    * - Uses Buffer for slicing to correctly handle multi-byte UTF-8 characters.
-   * - Skips lines that fail JSON.parse instead of throwing.
+   * - Skips lines that fail JSON.parse and invokes the optional onCorruptLine
+   *   callback so callers can surface a warning.  The offset still advances
+   *   past corrupted data to prevent infinite re-reading.  Source data can
+   *   always be rebuilt via `pew reset`.
    */
   async readFromOffset(offset: number): Promise<{
     records: T[];
@@ -87,9 +100,11 @@ export class BaseQueue<T> {
     for (const line of lines) {
       try {
         records.push(JSON.parse(line) as T);
-      } catch {
-        // Skip corrupted lines — log would be nice but we keep it silent
-        // to avoid coupling to a logger. The line is simply lost.
+      } catch (err: unknown) {
+        // Corrupted lines are skipped to avoid blocking all subsequent records.
+        // The onCorruptLine callback lets callers surface a user-visible warning.
+        // Data is recoverable via `pew reset` which rebuilds from source files.
+        this.onCorruptLine?.(line, err);
       }
     }
 

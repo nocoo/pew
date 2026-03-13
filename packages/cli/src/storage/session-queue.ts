@@ -1,4 +1,4 @@
-import { BaseQueue } from "./base-queue.js";
+import { BaseQueue, type OnCorruptLine } from "./base-queue.js";
 import type { SessionQueueRecord } from "@pew/core";
 
 /**
@@ -6,7 +6,7 @@ import type { SessionQueueRecord } from "@pew/core";
  * Thin wrapper around BaseQueue with session-specific file names.
  */
 export class SessionQueue extends BaseQueue<SessionQueueRecord> {
-  constructor(storeDir: string) {
-    super(storeDir, "session-queue.jsonl", "session-queue.state.json");
+  constructor(storeDir: string, onCorruptLine?: OnCorruptLine) {
+    super(storeDir, "session-queue.jsonl", "session-queue.state.json", onCorruptLine);
   }
 }

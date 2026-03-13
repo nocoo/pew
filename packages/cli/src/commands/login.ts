@@ -2,13 +2,20 @@
  * CLI login command — browser-based OAuth flow.
  *
  * Flow:
- * 1. Start local HTTP server on random port
- * 2. Open browser to SaaS auth endpoint with callback URL
- * 3. SaaS authenticates user (Google OAuth) and redirects back with api_key
- * 4. Save api_key to ~/.config/pew/config.json
+ * 1. Start local HTTP server on random port, bound to 127.0.0.1 only
+ * 2. Generate a one-time nonce (state) for CSRF protection
+ * 3. Open browser to SaaS auth endpoint with callback URL + state
+ * 4. SaaS authenticates user (Google OAuth) and redirects back with api_key + state
+ * 5. Validate state matches, save api_key to ~/.config/pew/config.json
+ *
+ * Security measures:
+ * - Loopback-only binding prevents LAN exposure of the callback server
+ * - Nonce/state parameter prevents cross-site request forgery and token fixation
+ * - HTML output is entity-escaped to prevent reflected XSS
  */
 
 import { createServer, type Server } from "node:http";
+import { randomBytes } from "node:crypto";
 import { ConfigManager } from "../config/manager.js";
 
 // ---------------------------------------------------------------------------
@@ -39,6 +46,8 @@ export interface LoginOptions {
   force?: boolean;
   /** Injected browser opener (for testing) */
   openBrowser: (url: string) => Promise<void>;
+  /** Injected nonce generator (for testing determinism) */
+  generateNonce?: () => string;
 }
 
 export interface LoginResult {
@@ -46,6 +55,20 @@ export interface LoginResult {
   email?: string;
   alreadyLoggedIn?: boolean;
   error?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Escape HTML special characters to prevent reflected XSS */
+export function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 // ---------------------------------------------------------------------------
@@ -60,6 +83,7 @@ export async function executeLogin(options: LoginOptions): Promise<LoginResult> 
     timeoutMs = 120_000,
     force = false,
     openBrowser,
+    generateNonce = () => randomBytes(16).toString("hex"),
   } = options;
 
   const configManager = new ConfigManager(configDir, dev);
@@ -72,7 +96,10 @@ export async function executeLogin(options: LoginOptions): Promise<LoginResult> 
     }
   }
 
-  // 2. Start local callback server using Node http
+  // 2. Generate one-time state nonce for CSRF protection
+  const expectedState = generateNonce();
+
+  // 3. Start local callback server using Node http, bound to loopback only
   return new Promise<LoginResult>((resolve) => {
     let settled = false;
     let timeoutHandle: ReturnType<typeof setTimeout>;
@@ -83,6 +110,21 @@ export async function executeLogin(options: LoginOptions): Promise<LoginResult> 
       if (url.pathname === "/callback") {
         const apiKey = url.searchParams.get("api_key");
         const email = url.searchParams.get("email") ?? undefined;
+        const state = url.searchParams.get("state");
+
+        // Validate state parameter to prevent CSRF / token fixation
+        if (state !== expectedState) {
+          res.writeHead(403, { "Content-Type": "text/html" });
+          res.end(htmlPage(
+            "Login Failed",
+            "Invalid or missing state parameter. This may be a forged request."
+          ));
+          settle({
+            success: false,
+            error: "State mismatch — possible CSRF attempt",
+          });
+          return;
+        }
 
         if (!apiKey) {
           res.writeHead(200, { "Content-Type": "text/html" });
@@ -103,7 +145,7 @@ export async function executeLogin(options: LoginOptions): Promise<LoginResult> 
         res.writeHead(200, { "Content-Type": "text/html" });
         res.end(htmlPage(
           "Login Successful!",
-          `Logged in as ${email ?? "unknown"}. You can close this tab.`
+          `Logged in as ${escapeHtml(email ?? "unknown")}. You can close this tab.`
         ));
         settle({ success: true, email });
         return;
@@ -121,14 +163,14 @@ export async function executeLogin(options: LoginOptions): Promise<LoginResult> 
       resolve(result);
     }
 
-    // Listen on port 0 for random available port
-    server.listen(0, () => {
+    // Listen on port 0 on loopback only (127.0.0.1) — never expose to LAN
+    server.listen(0, "127.0.0.1", () => {
       const addr = server.address();
       const port = typeof addr === "object" && addr ? addr.port : 0;
-      const callbackUrl = `http://localhost:${port}/callback`;
-      const loginUrl = `${apiUrl}/api/auth/cli?callback=${encodeURIComponent(callbackUrl)}`;
+      const callbackUrl = `http://127.0.0.1:${port}/callback`;
+      const loginUrl = `${apiUrl}/api/auth/cli?callback=${encodeURIComponent(callbackUrl)}&state=${encodeURIComponent(expectedState)}`;
 
-      // 3. Set timeout
+      // 4. Set timeout
       timeoutHandle = setTimeout(() => {
         settle({
           success: false,
@@ -136,7 +178,7 @@ export async function executeLogin(options: LoginOptions): Promise<LoginResult> 
         });
       }, timeoutMs);
 
-      // 4. Open browser
+      // 5. Open browser
       openBrowser(loginUrl).catch((err) => {
         settle({
           success: false,
@@ -148,9 +190,12 @@ export async function executeLogin(options: LoginOptions): Promise<LoginResult> 
 }
 
 function htmlPage(title: string, message: string): string {
+  // title is always a hardcoded string from our code, but escape for defense in depth.
+  // message is pre-escaped at the call site for any user-controlled content.
+  const safeTitle = escapeHtml(title);
   return `<!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><title>pew - ${title}</title>
+<head><meta charset="utf-8"><title>pew - ${safeTitle}</title>
 <style>
   body { font-family: -apple-system, sans-serif; text-align: center; padding: 60px 20px; background: #0a0a0a; color: #fafafa; }
   h1 { font-size: 2rem; margin-bottom: 1rem; }
@@ -158,7 +203,7 @@ function htmlPage(title: string, message: string): string {
 </style>
 </head>
 <body>
-  <h1>${title}</h1>
+  <h1>${safeTitle}</h1>
   <p>${message}</p>
 </body>
 </html>`;

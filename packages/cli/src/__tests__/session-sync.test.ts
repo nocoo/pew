@@ -3,6 +3,8 @@ import { mkdtemp, rm, writeFile, mkdir, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { executeSessionSync, type SessionSyncResult } from "../commands/session-sync.js";
+import { SessionQueue } from "../storage/session-queue.js";
+import { SessionCursorStore } from "../storage/session-cursor-store.js";
 import type { SessionQueueRecord } from "@pew/core";
 
 // ---------------------------------------------------------------------------
@@ -1564,6 +1566,40 @@ describe("executeSessionSync", () => {
       expect(warnEvents[0].message).toContain("Simulated claude session parser crash");
     } finally {
       spy.mockRestore();
+    }
+  });
+
+  // ----- Crash-safety ordering invariant -----
+
+  it("should write queue BEFORE saving cursors (crash-safety)", async () => {
+    const claudeDir = join(dataDir, ".claude", "projects", "proj-hash");
+    await mkdir(claudeDir, { recursive: true });
+    const content = [
+      claudeUserLine("2026-03-07T10:00:00.000Z"),
+      claudeAssistantLine("2026-03-07T10:05:00.000Z"),
+    ].join("\n") + "\n";
+    await writeFile(join(claudeDir, "session.jsonl"), content);
+
+    const callOrder: string[] = [];
+
+    const queueSpy = vi
+      .spyOn(SessionQueue.prototype, "appendBatch")
+      .mockImplementation(async () => { callOrder.push("queue.appendBatch"); });
+
+    const cursorSpy = vi
+      .spyOn(SessionCursorStore.prototype, "save")
+      .mockImplementation(async () => { callOrder.push("cursorStore.save"); });
+
+    try {
+      await executeSessionSync({
+        stateDir,
+        claudeDir: join(dataDir, ".claude"),
+      });
+
+      expect(callOrder).toEqual(["queue.appendBatch", "cursorStore.save"]);
+    } finally {
+      queueSpy.mockRestore();
+      cursorSpy.mockRestore();
     }
   });
 });

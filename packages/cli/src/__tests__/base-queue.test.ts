@@ -207,6 +207,46 @@ describe("BaseQueue", () => {
     expect(newOffset).toBeGreaterThan(0);
   });
 
+  // ---- onCorruptLine callback ----
+
+  it("should invoke onCorruptLine callback for each corrupted line", async () => {
+    const corrupted: { line: string; error: unknown }[] = [];
+    const queue = new BaseQueue<TestRecord>(
+      tempDir,
+      "test.jsonl",
+      "test.state.json",
+      (line, error) => corrupted.push({ line, error }),
+    );
+    const queuePath = join(tempDir, "test.jsonl");
+
+    const lines = [
+      JSON.stringify(makeRecord(1)),
+      "bad-line-1",
+      JSON.stringify(makeRecord(3)),
+      "bad-line-2",
+      "",
+    ].join("\n");
+    await writeFile(queuePath, lines);
+
+    const { records } = await queue.readFromOffset(0);
+
+    expect(records).toHaveLength(2);
+    expect(corrupted).toHaveLength(2);
+    expect(corrupted[0].line).toBe("bad-line-1");
+    expect(corrupted[1].line).toBe("bad-line-2");
+    expect(corrupted[0].error).toBeInstanceOf(SyntaxError);
+  });
+
+  it("should not fail when onCorruptLine is not provided", async () => {
+    // This is the default behaviour (no callback) — should not throw
+    const queue = createQueue(tempDir);
+    const queuePath = join(tempDir, "test.jsonl");
+    await writeFile(queuePath, "bad\n");
+
+    const { records } = await queue.readFromOffset(0);
+    expect(records).toEqual([]);
+  });
+
   // ---- offset persistence ----
 
   it("should save and load upload offset", async () => {

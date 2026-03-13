@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -645,5 +645,90 @@ describe("upload-engine", () => {
 
     const headers = calls[0].init.headers as Record<string, string>;
     expect(headers["X-Pew-Client-Version"]).toBeUndefined();
+  });
+
+  // ---- All-corrupt queue: offset advancement ----
+
+  it("should advance offset past all-corrupt lines and not re-read them", async () => {
+    const { queue, config } = createTestEngine(dir);
+    const cm = new ConfigManager(dir);
+    await cm.save({ token: "pk_test" });
+
+    // Write corrupt (non-JSON) data directly to the queue file
+    const corruptData = "NOT_JSON_LINE_1\n{broken json\ngarbage!!!\n";
+    await writeFile(queue.queuePath, corruptData);
+
+    const { fetchFn, calls } = createMockFetch([]);
+
+    const engine = createUploadEngine(config);
+
+    // First execute: all lines are corrupt → 0 uploaded, but offset should advance
+    const result1 = await engine.execute({
+      stateDir: dir,
+      apiUrl: DEFAULT_HOST,
+      fetch: fetchFn,
+    });
+
+    expect(result1.success).toBe(true);
+    expect(result1.uploaded).toBe(0);
+    expect(result1.batches).toBe(0);
+    expect(calls).toHaveLength(0); // No HTTP calls for 0 valid records
+
+    // Verify offset was saved (advanced past the corrupt data)
+    const savedOffset = await queue.loadOffset();
+    expect(savedOffset).toBe(Buffer.byteLength(corruptData));
+
+    // Second execute: offset is past corrupt data → nothing to read, no loop
+    const { fetchFn: fetchFn2, calls: calls2 } = createMockFetch([]);
+    const result2 = await engine.execute({
+      stateDir: dir,
+      apiUrl: DEFAULT_HOST,
+      fetch: fetchFn2,
+    });
+
+    expect(result2.success).toBe(true);
+    expect(result2.uploaded).toBe(0);
+    expect(calls2).toHaveLength(0);
+  });
+
+  it("should advance offset past corrupt lines followed by valid records", async () => {
+    const { queue, config } = createTestEngine(dir);
+    const cm = new ConfigManager(dir);
+    await cm.save({ token: "pk_test" });
+
+    // Mix of corrupt and valid lines
+    const line1 = "NOT_VALID_JSON\n";
+    const line2 = JSON.stringify(makeRecord(1)) + "\n";
+    const line3 = "{broken\n";
+    const line4 = JSON.stringify(makeRecord(2)) + "\n";
+    await writeFile(queue.queuePath, line1 + line2 + line3 + line4);
+
+    const { fetchFn, calls } = createMockFetch([
+      { status: 200, body: { ingested: 2 } },
+    ]);
+
+    const engine = createUploadEngine(config);
+    const result = await engine.execute({
+      stateDir: dir,
+      apiUrl: DEFAULT_HOST,
+      fetch: fetchFn,
+    });
+
+    // Should upload the 2 valid records, skipping the 2 corrupt ones
+    expect(result.success).toBe(true);
+    expect(result.uploaded).toBe(2);
+    expect(calls).toHaveLength(1);
+
+    // Second run: nothing left to upload
+    const { fetchFn: fetchFn2, calls: calls2 } = createMockFetch([]);
+    const result2 = await engine.execute({
+      stateDir: dir,
+      apiUrl: DEFAULT_HOST,
+      fetch: fetchFn2,
+    });
+
+    expect(result2.success).toBe(true);
+    expect(result2.uploaded).toBe(0);
+    expect(calls2).toHaveLength(0);
   });
 });

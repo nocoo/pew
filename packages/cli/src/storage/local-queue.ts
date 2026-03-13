@@ -1,4 +1,4 @@
-import { BaseQueue } from "./base-queue.js";
+import { BaseQueue, type OnCorruptLine } from "./base-queue.js";
 import type { QueueRecord } from "@pew/core";
 
 /**
@@ -6,7 +6,7 @@ import type { QueueRecord } from "@pew/core";
  * Thin wrapper around BaseQueue with token-specific file names.
  */
 export class LocalQueue extends BaseQueue<QueueRecord> {
-  constructor(storeDir: string) {
-    super(storeDir, "queue.jsonl", "queue.state.json");
+  constructor(storeDir: string, onCorruptLine?: OnCorruptLine) {
+    super(storeDir, "queue.jsonl", "queue.state.json", onCorruptLine);
   }
 }
