@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.8.2
+
+### Features
+
+- **Health check endpoint** — Added `/api/live` endpoint to both web and worker, returning version and uptime for monitoring
+
+### Fixes
+
+- **TOML escape sequences** — Added missing `\b`, `\f`, `\uXXXX`, `\UXXXXXXXX` escape handling in `parseTomlStringArray` and codex-notifier parser
+- **Corrupt queue infinite loop** — Advance upload offset past all-corrupt queue lines to prevent sync from looping forever
+- **Token tooltip order** — Unified tooltip ordering in dashboard charts (#18)
+- **Corrupt line warnings** — Added `onCorruptLine` callback to `BaseQueue` and wired it to `consola.warn` in all CLI commands
+- **Login callback security** — Hardened login callback with nonce verification, loopback binding (`127.0.0.1`), and HTML escaping
+- **Crash-safety ordering** — Write session queue before cursor update to prevent data loss on crash
+
+### Refactor
+
+- **Sync progress callbacks** — Extracted sync progress callbacks into reusable functions
+
 ## v1.8.1
 
 ### Features
