@@ -131,11 +131,32 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   }
 
   // Backfill knownDbSources for cursors created between v1.6.0 (added
-  // knownFilePaths) and this fix (added knownDbSources). If the DB cursor
-  // exists but knownDbSources doesn't, seed it from the existing cursor state.
-  // No rescan needed — the cursor itself is still valid.
-  if (!cursors.knownDbSources && cursors.openCodeSqlite) {
-    cursors.knownDbSources = { openCodeSqlite: true };
+  // knownFilePaths) and this fix (added knownDbSources).
+  //
+  // If the openCodeSqlite cursor still exists, we can safely seed
+  // knownDbSources from it. If the cursor is already gone AND other
+  // cursors exist (!initialCursorEmpty), we can't distinguish "never
+  // used SQLite" from "cursor lost" — trigger full rescan to be safe.
+  // If the cursor is gone AND cursors are empty (first run / post-reset),
+  // {} is safe because there's nothing to double-count.
+  if (!cursors.knownDbSources) {
+    if (cursors.openCodeSqlite) {
+      cursors.knownDbSources = { openCodeSqlite: true };
+    } else if (!initialCursorEmpty) {
+      onProgress?.({
+        source: "opencode-sqlite",
+        phase: "warn",
+        message: "Upgrading cursor format (DB) — one-time full rescan",
+      });
+      await cursorStore.save({
+        version: 1,
+        files: {},
+        updatedAt: null,
+      });
+      return executeSync(opts);
+    } else {
+      cursors.knownDbSources = {};
+    }
   }
 
   // Track whether a replay condition was detected during this scan.

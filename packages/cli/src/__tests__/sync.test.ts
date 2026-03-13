@@ -1998,6 +1998,79 @@ describe("executeSync", () => {
     expect(oc!.input_tokens).toBe(500);  // NOT 1000
   });
 
+  it("should trigger full rescan when knownDbSources is missing AND openCodeSqlite cursor already lost (upgrade edge case)", async () => {
+    // Edge case: cursors.json has knownFilePaths (v1.6.0+) but NOT
+    // knownDbSources, AND the openCodeSqlite cursor is already gone.
+    // Without a full rescan, the SQLite driver replays from rowId 0 and
+    // the incremental SUM branch doubles the totals.
+    const claudeDir = join(dataDir, ".claude", "projects", "proj-edge");
+    await mkdir(claudeDir, { recursive: true });
+    const claudePath = join(claudeDir, "session.jsonl");
+    await writeFile(
+      claudePath,
+      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+    );
+
+    const dbDir = join(dataDir, "opencode");
+    await mkdir(dbDir, { recursive: true });
+    const dbPath = join(dbDir, "opencode.db");
+    await writeFile(dbPath, "dummy-sqlite-db");
+
+    const sqliteRows = [
+      { id: "msg_001", session_id: "ses_001", time_created: 1739600000000, data: sqliteRowData({ role: "assistant", input: 500, output: 200, timeCreated: 1739600000000 }) },
+    ];
+
+    // First sync — both Claude + OpenCode SQLite
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      claudeDir: join(dataDir, ".claude"),
+      openCodeDbPath: dbPath,
+      openMessageDb: mockOpenMessageDb(sqliteRows),
+    });
+
+    // Simulate intermediate cursor state:
+    //   - knownFilePaths present (v1.6.0+)
+    //   - knownDbSources absent (pre-fix)
+    //   - openCodeSqlite cursor already deleted (lost)
+    const cursorsPath = join(stateDir, "cursors.json");
+    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    delete cursorsData.knownDbSources;
+    delete cursorsData.openCodeSqlite;
+    if (!cursorsData.knownFilePaths) cursorsData.knownFilePaths = {};
+    await writeFile(cursorsPath, JSON.stringify(cursorsData));
+
+    // Collect progress messages to verify full rescan was triggered
+    const progressMessages: string[] = [];
+
+    // Second sync — detects upgrade with lost DB cursor → full rescan
+    // The rescan clears all cursors, so both Claude + SQLite are re-parsed
+    // from scratch as a full scan (initialCursorEmpty = true).
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      claudeDir: join(dataDir, ".claude"),
+      openCodeDbPath: dbPath,
+      openMessageDb: mockOpenMessageDb(sqliteRows),
+      onProgress: (p) => progressMessages.push(p.message),
+    });
+
+    // Verify full rescan was triggered (not a silent backfill to {})
+    expect(progressMessages.some((m) => m.includes("full rescan"))).toBe(true);
+
+    // Verify no inflation — tokens should be exact, not doubled
+    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
+    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const oc = records.find((r) => r.source === "opencode");
+    expect(oc!.input_tokens).toBe(500);    // NOT 1000 (inflated)
+    expect(oc!.output_tokens).toBe(200);   // NOT 400 (inflated)
+
+    // Verify knownDbSources is now populated after the rescan
+    const updated = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    expect(updated.knownDbSources).toBeDefined();
+    expect(updated.knownDbSources.openCodeSqlite).toBe(true);
+  });
+
   // ===== Bug B: No-op sync re-marking history as unread =====
 
   it("should not re-mark uploaded records as unread on no-op sync", async () => {
