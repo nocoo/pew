@@ -45,8 +45,8 @@ type ScopeValue = "global" | "all" | string;
 // ---------------------------------------------------------------------------
 
 const PERIODS: { value: LeaderboardPeriod; label: string }[] = [
-  { value: "week", label: "This Week" },
-  { value: "month", label: "This Month" },
+  { value: "week", label: "Last 7 Days" },
+  { value: "month", label: "Last 30 Days" },
   { value: "all", label: "All Time" },
 ];
 

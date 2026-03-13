@@ -33,7 +33,7 @@ import { BudgetDialog } from "@/components/dashboard/budget-dialog";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { DashboardSegment } from "@/components/dashboard/dashboard-segment";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
-import { periodToDateRange, periodLabel } from "@/lib/date-helpers";
+import { periodToDateRange, periodLabel, getLocalToday } from "@/lib/date-helpers";
 import type { Period } from "@/lib/date-helpers";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -127,7 +127,7 @@ export default function DashboardPage() {
   // Weekday vs weekend comparison
   const weekdayWeekend = useMemo(() => {
     if (!halfHourData.data) return null;
-    const toStr = to ?? new Date().toISOString().slice(0, 10);
+    const toStr = to ?? getLocalToday(tzOffset);
     return compareWeekdayWeekend(halfHourData.data.records, { from, to: toStr }, pricingMap, tzOffset);
   }, [halfHourData.data, from, to, pricingMap, tzOffset]);
 

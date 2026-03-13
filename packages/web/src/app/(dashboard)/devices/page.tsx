@@ -50,7 +50,7 @@ function StatGrid({ devices }: { devices: DeviceAggregate[] }) {
   const recentDays = 7;
   const recentCutoff = new Date();
   recentCutoff.setDate(recentCutoff.getDate() - recentDays);
-  const recentCutoffStr = recentCutoff.toISOString().slice(0, 10);
+  const recentCutoffStr = recentCutoff.toISOString();
   const recentlyActive = devices.filter(
     (d) => d.last_seen >= recentCutoffStr
   ).length;

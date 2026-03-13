@@ -268,14 +268,16 @@ function RecentSkeleton() {
 // ---------------------------------------------------------------------------
 
 export default function RecentPage() {
-  // Recent: last 72 hours (3 days)
+  // Recent: last 72 hours — use full ISO timestamps so the API applies
+  // exact millisecond boundaries instead of bare-date expansion (+1 day
+  // on `to`) which would widen the window to ~96 hours.
   const recentFrom = useMemo(() => {
     const d = new Date();
-    d.setDate(d.getDate() - 3);
-    return d.toISOString().slice(0, 10);
+    d.setTime(d.getTime() - 72 * 60 * 60_000);
+    return d.toISOString();
   }, []);
   const recentTo = useMemo(() => {
-    return new Date().toISOString().slice(0, 10);
+    return new Date().toISOString();
   }, []);
 
   const { data, loading, error } = useUsageData({
