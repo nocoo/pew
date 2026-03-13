@@ -35,6 +35,11 @@ interface ProjectRow {
   created_at: string;
 }
 
+interface TagRow {
+  project_id: string;
+  tag: string;
+}
+
 interface AliasStatsRow {
   project_id: string;
   source: string;
@@ -128,6 +133,24 @@ export async function GET(request: Request) {
       [userId],
     );
 
+    // Assemble: group tags by project_id
+    const tagsByProject = new Map<string, string[]>();
+    const tagsResult = await client.query<TagRow>(
+      `SELECT project_id, tag
+       FROM project_tags
+       WHERE user_id = ?
+       ORDER BY tag`,
+      [userId],
+    );
+    for (const row of tagsResult.results) {
+      const arr = tagsByProject.get(row.project_id);
+      if (arr) {
+        arr.push(row.tag);
+      } else {
+        tagsByProject.set(row.project_id, [row.tag]);
+      }
+    }
+
     // Assemble: group aliases by project_id
     const aliasesByProject = new Map<string, AliasStatsRow[]>();
     for (const row of aliasesResult.results) {
@@ -166,6 +189,7 @@ export async function GET(request: Request) {
           source: a.source,
           project_ref: a.project_ref,
         })),
+        tags: tagsByProject.get(p.id) ?? [],
         session_count: sessionCount,
         last_active: lastActive,
         total_messages: totalMessages,
@@ -428,6 +452,7 @@ export async function POST(request: Request) {
           source: a.source,
           project_ref: a.project_ref,
         })),
+        tags: [],
         session_count: sessionCount,
         last_active: lastActive,
         total_messages: totalMessages,

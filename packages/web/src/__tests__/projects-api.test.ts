@@ -350,7 +350,9 @@ describe("PATCH /api/projects/:id", () => {
         });
 
       mockClient.execute.mockResolvedValue({ meta: {} });
-      mockClient.query.mockResolvedValueOnce({ results: [], meta: {} }); // alias stats
+      mockClient.query
+        .mockResolvedValueOnce({ results: [], meta: {} }) // alias stats
+        .mockResolvedValueOnce({ results: [], meta: {} }); // tags
 
       const res = await callPatch({ name: "New Name" });
 
@@ -376,20 +378,22 @@ describe("PATCH /api/projects/:id", () => {
         });
 
       mockClient.execute.mockResolvedValue({ meta: {} });
-      mockClient.query.mockResolvedValueOnce({
-        results: [
-          {
-            source: "claude-code",
-            project_ref: "abc123",
-            session_count: 5,
-            last_active: "2026-03-10T12:00:00Z",
-            total_messages: 120,
-            total_duration: 3600,
-            models: "claude-4-opus,claude-4-sonnet",
-          },
-        ],
-        meta: {},
-      });
+      mockClient.query
+        .mockResolvedValueOnce({
+          results: [
+            {
+              source: "claude-code",
+              project_ref: "abc123",
+              session_count: 5,
+              last_active: "2026-03-10T12:00:00Z",
+              total_messages: 120,
+              total_duration: 3600,
+              models: "claude-4-opus,claude-4-sonnet",
+            },
+          ],
+          meta: {},
+        }) // alias stats
+        .mockResolvedValueOnce({ results: [], meta: {} }); // tags
 
       const res = await callPatch({
         add_aliases: [{ source: "claude-code", project_ref: "abc123" }],
@@ -405,6 +409,7 @@ describe("PATCH /api/projects/:id", () => {
       expect(body.aliases).toEqual([
         { source: "claude-code", project_ref: "abc123" },
       ]);
+      expect(body.tags).toEqual([]);
     });
 
     it("should skip INSERT for alias already attached to this project", async () => {
@@ -420,20 +425,22 @@ describe("PATCH /api/projects/:id", () => {
         });
 
       mockClient.execute.mockResolvedValue({ meta: {} });
-      mockClient.query.mockResolvedValueOnce({
-        results: [
-          {
-            source: "claude-code",
-            project_ref: "abc123",
-            session_count: 5,
-            last_active: "2026-03-10T12:00:00Z",
-            total_messages: 80,
-            total_duration: 1800,
-            models: "claude-4-opus",
-          },
-        ],
-        meta: {},
-      });
+      mockClient.query
+        .mockResolvedValueOnce({
+          results: [
+            {
+              source: "claude-code",
+              project_ref: "abc123",
+              session_count: 5,
+              last_active: "2026-03-10T12:00:00Z",
+              total_messages: 80,
+              total_duration: 1800,
+              models: "claude-4-opus",
+            },
+          ],
+          meta: {},
+        }) // alias stats
+        .mockResolvedValueOnce({ results: [], meta: {} }); // tags
 
       const res = await callPatch({
         add_aliases: [{ source: "claude-code", project_ref: "abc123" }],
@@ -461,20 +468,22 @@ describe("PATCH /api/projects/:id", () => {
         });
 
       mockClient.execute.mockResolvedValue({ meta: {} });
-      mockClient.query.mockResolvedValueOnce({
-        results: [
-          {
-            source: "claude-code",
-            project_ref: "abc123",
-            session_count: 5,
-            last_active: "2026-03-10T12:00:00Z",
-            total_messages: 50,
-            total_duration: 900,
-            models: null,
-          },
-        ],
-        meta: {},
-      });
+      mockClient.query
+        .mockResolvedValueOnce({
+          results: [
+            {
+              source: "claude-code",
+              project_ref: "abc123",
+              session_count: 5,
+              last_active: "2026-03-10T12:00:00Z",
+              total_messages: 50,
+              total_duration: 900,
+              models: null,
+            },
+          ],
+          meta: {},
+        }) // alias stats
+        .mockResolvedValueOnce({ results: [], meta: {} }); // tags
 
       const res = await callPatch({
         add_aliases: [
@@ -551,7 +560,7 @@ describe("DELETE /api/projects/:id", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.success).toBe(true);
-    expect(mockClient.execute).toHaveBeenCalledTimes(2);
+    expect(mockClient.execute).toHaveBeenCalledTimes(3);
   });
 });
 
@@ -934,7 +943,8 @@ describe("GET /api/projects", () => {
           },
         ],
         meta: {},
-      }); // Query 3: unassigned
+      }) // Query 3: unassigned
+      .mockResolvedValueOnce({ results: [], meta: {} }); // Query 4: tags
 
     const res = await GET(new Request("http://localhost:7030/api/projects"));
 
@@ -949,6 +959,7 @@ describe("GET /api/projects", () => {
     expect(body.projects[0].aliases).toEqual([
       { source: "claude-code", project_ref: "abc" },
     ]);
+    expect(body.projects[0].tags).toEqual([]);
     expect(body.unassigned).toHaveLength(1);
     expect(body.unassigned[0].source).toBe("opencode");
     expect(body.unassigned[0].total_messages).toBe(15);
@@ -965,7 +976,8 @@ describe("GET /api/projects", () => {
     mockClient.query
       .mockResolvedValueOnce({ results: [], meta: {} })
       .mockResolvedValueOnce({ results: [], meta: {} })
-      .mockResolvedValueOnce({ results: [], meta: {} });
+      .mockResolvedValueOnce({ results: [], meta: {} })
+      .mockResolvedValueOnce({ results: [], meta: {} }); // tags
 
     const res = await GET(new Request("http://localhost:7030/api/projects"));
 
