@@ -386,7 +386,11 @@ function LeaderboardRow({
   );
 
   if (user.slug) {
-    return <Link href={`/u/${user.slug}`}>{content}</Link>;
+    return (
+      <Link href={`/u/${user.slug}`} className="block">
+        {content}
+      </Link>
+    );
   }
   return content;
 }
