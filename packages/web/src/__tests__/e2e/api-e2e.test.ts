@@ -33,7 +33,7 @@ const TEST_USER_EMAIL = "e2e@test.local";
 /** Headers for ingest requests — includes version gate header */
 const INGEST_HEADERS = {
   "Content-Type": "application/json",
-  "X-Pew-Client-Version": "1.7.1",
+  "X-Pew-Client-Version": "1.8.0",
 };
 
 // D1 client for direct DB access (seed/cleanup)

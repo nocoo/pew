@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.8.0
+
+### Features
+
+- **Recent page overhaul** — Replaced simple list with half-hour granularity stacked bar chart (`RecentBarChart`) and expandable per-day detail table with model breakdown; changed nav icon to Clock
+- **Admin Storage page** — New admin page showing per-user D1 database usage with record counts, date ranges, team count, and device count; sortable columns
+- **D1 index optimization** — Migration to add targeted indexes and drop redundant ones based on query analysis (doc 22)
+- **Sessions API improvements** — Separate summary query for accurate totals independent of row LIMIT; protective LIMIT 5000 on list query (later reverted in favor of summary-only approach)
+- **Device management** — Show alias-only devices and allow deleting zero-record devices
+
+### Fixes
+
+- **Date range off-by-one** — Bare-date `to` params in usage, sessions, and by-device APIs now correctly include the entire `to` date (was excluding it because `new Date("2026-03-13")` resolves to midnight UTC)
+- **Timezone double-shift** — `toLocalDateStr()` no longer applies timezone offset to bare date strings from day-granularity queries (was shifting to wrong day)
+- **Leaderboard spacing** — Increased ranking item spacing from 8px to 12px; added `display:block` to Link wrapper for proper `space-y` gap
+- **Storage table alignment** — Sort header buttons aligned to match right-aligned cell values
+- **Sessions layout** — Equalized working/peak hours column width; show 5 peak slots
+- **Windows compatibility** — Use `where.exe` instead of `which` for pew binary resolution on Windows
+
+### Infrastructure
+
+- **Leaderboard caching** — HTTP cache headers on leaderboard API (60s TTL)
+- **Documentation** — D1 query optimization analysis (doc 22) with 7 slow-query recommendations
+
 ## v1.7.1
 
 ### Fixes
