@@ -54,6 +54,77 @@ if (isDevMode()) {
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 }
 
+function logSyncProgress(event: {
+  source: string;
+  phase: "discover" | "parse" | "aggregate" | "done" | "warn";
+  current?: number;
+  total?: number;
+  message?: string;
+}) {
+  if (event.phase === "parse" && event.current && event.total) {
+    // Only log at 25% intervals or small counts
+    if (
+      event.total <= 10 ||
+      event.current === event.total ||
+      event.current % Math.ceil(event.total / 4) === 0
+    ) {
+      consola.info(
+        `  ${pc.cyan(event.source)} ${event.current}/${event.total} files`,
+      );
+    }
+    return;
+  }
+
+  // SQLite-backed OpenCode sync emits descriptive messages instead of
+  // file counters. Surface them so the CLI shows DB activity explicitly.
+  if (
+    event.source === "opencode-sqlite" &&
+    event.message &&
+    (event.phase === "discover" || event.phase === "parse")
+  ) {
+    consola.info(`  ${pc.cyan(event.source)} ${event.message}`);
+    return;
+  }
+
+  if (event.phase === "warn" && event.message) {
+    consola.warn(`  ${pc.yellow(event.message)}`);
+  }
+}
+
+function logSessionSyncProgress(event: {
+  source: string;
+  phase: "discover" | "parse" | "dedup" | "done" | "warn";
+  current?: number;
+  total?: number;
+  message?: string;
+}) {
+  if (event.phase === "parse" && event.current && event.total) {
+    if (
+      event.total <= 10 ||
+      event.current === event.total ||
+      event.current % Math.ceil(event.total / 4) === 0
+    ) {
+      consola.info(
+        `  ${pc.cyan(event.source)} ${event.current}/${event.total} files`,
+      );
+    }
+    return;
+  }
+
+  if (
+    event.source === "opencode-sqlite" &&
+    event.message &&
+    (event.phase === "discover" || event.phase === "parse")
+  ) {
+    consola.info(`  ${pc.cyan(event.source)} ${event.message}`);
+    return;
+  }
+
+  if (event.phase === "warn" && event.message) {
+    consola.warn(`  ${pc.yellow(event.message)}`);
+  }
+}
+
 const syncCommand = defineCommand({
   meta: {
     name: "sync",
@@ -104,21 +175,7 @@ const syncCommand = defineCommand({
       vscodeCopilotDirs: paths.vscodeCopilotDirs,
       onCorruptLine: handleCorruptLine,
       onProgress(event) {
-        if (event.phase === "parse" && event.current && event.total) {
-          // Only log at 25% intervals or small counts
-          if (
-            event.total <= 10 ||
-            event.current === event.total ||
-            event.current % Math.ceil(event.total / 4) === 0
-          ) {
-            consola.info(
-              `  ${pc.cyan(event.source)} ${event.current}/${event.total} files`,
-            );
-          }
-        }
-        if (event.phase === "warn" && event.message) {
-          consola.warn(`  ${pc.yellow(event.message)}`);
-        }
+        logSyncProgress(event);
       },
     });
 
@@ -170,20 +227,7 @@ const syncCommand = defineCommand({
       openclawDir: paths.openclawDir,
       onCorruptLine: handleCorruptLine,
       onProgress(event) {
-        if (event.phase === "parse" && event.current && event.total) {
-          if (
-            event.total <= 10 ||
-            event.current === event.total ||
-            event.current % Math.ceil(event.total / 4) === 0
-          ) {
-            consola.info(
-              `  ${pc.cyan(event.source)} ${event.current}/${event.total} files`,
-            );
-          }
-        }
-        if (event.phase === "warn" && event.message) {
-          consola.warn(`  ${pc.yellow(event.message)}`);
-        }
+        logSessionSyncProgress(event);
       },
     });
 
