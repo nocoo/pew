@@ -88,7 +88,7 @@ export default function SessionsPage() {
   const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []);
 
   const peakSlots = useMemo(
-    () => (halfHourUsage ? detectPeakHours(halfHourUsage.records, 3, tzOffset) : []),
+    () => (halfHourUsage ? detectPeakHours(halfHourUsage.records, 5, tzOffset) : []),
     [halfHourUsage, tzOffset],
   );
 
@@ -163,7 +163,7 @@ export default function SessionsPage() {
           )}
 
           {/* Charts row: working hours + peak hours */}
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-3 md:gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
             <WorkingHoursHeatmap data={active.hoursGrid} />
             <PeakHoursCard slots={peakSlots} />
           </div>
