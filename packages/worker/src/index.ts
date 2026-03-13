@@ -5,10 +5,12 @@
  * atomic batch upserts via env.DB.batch().
  *
  * Routes:
- * - POST /ingest/tokens  — token usage records (also legacy /ingest)
- * - POST /ingest/sessions — session snapshot records
+ * - GET  /live             — health check (no auth, no cache)
+ * - POST /ingest/tokens    — token usage records (also legacy /ingest)
+ * - POST /ingest/sessions  — session snapshot records
  *
  * Auth: shared secret (WORKER_SECRET) between Next.js and this Worker.
+ *       /live is excluded from auth (public health endpoint).
  * Limit: max 50 records per request (D1 Free plan: 50 queries/invocation).
  *
  * Validation: defense-in-depth using shared validators from @pew/core.
@@ -31,6 +33,18 @@ import type {
 
 // Re-export types for test imports
 export type { IngestRecord, IngestRequest, SessionIngestRecord, SessionIngestRequest };
+
+// ---------------------------------------------------------------------------
+// Version (kept in sync with package.json during version bumps)
+// ---------------------------------------------------------------------------
+
+export const WORKER_VERSION = "1.8.1";
+
+// ---------------------------------------------------------------------------
+// Boot timestamp (for uptime calculation)
+// ---------------------------------------------------------------------------
+
+const bootTime = Date.now();
 
 // ---------------------------------------------------------------------------
 // Worker-specific types
@@ -127,6 +141,46 @@ function validateRequest<T>(
 // Handlers
 // ---------------------------------------------------------------------------
 
+/**
+ * GET /live — lightweight health check.
+ * No auth required. Returns DB connectivity status + version + uptime.
+ * Error responses MUST NOT contain the word "ok" to prevent monitor false-positives.
+ */
+async function handleLive(env: Env): Promise<Response> {
+  const start = performance.now();
+  let dbConnected = true;
+  let dbLatencyMs: number | undefined;
+  let dbError: string | undefined;
+
+  try {
+    await env.DB.prepare("SELECT 1").first();
+    dbLatencyMs = Math.round(performance.now() - start);
+  } catch (err) {
+    dbConnected = false;
+    const message = err instanceof Error ? err.message : String(err);
+    // Strip any accidental "ok" from error messages
+    dbError = message.replace(/\bok\b/gi, "***");
+  }
+
+  const body = {
+    status: dbConnected ? "ok" : "error",
+    version: WORKER_VERSION,
+    uptime: Math.round((Date.now() - bootTime) / 1000),
+    db: dbConnected
+      ? { connected: true, latencyMs: dbLatencyMs }
+      : { connected: false, error: dbError },
+    timestamp: new Date().toISOString(),
+  };
+
+  return new Response(JSON.stringify(body), {
+    status: dbConnected ? 200 : 503,
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store, no-cache, must-revalidate",
+    },
+  });
+}
+
 async function handleTokenIngest(body: unknown, env: Env): Promise<Response> {
   const validation = validateRequest<IngestRecord>(body, validateIngestRecord);
   if (!validation.ok) {
@@ -202,18 +256,29 @@ async function handleSessionIngest(body: unknown, env: Env): Promise<Response> {
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    // 1. Method check
+    const url = new URL(request.url);
+    const path = url.pathname;
+
+    // 1. Health check — no auth, GET only
+    if (path === "/live") {
+      if (request.method !== "GET") {
+        return Response.json({ error: "Method not allowed" }, { status: 405 });
+      }
+      return handleLive(env);
+    }
+
+    // 2. Method check (all other routes are POST-only)
     if (request.method !== "POST") {
       return Response.json({ error: "Method not allowed" }, { status: 405 });
     }
 
-    // 2. Shared secret auth
+    // 3. Shared secret auth
     const auth = request.headers.get("Authorization");
     if (auth !== `Bearer ${env.WORKER_SECRET}`) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 3. Parse JSON body
+    // 4. Parse JSON body
     let body: unknown;
     try {
       body = await request.json();
@@ -221,10 +286,7 @@ export default {
       return Response.json({ error: "Invalid JSON body" }, { status: 400 });
     }
 
-    // 4. Route by URL path
-    const url = new URL(request.url);
-    const path = url.pathname;
-
+    // 5. Route by URL path
     if (path === "/ingest/sessions") {
       return handleSessionIngest(body, env);
     }

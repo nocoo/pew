@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Env, IngestRecord, IngestRequest } from "./index";
 
-// Import the default export (Worker handler)
-import worker from "./index";
+// Import the default export (Worker handler) and version constant
+import worker, { WORKER_VERSION } from "./index";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -321,5 +321,230 @@ describe("Worker ingest endpoint", () => {
       const batchArgs = (env.DB.batch as ReturnType<typeof vi.fn>).mock.calls[0]!;
       expect(batchArgs[0]).toHaveLength(50);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GET /live — health check
+// ---------------------------------------------------------------------------
+
+describe("Worker /live endpoint", () => {
+  let env: Env;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    env = createMockEnv();
+  });
+
+  function makeLiveRequest(method = "GET"): Request {
+    return new Request("https://pew-ingest.workers.dev/live", { method });
+  }
+
+  // -----------------------------------------------------------------------
+  // Healthy
+  // -----------------------------------------------------------------------
+
+  it("should return 200 with status ok when DB is reachable", async () => {
+    const firstMock = vi.fn().mockResolvedValue({ 1: 1 });
+    (env.DB.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+      bind: vi.fn().mockReturnValue({}),
+      first: firstMock,
+    });
+
+    const res = await worker.fetch(makeLiveRequest(), env);
+    expect(res.status).toBe(200);
+
+    const body = await json(res);
+    expect(body.status).toBe("ok");
+    expect(body.version).toBe(WORKER_VERSION);
+    expect(typeof body.uptime).toBe("number");
+    expect(typeof body.timestamp).toBe("string");
+
+    const db = body.db as Record<string, unknown>;
+    expect(db.connected).toBe(true);
+    expect(typeof db.latencyMs).toBe("number");
+  });
+
+  it("should include correct response headers (no-cache)", async () => {
+    const firstMock = vi.fn().mockResolvedValue({ 1: 1 });
+    (env.DB.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+      bind: vi.fn().mockReturnValue({}),
+      first: firstMock,
+    });
+
+    const res = await worker.fetch(makeLiveRequest(), env);
+    expect(res.headers.get("Content-Type")).toBe("application/json");
+    expect(res.headers.get("Cache-Control")).toBe(
+      "no-store, no-cache, must-revalidate"
+    );
+  });
+
+  it("should call D1 with SELECT 1 for lightweight check", async () => {
+    const firstMock = vi.fn().mockResolvedValue({ 1: 1 });
+    (env.DB.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+      bind: vi.fn().mockReturnValue({}),
+      first: firstMock,
+    });
+
+    await worker.fetch(makeLiveRequest(), env);
+    expect(env.DB.prepare).toHaveBeenCalledWith("SELECT 1");
+  });
+
+  // -----------------------------------------------------------------------
+  // DB failure
+  // -----------------------------------------------------------------------
+
+  it("should return 503 with status error when DB is unreachable", async () => {
+    (env.DB.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+      bind: vi.fn().mockReturnValue({}),
+      first: vi.fn().mockRejectedValue(new Error("D1 connection refused")),
+    });
+
+    const res = await worker.fetch(makeLiveRequest(), env);
+    expect(res.status).toBe(503);
+
+    const body = await json(res);
+    expect(body.status).toBe("error");
+    expect(body.version).toBe(WORKER_VERSION);
+
+    const db = body.db as Record<string, unknown>;
+    expect(db.connected).toBe(false);
+    expect(typeof db.error).toBe("string");
+  });
+
+  it("should not contain 'ok' in error response values", async () => {
+    (env.DB.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+      bind: vi.fn().mockReturnValue({}),
+      first: vi.fn().mockRejectedValue(new Error("token is not ok")),
+    });
+
+    const res = await worker.fetch(makeLiveRequest(), env);
+    const body = await json(res);
+    expect(body.status).toBe("error");
+
+    const db = body.db as Record<string, unknown>;
+    expect(db.error).not.toMatch(/\bok\b/i);
+  });
+
+  it("should sanitize ok from D1 error messages", async () => {
+    (env.DB.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+      bind: vi.fn().mockReturnValue({}),
+      first: vi.fn().mockRejectedValue(new Error("ok something failed")),
+    });
+
+    const res = await worker.fetch(makeLiveRequest(), env);
+    const body = await json(res);
+    const db = body.db as Record<string, unknown>;
+    expect(db.error).toBe("*** something failed");
+  });
+
+  it("should handle non-Error throw from D1", async () => {
+    (env.DB.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+      bind: vi.fn().mockReturnValue({}),
+      first: vi.fn().mockRejectedValue("string error"),
+    });
+
+    const res = await worker.fetch(makeLiveRequest(), env);
+    expect(res.status).toBe(503);
+
+    const body = await json(res);
+    const db = body.db as Record<string, unknown>;
+    expect(db.connected).toBe(false);
+    expect(db.error).toBe("string error");
+  });
+
+  // -----------------------------------------------------------------------
+  // No auth required
+  // -----------------------------------------------------------------------
+
+  it("should not require authentication", async () => {
+    const firstMock = vi.fn().mockResolvedValue({ 1: 1 });
+    (env.DB.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+      bind: vi.fn().mockReturnValue({}),
+      first: firstMock,
+    });
+
+    // No Authorization header
+    const req = new Request("https://pew-ingest.workers.dev/live", {
+      method: "GET",
+    });
+    const res = await worker.fetch(req, env);
+    expect(res.status).toBe(200);
+  });
+
+  // -----------------------------------------------------------------------
+  // Method guard
+  // -----------------------------------------------------------------------
+
+  it("should reject POST to /live with 405", async () => {
+    const res = await worker.fetch(makeLiveRequest("POST"), env);
+    expect(res.status).toBe(405);
+  });
+
+  // -----------------------------------------------------------------------
+  // Response shape
+  // -----------------------------------------------------------------------
+
+  it("should return all required fields in healthy response", async () => {
+    const firstMock = vi.fn().mockResolvedValue({ 1: 1 });
+    (env.DB.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+      bind: vi.fn().mockReturnValue({}),
+      first: firstMock,
+    });
+
+    const res = await worker.fetch(makeLiveRequest(), env);
+    const body = await json(res);
+    const keys = Object.keys(body).sort();
+    expect(keys).toEqual(["db", "status", "timestamp", "uptime", "version"]);
+  });
+
+  it("should return all required fields in error response", async () => {
+    (env.DB.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+      bind: vi.fn().mockReturnValue({}),
+      first: vi.fn().mockRejectedValue(new Error("boom")),
+    });
+
+    const res = await worker.fetch(makeLiveRequest(), env);
+    const body = await json(res);
+    const keys = Object.keys(body).sort();
+    expect(keys).toEqual(["db", "status", "timestamp", "uptime", "version"]);
+  });
+
+  it("should return valid ISO 8601 timestamp", async () => {
+    const firstMock = vi.fn().mockResolvedValue({ 1: 1 });
+    (env.DB.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+      bind: vi.fn().mockReturnValue({}),
+      first: firstMock,
+    });
+
+    const res = await worker.fetch(makeLiveRequest(), env);
+    const body = await json(res);
+    const ts = new Date(body.timestamp as string);
+    expect(ts.toISOString()).toBe(body.timestamp);
+  });
+
+  // -----------------------------------------------------------------------
+  // Existing ingest routes still work
+  // -----------------------------------------------------------------------
+
+  it("should still require auth for ingest routes", async () => {
+    const req = new Request("https://pew-ingest.workers.dev/ingest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: "u1", records: [VALID_RECORD] }),
+    });
+
+    const res = await worker.fetch(req, env);
+    expect(res.status).toBe(401);
+  });
+
+  it("should still reject GET on ingest routes", async () => {
+    const req = new Request("https://pew-ingest.workers.dev/ingest", {
+      method: "GET",
+      headers: { Authorization: `Bearer ${SECRET}` },
+    });
+
+    const res = await worker.fetch(req, env);
+    expect(res.status).toBe(405);
   });
 });
