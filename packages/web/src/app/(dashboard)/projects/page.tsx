@@ -436,7 +436,7 @@ export default function ProjectsPage() {
 
   const { data, loading, error, allTags, updateProject } = useProjects({
     from,
-    to,
+    ...(to !== undefined && { to }),
   });
 
   // -------------------------------------------------------------------------
@@ -445,26 +445,29 @@ export default function ProjectsPage() {
 
   const [timeline, setTimeline] = useState<ProjectTimelinePoint[]>([]);
 
-  const fetchTimeline = useCallback(async () => {
-    try {
-      const params = new URLSearchParams();
-      params.set("from", from);
-      if (to) params.set("to", to);
-      const res = await fetch(`/api/projects/timeline?${params}`);
-      if (!res.ok) {
-        setTimeline([]);
-        return;
-      }
-      const json = (await res.json()) as { timeline: ProjectTimelinePoint[] };
-      setTimeline(json.timeline);
-    } catch {
-      setTimeline([]);
-    }
-  }, [from, to]);
-
   useEffect(() => {
-    fetchTimeline();
-  }, [fetchTimeline]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const params = new URLSearchParams();
+        params.set("from", from);
+        if (to) params.set("to", to);
+        const res = await fetch(`/api/projects/timeline?${params}`);
+        if (cancelled) return;
+        if (!res.ok) {
+          setTimeline([]);
+          return;
+        }
+        const json = (await res.json()) as { timeline: ProjectTimelinePoint[] };
+        if (!cancelled) setTimeline(json.timeline);
+      } catch {
+        if (!cancelled) setTimeline([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [from, to]);
 
   const projects = useMemo(() => data?.projects ?? [], [data]);
   const unassigned = useMemo(() => data?.unassigned ?? [], [data]);
