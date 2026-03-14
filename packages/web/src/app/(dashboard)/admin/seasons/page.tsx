@@ -14,7 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatSeasonDate } from "@/lib/seasons";
+import { formatSeasonDate, utcToLocalDatetimeValue, localDatetimeValueToUtc } from "@/lib/seasons";
 import type { SeasonStatus } from "@pew/core";
 
 // ---------------------------------------------------------------------------
@@ -119,8 +119,8 @@ function CreateSeasonForm({
         body: JSON.stringify({
           name: name.trim(),
           slug: slug.trim(),
-          start_date: startDate ? startDate + ":00Z" : "",
-          end_date: endDate ? endDate + ":00Z" : "",
+          start_date: startDate ? localDatetimeValueToUtc(startDate) : "",
+          end_date: endDate ? localDatetimeValueToUtc(endDate) : "",
           allow_late_registration: allowLateRegistration,
           allow_roster_changes: allowRosterChanges,
           allow_late_withdrawal: allowLateWithdrawal,
@@ -180,7 +180,7 @@ function CreateSeasonForm({
         </div>
         <div>
           <label className="block text-xs font-medium text-muted-foreground mb-1">
-            Start Date (UTC)
+            Start Date
           </label>
           <input
             type="datetime-local"
@@ -188,13 +188,10 @@ function CreateSeasonForm({
             onChange={(e) => setStartDate(e.target.value)}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground tabular-nums focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
           />
-          <p className="text-[11px] text-muted-foreground/70 mt-0.5">
-            Enter the exact UTC time — not your local time.
-          </p>
         </div>
         <div>
           <label className="block text-xs font-medium text-muted-foreground mb-1">
-            End Date (UTC)
+            End Date
           </label>
           <input
             type="datetime-local"
@@ -202,9 +199,6 @@ function CreateSeasonForm({
             onChange={(e) => setEndDate(e.target.value)}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground tabular-nums focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
           />
-          <p className="text-[11px] text-muted-foreground/70 mt-0.5">
-            Enter the exact UTC time — not your local time.
-          </p>
         </div>
       </div>
       <div className="mt-3">
@@ -279,12 +273,12 @@ function EditSeasonRow({
 }) {
   const isUpcoming = season.status === "upcoming";
   const [name, setName] = useState(season.name);
-  // Convert ISO datetime (e.g. "2026-03-15T00:00:00Z") to datetime-local format ("2026-03-15T00:00")
+  // Convert UTC ISO datetime to local datetime-local value for the input
   const [startDate, setStartDate] = useState(
-    season.start_date.replace(/:00Z$/, "").replace(/Z$/, "")
+    utcToLocalDatetimeValue(season.start_date)
   );
   const [endDate, setEndDate] = useState(
-    season.end_date.replace(/:00Z$/, "").replace(/Z$/, "")
+    utcToLocalDatetimeValue(season.end_date)
   );
   const [allowLateRegistration, setAllowLateRegistration] = useState(season.allow_late_registration);
   const [allowRosterChanges, setAllowRosterChanges] = useState(season.allow_roster_changes);
@@ -298,10 +292,10 @@ function EditSeasonRow({
     try {
       const payload: Record<string, string | boolean> = {};
       if (name.trim() !== season.name) payload.name = name.trim();
-      if (isUpcoming && startDate + ":00Z" !== season.start_date)
-        payload.start_date = startDate + ":00Z";
-      if (isUpcoming && endDate + ":00Z" !== season.end_date)
-        payload.end_date = endDate + ":00Z";
+      if (isUpcoming && localDatetimeValueToUtc(startDate) !== season.start_date)
+        payload.start_date = localDatetimeValueToUtc(startDate);
+      if (isUpcoming && localDatetimeValueToUtc(endDate) !== season.end_date)
+        payload.end_date = localDatetimeValueToUtc(endDate);
       if (allowLateRegistration !== season.allow_late_registration)
         payload.allow_late_registration = allowLateRegistration;
       if (allowRosterChanges !== season.allow_roster_changes)
@@ -367,7 +361,7 @@ function EditSeasonRow({
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">
-              Start Date (UTC){!isUpcoming && " (locked)"}
+              Start Date{!isUpcoming && " (locked)"}
             </label>
             <input
               type="datetime-local"
@@ -381,15 +375,10 @@ function EditSeasonRow({
                   : "bg-muted text-muted-foreground cursor-not-allowed",
               )}
             />
-            {isUpcoming && (
-              <p className="text-[11px] text-muted-foreground/70 mt-0.5">
-                Enter the exact UTC time — not your local time.
-              </p>
-            )}
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">
-              End Date (UTC){!isUpcoming && " (locked)"}
+              End Date{!isUpcoming && " (locked)"}
             </label>
             <input
               type="datetime-local"
@@ -403,11 +392,6 @@ function EditSeasonRow({
                   : "bg-muted text-muted-foreground cursor-not-allowed",
               )}
             />
-            {isUpcoming && (
-              <p className="text-[11px] text-muted-foreground/70 mt-0.5">
-                Enter the exact UTC time — not your local time.
-              </p>
-            )}
           </div>
         </div>
         <div className="mt-3">

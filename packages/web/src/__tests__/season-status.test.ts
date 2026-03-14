@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { deriveSeasonStatus, formatSeasonDate } from "@/lib/seasons";
+import {
+  deriveSeasonStatus,
+  formatSeasonDate,
+  utcToLocalDatetimeValue,
+  localDatetimeValueToUtc,
+} from "@/lib/seasons";
 
 // ---------------------------------------------------------------------------
 // deriveSeasonStatus — ISO 8601 datetime precision
@@ -86,5 +91,38 @@ describe("formatSeasonDate", () => {
     // Should contain some time representation
     expect(result).toBeTruthy();
     expect(typeof result).toBe("string");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// utcToLocalDatetimeValue + localDatetimeValueToUtc — round-trip integrity
+// ---------------------------------------------------------------------------
+
+describe("utcToLocalDatetimeValue / localDatetimeValueToUtc", () => {
+  it("should round-trip: UTC → local → UTC preserves the original instant", () => {
+    const utcOriginal = "2026-03-15T00:00:00Z";
+    const local = utcToLocalDatetimeValue(utcOriginal);
+    const utcBack = localDatetimeValueToUtc(local);
+    // Same epoch ms — the instant is preserved regardless of timezone
+    expect(new Date(utcBack).getTime()).toBe(new Date(utcOriginal).getTime());
+  });
+
+  it("should round-trip with non-midnight UTC time", () => {
+    const utcOriginal = "2026-07-20T14:30:00Z";
+    const local = utcToLocalDatetimeValue(utcOriginal);
+    const utcBack = localDatetimeValueToUtc(local);
+    expect(new Date(utcBack).getTime()).toBe(new Date(utcOriginal).getTime());
+  });
+
+  it("utcToLocalDatetimeValue should return YYYY-MM-DDTHH:mm format", () => {
+    const result = utcToLocalDatetimeValue("2026-03-15T00:00:00Z");
+    // datetime-local format: YYYY-MM-DDTHH:mm (no seconds, no Z)
+    expect(result).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
+  });
+
+  it("localDatetimeValueToUtc should return ISO 8601 UTC without milliseconds", () => {
+    const result = localDatetimeValueToUtc("2026-03-15T08:00");
+    // Should end with Z, not .000Z
+    expect(result).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
   });
 });

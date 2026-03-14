@@ -43,3 +43,36 @@ export function formatSeasonDate(isoDate: string): string {
     minute: "2-digit",
   });
 }
+
+/**
+ * Convert a UTC ISO datetime string to a `datetime-local` input value
+ * in the user's local timezone.
+ *
+ * "2026-03-15T00:00:00Z" → "2026-03-15T08:00" (for UTC+8)
+ *
+ * The `datetime-local` input expects "YYYY-MM-DDTHH:mm" without timezone.
+ */
+export function utcToLocalDatetimeValue(isoUtc: string): string {
+  const d = new Date(isoUtc);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+/**
+ * Convert a `datetime-local` input value (local timezone) to a UTC ISO
+ * datetime string for API submission.
+ *
+ * "2026-03-15T08:00" (local, UTC+8) → "2026-03-15T00:00:00Z"
+ *
+ * `new Date(localString)` interprets the value as local time, then
+ * `.toISOString()` converts to UTC. We strip the millisecond portion
+ * to match our stored format ("...T00:00:00Z" not "...T00:00:00.000Z").
+ */
+export function localDatetimeValueToUtc(localValue: string): string {
+  const d = new Date(localValue);
+  return d.toISOString().replace(".000Z", "Z");
+}
