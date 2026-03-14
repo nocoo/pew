@@ -16,7 +16,7 @@ Claude Code, Codex, Gemini CLI, OpenCode, OpenClaw, VS Code Copilot
 - **Runtime**: Bun (package manager + runtime)
 - **TypeScript**: Strict mode, composite project references
 - **Port**: dev=7030, API E2E=17030, BDD E2E=27030
-- **Testing**: Four-layer architecture (see docs/01-plan.md)
+- **Testing**: Vitest is the sole test runner (`bun run test`). Never use `bun test` directly — it has incomplete `vi.mock`/`vi.mocked` support and cross-file mock leakage that causes false failures. Four-layer architecture (see docs/01-plan.md)
 - **TDD**: Always write tests first, then implement
 - **Commits**: Conventional Commits, atomic, auto-commit after changes
 - **`@pew/core` is NOT published**: Pure types, `import type` only, `devDependencies`
