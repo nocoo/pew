@@ -1,10 +1,9 @@
 import { describe, it, expect } from "vitest";
+import { deriveSeasonStatus, formatSeasonDate } from "@/lib/seasons";
 import {
-  deriveSeasonStatus,
-  formatSeasonDate,
   utcToLocalDatetimeValue,
   localDatetimeValueToUtc,
-} from "@/lib/seasons";
+} from "@/lib/date-helpers";
 
 // ---------------------------------------------------------------------------
 // deriveSeasonStatus — ISO 8601 datetime precision
