@@ -566,6 +566,10 @@ export default function ProjectsPage() {
   const hasAnyData =
     filteredProjects.length > 0 ||
     filteredUnassigned.some((u) => u.session_count > 0);
+  const hasRawData =
+    projects.length > 0 ||
+    unassigned.some((u) => u.session_count > 0);
+  const isTagFilterEmpty = tagFilter !== "" && !hasAnyData && hasRawData;
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -606,8 +610,9 @@ export default function ProjectsPage() {
         <>
           {!hasAnyData ? (
             <div className="rounded-[var(--radius-card)] bg-secondary p-8 text-center text-sm text-muted-foreground">
-              No project data yet. Sync sessions from projects to see usage
-              breakdown.
+              {isTagFilterEmpty
+                ? `No projects match the tag "${tagFilter}".`
+                : "No project data yet. Sync sessions from projects to see usage breakdown."}
             </div>
           ) : (
             <>
