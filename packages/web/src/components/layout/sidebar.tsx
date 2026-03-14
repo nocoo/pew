@@ -24,6 +24,7 @@ import {
   Ticket,
   ArrowUpRight,
   FolderKanban,
+  FolderGit2,
   Database,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -65,6 +66,7 @@ const ICON_MAP: Record<string, ElementType> = {
   Ticket,
   ArrowUpRight,
   FolderKanban,
+  FolderGit2,
   Database,
 };
 

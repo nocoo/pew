@@ -54,7 +54,9 @@ describe("sidebar navigation", () => {
       expect(allHrefs).toContain("/agents");
       expect(allHrefs).toContain("/models");
       expect(allHrefs).toContain("/devices");
+      expect(allHrefs).toContain("/projects");
       expect(allHrefs).toContain("/teams");
+      expect(allHrefs).toContain("/manage-projects");
       expect(allHrefs).toContain("/manage-devices");
       expect(allHrefs).toContain("/settings");
     });
@@ -96,6 +98,30 @@ describe("sidebar navigation", () => {
       expect(byDevice).toBeDefined();
       expect(byDevice!.href).toBe("/devices");
       expect(byDevice!.icon).toBe("Monitor");
+    });
+
+    it("Analytics group should include Projects after By Device", () => {
+      const analyticsGroup = BASE_NAV_GROUPS.find((g) => g.label === "Analytics")!;
+      const items = analyticsGroup.items.map((i) => i.label);
+      const deviceIdx = items.indexOf("By Device");
+      const projectIdx = items.indexOf("Projects");
+      expect(projectIdx).toBeGreaterThan(-1);
+      expect(projectIdx).toBe(deviceIdx + 1);
+    });
+
+    it("Projects should link to /projects with FolderGit2 icon", () => {
+      const analyticsGroup = BASE_NAV_GROUPS.find((g) => g.label === "Analytics")!;
+      const projects = analyticsGroup.items.find((i) => i.label === "Projects" && i.icon === "FolderGit2");
+      expect(projects).toBeDefined();
+      expect(projects!.href).toBe("/projects");
+    });
+
+    it("Settings group Projects should link to /manage-projects with FolderKanban icon", () => {
+      const settingsGroup = BASE_NAV_GROUPS.find((g) => g.label === "Settings")!;
+      const projects = settingsGroup.items.find((i) => i.label === "Projects");
+      expect(projects).toBeDefined();
+      expect(projects!.href).toBe("/manage-projects");
+      expect(projects!.icon).toBe("FolderKanban");
     });
 
     it("Settings group should include Devices after Projects", () => {
@@ -183,6 +209,7 @@ describe("route labels", () => {
       settings: "General",
       teams: "Teams",
       projects: "Projects",
+      "manage-projects": "Projects",
       recent: "Recent",
       "daily-usage": "Daily Usage",
       agents: "By Agent",
@@ -252,6 +279,14 @@ describe("breadcrumbsFromPathname", () => {
     expect(crumbs).toEqual([
       { label: "Home", href: "/dashboard" },
       { label: "Devices" },
+    ]);
+  });
+
+  it("should return breadcrumbs for /manage-projects", () => {
+    const crumbs = breadcrumbsFromPathname("/manage-projects");
+    expect(crumbs).toEqual([
+      { label: "Home", href: "/dashboard" },
+      { label: "Projects" },
     ]);
   });
 });
