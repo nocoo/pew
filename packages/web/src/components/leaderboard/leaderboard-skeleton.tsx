@@ -21,10 +21,10 @@ export function LeaderboardSkeleton({ count = 10 }: { count?: number }) {
           <Skeleton className="h-4 w-32" />
           <div className="flex-1" />
           {/* In/Out (hidden on mobile) */}
-          <Skeleton className="hidden sm:block h-3 w-12" />
-          <Skeleton className="hidden sm:block h-3 w-12" />
+          <Skeleton className="hidden sm:block h-3 w-12 shrink-0" />
+          <Skeleton className="hidden sm:block h-3 w-12 shrink-0" />
           {/* Total */}
-          <Skeleton className="h-6 w-28" />
+          <Skeleton className="h-6 w-28 sm:w-36 shrink-0" />
         </div>
       ))}
     </div>

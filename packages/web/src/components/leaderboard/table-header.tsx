@@ -6,7 +6,7 @@
  * divider (Armory's Divider--thin--silver).
  *
  * Column widths must stay in sync with LeaderboardRow layout:
- *   Rank (w-8) | gap-3 | Avatar (w-8) + gap-3 + Name (flex-1) | In (w-20) | Out (w-20) | Total (w-[140px])
+ *   Rank (w-8) | gap-3 | Avatar (w-8) + gap-3 + Name (flex-1) | In (w-20 shrink-0) | Out (w-20 shrink-0) | Total (w-[140px] sm:w-[180px])
  *
  * Responsive: In/Out columns are hidden on mobile (sm:), matching the
  * data rows that also hide token breakdown on narrow screens.
@@ -23,11 +23,11 @@ export function TableHeader() {
         {/* Player — avatar (w-8) + gap-3 + name fills flex-1 */}
         <span className="flex-1">Player</span>
         {/* In — matches row's input token column */}
-        <span className="hidden sm:block w-20 text-right">In</span>
+        <span className="hidden sm:block w-20 shrink-0 text-right">In</span>
         {/* Out — matches row's output token column */}
-        <span className="hidden sm:block w-20 text-right">Out</span>
+        <span className="hidden sm:block w-20 shrink-0 text-right">Out</span>
         {/* Tokens — matches row's total column */}
-        <span className="w-[140px] shrink-0 text-right">Tokens</span>
+        <span className="w-[140px] sm:w-[180px] shrink-0 text-right">Tokens</span>
       </div>
       {/* Thin divider — Armory's Divider--thin--silver */}
       <div className="h-px bg-border/50" />

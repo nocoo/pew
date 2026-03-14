@@ -38,9 +38,9 @@ function SeasonTableHeader() {
         <span className="w-8 shrink-0 text-center">Rank</span>
         <span className="w-3 shrink-0" />
         <span className="flex-1">Team</span>
-        <span className="hidden sm:block w-20 text-right">In</span>
-        <span className="hidden sm:block w-20 text-right">Out</span>
-        <span className="w-[140px] shrink-0 text-right">Tokens</span>
+        <span className="hidden sm:block w-20 shrink-0 text-right">In</span>
+        <span className="hidden sm:block w-20 shrink-0 text-right">Out</span>
+        <span className="w-[140px] sm:w-[180px] shrink-0 text-right">Tokens</span>
         {/* Expand chevron spacer */}
         <span className="w-4 shrink-0" />
       </div>
@@ -139,23 +139,32 @@ function TeamRow({
         </div>
 
         {/* Input tokens — cyan tint (hidden on mobile) */}
-        <div className="hidden sm:block w-20 text-right">
+        <div className="hidden sm:block w-20 shrink-0 text-right">
           <span className="text-xs tabular-nums text-cyan-400/80" title="Input tokens">
             {formatTokens(entry.input_tokens)}
           </span>
         </div>
 
         {/* Output tokens — amber/warm tint (hidden on mobile) */}
-        <div className="hidden sm:block w-20 text-right">
+        <div className="hidden sm:block w-20 shrink-0 text-right">
           <span className="text-xs tabular-nums text-amber-400/80" title="Output tokens">
             {formatTokens(entry.output_tokens)}
           </span>
         </div>
 
         {/* Total */}
-        <div className="relative z-10 w-[140px] shrink-0 text-right flex items-center justify-end gap-1.5">
+        <div className="relative z-10 w-[140px] sm:w-[180px] shrink-0 text-right flex items-center justify-end gap-1.5 overflow-hidden">
           <TokenTierBadge totalTokens={entry.total_tokens} />
-          <span className="font-handwriting text-[39px] leading-none tracking-tight text-foreground">
+          <span
+            className={cn(
+              "font-handwriting leading-none tracking-tight text-foreground whitespace-nowrap",
+              entry.total_tokens >= 1_000_000_000
+                ? "text-[24px] sm:text-[30px]"
+                : entry.total_tokens >= 100_000_000
+                  ? "text-[28px] sm:text-[34px]"
+                  : "text-[32px] sm:text-[39px]",
+            )}
+          >
             {formatTokensFull(entry.total_tokens)}
           </span>
         </div>

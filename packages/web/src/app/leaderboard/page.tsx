@@ -323,23 +323,32 @@ function LeaderboardRow({
       </div>
 
       {/* Input tokens — cyan tint (hidden on mobile) */}
-      <div className="hidden sm:block w-20 text-right">
+      <div className="hidden sm:block w-20 shrink-0 text-right">
         <span className="text-xs tabular-nums text-cyan-400/80" title="Input tokens">
           {formatTokens(input_tokens)}
         </span>
       </div>
 
       {/* Output tokens — amber/warm tint (hidden on mobile) */}
-      <div className="hidden sm:block w-20 text-right">
+      <div className="hidden sm:block w-20 shrink-0 text-right">
         <span className="text-xs tabular-nums text-amber-400/80" title="Output tokens">
           {formatTokens(output_tokens)}
         </span>
       </div>
 
       {/* Total — check-style handwriting font, full number + tier badge */}
-      <div className="relative z-10 w-[140px] shrink-0 text-right flex items-center justify-end gap-1.5">
+      <div className="relative z-10 w-[140px] sm:w-[180px] shrink-0 text-right flex items-center justify-end gap-1.5 overflow-hidden">
         <TokenTierBadge totalTokens={total_tokens} />
-        <span className="font-handwriting text-[39px] leading-none tracking-tight text-foreground">
+        <span
+          className={cn(
+            "font-handwriting leading-none tracking-tight text-foreground whitespace-nowrap",
+            total_tokens >= 1_000_000_000
+              ? "text-[24px] sm:text-[30px]"
+              : total_tokens >= 100_000_000
+                ? "text-[28px] sm:text-[34px]"
+                : "text-[32px] sm:text-[39px]",
+          )}
+        >
           {formatTokensFull(total_tokens)}
         </span>
       </div>
