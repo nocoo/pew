@@ -5,6 +5,7 @@
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
 import { getD1Client } from "@/lib/d1";
+import { syncSeasonRosters } from "@/lib/season-roster";
 
 export async function POST(request: Request) {
   const authResult = await resolveUser(request);
@@ -87,6 +88,13 @@ export async function POST(request: Request) {
         { error: `Team is full (max ${maxMembers} members)` },
         { status: 403 },
       );
+    }
+
+    // Sync season rosters if any active season allows roster changes
+    try {
+      await syncSeasonRosters(client, team.id);
+    } catch (err) {
+      console.error("Failed to sync season rosters after join:", err);
     }
 
     return NextResponse.json({

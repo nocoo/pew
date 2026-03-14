@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
 import { getD1Client } from "@/lib/d1";
 import { deleteTeamLogoByUrl } from "@/lib/r2";
+import { syncSeasonRosters } from "@/lib/season-roster";
 
 // ---------------------------------------------------------------------------
 // GET — team details with members
@@ -240,6 +241,13 @@ export async function DELETE(
       "DELETE FROM team_members WHERE team_id = ? AND user_id = ?",
       [teamId, authResult.userId],
     );
+
+    // Sync season rosters if any active season allows roster changes
+    try {
+      await syncSeasonRosters(client, teamId);
+    } catch (err) {
+      console.error("Failed to sync season rosters after leave:", err);
+    }
 
     // If last member, delete the team and its logo
     if (memberCount <= 1) {

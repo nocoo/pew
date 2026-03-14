@@ -135,6 +135,7 @@ describe("POST /api/seasons/[seasonId]/register", () => {
       id: "season-1",
       start_date: "2020-01-01",
       end_date: "2099-12-31",
+      allow_late_registration: 0,
     });
 
     const res = await POST(makeRequest("POST", undefined, { team_id: "team-1" }), {
@@ -142,7 +143,7 @@ describe("POST /api/seasons/[seasonId]/register", () => {
     });
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toContain("upcoming");
+    expect(json.error).toContain("Registration closed");
   });
 
   it("should reject when season is ended", async () => {
@@ -151,6 +152,7 @@ describe("POST /api/seasons/[seasonId]/register", () => {
       id: "season-1",
       start_date: "2020-01-01",
       end_date: "2020-12-31",
+      allow_late_registration: 0,
     });
 
     const res = await POST(makeRequest("POST", undefined, { team_id: "team-1" }), {
@@ -158,7 +160,47 @@ describe("POST /api/seasons/[seasonId]/register", () => {
     });
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toContain("upcoming");
+    expect(json.error).toContain("ended");
+  });
+
+  it("should allow registration for active season when allow_late_registration=1", async () => {
+    resolveUser.mockResolvedValueOnce(USER);
+    mockClient.firstOrNull
+      .mockResolvedValueOnce({
+        id: "season-1",
+        start_date: "2020-01-01",
+        end_date: "2099-12-31",
+        allow_late_registration: 1,
+      })
+      .mockResolvedValueOnce({ role: "owner" })
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    mockClient.query.mockResolvedValueOnce({
+      results: [{ user_id: "user-1" }],
+    });
+    mockClient.batch.mockResolvedValueOnce(undefined);
+
+    const res = await POST(makeRequest("POST", undefined, { team_id: "team-1" }), {
+      params: regParams,
+    });
+    expect(res.status).toBe(201);
+  });
+
+  it("should reject registration for ended season even when allow_late_registration=1", async () => {
+    resolveUser.mockResolvedValueOnce(USER);
+    mockClient.firstOrNull.mockResolvedValueOnce({
+      id: "season-1",
+      start_date: "2020-01-01",
+      end_date: "2020-12-31",
+      allow_late_registration: 1,
+    });
+
+    const res = await POST(makeRequest("POST", undefined, { team_id: "team-1" }), {
+      params: regParams,
+    });
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toContain("ended");
   });
 
   it("should reject when user is not team owner", async () => {
@@ -293,6 +335,7 @@ describe("DELETE /api/seasons/[seasonId]/register", () => {
       id: "season-1",
       start_date: "2020-01-01",
       end_date: "2099-12-31",
+      allow_late_withdrawal: 0,
     });
 
     const res = await DELETE(makeRequest("DELETE", undefined, { team_id: "team-1" }), {
@@ -300,7 +343,47 @@ describe("DELETE /api/seasons/[seasonId]/register", () => {
     });
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toContain("upcoming");
+    expect(json.error).toContain("Withdrawal closed");
+  });
+
+  it("should allow withdrawal from active season when allow_late_withdrawal=1", async () => {
+    resolveUser.mockResolvedValueOnce(USER);
+    mockClient.firstOrNull
+      .mockResolvedValueOnce({
+        id: "season-1",
+        start_date: "2020-01-01",
+        end_date: "2099-12-31",
+        allow_late_withdrawal: 1,
+      })
+      .mockResolvedValueOnce({ role: "owner" })
+      .mockResolvedValueOnce({ id: "reg-1" });
+    mockClient.execute
+      .mockResolvedValueOnce({ changes: 1, duration: 0.01 })
+      .mockResolvedValueOnce({ changes: 1, duration: 0.01 });
+
+    const res = await DELETE(makeRequest("DELETE", undefined, { team_id: "team-1" }), {
+      params: regParams,
+    });
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.deleted).toBe(true);
+  });
+
+  it("should reject withdrawal from ended season even when allow_late_withdrawal=1", async () => {
+    resolveUser.mockResolvedValueOnce(USER);
+    mockClient.firstOrNull.mockResolvedValueOnce({
+      id: "season-1",
+      start_date: "2020-01-01",
+      end_date: "2020-12-31",
+      allow_late_withdrawal: 1,
+    });
+
+    const res = await DELETE(makeRequest("DELETE", undefined, { team_id: "team-1" }), {
+      params: regParams,
+    });
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toContain("ended");
   });
 
   it("should reject when user is not team owner", async () => {

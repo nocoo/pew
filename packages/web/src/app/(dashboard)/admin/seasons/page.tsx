@@ -29,6 +29,9 @@ interface SeasonRow {
   status: SeasonStatus;
   team_count: number;
   created_at: string;
+  allow_late_registration: boolean;
+  allow_roster_changes: boolean;
+  allow_late_withdrawal: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -91,6 +94,9 @@ function CreateSeasonForm({
   const [slug, setSlug] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [allowLateRegistration, setAllowLateRegistration] = useState(false);
+  const [allowRosterChanges, setAllowRosterChanges] = useState(false);
+  const [allowLateWithdrawal, setAllowLateWithdrawal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -114,6 +120,9 @@ function CreateSeasonForm({
           slug: slug.trim(),
           start_date: startDate,
           end_date: endDate,
+          allow_late_registration: allowLateRegistration,
+          allow_roster_changes: allowRosterChanges,
+          allow_late_withdrawal: allowLateWithdrawal,
         }),
       });
       if (!res.ok) {
@@ -191,6 +200,40 @@ function CreateSeasonForm({
           />
         </div>
       </div>
+      <div className="mt-3">
+        <label className="block text-xs font-medium text-muted-foreground mb-2">
+          Rules
+        </label>
+        <div className="flex flex-col gap-2">
+          <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+            <input
+              type="checkbox"
+              checked={allowLateRegistration}
+              onChange={(e) => setAllowLateRegistration(e.target.checked)}
+              className="rounded border-border"
+            />
+            Allow late registration
+          </label>
+          <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+            <input
+              type="checkbox"
+              checked={allowRosterChanges}
+              onChange={(e) => setAllowRosterChanges(e.target.checked)}
+              className="rounded border-border"
+            />
+            Allow roster changes
+          </label>
+          <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+            <input
+              type="checkbox"
+              checked={allowLateWithdrawal}
+              onChange={(e) => setAllowLateWithdrawal(e.target.checked)}
+              className="rounded border-border"
+            />
+            Allow late withdrawal
+          </label>
+        </div>
+      </div>
       <div className="flex items-center gap-2 mt-4">
         <button
           onClick={handleSubmit}
@@ -231,6 +274,9 @@ function EditSeasonRow({
   const [name, setName] = useState(season.name);
   const [startDate, setStartDate] = useState(season.start_date);
   const [endDate, setEndDate] = useState(season.end_date);
+  const [allowLateRegistration, setAllowLateRegistration] = useState(season.allow_late_registration);
+  const [allowRosterChanges, setAllowRosterChanges] = useState(season.allow_roster_changes);
+  const [allowLateWithdrawal, setAllowLateWithdrawal] = useState(season.allow_late_withdrawal);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -238,11 +284,17 @@ function EditSeasonRow({
     setSubmitting(true);
     setError(null);
     try {
-      const payload: Record<string, string> = {};
+      const payload: Record<string, string | boolean> = {};
       if (name.trim() !== season.name) payload.name = name.trim();
       if (isUpcoming && startDate !== season.start_date)
         payload.start_date = startDate;
       if (isUpcoming && endDate !== season.end_date) payload.end_date = endDate;
+      if (allowLateRegistration !== season.allow_late_registration)
+        payload.allow_late_registration = allowLateRegistration;
+      if (allowRosterChanges !== season.allow_roster_changes)
+        payload.allow_roster_changes = allowRosterChanges;
+      if (allowLateWithdrawal !== season.allow_late_withdrawal)
+        payload.allow_late_withdrawal = allowLateWithdrawal;
 
       if (Object.keys(payload).length === 0) {
         onCancel();
@@ -333,6 +385,40 @@ function EditSeasonRow({
                   : "bg-muted text-muted-foreground cursor-not-allowed",
               )}
             />
+          </div>
+        </div>
+        <div className="mt-3">
+          <label className="block text-xs font-medium text-muted-foreground mb-2">
+            Rules
+          </label>
+          <div className="flex flex-col gap-2">
+            <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={allowLateRegistration}
+                onChange={(e) => setAllowLateRegistration(e.target.checked)}
+                className="rounded border-border"
+              />
+              Allow late registration
+            </label>
+            <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={allowRosterChanges}
+                onChange={(e) => setAllowRosterChanges(e.target.checked)}
+                className="rounded border-border"
+              />
+              Allow roster changes
+            </label>
+            <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={allowLateWithdrawal}
+                onChange={(e) => setAllowLateWithdrawal(e.target.checked)}
+                className="rounded border-border"
+              />
+              Allow late withdrawal
+            </label>
           </div>
         </div>
         <div className="flex items-center gap-2 mt-3">
@@ -724,7 +810,28 @@ function SeasonTableRow({
           </span>
         </td>
         <td className="px-4 py-3">
-          <StatusBadge status={row.status} />
+          <div className="flex flex-col gap-1">
+            <StatusBadge status={row.status} />
+            {(row.allow_late_registration || row.allow_roster_changes || row.allow_late_withdrawal) && (
+              <div className="flex flex-wrap gap-1">
+                {row.allow_late_registration && (
+                  <span className="rounded-full bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-medium text-blue-600 dark:text-blue-400">
+                    +reg
+                  </span>
+                )}
+                {row.allow_roster_changes && (
+                  <span className="rounded-full bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-medium text-blue-600 dark:text-blue-400">
+                    +roster
+                  </span>
+                )}
+                {row.allow_late_withdrawal && (
+                  <span className="rounded-full bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-medium text-blue-600 dark:text-blue-400">
+                    +wd
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
         </td>
         <td className="px-4 py-3 hidden sm:table-cell">
           <span className="text-xs text-muted-foreground tabular-nums">

@@ -5,6 +5,7 @@
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
 import { getD1Client } from "@/lib/d1";
+import { syncSeasonRosters } from "@/lib/season-roster";
 
 export async function DELETE(
   request: Request,
@@ -59,6 +60,13 @@ export async function DELETE(
       "DELETE FROM team_members WHERE team_id = ? AND user_id = ?",
       [teamId, targetUserId],
     );
+
+    // Sync season rosters if any active season allows roster changes
+    try {
+      await syncSeasonRosters(client, teamId);
+    } catch (err) {
+      console.error("Failed to sync season rosters after kick:", err);
+    }
 
     return NextResponse.json({ ok: true });
   } catch (err) {

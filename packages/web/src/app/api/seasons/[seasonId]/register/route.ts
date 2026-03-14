@@ -48,7 +48,8 @@ export async function POST(
       id: string;
       start_date: string;
       end_date: string;
-    }>("SELECT id, start_date, end_date FROM seasons WHERE id = ?", [seasonId]);
+      allow_late_registration: number;
+    }>("SELECT id, start_date, end_date, allow_late_registration FROM seasons WHERE id = ?", [seasonId]);
 
     if (!season) {
       return NextResponse.json(
@@ -58,9 +59,15 @@ export async function POST(
     }
 
     const status = deriveSeasonStatus(season.start_date, season.end_date);
-    if (status !== "upcoming") {
+    if (status === "ended") {
       return NextResponse.json(
-        { error: "Can only register for upcoming seasons" },
+        { error: "Cannot register for ended seasons" },
+        { status: 400 }
+      );
+    }
+    if (status === "active" && !season.allow_late_registration) {
+      return NextResponse.json(
+        { error: "Registration closed — season already started" },
         { status: 400 }
       );
     }
@@ -225,7 +232,8 @@ export async function DELETE(
       id: string;
       start_date: string;
       end_date: string;
-    }>("SELECT id, start_date, end_date FROM seasons WHERE id = ?", [seasonId]);
+      allow_late_withdrawal: number;
+    }>("SELECT id, start_date, end_date, allow_late_withdrawal FROM seasons WHERE id = ?", [seasonId]);
 
     if (!season) {
       return NextResponse.json(
@@ -235,9 +243,15 @@ export async function DELETE(
     }
 
     const status = deriveSeasonStatus(season.start_date, season.end_date);
-    if (status !== "upcoming") {
+    if (status === "ended") {
       return NextResponse.json(
-        { error: "Can only withdraw from upcoming seasons" },
+        { error: "Cannot withdraw from ended seasons" },
+        { status: 400 }
+      );
+    }
+    if (status === "active" && !season.allow_late_withdrawal) {
+      return NextResponse.json(
+        { error: "Withdrawal closed — season already started" },
         { status: 400 }
       );
     }

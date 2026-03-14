@@ -490,6 +490,12 @@ export interface Season {
   status: SeasonStatus;
   teamCount: number;
   createdAt: string;
+  /** Allow new teams to register after the season has started */
+  allowLateRegistration?: boolean;
+  /** Sync team member changes to frozen season roster during active season */
+  allowRosterChanges?: boolean;
+  /** Allow teams to withdraw after the season has started */
+  allowLateWithdrawal?: boolean;
 }
 
 /** Season team registration */

@@ -44,9 +44,13 @@ export async function GET(request: Request) {
       end_date: string;
       created_at: string;
       team_count: number;
+      allow_late_registration: number;
+      allow_roster_changes: number;
+      allow_late_withdrawal: number;
     }>(
       `SELECT
          s.id, s.name, s.slug, s.start_date, s.end_date, s.created_at,
+         s.allow_late_registration, s.allow_roster_changes, s.allow_late_withdrawal,
          COUNT(st.id) AS team_count
        FROM seasons s
        LEFT JOIN season_teams st ON st.season_id = s.id
@@ -63,6 +67,9 @@ export async function GET(request: Request) {
       status: deriveSeasonStatus(r.start_date, r.end_date),
       team_count: r.team_count,
       created_at: r.created_at,
+      allow_late_registration: !!r.allow_late_registration,
+      allow_roster_changes: !!r.allow_roster_changes,
+      allow_late_withdrawal: !!r.allow_late_withdrawal,
     }));
 
     return NextResponse.json({ seasons });
@@ -105,6 +112,11 @@ export async function POST(request: Request) {
     start_date?: string;
     end_date?: string;
   };
+
+  // Extract toggle flags (default false)
+  const allow_late_registration = !!body.allow_late_registration;
+  const allow_roster_changes = !!body.allow_roster_changes;
+  const allow_late_withdrawal = !!body.allow_late_withdrawal;
 
   // Validate name
   if (!name || typeof name !== "string" || name.length < 1 || name.length > 64) {
@@ -159,9 +171,9 @@ export async function POST(request: Request) {
 
     const id = crypto.randomUUID();
     await client.execute(
-      `INSERT INTO seasons (id, name, slug, start_date, end_date, created_by)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [id, name, slug, start_date, end_date, admin.userId]
+      `INSERT INTO seasons (id, name, slug, start_date, end_date, created_by, allow_late_registration, allow_roster_changes, allow_late_withdrawal)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, name, slug, start_date, end_date, admin.userId, allow_late_registration ? 1 : 0, allow_roster_changes ? 1 : 0, allow_late_withdrawal ? 1 : 0]
     );
 
     return NextResponse.json(
@@ -173,6 +185,9 @@ export async function POST(request: Request) {
         end_date,
         status: deriveSeasonStatus(start_date, end_date),
         created_at: new Date().toISOString(),
+        allow_late_registration,
+        allow_roster_changes,
+        allow_late_withdrawal,
       },
       { status: 201 }
     );

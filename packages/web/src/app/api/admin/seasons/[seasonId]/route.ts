@@ -130,6 +130,20 @@ export async function PATCH(
       );
     }
 
+    // Toggle flags — always allowed regardless of status
+    if (body.allow_late_registration !== undefined) {
+      updates.push("allow_late_registration = ?");
+      values.push(body.allow_late_registration ? 1 : 0);
+    }
+    if (body.allow_roster_changes !== undefined) {
+      updates.push("allow_roster_changes = ?");
+      values.push(body.allow_roster_changes ? 1 : 0);
+    }
+    if (body.allow_late_withdrawal !== undefined) {
+      updates.push("allow_late_withdrawal = ?");
+      values.push(body.allow_late_withdrawal ? 1 : 0);
+    }
+
     if (updates.length === 0) {
       return NextResponse.json(
         { error: "No valid fields to update" },
@@ -154,14 +168,22 @@ export async function PATCH(
       end_date: string;
       created_at: string;
       updated_at: string;
+      allow_late_registration: number;
+      allow_roster_changes: number;
+      allow_late_withdrawal: number;
     }>(
-      "SELECT id, name, slug, start_date, end_date, created_at, updated_at FROM seasons WHERE id = ?",
+      `SELECT id, name, slug, start_date, end_date, created_at, updated_at,
+              allow_late_registration, allow_roster_changes, allow_late_withdrawal
+       FROM seasons WHERE id = ?`,
       [seasonId]
     );
 
     return NextResponse.json({
       ...updated,
       status: deriveSeasonStatus(updated!.start_date, updated!.end_date),
+      allow_late_registration: !!updated!.allow_late_registration,
+      allow_roster_changes: !!updated!.allow_roster_changes,
+      allow_late_withdrawal: !!updated!.allow_late_withdrawal,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
