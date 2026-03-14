@@ -48,15 +48,15 @@ const routeParams = Promise.resolve({ seasonId: "season-1" });
 // An ended season (both dates in the past)
 const ENDED_SEASON = {
   id: "season-1",
-  start_date: "2026-01-01",
-  end_date: "2026-01-31",
+  start_date: "2026-01-01T00:00:00Z",
+  end_date: "2026-01-31T23:59:00Z",
 };
 
 // An active season (end date in the future)
 const ACTIVE_SEASON = {
   id: "season-1",
-  start_date: "2026-03-01",
-  end_date: "2026-12-31",
+  start_date: "2026-03-01T00:00:00Z",
+  end_date: "2026-12-31T23:59:00Z",
 };
 
 // ---------------------------------------------------------------------------

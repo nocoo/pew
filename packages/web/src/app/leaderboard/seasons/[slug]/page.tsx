@@ -19,6 +19,7 @@ import {
   useSeasonLeaderboard,
   type SeasonTeamEntry,
 } from "@/hooks/use-season-leaderboard";
+import { formatSeasonDate } from "@/lib/seasons";
 import { CheckRuling } from "@/components/leaderboard/check-ruling";
 import { RankBadge } from "@/components/leaderboard/rank-badge";
 import { StatusBadge } from "@/components/leaderboard/status-badge";
@@ -249,7 +250,7 @@ export default function SeasonLeaderboardPage() {
               ) : null}
               <span className="text-sm text-muted-foreground inline-flex items-center gap-1">
                 <Calendar className="h-3.5 w-3.5" />
-                {data.season.start_date} &mdash; {data.season.end_date}
+                {formatSeasonDate(data.season.start_date)} &mdash; {formatSeasonDate(data.season.end_date)}
               </span>
             </div>
           </>

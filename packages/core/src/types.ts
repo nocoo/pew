@@ -483,9 +483,9 @@ export interface Season {
   id: string;
   name: string;
   slug: string;
-  /** YYYY-MM-DD (UTC) */
+  /** ISO 8601 UTC datetime (e.g. "2026-03-15T00:00:00Z") */
   startDate: string;
-  /** YYYY-MM-DD (UTC), inclusive */
+  /** ISO 8601 UTC datetime, inclusive (e.g. "2026-04-15T23:59:00Z") */
   endDate: string;
   status: SeasonStatus;
   teamCount: number;

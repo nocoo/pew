@@ -77,8 +77,8 @@ describe("GET /api/admin/seasons", () => {
           id: "s1",
           name: "Season 1",
           slug: "s1",
-          start_date: "2099-01-01",
-          end_date: "2099-12-31",
+          start_date: "2099-01-01T00:00:00Z",
+          end_date: "2099-12-31T23:59:00Z",
           created_at: "2026-01-01T00:00:00Z",
           team_count: 3,
         },
@@ -136,8 +136,8 @@ describe("POST /api/admin/seasons", () => {
       makeRequest("POST", undefined, {
         name: "Season 1",
         slug: "s1",
-        start_date: "2099-04-01",
-        end_date: "2099-04-30",
+        start_date: "2099-04-01T00:00:00Z",
+        end_date: "2099-04-30T23:59:00Z",
       })
     );
     expect(res.status).toBe(201);
@@ -155,8 +155,8 @@ describe("POST /api/admin/seasons", () => {
       makeRequest("POST", undefined, {
         name: "Season 2",
         slug: "s1",
-        start_date: "2099-05-01",
-        end_date: "2099-05-31",
+        start_date: "2099-05-01T00:00:00Z",
+        end_date: "2099-05-31T23:59:00Z",
       })
     );
     expect(res.status).toBe(409);
@@ -171,8 +171,8 @@ describe("POST /api/admin/seasons", () => {
       makeRequest("POST", undefined, {
         name: "Bad Season",
         slug: "bad",
-        start_date: "2099-05-01",
-        end_date: "2099-04-30",
+        start_date: "2099-05-01T00:00:00Z",
+        end_date: "2099-04-30T23:59:00Z",
       })
     );
     expect(res.status).toBe(400);
@@ -188,12 +188,12 @@ describe("POST /api/admin/seasons", () => {
         name: "Bad Date",
         slug: "bad-date",
         start_date: "not-a-date",
-        end_date: "2099-04-30",
+        end_date: "2099-04-30T23:59:00Z",
       })
     );
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toContain("start_date must be YYYY-MM-DD");
+    expect(json.error).toContain("start_date must be ISO 8601 UTC format");
   });
 
   it("should reject non-admin users", async () => {
@@ -202,8 +202,8 @@ describe("POST /api/admin/seasons", () => {
       makeRequest("POST", undefined, {
         name: "Season 1",
         slug: "s1",
-        start_date: "2099-04-01",
-        end_date: "2099-04-30",
+        start_date: "2099-04-01T00:00:00Z",
+        end_date: "2099-04-30T23:59:00Z",
       })
     );
     expect(res.status).toBe(403);
@@ -237,15 +237,15 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
         id: "season-1",
         name: "Old Name",
         slug: "s1",
-        start_date: "2020-01-01",
-        end_date: "2099-12-31",
+        start_date: "2020-01-01T00:00:00Z",
+        end_date: "2099-12-31T23:59:00Z",
       })
       .mockResolvedValueOnce({
         id: "season-1",
         name: "New Name",
         slug: "s1",
-        start_date: "2020-01-01",
-        end_date: "2099-12-31",
+        start_date: "2020-01-01T00:00:00Z",
+        end_date: "2099-12-31T23:59:00Z",
         created_at: "2020-01-01T00:00:00Z",
         updated_at: today,
       });
@@ -269,15 +269,15 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
         id: "season-1",
         name: "Future Season",
         slug: "s-future",
-        start_date: "2099-06-01",
-        end_date: "2099-06-30",
+        start_date: "2099-06-01T00:00:00Z",
+        end_date: "2099-06-30T23:59:00Z",
       })
       .mockResolvedValueOnce({
         id: "season-1",
         name: "Future Season",
         slug: "s-future",
-        start_date: "2099-07-01",
-        end_date: "2099-07-31",
+        start_date: "2099-07-01T00:00:00Z",
+        end_date: "2099-07-31T23:59:00Z",
         created_at: "2026-01-01T00:00:00Z",
         updated_at: "2026-03-11T00:00:00Z",
       });
@@ -285,14 +285,14 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
 
     const res = await PATCH(
       makeRequest("PATCH", undefined, {
-        start_date: "2099-07-01",
-        end_date: "2099-07-31",
+        start_date: "2099-07-01T00:00:00Z",
+        end_date: "2099-07-31T23:59:00Z",
       }),
       { params: patchParams }
     );
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.start_date).toBe("2099-07-01");
+    expect(json.start_date).toBe("2099-07-01T00:00:00Z");
     expect(json.status).toBe("upcoming");
   });
 
@@ -303,12 +303,12 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
       id: "season-1",
       name: "Active Season",
       slug: "s-active",
-      start_date: "2020-01-01",
-      end_date: "2099-12-31",
+      start_date: "2020-01-01T00:00:00Z",
+      end_date: "2099-12-31T23:59:00Z",
     });
 
     const res = await PATCH(
-      makeRequest("PATCH", undefined, { start_date: "2020-02-01" }),
+      makeRequest("PATCH", undefined, { start_date: "2020-02-01T00:00:00Z" }),
       { params: patchParams }
     );
     expect(res.status).toBe(400);
@@ -323,12 +323,12 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
       id: "season-1",
       name: "Ended Season",
       slug: "s-ended",
-      start_date: "2020-01-01",
-      end_date: "2020-12-31",
+      start_date: "2020-01-01T00:00:00Z",
+      end_date: "2020-12-31T23:59:00Z",
     });
 
     const res = await PATCH(
-      makeRequest("PATCH", undefined, { end_date: "2021-01-31" }),
+      makeRequest("PATCH", undefined, { end_date: "2021-01-31T23:59:00Z" }),
       { params: patchParams }
     );
     expect(res.status).toBe(400);

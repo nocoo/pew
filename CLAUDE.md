@@ -22,6 +22,15 @@ Claude Code, Codex, Gemini CLI, OpenCode, OpenClaw, VS Code Copilot
 - **`@pew/core` is NOT published**: Pure types, `import type` only, `devDependencies`
 - **Raw data is READ-ONLY**: Never modify, delete, or move user's local AI tool log files (`~/.claude/`, `~/.gemini/`, `~/.local/share/opencode/`, `~/.openclaw/`). pew only reads these files. Write operations are limited to pew's own state files under `~/.config/pew/`.
 
+### DateTime Strategy
+
+All date/time values follow a strict UTC-in, local-out pattern:
+
+- **Storage (D1 SQLite)**: All `created_at`, `updated_at`, `hour_start` use `datetime('now')` which returns UTC. Season `start_date`/`end_date` are ISO 8601 UTC strings (`YYYY-MM-DDTHH:mm:ssZ`).
+- **Computation (API routes, Worker, CLI)**: All date arithmetic uses UTC (`toISOString()`, `Date.UTC()`, `getUTC*()` methods). Never use `setDate()`/`getDate()` for server-side date math — always use `setUTCDate()`/`getUTCDate()`.
+- **Display (Web UI)**: Convert to user's local timezone before rendering. Use the `tzOffset` pattern (`new Date().getTimezoneOffset()`) for data bucketing. For timestamps use `toLocaleString()`/`toLocaleDateString()` on the client.
+- **Season dates**: Stored as ISO 8601 UTC datetime (e.g. `2026-03-15T00:00:00Z`), **precision to minute**. Status derived at read time via `deriveSeasonStatus()`, never stored. Admin UI collects date + time (hour:minute), always interpreted as UTC.
+
 ## CLI Dev Workflow
 
 ```bash

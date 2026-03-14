@@ -14,11 +14,11 @@ import { deriveSeasonStatus } from "@/lib/seasons";
 // Validation helpers
 // ---------------------------------------------------------------------------
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?Z$/;
 
-function isValidDate(s: string): boolean {
-  if (!DATE_RE.test(s)) return false;
-  const d = new Date(s + "T00:00:00Z");
+function isValidDatetime(s: string): boolean {
+  if (!DATETIME_RE.test(s)) return false;
+  const d = new Date(s);
   return !isNaN(d.getTime());
 }
 
@@ -90,9 +90,9 @@ export async function PATCH(
         );
       }
       const sd = body.start_date as string;
-      if (typeof sd !== "string" || !isValidDate(sd)) {
+      if (typeof sd !== "string" || !isValidDatetime(sd)) {
         return NextResponse.json(
-          { error: "start_date must be YYYY-MM-DD format" },
+          { error: "start_date must be ISO 8601 UTC format (YYYY-MM-DDTHH:mmZ)" },
           { status: 400 }
         );
       }
@@ -108,9 +108,9 @@ export async function PATCH(
         );
       }
       const ed = body.end_date as string;
-      if (typeof ed !== "string" || !isValidDate(ed)) {
+      if (typeof ed !== "string" || !isValidDatetime(ed)) {
         return NextResponse.json(
-          { error: "end_date must be YYYY-MM-DD format" },
+          { error: "end_date must be ISO 8601 UTC format (YYYY-MM-DDTHH:mmZ)" },
           { status: 400 }
         );
       }

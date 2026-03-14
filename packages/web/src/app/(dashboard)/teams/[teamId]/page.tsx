@@ -17,6 +17,7 @@ import {
   useSeasonRegistration,
   type AvailableSeason,
 } from "@/hooks/use-season-registration";
+import { formatSeasonDate } from "@/lib/seasons";
 import type { SeasonStatus } from "@pew/core";
 
 // ---------------------------------------------------------------------------
@@ -119,8 +120,6 @@ function SeasonRow({
   busy: string | null;
 }) {
   const isBusy = busy === season.id;
-  const startDate = new Date(season.start_date + "T00:00:00Z");
-  const endDate = new Date(season.end_date + "T00:00:00Z");
 
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg bg-accent/50 px-4 py-3">
@@ -137,7 +136,7 @@ function SeasonRow({
           )}
         </div>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {startDate.toLocaleDateString()} – {endDate.toLocaleDateString()}
+          {formatSeasonDate(season.start_date)} – {formatSeasonDate(season.end_date)}
           {" · "}
           {season.team_count} team{season.team_count !== 1 ? "s" : ""}
         </p>

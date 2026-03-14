@@ -15,11 +15,11 @@ import { deriveSeasonStatus } from "@/lib/seasons";
 // ---------------------------------------------------------------------------
 
 const SLUG_RE = /^[a-z0-9-]{1,32}$/;
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?Z$/;
 
-function isValidDate(s: string): boolean {
-  if (!DATE_RE.test(s)) return false;
-  const d = new Date(s + "T00:00:00Z");
+function isValidDatetime(s: string): boolean {
+  if (!DATETIME_RE.test(s)) return false;
+  const d = new Date(s);
   return !isNaN(d.getTime());
 }
 
@@ -135,15 +135,15 @@ export async function POST(request: Request) {
   }
 
   // Validate dates
-  if (!start_date || typeof start_date !== "string" || !isValidDate(start_date)) {
+  if (!start_date || typeof start_date !== "string" || !isValidDatetime(start_date)) {
     return NextResponse.json(
-      { error: "start_date must be YYYY-MM-DD format" },
+      { error: "start_date must be ISO 8601 UTC format (YYYY-MM-DDTHH:mmZ)" },
       { status: 400 }
     );
   }
-  if (!end_date || typeof end_date !== "string" || !isValidDate(end_date)) {
+  if (!end_date || typeof end_date !== "string" || !isValidDatetime(end_date)) {
     return NextResponse.json(
-      { error: "end_date must be YYYY-MM-DD format" },
+      { error: "end_date must be ISO 8601 UTC format (YYYY-MM-DDTHH:mmZ)" },
       { status: 400 }
     );
   }

@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatSeasonDate } from "@/lib/seasons";
 import type { SeasonStatus } from "@pew/core";
 
 // ---------------------------------------------------------------------------
@@ -118,8 +119,8 @@ function CreateSeasonForm({
         body: JSON.stringify({
           name: name.trim(),
           slug: slug.trim(),
-          start_date: startDate,
-          end_date: endDate,
+          start_date: startDate ? startDate + ":00Z" : "",
+          end_date: endDate ? endDate + ":00Z" : "",
           allow_late_registration: allowLateRegistration,
           allow_roster_changes: allowRosterChanges,
           allow_late_withdrawal: allowLateWithdrawal,
@@ -179,10 +180,10 @@ function CreateSeasonForm({
         </div>
         <div>
           <label className="block text-xs font-medium text-muted-foreground mb-1">
-            Start Date
+            Start Date (UTC)
           </label>
           <input
-            type="date"
+            type="datetime-local"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground tabular-nums focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
@@ -190,10 +191,10 @@ function CreateSeasonForm({
         </div>
         <div>
           <label className="block text-xs font-medium text-muted-foreground mb-1">
-            End Date
+            End Date (UTC)
           </label>
           <input
-            type="date"
+            type="datetime-local"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground tabular-nums focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
@@ -272,8 +273,13 @@ function EditSeasonRow({
 }) {
   const isUpcoming = season.status === "upcoming";
   const [name, setName] = useState(season.name);
-  const [startDate, setStartDate] = useState(season.start_date);
-  const [endDate, setEndDate] = useState(season.end_date);
+  // Convert ISO datetime (e.g. "2026-03-15T00:00:00Z") to datetime-local format ("2026-03-15T00:00")
+  const [startDate, setStartDate] = useState(
+    season.start_date.replace(/:00Z$/, "").replace(/Z$/, "")
+  );
+  const [endDate, setEndDate] = useState(
+    season.end_date.replace(/:00Z$/, "").replace(/Z$/, "")
+  );
   const [allowLateRegistration, setAllowLateRegistration] = useState(season.allow_late_registration);
   const [allowRosterChanges, setAllowRosterChanges] = useState(season.allow_roster_changes);
   const [allowLateWithdrawal, setAllowLateWithdrawal] = useState(season.allow_late_withdrawal);
@@ -286,9 +292,10 @@ function EditSeasonRow({
     try {
       const payload: Record<string, string | boolean> = {};
       if (name.trim() !== season.name) payload.name = name.trim();
-      if (isUpcoming && startDate !== season.start_date)
-        payload.start_date = startDate;
-      if (isUpcoming && endDate !== season.end_date) payload.end_date = endDate;
+      if (isUpcoming && startDate + ":00Z" !== season.start_date)
+        payload.start_date = startDate + ":00Z";
+      if (isUpcoming && endDate + ":00Z" !== season.end_date)
+        payload.end_date = endDate + ":00Z";
       if (allowLateRegistration !== season.allow_late_registration)
         payload.allow_late_registration = allowLateRegistration;
       if (allowRosterChanges !== season.allow_roster_changes)
@@ -354,10 +361,10 @@ function EditSeasonRow({
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">
-              Start Date{!isUpcoming && " (locked)"}
+              Start Date (UTC){!isUpcoming && " (locked)"}
             </label>
             <input
-              type="date"
+              type="datetime-local"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
               disabled={!isUpcoming}
@@ -371,10 +378,10 @@ function EditSeasonRow({
           </div>
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1">
-              End Date{!isUpcoming && " (locked)"}
+              End Date (UTC){!isUpcoming && " (locked)"}
             </label>
             <input
-              type="date"
+              type="datetime-local"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               disabled={!isUpcoming}
@@ -456,11 +463,6 @@ function autoSlug(name: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 32);
-}
-
-function formatDate(iso: string) {
-  // Input: "YYYY-MM-DD"
-  return iso;
 }
 
 // ---------------------------------------------------------------------------
@@ -835,7 +837,7 @@ function SeasonTableRow({
         </td>
         <td className="px-4 py-3 hidden sm:table-cell">
           <span className="text-xs text-muted-foreground tabular-nums">
-            {formatDate(row.start_date)} &mdash; {formatDate(row.end_date)}
+            {formatSeasonDate(row.start_date)} &mdash; {formatSeasonDate(row.end_date)}
           </span>
         </td>
         <td className="px-4 py-3 text-center hidden md:table-cell">

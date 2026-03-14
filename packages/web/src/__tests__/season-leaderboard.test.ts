@@ -41,8 +41,8 @@ const ACTIVE_SEASON = {
   id: "season-1",
   name: "Season 1",
   slug: "s1",
-  start_date: "2026-03-01",
-  end_date: "2026-03-31",
+  start_date: "2026-03-01T00:00:00Z",
+  end_date: "2026-03-31T23:59:00Z",
   snapshot_ready: 0,
 };
 
@@ -51,8 +51,8 @@ const ENDED_SEASON = {
   id: "season-2",
   name: "Season 2",
   slug: "s2",
-  start_date: "2026-01-01",
-  end_date: "2026-01-31",
+  start_date: "2026-01-01T00:00:00Z",
+  end_date: "2026-01-31T23:59:00Z",
   snapshot_ready: 1,
 };
 
@@ -61,8 +61,8 @@ const ENDED_SEASON_NO_SNAPSHOT = {
   id: "season-2",
   name: "Season 2",
   slug: "s2",
-  start_date: "2026-01-01",
-  end_date: "2026-01-31",
+  start_date: "2026-01-01T00:00:00Z",
+  end_date: "2026-01-31T23:59:00Z",
   snapshot_ready: 0,
 };
 
@@ -138,8 +138,8 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
   it("should include end_date in the range (inclusive)", async () => {
     const season = {
       ...ACTIVE_SEASON,
-      start_date: "2026-03-01",
-      end_date: "2026-03-15",
+      start_date: "2026-03-01T00:00:00Z",
+      end_date: "2026-03-15T23:59:00Z",
     };
     mockClient.firstOrNull.mockResolvedValueOnce(season);
     mockClient.query.mockResolvedValueOnce({ results: [] });
@@ -147,7 +147,7 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
     await GET(makeRequest(), { params: routeParams });
 
     const params = mockClient.query.mock.calls[0]![1] as string[];
-    // end_date 2026-03-15 → exclusive bound should be 2026-03-16
+    // end_date 2026-03-15T23:59:00Z + 1 minute → exclusive bound 2026-03-16 00:00:00
     expect(params[1]).toBe("2026-03-16 00:00:00");
   });
 

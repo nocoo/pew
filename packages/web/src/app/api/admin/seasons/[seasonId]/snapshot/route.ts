@@ -62,13 +62,14 @@ interface MemberAggRow {
 // ---------------------------------------------------------------------------
 
 function endDateExclusive(endDate: string): string {
-  const d = new Date(endDate + "T00:00:00Z");
-  d.setUTCDate(d.getUTCDate() + 1);
+  // end_date is inclusive at minute precision, add 1 minute for exclusive < comparison
+  const d = new Date(endDate);
+  d.setUTCMinutes(d.getUTCMinutes() + 1);
   return d.toISOString().replace("T", " ").slice(0, 19);
 }
 
 function startDateInclusive(startDate: string): string {
-  return startDate + " 00:00:00";
+  return new Date(startDate).toISOString().replace("T", " ").slice(0, 19);
 }
 
 function uuid(): string {

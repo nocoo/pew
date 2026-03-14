@@ -71,7 +71,7 @@ describe("POST /api/seasons/[seasonId]/register", () => {
     resolveUser.mockResolvedValueOnce(USER);
     // Season upcoming
     mockClient.firstOrNull
-      .mockResolvedValueOnce({ id: "season-1", start_date: "2099-01-01", end_date: "2099-12-31" })
+      .mockResolvedValueOnce({ id: "season-1", start_date: "2099-01-01T00:00:00Z", end_date: "2099-12-31T23:59:00Z" })
       // User is team owner
       .mockResolvedValueOnce({ role: "owner" })
       // No existing registration
@@ -110,7 +110,7 @@ describe("POST /api/seasons/[seasonId]/register", () => {
   it("should reject when a member is already registered on another team", async () => {
     resolveUser.mockResolvedValueOnce(USER);
     mockClient.firstOrNull
-      .mockResolvedValueOnce({ id: "season-1", start_date: "2099-01-01", end_date: "2099-12-31" })
+      .mockResolvedValueOnce({ id: "season-1", start_date: "2099-01-01T00:00:00Z", end_date: "2099-12-31T23:59:00Z" })
       .mockResolvedValueOnce({ role: "owner" })
       .mockResolvedValueOnce(null)
       // Pre-validation: user-2 is already on another team
@@ -133,8 +133,8 @@ describe("POST /api/seasons/[seasonId]/register", () => {
     resolveUser.mockResolvedValueOnce(USER);
     mockClient.firstOrNull.mockResolvedValueOnce({
       id: "season-1",
-      start_date: "2020-01-01",
-      end_date: "2099-12-31",
+      start_date: "2020-01-01T00:00:00Z",
+      end_date: "2099-12-31T23:59:00Z",
       allow_late_registration: 0,
     });
 
@@ -150,8 +150,8 @@ describe("POST /api/seasons/[seasonId]/register", () => {
     resolveUser.mockResolvedValueOnce(USER);
     mockClient.firstOrNull.mockResolvedValueOnce({
       id: "season-1",
-      start_date: "2020-01-01",
-      end_date: "2020-12-31",
+      start_date: "2020-01-01T00:00:00Z",
+      end_date: "2020-12-31T23:59:00Z",
       allow_late_registration: 0,
     });
 
@@ -190,8 +190,8 @@ describe("POST /api/seasons/[seasonId]/register", () => {
     resolveUser.mockResolvedValueOnce(USER);
     mockClient.firstOrNull.mockResolvedValueOnce({
       id: "season-1",
-      start_date: "2020-01-01",
-      end_date: "2020-12-31",
+      start_date: "2020-01-01T00:00:00Z",
+      end_date: "2020-12-31T23:59:00Z",
       allow_late_registration: 1,
     });
 
@@ -206,7 +206,7 @@ describe("POST /api/seasons/[seasonId]/register", () => {
   it("should reject when user is not team owner", async () => {
     resolveUser.mockResolvedValueOnce(USER);
     mockClient.firstOrNull
-      .mockResolvedValueOnce({ id: "season-1", start_date: "2099-01-01", end_date: "2099-12-31" })
+      .mockResolvedValueOnce({ id: "season-1", start_date: "2099-01-01T00:00:00Z", end_date: "2099-12-31T23:59:00Z" })
       .mockResolvedValueOnce({ role: "member" });
 
     const res = await POST(makeRequest("POST", undefined, { team_id: "team-1" }), {
@@ -220,7 +220,7 @@ describe("POST /api/seasons/[seasonId]/register", () => {
   it("should reject when team is already registered", async () => {
     resolveUser.mockResolvedValueOnce(USER);
     mockClient.firstOrNull
-      .mockResolvedValueOnce({ id: "season-1", start_date: "2099-01-01", end_date: "2099-12-31" })
+      .mockResolvedValueOnce({ id: "season-1", start_date: "2099-01-01T00:00:00Z", end_date: "2099-12-31T23:59:00Z" })
       .mockResolvedValueOnce({ role: "owner" })
       .mockResolvedValueOnce({ id: "existing-reg" });
 
@@ -254,7 +254,7 @@ describe("POST /api/seasons/[seasonId]/register", () => {
   it("should compensate by UUID on batch failure, not by (season_id, team_id)", async () => {
     resolveUser.mockResolvedValueOnce(USER);
     mockClient.firstOrNull
-      .mockResolvedValueOnce({ id: "season-1", start_date: "2099-01-01", end_date: "2099-12-31" })
+      .mockResolvedValueOnce({ id: "season-1", start_date: "2099-01-01T00:00:00Z", end_date: "2099-12-31T23:59:00Z" })
       .mockResolvedValueOnce({ role: "owner" })
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(null);
@@ -308,7 +308,7 @@ describe("DELETE /api/seasons/[seasonId]/register", () => {
   it("should withdraw team from upcoming season", async () => {
     resolveUser.mockResolvedValueOnce(USER);
     mockClient.firstOrNull
-      .mockResolvedValueOnce({ id: "season-1", start_date: "2099-01-01", end_date: "2099-12-31" })
+      .mockResolvedValueOnce({ id: "season-1", start_date: "2099-01-01T00:00:00Z", end_date: "2099-12-31T23:59:00Z" })
       .mockResolvedValueOnce({ role: "owner" })
       .mockResolvedValueOnce({ id: "reg-1" });
     // DELETE season_team_members + DELETE season_teams
@@ -333,8 +333,8 @@ describe("DELETE /api/seasons/[seasonId]/register", () => {
     resolveUser.mockResolvedValueOnce(USER);
     mockClient.firstOrNull.mockResolvedValueOnce({
       id: "season-1",
-      start_date: "2020-01-01",
-      end_date: "2099-12-31",
+      start_date: "2020-01-01T00:00:00Z",
+      end_date: "2099-12-31T23:59:00Z",
       allow_late_withdrawal: 0,
     });
 
@@ -373,8 +373,8 @@ describe("DELETE /api/seasons/[seasonId]/register", () => {
     resolveUser.mockResolvedValueOnce(USER);
     mockClient.firstOrNull.mockResolvedValueOnce({
       id: "season-1",
-      start_date: "2020-01-01",
-      end_date: "2020-12-31",
+      start_date: "2020-01-01T00:00:00Z",
+      end_date: "2020-12-31T23:59:00Z",
       allow_late_withdrawal: 1,
     });
 
@@ -389,7 +389,7 @@ describe("DELETE /api/seasons/[seasonId]/register", () => {
   it("should reject when user is not team owner", async () => {
     resolveUser.mockResolvedValueOnce(USER);
     mockClient.firstOrNull
-      .mockResolvedValueOnce({ id: "season-1", start_date: "2099-01-01", end_date: "2099-12-31" })
+      .mockResolvedValueOnce({ id: "season-1", start_date: "2099-01-01T00:00:00Z", end_date: "2099-12-31T23:59:00Z" })
       .mockResolvedValueOnce({ role: "member" });
 
     const res = await DELETE(makeRequest("DELETE", undefined, { team_id: "team-1" }), {
@@ -401,7 +401,7 @@ describe("DELETE /api/seasons/[seasonId]/register", () => {
   it("should reject when registration does not exist", async () => {
     resolveUser.mockResolvedValueOnce(USER);
     mockClient.firstOrNull
-      .mockResolvedValueOnce({ id: "season-1", start_date: "2099-01-01", end_date: "2099-12-31" })
+      .mockResolvedValueOnce({ id: "season-1", start_date: "2099-01-01T00:00:00Z", end_date: "2099-12-31T23:59:00Z" })
       .mockResolvedValueOnce({ role: "owner" })
       .mockResolvedValueOnce(null);
 

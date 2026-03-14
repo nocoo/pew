@@ -11,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSeasons, type SeasonListItem } from "@/hooks/use-seasons";
+import { formatSeasonDate } from "@/lib/seasons";
 import { CheckRuling } from "@/components/leaderboard/check-ruling";
 import { StatusBadge } from "@/components/leaderboard/status-badge";
 import { LeaderboardNav } from "@/components/leaderboard/leaderboard-nav";
@@ -44,7 +45,7 @@ function SeasonCard({ season, index }: { season: SeasonListItem; index: number }
           <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <Calendar className="h-3.5 w-3.5" />
-              {season.start_date} &mdash; {season.end_date}
+              {formatSeasonDate(season.start_date)} &mdash; {formatSeasonDate(season.end_date)}
             </span>
             <span className="inline-flex items-center gap-1">
               <Users className="h-3.5 w-3.5" />
