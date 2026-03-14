@@ -544,7 +544,7 @@ Update `useProjects()` hook to accept optional `{ from, to }` options.
 1. ~~**Migration** — Create `008-project-tags.sql` + update `001-init.sql`~~ ✅
 2. ~~**Projects API: tags** — Add `tags` to GET response; `add_tags`/`remove_tags` to PATCH~~ ✅
 3. ~~**Projects API: date range** — Add `from`/`to` query params to GET (JOIN ON pattern)~~ ✅
-4. **Timeline API** — `GET /api/projects/timeline` endpoint
+4. ~~**Timeline API** — `GET /api/projects/timeline` endpoint~~ ✅
 
 ### Phase B: Sessions page cleanup
 
