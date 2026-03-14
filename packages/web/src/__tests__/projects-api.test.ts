@@ -1143,14 +1143,14 @@ describe("GET /api/projects", () => {
     expect(res.status).toBe(200);
 
     // Query 2 (aliases) should have date params: [from, to, userId]
-    const aliasCall = mockClient.query.mock.calls[1];
+    const aliasCall = mockClient.query.mock.calls[1]!;
     expect(aliasCall[1]).toEqual(["2026-03-01", "2026-03-14", "u1"]);
     // SQL should use correlated subquery for absolute_last_active (not dual LEFT JOIN)
     expect(aliasCall[0]).toContain("absolute_last_active");
     expect(aliasCall[0]).not.toMatch(/LEFT JOIN session_records sr_all/);
 
     // Query 3 (unassigned) should have date params: [userId, from, to]
-    const unassignedCall = mockClient.query.mock.calls[2];
+    const unassignedCall = mockClient.query.mock.calls[2]!;
     expect(unassignedCall[1]).toEqual(["u1", "2026-03-01", "2026-03-14"]);
     expect(unassignedCall[0]).toContain("started_at >=");
     expect(unassignedCall[0]).toContain("started_at <");
@@ -1171,7 +1171,7 @@ describe("GET /api/projects", () => {
     await GET(new Request("http://localhost:7030/api/projects"));
 
     // Query 2: single JOIN, params = [userId] only
-    const aliasCall = mockClient.query.mock.calls[1];
+    const aliasCall = mockClient.query.mock.calls[1]!;
     expect(aliasCall[1]).toEqual(["u1"]);
     // Should NOT have sr_all as a separate join alias
     expect(aliasCall[0]).not.toMatch(/LEFT JOIN session_records sr_all/);
@@ -1196,10 +1196,10 @@ describe("GET /api/projects", () => {
     expect(res.status).toBe(200);
 
     // Query 2 (aliases) should have date params with defaulted `to`
-    const aliasCall = mockClient.query.mock.calls[1];
-    expect(aliasCall[1][0]).toBe("2026-03-01"); // from
-    expect(aliasCall[1][1]).toMatch(/^\d{4}-\d{2}-\d{2}$/); // defaulted to (tomorrow)
-    expect(aliasCall[1][2]).toBe("u1"); // userId
+    const aliasCall = mockClient.query.mock.calls[1]!;
+    expect(aliasCall[1]![0]).toBe("2026-03-01"); // from
+    expect(aliasCall[1]![1]).toMatch(/^\d{4}-\d{2}-\d{2}$/); // defaulted to (tomorrow)
+    expect(aliasCall[1]![2]).toBe("u1"); // userId
     // SQL should use correlated subquery for absolute_last_active (not dual LEFT JOIN)
     expect(aliasCall[0]).toContain("absolute_last_active");
     expect(aliasCall[0]).not.toMatch(/LEFT JOIN session_records sr_all/);

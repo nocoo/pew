@@ -436,7 +436,7 @@ export default function ProjectsPage() {
 
   const { data, loading, error, allTags, updateProject } = useProjects({
     from,
-    to,
+    ...(to !== undefined && { to }),
   });
 
   // -------------------------------------------------------------------------

@@ -78,7 +78,7 @@ describe("GET /api/projects/timeline", () => {
     expect(res.status).toBe(200);
 
     // Verify the `to` param was defaulted (tomorrow)
-    const [, params] = mockClient.query.mock.calls[0];
+    const [, params] = mockClient.query.mock.calls[0]!;
     expect(params[0]).toBe("u1");
     expect(params[1]).toBe("2026-03-01");
     // to should be a date string (tomorrow), not undefined
@@ -135,7 +135,7 @@ describe("GET /api/projects/timeline", () => {
     );
 
     expect(mockClient.query).toHaveBeenCalledTimes(1);
-    const [sql, params] = mockClient.query.mock.calls[0];
+    const [sql, params] = mockClient.query.mock.calls[0]!;
     expect(params).toEqual(["u1", "2026-03-01", "2026-03-14"]);
     expect(sql).toContain("COALESCE(p.name, 'Unassigned')");
     expect(sql).toContain("DATE(sr.started_at)");
