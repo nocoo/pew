@@ -314,6 +314,8 @@ export async function PATCH(
   let nameWritten = false;
   const aliasesAdded: AliasInput[] = [];
   const aliasesRemoved: AliasInput[] = [];
+  const tagsAdded: string[] = [];
+  const tagsRemoved: string[] = [];
 
   try {
     if (trimmedName !== undefined) {
@@ -342,20 +344,38 @@ export async function PATCH(
       aliasesRemoved.push(alias);
     }
 
-    // Tag mutations
+    // Tag mutations — only track tags that actually changed so rollback
+    // doesn't corrupt pre-existing state (e.g. deleting an already-present
+    // tag or inserting a tag that never existed).
     for (const tag of addTags) {
-      await client.execute(
-        `INSERT OR IGNORE INTO project_tags (user_id, project_id, tag, created_at)
-         VALUES (?, ?, ?, datetime('now'))`,
-        [userId, projectId, tag],
-      );
-    }
-    for (const tag of removeTags) {
-      await client.execute(
-        `DELETE FROM project_tags
+      const existing = await client.firstOrNull<{ tag: string }>(
+        `SELECT tag FROM project_tags
          WHERE user_id = ? AND project_id = ? AND tag = ?`,
         [userId, projectId, tag],
       );
+      if (!existing) {
+        await client.execute(
+          `INSERT INTO project_tags (user_id, project_id, tag, created_at)
+           VALUES (?, ?, ?, datetime('now'))`,
+          [userId, projectId, tag],
+        );
+        tagsAdded.push(tag);
+      }
+    }
+    for (const tag of removeTags) {
+      const existing = await client.firstOrNull<{ tag: string }>(
+        `SELECT tag FROM project_tags
+         WHERE user_id = ? AND project_id = ? AND tag = ?`,
+        [userId, projectId, tag],
+      );
+      if (existing) {
+        await client.execute(
+          `DELETE FROM project_tags
+           WHERE user_id = ? AND project_id = ? AND tag = ?`,
+          [userId, projectId, tag],
+        );
+        tagsRemoved.push(tag);
+      }
     }
 
     if (trimmedName !== undefined || addAliases.length > 0 || removeAliases.length > 0 || addTags.length > 0 || removeTags.length > 0) {
@@ -459,6 +479,21 @@ export async function PATCH(
           `INSERT OR IGNORE INTO project_aliases (user_id, project_id, source, project_ref, created_at)
            VALUES (?, ?, ?, ?, datetime('now'))`,
           [userId, projectId, alias.source, alias.project_ref],
+        );
+      }
+      // Undo tag mutations
+      for (const tag of tagsAdded) {
+        await client.execute(
+          `DELETE FROM project_tags
+           WHERE user_id = ? AND project_id = ? AND tag = ?`,
+          [userId, projectId, tag],
+        );
+      }
+      for (const tag of tagsRemoved) {
+        await client.execute(
+          `INSERT OR IGNORE INTO project_tags (user_id, project_id, tag, created_at)
+           VALUES (?, ?, ?, datetime('now'))`,
+          [userId, projectId, tag],
         );
       }
     } catch (rollbackErr) {

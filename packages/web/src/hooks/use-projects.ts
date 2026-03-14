@@ -96,9 +96,9 @@ export function useProjects(options?: UseProjectsOptions): UseProjectsResult {
 
     try {
       const params = new URLSearchParams();
-      if (from && to) {
+      if (from) {
         params.set("from", from);
-        params.set("to", to);
+        if (to) params.set("to", to);
       }
       const qs = params.toString();
       const url = qs ? `/api/projects?${qs}` : "/api/projects";

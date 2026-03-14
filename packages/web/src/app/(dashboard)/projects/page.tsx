@@ -436,7 +436,7 @@ export default function ProjectsPage() {
 
   const { data, loading, error, allTags, updateProject } = useProjects({
     from,
-    ...(to ? { to } : {}),
+    to,
   });
 
   // -------------------------------------------------------------------------
@@ -451,11 +451,14 @@ export default function ProjectsPage() {
       params.set("from", from);
       if (to) params.set("to", to);
       const res = await fetch(`/api/projects/timeline?${params}`);
-      if (!res.ok) return;
+      if (!res.ok) {
+        setTimeline([]);
+        return;
+      }
       const json = (await res.json()) as { timeline: ProjectTimelinePoint[] };
       setTimeline(json.timeline);
     } catch {
-      // Timeline is non-critical — silently degrade
+      setTimeline([]);
     }
   }, [from, to]);
 

@@ -29,14 +29,17 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const from = url.searchParams.get("from");
-  const to = url.searchParams.get("to");
+  const toParam = url.searchParams.get("to");
 
-  if (!from || !to) {
+  if (!from) {
     return NextResponse.json(
-      { error: "from and to query params are required" },
+      { error: "from query param is required" },
       { status: 400 },
     );
   }
+
+  // Default `to` to tomorrow (UTC) when absent — matches /api/usage pattern
+  const to = toParam ?? new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
 
   const client = getD1Client();
 

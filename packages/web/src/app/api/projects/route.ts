@@ -79,11 +79,15 @@ export async function GET(request: Request) {
   const userId = authResult.userId;
   const client = getD1Client();
 
-  // Parse optional date range
+  // Parse optional date range — `from` alone is valid (defaults `to` to tomorrow)
   const url = new URL(request.url);
   const from = url.searchParams.get("from"); // inclusive, YYYY-MM-DD
-  const to = url.searchParams.get("to"); // exclusive, YYYY-MM-DD
-  const hasDateRange = from !== null && to !== null;
+  const toParam = url.searchParams.get("to"); // exclusive, YYYY-MM-DD
+  const hasDateRange = from !== null;
+  // Default `to` to tomorrow (UTC) when absent — matches /api/usage pattern
+  const to = hasDateRange
+    ? (toParam ?? new Date(Date.now() + 86_400_000).toISOString().slice(0, 10))
+    : null;
 
   try {
     // Query 1: Project metadata (unchanged — always returns all projects)
@@ -110,7 +114,12 @@ export async function GET(request: Request) {
            COALESCE(SUM(sr.total_messages), 0) AS total_messages,
            COALESCE(SUM(sr.duration_seconds), 0) AS total_duration,
            GROUP_CONCAT(DISTINCT sr.model) AS models,
-           MAX(sr_all.last_message_at) AS absolute_last_active
+           (SELECT MAX(sr2.last_message_at)
+            FROM session_records sr2
+            WHERE sr2.user_id = pa.user_id
+              AND sr2.source = pa.source
+              AND sr2.project_ref = pa.project_ref
+           ) AS absolute_last_active
          FROM project_aliases pa
          LEFT JOIN session_records sr
            ON sr.user_id = pa.user_id
@@ -118,10 +127,6 @@ export async function GET(request: Request) {
            AND sr.project_ref = pa.project_ref
            AND sr.started_at >= ?
            AND sr.started_at < ?
-         LEFT JOIN session_records sr_all
-           ON sr_all.user_id = pa.user_id
-           AND sr_all.source = pa.source
-           AND sr_all.project_ref = pa.project_ref
          WHERE pa.user_id = ?
          GROUP BY pa.project_id, pa.source, pa.project_ref`,
         [from, to, userId],

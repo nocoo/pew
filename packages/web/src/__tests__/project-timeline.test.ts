@@ -50,7 +50,7 @@ describe("GET /api/projects/timeline", () => {
     expect(res.status).toBe(401);
   });
 
-  it("should require from and to params", async () => {
+  it("should require from param", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({
       userId: "u1",
       email: "test@example.com",
@@ -61,19 +61,28 @@ describe("GET /api/projects/timeline", () => {
     );
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.error).toContain("from and to");
+    expect(body.error).toContain("from");
   });
 
-  it("should require both params (only from)", async () => {
+  it("should default to tomorrow when only from is provided", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({
       userId: "u1",
       email: "test@example.com",
     });
 
+    mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
+
     const res = await GET(
       new Request("http://localhost:7030/api/projects/timeline?from=2026-03-01"),
     );
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(200);
+
+    // Verify the `to` param was defaulted (tomorrow)
+    const [, params] = mockClient.query.mock.calls[0];
+    expect(params[0]).toBe("u1");
+    expect(params[1]).toBe("2026-03-01");
+    // to should be a date string (tomorrow), not undefined
+    expect(params[2]).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
   it("should return timeline grouped by date and project", async () => {

@@ -328,6 +328,126 @@ describe("PATCH /api/projects/:id", () => {
         }
       }
     });
+
+    it("should roll back tag additions when a later write fails", async () => {
+      // Scenario: tags are added successfully, but the updated_at write fails.
+      // The added tags should be rolled back.
+      mockClient.firstOrNull
+        .mockResolvedValueOnce({ id: "proj-1", name: "Old Name" }) // project exists
+        .mockResolvedValueOnce(null); // tag "frontend" does NOT exist → truly new
+
+      // Phase 2: tag INSERT succeeds, but updated_at UPDATE fails
+      mockClient.execute
+        .mockResolvedValueOnce({ meta: {} }) // INSERT tag "frontend" succeeds
+        .mockRejectedValueOnce(new Error("D1 error")) // UPDATE updated_at fails
+        // Rollback: delete added tag
+        .mockResolvedValueOnce({ meta: {} });
+
+      const res = await callPatch({
+        add_tags: ["frontend"],
+      });
+
+      expect(res.status).toBe(500);
+
+      // Verify rollback deleted the added tag
+      const rollbackCalls = mockClient.execute.mock.calls.slice(2); // skip write + failed write
+      const deleteTagCall = rollbackCalls.find(
+        (call) => (call[0] as string).includes("DELETE FROM project_tags"),
+      );
+      expect(deleteTagCall).toBeDefined();
+      expect(deleteTagCall![1]).toContain("frontend");
+    });
+
+    it("should roll back tag removals when a later write fails", async () => {
+      // Scenario: tags are removed successfully, but the updated_at write fails.
+      // The removed tags should be re-inserted.
+      mockClient.firstOrNull
+        .mockResolvedValueOnce({ id: "proj-1", name: "Old Name" }) // project exists
+        .mockResolvedValueOnce({ tag: "backend" }); // tag "backend" exists → will be deleted
+
+      // Phase 2: tag DELETE succeeds, but updated_at UPDATE fails
+      mockClient.execute
+        .mockResolvedValueOnce({ meta: {} }) // DELETE tag "backend" succeeds
+        .mockRejectedValueOnce(new Error("D1 error")) // UPDATE updated_at fails
+        // Rollback: re-insert removed tag
+        .mockResolvedValueOnce({ meta: {} });
+
+      const res = await callPatch({
+        remove_tags: ["backend"],
+      });
+
+      expect(res.status).toBe(500);
+
+      // Verify rollback re-inserted the removed tag
+      const rollbackCalls = mockClient.execute.mock.calls.slice(2);
+      const insertTagCall = rollbackCalls.find(
+        (call) => (call[0] as string).includes("INSERT OR IGNORE INTO project_tags"),
+      );
+      expect(insertTagCall).toBeDefined();
+      expect(insertTagCall![1]).toContain("backend");
+    });
+
+    it("should NOT delete pre-existing tag during rollback when add_tags includes it", async () => {
+      // Bug scenario: add_tags includes a tag that already exists on this project.
+      // If the INSERT OR IGNORE is tracked unconditionally, rollback would
+      // erroneously DELETE this pre-existing tag, corrupting state.
+      mockClient.firstOrNull
+        .mockResolvedValueOnce({ id: "proj-1", name: "Old Name" }) // project exists
+        .mockResolvedValueOnce({ tag: "existing-tag" }) // tag already exists → skip INSERT
+        .mockResolvedValueOnce(null); // tag "new-tag" does NOT exist → truly new
+
+      // Phase 2: INSERT "new-tag" succeeds, updated_at fails
+      mockClient.execute
+        .mockResolvedValueOnce({ meta: {} }) // INSERT tag "new-tag" succeeds
+        .mockRejectedValueOnce(new Error("D1 error")) // UPDATE updated_at fails
+        // Rollback: should only delete "new-tag", NOT "existing-tag"
+        .mockResolvedValueOnce({ meta: {} });
+
+      const res = await callPatch({
+        add_tags: ["existing-tag", "new-tag"],
+      });
+
+      expect(res.status).toBe(500);
+
+      // Verify only "new-tag" was rolled back, not "existing-tag"
+      const rollbackCalls = mockClient.execute.mock.calls.slice(2); // skip INSERT + failed UPDATE
+      expect(rollbackCalls).toHaveLength(1);
+      const deleteCall = rollbackCalls[0];
+      expect(deleteCall![0]).toContain("DELETE FROM project_tags");
+      expect(deleteCall![1]).toContain("new-tag");
+      expect(deleteCall![1]).not.toContain("existing-tag");
+    });
+
+    it("should NOT insert phantom tag during rollback when remove_tags includes non-existent tag", async () => {
+      // Bug scenario: remove_tags includes a tag that doesn't actually exist.
+      // If the DELETE is tracked unconditionally, rollback would
+      // INSERT OR IGNORE this phantom tag, corrupting state.
+      mockClient.firstOrNull
+        .mockResolvedValueOnce({ id: "proj-1", name: "Old Name" }) // project exists
+        .mockResolvedValueOnce({ tag: "real-tag" }) // "real-tag" exists → will be deleted
+        .mockResolvedValueOnce(null); // "phantom-tag" does NOT exist → skip DELETE
+
+      // Phase 2: DELETE "real-tag" succeeds, updated_at fails
+      mockClient.execute
+        .mockResolvedValueOnce({ meta: {} }) // DELETE tag "real-tag" succeeds
+        .mockRejectedValueOnce(new Error("D1 error")) // UPDATE updated_at fails
+        // Rollback: should only re-insert "real-tag", NOT "phantom-tag"
+        .mockResolvedValueOnce({ meta: {} });
+
+      const res = await callPatch({
+        remove_tags: ["real-tag", "phantom-tag"],
+      });
+
+      expect(res.status).toBe(500);
+
+      // Verify only "real-tag" was rolled back (re-inserted), not "phantom-tag"
+      const rollbackCalls = mockClient.execute.mock.calls.slice(2); // skip DELETE + failed UPDATE
+      expect(rollbackCalls).toHaveLength(1);
+      const insertCall = rollbackCalls[0];
+      expect(insertCall![0]).toContain("INSERT OR IGNORE INTO project_tags");
+      expect(insertCall![1]).toContain("real-tag");
+      expect(insertCall![1]).not.toContain("phantom-tag");
+    });
   });
 
   describe("successful update", () => {
@@ -1025,9 +1145,9 @@ describe("GET /api/projects", () => {
     // Query 2 (aliases) should have date params: [from, to, userId]
     const aliasCall = mockClient.query.mock.calls[1];
     expect(aliasCall[1]).toEqual(["2026-03-01", "2026-03-14", "u1"]);
-    // SQL should contain sr_all join (dual LEFT JOIN pattern)
-    expect(aliasCall[0]).toContain("sr_all");
+    // SQL should use correlated subquery for absolute_last_active (not dual LEFT JOIN)
     expect(aliasCall[0]).toContain("absolute_last_active");
+    expect(aliasCall[0]).not.toMatch(/LEFT JOIN session_records sr_all/);
 
     // Query 3 (unassigned) should have date params: [userId, from, to]
     const unassignedCall = mockClient.query.mock.calls[2];
@@ -1054,6 +1174,34 @@ describe("GET /api/projects", () => {
     const aliasCall = mockClient.query.mock.calls[1];
     expect(aliasCall[1]).toEqual(["u1"]);
     // Should NOT have sr_all as a separate join alias
+    expect(aliasCall[0]).not.toMatch(/LEFT JOIN session_records sr_all/);
+  });
+
+  it("should default to tomorrow when only from param is provided", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({
+      userId: "u1",
+      email: "test@example.com",
+    });
+
+    mockClient.query
+      .mockResolvedValueOnce({ results: [], meta: {} }) // Query 1: projects
+      .mockResolvedValueOnce({ results: [], meta: {} }) // Query 2: aliases (date-scoped)
+      .mockResolvedValueOnce({ results: [], meta: {} }) // Query 3: unassigned (date-scoped)
+      .mockResolvedValueOnce({ results: [], meta: {} }); // Query 4: tags
+
+    const res = await GET(
+      new Request("http://localhost:7030/api/projects?from=2026-03-01"),
+    );
+
+    expect(res.status).toBe(200);
+
+    // Query 2 (aliases) should have date params with defaulted `to`
+    const aliasCall = mockClient.query.mock.calls[1];
+    expect(aliasCall[1][0]).toBe("2026-03-01"); // from
+    expect(aliasCall[1][1]).toMatch(/^\d{4}-\d{2}-\d{2}$/); // defaulted to (tomorrow)
+    expect(aliasCall[1][2]).toBe("u1"); // userId
+    // SQL should use correlated subquery for absolute_last_active (not dual LEFT JOIN)
+    expect(aliasCall[0]).toContain("absolute_last_active");
     expect(aliasCall[0]).not.toMatch(/LEFT JOIN session_records sr_all/);
   });
 
