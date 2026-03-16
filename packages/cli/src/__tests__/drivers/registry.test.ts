@@ -58,7 +58,13 @@ describe("createTokenDrivers", () => {
     expect(fileDrivers).toHaveLength(0);
   });
 
-  it("returns all 6 file drivers when all dirs are set", () => {
+  it("includes copilot-cli file driver when copilotCliLogsDir is set", () => {
+    const { fileDrivers } = createTokenDrivers({ copilotCliLogsDir: "/tmp/copilot/logs" });
+    expect(fileDrivers).toHaveLength(1);
+    expect(fileDrivers[0].source).toBe("copilot-cli");
+  });
+
+  it("returns all 7 file drivers when all dirs are set", () => {
     const { fileDrivers, dbDrivers } = createTokenDrivers({
       claudeDir: "/tmp/claude",
       geminiDir: "/tmp/gemini",
@@ -66,10 +72,11 @@ describe("createTokenDrivers", () => {
       openclawDir: "/tmp/openclaw",
       codexSessionsDir: "/tmp/codex",
       vscodeCopilotDirs: ["/tmp/vsc"],
+      copilotCliLogsDir: "/tmp/copilot/logs",
     });
-    expect(fileDrivers).toHaveLength(6);
+    expect(fileDrivers).toHaveLength(7);
     const sources = fileDrivers.map((d) => d.source);
-    expect(sources).toEqual(["claude-code", "codex", "gemini-cli", "opencode", "openclaw", "vscode-copilot"]);
+    expect(sources).toEqual(["claude-code", "codex", "gemini-cli", "opencode", "openclaw", "vscode-copilot", "copilot-cli"]);
     expect(dbDrivers).toHaveLength(0);
   });
 

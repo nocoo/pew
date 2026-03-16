@@ -156,6 +156,7 @@ const SOURCE_LABELS: Record<string, string> = {
   opencode: "OpenCode",
   openclaw: "OpenClaw",
   "vscode-copilot": "VS Code Copilot",
+  "copilot-cli": "GitHub Copilot CLI",
 };
 
 export function sourceLabel(source: string): string {

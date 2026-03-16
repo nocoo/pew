@@ -205,6 +205,7 @@ describe("sourceLabel", () => {
     expect(sourceLabel("opencode")).toBe("OpenCode");
     expect(sourceLabel("openclaw")).toBe("OpenClaw");
     expect(sourceLabel("vscode-copilot")).toBe("VS Code Copilot");
+    expect(sourceLabel("copilot-cli")).toBe("GitHub Copilot CLI");
   });
 
   it("should return raw string for unknown sources", () => {

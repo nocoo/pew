@@ -137,6 +137,9 @@ function sourceKey(source: Source): keyof SessionSyncResult["sources"] {
     case "openclaw": return "openclaw";
     case "codex": return "codex";
     case "vscode-copilot": return "vscodeCopilot";
+    case "copilot-cli":
+      // No session tracking for GitHub Copilot CLI
+      throw new Error(`Unexpected source in session sync: copilot-cli`);
   }
 }
 

@@ -11,6 +11,7 @@ export interface SourceDirs {
   openCodeMessageDir: string;
   openclawDir: string;
   vscodeCopilotDirs: string[];
+  copilotCliLogsDir: string;
 }
 
 /** Status summary for display */
@@ -42,6 +43,7 @@ function classifySource(filePath: string, dirs: SourceDirs): string {
   for (const dir of dirs.vscodeCopilotDirs) {
     if (filePath.startsWith(dir)) return "vscode-copilot";
   }
+  if (filePath.startsWith(dirs.copilotCliLogsDir)) return "copilot-cli";
   return "unknown";
 }
 

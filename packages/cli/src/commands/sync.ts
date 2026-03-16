@@ -40,6 +40,8 @@ export interface SyncOptions {
   openclawDir?: string;
   /** Override: VSCode Copilot base directories (stable + insiders) */
   vscodeCopilotDirs?: string[];
+  /** Override: GitHub Copilot CLI logs directory (~/.copilot/logs) */
+  copilotCliLogsDir?: string;
   /** Progress callback */
   onProgress?: (event: ProgressEvent) => void;
   /** Callback invoked when a corrupted JSONL line is found in the queue */
@@ -66,6 +68,7 @@ export interface SyncResult {
     opencode: number;
     openclaw: number;
     vscodeCopilot: number;
+    copilotCli: number;
   };
   /** Total files scanned per source */
   filesScanned: {
@@ -75,6 +78,7 @@ export interface SyncResult {
     opencode: number;
     openclaw: number;
     vscodeCopilot: number;
+    copilotCli: number;
   };
 }
 
@@ -95,6 +99,7 @@ function sourceKey(source: Source): keyof SyncResult["sources"] {
     case "openclaw": return "openclaw";
     case "codex": return "codex";
     case "vscode-copilot": return "vscodeCopilot";
+    case "copilot-cli": return "copilotCli";
   }
 }
 
@@ -176,8 +181,8 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   let replayDetected = false;
 
   const allDeltas: ParsedDelta[] = [];
-  const sourceCounts = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 };
-  const filesScanned = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0 };
+  const sourceCounts = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0, copilotCli: 0 };
+  const filesScanned = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0, copilotCli: 0 };
 
   // Collect all discovered file paths (across all drivers) for knownFilePaths
   const discoveredFiles = new Set<string>();
@@ -197,6 +202,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     openCodeDbPath: opts.openCodeDbPath,
     openclawDir: opts.openclawDir,
     vscodeCopilotDirs: opts.vscodeCopilotDirs,
+    copilotCliLogsDir: opts.copilotCliLogsDir,
   };
 
   // ---------- Phase 1: File-based drivers (generic loop) ----------

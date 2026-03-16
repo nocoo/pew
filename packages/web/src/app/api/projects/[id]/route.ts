@@ -18,6 +18,7 @@ const VALID_SOURCES = new Set([
   "opencode",
   "openclaw",
   "vscode-copilot",
+  "copilot-cli",
 ]);
 
 const MAX_NAME_LENGTH = 100;

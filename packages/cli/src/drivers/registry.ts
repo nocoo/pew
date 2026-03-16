@@ -24,6 +24,7 @@ import { openCodeJsonTokenDriver } from "./token/opencode-json-token-driver.js";
 import { openClawTokenDriver } from "./token/openclaw-token-driver.js";
 import { codexTokenDriver } from "./token/codex-token-driver.js";
 import { vscodeCopilotTokenDriver } from "./token/vscode-copilot-token-driver.js";
+import { copilotCliTokenDriver } from "./token/copilot-cli-token-driver.js";
 import {
   createOpenCodeSqliteTokenDriver,
   type OpenCodeSqliteTokenDriverOpts,
@@ -57,6 +58,7 @@ export interface TokenDriverRegistryOpts {
   openclawDir?: string;
   codexSessionsDir?: string;
   vscodeCopilotDirs?: string[];
+  copilotCliLogsDir?: string;
   openCodeDbPath?: string;
   openMessageDb?: OpenCodeSqliteTokenDriverOpts["openMessageDb"];
 }
@@ -93,6 +95,9 @@ export function createTokenDrivers(opts: TokenDriverRegistryOpts): TokenDriverSe
   }
   if (opts.vscodeCopilotDirs && opts.vscodeCopilotDirs.length > 0) {
     fileDrivers.push(vscodeCopilotTokenDriver);
+  }
+  if (opts.copilotCliLogsDir) {
+    fileDrivers.push(copilotCliTokenDriver);
   }
   if (opts.openCodeDbPath && opts.openMessageDb) {
     dbDrivers.push(

@@ -20,6 +20,7 @@ export const SOURCES: readonly Source[] = Object.freeze([
   "opencode",
   "openclaw",
   "vscode-copilot",
+  "copilot-cli",
 ] as const);
 
 /** Set form for O(1) membership checks */

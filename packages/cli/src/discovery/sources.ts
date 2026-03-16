@@ -157,6 +157,18 @@ export async function discoverCodexFiles(
 }
 
 /**
+ * Discover GitHub Copilot CLI process log files.
+ * Path pattern: ~/.copilot/logs/process-*.log
+ */
+export async function discoverCopilotCliFiles(
+  logsDir: string,
+): Promise<string[]> {
+  return collectFiles(logsDir, (name) =>
+    name.startsWith("process-") && name.endsWith(".log"),
+  );
+}
+
+/**
  * Discover VSCode Copilot Chat session JSONL files.
  *
  * Scans multiple base directories (stable + insiders), each containing:

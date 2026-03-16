@@ -67,6 +67,8 @@ const AGENT_COLOR_MAP: Record<string, ChartColor> = {
   "codex":         { color: chart.green,      token: "chart-4" },
   "openclaw":      { color: chart.lime,       token: "chart-5" },
   "copilot-vscode":{ color: chart.amber,      token: "chart-6" },
+  "vscode-copilot":{ color: chart.amber,      token: "chart-6" },
+  "copilot-cli":   { color: chart.orange,     token: "chart-7" },
 };
 
 /** Default color for unknown agents. */

@@ -25,6 +25,7 @@ const VALID_SOURCES = new Set([
   "opencode",
   "openclaw",
   "vscode-copilot",
+  "copilot-cli",
 ]);
 
 const VALID_GRANULARITIES = new Set(["half-hour", "day"]);

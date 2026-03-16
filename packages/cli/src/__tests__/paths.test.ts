@@ -43,7 +43,12 @@ describe("resolveDefaultPaths", () => {
     expect(paths.vscodeCopilotDirs[1]).toContain("Code - Insiders");
   });
 
-  it("should return exactly 10 path properties", () => {
+  it("should resolve copilotCliLogsDir to ~/.copilot/logs", () => {
+    const paths = resolveDefaultPaths("/fakehome");
+    expect(paths.copilotCliLogsDir).toBe(join("/fakehome", ".copilot", "logs"));
+  });
+
+  it("should return exactly 11 path properties", () => {
     const keys = [
       "stateDir",
       "binDir",
@@ -55,6 +60,7 @@ describe("resolveDefaultPaths", () => {
       "openCodeDbPath",
       "openclawDir",
       "vscodeCopilotDirs",
+      "copilotCliLogsDir",
     ];
     const paths = resolveDefaultPaths("/fakehome");
     expect(Object.keys(paths)).toHaveLength(keys.length);

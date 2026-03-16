@@ -70,6 +70,7 @@ export interface DiscoverOpts {
   openCodeDbPath?: string;
   openclawDir?: string;
   vscodeCopilotDirs?: string[];
+  copilotCliLogsDir?: string;
 }
 
 // ---------------------------------------------------------------------------

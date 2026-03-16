@@ -72,5 +72,7 @@ export function resolveDefaultPaths(home = homedir()) {
     openclawDir: join(home, ".openclaw"),
     /** VSCode Copilot base dirs (stable + insiders, platform-aware) */
     vscodeCopilotDirs: resolveVscodeCopilotDirs(home),
+    /** GitHub Copilot CLI logs: ~/.copilot/logs */
+    copilotCliLogsDir: join(home, ".copilot", "logs"),
   };
 }
