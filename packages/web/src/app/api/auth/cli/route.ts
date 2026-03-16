@@ -38,6 +38,7 @@ export function getPublicOrigin(request: Request): string {
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const callback = url.searchParams.get("callback");
+  const state = url.searchParams.get("state");
 
   // 1. Check authentication
   const authResult = await resolveUser(request);
@@ -101,10 +102,13 @@ export async function GET(request: Request) {
       );
     }
 
-    // 4. Redirect back to CLI with api_key
+    // 4. Redirect back to CLI with api_key + state
     const redirectUrl = new URL(callbackUrl.toString());
     redirectUrl.searchParams.set("api_key", apiKey);
     redirectUrl.searchParams.set("email", email);
+    if (state) {
+      redirectUrl.searchParams.set("state", state);
+    }
 
     return NextResponse.redirect(redirectUrl.toString());
   } catch (err) {

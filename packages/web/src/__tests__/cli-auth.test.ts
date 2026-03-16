@@ -31,10 +31,13 @@ function createMockClient() {
   };
 }
 
-function makeRequest(callback?: string): Request {
-  const url = callback
-    ? `http://localhost:7030/api/auth/cli?callback=${encodeURIComponent(callback)}`
-    : "http://localhost:7030/api/auth/cli";
+function makeRequest(callback?: string, state?: string): Request {
+  let url = "http://localhost:7030/api/auth/cli";
+  const params = new URLSearchParams();
+  if (callback) params.set("callback", callback);
+  if (state) params.set("state", state);
+  const qs = params.toString();
+  if (qs) url += `?${qs}`;
   return new Request(url, { method: "GET" });
 }
 
@@ -245,6 +248,35 @@ describe("GET /api/auth/cli", () => {
 
       const location = res.headers.get("Location")!;
       expect(location).toContain("email=test%40example.com");
+    });
+
+    it("should forward state parameter in callback redirect", async () => {
+      mockClient.firstOrNull.mockResolvedValueOnce({
+        api_key: "key-xyz",
+      });
+
+      const res = await GET(
+        makeRequest("http://localhost:9999/callback", "my-nonce-123")
+      );
+
+      expect(res.status).toBe(307);
+      const location = res.headers.get("Location")!;
+      expect(location).toContain("state=my-nonce-123");
+      expect(location).toContain("api_key=key-xyz");
+    });
+
+    it("should omit state from redirect when not provided", async () => {
+      mockClient.firstOrNull.mockResolvedValueOnce({
+        api_key: "key-xyz",
+      });
+
+      const res = await GET(
+        makeRequest("http://localhost:9999/callback")
+      );
+
+      expect(res.status).toBe(307);
+      const location = res.headers.get("Location")!;
+      expect(location).not.toContain("state=");
     });
 
     it("should return 500 on D1 failure", async () => {
