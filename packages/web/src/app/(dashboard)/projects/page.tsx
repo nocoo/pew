@@ -517,7 +517,27 @@ export default function ProjectsPage() {
   // Fill date gaps so charts extend to today
   const filledTimeline = useMemo(() => {
     if (filteredTimeline.length === 0) return filteredTimeline;
-    return fillDateRange(filteredTimeline, "date", (d) => ({ date: d, projects: {} }), today);
+    // Collect all project names so missing keys get 0 instead of undefined
+    const allNames = new Set<string>();
+    for (const pt of filteredTimeline) {
+      for (const name of Object.keys(pt.projects)) {
+        allNames.add(name);
+      }
+    }
+    const filled = fillDateRange(
+      filteredTimeline,
+      "date",
+      (d) => ({ date: d, projects: {} as Record<string, number> }),
+      today,
+    );
+    // Backfill every point so every project name is present (0 if missing)
+    return filled.map((pt) => {
+      const projects = { ...pt.projects };
+      for (const name of allNames) {
+        if (!(name in projects)) projects[name] = 0;
+      }
+      return { ...pt, projects };
+    });
   }, [filteredTimeline, today]);
 
   // -------------------------------------------------------------------------
