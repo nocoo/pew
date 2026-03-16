@@ -100,3 +100,12 @@ export function modelColor(model: string): ChartColor {
   const idx = hashString(model) % CHART_COLORS.length;
   return { color: CHART_COLORS[idx]!, token: CHART_TOKENS[idx]! };
 }
+
+/**
+ * Get a stable color for a team name.
+ * Uses djb2 hash — works with any Unicode (CJK, emoji, etc.).
+ */
+export function teamColor(name: string): ChartColor {
+  const idx = hashString(name) % CHART_COLORS.length;
+  return { color: CHART_COLORS[idx]!, token: CHART_TOKENS[idx]! };
+}

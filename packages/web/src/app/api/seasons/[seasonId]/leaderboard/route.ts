@@ -34,6 +34,7 @@ interface TeamTokenRow {
   team_id: string;
   team_name: string;
   team_slug: string;
+  team_logo_url: string | null;
   total_tokens: number;
   input_tokens: number;
   output_tokens: number;
@@ -44,6 +45,7 @@ interface SnapshotRow {
   team_id: string;
   team_name: string;
   team_slug: string;
+  team_logo_url: string | null;
   rank: number;
   total_tokens: number;
   input_tokens: number;
@@ -159,6 +161,7 @@ export async function GET(
           ss.team_id,
           t.name AS team_name,
           t.slug AS team_slug,
+          t.logo_url AS team_logo_url,
           ss.rank,
           ss.total_tokens,
           ss.input_tokens,
@@ -204,6 +207,7 @@ export async function GET(
           id: row.team_id,
           name: row.team_name,
           slug: row.team_slug,
+          logo_url: row.team_logo_url,
         },
         total_tokens: row.total_tokens,
         input_tokens: row.input_tokens,
@@ -292,6 +296,7 @@ export async function GET(
           st.team_id,
           t.name AS team_name,
           t.slug AS team_slug,
+          t.logo_url AS team_logo_url,
           COALESCE(SUM(ur.total_tokens), 0) AS total_tokens,
           COALESCE(SUM(ur.input_tokens), 0) AS input_tokens,
           COALESCE(SUM(ur.output_tokens), 0) AS output_tokens,
@@ -348,6 +353,7 @@ export async function GET(
           id: row.team_id,
           name: row.team_name,
           slug: row.team_slug,
+          logo_url: row.team_logo_url,
         },
         total_tokens: row.total_tokens,
         input_tokens: row.input_tokens,

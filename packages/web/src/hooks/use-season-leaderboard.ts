@@ -13,6 +13,7 @@ export interface SeasonTeamEntry {
     id: string;
     name: string;
     slug: string;
+    logo_url: string | null;
   };
   total_tokens: number;
   input_tokens: number;

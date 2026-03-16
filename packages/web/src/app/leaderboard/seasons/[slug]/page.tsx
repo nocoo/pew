@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn, formatTokensFull } from "@/lib/utils";
 import { formatDuration } from "@/lib/date-helpers";
+import { teamColor, withAlpha } from "@/lib/palette";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -98,6 +99,7 @@ function TeamRow({
 }) {
   const [expanded, setExpanded] = useState(false);
   const hasMembers = entry.members && entry.members.length > 0;
+  const tc = teamColor(entry.team.name);
 
   return (
     <div
@@ -120,11 +122,22 @@ function TeamRow({
           <RankBadge rank={entry.rank} />
         </div>
 
-        {/* Team name + member count */}
+        {/* Team icon / logo */}
         <div className="flex flex-1 items-center gap-3 min-w-0">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-            <Users className="h-4 w-4 text-primary" />
-          </div>
+          {entry.team.logo_url ? (
+            <img
+              src={entry.team.logo_url}
+              alt={entry.team.name}
+              className="h-8 w-8 shrink-0 rounded-full object-cover"
+            />
+          ) : (
+            <div
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+              style={{ backgroundColor: withAlpha(tc.token, 0.15) }}
+            >
+              <Users className="h-4 w-4" style={{ color: tc.color }} />
+            </div>
+          )}
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-foreground truncate">
