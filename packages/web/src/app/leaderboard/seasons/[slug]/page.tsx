@@ -35,9 +35,8 @@ import { Trophy } from "lucide-react";
 function SeasonTableHeader() {
   return (
     <div className="animate-fade-up" style={{ animationDelay: "200ms" }}>
-      <div className="flex items-center px-4 pb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+      <div className="flex items-center gap-3 px-4 pb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
         <span className="w-8 shrink-0 text-center">Rank</span>
-        <span className="w-3 shrink-0" />
         <span className="flex-1">Team</span>
         <span className="hidden sm:block w-24 shrink-0 text-right">Sessions</span>
         <span className="hidden sm:block w-24 shrink-0 text-right">Duration</span>
