@@ -1,19 +1,10 @@
 "use client";
 
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
 import { cn } from "@/lib/utils";
 import { formatTokens } from "@/lib/utils";
 import { formatCost } from "@/lib/pricing";
-import { chart, chartAxis, chartMuted } from "@/lib/palette";
+import { chart } from "@/lib/palette";
 import type { WeekdayWeekendStats } from "@/lib/usage-helpers";
-import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 import { CalendarRange } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -25,43 +16,64 @@ interface WeekdayWeekendChartProps {
   className?: string;
 }
 
-interface ChartDatum {
-  name: string;
-  tokens: number;
-  cost: number;
-}
-
 // ---------------------------------------------------------------------------
-// Custom tooltip
+// Comparison bar — a single metric row showing weekday vs weekend
 // ---------------------------------------------------------------------------
 
-function WdWeTooltip({
-  active,
-  payload,
+function ComparisonRow({
   label,
+  weekdayValue,
+  weekendValue,
+  formatter,
+  color,
 }: {
-  active?: boolean;
-  payload?: Array<{ name: string; value: number; color: string }>;
-  label?: string;
+  label: string;
+  weekdayValue: number;
+  weekendValue: number;
+  formatter: (v: number) => string;
+  color: string;
 }) {
-  if (!active || !payload?.length) return null;
+  const maxVal = Math.max(weekdayValue, weekendValue, 1);
+  const weekdayPct = (weekdayValue / maxVal) * 100;
+  const weekendPct = (weekendValue / maxVal) * 100;
 
   return (
-    <div className="rounded-[var(--radius-widget)] border border-border bg-card p-2.5 shadow-sm">
-      <p className="mb-1 text-xs font-medium text-foreground">{label}</p>
-      {payload.map((entry) => (
-        <div key={entry.name} className="flex items-center gap-2 text-xs text-muted-foreground">
-          <div
-            className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: entry.color }}
-          />
-          <span>
-            {entry.name === "tokens"
-              ? `Avg Tokens: ${formatTokens(entry.value)}`
-              : `Avg Cost: ${formatCost(entry.value)}`}
+    <div className="space-y-2">
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-3">
+          <span className="w-16 shrink-0 text-xs text-muted-foreground">
+            Weekday
+          </span>
+          <div className="flex-1 h-5 rounded bg-muted/50 overflow-hidden">
+            <div
+              className="h-full rounded transition-all duration-500"
+              style={{ width: `${weekdayPct}%`, backgroundColor: color }}
+            />
+          </div>
+          <span className="w-20 shrink-0 text-right text-xs font-medium tabular-nums text-foreground">
+            {formatter(weekdayValue)}
           </span>
         </div>
-      ))}
+        <div className="flex items-center gap-3">
+          <span className="w-16 shrink-0 text-xs text-muted-foreground">
+            Weekend
+          </span>
+          <div className="flex-1 h-5 rounded bg-muted/50 overflow-hidden">
+            <div
+              className="h-full rounded transition-all duration-500"
+              style={{
+                width: `${weekendPct}%`,
+                backgroundColor: color,
+                opacity: 0.55,
+              }}
+            />
+          </div>
+          <span className="w-20 shrink-0 text-right text-xs font-medium tabular-nums text-foreground">
+            {formatter(weekendValue)}
+          </span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -71,8 +83,8 @@ function WdWeTooltip({
 // ---------------------------------------------------------------------------
 
 /**
- * Grouped bar chart comparing average daily token usage and cost
- * on weekdays vs weekends.
+ * Side-by-side horizontal bar comparison of weekday vs weekend averages.
+ * Two rows: Avg Tokens and Avg Cost, each with a proportional bar.
  */
 export function WeekdayWeekendChart({
   stats,
@@ -94,19 +106,6 @@ export function WeekdayWeekendChart({
     );
   }
 
-  const data: ChartDatum[] = [
-    {
-      name: "Weekday",
-      tokens: stats.weekday.avgTokens,
-      cost: stats.weekday.avgCost,
-    },
-    {
-      name: "Weekend",
-      tokens: stats.weekend.avgTokens,
-      cost: stats.weekend.avgCost,
-    },
-  ];
-
   // Ratio label: "2.3x more on weekdays" or "1.5x more on weekends"
   let ratioLabel: string | null = null;
   if (stats.ratio > 0 && stats.ratio !== 1 && isFinite(stats.ratio)) {
@@ -124,85 +123,40 @@ export function WeekdayWeekendChart({
         className,
       )}
     >
-      {/* Header: icon + title + legend */}
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+      {/* Header: icon + title */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <div className="flex items-center gap-2">
-          <CalendarRange className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
+          <CalendarRange
+            className="h-4 w-4 text-muted-foreground"
+            strokeWidth={1.5}
+          />
           <p className="text-xs md:text-sm text-muted-foreground">
             Weekday vs Weekend
           </p>
-          {ratioLabel && (
-            <span className="text-xs text-muted-foreground/60">
-              ({ratioLabel})
-            </span>
-          )}
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5">
-            <div
-              className="h-2 w-2 rounded-full"
-              style={{ background: chart.teal }}
-            />
-            <span className="text-xs text-muted-foreground">Avg Tokens</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div
-              className="h-2 w-2 rounded-full"
-              style={{ background: chart.sky }}
-            />
-            <span className="text-xs text-muted-foreground">Avg Cost</span>
-          </div>
-        </div>
+        {ratioLabel && (
+          <span className="text-xs text-muted-foreground/60">
+            {ratioLabel}
+          </span>
+        )}
       </div>
 
-      <div className="h-[180px] w-full">
-        <DashboardResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} barGap={4} barCategoryGap="30%">
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke={chartMuted}
-              vertical={false}
-            />
-            <XAxis
-              dataKey="name"
-              tick={{ fontSize: 11, fill: chartAxis }}
-              tickLine={false}
-              axisLine={false}
-            />
-            <YAxis
-              yAxisId="tokens"
-              tick={{ fontSize: 11, fill: chartAxis }}
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={(v: number) => formatTokens(v)}
-              width={50}
-            />
-            <YAxis
-              yAxisId="cost"
-              orientation="right"
-              tick={{ fontSize: 11, fill: chartAxis }}
-              tickLine={false}
-              axisLine={false}
-              tickFormatter={(v: number) => formatCost(v)}
-              width={50}
-            />
-            <Tooltip content={<WdWeTooltip />} cursor={false} isAnimationActive={false} />
-            <Bar
-              yAxisId="tokens"
-              dataKey="tokens"
-              name="tokens"
-              fill={chart.teal}
-              radius={[4, 4, 0, 0]}
-            />
-            <Bar
-              yAxisId="cost"
-              dataKey="cost"
-              name="cost"
-              fill={chart.sky}
-              radius={[4, 4, 0, 0]}
-            />
-          </BarChart>
-        </DashboardResponsiveContainer>
+      {/* Two comparison rows */}
+      <div className="space-y-4">
+        <ComparisonRow
+          label="Avg Daily Tokens"
+          weekdayValue={stats.weekday.avgTokens}
+          weekendValue={stats.weekend.avgTokens}
+          formatter={formatTokens}
+          color={chart.teal}
+        />
+        <ComparisonRow
+          label="Avg Daily Cost"
+          weekdayValue={stats.weekday.avgCost}
+          weekendValue={stats.weekend.avgCost}
+          formatter={formatCost}
+          color={chart.sky}
+        />
       </div>
     </div>
   );
