@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.10.7
+
+### Fixes
+
+- **CLI login fails on some Macs** — The local callback server was bound to IPv4 `127.0.0.1`, but on Macs where `localhost` resolves to IPv6 `::1` the browser redirect would hit the wrong address family, causing "connection refused". Now binds to `localhost` so Node picks the correct address family automatically.
+
 ## v1.10.6
 
 ### Features
