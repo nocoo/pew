@@ -14,6 +14,7 @@ import { formatCost } from "@/lib/pricing";
 import { chart, chartAxis, chartMuted } from "@/lib/palette";
 import type { WeekdayWeekendStats } from "@/lib/usage-helpers";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
+import { CalendarRange } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -47,9 +48,9 @@ function WdWeTooltip({
 
   return (
     <div className="rounded-[var(--radius-widget)] border border-border bg-card p-2.5 shadow-sm">
-      <p className="mb-1 text-sm font-medium text-foreground">{label}</p>
+      <p className="mb-1 text-xs font-medium text-foreground">{label}</p>
       {payload.map((entry) => (
-        <div key={entry.name} className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div key={entry.name} className="flex items-center gap-2 text-xs text-muted-foreground">
           <div
             className="h-2 w-2 rounded-full"
             style={{ backgroundColor: entry.color }}
@@ -123,13 +124,35 @@ export function WeekdayWeekendChart({
         className,
       )}
     >
-      <div className="mb-3 flex items-baseline justify-between gap-2">
-        <p className="text-xs md:text-sm text-muted-foreground">
-          Weekday vs Weekend
-        </p>
-        {ratioLabel && (
-          <p className="text-xs text-muted-foreground">{ratioLabel}</p>
-        )}
+      {/* Header: icon + title + legend */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+        <div className="flex items-center gap-2">
+          <CalendarRange className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
+          <p className="text-xs md:text-sm text-muted-foreground">
+            Weekday vs Weekend
+          </p>
+          {ratioLabel && (
+            <span className="text-xs text-muted-foreground/60">
+              ({ratioLabel})
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            <div
+              className="h-2 w-2 rounded-full"
+              style={{ background: chart.teal }}
+            />
+            <span className="text-xs text-muted-foreground">Avg Tokens</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div
+              className="h-2 w-2 rounded-full"
+              style={{ background: chart.sky }}
+            />
+            <span className="text-xs text-muted-foreground">Avg Cost</span>
+          </div>
+        </div>
       </div>
 
       <div className="h-[180px] w-full">
@@ -180,24 +203,6 @@ export function WeekdayWeekendChart({
             />
           </BarChart>
         </DashboardResponsiveContainer>
-      </div>
-
-      {/* Legend */}
-      <div className="mt-3 flex items-center justify-center gap-6">
-        <div className="flex items-center gap-1.5">
-          <div
-            className="h-2 w-2 rounded-full"
-            style={{ background: chart.teal }}
-          />
-          <span className="text-xs text-muted-foreground">Avg Tokens</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div
-            className="h-2 w-2 rounded-full"
-            style={{ background: chart.sky }}
-          />
-          <span className="text-xs text-muted-foreground">Avg Cost</span>
-        </div>
       </div>
     </div>
   );
