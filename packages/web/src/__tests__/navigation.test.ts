@@ -48,7 +48,7 @@ describe("sidebar navigation", () => {
       const allHrefs = BASE_NAV_GROUPS.flatMap((g) => g.items.map((i) => i.href));
       expect(allHrefs).toContain("/dashboard");
       expect(allHrefs).toContain("/leaderboard");
-      expect(allHrefs).toContain("/recent");
+      expect(allHrefs).toContain("/hourly-usage");
       expect(allHrefs).toContain("/daily-usage");
       expect(allHrefs).toContain("/sessions");
       expect(allHrefs).toContain("/agents");
@@ -210,7 +210,7 @@ describe("route labels", () => {
       teams: "Teams",
       projects: "Projects",
       "manage-projects": "Projects",
-      recent: "Recent",
+      "hourly-usage": "Hourly Usage",
       "daily-usage": "Daily Usage",
       agents: "By Agent",
       models: "By Model",

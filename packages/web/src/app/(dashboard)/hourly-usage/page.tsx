@@ -332,7 +332,7 @@ export default function RecentPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">
-          Recent
+          Hourly Usage
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Token usage over the last 72 hours.

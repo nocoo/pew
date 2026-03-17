@@ -41,7 +41,7 @@ export const BASE_NAV_GROUPS: NavGroupDef[] = [
     label: "Analytics",
     defaultOpen: true,
     items: [
-      { href: "/recent", label: "Recent", icon: "Clock" },
+      { href: "/hourly-usage", label: "Hourly Usage", icon: "Clock" },
       { href: "/daily-usage", label: "Daily Usage", icon: "CalendarDays" },
       { href: "/sessions", label: "Sessions", icon: "MessagesSquare" },
       { href: "/projects", label: "Projects", icon: "FolderGit2" },
@@ -87,7 +87,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   teams: "Teams",
   projects: "Projects",
   "manage-projects": "Projects",
-  recent: "Recent",
+  "hourly-usage": "Hourly Usage",
   "daily-usage": "Daily Usage",
   agents: "By Agent",
   models: "By Model",
