@@ -79,7 +79,7 @@ export function PeakHoursCard({ slots, className }: PeakHoursCardProps) {
                 </span>
               </div>
               {/* Mini bar */}
-              <div className="ml-6 h-1.5 w-full rounded-full" style={{ background: chartMuted }}>
+              <div className="ml-6 h-1.5 rounded-full" style={{ background: chartMuted }}>
                 <div
                   className="h-full rounded-full transition-all"
                   style={{
