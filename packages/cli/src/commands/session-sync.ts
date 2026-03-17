@@ -81,8 +81,6 @@ export interface SessionSyncResult {
     gemini: number;
     opencode: number;
     openclaw: number;
-    vscodeCopilot: number;
-    copilotCli: number;
   };
   /** Total files/directories scanned per source */
   filesScanned: {
@@ -91,8 +89,6 @@ export interface SessionSyncResult {
     gemini: number;
     opencode: number;
     openclaw: number;
-    vscodeCopilot: number;
-    copilotCli: number;
   };
 }
 
@@ -130,16 +126,16 @@ function toQueueRecord(snap: SessionSnapshot): SessionQueueRecord {
   };
 }
 
-/** Map Source type to short result key */
-function sourceKey(source: Source): keyof SessionSyncResult["sources"] {
+/** Map Source type to short result key (null if source has no session driver) */
+function sourceKey(source: Source): keyof SessionSyncResult["sources"] | null {
   switch (source) {
     case "claude-code": return "claude";
     case "gemini-cli": return "gemini";
     case "opencode": return "opencode";
     case "openclaw": return "openclaw";
     case "codex": return "codex";
-    case "vscode-copilot": return "vscodeCopilot";
-    case "copilot-cli": return "copilotCli";
+    case "vscode-copilot": return null;
+    case "copilot-cli": return null;
   }
 }
 
@@ -161,8 +157,8 @@ export async function executeSessionSync(
   const cursors = await cursorStore.load();
 
   const allSnapshots: SessionSnapshot[] = [];
-  const sourceCounts = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0, copilotCli: 0 };
-  const filesScanned = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0, copilotCli: 0 };
+  const sourceCounts = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0 };
+  const filesScanned = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0 };
 
   // Build driver sets from options
   const { fileDrivers, dbDrivers } = createSessionDrivers(opts);
@@ -180,6 +176,7 @@ export async function executeSessionSync(
   // ---------- Phase 1: File-based drivers (generic loop) ----------
   for (const driver of fileDrivers) {
     const key = sourceKey(driver.source);
+    if (!key) continue; // source has no session driver (e.g. vscode-copilot, copilot-cli)
 
     onProgress?.({
       source: driver.source,
@@ -294,6 +291,7 @@ export async function executeSessionSync(
 
   for (const driver of activeDbDrivers) {
     const key = sourceKey(driver.source);
+    if (!key) continue;
 
     onProgress?.({
       source: "opencode-sqlite",
