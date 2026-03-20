@@ -471,7 +471,7 @@ so no double-counting occurs.
 
 ### Phase 3: Cooldown Optimization
 
-> **Status: implementing — Phase 1 (O_EXCL lockfile) is validated.**
+> **Status: done.**
 
 **Goal:** Reduce the number of sync cycles from ~130 concurrent to ~48
 sequential runs per 4-hour window.
@@ -521,13 +521,14 @@ capture all deltas while dramatically reducing the number of sync cycles.
 | `packages/cli/src/commands/upload.ts` | Update `aggregateRecords()` if snapshot model is chosen |
 | `packages/cli/src/storage/base-queue.ts` | Add staging area if staged delta model is chosen |
 
-### Phase 3 (Cooldown) — future
+### Phase 3 (Cooldown) — done
 
 | File | Change |
 |---|---|
-| `packages/cli/src/notifier/coordinator.ts` | Add cooldown check after lock acquisition |
-| `packages/cli/src/commands/notify.ts` | Pass trigger kind to coordinator for cooldown bypass |
-| `packages/cli/src/cli.ts` | Ensure manual `pew sync` bypasses cooldown |
+| `packages/cli/src/notifier/coordinator.ts` | Add cooldown check after lock acquisition; `cooldownMs` option; `skippedReason` in run log |
+| `packages/core/src/types.ts` | Add `skippedReason` to `CoordinatorRunResult` and `RunLogEntry.coordination` |
+| `packages/cli/src/__tests__/coordinator.test.ts` | 9 cooldown unit tests |
+| `packages/cli/src/__tests__/coordinator-integration.test.ts` | 4 cooldown integration tests |
 
 ## Implementation Steps
 
@@ -543,9 +544,9 @@ capture all deltas while dramatically reducing the number of sync cycles.
 | 8 | 2 | — | Design decision: snapshot vs staged delta | deferred |
 | 9 | 2 | — | Implement idempotent token queue | deferred |
 | 10 | 2 | — | Cursor-after-upload (safe after idempotent queue) | deferred |
-| 11 | 3 | `docs: defer Phase 2, detail Phase 3 cooldown steps` | Update doc 28 status | — |
-| 12 | 3 | `feat: add skippedReason to CoordinatorRunResult and RunLogEntry` | Core type change | — |
-| 13 | 3 | `test: add cooldown coordinator unit tests` | TDD: write tests first | — |
-| 14 | 3 | `feat: implement cooldown check in coordinator` | Read last-run.json, skip if < cooldownMs since last success | — |
-| 15 | 3 | `test: add cooldown integration test` | Real filesystem cooldown behavior | — |
-| 16 | 3 | `docs: mark Phase 3 as done in doc 28` | Update status | — |
+| 11 | 3 | `docs: defer Phase 2, detail Phase 3 cooldown steps` | Update doc 28 status | done |
+| 12 | 3 | `feat: add skippedReason to CoordinatorRunResult and RunLogEntry` | Core type change | done |
+| 13 | 3 | `test: add cooldown coordinator unit tests` | TDD: write tests first | done |
+| 14 | 3 | `feat: implement cooldown check in coordinator` | Read last-run.json, skip if < cooldownMs since last success | done |
+| 15 | 3 | `test: add cooldown integration test` | Real filesystem cooldown behavior | done |
+| 16 | 3 | `docs: mark Phase 3 as done in doc 28` | Update status | done |
