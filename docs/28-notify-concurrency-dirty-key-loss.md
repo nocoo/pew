@@ -422,7 +422,64 @@ try {
 
 ### Phase 2: Idempotent Token Queue (Prerequisite for Cursor-After-Upload)
 
-> **Status: deferred — analysis showed this is only needed as a prerequisite for cursor-after-upload, which is a future optimization. The current SUM-based merge is correct with Phase 1's lock + existing replay detection.**
+> **Status: deferred.**
+
+**Why deferred:** Phase 2 was originally designed to enable cursor-after-upload
+(persist cursors only after successful upload, preventing data loss on upload
+failure). Post-Phase 1 analysis shows this is unnecessary for correctness
+today, and the cost/risk of implementing it now outweighs the benefit.
+
+**Argument for deferral:**
+
+1. **The SUM-based merge is correct under Phase 1's lock.** The dirty-key loss
+   bug (doc 28 root cause) was caused by concurrent writers racing on
+   `queue.state.json` without mutual exclusion. Phase 1's O_EXCL lockfile
+   guarantees single-writer semantics. With only one process modifying the
+   queue at a time, the read-modify-write sequence in `sync.ts:551-563`
+   (`loadDirtyKeys → union → saveDirtyKeys`) is atomic — no keys can be lost.
+
+2. **The double-count risk is crash-only and bounded.** The current write order
+   (queue first, cursor second — `sync.ts:568-575`) means a crash between
+   queue write and cursor save causes the next run to re-parse the same deltas
+   and SUM them into the queue again (2× inflation). But this requires:
+   - A process crash at exactly the right 10ms window (between queue write and
+     cursor save)
+   - The user does NOT run `pew reset && pew sync` afterward
+   - The doubled values reach the server before anyone notices
+
+   In practice, `pew notify` runs complete in <500ms and crashes at this exact
+   point have never been observed. The code comment at `sync.ts:572-573`
+   already documents this as an accepted trade-off:
+   > "values ≥ true (minor over-count for one sync cycle, recoverable via
+   > pew reset)"
+
+3. **Existing replay detection prevents the common re-parse case.** The
+   `knownFilePaths` mechanism (v1.6.0) detects "cursor entry lost vs genuinely
+   new file" and triggers a full rescan when a cursor is missing for a
+   previously-known file. The full-scan branch uses `queue.overwrite()` (not
+   SUM merge), which produces idempotent results. This covers the most likely
+   real-world scenario where cursors become corrupted or truncated.
+
+4. **Phase 2 has significant implementation cost and new failure modes.** Both
+   candidate approaches (Option A: full-snapshot overwrite, Option B: staged
+   delta with commit) require changing the queue write model, the cursor
+   rollback logic, and the upload engine. Option B introduces a new crash
+   window (between staging commit and cursor write). This complexity is not
+   justified when the current model is correct under single-writer lock.
+
+5. **Cursor-after-upload (the feature Phase 2 enables) is a nice-to-have, not
+   a correctness requirement.** Today, if an upload fails, the cursors are
+   already saved — the next run produces 0 new deltas (all already in queue)
+   and re-uploads the existing dirty keys. Data reaches the server on retry.
+   Cursor-after-upload would skip the redundant re-parse, but the redundant
+   re-parse is harmless (0 deltas, no inflation) and fast (<100ms).
+
+**When to revisit:** Phase 2 becomes necessary if any of these conditions arise:
+- Upload failures become frequent enough that redundant re-parses cause
+  noticeable latency (unlikely with Phase 3's 5-minute cooldown)
+- A new feature requires crash-safe exactly-once queue semantics
+- The queue file grows large enough (~10MB+) that full-snapshot overwrites
+  on every sync become a performance bottleneck
 
 **Goal:** Make the token merge idempotent so that re-parsing the same deltas
 does not inflate values.
