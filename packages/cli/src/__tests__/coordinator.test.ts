@@ -415,7 +415,7 @@ describe("coordinatedSync", () => {
     });
     const executeSyncFn = vi.fn(async () => ({}));
 
-    let elapsed = 0;
+    const elapsed = 0;
 
     const result = await coordinatedSync(createTrigger(), {
       stateDir: "/tmp/pew",
