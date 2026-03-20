@@ -361,6 +361,16 @@ async function writeRunLog(
     await fs.mkdir(runsDir, { recursive: true });
     await fs.writeFile(join(runsDir, `${result.runId}.json`), json);
     await fs.writeFile(join(stateDir, "last-run.json"), json);
+
+    // Write last-success.json only on success — used exclusively by cooldown.
+    // Kept separate from last-run.json so skipped/error runs don't overwrite
+    // the success timestamp.
+    if (entry.status === "success") {
+      await fs.writeFile(
+        join(stateDir, "last-success.json"),
+        entry.completedAt,
+      );
+    }
   } catch {
     // Run log write failures are non-fatal
   }
@@ -374,8 +384,10 @@ async function writeRunLog(
  * Check if the last successful sync completed within the cooldown window.
  * Returns the remaining cooldown time in ms, or 0 if cooldown is not active.
  *
- * Only successful runs count — error/skipped/partial runs do NOT reset the
- * cooldown timer, ensuring a failed sync doesn't block a retry.
+ * Reads `last-success.json` (a plain ISO timestamp), which is only written
+ * after a successful sync. This avoids the problem where `last-run.json`
+ * (written on every run including skipped/error) would overwrite the success
+ * timestamp and break cooldown for subsequent runs.
  */
 async function checkCooldown(
   stateDir: string,
@@ -383,12 +395,10 @@ async function checkCooldown(
   now: () => number,
   cooldownMs: number,
 ): Promise<number> {
-  const lastRun = await readLastRun(stateDir, fs);
-  if (lastRun == null) return 0;
+  const lastSuccessAt = await readLastSuccessAt(stateDir, fs);
+  if (lastSuccessAt == null) return 0;
 
-  if (lastRun.status !== "success") return 0;
-
-  const completedAtMs = new Date(lastRun.completedAt).getTime();
+  const completedAtMs = new Date(lastSuccessAt).getTime();
   if (Number.isNaN(completedAtMs)) return 0;
 
   const elapsed = now() - completedAtMs;
@@ -397,25 +407,18 @@ async function checkCooldown(
 }
 
 /**
- * Read and parse last-run.json. Returns null on any error (missing file,
- * corrupted JSON, etc.) — caller treats null as "no previous run".
+ * Read the last-success.json file (plain ISO timestamp string).
+ * Returns null on any error (missing file, corrupted, etc.).
  */
-async function readLastRun(
+async function readLastSuccessAt(
   stateDir: string,
   fs: FsOps,
-): Promise<{ status: string; completedAt: string } | null> {
+): Promise<string | null> {
   try {
-    const content = await fs.readFile(join(stateDir, "last-run.json"));
-    const parsed = JSON.parse(content);
-    if (
-      typeof parsed === "object" &&
-      parsed != null &&
-      typeof parsed.status === "string" &&
-      typeof parsed.completedAt === "string"
-    ) {
-      return { status: parsed.status, completedAt: parsed.completedAt };
-    }
-    return null;
+    const content = await fs.readFile(join(stateDir, "last-success.json"));
+    const trimmed = String(content).trim();
+    if (trimmed.length === 0) return null;
+    return trimmed;
   } catch {
     return null;
   }

@@ -16,8 +16,8 @@ interface FakeFsState {
   signalExists: boolean;
   /** Simulate lockfile: null = no lockfile, string = lockfile content */
   lockContent: string | null;
-  /** Simulate last-run.json: null = no file, string = JSON content */
-  lastRunContent: string | null;
+  /** Simulate last-success.json: null = no file, string = ISO timestamp */
+  lastSuccessAt: string | null;
 }
 
 function createTrigger(): SyncTrigger {
@@ -53,7 +53,7 @@ function createFakeFs(state?: Partial<FakeFsState>, opts?: {
     mkdirCalls: 0,
     signalExists: true,
     lockContent: null,
-    lastRunContent: null,
+    lastSuccessAt: null,
     ...state,
   };
 
@@ -100,13 +100,13 @@ function createFakeFs(state?: Partial<FakeFsState>, opts?: {
         }
         return fakeState.lockContent;
       }
-      if (path.endsWith("last-run.json")) {
-        if (fakeState.lastRunContent === null) {
+      if (path.endsWith("last-success.json")) {
+        if (fakeState.lastSuccessAt === null) {
           const err = new Error("ENOENT") as NodeJS.ErrnoException;
           err.code = "ENOENT";
           throw err;
         }
-        return fakeState.lastRunContent;
+        return fakeState.lastSuccessAt;
       }
       throw new Error("readFile: unexpected path " + path);
     }),
@@ -781,11 +781,6 @@ describe("run log writing", () => {
 // ---------------------------------------------------------------------------
 
 describe("cooldown", () => {
-  /** Build a minimal last-run.json payload */
-  function makeLastRun(status: string, completedAt: string): string {
-    return JSON.stringify({ status, completedAt });
-  }
-
   it("skips sync when last successful run is within cooldown window", async () => {
     const NOW = Date.parse("2026-03-10T12:05:00.000Z");
     const LAST_SUCCESS = "2026-03-10T12:03:00.000Z"; // 2 min ago
@@ -793,7 +788,7 @@ describe("cooldown", () => {
     const fake = createFakeFs({
       lockContent: null,
       signalSize: 1,
-      lastRunContent: makeLastRun("success", LAST_SUCCESS),
+      lastSuccessAt: LAST_SUCCESS,
     });
     const executeSyncFn = vi.fn(async () => ({}));
 
@@ -820,7 +815,7 @@ describe("cooldown", () => {
     const fake = createFakeFs({
       lockContent: null,
       signalSize: 0,
-      lastRunContent: makeLastRun("success", LAST_SUCCESS),
+      lastSuccessAt: LAST_SUCCESS,
     });
     const executeSyncFn = vi.fn(async () => ({}));
 
@@ -839,35 +834,11 @@ describe("cooldown", () => {
     expect(result.cooldownRemainingMs).toBeUndefined();
   });
 
-  it("does not count error runs for cooldown — sync runs after a recent error", async () => {
-    const NOW = Date.parse("2026-03-10T12:05:00.000Z");
-    const LAST_ERROR = "2026-03-10T12:04:00.000Z"; // 1 min ago, but error
-
+  it("runs sync when no last-success.json exists (first run ever)", async () => {
     const fake = createFakeFs({
       lockContent: null,
       signalSize: 0,
-      lastRunContent: makeLastRun("error", LAST_ERROR),
-    });
-    const executeSyncFn = vi.fn(async () => ({}));
-
-    const result = await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      fs: fake.fs,
-      process: createFakeProcess(),
-      now: () => NOW,
-      cooldownMs: 300_000,
-    });
-
-    expect(executeSyncFn).toHaveBeenCalledTimes(1);
-    expect(result.skippedSync).toBe(false);
-  });
-
-  it("runs sync when no last-run.json exists (first run ever)", async () => {
-    const fake = createFakeFs({
-      lockContent: null,
-      signalSize: 0,
-      lastRunContent: null, // no file
+      lastSuccessAt: null, // no file
     });
     const executeSyncFn = vi.fn(async () => ({}));
 
@@ -883,11 +854,11 @@ describe("cooldown", () => {
     expect(result.skippedSync).toBe(false);
   });
 
-  it("runs sync when last-run.json is corrupted", async () => {
+  it("runs sync when last-success.json is corrupted", async () => {
     const fake = createFakeFs({
       lockContent: null,
       signalSize: 0,
-      lastRunContent: "not valid json {{{",
+      lastSuccessAt: "not a valid ISO date {{{",
     });
     const executeSyncFn = vi.fn(async () => ({}));
 
@@ -910,7 +881,7 @@ describe("cooldown", () => {
     const fake = createFakeFs({
       lockContent: null,
       signalSize: 0,
-      lastRunContent: makeLastRun("success", LAST_SUCCESS),
+      lastSuccessAt: LAST_SUCCESS,
     });
     const executeSyncFn = vi.fn(async () => ({}));
 
@@ -934,7 +905,7 @@ describe("cooldown", () => {
     const fake = createFakeFs({
       lockContent: null,
       signalSize: 5,
-      lastRunContent: makeLastRun("success", LAST_SUCCESS),
+      lastSuccessAt: LAST_SUCCESS,
     });
     const executeSyncFn = vi.fn(async () => ({}));
 
@@ -963,7 +934,7 @@ describe("cooldown", () => {
     const fake = createFakeFs({
       lockContent: null,
       signalSize: 1,
-      lastRunContent: makeLastRun("success", LAST_SUCCESS),
+      lastSuccessAt: LAST_SUCCESS,
     });
     const executeSyncFn = vi.fn(async () => ({}));
 
@@ -984,30 +955,6 @@ describe("cooldown", () => {
     expect(log!.coordination.skippedReason).toBe("cooldown");
   });
 
-  it("does not count skipped runs for cooldown", async () => {
-    const NOW = Date.parse("2026-03-10T12:05:00.000Z");
-    const LAST_SKIPPED = "2026-03-10T12:04:00.000Z"; // 1 min ago, but skipped
-
-    const fake = createFakeFs({
-      lockContent: null,
-      signalSize: 0,
-      lastRunContent: makeLastRun("skipped", LAST_SKIPPED),
-    });
-    const executeSyncFn = vi.fn(async () => ({}));
-
-    const result = await coordinatedSync(createTrigger(), {
-      stateDir: "/tmp/pew",
-      executeSyncFn,
-      fs: fake.fs,
-      process: createFakeProcess(),
-      now: () => NOW,
-      cooldownMs: 300_000,
-    });
-
-    expect(executeSyncFn).toHaveBeenCalledTimes(1);
-    expect(result.skippedSync).toBe(false);
-  });
-
   it("does not apply cooldown when cooldownMs is not set (defaults to no cooldown)", async () => {
     const NOW = Date.parse("2026-03-10T12:05:00.000Z");
     const LAST_SUCCESS = "2026-03-10T12:04:59.000Z"; // 1 second ago
@@ -1015,7 +962,7 @@ describe("cooldown", () => {
     const fake = createFakeFs({
       lockContent: null,
       signalSize: 0,
-      lastRunContent: makeLastRun("success", LAST_SUCCESS),
+      lastSuccessAt: LAST_SUCCESS,
     });
     const executeSyncFn = vi.fn(async () => ({}));
 
@@ -1030,5 +977,62 @@ describe("cooldown", () => {
 
     expect(executeSyncFn).toHaveBeenCalledTimes(1);
     expect(result.skippedSync).toBe(false);
+  });
+
+  it("successful run writes last-success.json for future cooldown checks", async () => {
+    const NOW = Date.parse("2026-03-10T12:05:00.000Z");
+
+    const fake = createFakeFs({
+      lockContent: null,
+      signalSize: 0,
+      lastSuccessAt: null,
+    });
+    const executeSyncFn = vi.fn(async () => ({}));
+
+    await coordinatedSync(createTrigger(), {
+      stateDir: "/tmp/pew",
+      executeSyncFn,
+      fs: fake.fs,
+      process: createFakeProcess(),
+      now: () => NOW,
+      cooldownMs: 300_000,
+    });
+
+    // Verify last-success.json was written
+    const writeCalls = (fake.fs.writeFile as ReturnType<typeof vi.fn>).mock.calls as [string, string, unknown?][];
+    const successWrites = writeCalls.filter(([path]) => path.endsWith("last-success.json"));
+    expect(successWrites).toHaveLength(1);
+    // Content should be an ISO timestamp
+    const content = successWrites[0][1];
+    expect(new Date(content).getTime()).toBe(NOW);
+  });
+
+  it("skipped run does NOT overwrite last-success.json", async () => {
+    const NOW = Date.parse("2026-03-10T12:05:00.000Z");
+    const LAST_SUCCESS = "2026-03-10T12:03:00.000Z";
+
+    const fake = createFakeFs({
+      lockContent: null,
+      signalSize: 1,
+      lastSuccessAt: LAST_SUCCESS,
+    });
+    const executeSyncFn = vi.fn(async () => ({}));
+
+    await coordinatedSync(createTrigger(), {
+      stateDir: "/tmp/pew",
+      executeSyncFn,
+      fs: fake.fs,
+      process: createFakeProcess(),
+      now: () => NOW,
+      cooldownMs: 300_000,
+    });
+
+    // Should be cooldown-skipped
+    expect(executeSyncFn).not.toHaveBeenCalled();
+
+    // Verify last-success.json was NOT written
+    const writeCalls = (fake.fs.writeFile as ReturnType<typeof vi.fn>).mock.calls as [string, string, unknown?][];
+    const successWrites = writeCalls.filter(([path]) => path.endsWith("last-success.json"));
+    expect(successWrites).toHaveLength(0);
   });
 });
