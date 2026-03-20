@@ -431,6 +431,8 @@ export interface RunLogEntry {
     skippedSync: boolean;
     /** Reason for skipping sync (e.g. "cooldown", "waiter-dedup") */
     skippedReason?: string;
+    /** Remaining cooldown time in ms (present when skippedReason is "cooldown") */
+    cooldownRemainingMs?: number;
     hadFollowUp: boolean;
     followUpCount: number;
     degradedToUnlocked: boolean;
@@ -468,6 +470,8 @@ export interface CoordinatorRunResult {
   skippedSync: boolean;
   /** Reason for skipping sync (e.g. "cooldown", "waiter-dedup") */
   skippedReason?: string;
+  /** Remaining cooldown time in ms (present when skippedReason is "cooldown") */
+  cooldownRemainingMs?: number;
   /** Whether the coordinator degraded to unlocked mode (lock API unavailable) */
   degradedToUnlocked: boolean;
   /** Sync cycle results (one per execution, multiple if follow-ups occurred) */

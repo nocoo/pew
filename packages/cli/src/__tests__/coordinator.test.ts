@@ -809,6 +809,7 @@ describe("cooldown", () => {
     expect(executeSyncFn).not.toHaveBeenCalled();
     expect(result.skippedSync).toBe(true);
     expect(result.skippedReason).toBe("cooldown");
+    expect(result.cooldownRemainingMs).toBe(180_000); // 5min - 2min = 3min
     expect(result.cycles).toHaveLength(0);
   });
 
@@ -835,6 +836,7 @@ describe("cooldown", () => {
     expect(executeSyncFn).toHaveBeenCalledTimes(1);
     expect(result.skippedSync).toBe(false);
     expect(result.skippedReason).toBeUndefined();
+    expect(result.cooldownRemainingMs).toBeUndefined();
   });
 
   it("does not count error runs for cooldown — sync runs after a recent error", async () => {

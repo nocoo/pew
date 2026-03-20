@@ -209,13 +209,14 @@ async function runCoordinator(
     // --- We hold the lock — check cooldown before running sync ---
     const cooldownMs = opts.cooldownMs;
     if (cooldownMs != null && cooldownMs > 0) {
-      const shouldSkip = await checkCooldown(opts.stateDir, fs, now, cooldownMs);
-      if (shouldSkip) {
+      const remainingMs = await checkCooldown(opts.stateDir, fs, now, cooldownMs);
+      if (remainingMs > 0) {
         return {
           ...baseResult,
           waitedForLock,
           skippedSync: true,
           skippedReason: "cooldown",
+          cooldownRemainingMs: remainingMs,
         };
       }
     }
@@ -343,6 +344,9 @@ async function writeRunLog(
         ...(result.skippedReason != null
           ? { skippedReason: result.skippedReason }
           : {}),
+        ...(result.cooldownRemainingMs != null
+          ? { cooldownRemainingMs: result.cooldownRemainingMs }
+          : {}),
         hadFollowUp: result.hadFollowUp,
         followUpCount: result.followUpCount,
         degradedToUnlocked: result.degradedToUnlocked,
@@ -368,7 +372,7 @@ async function writeRunLog(
 
 /**
  * Check if the last successful sync completed within the cooldown window.
- * Returns true if sync should be skipped.
+ * Returns the remaining cooldown time in ms, or 0 if cooldown is not active.
  *
  * Only successful runs count — error/skipped/partial runs do NOT reset the
  * cooldown timer, ensuring a failed sync doesn't block a retry.
@@ -378,17 +382,18 @@ async function checkCooldown(
   fs: FsOps,
   now: () => number,
   cooldownMs: number,
-): Promise<boolean> {
+): Promise<number> {
   const lastRun = await readLastRun(stateDir, fs);
-  if (lastRun == null) return false;
+  if (lastRun == null) return 0;
 
-  if (lastRun.status !== "success") return false;
+  if (lastRun.status !== "success") return 0;
 
   const completedAtMs = new Date(lastRun.completedAt).getTime();
-  if (Number.isNaN(completedAtMs)) return false;
+  if (Number.isNaN(completedAtMs)) return 0;
 
   const elapsed = now() - completedAtMs;
-  return elapsed < cooldownMs;
+  const remaining = cooldownMs - elapsed;
+  return remaining > 0 ? remaining : 0;
 }
 
 /**
