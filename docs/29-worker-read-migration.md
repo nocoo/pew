@@ -9,14 +9,15 @@
 | # | Commit | Description | Status |
 |---|--------|-------------|--------|
 | 1 | `docs: add worker read migration plan` | This document | ✅ done |
-| 2 | | Phase 1: extract `DbReader` interface + adapter | |
-| 3 | | Phase 1: migrate all route files to `DbReader` | |
-| 4 | | Phase 2: implement pew read Worker | |
-| 5 | | Phase 2: Worker tests (≥ 95% coverage) | |
-| 6 | | Phase 3: add `WorkerDbReader` adapter + dev switching | |
-| 7 | | Phase 3: E2E validation against dev Worker | |
-| 8 | | Phase 4: delete D1 REST client + env vars | |
-| 9 | | docs: retrospective | |
+| 2 | | Phase 1: define `DbRead` / `DbWrite` interfaces + `RestDbRead` adapter | |
+| 3 | | Phase 1: migrate read-only files to `getDbRead()` | |
+| 4 | | Phase 1: migrate mixed read+write files to `getDbRead()` + `getDbWrite()` | |
+| 5 | | Phase 2: implement pew read Worker | |
+| 6 | | Phase 2: Worker tests (≥ 95% coverage) | |
+| 7 | | Phase 3: add `WorkerDbRead` adapter + dev switching | |
+| 8 | | Phase 3: E2E validation against dev Worker | |
+| 9 | | Phase 4: delete `RestDbRead` + REST-only env vars | |
+| 10 | | docs: retrospective | |
 
 ## Problem
 
@@ -40,15 +41,30 @@ Next.js (Railway) ──POST /query──→ api.cloudflare.com ──→ D1
 | 3 env vars just for reads (`CF_ACCOUNT_ID`, `CF_D1_DATABASE_ID`, `CF_D1_API_TOKEN`) | Config sprawl |
 | Write path already uses Worker binding | Architectural inconsistency |
 
-### Current Read Surface
+### Current D1 Surface (Audited)
 
-**27 API route files** + **1 SSR page** + **5 lib modules** call `getD1Client()`.
-~63 call sites total. All SQL is constructed in the Next.js layer and sent
-verbatim to `api.cloudflare.com/client/v4/accounts/{id}/d1/database/{id}/query`.
+**38 production files** with **59 `getD1Client()` call sites** (excluding tests and `d1.ts` itself):
+
+| Category | Files | Read-Only | Read+Write |
+|----------|-------|-----------|------------|
+| API routes — dashboard/usage | 4 | 4 | 0 |
+| API routes — public (leaderboard, profile, pricing, seasons) | 7 | 5 | 2 |
+| API routes — auth/settings | 5 | 1 | 4 |
+| API routes — teams | 5 | 0 | 5 |
+| API routes — admin | 7 | 3 | 4 |
+| API routes — other (devices, budgets, projects) | 6 | 1 | 5 |
+| Lib modules (auth, auth-adapter, auth-helpers, invite, admin, season-roster) | 6 | 2 | 4 |
+| SSR page (`/u/[slug]`) | 1 | 1 | 0 |
+| **Total** | **38** (excl. d1.ts, tests) | **17** | **22** |
+
+**Key insight**: 22 of 38 files do both reads AND writes (`query` + `execute`/`batch`).
+A single "DbReader" abstraction that throws on writes would break these at runtime.
 
 ## Solution
 
-Deploy a second Worker (**`pew`**) for reads. Writes stay on `pew-ingest`.
+Deploy a second Worker (**`pew`**) for reads. Writes stay on `pew-ingest`
+(for CLI ingest) and on the **D1 REST API** (for web CRUD) until a future
+migration moves all writes to Workers.
 
 ```
 Next.js (Railway) ──POST /query──→ pew Worker (Cloudflare)
@@ -129,21 +145,31 @@ stays well within free tier.
 
 ## Phases
 
-### Phase 1 — Extract `DbReader` Abstraction
+### Phase 1 — Extract Read/Write Abstractions
 
-> Goal: decouple all route files from `D1Client` without changing runtime behavior.
+> Goal: introduce explicit `DbRead` / `DbWrite` interfaces so that
+> read and write paths are decoupled at the type level. No runtime
+> behavior change — both back onto `D1Client` via REST.
 
-#### 1.1 Define `DbReader` Interface
+#### 1.1 Define Interfaces
 
-Create `packages/web/src/lib/db-reader.ts`:
+Create `packages/web/src/lib/db.ts`:
 
 ```typescript
+// ---------------------------------------------------------------------------
+// Result types
+// ---------------------------------------------------------------------------
+
 export interface DbQueryResult<T = Record<string, unknown>> {
   results: T[];
   meta: { changes: number; duration: number };
 }
 
-export interface DbReader {
+// ---------------------------------------------------------------------------
+// Read interface — safe to swap out for Worker adapter
+// ---------------------------------------------------------------------------
+
+export interface DbRead {
   query<T = Record<string, unknown>>(
     sql: string,
     params?: unknown[],
@@ -153,7 +179,13 @@ export interface DbReader {
     sql: string,
     params?: unknown[],
   ): Promise<T | null>;
+}
 
+// ---------------------------------------------------------------------------
+// Write interface — stays on REST API until future Worker migration
+// ---------------------------------------------------------------------------
+
+export interface DbWrite {
   execute(
     sql: string,
     params?: unknown[],
@@ -161,83 +193,141 @@ export interface DbReader {
 
   batch(
     statements: Array<{ sql: string; params?: unknown[] }>,
-  ): Promise<void>;
+  ): Promise<Array<{ changes: number; duration: number }>>;
 }
 ```
 
-#### 1.2 Implement `RestDbReader`
+**Design rationale**:
 
-Wrap the existing `D1Client` behind the `DbReader` interface:
+- `DbRead` has only `query` and `firstOrNull` — no writes.
+- `DbWrite` has only `execute` and `batch` — no reads.
+- `batch` returns `Promise<Array<…>>` to match the actual `D1Client.batch()`
+  return type (`D1QueryResult[]`), not `Promise<void>`.
+- No combined "DbReader" that includes write methods — this was the
+  previous design's core flaw.
+
+#### 1.2 Implement REST Adapters
 
 ```typescript
-// packages/web/src/lib/db-reader-rest.ts
+// packages/web/src/lib/db-rest.ts
 import { getD1Client } from "./d1";
-import type { DbReader } from "./db-reader";
+import type { DbRead, DbWrite } from "./db";
 
-export function createRestDbReader(): DbReader {
+export function createRestDbRead(): DbRead {
   const client = getD1Client();
   return {
-    query: (sql, params) => client.query(sql, params ?? []),
-    firstOrNull: (sql, params) => client.firstOrNull(sql, params ?? []),
-    execute: (sql, params) => client.execute(sql, params ?? []),
-    batch: (stmts) => client.batch(stmts),
+    query: <T>(sql: string, params?: unknown[]) =>
+      client.query<T>(sql, params ?? []),
+    firstOrNull: <T>(sql: string, params?: unknown[]) =>
+      client.firstOrNull<T>(sql, params ?? []),
+  };
+}
+
+export function createRestDbWrite(): DbWrite {
+  const client = getD1Client();
+  return {
+    execute: (sql: string, params?: unknown[]) =>
+      client.execute(sql, params ?? []),
+    batch: (stmts: Array<{ sql: string; params?: unknown[] }>) =>
+      client.batch(stmts),
   };
 }
 ```
 
-#### 1.3 Provide Singleton via `getDbReader()`
+#### 1.3 Provide Singletons
 
 ```typescript
-// packages/web/src/lib/db-reader.ts (extended)
+// packages/web/src/lib/db.ts (extended)
 
-let _reader: DbReader | undefined;
+let _read: DbRead | undefined;
+let _write: DbWrite | undefined;
 
-export function getDbReader(): DbReader {
-  if (!_reader) {
+export function getDbRead(): DbRead {
+  if (!_read) {
     // Phase 1: REST adapter. Phase 3: swap to Worker adapter.
-    const { createRestDbReader } = require("./db-reader-rest");
-    _reader = createRestDbReader();
+    const { createRestDbRead } = require("./db-rest");
+    _read = createRestDbRead();
   }
-  return _reader;
+  return _read;
+}
+
+export function getDbWrite(): DbWrite {
+  if (!_write) {
+    // Stays on REST API. Future: migrate to pew-ingest Worker.
+    const { createRestDbWrite } = require("./db-rest");
+    _write = createRestDbWrite();
+  }
+  return _write;
 }
 ```
 
-#### 1.4 Migrate All Call Sites
+#### 1.4 Migrate Call Sites
 
-Replace every `getD1Client()` call with `getDbReader()`:
+**Two migration patterns** depending on file type:
+
+**Pattern A — Read-only files** (17 files):
 
 ```diff
 - import { getD1Client } from "@/lib/d1";
-+ import { getDbReader } from "@/lib/db-reader";
++ import { getDbRead } from "@/lib/db";
 
 - const client = getD1Client();
 - const result = await client.query<Row>(sql, params);
-+ const db = getDbReader();
++ const db = getDbRead();
 + const result = await db.query<Row>(sql, params);
 ```
 
-**Files to migrate** (~33 files, ~63 call sites):
+**Pattern B — Mixed read+write files** (22 files):
 
-| Category | Files | Call Sites |
-|----------|-------|------------|
-| API routes — dashboard/usage | 4 | ~8 |
-| API routes — public (leaderboard, profile, pricing, seasons) | 6 | ~10 |
-| API routes — auth/settings | 5 | ~10 |
-| API routes — teams | 5 | ~10 |
-| API routes — admin | 7 | ~15 |
-| Lib modules (auth, auth-adapter, auth-helpers, invite, admin, season-roster) | 6 | ~8 |
-| SSR page (`/u/[slug]`) | 1 | ~2 |
+```diff
+- import { getD1Client } from "@/lib/d1";
++ import { getDbRead, getDbWrite } from "@/lib/db";
+
+  export async function PUT(request: Request) {
+-   const client = getD1Client();
++   const dbRead = getDbRead();
++   const dbWrite = getDbWrite();
+
+    // reads use dbRead
+-   const existing = await client.firstOrNull<Row>(selectSql, [id]);
++   const existing = await dbRead.firstOrNull<Row>(selectSql, [id]);
+
+    // writes use dbWrite
+-   await client.execute(updateSql, [name, id]);
++   await dbWrite.execute(updateSql, [name, id]);
+  }
+```
+
+**Migration inventory** (38 files, 59 call sites):
+
+| Pattern | Category | Files |
+|---------|----------|-------|
+| A (read-only) | Dashboard/usage routes | `usage/route.ts`, `usage/by-device/route.ts`, `sessions/route.ts`, `projects/timeline/route.ts` |
+| A (read-only) | Public routes | `leaderboard/route.ts`, `users/[slug]/route.ts`, `pricing/route.ts`, `seasons/route.ts`, `seasons/[id]/leaderboard/route.ts` |
+| A (read-only) | Admin read-only | `admin/check/route.ts`, `admin/storage/route.ts`, `admin/seasons/[id]/sync-rosters/route.ts` |
+| A (read-only) | Auth verify | `auth/verify-invite/route.ts` |
+| A (read-only) | Health | `live/route.ts` |
+| A (read-only) | Lib read-only | `auth-helpers.ts`, `admin.ts` |
+| A (read-only) | SSR | `u/[slug]/page.tsx` |
+| B (mixed) | Auth/settings | `auth.ts`, `auth-adapter.ts`, `invite.ts`, `settings/route.ts`, `auth/cli/route.ts` |
+| B (mixed) | Teams | all 5 team route files |
+| B (mixed) | Admin write | `admin/invites/route.ts`, `admin/pricing/route.ts`, `admin/seasons/route.ts`, `admin/seasons/[id]/route.ts`, `admin/seasons/[id]/snapshot/route.ts`, `admin/settings/route.ts` |
+| B (mixed) | Projects | `projects/route.ts`, `projects/[id]/route.ts` |
+| B (mixed) | Other | `devices/route.ts`, `budgets/route.ts`, `seasons/[id]/register/route.ts` |
+| B (mixed) | Lib | `season-roster.ts` |
 
 #### 1.5 Tests
 
-- Existing tests should continue to pass (no behavior change).
-- Add unit test for `RestDbReader` adapter.
-- Verify `getDbReader()` returns singleton.
+- All existing tests must pass (zero behavior change).
+- Add unit tests for `createRestDbRead()` and `createRestDbWrite()` adapters.
+- Verify `getDbRead()` and `getDbWrite()` return singletons.
 
 #### 1.6 Deliverable
 
-At the end of Phase 1, the codebase compiles and all tests pass.
-`getD1Client()` is only called inside `db-reader-rest.ts` — nowhere else.
+At the end of Phase 1:
+- `getD1Client()` is only called inside `db-rest.ts` — nowhere else.
+- Every route file uses `getDbRead()` for SELECT, `getDbWrite()` for INSERT/UPDATE/DELETE.
+- The type system enforces the split — you can't accidentally call `.execute()` on a `DbRead`.
 
 ---
 
@@ -368,92 +458,84 @@ curl https://pew.<account>.workers.dev/live
 
 ### Phase 3 — Switch Next.js to Worker Reader
 
-> Goal: swap `getDbReader()` from REST to Worker, validate in dev.
+> Goal: swap `getDbRead()` from REST to Worker, validate in dev.
+> `getDbWrite()` stays on REST API unchanged.
 
-#### 3.1 Implement `WorkerDbReader`
+#### 3.1 Implement `WorkerDbRead`
 
 ```typescript
-// packages/web/src/lib/db-reader-worker.ts
-import type { DbReader, DbQueryResult } from "./db-reader";
+// packages/web/src/lib/db-worker.ts
+import type { DbRead, DbQueryResult } from "./db";
 
-export function createWorkerDbReader(): DbReader {
-  const url = process.env.WORKER_READ_URL;    // e.g. https://pew.<id>.workers.dev
+export function createWorkerDbRead(): DbRead {
+  const url = process.env.WORKER_READ_URL;
   const secret = process.env.WORKER_READ_SECRET;
 
   if (!url || !secret) {
     throw new Error("WORKER_READ_URL and WORKER_READ_SECRET are required");
   }
 
-  async function query<T>(sql: string, params?: unknown[]): Promise<DbQueryResult<T>> {
-    const res = await fetch(`${url}/query`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${secret}`,
-      },
-      body: JSON.stringify({ sql, params: params ?? [] }),
-    });
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error((body as { error?: string }).error ?? `Worker returned ${res.status}`);
-    }
-
-    return res.json() as Promise<DbQueryResult<T>>;
-  }
-
   return {
-    query,
-    firstOrNull: async (sql, params) => {
-      const result = await query(sql, params);
-      return (result.results[0] as T | undefined) ?? null;
+    async query<T>(sql: string, params?: unknown[]): Promise<DbQueryResult<T>> {
+      const res = await fetch(`${url}/query`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${secret}`,
+        },
+        body: JSON.stringify({ sql, params: params ?? [] }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(
+          (body as { error?: string }).error ?? `Worker returned ${res.status}`
+        );
+      }
+
+      return res.json() as Promise<DbQueryResult<T>>;
     },
-    execute: async (sql, params) => {
-      // Writes still go through pew-ingest or D1 REST (Phase 4 cleanup)
-      throw new Error("WorkerDbReader is read-only; writes should use pew-ingest");
-    },
-    batch: async () => {
-      throw new Error("WorkerDbReader is read-only; batch writes should use pew-ingest");
+
+    async firstOrNull<T>(sql: string, params?: unknown[]): Promise<T | null> {
+      const result = await this.query<T>(sql, params);
+      return result.results[0] ?? null;
     },
   };
 }
 ```
 
-#### 3.2 Switch `getDbReader()` Factory
+**Note**: `WorkerDbRead` implements only `DbRead` (2 methods). It has no
+`execute` or `batch` — those are on `DbWrite` which stays on REST.
+No runtime throws needed.
+
+#### 3.2 Switch `getDbRead()` Factory
 
 ```typescript
-export function getDbReader(): DbReader {
-  if (!_reader) {
+// packages/web/src/lib/db.ts (updated)
+
+export function getDbRead(): DbRead {
+  if (!_read) {
     if (process.env.WORKER_READ_URL) {
-      const { createWorkerDbReader } = require("./db-reader-worker");
-      _reader = createWorkerDbReader();
+      const { createWorkerDbRead } = require("./db-worker");
+      _read = createWorkerDbRead();
     } else {
-      const { createRestDbReader } = require("./db-reader-rest");
-      _reader = createRestDbReader();
+      const { createRestDbRead } = require("./db-rest");
+      _read = createRestDbRead();
     }
   }
-  return _reader;
+  return _read;
 }
+
+// getDbWrite() is unchanged — always REST
 ```
 
 **Switching logic**: if `WORKER_READ_URL` is set → Worker; otherwise → REST fallback.
 This allows gradual rollout and instant rollback by removing the env var.
 
-#### 3.3 Handle Remaining Write Calls
+**`getDbWrite()` is unaffected** — it always uses `RestDbWrite` (D1 REST API).
+Write path migration to Workers is out of scope for this doc.
 
-Audit shows a few `getD1Client()` call sites that do `execute()` (writes):
-- `auth.ts` — invite code consumption
-- `auth-adapter.ts` — user CRUD for NextAuth
-- Various admin routes — season CRUD, settings, etc.
-
-These write paths can't go through the read-only Worker.
-Options (in migration order):
-
-1. **Phase 3**: keep a separate `getD1WriteClient()` for writes
-   using the existing REST API — only ~5 files need it.
-2. **Future**: migrate these writes to `pew-ingest` Worker with new endpoints.
-
-#### 3.4 Dev Testing Checklist
+#### 3.3 Dev Testing Checklist
 
 ```bash
 # 1. Deploy worker-read to Cloudflare
@@ -469,21 +551,23 @@ bun run --filter '@pew/web' dev
 # 4. Verify every page
 ```
 
-| Page | Check |
-|------|-------|
-| Dashboard `/` | Usage chart loads |
-| By-device `/by-device` | Device breakdown loads |
-| Sessions `/sessions` | Session list loads |
-| Leaderboard `/leaderboard` | Public rankings load |
-| Season detail `/leaderboard/seasons/*` | Teams + countdown load |
-| User profile `/u/*` | SSR profile renders |
-| Admin `/admin/*` | All admin pages load |
-| Settings `/settings` | User settings load |
-| Teams `/teams/*` | Team pages load |
-| Login `/login` | Auth flow works |
-| CLI sync | `pew sync --dev` completes |
+| Page | Check | Has writes? |
+|------|-------|-------------|
+| Dashboard `/` | Usage chart loads | No |
+| By-device `/by-device` | Device breakdown loads | Yes (rename/delete) |
+| Sessions `/sessions` | Session list loads | No |
+| Leaderboard `/leaderboard` | Public rankings load | No |
+| Season detail `/leaderboard/seasons/*` | Teams + countdown load | No |
+| Season register `/leaderboard/seasons/*/register` | Register flow works | Yes (create team) |
+| User profile `/u/*` | SSR profile renders | No |
+| Admin `/admin/*` | All admin pages load + CRUD works | Yes |
+| Settings `/settings` | User settings load + save works | Yes |
+| Teams `/teams/*` | Team pages load + manage works | Yes |
+| Projects `/projects/*` | Project CRUD works | Yes |
+| Login `/login` | Auth flow works | Yes (user creation) |
+| CLI sync | `pew sync --dev` completes | Yes (via pew-ingest) |
 
-#### 3.5 Performance Comparison
+#### 3.4 Performance Comparison
 
 Expected improvement (per query):
 
@@ -498,26 +582,36 @@ Expected improvement (per query):
 
 ### Phase 4 — Cleanup
 
-> Goal: remove dead code and unused dependencies.
+> Goal: remove REST **read** adapter and related env vars.
+> REST **write** adapter (`RestDbWrite`) stays — it's still needed.
 
 #### 4.1 Delete
 
 | File | Reason |
 |------|--------|
-| `packages/web/src/lib/d1.ts` | Replaced by `db-reader-worker.ts` |
-| `packages/web/src/lib/db-reader-rest.ts` | No longer needed after Worker switch |
+| `packages/web/src/lib/db-rest.ts` → **`createRestDbRead()` only** | Replaced by `WorkerDbRead` |
+
+**Keep** (still needed for writes):
+- `packages/web/src/lib/d1.ts` — `D1Client` class, used by `RestDbWrite`
+- `packages/web/src/lib/db-rest.ts` → `createRestDbWrite()` — wraps `D1Client` for writes
+
+`db-rest.ts` can be renamed to `db-write-rest.ts` for clarity, with
+`createRestDbRead()` deleted from it.
 
 #### 4.2 Remove Env Vars
 
-Remove from Railway / `.env.local`:
+**Cannot remove yet** — all 3 CF env vars are still needed by `RestDbWrite`:
 
-| Var | Reason |
-|-----|--------|
-| `CF_ACCOUNT_ID` | Only used by D1 REST client |
-| `CF_D1_API_TOKEN` | Only used by D1 REST client |
-| `CF_D1_DATABASE_ID` | Only used by D1 REST client |
+| Var | Still needed? | Reason |
+|-----|---------------|--------|
+| `CF_ACCOUNT_ID` | ✅ Yes | `D1Client` constructor (used by writes) |
+| `CF_D1_API_TOKEN` | ✅ Yes | `D1Client` constructor (used by writes) |
+| `CF_D1_DATABASE_ID` | ✅ Yes | `D1Client` constructor (used by writes) |
 
-Keep (new):
+These env vars can only be removed when writes are also migrated to a Worker
+(future scope, not part of this doc).
+
+**Add** (new):
 
 | Var | Purpose |
 |-----|---------|
@@ -540,35 +634,38 @@ Keep (new):
                     │         (pew-db)              │
                     └──────┬───────────┬────────────┘
                            │           │
-                    Native D1     Native D1
-                    Binding       Binding
+                    Native D1     D1 REST API  ◄── writes only (future: migrate)
+                    Binding       POST /query
                            │           │
-                    ┌──────┴──┐  ┌─────┴──────────┐
-                    │ Worker  │  │    Worker       │
-                    │ pew-    │  │    pew          │
-                    │ ingest  │  │                 │
-                    │         │  │  POST /query    │
-                    │ WRITES  │  │  GET  /live     │
-                    │         │  │                 │
-                    │ POST    │  │  READS ONLY     │
-                    │ /ingest │  │  (rejects       │
-                    │ /tokens │  │   INSERT/UPDATE │
-                    │ /ingest │  │   /DELETE/DROP) │
-                    │ /sessions  │                 │
-                    └────┬────┘  └────────┬────────┘
-                    Bearer            Bearer
-                    WORKER_           WORKER_READ_
-                    SECRET            SECRET
-                         │                 │
-                    ┌────┴─────────────────┴────┐
-                    │    Next.js (Railway)       │
-                    │                            │
-                    │  DbReader interface        │
-                    │    → WorkerDbReader        │
-                    │                            │
-                    │  writes → pew-ingest       │
-                    │  reads  → pew              │
-                    └────────────┬───────────────┘
+                    ┌──────┴──┐        │
+                    │ Workers │        │
+                    │         │        │
+                    │ pew     │        │
+                    │ (read)  │        │
+                    │ POST    │        │
+                    │ /query  │        │
+                    │         │        │
+                    │ pew-    │        │
+                    │ ingest  │        │
+                    │ (write) │        │
+                    │ POST    │        │
+                    │ /ingest │        │
+                    └────┬────┘        │
+                    Bearer         Bearer CF_D1_API_TOKEN
+                    secrets            │
+                         │             │
+                    ┌────┴─────────────┴───────────┐
+                    │    Next.js (Railway)          │
+                    │                               │
+                    │  DbRead interface             │
+                    │    → WorkerDbRead (via pew)   │
+                    │                               │
+                    │  DbWrite interface            │
+                    │    → RestDbWrite (via REST)   │
+                    │                               │
+                    │  token/session ingest          │
+                    │    → pew-ingest Worker         │
+                    └────────────┬──────────────────┘
                                  │
                             Bearer pk_*
                                  │
@@ -581,9 +678,9 @@ Keep (new):
 
 At any phase, rollback is trivial:
 
-- **Phase 1**: revert `getDbReader()` → `getD1Client()` (find-replace)
-- **Phase 3**: unset `WORKER_READ_URL` → auto-falls back to REST adapter
-- **Phase 4**: if REST code is already deleted, redeploy previous commit
+- **Phase 1**: revert `getDbRead()`/`getDbWrite()` → `getD1Client()` (find-replace)
+- **Phase 3**: unset `WORKER_READ_URL` → auto-falls back to `RestDbRead`
+- **Phase 4**: if `RestDbRead` is already deleted, redeploy previous commit
 
 The `WORKER_READ_URL` env var acts as the feature flag: present = Worker,
 absent = REST fallback.
@@ -597,3 +694,11 @@ absent = REST fallback.
 | Worker downtime | `/live` health check; fallback to REST by removing env var |
 | Complex queries timing out | D1 Worker CPU limit is 10ms; current queries are simple aggregations well within limit |
 | Write leak through read Worker | Regex guard rejects `INSERT`/`UPDATE`/`DELETE`/`DROP`/`ALTER`/`CREATE`/`PRAGMA` |
+
+## Future Work (Out of Scope)
+
+- **Migrate writes to Worker**: move `DbWrite` from D1 REST API to `pew-ingest`
+  or a new `pew-write` Worker. Only then can `CF_ACCOUNT_ID`, `CF_D1_API_TOKEN`,
+  `CF_D1_DATABASE_ID` be removed.
+- **Edge caching**: add Cloudflare Cache API in the read Worker for
+  frequently-accessed queries (leaderboard, public profiles).
