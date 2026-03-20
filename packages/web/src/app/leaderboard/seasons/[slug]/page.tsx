@@ -9,7 +9,6 @@ import {
   ChevronRight,
   Zap,
   Camera,
-  Calendar,
 } from "lucide-react";
 import { cn, formatTokensFull } from "@/lib/utils";
 import { formatDuration } from "@/lib/date-helpers";
@@ -20,8 +19,8 @@ import {
   useSeasonLeaderboard,
   type SeasonTeamEntry,
 } from "@/hooks/use-season-leaderboard";
-import { formatSeasonDate } from "@/lib/seasons";
 import { CheckRuling } from "@/components/leaderboard/check-ruling";
+import { SeasonCountdown } from "@/components/leaderboard/season-countdown";
 import { RankBadge } from "@/components/leaderboard/rank-badge";
 import { StatusBadge } from "@/components/leaderboard/status-badge";
 import { LeaderboardSkeleton } from "@/components/leaderboard/leaderboard-skeleton";
@@ -286,10 +285,11 @@ export default function SeasonLeaderboardPage() {
                   Live
                 </span>
               ) : null}
-              <span className="text-sm text-muted-foreground inline-flex items-center gap-1">
-                <Calendar className="h-3.5 w-3.5" />
-                {formatSeasonDate(data.season.start_date)} &mdash; {formatSeasonDate(data.season.end_date)}
-              </span>
+              <SeasonCountdown
+                status={data.season.status}
+                startDate={data.season.start_date}
+                endDate={data.season.end_date}
+              />
             </div>
           </>
         ) : isLoading ? (
