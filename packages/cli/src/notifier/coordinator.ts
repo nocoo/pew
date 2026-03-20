@@ -1,27 +1,60 @@
-import { open, stat, appendFile, writeFile, mkdir } from "node:fs/promises";
+import {
+  stat,
+  appendFile,
+  writeFile,
+  readFile,
+  unlink,
+  mkdir,
+} from "node:fs/promises";
 import { join } from "node:path";
-import type { CoordinatorRunResult, RunLogEntry, SyncCycleResult, SyncTrigger } from "@pew/core";
+import type {
+  CoordinatorRunResult,
+  RunLogEntry,
+  SyncCycleResult,
+  SyncTrigger,
+} from "@pew/core";
+import {
+  acquireLock,
+  releaseLock,
+  waitForLock,
+  type LockFsOps,
+  type ProcessOps,
+} from "./lockfile.js";
 
-interface LockHandle {
-  lock?(mode?: string, options?: { nonBlocking?: boolean }): Promise<void>;
-  close(): Promise<void>;
-}
+// ---------------------------------------------------------------------------
+// Fs abstraction (signal + run log operations)
+// ---------------------------------------------------------------------------
 
-interface FsOps {
-  open: (path: string, flags: string) => Promise<LockHandle>;
+export interface FsOps {
   stat: (path: string) => Promise<{ size: number }>;
   appendFile: (path: string, data: string) => Promise<unknown>;
-  writeFile: (path: string, data: string) => Promise<unknown>;
+  writeFile: (
+    path: string,
+    data: string,
+    options?: { flag?: string },
+  ) => Promise<unknown>;
+  readFile: (path: string) => Promise<string>;
+  unlink: (path: string) => Promise<unknown>;
   mkdir: (path: string, options: { recursive: boolean }) => Promise<unknown>;
 }
 
 const defaultFs: FsOps = {
-  open: open as unknown as FsOps["open"],
   stat: stat as unknown as FsOps["stat"],
   appendFile: appendFile as unknown as FsOps["appendFile"],
   writeFile: writeFile as unknown as FsOps["writeFile"],
+  readFile: readFile as unknown as FsOps["readFile"],
+  unlink: unlink as unknown as FsOps["unlink"],
   mkdir: mkdir as unknown as FsOps["mkdir"],
 };
+
+const defaultProcess: ProcessOps = {
+  pid: process.pid,
+  kill: (pid: number, signal: number) => process.kill(pid, signal),
+};
+
+// ---------------------------------------------------------------------------
+// Options
+// ---------------------------------------------------------------------------
 
 export interface CoordinatorOptions {
   stateDir: string;
@@ -29,6 +62,7 @@ export interface CoordinatorOptions {
   version?: string;
   now?: () => number;
   fs?: FsOps;
+  process?: ProcessOps;
   maxFollowUps?: number;
   lockTimeoutMs?: number;
 }
@@ -36,11 +70,16 @@ export interface CoordinatorOptions {
 const DEFAULT_MAX_FOLLOW_UPS = 3;
 const DEFAULT_LOCK_TIMEOUT_MS = 60_000;
 
+// ---------------------------------------------------------------------------
+// Main entry point
+// ---------------------------------------------------------------------------
+
 export async function coordinatedSync(
   trigger: SyncTrigger,
   opts: CoordinatorOptions,
 ): Promise<CoordinatorRunResult> {
   const fs = opts.fs ?? defaultFs;
+  const proc = opts.process ?? defaultProcess;
   const now = opts.now ?? Date.now;
   const startTime = now();
   const maxFollowUps = opts.maxFollowUps ?? DEFAULT_MAX_FOLLOW_UPS;
@@ -61,83 +100,98 @@ export async function coordinatedSync(
 
   let result: CoordinatorRunResult;
   try {
-    result = await runCoordinator(trigger, opts, fs, now, maxFollowUps, lockTimeoutMs, baseResult);
+    result = await runCoordinator(
+      trigger,
+      opts,
+      fs,
+      proc,
+      now,
+      maxFollowUps,
+      lockTimeoutMs,
+      baseResult,
+    );
   } catch (err) {
     result = { ...baseResult, error: toErrorMessage(err) };
   }
-  await writeRunLog(result, startTime, now, opts.version ?? "unknown", opts.stateDir, fs);
+  await writeRunLog(
+    result,
+    startTime,
+    now,
+    opts.version ?? "unknown",
+    opts.stateDir,
+    fs,
+  );
   return result;
 }
 
-/* eslint-disable no-useless-assignment -- `closeHandled`/`acquiredLock` are read in `finally` block */
+// ---------------------------------------------------------------------------
+// Lock acquisition + coordination loop
+// ---------------------------------------------------------------------------
+
 async function runCoordinator(
   trigger: SyncTrigger,
   opts: CoordinatorOptions,
   fs: FsOps,
+  proc: ProcessOps,
   now: () => number,
   maxFollowUps: number,
   lockTimeoutMs: number,
   baseResult: CoordinatorRunResult,
 ): Promise<CoordinatorRunResult> {
   const lockPath = join(opts.stateDir, "sync.lock");
-  let handle: LockHandle | null = null;
-  let closeHandled = false;
+  const lockFs: LockFsOps = {
+    writeFile: async (path, data, options) => {
+      await fs.writeFile(path, data, options);
+    },
+    readFile: (path) => fs.readFile(path),
+    unlink: async (path) => {
+      await fs.unlink(path);
+    },
+  };
+
   let acquiredLock = false;
   let waitedForLock = false;
 
   try {
-    handle = await fs.open(lockPath, "a+");
-    if (typeof handle.lock !== "function") {
-      await handle.close().catch(() => {});
-      closeHandled = true;
-      return runUnlocked(baseResult, trigger, opts.executeSyncFn);
-    }
-    await handle.lock("exclusive", { nonBlocking: true });
-    acquiredLock = true;
-  } catch (error) {
-    if (!handle) {
-      return runUnlocked(baseResult, trigger, opts.executeSyncFn);
-    }
+    // --- Try immediate (non-blocking) lock acquisition ---
+    acquiredLock = await acquireLock(lockPath, { fs: lockFs, process: proc });
 
-    const lockHandle = handle;
-    if (isWouldBlockError(error)) {
+    if (!acquiredLock) {
+      // Lock held by another process → append signal + poll wait
       waitedForLock = true;
       await appendSignal(opts.stateDir, fs);
-      try {
-        if (typeof lockHandle.lock !== "function") {
-          throw new Error("lock unsupported", { cause: error });
-        }
-        await withTimeout(lockHandle.lock("exclusive"), lockTimeoutMs);
-      } catch {
-        await lockHandle.close();
-        closeHandled = true;
+
+      const waitResult = await waitForLock(lockPath, {
+        fs: lockFs,
+        process: proc,
+        timeoutMs: lockTimeoutMs,
+      });
+
+      if (!waitResult.acquired) {
+        // Fail-closed: could not acquire lock → skip sync, report error
         return {
           ...baseResult,
           waitedForLock: true,
           skippedSync: true,
-          error: "lock timeout",
+          error: waitResult.error ?? "lock timeout",
         };
       }
 
       acquiredLock = true;
+
+      // --- Waiter dedup: check if the previous holder's follow-up
+      //     already consumed our signal ---
       const signalSize = await readSignalSize(opts.stateDir, fs);
       if (signalSize === 0) {
-        await lockHandle.close();
-        closeHandled = true;
         return {
           ...baseResult,
           waitedForLock: true,
           skippedSync: true,
         };
       }
-    } else {
-      await lockHandle.close().catch(() => {});
-      closeHandled = true;
-      return runUnlocked(baseResult, trigger, opts.executeSyncFn);
     }
-  }
 
-  try {
+    // --- We hold the lock — run sync cycles ---
     const lockedResult = await runLockedCycles({
       stateDir: opts.stateDir,
       fs,
@@ -152,12 +206,15 @@ async function runCoordinator(
       waitedForLock,
     };
   } finally {
-    if (acquiredLock && handle && !closeHandled) {
-      await handle.close().catch(() => {});
+    if (acquiredLock) {
+      await releaseLock(lockPath, { fs: lockFs, process: proc });
     }
   }
 }
-/* eslint-enable no-useless-assignment */
+
+// ---------------------------------------------------------------------------
+// Locked cycle loop (unchanged semantics from original coordinator)
+// ---------------------------------------------------------------------------
 
 async function runLockedCycles({
   stateDir,
@@ -171,7 +228,12 @@ async function runLockedCycles({
   executeSyncFn: (triggers: SyncTrigger[]) => Promise<SyncCycleResult>;
   trigger: SyncTrigger;
   maxFollowUps: number;
-}): Promise<Pick<CoordinatorRunResult, "hadFollowUp" | "followUpCount" | "skippedSync" | "cycles" | "error">> {
+}): Promise<
+  Pick<
+    CoordinatorRunResult,
+    "hadFollowUp" | "followUpCount" | "skippedSync" | "cycles" | "error"
+  >
+> {
   let hadFollowUp = false;
   let error: string | undefined;
   let followUps = 0;
@@ -195,30 +257,18 @@ async function runLockedCycles({
     followUps += 1;
   }
 
-  return { hadFollowUp, followUpCount: followUps, skippedSync: false, cycles, error };
+  return {
+    hadFollowUp,
+    followUpCount: followUps,
+    skippedSync: false,
+    cycles,
+    error,
+  };
 }
 
-async function runUnlocked(
-  baseResult: CoordinatorRunResult,
-  trigger: SyncTrigger,
-  executeSyncFn: (triggers: SyncTrigger[]) => Promise<SyncCycleResult>,
-): Promise<CoordinatorRunResult> {
-  try {
-    const cycleResult = await executeSyncFn([trigger]);
-    return {
-      ...baseResult,
-      degradedToUnlocked: true,
-      cycles: [cycleResult],
-    };
-  } catch (err) {
-    return {
-      ...baseResult,
-      degradedToUnlocked: true,
-      cycles: [{}],
-      error: toErrorMessage(err),
-    };
-  }
-}
+// ---------------------------------------------------------------------------
+// Status derivation + run log (unchanged from original)
+// ---------------------------------------------------------------------------
 
 function deriveStatus(result: CoordinatorRunResult): RunLogEntry["status"] {
   if (result.skippedSync) return "skipped";
@@ -227,9 +277,10 @@ function deriveStatus(result: CoordinatorRunResult): RunLogEntry["status"] {
   if (result.error != null && result.cycles.length === 0) return "error";
   if (result.cycles.length === 0) return "skipped";
 
-  const hasError = result.cycles.some(
-    (c) => c.tokenSyncError != null || c.sessionSyncError != null,
-  ) || result.error != null;
+  const hasError =
+    result.cycles.some(
+      (c) => c.tokenSyncError != null || c.sessionSyncError != null,
+    ) || result.error != null;
 
   const hasSuccess = result.cycles.some(
     (c) => c.tokenSync != null || c.sessionSync != null,
@@ -279,6 +330,10 @@ async function writeRunLog(
   }
 }
 
+// ---------------------------------------------------------------------------
+// Signal file helpers (unchanged from original)
+// ---------------------------------------------------------------------------
+
 async function readSignalSize(stateDir: string, fs: FsOps): Promise<number> {
   try {
     const file = await fs.stat(join(stateDir, "notify.signal"));
@@ -299,30 +354,10 @@ async function truncateSignal(stateDir: string, fs: FsOps): Promise<void> {
   await fs.writeFile(join(stateDir, "notify.signal"), "");
 }
 
-function isWouldBlockError(error: unknown): boolean {
-  const code = (error as NodeJS.ErrnoException | undefined)?.code;
-  return code === "EAGAIN" || code === "EWOULDBLOCK";
-}
+// ---------------------------------------------------------------------------
+// Utilities
+// ---------------------------------------------------------------------------
 
 function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error("lock timeout"));
-    }, timeoutMs);
-
-    promise.then(
-      (value) => {
-        clearTimeout(timer);
-        resolve(value);
-      },
-      (error) => {
-        clearTimeout(timer);
-        reject(error);
-      },
-    );
-  });
 }
