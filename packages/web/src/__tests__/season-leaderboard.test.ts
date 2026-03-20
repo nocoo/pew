@@ -4,8 +4,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock("@/lib/d1", () => ({
-  getD1Client: vi.fn(),
+vi.mock("@/lib/db", () => ({
+  getDbRead: vi.fn(),
+  getDbWrite: vi.fn(),
+  resetDb: vi.fn(),
 }));
 
 vi.mock("@/auth", () => ({
@@ -13,7 +15,7 @@ vi.mock("@/auth", () => ({
 }));
 
 import { GET } from "@/app/api/seasons/[seasonId]/leaderboard/route";
-import * as d1Module from "@/lib/d1";
+import * as dbModule from "@/lib/db";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -76,8 +78,8 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockClient = createMockClient();
-    vi.mocked(d1Module.getD1Client).mockReturnValue(
-      mockClient as unknown as d1Module.D1Client
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(
+      mockClient as any
     );
   });
 
@@ -437,8 +439,8 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
 
       vi.clearAllMocks();
       mockClient = createMockClient();
-      vi.mocked(d1Module.getD1Client).mockReturnValue(
-        mockClient as unknown as d1Module.D1Client
+      vi.mocked(dbModule.getDbRead).mockResolvedValue(
+        mockClient as any
       );
 
       // Slug lookup — same mock data

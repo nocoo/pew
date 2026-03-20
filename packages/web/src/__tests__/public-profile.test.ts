@@ -1,16 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "@/app/api/users/[slug]/route";
 import { generateMetadata } from "@/app/u/[slug]/page";
-import * as d1Module from "@/lib/d1";
+import * as dbModule from "@/lib/db";
 
-// Mock D1
-vi.mock("@/lib/d1", async (importOriginal) => {
-  const original = await importOriginal<typeof d1Module>();
-  return {
-    ...original,
-    getD1Client: vi.fn(),
-  };
-});
+// Mock DB
+vi.mock("@/lib/db", () => ({
+  getDbRead: vi.fn(),
+  getDbWrite: vi.fn(),
+  resetDb: vi.fn(),
+}));
 
 function createMockClient() {
   return {
@@ -41,8 +39,8 @@ describe("GET /api/users/[slug]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockClient = createMockClient();
-    vi.mocked(d1Module.getD1Client).mockReturnValue(
-      mockClient as unknown as d1Module.D1Client,
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(
+      mockClient as any,
     );
   });
 
@@ -323,8 +321,8 @@ describe("generateMetadata for /u/[slug]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockClient = createMockClient();
-    vi.mocked(d1Module.getD1Client).mockReturnValue(
-      mockClient as unknown as d1Module.D1Client,
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(
+      mockClient as any,
     );
   });
 

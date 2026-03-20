@@ -4,8 +4,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock("@/lib/d1", () => ({
-  getD1Client: vi.fn(),
+vi.mock("@/lib/db", () => ({
+  getDbRead: vi.fn(),
+  getDbWrite: vi.fn(),
+  resetDb: vi.fn(),
 }));
 
 vi.mock("@/auth", () => ({
@@ -13,7 +15,7 @@ vi.mock("@/auth", () => ({
 }));
 
 import { POST } from "@/app/api/auth/verify-invite/route";
-import * as d1Module from "@/lib/d1";
+import * as dbModule from "@/lib/db";
 
 const { shouldUseSecureCookies } = (await import("@/auth")) as unknown as {
   shouldUseSecureCookies: ReturnType<typeof vi.fn>;
@@ -51,8 +53,8 @@ describe("POST /api/auth/verify-invite", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockClient = createMockClient();
-    vi.mocked(d1Module.getD1Client).mockReturnValue(
-      mockClient as unknown as d1Module.D1Client
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(
+      mockClient as any
     );
   });
 

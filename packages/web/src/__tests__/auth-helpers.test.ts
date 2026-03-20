@@ -6,16 +6,18 @@ vi.mock("@/auth", () => ({
   auth: vi.fn(),
 }));
 
-// Mock @/lib/d1 — must be before importing auth-helpers
-vi.mock("@/lib/d1", () => ({
-  getD1Client: vi.fn(),
+// Mock @/lib/db — must be before importing auth-helpers
+vi.mock("@/lib/db", () => ({
+  getDbRead: vi.fn(),
+  getDbWrite: vi.fn(),
+  resetDb: vi.fn(),
 }));
 
 const { auth } = await import("@/auth") as unknown as {
   auth: ReturnType<typeof vi.fn>;
 };
-const { getD1Client } = await import("@/lib/d1") as unknown as {
-  getD1Client: ReturnType<typeof vi.fn>;
+const { getDbRead } = await import("@/lib/db") as unknown as {
+  getDbRead: ReturnType<typeof vi.fn>;
 };
 const {
   resolveUser,
@@ -78,7 +80,7 @@ describe("resolveUser", () => {
       });
       // Should NOT call auth() or D1
       expect(auth).not.toHaveBeenCalled();
-      expect(getD1Client).not.toHaveBeenCalled();
+      expect(getDbRead).not.toHaveBeenCalled();
     });
 
     it("should NOT bypass when E2E_SKIP_AUTH is false", async () => {
@@ -118,7 +120,7 @@ describe("resolveUser", () => {
         userId: "u-session-1",
         email: "user@example.com",
       });
-      expect(getD1Client).not.toHaveBeenCalled();
+      expect(getDbRead).not.toHaveBeenCalled();
     });
 
     it("should handle session user with no email", async () => {
@@ -153,7 +155,7 @@ describe("resolveUser", () => {
         id: "u-api-key-1",
         email: "api@example.com",
       });
-      getD1Client.mockReturnValueOnce(mockClient);
+      getDbRead.mockResolvedValueOnce(mockClient);
 
       const result = await resolveUser(makeRequest("pk_valid_key"));
 
@@ -177,7 +179,7 @@ describe("resolveUser", () => {
         id: "u-api-1",
         email: "apiuser@example.com",
       });
-      getD1Client.mockReturnValueOnce(mockClient);
+      getDbRead.mockResolvedValueOnce(mockClient);
 
       const result = await resolveUser(makeRequest("pk_test_key_123"));
 
@@ -194,7 +196,7 @@ describe("resolveUser", () => {
     it("should return null for invalid API key (no DB match)", async () => {
       const mockClient = createMockClient();
       mockClient.firstOrNull.mockResolvedValueOnce(null);
-      getD1Client.mockReturnValueOnce(mockClient);
+      getDbRead.mockResolvedValueOnce(mockClient);
 
       const result = await resolveUser(makeRequest("pk_bad_key"));
 
@@ -205,7 +207,7 @@ describe("resolveUser", () => {
       const result = await resolveUser(makeRequest());
 
       expect(result).toBeNull();
-      expect(getD1Client).not.toHaveBeenCalled();
+      expect(getDbRead).not.toHaveBeenCalled();
     });
 
     it("should return null when Authorization header is not Bearer", async () => {
@@ -216,7 +218,7 @@ describe("resolveUser", () => {
       const result = await resolveUser(req);
 
       expect(result).toBeNull();
-      expect(getD1Client).not.toHaveBeenCalled();
+      expect(getDbRead).not.toHaveBeenCalled();
     });
   });
 
@@ -235,7 +237,7 @@ describe("resolveUser", () => {
         email: "session@example.com",
       });
       // Should NOT even check D1 for the API key
-      expect(getD1Client).not.toHaveBeenCalled();
+      expect(getDbRead).not.toHaveBeenCalled();
     });
   });
 });
