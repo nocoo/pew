@@ -43,7 +43,7 @@ Next.js (Railway) ──POST /query──→ api.cloudflare.com ──→ D1
 
 ### Current D1 Surface (Audited)
 
-**38 production files** with **59 `getD1Client()` call sites** (excluding tests and `d1.ts` itself):
+**37 production files** with **58 `getD1Client()` call sites** (excluding tests and `d1.ts` itself):
 
 | Category | Files | Read-Only | Read+Write |
 |----------|-------|-----------|------------|
@@ -52,12 +52,17 @@ Next.js (Railway) ──POST /query──→ api.cloudflare.com ──→ D1
 | API routes — auth/settings | 5 | 1 | 4 |
 | API routes — teams | 5 | 0 | 5 |
 | API routes — admin | 7 | 3 | 4 |
-| API routes — other (devices, budgets, projects) | 6 | 1 | 5 |
-| Lib modules (auth, auth-adapter, auth-helpers, invite, admin, season-roster) | 6 | 2 | 4 |
+| API routes — other (devices, budgets, projects) | 5 | 1 | 4 |
+| Lib modules (auth, auth-adapter, auth-helpers, invite, admin) | 5 | 2 | 3 |
 | SSR page (`/u/[slug]`) | 1 | 1 | 0 |
-| **Total** | **38** (excl. d1.ts, tests) | **17** | **22** |
+| **Total** | **37** (excl. d1.ts, tests) | **17** | **20** |
 
-**Key insight**: 22 of 38 files do both reads AND writes (`query` + `execute`/`batch`).
+**Note**: `season-roster.ts` is excluded — it receives a `D1Client` parameter
+from callers, it does not call `getD1Client()` itself. It will be migrated
+separately when its callers (`admin/seasons/[id]/sync-rosters/route.ts`) are
+updated to pass `DbRead`/`DbWrite` instead.
+
+**Key insight**: 20 of 37 files do both reads AND writes (`query` + `execute`/`batch`).
 A single "DbReader" abstraction that throws on writes would break these at runtime.
 
 ## Solution
@@ -193,7 +198,7 @@ export interface DbWrite {
 
   batch(
     statements: Array<{ sql: string; params?: unknown[] }>,
-  ): Promise<Array<{ changes: number; duration: number }>>;
+  ): Promise<DbQueryResult[]>;
 }
 ```
 
@@ -201,8 +206,8 @@ export interface DbWrite {
 
 - `DbRead` has only `query` and `firstOrNull` — no writes.
 - `DbWrite` has only `execute` and `batch` — no reads.
-- `batch` returns `Promise<Array<…>>` to match the actual `D1Client.batch()`
-  return type (`D1QueryResult[]`), not `Promise<void>`.
+- `batch` returns `Promise<DbQueryResult[]>` to match `D1Client.batch()`
+  exactly — each statement produces `{ results, meta }`.
 - No combined "DbReader" that includes write methods — this was the
   previous design's core flaw.
 
@@ -242,24 +247,34 @@ export function createRestDbWrite(): DbWrite {
 let _read: DbRead | undefined;
 let _write: DbWrite | undefined;
 
-export function getDbRead(): DbRead {
+export async function getDbRead(): Promise<DbRead> {
   if (!_read) {
     // Phase 1: REST adapter. Phase 3: swap to Worker adapter.
-    const { createRestDbRead } = require("./db-rest");
+    const { createRestDbRead } = await import("./db-rest");
     _read = createRestDbRead();
   }
   return _read;
 }
 
-export function getDbWrite(): DbWrite {
+export async function getDbWrite(): Promise<DbWrite> {
   if (!_write) {
     // Stays on REST API. Future: migrate to pew-ingest Worker.
-    const { createRestDbWrite } = require("./db-rest");
+    const { createRestDbWrite } = await import("./db-rest");
     _write = createRestDbWrite();
   }
   return _write;
 }
 ```
+
+> **Why async?** The project uses ESM throughout (`packages/web/src` has zero
+> `require()` calls). Lazy `await import()` achieves the same deferred loading
+> as `require()` while staying consistent with the codebase's module style.
+> Callers already `await` the query results, so adding `await` to the factory
+> is a minimal diff:
+> ```diff
+> - const db = getDbRead();
+> + const db = await getDbRead();
+> ```
 
 #### 1.4 Migrate Call Sites
 
@@ -273,11 +288,11 @@ export function getDbWrite(): DbWrite {
 
 - const client = getD1Client();
 - const result = await client.query<Row>(sql, params);
-+ const db = getDbRead();
++ const db = await getDbRead();
 + const result = await db.query<Row>(sql, params);
 ```
 
-**Pattern B — Mixed read+write files** (22 files):
+**Pattern B — Mixed read+write files** (20 files):
 
 ```diff
 - import { getD1Client } from "@/lib/d1";
@@ -285,8 +300,8 @@ export function getDbWrite(): DbWrite {
 
   export async function PUT(request: Request) {
 -   const client = getD1Client();
-+   const dbRead = getDbRead();
-+   const dbWrite = getDbWrite();
++   const dbRead = await getDbRead();
++   const dbWrite = await getDbWrite();
 
     // reads use dbRead
 -   const existing = await client.firstOrNull<Row>(selectSql, [id]);
@@ -298,7 +313,7 @@ export function getDbWrite(): DbWrite {
   }
 ```
 
-**Migration inventory** (38 files, 59 call sites):
+**Migration inventory** (37 files, 58 call sites):
 
 | Pattern | Category | Files |
 |---------|----------|-------|
@@ -314,7 +329,11 @@ export function getDbWrite(): DbWrite {
 | B (mixed) | Admin write | `admin/invites/route.ts`, `admin/pricing/route.ts`, `admin/seasons/route.ts`, `admin/seasons/[id]/route.ts`, `admin/seasons/[id]/snapshot/route.ts`, `admin/settings/route.ts` |
 | B (mixed) | Projects | `projects/route.ts`, `projects/[id]/route.ts` |
 | B (mixed) | Other | `devices/route.ts`, `budgets/route.ts`, `seasons/[id]/register/route.ts` |
-| B (mixed) | Lib | `season-roster.ts` |
+
+**Special case — `season-roster.ts`**: does not call `getD1Client()` directly;
+receives `D1Client` as a parameter. Migrate its callers to pass `DbRead`/`DbWrite`
+instead, then update the function signature. Handle in the same commit as its
+caller (`admin/seasons/[id]/sync-rosters/route.ts`).
 
 #### 1.5 Tests
 
@@ -325,7 +344,7 @@ export function getDbWrite(): DbWrite {
 #### 1.6 Deliverable
 
 At the end of Phase 1:
-- `getD1Client()` is only called inside `db-rest.ts` — nowhere else.
+- `getD1Client()` is only called inside `db-rest.ts` (and transitively by `season-roster.ts` callers) — nowhere else.
 - Every route file uses `getDbRead()` for SELECT, `getDbWrite()` for INSERT/UPDATE/DELETE.
 - The type system enforces the split — you can't accidentally call `.execute()` on a `DbRead`.
 
@@ -513,13 +532,13 @@ No runtime throws needed.
 ```typescript
 // packages/web/src/lib/db.ts (updated)
 
-export function getDbRead(): DbRead {
+export async function getDbRead(): Promise<DbRead> {
   if (!_read) {
     if (process.env.WORKER_READ_URL) {
-      const { createWorkerDbRead } = require("./db-worker");
+      const { createWorkerDbRead } = await import("./db-worker");
       _read = createWorkerDbRead();
     } else {
-      const { createRestDbRead } = require("./db-rest");
+      const { createRestDbRead } = await import("./db-rest");
       _read = createRestDbRead();
     }
   }
