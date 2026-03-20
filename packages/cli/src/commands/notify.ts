@@ -1,3 +1,5 @@
+import { writeFile, unlink } from "node:fs/promises";
+import { join } from "node:path";
 import type { CoordinatorRunResult, Source, SyncCycleResult, SyncTrigger } from "@pew/core";
 import { executeSync, type SyncOptions } from "./sync.js";
 import {
@@ -79,6 +81,12 @@ export async function executeNotify(
       return cycle;
     });
 
+  const trigger: SyncTrigger = {
+    kind: "notify",
+    source: opts.source,
+    fileHint: opts.fileHint ?? null,
+  };
+
   const coordinatorOptions: CoordinatorOptions = {
     stateDir: opts.stateDir,
     executeSyncFn,
@@ -86,12 +94,64 @@ export async function executeNotify(
     cooldownMs: 300_000, // 5 minutes — skip sync if last success was recent
   };
 
-  return coordinatedSyncFn(
-    {
-      kind: "notify",
-      source: opts.source,
-      fileHint: opts.fileHint ?? null,
-    },
-    coordinatorOptions,
-  );
+  const result = await coordinatedSyncFn(trigger, coordinatorOptions);
+
+  // --- Trailing-edge guarantee ---
+  // When cooldown fires, pending signals are preserved but no future hook
+  // is guaranteed to consume them. Schedule a single trailing-edge sync
+  // after cooldown expires to ensure the last batch of data is uploaded.
+  if (
+    result.skippedReason === "cooldown" &&
+    result.cooldownRemainingMs != null &&
+    result.cooldownRemainingMs > 0
+  ) {
+    scheduleTrailingSync(
+      trigger,
+      coordinatorOptions,
+      result.cooldownRemainingMs,
+      coordinatedSyncFn,
+    );
+  }
+
+  return result;
+}
+
+/**
+ * Schedule a trailing-edge sync after cooldown expires.
+ *
+ * Uses an O_EXCL trailing.lock file to ensure only one process sleeps at a
+ * time. If another trailing sync is already scheduled, this is a no-op.
+ * The trailing sync runs fire-and-forget — errors are silently ignored.
+ */
+function scheduleTrailingSync(
+  trigger: SyncTrigger,
+  opts: CoordinatorOptions,
+  delayMs: number,
+  coordinatedSyncFn: typeof coordinatedSync,
+): void {
+  const trailingLockPath = join(opts.stateDir, "trailing.lock");
+
+  // Fire-and-forget: acquire trailing lock, sleep, sync, release
+  void (async () => {
+    try {
+      // O_EXCL: only one trailing sync at a time
+      await writeFile(trailingLockPath, String(process.pid), { flag: "wx" });
+    } catch {
+      // Another process already owns the trailing lock — nothing to do
+      return;
+    }
+
+    try {
+      await new Promise((r) => setTimeout(r, delayMs));
+      await coordinatedSyncFn(trigger, opts);
+    } catch {
+      // Trailing sync errors are non-fatal
+    } finally {
+      try {
+        await unlink(trailingLockPath);
+      } catch {
+        // Cleanup failure is non-fatal
+      }
+    }
+  })();
 }

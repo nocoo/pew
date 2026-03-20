@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import type { CoordinatorRunResult, SyncCycleResult, SyncTrigger } from "@pew/core";
 
 // Mock the real sync modules so the default executeSyncFn can be tested
@@ -355,5 +355,148 @@ describe("executeNotify", () => {
         codexSessionsDir: "/home/.codex/sessions",
       }),
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Trailing-edge guarantee
+//
+// Uses real timers with very short delays (10 ms) + vi.waitFor() to avoid
+// the interaction between fake timers and real filesystem I/O (writeFile
+// for trailing.lock uses libuv async I/O that doesn't play well with fake
+// timer flushing).
+// ---------------------------------------------------------------------------
+
+describe("trailing-edge cooldown sync", () => {
+  let tempDir: string;
+
+  beforeEach(async () => {
+    const { mkdtemp } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const { tmpdir } = await import("node:os");
+    tempDir = await mkdtemp(join(tmpdir(), "pew-notify-test-"));
+  });
+
+  afterEach(async () => {
+    const { rm } = await import("node:fs/promises");
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it("schedules trailing sync when cooldown fires", async () => {
+    let callCount = 0;
+    const coordinatedSyncFn = vi.fn(
+      async (_trigger: SyncTrigger, _opts: Record<string, unknown>): Promise<CoordinatorRunResult> => {
+        callCount++;
+        if (callCount === 1) {
+          // First call: cooldown skip
+          return makeResult({
+            skippedSync: true,
+            skippedReason: "cooldown",
+            cooldownRemainingMs: 10, // Very short delay for test speed
+          });
+        }
+        // Trailing call: normal run
+        return makeResult({ cycles: [{}] });
+      },
+    );
+
+    const result = await executeNotify({
+      source: "claude-code",
+      stateDir: tempDir,
+      executeSyncFn: vi.fn(async () => ({})),
+      coordinatedSyncFn,
+    });
+
+    // First call returns cooldown skip
+    expect(result.skippedSync).toBe(true);
+    expect(result.skippedReason).toBe("cooldown");
+    expect(coordinatedSyncFn).toHaveBeenCalledTimes(1);
+
+    // Wait for trailing sync to fire (real timer, short delay)
+    await vi.waitFor(() => {
+      expect(coordinatedSyncFn).toHaveBeenCalledTimes(2);
+    }, { timeout: 2_000 });
+  });
+
+  it("does not schedule trailing sync when cooldown does not fire", async () => {
+    const coordinatedSyncFn = vi.fn(
+      async (): Promise<CoordinatorRunResult> =>
+        makeResult({ cycles: [{}] }),
+    );
+
+    await executeNotify({
+      source: "claude-code",
+      stateDir: tempDir,
+      executeSyncFn: vi.fn(async () => ({})),
+      coordinatedSyncFn,
+    });
+
+    // Give it some time — no trailing sync should ever fire
+    await new Promise((r) => setTimeout(r, 50));
+    expect(coordinatedSyncFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not schedule trailing sync when cooldownRemainingMs is missing", async () => {
+    const coordinatedSyncFn = vi.fn(
+      async (): Promise<CoordinatorRunResult> =>
+        makeResult({
+          skippedSync: true,
+          skippedReason: "cooldown",
+          // cooldownRemainingMs NOT set
+        }),
+    );
+
+    await executeNotify({
+      source: "claude-code",
+      stateDir: tempDir,
+      executeSyncFn: vi.fn(async () => ({})),
+      coordinatedSyncFn,
+    });
+
+    await new Promise((r) => setTimeout(r, 50));
+    expect(coordinatedSyncFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("only one trailing process sleeps — second cooldown skip is a no-op", async () => {
+    let callCount = 0;
+    const coordinatedSyncFn = vi.fn(
+      async (): Promise<CoordinatorRunResult> => {
+        callCount++;
+        if (callCount <= 2) {
+          return makeResult({
+            skippedSync: true,
+            skippedReason: "cooldown",
+            cooldownRemainingMs: 10,
+          });
+        }
+        return makeResult({ cycles: [{}] });
+      },
+    );
+
+    // First notify — acquires trailing.lock
+    await executeNotify({
+      source: "claude-code",
+      stateDir: tempDir,
+      executeSyncFn: vi.fn(async () => ({})),
+      coordinatedSyncFn,
+    });
+
+    // Allow trailing.lock to be created before second call
+    await new Promise((r) => setTimeout(r, 5));
+
+    // Second notify — trailing.lock already exists, no-op
+    await executeNotify({
+      source: "claude-code",
+      stateDir: tempDir,
+      executeSyncFn: vi.fn(async () => ({})),
+      coordinatedSyncFn,
+    });
+
+    expect(coordinatedSyncFn).toHaveBeenCalledTimes(2); // 2 initial calls
+
+    // Wait for trailing sync — only one should fire
+    await vi.waitFor(() => {
+      expect(coordinatedSyncFn).toHaveBeenCalledTimes(3); // 2 initial + 1 trailing
+    }, { timeout: 2_000 });
   });
 });
