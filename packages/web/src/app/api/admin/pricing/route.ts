@@ -9,7 +9,7 @@
 
 import { NextResponse } from "next/server";
 import { resolveAdmin } from "@/lib/admin";
-import { getD1Client } from "@/lib/d1";
+import { getDbRead, getDbWrite } from "@/lib/db";
 import type { DbPricingRow } from "@/lib/pricing";
 
 // ---------------------------------------------------------------------------
@@ -22,10 +22,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const client = getD1Client();
+  const dbRead = await getDbRead();
 
   try {
-    const { results } = await client.query<DbPricingRow>(
+    const { results } = await dbRead.query<DbPricingRow>(
       "SELECT * FROM model_pricing ORDER BY model ASC, source ASC"
     );
     return NextResponse.json({ rows: results });
@@ -90,16 +90,17 @@ export async function POST(request: Request) {
     );
   }
 
-  const client = getD1Client();
+  const dbRead = await getDbRead();
+  const dbWrite = await getDbWrite();
 
   try {
-    await client.execute(
+    await dbWrite.execute(
       `INSERT INTO model_pricing (model, input, output, cached, source, note)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [model.trim(), input, output, cached ?? null, source ?? null, note ?? null]
     );
 
-    const row = await client.firstOrNull<DbPricingRow>(
+    const row = await dbRead.firstOrNull<DbPricingRow>(
       "SELECT * FROM model_pricing WHERE model = ? AND (source = ? OR (source IS NULL AND ? IS NULL))",
       [model.trim(), source ?? null, source ?? null]
     );
@@ -199,10 +200,11 @@ export async function PUT(request: Request) {
   sets.push("updated_at = datetime('now')");
   params.push(id);
 
-  const client = getD1Client();
+  const dbRead = await getDbRead();
+  const dbWrite = await getDbWrite();
 
   try {
-    const meta = await client.execute(
+    const meta = await dbWrite.execute(
       `UPDATE model_pricing SET ${sets.join(", ")} WHERE id = ?`,
       params
     );
@@ -211,7 +213,7 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Entry not found" }, { status: 404 });
     }
 
-    const row = await client.firstOrNull<DbPricingRow>(
+    const row = await dbRead.firstOrNull<DbPricingRow>(
       "SELECT * FROM model_pricing WHERE id = ?",
       [id]
     );
@@ -257,10 +259,10 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
 
-  const client = getD1Client();
+  const dbWrite = await getDbWrite();
 
   try {
-    const meta = await client.execute(
+    const meta = await dbWrite.execute(
       "DELETE FROM model_pricing WHERE id = ?",
       [id]
     );

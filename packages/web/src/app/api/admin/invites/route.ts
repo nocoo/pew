@@ -8,7 +8,7 @@
 
 import { NextResponse } from "next/server";
 import { resolveAdmin } from "@/lib/admin";
-import { getD1Client } from "@/lib/d1";
+import { getDbRead, getDbWrite } from "@/lib/db";
 import { generateInviteCode } from "@/lib/invite";
 
 // ---------------------------------------------------------------------------
@@ -36,10 +36,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const client = getD1Client();
+  const dbRead = await getDbRead();
 
   try {
-    const { results } = await client.query<InviteCodeRow>(
+    const { results } = await dbRead.query<InviteCodeRow>(
       `SELECT
          ic.id,
          ic.code,
@@ -100,7 +100,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const client = getD1Client();
+  const dbRead = await getDbRead();
+  const dbWrite = await getDbWrite();
   const codes: string[] = [];
 
   try {
@@ -118,7 +119,7 @@ export async function POST(request: Request) {
           );
         }
         // Check for collision
-        const existing = await client.firstOrNull<{ id: number }>(
+        const existing = await dbRead.firstOrNull<{ id: number }>(
           "SELECT id FROM invite_codes WHERE code = ?",
           [code]
         );
@@ -126,7 +127,7 @@ export async function POST(request: Request) {
         // eslint-disable-next-line no-constant-condition -- retry loop for unique code generation
       } while (true);
 
-      await client.execute(
+      await dbWrite.execute(
         `INSERT INTO invite_codes (code, created_by) VALUES (?, ?)`,
         [code, admin.userId]
       );
@@ -167,12 +168,13 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
 
-  const client = getD1Client();
+  const dbRead = await getDbRead();
+  const dbWrite = await getDbWrite();
 
   try {
     // Single atomic DELETE — only removes unused or burned (pending:*) codes.
     // Avoids TOCTOU race between a prior SELECT check and DELETE.
-    const meta = await client.execute(
+    const meta = await dbWrite.execute(
       "DELETE FROM invite_codes WHERE id = ? AND (used_by IS NULL OR used_by LIKE 'pending:%')",
       [id]
     );
@@ -182,7 +184,7 @@ export async function DELETE(request: Request) {
     }
 
     // changes=0: either the row doesn't exist, or it's fully consumed.
-    const row = await client.firstOrNull<{ used_by: string | null }>(
+    const row = await dbRead.firstOrNull<{ used_by: string | null }>(
       "SELECT used_by FROM invite_codes WHERE id = ?",
       [id]
     );

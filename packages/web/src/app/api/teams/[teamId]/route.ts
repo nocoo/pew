@@ -5,7 +5,8 @@
 
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
-import { getD1Client } from "@/lib/d1";
+
+import { getDbRead, getDbWrite } from "@/lib/db";
 import { deleteTeamLogoByUrl } from "@/lib/r2";
 import { syncSeasonRosters } from "@/lib/season-roster";
 
@@ -25,10 +26,10 @@ export async function GET(
   const { teamId } = await params;
 
   try {
-    const client = getD1Client();
+    const dbRead = await getDbRead();
 
     // Check membership
-    const membership = await client.firstOrNull<{ role: string }>(
+    const membership = await dbRead.firstOrNull<{ role: string }>(
       "SELECT role FROM team_members WHERE team_id = ? AND user_id = ?",
       [teamId, authResult.userId],
     );
@@ -38,7 +39,7 @@ export async function GET(
     }
 
     // Get team details
-    const team = await client.firstOrNull<{
+    const team = await dbRead.firstOrNull<{
       id: string;
       name: string;
       slug: string;
@@ -57,7 +58,7 @@ export async function GET(
     // Get members — try with nickname, fall back without
     let members: { results: { user_id: string; name: string | null; nickname: string | null; image: string | null; role: string; joined_at: string }[] };
     try {
-      members = await client.query<{
+      members = await dbRead.query<{
         user_id: string;
         name: string | null;
         nickname: string | null;
@@ -75,7 +76,7 @@ export async function GET(
     } catch (innerErr) {
       const innerMsg = innerErr instanceof Error ? innerErr.message : "";
       if (innerMsg.includes("no such column")) {
-        const fallback = await client.query<{
+        const fallback = await dbRead.query<{
           user_id: string;
           name: string | null;
           image: string | null;
@@ -100,7 +101,7 @@ export async function GET(
     // Fetch season registrations for this team (graceful if table missing)
     let registeredSeasonIds: string[] = [];
     try {
-      const regResult = await client.query<{ season_id: string }>(
+      const regResult = await dbRead.query<{ season_id: string }>(
         "SELECT season_id FROM season_teams WHERE team_id = ?",
         [teamId],
       );
@@ -170,10 +171,11 @@ export async function PATCH(
   }
 
   try {
-    const client = getD1Client();
+    const dbRead = await getDbRead();
 
     // Only the owner can rename
-    const membership = await client.firstOrNull<{ role: string }>(
+    const dbWrite = await getDbWrite();
+    const membership = await dbRead.firstOrNull<{ role: string }>(
       "SELECT role FROM team_members WHERE team_id = ? AND user_id = ?",
       [teamId, authResult.userId],
     );
@@ -185,7 +187,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Only the team owner can rename" }, { status: 403 });
     }
 
-    await client.execute("UPDATE teams SET name = ? WHERE id = ?", [name, teamId]);
+    await dbWrite.execute("UPDATE teams SET name = ? WHERE id = ?", [name, teamId]);
 
     return NextResponse.json({ ok: true, name });
   } catch (err) {
@@ -210,10 +212,11 @@ export async function DELETE(
   const { teamId } = await params;
 
   try {
-    const client = getD1Client();
+    const dbRead = await getDbRead();
+    const dbWrite = await getDbWrite();
 
     // Check membership
-    const membership = await client.firstOrNull<{ role: string }>(
+    const membership = await dbRead.firstOrNull<{ role: string }>(
       "SELECT role FROM team_members WHERE team_id = ? AND user_id = ?",
       [teamId, authResult.userId],
     );
@@ -223,7 +226,7 @@ export async function DELETE(
     }
 
     // Count remaining members
-    const countRow = await client.firstOrNull<{ cnt: number }>(
+    const countRow = await dbRead.firstOrNull<{ cnt: number }>(
       "SELECT COUNT(*) AS cnt FROM team_members WHERE team_id = ?",
       [teamId],
     );
@@ -237,14 +240,14 @@ export async function DELETE(
     }
 
     // Remove membership
-    await client.execute(
+    await dbWrite.execute(
       "DELETE FROM team_members WHERE team_id = ? AND user_id = ?",
       [teamId, authResult.userId],
     );
 
     // Sync season rosters if any active season allows roster changes
     try {
-      await syncSeasonRosters(client, teamId);
+      await syncSeasonRosters(dbRead, dbWrite, teamId);
     } catch (err) {
       console.error("Failed to sync season rosters after leave:", err);
     }
@@ -252,12 +255,12 @@ export async function DELETE(
     // If last member, delete the team and its logo
     if (memberCount <= 1) {
       // Read logo URL before deleting
-      const team = await client.firstOrNull<{ logo_url: string | null }>(
+      const team = await dbRead.firstOrNull<{ logo_url: string | null }>(
         "SELECT logo_url FROM teams WHERE id = ?",
         [teamId],
       );
 
-      await client.execute("DELETE FROM teams WHERE id = ?", [teamId]);
+      await dbWrite.execute("DELETE FROM teams WHERE id = ?", [teamId]);
 
       // Best-effort logo cleanup — don't fail the request if R2 is unavailable
       if (team?.logo_url) {

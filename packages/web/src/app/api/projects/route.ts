@@ -5,7 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
-import { getD1Client } from "@/lib/d1";
+import { getDbRead, getDbWrite } from "@/lib/db";
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -78,7 +78,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const userId = authResult.userId;
-  const client = getD1Client();
+  const dbRead = await getDbRead();
 
   // Parse optional date range — `from` alone is valid (defaults `to` to tomorrow)
   const url = new URL(request.url);
@@ -92,7 +92,7 @@ export async function GET(request: Request) {
 
   try {
     // Query 1: Project metadata (unchanged — always returns all projects)
-    const projectsResult = await client.query<ProjectRow>(
+    const projectsResult = await dbRead.query<ProjectRow>(
       `SELECT id, name, created_at
        FROM projects
        WHERE user_id = ?
@@ -105,7 +105,7 @@ export async function GET(request: Request) {
     // When absent: single LEFT JOIN (sr), no sr_all needed
     let aliasesResult;
     if (hasDateRange) {
-      aliasesResult = await client.query<AliasStatsRow>(
+      aliasesResult = await dbRead.query<AliasStatsRow>(
         `SELECT
            pa.project_id,
            pa.source,
@@ -133,7 +133,7 @@ export async function GET(request: Request) {
         [from, to, userId],
       );
     } else {
-      aliasesResult = await client.query<AliasStatsRow>(
+      aliasesResult = await dbRead.query<AliasStatsRow>(
         `SELECT
            pa.project_id,
            pa.source,
@@ -158,7 +158,7 @@ export async function GET(request: Request) {
     // Query 3: Unassigned refs (date conditions in WHERE — no LEFT JOIN to protect)
     let unassignedResult;
     if (hasDateRange) {
-      unassignedResult = await client.query<UnassignedRow>(
+      unassignedResult = await dbRead.query<UnassignedRow>(
         `SELECT
            sr.source,
            sr.project_ref,
@@ -183,7 +183,7 @@ export async function GET(request: Request) {
         [userId, from, to],
       );
     } else {
-      unassignedResult = await client.query<UnassignedRow>(
+      unassignedResult = await dbRead.query<UnassignedRow>(
         `SELECT
            sr.source,
            sr.project_ref,
@@ -209,7 +209,7 @@ export async function GET(request: Request) {
 
     // Assemble: group tags by project_id
     const tagsByProject = new Map<string, string[]>();
-    const tagsResult = await client.query<TagRow>(
+    const tagsResult = await dbRead.query<TagRow>(
       `SELECT project_id, tag
        FROM project_tags
        WHERE user_id = ?
@@ -379,7 +379,8 @@ export async function POST(request: Request) {
     }
   }
 
-  const client = getD1Client();
+  const dbRead = await getDbRead();
+  const dbWrite = await getDbWrite();
   const trimmedName = name.trim();
 
   // Check reserved names
@@ -396,7 +397,7 @@ export async function POST(request: Request) {
 
   try {
     // Check name uniqueness
-    const existing = await client.firstOrNull<{ id: string }>(
+    const existing = await dbRead.firstOrNull<{ id: string }>(
       "SELECT id FROM projects WHERE user_id = ? AND name = ?",
       [userId, trimmedName],
     );
@@ -410,7 +411,7 @@ export async function POST(request: Request) {
     // Validate aliases reference real session data
     const invalidAliases: AliasInput[] = [];
     for (const alias of deduped) {
-      const exists = await client.firstOrNull<{ "1": number }>(
+      const exists = await dbRead.firstOrNull<{ "1": number }>(
         `SELECT 1 FROM session_records
          WHERE user_id = ? AND source = ? AND project_ref = ?
          LIMIT 1`,
@@ -432,7 +433,7 @@ export async function POST(request: Request) {
 
     // Check aliases aren't already assigned to another project
     for (const alias of deduped) {
-      const taken = await client.firstOrNull<{ project_id: string }>(
+      const taken = await dbRead.firstOrNull<{ project_id: string }>(
         `SELECT project_id FROM project_aliases
          WHERE user_id = ? AND source = ? AND project_ref = ?`,
         [userId, alias.source, alias.project_ref],
@@ -452,7 +453,7 @@ export async function POST(request: Request) {
     // -----------------------------------------------------------------------
 
     const projectId = crypto.randomUUID();
-    await client.execute(
+    await dbWrite.execute(
       `INSERT INTO projects (id, user_id, name, created_at, updated_at)
        VALUES (?, ?, ?, datetime('now'), datetime('now'))`,
       [projectId, userId, trimmedName],
@@ -460,7 +461,7 @@ export async function POST(request: Request) {
 
     try {
       for (const alias of deduped) {
-        await client.execute(
+        await dbWrite.execute(
           `INSERT INTO project_aliases (user_id, project_id, source, project_ref, created_at)
            VALUES (?, ?, ?, ?, datetime('now'))`,
           [userId, projectId, alias.source, alias.project_ref],
@@ -469,11 +470,11 @@ export async function POST(request: Request) {
     } catch (aliasErr) {
       // Rollback: remove the project and any aliases that were inserted
       try {
-        await client.execute(
+        await dbWrite.execute(
           "DELETE FROM project_aliases WHERE project_id = ?",
           [projectId],
         );
-        await client.execute("DELETE FROM projects WHERE id = ?", [projectId]);
+        await dbWrite.execute("DELETE FROM projects WHERE id = ?", [projectId]);
       } catch (rollbackErr) {
         console.error("Rollback failed:", rollbackErr);
       }
@@ -487,7 +488,7 @@ export async function POST(request: Request) {
     let totalDuration = 0;
     const modelSet = new Set<string>();
     if (deduped.length > 0) {
-      const statsResult = await client.query<{
+      const statsResult = await dbRead.query<{
         session_count: number;
         last_active: string | null;
         total_messages: number;
@@ -523,7 +524,7 @@ export async function POST(request: Request) {
     }
 
     // Read back server-generated created_at instead of fabricating one
-    const created = await client.firstOrNull<{ created_at: string }>(
+    const created = await dbRead.firstOrNull<{ created_at: string }>(
       "SELECT created_at FROM projects WHERE id = ?",
       [projectId],
     );

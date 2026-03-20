@@ -11,7 +11,7 @@
 import { NextResponse } from "next/server";
 import sharp from "sharp";
 import { resolveUser } from "@/lib/auth-helpers";
-import { getD1Client } from "@/lib/d1";
+import { getDbRead, getDbWrite } from "@/lib/db";
 import { putTeamLogo, deleteTeamLogoByUrl } from "@/lib/r2";
 
 // ---------------------------------------------------------------------------
@@ -39,8 +39,9 @@ export async function POST(
   const { teamId } = await params;
 
   // Verify ownership
-  const client = getD1Client();
-  const membership = await client.firstOrNull<{ role: string }>(
+  const dbRead = await getDbRead();
+  const dbWrite = await getDbWrite();
+  const membership = await dbRead.firstOrNull<{ role: string }>(
     "SELECT role FROM team_members WHERE team_id = ? AND user_id = ?",
     [teamId, authResult.userId],
   );
@@ -124,13 +125,13 @@ export async function POST(
   // Persist new URL to DB — compensate by deleting the new R2 object on failure
   let oldLogoUrl: string | null;
   try {
-    const oldTeam = await client.firstOrNull<{ logo_url: string | null }>(
+    const oldTeam = await dbRead.firstOrNull<{ logo_url: string | null }>(
       "SELECT logo_url FROM teams WHERE id = ?",
       [teamId],
     );
     oldLogoUrl = oldTeam?.logo_url ?? null;
 
-    await client.execute("UPDATE teams SET logo_url = ? WHERE id = ?", [
+    await dbWrite.execute("UPDATE teams SET logo_url = ? WHERE id = ?", [
       newLogoUrl,
       teamId,
     ]);
@@ -177,8 +178,9 @@ export async function DELETE(
   const { teamId } = await params;
 
   // Verify ownership
-  const client = getD1Client();
-  const membership = await client.firstOrNull<{ role: string }>(
+  const dbRead = await getDbRead();
+  const dbWrite = await getDbWrite();
+  const membership = await dbRead.firstOrNull<{ role: string }>(
     "SELECT role FROM team_members WHERE team_id = ? AND user_id = ?",
     [teamId, authResult.userId],
   );
@@ -195,7 +197,7 @@ export async function DELETE(
   }
 
   // Read current logo URL before clearing
-  const team = await client.firstOrNull<{ logo_url: string | null }>(
+  const team = await dbRead.firstOrNull<{ logo_url: string | null }>(
     "SELECT logo_url FROM teams WHERE id = ?",
     [teamId],
   );
@@ -204,7 +206,7 @@ export async function DELETE(
   // If this fails, return 500 and leave R2 untouched (no dangling reference).
   // If R2 delete later fails, accept storage leak (user state is already correct).
   try {
-    await client.execute("UPDATE teams SET logo_url = NULL WHERE id = ?", [
+    await dbWrite.execute("UPDATE teams SET logo_url = NULL WHERE id = ?", [
       teamId,
     ]);
   } catch (err) {

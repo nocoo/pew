@@ -1,29 +1,35 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import * as d1Module from "@/lib/d1";
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock("@/lib/d1", async (importOriginal) => {
-  const original = await importOriginal<typeof d1Module>();
-  return { ...original, getD1Client: vi.fn() };
-});
+vi.mock("@/lib/db", () => ({
+  getDbRead: vi.fn(),
+  getDbWrite: vi.fn(),
+}));
 
 vi.mock("@/lib/admin", () => ({
   resolveAdmin: vi.fn(),
 }));
 
+import * as dbModule from "@/lib/db";
+
 const { resolveAdmin } = (await import("@/lib/admin")) as unknown as {
   resolveAdmin: ReturnType<typeof vi.fn>;
 };
 
-function createMockClient() {
+function createMockDbRead() {
   return {
     query: vi.fn(),
+    firstOrNull: vi.fn(),
+  };
+}
+
+function createMockDbWrite() {
+  return {
     execute: vi.fn(),
     batch: vi.fn(),
-    firstOrNull: vi.fn(),
   };
 }
 
@@ -46,14 +52,12 @@ function makePut(body?: unknown): Request {
 
 describe("GET /api/admin/settings", () => {
   let GET: (req: Request) => Promise<Response>;
-  let mockClient: ReturnType<typeof createMockClient>;
+  let mockDbRead: ReturnType<typeof createMockDbRead>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    mockClient = createMockClient();
-    vi.mocked(d1Module.getD1Client).mockReturnValue(
-      mockClient as unknown as d1Module.D1Client,
-    );
+    mockDbRead = createMockDbRead();
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDbRead as never);
     const mod = await import("@/app/api/admin/settings/route");
     GET = mod.GET;
   });
@@ -66,7 +70,7 @@ describe("GET /api/admin/settings", () => {
 
   it("should return settings list", async () => {
     resolveAdmin.mockResolvedValueOnce({ userId: "admin1", email: "a@b.com" });
-    mockClient.query.mockResolvedValueOnce({
+    mockDbRead.query.mockResolvedValueOnce({
       results: [
         { key: "max_team_members", value: "5", updated_at: "2026-01-01T00:00:00Z" },
       ],
@@ -82,7 +86,7 @@ describe("GET /api/admin/settings", () => {
 
   it("should return empty array when table does not exist", async () => {
     resolveAdmin.mockResolvedValueOnce({ userId: "admin1", email: "a@b.com" });
-    mockClient.query.mockRejectedValueOnce(new Error("no such table: app_settings"));
+    mockDbRead.query.mockRejectedValueOnce(new Error("no such table: app_settings"));
 
     const res = await GET(makeGet());
     const body = await res.json();
@@ -93,7 +97,7 @@ describe("GET /api/admin/settings", () => {
 
   it("should return 500 on unexpected error", async () => {
     resolveAdmin.mockResolvedValueOnce({ userId: "admin1", email: "a@b.com" });
-    mockClient.query.mockRejectedValueOnce(new Error("D1 down"));
+    mockDbRead.query.mockRejectedValueOnce(new Error("D1 down"));
 
     const res = await GET(makeGet());
     expect(res.status).toBe(500);
@@ -102,14 +106,12 @@ describe("GET /api/admin/settings", () => {
 
 describe("PUT /api/admin/settings", () => {
   let PUT: (req: Request) => Promise<Response>;
-  let mockClient: ReturnType<typeof createMockClient>;
+  let mockDbWrite: ReturnType<typeof createMockDbWrite>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    mockClient = createMockClient();
-    vi.mocked(d1Module.getD1Client).mockReturnValue(
-      mockClient as unknown as d1Module.D1Client,
-    );
+    mockDbWrite = createMockDbWrite();
+    vi.mocked(dbModule.getDbWrite).mockResolvedValue(mockDbWrite as never);
     const mod = await import("@/app/api/admin/settings/route");
     PUT = mod.PUT;
   });
@@ -160,7 +162,7 @@ describe("PUT /api/admin/settings", () => {
 
   it("should upsert setting successfully", async () => {
     resolveAdmin.mockResolvedValueOnce({ userId: "admin1", email: "a@b.com" });
-    mockClient.execute.mockResolvedValueOnce({ changes: 1 });
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
 
     const res = await PUT(makePut({ key: "max_team_members", value: "10" }));
     const body = await res.json();
@@ -168,12 +170,12 @@ describe("PUT /api/admin/settings", () => {
     expect(res.status).toBe(200);
     expect(body.key).toBe("max_team_members");
     expect(body.value).toBe("10");
-    expect(mockClient.execute.mock.calls[0]![0]).toContain("ON CONFLICT");
+    expect(mockDbWrite.execute.mock.calls[0]![0]).toContain("ON CONFLICT");
   });
 
   it("should return 503 when table does not exist", async () => {
     resolveAdmin.mockResolvedValueOnce({ userId: "admin1", email: "a@b.com" });
-    mockClient.execute.mockRejectedValueOnce(new Error("no such table: app_settings"));
+    mockDbWrite.execute.mockRejectedValueOnce(new Error("no such table: app_settings"));
 
     const res = await PUT(makePut({ key: "max_team_members", value: "5" }));
     expect(res.status).toBe(503);
@@ -181,7 +183,7 @@ describe("PUT /api/admin/settings", () => {
 
   it("should return 500 on unexpected error", async () => {
     resolveAdmin.mockResolvedValueOnce({ userId: "admin1", email: "a@b.com" });
-    mockClient.execute.mockRejectedValueOnce(new Error("D1 boom"));
+    mockDbWrite.execute.mockRejectedValueOnce(new Error("D1 boom"));
 
     const res = await PUT(makePut({ key: "foo", value: "bar" }));
     expect(res.status).toBe(500);
@@ -206,7 +208,7 @@ describe("PUT /api/admin/settings", () => {
     "should accept valid max_team_members value: %j",
     async (goodValue) => {
       resolveAdmin.mockResolvedValueOnce({ userId: "admin1", email: "a@b.com" });
-      mockClient.execute.mockResolvedValueOnce({ changes: 1 });
+      mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
       const res = await PUT(makePut({ key: "max_team_members", value: goodValue }));
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -216,7 +218,7 @@ describe("PUT /api/admin/settings", () => {
 
   it("should allow unknown keys without extra validation", async () => {
     resolveAdmin.mockResolvedValueOnce({ userId: "admin1", email: "a@b.com" });
-    mockClient.execute.mockResolvedValueOnce({ changes: 1 });
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
     const res = await PUT(makePut({ key: "some_future_setting", value: "anything" }));
     expect(res.status).toBe(200);
   });

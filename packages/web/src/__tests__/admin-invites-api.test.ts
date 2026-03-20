@@ -4,8 +4,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Mocks — must be before imports that trigger the module chain
 // ---------------------------------------------------------------------------
 
-vi.mock("@/lib/d1", () => ({
-  getD1Client: vi.fn(),
+vi.mock("@/lib/db", () => ({
+  getDbRead: vi.fn(),
+  getDbWrite: vi.fn(),
 }));
 
 vi.mock("@/lib/admin", () => ({
@@ -30,18 +31,23 @@ vi.mock("@/lib/invite", async (importOriginal) => {
 });
 
 import { GET, POST, DELETE } from "@/app/api/admin/invites/route";
-import * as d1Module from "@/lib/d1";
+import * as dbModule from "@/lib/db";
 
 const { resolveAdmin } = (await import("@/lib/admin")) as unknown as {
   resolveAdmin: ReturnType<typeof vi.fn>;
 };
 
-function createMockClient() {
+function createMockDbRead() {
   return {
     query: vi.fn(),
+    firstOrNull: vi.fn(),
+  };
+}
+
+function createMockDbWrite() {
+  return {
     execute: vi.fn(),
     batch: vi.fn(),
-    firstOrNull: vi.fn(),
   };
 }
 
@@ -63,14 +69,12 @@ function makeRequest(
 // ---------------------------------------------------------------------------
 
 describe("GET /api/admin/invites", () => {
-  let mockClient: ReturnType<typeof createMockClient>;
+  let mockDbRead: ReturnType<typeof createMockDbRead>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockClient = createMockClient();
-    vi.mocked(d1Module.getD1Client).mockReturnValue(
-      mockClient as unknown as d1Module.D1Client
-    );
+    mockDbRead = createMockDbRead();
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDbRead as never);
   });
 
   it("should return 403 for non-admin", async () => {
@@ -98,7 +102,7 @@ describe("GET /api/admin/invites", () => {
         created_at: "2026-03-10T12:00:00Z",
       },
     ];
-    mockClient.query.mockResolvedValueOnce({ results: mockRows });
+    mockDbRead.query.mockResolvedValueOnce({ results: mockRows });
 
     const res = await GET(makeRequest("GET"));
     expect(res.status).toBe(200);
@@ -108,14 +112,15 @@ describe("GET /api/admin/invites", () => {
 });
 
 describe("POST /api/admin/invites", () => {
-  let mockClient: ReturnType<typeof createMockClient>;
+  let mockDbRead: ReturnType<typeof createMockDbRead>;
+  let mockDbWrite: ReturnType<typeof createMockDbWrite>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockClient = createMockClient();
-    vi.mocked(d1Module.getD1Client).mockReturnValue(
-      mockClient as unknown as d1Module.D1Client
-    );
+    mockDbRead = createMockDbRead();
+    mockDbWrite = createMockDbWrite();
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDbRead as never);
+    vi.mocked(dbModule.getDbWrite).mockResolvedValue(mockDbWrite as never);
   });
 
   it("should return 403 for non-admin", async () => {
@@ -130,8 +135,8 @@ describe("POST /api/admin/invites", () => {
       email: "admin@test.com",
     });
     // firstOrNull returns null (no collision)
-    mockClient.firstOrNull.mockResolvedValue(null);
-    mockClient.execute.mockResolvedValue({ changes: 1, duration: 0.01 });
+    mockDbRead.firstOrNull.mockResolvedValue(null);
+    mockDbWrite.execute.mockResolvedValue({ changes: 1, duration: 0.01 });
 
     const res = await POST(makeRequest("POST", undefined, { count: 3 }));
     expect(res.status).toBe(201);
@@ -167,14 +172,15 @@ describe("POST /api/admin/invites", () => {
 });
 
 describe("DELETE /api/admin/invites", () => {
-  let mockClient: ReturnType<typeof createMockClient>;
+  let mockDbRead: ReturnType<typeof createMockDbRead>;
+  let mockDbWrite: ReturnType<typeof createMockDbWrite>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockClient = createMockClient();
-    vi.mocked(d1Module.getD1Client).mockReturnValue(
-      mockClient as unknown as d1Module.D1Client
-    );
+    mockDbRead = createMockDbRead();
+    mockDbWrite = createMockDbWrite();
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDbRead as never);
+    vi.mocked(dbModule.getDbWrite).mockResolvedValue(mockDbWrite as never);
   });
 
   it("should return 403 for non-admin", async () => {
@@ -228,7 +234,7 @@ describe("DELETE /api/admin/invites", () => {
       email: "admin@test.com",
     });
     // Atomic DELETE matches (unused or pending:*)
-    mockClient.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
 
     const res = await DELETE(
       makeRequest("DELETE", "http://localhost:7030/api/admin/invites?id=1")
@@ -237,7 +243,7 @@ describe("DELETE /api/admin/invites", () => {
     const json = await res.json();
     expect(json.deleted).toBe(true);
     // Should NOT have called firstOrNull (no fallback needed)
-    expect(mockClient.firstOrNull).not.toHaveBeenCalled();
+    expect(mockDbRead.firstOrNull).not.toHaveBeenCalled();
   });
 
   it("should delete burned pending:* code (atomic DELETE succeeds)", async () => {
@@ -246,7 +252,7 @@ describe("DELETE /api/admin/invites", () => {
       email: "admin@test.com",
     });
     // Atomic DELETE matches (pending:* code)
-    mockClient.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
 
     const res = await DELETE(
       makeRequest("DELETE", "http://localhost:7030/api/admin/invites?id=2")
@@ -262,9 +268,9 @@ describe("DELETE /api/admin/invites", () => {
       email: "admin@test.com",
     });
     // Atomic DELETE didn't match (code is fully consumed)
-    mockClient.execute.mockResolvedValueOnce({ changes: 0, duration: 0.01 });
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 0, duration: 0.01 });
     // Fallback SELECT finds the row with a real user ID
-    mockClient.firstOrNull.mockResolvedValueOnce({
+    mockDbRead.firstOrNull.mockResolvedValueOnce({
       used_by: "user-uuid-abc123",
     });
 
@@ -282,9 +288,9 @@ describe("DELETE /api/admin/invites", () => {
       email: "admin@test.com",
     });
     // Atomic DELETE didn't match (no such row)
-    mockClient.execute.mockResolvedValueOnce({ changes: 0, duration: 0.01 });
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 0, duration: 0.01 });
     // Fallback SELECT also finds nothing
-    mockClient.firstOrNull.mockResolvedValueOnce(null);
+    mockDbRead.firstOrNull.mockResolvedValueOnce(null);
 
     const res = await DELETE(
       makeRequest("DELETE", "http://localhost:7030/api/admin/invites?id=999")

@@ -5,7 +5,7 @@
 
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
-import { getD1Client } from "@/lib/d1";
+import { getDbRead, getDbWrite } from "@/lib/db";
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -102,10 +102,11 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const client = getD1Client();
+  const dbRead = await getDbRead();
+  const dbWrite = await getDbWrite();
 
   // Verify project exists and belongs to user
-  const project = await client.firstOrNull<{ id: string; name: string }>(
+  const project = await dbRead.firstOrNull<{ id: string; name: string }>(
     "SELECT id, name FROM projects WHERE id = ? AND user_id = ?",
     [projectId, userId],
   );
@@ -146,7 +147,7 @@ export async function PATCH(
       );
     }
 
-    const existing = await client.firstOrNull<{ id: string }>(
+    const existing = await dbRead.firstOrNull<{ id: string }>(
       "SELECT id FROM projects WHERE user_id = ? AND name = ? AND id != ?",
       [userId, trimmedName, projectId],
     );
@@ -178,7 +179,7 @@ export async function PATCH(
 
     const invalidAliases: AliasInput[] = [];
     for (const alias of deduped) {
-      const exists = await client.firstOrNull<{ "1": number }>(
+      const exists = await dbRead.firstOrNull<{ "1": number }>(
         `SELECT 1 FROM session_records
          WHERE user_id = ? AND source = ? AND project_ref = ?
          LIMIT 1`,
@@ -200,7 +201,7 @@ export async function PATCH(
 
     const trulyNewAliases: AliasInput[] = [];
     for (const alias of deduped) {
-      const taken = await client.firstOrNull<{ project_id: string }>(
+      const taken = await dbRead.firstOrNull<{ project_id: string }>(
         `SELECT project_id FROM project_aliases
          WHERE user_id = ? AND source = ? AND project_ref = ?`,
         [userId, alias.source, alias.project_ref],
@@ -236,7 +237,7 @@ export async function PATCH(
     // Verify each alias is actually attached to this project
     const notFound: AliasInput[] = [];
     for (const alias of valid) {
-      const attached = await client.firstOrNull<{ project_id: string }>(
+      const attached = await dbRead.firstOrNull<{ project_id: string }>(
         `SELECT project_id FROM project_aliases
          WHERE user_id = ? AND project_id = ? AND source = ? AND project_ref = ?`,
         [userId, projectId, alias.source, alias.project_ref],
@@ -320,7 +321,7 @@ export async function PATCH(
 
   try {
     if (trimmedName !== undefined) {
-      await client.execute(
+      await dbWrite.execute(
         "UPDATE projects SET name = ?, updated_at = datetime('now') WHERE id = ?",
         [trimmedName, projectId],
       );
@@ -328,7 +329,7 @@ export async function PATCH(
     }
 
     for (const alias of addAliases) {
-      await client.execute(
+      await dbWrite.execute(
         `INSERT INTO project_aliases (user_id, project_id, source, project_ref, created_at)
          VALUES (?, ?, ?, ?, datetime('now'))`,
         [userId, projectId, alias.source, alias.project_ref],
@@ -337,7 +338,7 @@ export async function PATCH(
     }
 
     for (const alias of removeAliases) {
-      await client.execute(
+      await dbWrite.execute(
         `DELETE FROM project_aliases
          WHERE user_id = ? AND project_id = ? AND source = ? AND project_ref = ?`,
         [userId, projectId, alias.source, alias.project_ref],
@@ -349,13 +350,13 @@ export async function PATCH(
     // doesn't corrupt pre-existing state (e.g. deleting an already-present
     // tag or inserting a tag that never existed).
     for (const tag of addTags) {
-      const existing = await client.firstOrNull<{ tag: string }>(
+      const existing = await dbRead.firstOrNull<{ tag: string }>(
         `SELECT tag FROM project_tags
          WHERE user_id = ? AND project_id = ? AND tag = ?`,
         [userId, projectId, tag],
       );
       if (!existing) {
-        await client.execute(
+        await dbWrite.execute(
           `INSERT INTO project_tags (user_id, project_id, tag, created_at)
            VALUES (?, ?, ?, datetime('now'))`,
           [userId, projectId, tag],
@@ -364,13 +365,13 @@ export async function PATCH(
       }
     }
     for (const tag of removeTags) {
-      const existing = await client.firstOrNull<{ tag: string }>(
+      const existing = await dbRead.firstOrNull<{ tag: string }>(
         `SELECT tag FROM project_tags
          WHERE user_id = ? AND project_id = ? AND tag = ?`,
         [userId, projectId, tag],
       );
       if (existing) {
-        await client.execute(
+        await dbWrite.execute(
           `DELETE FROM project_tags
            WHERE user_id = ? AND project_id = ? AND tag = ?`,
           [userId, projectId, tag],
@@ -380,14 +381,14 @@ export async function PATCH(
     }
 
     if (trimmedName !== undefined || addAliases.length > 0 || removeAliases.length > 0 || addTags.length > 0 || removeTags.length > 0) {
-      await client.execute(
+      await dbWrite.execute(
         "UPDATE projects SET updated_at = datetime('now') WHERE id = ?",
         [projectId],
       );
     }
 
     // Return updated project
-    const updated = await client.firstOrNull<{
+    const updated = await dbRead.firstOrNull<{
       id: string;
       name: string;
       created_at: string;
@@ -396,7 +397,7 @@ export async function PATCH(
       [projectId],
     );
 
-    const aliasRows = await client.query<AliasStatsRow>(
+    const aliasRows = await dbRead.query<AliasStatsRow>(
       `SELECT
          pa.source,
          pa.project_ref,
@@ -435,7 +436,7 @@ export async function PATCH(
     }
 
     // Fetch current tags
-    const tagRows = await client.query<{ tag: string }>(
+    const tagRows = await dbRead.query<{ tag: string }>(
       `SELECT tag FROM project_tags
        WHERE user_id = ? AND project_id = ?
        ORDER BY tag`,
@@ -463,20 +464,20 @@ export async function PATCH(
     // Best-effort rollback: undo any writes that succeeded before the failure
     try {
       if (nameWritten) {
-        await client.execute(
+        await dbWrite.execute(
           "UPDATE projects SET name = ? WHERE id = ?",
           [originalName, projectId],
         );
       }
       for (const alias of aliasesAdded) {
-        await client.execute(
+        await dbWrite.execute(
           `DELETE FROM project_aliases
            WHERE user_id = ? AND project_id = ? AND source = ? AND project_ref = ?`,
           [userId, projectId, alias.source, alias.project_ref],
         );
       }
       for (const alias of aliasesRemoved) {
-        await client.execute(
+        await dbWrite.execute(
           `INSERT OR IGNORE INTO project_aliases (user_id, project_id, source, project_ref, created_at)
            VALUES (?, ?, ?, ?, datetime('now'))`,
           [userId, projectId, alias.source, alias.project_ref],
@@ -484,14 +485,14 @@ export async function PATCH(
       }
       // Undo tag mutations
       for (const tag of tagsAdded) {
-        await client.execute(
+        await dbWrite.execute(
           `DELETE FROM project_tags
            WHERE user_id = ? AND project_id = ? AND tag = ?`,
           [userId, projectId, tag],
         );
       }
       for (const tag of tagsRemoved) {
-        await client.execute(
+        await dbWrite.execute(
           `INSERT OR IGNORE INTO project_tags (user_id, project_id, tag, created_at)
            VALUES (?, ?, ?, datetime('now'))`,
           [userId, projectId, tag],
@@ -523,10 +524,11 @@ export async function DELETE(
   const userId = authResult.userId;
   const { id: projectId } = await params;
 
-  const client = getD1Client();
+  const dbRead = await getDbRead();
+  const dbWrite = await getDbWrite();
 
   // Verify project exists and belongs to user
-  const project = await client.firstOrNull<{ id: string }>(
+  const project = await dbRead.firstOrNull<{ id: string }>(
     "SELECT id FROM projects WHERE id = ? AND user_id = ?",
     [projectId, userId],
   );
@@ -536,15 +538,15 @@ export async function DELETE(
 
   try {
     // D1/SQLite may not enforce ON DELETE CASCADE via REST API, so delete explicitly
-    await client.execute(
+    await dbWrite.execute(
       "DELETE FROM project_tags WHERE project_id = ?",
       [projectId],
     );
-    await client.execute(
+    await dbWrite.execute(
       "DELETE FROM project_aliases WHERE project_id = ?",
       [projectId],
     );
-    await client.execute("DELETE FROM projects WHERE id = ?", [projectId]);
+    await dbWrite.execute("DELETE FROM projects WHERE id = ?", [projectId]);
 
     return NextResponse.json({ success: true });
   } catch (err) {

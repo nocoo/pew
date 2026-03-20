@@ -7,7 +7,7 @@
 
 import { NextResponse } from "next/server";
 import { resolveAdmin } from "@/lib/admin";
-import { getD1Client } from "@/lib/d1";
+import { getDbRead, getDbWrite } from "@/lib/db";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -29,10 +29,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const client = getD1Client();
+  const dbRead = await getDbRead();
 
   try {
-    const { results } = await client.query<SettingRow>(
+    const { results } = await dbRead.query<SettingRow>(
       "SELECT key, value, updated_at FROM app_settings ORDER BY key ASC",
     );
     return NextResponse.json({ settings: results });
@@ -94,10 +94,10 @@ export async function PUT(request: Request) {
     }
   }
 
-  const client = getD1Client();
+  const dbWrite = await getDbWrite();
 
   try {
-    await client.execute(
+    await dbWrite.execute(
       `INSERT INTO app_settings (key, value, updated_at)
        VALUES (?, ?, datetime('now'))
        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,

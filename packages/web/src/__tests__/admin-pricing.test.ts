@@ -1,29 +1,35 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import * as d1Module from "@/lib/d1";
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock("@/lib/d1", async (importOriginal) => {
-  const original = await importOriginal<typeof d1Module>();
-  return { ...original, getD1Client: vi.fn() };
-});
+vi.mock("@/lib/db", () => ({
+  getDbRead: vi.fn(),
+  getDbWrite: vi.fn(),
+}));
 
 vi.mock("@/lib/admin", () => ({
   resolveAdmin: vi.fn(),
 }));
 
+import * as dbModule from "@/lib/db";
+
 const { resolveAdmin } = (await import("@/lib/admin")) as unknown as {
   resolveAdmin: ReturnType<typeof vi.fn>;
 };
 
-function createMockClient() {
+function createMockDbRead() {
   return {
     query: vi.fn(),
+    firstOrNull: vi.fn(),
+  };
+}
+
+function createMockDbWrite() {
+  return {
     execute: vi.fn(),
     batch: vi.fn(),
-    firstOrNull: vi.fn(),
   };
 }
 
@@ -48,14 +54,12 @@ function makeDelete(params: Record<string, string> = {}): Request {
 
 describe("GET /api/admin/pricing", () => {
   let GET: (req: Request) => Promise<Response>;
-  let mockClient: ReturnType<typeof createMockClient>;
+  let mockDbRead: ReturnType<typeof createMockDbRead>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    mockClient = createMockClient();
-    vi.mocked(d1Module.getD1Client).mockReturnValue(
-      mockClient as unknown as d1Module.D1Client,
-    );
+    mockDbRead = createMockDbRead();
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDbRead as never);
     const mod = await import("@/app/api/admin/pricing/route");
     GET = mod.GET;
   });
@@ -73,7 +77,7 @@ describe("GET /api/admin/pricing", () => {
       userId: "u1",
       email: "admin@test.com",
     });
-    mockClient.query.mockResolvedValueOnce({
+    mockDbRead.query.mockResolvedValueOnce({
       results: [{ id: 1, model: "gpt-4o", input: 2.5, output: 10.0 }],
     });
 
@@ -90,7 +94,7 @@ describe("GET /api/admin/pricing", () => {
       userId: "u1",
       email: "admin@test.com",
     });
-    mockClient.query.mockRejectedValueOnce(new Error("no such table: model_pricing"));
+    mockDbRead.query.mockRejectedValueOnce(new Error("no such table: model_pricing"));
 
     const res = await GET(makeJson("GET"));
     const body = await res.json();
@@ -104,7 +108,7 @@ describe("GET /api/admin/pricing", () => {
       userId: "u1",
       email: "admin@test.com",
     });
-    mockClient.query.mockRejectedValueOnce(new Error("D1 down"));
+    mockDbRead.query.mockRejectedValueOnce(new Error("D1 down"));
 
     const res = await GET(makeJson("GET"));
 
@@ -118,14 +122,15 @@ describe("GET /api/admin/pricing", () => {
 
 describe("POST /api/admin/pricing", () => {
   let POST: (req: Request) => Promise<Response>;
-  let mockClient: ReturnType<typeof createMockClient>;
+  let mockDbRead: ReturnType<typeof createMockDbRead>;
+  let mockDbWrite: ReturnType<typeof createMockDbWrite>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    mockClient = createMockClient();
-    vi.mocked(d1Module.getD1Client).mockReturnValue(
-      mockClient as unknown as d1Module.D1Client,
-    );
+    mockDbRead = createMockDbRead();
+    mockDbWrite = createMockDbWrite();
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDbRead as never);
+    vi.mocked(dbModule.getDbWrite).mockResolvedValue(mockDbWrite as never);
     const mod = await import("@/app/api/admin/pricing/route");
     POST = mod.POST;
   });
@@ -220,8 +225,8 @@ describe("POST /api/admin/pricing", () => {
       userId: "u1",
       email: "a@test.com",
     });
-    mockClient.execute.mockResolvedValueOnce({ changes: 1 });
-    mockClient.firstOrNull.mockResolvedValueOnce({
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
+    mockDbRead.firstOrNull.mockResolvedValueOnce({
       id: 1,
       model: "gpt-4o",
       input: 1,
@@ -241,8 +246,8 @@ describe("POST /api/admin/pricing", () => {
       userId: "u1",
       email: "a@test.com",
     });
-    mockClient.execute.mockResolvedValueOnce({ changes: 1 });
-    mockClient.firstOrNull.mockResolvedValueOnce({
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
+    mockDbRead.firstOrNull.mockResolvedValueOnce({
       id: 1,
       model: "gpt-4o",
       input: 2.5,
@@ -266,7 +271,7 @@ describe("POST /api/admin/pricing", () => {
       userId: "u1",
       email: "a@test.com",
     });
-    mockClient.execute.mockRejectedValueOnce(new Error("UNIQUE constraint failed"));
+    mockDbWrite.execute.mockRejectedValueOnce(new Error("UNIQUE constraint failed"));
 
     const res = await POST(
       makeJson("POST", { model: "gpt-4o", input: 1, output: 1 }),
@@ -282,14 +287,15 @@ describe("POST /api/admin/pricing", () => {
 
 describe("PUT /api/admin/pricing", () => {
   let PUT: (req: Request) => Promise<Response>;
-  let mockClient: ReturnType<typeof createMockClient>;
+  let mockDbRead: ReturnType<typeof createMockDbRead>;
+  let mockDbWrite: ReturnType<typeof createMockDbWrite>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    mockClient = createMockClient();
-    vi.mocked(d1Module.getD1Client).mockReturnValue(
-      mockClient as unknown as d1Module.D1Client,
-    );
+    mockDbRead = createMockDbRead();
+    mockDbWrite = createMockDbWrite();
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDbRead as never);
+    vi.mocked(dbModule.getDbWrite).mockResolvedValue(mockDbWrite as never);
     const mod = await import("@/app/api/admin/pricing/route");
     PUT = mod.PUT;
   });
@@ -377,8 +383,8 @@ describe("PUT /api/admin/pricing", () => {
       userId: "u1",
       email: "a@test.com",
     });
-    mockClient.execute.mockResolvedValueOnce({ changes: 1 });
-    mockClient.firstOrNull.mockResolvedValueOnce({
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
+    mockDbRead.firstOrNull.mockResolvedValueOnce({
       id: 1,
       model: "gpt-4o",
       input: 5,
@@ -388,7 +394,7 @@ describe("PUT /api/admin/pricing", () => {
     const res = await PUT(makeJson("PUT", { id: 1, input: 5 }));
 
     expect(res.status).toBe(200);
-    const [sql] = mockClient.execute.mock.calls[0]!;
+    const [sql] = mockDbWrite.execute.mock.calls[0]!;
     expect(sql).toContain("input = ?");
     expect(sql).toContain("updated_at = datetime('now')");
   });
@@ -398,7 +404,7 @@ describe("PUT /api/admin/pricing", () => {
       userId: "u1",
       email: "a@test.com",
     });
-    mockClient.execute.mockResolvedValueOnce({ changes: 0 });
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 0 });
 
     const res = await PUT(makeJson("PUT", { id: 999, model: "x" }));
 
@@ -410,7 +416,7 @@ describe("PUT /api/admin/pricing", () => {
       userId: "u1",
       email: "a@test.com",
     });
-    mockClient.execute.mockRejectedValueOnce(new Error("UNIQUE constraint failed"));
+    mockDbWrite.execute.mockRejectedValueOnce(new Error("UNIQUE constraint failed"));
 
     const res = await PUT(makeJson("PUT", { id: 1, model: "dup" }));
 
@@ -422,13 +428,13 @@ describe("PUT /api/admin/pricing", () => {
       userId: "u1",
       email: "a@test.com",
     });
-    mockClient.execute.mockResolvedValueOnce({ changes: 1 });
-    mockClient.firstOrNull.mockResolvedValueOnce({ id: 1, cached: null });
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
+    mockDbRead.firstOrNull.mockResolvedValueOnce({ id: 1, cached: null });
 
     const res = await PUT(makeJson("PUT", { id: 1, cached: null }));
 
     expect(res.status).toBe(200);
-    const [, params] = mockClient.execute.mock.calls[0]!;
+    const [, params] = mockDbWrite.execute.mock.calls[0]!;
     expect(params).toContain(null);
   });
 
@@ -437,15 +443,15 @@ describe("PUT /api/admin/pricing", () => {
       userId: "u1",
       email: "a@test.com",
     });
-    mockClient.execute.mockResolvedValueOnce({ changes: 1 });
-    mockClient.firstOrNull.mockResolvedValueOnce({ id: 1 });
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
+    mockDbRead.firstOrNull.mockResolvedValueOnce({ id: 1 });
 
     const res = await PUT(
       makeJson("PUT", { id: 1, source: "openai", note: "updated" }),
     );
 
     expect(res.status).toBe(200);
-    const [sql] = mockClient.execute.mock.calls[0]!;
+    const [sql] = mockDbWrite.execute.mock.calls[0]!;
     expect(sql).toContain("source = ?");
     expect(sql).toContain("note = ?");
   });
@@ -455,7 +461,7 @@ describe("PUT /api/admin/pricing", () => {
       userId: "u1",
       email: "a@test.com",
     });
-    mockClient.execute.mockRejectedValueOnce(new Error("D1 boom"));
+    mockDbWrite.execute.mockRejectedValueOnce(new Error("D1 boom"));
 
     const res = await PUT(makeJson("PUT", { id: 1, model: "x" }));
 
@@ -469,14 +475,12 @@ describe("PUT /api/admin/pricing", () => {
 
 describe("DELETE /api/admin/pricing", () => {
   let DELETE: (req: Request) => Promise<Response>;
-  let mockClient: ReturnType<typeof createMockClient>;
+  let mockDbWrite: ReturnType<typeof createMockDbWrite>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    mockClient = createMockClient();
-    vi.mocked(d1Module.getD1Client).mockReturnValue(
-      mockClient as unknown as d1Module.D1Client,
-    );
+    mockDbWrite = createMockDbWrite();
+    vi.mocked(dbModule.getDbWrite).mockResolvedValue(mockDbWrite as never);
     const mod = await import("@/app/api/admin/pricing/route");
     DELETE = mod.DELETE;
   });
@@ -518,7 +522,7 @@ describe("DELETE /api/admin/pricing", () => {
       userId: "u1",
       email: "a@test.com",
     });
-    mockClient.execute.mockResolvedValueOnce({ changes: 0 });
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 0 });
 
     const res = await DELETE(makeDelete({ id: "999" }));
 
@@ -530,7 +534,7 @@ describe("DELETE /api/admin/pricing", () => {
       userId: "u1",
       email: "a@test.com",
     });
-    mockClient.execute.mockResolvedValueOnce({ changes: 1 });
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
 
     const res = await DELETE(makeDelete({ id: "1" }));
     const body = await res.json();
@@ -544,7 +548,7 @@ describe("DELETE /api/admin/pricing", () => {
       userId: "u1",
       email: "a@test.com",
     });
-    mockClient.execute.mockRejectedValueOnce(new Error("D1 down"));
+    mockDbWrite.execute.mockRejectedValueOnce(new Error("D1 down"));
 
     const res = await DELETE(makeDelete({ id: "1" }));
 
