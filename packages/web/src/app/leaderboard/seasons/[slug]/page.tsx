@@ -269,19 +269,19 @@ export default function SeasonLeaderboardPage() {
         {data ? (
           <>
             <h1 className="tracking-tight text-foreground">
-              <span className="text-[47px] font-bold font-handwriting leading-none mr-2">
+              <span className="text-[36px] font-bold font-handwriting leading-none mr-2">
                 {data.season.name}
               </span>
             </h1>
-            <div className="mt-0.5 flex items-center gap-2 flex-wrap">
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
               <StatusBadge status={data.season.status} />
               {data.season.is_snapshot ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                   <Camera className="h-3 w-3" />
                   Final Results
                 </span>
               ) : data.season.status === "active" ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-400">
+                <span className="inline-flex items-center gap-1 rounded-full border border-green-500/25 bg-green-500/15 px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-400">
                   <Zap className="h-3 w-3" />
                   Live
                 </span>

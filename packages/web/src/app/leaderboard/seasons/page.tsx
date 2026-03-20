@@ -108,12 +108,12 @@ export default function SeasonsPage() {
       {/* Header */}
       <PageHeader>
         <h1 className="tracking-tight text-foreground">
-          <span className="text-[47px] font-bold font-handwriting leading-none mr-2">pew</span>
+          <span className="text-[36px] font-bold font-handwriting leading-none mr-2">pew</span>
           <span className="text-[19px] font-normal text-muted-foreground">
             Seasons
           </span>
         </h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">
+        <p className="mt-2 text-sm text-muted-foreground">
           Compete as teams across time-boxed seasons.
         </p>
       </PageHeader>
