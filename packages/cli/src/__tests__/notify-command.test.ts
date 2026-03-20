@@ -466,7 +466,7 @@ describe("trailing-edge cooldown sync", () => {
           return makeResult({
             skippedSync: true,
             skippedReason: "cooldown",
-            cooldownRemainingMs: 10,
+            cooldownRemainingMs: 200, // Long enough for second notify to see the lock
           });
         }
         return makeResult({ cycles: [{}] });
@@ -484,7 +484,7 @@ describe("trailing-edge cooldown sync", () => {
     // Allow trailing.lock to be created before second call
     await new Promise((r) => setTimeout(r, 5));
 
-    // Second notify — trailing.lock already exists, no-op
+    // Second notify — trailing.lock exists with live PID → no-op
     await executeNotify({
       source: "claude-code",
       stateDir: tempDir,
@@ -498,5 +498,75 @@ describe("trailing-edge cooldown sync", () => {
     await vi.waitFor(() => {
       expect(coordinatedSyncFn).toHaveBeenCalledTimes(3); // 2 initial + 1 trailing
     }, { timeout: 2_000 });
+
+    // Give extra time to confirm no fourth call
+    await new Promise((r) => setTimeout(r, 300));
+    expect(coordinatedSyncFn).toHaveBeenCalledTimes(3);
+  });
+
+  it("recovers from stale trailing.lock left by a crashed process", async () => {
+    const { writeFile: fsWriteFile } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+
+    // Pre-create a stale trailing.lock with a dead PID (PID 2 is never a user process)
+    const trailingLockPath = join(tempDir, "trailing.lock");
+    await fsWriteFile(trailingLockPath, JSON.stringify({ pid: 2, startedAt: new Date().toISOString() }));
+
+    let callCount = 0;
+    const coordinatedSyncFn = vi.fn(
+      async (): Promise<CoordinatorRunResult> => {
+        callCount++;
+        if (callCount === 1) {
+          return makeResult({
+            skippedSync: true,
+            skippedReason: "cooldown",
+            cooldownRemainingMs: 10,
+          });
+        }
+        return makeResult({ cycles: [{}] });
+      },
+    );
+
+    await executeNotify({
+      source: "claude-code",
+      stateDir: tempDir,
+      executeSyncFn: vi.fn(async () => ({})),
+      coordinatedSyncFn,
+    });
+
+    // Despite stale trailing.lock existing, trailing sync should still fire
+    // because the dead PID is detected and the lock is replaced
+    await vi.waitFor(() => {
+      expect(coordinatedSyncFn).toHaveBeenCalledTimes(2);
+    }, { timeout: 2_000 });
+  });
+
+  it("does not steal trailing.lock from a live process", async () => {
+    const { writeFile: fsWriteFile } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+
+    // Pre-create trailing.lock with PID 1 (init/launchd — always alive, not us)
+    const trailingLockPath = join(tempDir, "trailing.lock");
+    await fsWriteFile(trailingLockPath, JSON.stringify({ pid: 1, startedAt: new Date().toISOString() }));
+
+    const coordinatedSyncFn = vi.fn(
+      async (): Promise<CoordinatorRunResult> =>
+        makeResult({
+          skippedSync: true,
+          skippedReason: "cooldown",
+          cooldownRemainingMs: 10,
+        }),
+    );
+
+    await executeNotify({
+      source: "claude-code",
+      stateDir: tempDir,
+      executeSyncFn: vi.fn(async () => ({})),
+      coordinatedSyncFn,
+    });
+
+    // Live PID → trailing.lock is valid → no trailing sync scheduled
+    await new Promise((r) => setTimeout(r, 50));
+    expect(coordinatedSyncFn).toHaveBeenCalledTimes(1);
   });
 });

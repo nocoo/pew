@@ -1,4 +1,4 @@
-import { writeFile, unlink } from "node:fs/promises";
+import { writeFile, readFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import type { CoordinatorRunResult, Source, SyncCycleResult, SyncTrigger } from "@pew/core";
 import { executeSync, type SyncOptions } from "./sync.js";
@@ -119,8 +119,12 @@ export async function executeNotify(
 /**
  * Schedule a trailing-edge sync after cooldown expires.
  *
- * Uses an O_EXCL trailing.lock file to ensure only one process sleeps at a
- * time. If another trailing sync is already scheduled, this is a no-op.
+ * Uses an O_EXCL trailing.lock file (containing PID) to ensure only one
+ * process sleeps at a time. If a trailing.lock exists from a dead process,
+ * it is removed and the lock is re-acquired (stale detection via
+ * `process.kill(pid, 0)`). If the lock is held by a live process, this
+ * is a no-op.
+ *
  * The trailing sync runs fire-and-forget — errors are silently ignored.
  */
 function scheduleTrailingSync(
@@ -133,13 +137,8 @@ function scheduleTrailingSync(
 
   // Fire-and-forget: acquire trailing lock, sleep, sync, release
   void (async () => {
-    try {
-      // O_EXCL: only one trailing sync at a time
-      await writeFile(trailingLockPath, String(process.pid), { flag: "wx" });
-    } catch {
-      // Another process already owns the trailing lock — nothing to do
-      return;
-    }
+    const acquired = await tryAcquireTrailingLock(trailingLockPath);
+    if (!acquired) return;
 
     try {
       await new Promise((r) => setTimeout(r, delayMs));
@@ -154,4 +153,69 @@ function scheduleTrailingSync(
       }
     }
   })();
+}
+
+/**
+ * Try to acquire the trailing lock. If the lockfile exists, check if the
+ * owning PID is still alive. Dead PID → remove stale lock and retry.
+ * Live PID → return false (another trailing sync is in progress).
+ *
+ * @returns `true` if lock was acquired, `false` otherwise.
+ */
+async function tryAcquireTrailingLock(lockPath: string): Promise<boolean> {
+  const lockContent = JSON.stringify({
+    pid: process.pid,
+    startedAt: new Date().toISOString(),
+  });
+
+  try {
+    await writeFile(lockPath, lockContent, { flag: "wx" });
+    return true;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "EEXIST") return false;
+  }
+
+  // Lock exists — check if owner is alive
+  const ownerPid = await readTrailingLockPid(lockPath);
+  if (ownerPid === null) {
+    // Corrupted/unreadable — remove and retry
+    try { await unlink(lockPath); } catch { return false; }
+    try {
+      await writeFile(lockPath, lockContent, { flag: "wx" });
+      return true;
+    } catch { return false; }
+  }
+
+  // Check if owner PID is alive
+  try {
+    process.kill(ownerPid, 0);
+    return false; // Process alive — valid lock
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ESRCH") {
+      // EPERM = process exists but we can't signal it → not stale
+      return false;
+    }
+  }
+
+  // Dead PID — remove stale lock and retry
+  try { await unlink(lockPath); } catch { return false; }
+  try {
+    await writeFile(lockPath, lockContent, { flag: "wx" });
+    return true;
+  } catch { return false; }
+}
+
+/**
+ * Read the PID from a trailing.lock file.
+ * Returns null on any error (missing, corrupted, etc.).
+ */
+async function readTrailingLockPid(lockPath: string): Promise<number | null> {
+  try {
+    const content = await readFile(lockPath, "utf8");
+    const parsed = JSON.parse(content);
+    if (typeof parsed?.pid === "number") return parsed.pid;
+    return null;
+  } catch {
+    return null;
+  }
 }
