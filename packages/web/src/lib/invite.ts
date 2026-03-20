@@ -6,9 +6,9 @@
  * - handleInviteGate: signIn callback logic to gate new registrations
  */
 
-import { getD1Client } from "./d1";
+import { getDbRead, getDbWrite } from "./db";
 import { shouldUseSecureCookies } from "@/auth";
-import type { D1Client } from "./d1";
+import type { DbRead, DbWrite } from "./db";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -88,12 +88,14 @@ export interface InviteGateAccount {
  *
  * @param req - The request object (from lazy init closure), may be undefined
  * @param account - The OAuth account info
- * @param client - Optional D1 client (for testing; defaults to singleton)
+ * @param dbReadOverride - Optional DbRead (for testing; defaults to singleton)
+ * @param dbWriteOverride - Optional DbWrite (for testing; defaults to singleton)
  */
 export async function handleInviteGate(
   req: InviteGateRequest | undefined | null,
   account: InviteGateAccount | null,
-  client?: D1Client
+  dbReadOverride?: DbRead,
+  dbWriteOverride?: DbWrite
 ): Promise<true | string> {
   // E2E test bypass
   if (
@@ -109,10 +111,11 @@ export async function handleInviteGate(
   // No account info — shouldn't happen but allow (Auth.js will handle)
   if (!account) return true;
 
-  const db = client ?? getD1Client();
+  const dbRead = dbReadOverride ?? (await getDbRead());
+  const dbWrite = dbWriteOverride ?? (await getDbWrite());
 
   // Check if user already exists (existing users bypass invite check)
-  const existingUser = await db.firstOrNull<{ id: string }>(
+  const existingUser = await dbRead.firstOrNull<{ id: string }>(
     `SELECT u.id
      FROM users u
      JOIN accounts a ON u.id = a.user_id
@@ -132,7 +135,7 @@ export async function handleInviteGate(
   // pending:<email> so admin can diagnose burned codes by email;
   // fall back to providerAccountId if email is unavailable
   const pendingLabel = account.email || account.providerAccountId;
-  const meta = await db.execute(
+  const meta = await dbWrite.execute(
     `UPDATE invite_codes
      SET used_by = ?, used_at = datetime('now')
      WHERE code = ? AND used_by IS NULL`,

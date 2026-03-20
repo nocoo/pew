@@ -7,7 +7,7 @@
  */
 
 import type { Adapter, AdapterUser, AdapterAccount } from "next-auth/adapters";
-import type { D1Client } from "./d1";
+import type { DbRead, DbWrite } from "./db";
 
 // ---------------------------------------------------------------------------
 // Row ↔ AdapterUser mapping
@@ -35,11 +35,11 @@ function rowToUser(row: UserRow): AdapterUser {
 // Adapter factory
 // ---------------------------------------------------------------------------
 
-export function D1AuthAdapter(client: D1Client): Adapter {
+export function D1AuthAdapter(dbRead: DbRead, dbWrite: DbWrite): Adapter {
   return {
     async createUser(user) {
       const id = user.id ?? crypto.randomUUID();
-      await client.execute(
+      await dbWrite.execute(
         `INSERT INTO users (id, email, name, image, email_verified)
          VALUES (?, ?, ?, ?, ?)`,
         [
@@ -54,7 +54,7 @@ export function D1AuthAdapter(client: D1Client): Adapter {
     },
 
     async getUser(id) {
-      const row = await client.firstOrNull<UserRow>(
+      const row = await dbRead.firstOrNull<UserRow>(
         "SELECT id, email, name, image, email_verified FROM users WHERE id = ?",
         [id]
       );
@@ -62,7 +62,7 @@ export function D1AuthAdapter(client: D1Client): Adapter {
     },
 
     async getUserByEmail(email) {
-      const row = await client.firstOrNull<UserRow>(
+      const row = await dbRead.firstOrNull<UserRow>(
         "SELECT id, email, name, image, email_verified FROM users WHERE email = ?",
         [email]
       );
@@ -70,7 +70,7 @@ export function D1AuthAdapter(client: D1Client): Adapter {
     },
 
     async getUserByAccount({ provider, providerAccountId }) {
-      const row = await client.firstOrNull<UserRow>(
+      const row = await dbRead.firstOrNull<UserRow>(
         `SELECT u.id, u.email, u.name, u.image, u.email_verified
          FROM users u
          JOIN accounts a ON u.id = a.user_id
@@ -81,7 +81,7 @@ export function D1AuthAdapter(client: D1Client): Adapter {
     },
 
     async linkAccount(account: AdapterAccount) {
-      await client.execute(
+      await dbWrite.execute(
         `INSERT INTO accounts (id, user_id, type, provider, provider_account_id,
          access_token, refresh_token, expires_at, token_type, scope, id_token)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -126,14 +126,14 @@ export function D1AuthAdapter(client: D1Client): Adapter {
       if (sets.length > 0) {
         sets.push("updated_at = datetime('now')");
         params.push(user.id);
-        await client.execute(
+        await dbWrite.execute(
           `UPDATE users SET ${sets.join(", ")} WHERE id = ?`,
           params
         );
       }
 
       // Return updated user
-      const row = await client.firstOrNull<UserRow>(
+      const row = await dbRead.firstOrNull<UserRow>(
         "SELECT id, email, name, image, email_verified FROM users WHERE id = ?",
         [user.id]
       );

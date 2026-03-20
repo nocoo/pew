@@ -1,24 +1,31 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { D1AuthAdapter } from "../lib/auth-adapter";
-import { D1Client } from "../lib/d1";
+import type { DbRead, DbWrite } from "../lib/db";
 
-// Create a mock D1Client
-function createMockClient() {
+// Create mock DbRead and DbWrite
+function createMockDbRead() {
   return {
     query: vi.fn(),
+    firstOrNull: vi.fn(),
+  } as unknown as DbRead;
+}
+
+function createMockDbWrite() {
+  return {
     execute: vi.fn(),
     batch: vi.fn(),
-    firstOrNull: vi.fn(),
-  } as unknown as D1Client;
+  } as unknown as DbWrite;
 }
 
 describe("D1AuthAdapter", () => {
-  let mockClient: ReturnType<typeof createMockClient>;
+  let mockDbRead: ReturnType<typeof createMockDbRead>;
+  let mockDbWrite: ReturnType<typeof createMockDbWrite>;
   let adapter: ReturnType<typeof D1AuthAdapter>;
 
   beforeEach(() => {
-    mockClient = createMockClient();
-    adapter = D1AuthAdapter(mockClient);
+    mockDbRead = createMockDbRead();
+    mockDbWrite = createMockDbWrite();
+    adapter = D1AuthAdapter(mockDbRead, mockDbWrite);
   });
 
   describe("createUser()", () => {
@@ -31,7 +38,7 @@ describe("D1AuthAdapter", () => {
         emailVerified: new Date("2026-01-01"),
       };
 
-      vi.mocked(mockClient.execute).mockResolvedValueOnce({
+      vi.mocked(mockDbWrite.execute).mockResolvedValueOnce({
         changes: 1,
         duration: 0.01,
       });
@@ -39,14 +46,14 @@ describe("D1AuthAdapter", () => {
       const result = await adapter.createUser!(mockUser);
 
       expect(result).toEqual(mockUser);
-      expect(mockClient.execute).toHaveBeenCalledOnce();
-      const [sql, params] = vi.mocked(mockClient.execute).mock.calls[0]!;
+      expect(mockDbWrite.execute).toHaveBeenCalledOnce();
+      const [sql, params] = vi.mocked(mockDbWrite.execute).mock.calls[0]!;
       expect(sql).toContain("INSERT INTO users");
       expect(params).toContain("test@example.com");
     });
 
     it("should generate id when user has no id", async () => {
-      vi.mocked(mockClient.execute).mockResolvedValueOnce({
+      vi.mocked(mockDbWrite.execute).mockResolvedValueOnce({
         changes: 1,
         duration: 0.01,
       });
@@ -65,7 +72,7 @@ describe("D1AuthAdapter", () => {
     });
 
     it("should pass null for optional name, image, emailVerified", async () => {
-      vi.mocked(mockClient.execute).mockResolvedValueOnce({
+      vi.mocked(mockDbWrite.execute).mockResolvedValueOnce({
         changes: 1,
         duration: 0.01,
       });
@@ -76,7 +83,7 @@ describe("D1AuthAdapter", () => {
         emailVerified: null,
       } as Parameters<NonNullable<typeof adapter.createUser>>[0]);
 
-      const [, params] = vi.mocked(mockClient.execute).mock.calls[0]!;
+      const [, params] = vi.mocked(mockDbWrite.execute).mock.calls[0]!;
       // name, image, emailVerified should be null
       expect(params![2]).toBeNull(); // name
       expect(params![3]).toBeNull(); // image
@@ -86,7 +93,7 @@ describe("D1AuthAdapter", () => {
 
   describe("getUser()", () => {
     it("should return user by id", async () => {
-      vi.mocked(mockClient.firstOrNull).mockResolvedValueOnce({
+      vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce({
         id: "u1",
         email: "test@example.com",
         name: "Test",
@@ -106,7 +113,7 @@ describe("D1AuthAdapter", () => {
     });
 
     it("should return null when user not found", async () => {
-      vi.mocked(mockClient.firstOrNull).mockResolvedValueOnce(null);
+      vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce(null);
 
       const result = await adapter.getUser!("nonexistent");
       expect(result).toBeNull();
@@ -115,7 +122,7 @@ describe("D1AuthAdapter", () => {
 
   describe("getUserByEmail()", () => {
     it("should return user by email", async () => {
-      vi.mocked(mockClient.firstOrNull).mockResolvedValueOnce({
+      vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce({
         id: "u1",
         email: "test@example.com",
         name: "Test",
@@ -132,14 +139,14 @@ describe("D1AuthAdapter", () => {
         image: null,
         emailVerified: null,
       });
-      expect(mockClient.firstOrNull).toHaveBeenCalledWith(
+      expect(mockDbRead.firstOrNull).toHaveBeenCalledWith(
         expect.stringContaining("WHERE email = ?"),
         ["test@example.com"]
       );
     });
 
     it("should return null when email not found", async () => {
-      vi.mocked(mockClient.firstOrNull).mockResolvedValueOnce(null);
+      vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce(null);
 
       const result = await adapter.getUserByEmail!("nobody@example.com");
       expect(result).toBeNull();
@@ -148,7 +155,7 @@ describe("D1AuthAdapter", () => {
 
   describe("getUserByAccount()", () => {
     it("should return user linked to provider account", async () => {
-      vi.mocked(mockClient.firstOrNull).mockResolvedValueOnce({
+      vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce({
         id: "u1",
         email: "test@example.com",
         name: "Test",
@@ -168,14 +175,14 @@ describe("D1AuthAdapter", () => {
         image: null,
         emailVerified: null,
       });
-      const [sql, params] = vi.mocked(mockClient.firstOrNull).mock.calls[0]!;
+      const [sql, params] = vi.mocked(mockDbRead.firstOrNull).mock.calls[0]!;
       expect(sql).toContain("JOIN accounts");
       expect(params).toContain("google");
       expect(params).toContain("google-123");
     });
 
     it("should return null when no linked account", async () => {
-      vi.mocked(mockClient.firstOrNull).mockResolvedValueOnce(null);
+      vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce(null);
 
       const result = await adapter.getUserByAccount!({
         provider: "google",
@@ -188,7 +195,7 @@ describe("D1AuthAdapter", () => {
 
   describe("linkAccount()", () => {
     it("should insert account record", async () => {
-      vi.mocked(mockClient.execute).mockResolvedValueOnce({
+      vi.mocked(mockDbWrite.execute).mockResolvedValueOnce({
         changes: 1,
         duration: 0.01,
       });
@@ -206,15 +213,15 @@ describe("D1AuthAdapter", () => {
         id_token: "idt",
       });
 
-      expect(mockClient.execute).toHaveBeenCalledOnce();
-      const [sql, params] = vi.mocked(mockClient.execute).mock.calls[0]!;
+      expect(mockDbWrite.execute).toHaveBeenCalledOnce();
+      const [sql, params] = vi.mocked(mockDbWrite.execute).mock.calls[0]!;
       expect(sql).toContain("INSERT INTO accounts");
       expect(params).toContain("google");
       expect(params).toContain("google-123");
     });
 
     it("should pass null for missing optional fields", async () => {
-      vi.mocked(mockClient.execute).mockResolvedValueOnce({
+      vi.mocked(mockDbWrite.execute).mockResolvedValueOnce({
         changes: 1,
         duration: 0.01,
       });
@@ -226,7 +233,7 @@ describe("D1AuthAdapter", () => {
         providerAccountId: "gh-456",
       });
 
-      const [, params] = vi.mocked(mockClient.execute).mock.calls[0]!;
+      const [, params] = vi.mocked(mockDbWrite.execute).mock.calls[0]!;
       // access_token, refresh_token, expires_at, token_type, scope, id_token → all null
       expect(params![5]).toBeNull(); // access_token
       expect(params![6]).toBeNull(); // refresh_token
@@ -239,11 +246,11 @@ describe("D1AuthAdapter", () => {
 
   describe("updateUser()", () => {
     it("should update user fields", async () => {
-      vi.mocked(mockClient.execute).mockResolvedValueOnce({
+      vi.mocked(mockDbWrite.execute).mockResolvedValueOnce({
         changes: 1,
         duration: 0.01,
       });
-      vi.mocked(mockClient.firstOrNull).mockResolvedValueOnce({
+      vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce({
         id: "u1",
         email: "new@example.com",
         name: "New Name",
@@ -258,15 +265,15 @@ describe("D1AuthAdapter", () => {
       });
 
       expect(result.name).toBe("New Name");
-      expect(mockClient.execute).toHaveBeenCalledOnce();
+      expect(mockDbWrite.execute).toHaveBeenCalledOnce();
     });
 
     it("should update image field", async () => {
-      vi.mocked(mockClient.execute).mockResolvedValueOnce({
+      vi.mocked(mockDbWrite.execute).mockResolvedValueOnce({
         changes: 1,
         duration: 0.01,
       });
-      vi.mocked(mockClient.firstOrNull).mockResolvedValueOnce({
+      vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce({
         id: "u1",
         email: "test@example.com",
         name: "Test",
@@ -280,18 +287,18 @@ describe("D1AuthAdapter", () => {
       });
 
       expect(result.image).toBe("https://example.com/new-avatar.jpg");
-      const [sql, params] = vi.mocked(mockClient.execute).mock.calls[0]!;
+      const [sql, params] = vi.mocked(mockDbWrite.execute).mock.calls[0]!;
       expect(sql).toContain("image = ?");
       expect(params).toContain("https://example.com/new-avatar.jpg");
     });
 
     it("should update emailVerified field", async () => {
       const verifiedDate = new Date("2026-06-15T12:00:00.000Z");
-      vi.mocked(mockClient.execute).mockResolvedValueOnce({
+      vi.mocked(mockDbWrite.execute).mockResolvedValueOnce({
         changes: 1,
         duration: 0.01,
       });
-      vi.mocked(mockClient.firstOrNull).mockResolvedValueOnce({
+      vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce({
         id: "u1",
         email: "test@example.com",
         name: "Test",
@@ -305,17 +312,17 @@ describe("D1AuthAdapter", () => {
       });
 
       expect(result.emailVerified).toEqual(verifiedDate);
-      const [sql, params] = vi.mocked(mockClient.execute).mock.calls[0]!;
+      const [sql, params] = vi.mocked(mockDbWrite.execute).mock.calls[0]!;
       expect(sql).toContain("email_verified = ?");
       expect(params).toContain("2026-06-15T12:00:00.000Z");
     });
 
     it("should handle emailVerified set to null", async () => {
-      vi.mocked(mockClient.execute).mockResolvedValueOnce({
+      vi.mocked(mockDbWrite.execute).mockResolvedValueOnce({
         changes: 1,
         duration: 0.01,
       });
-      vi.mocked(mockClient.firstOrNull).mockResolvedValueOnce({
+      vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce({
         id: "u1",
         email: "test@example.com",
         name: "Test",
@@ -329,13 +336,13 @@ describe("D1AuthAdapter", () => {
       });
 
       expect(result.emailVerified).toBeNull();
-      const [sql, params] = vi.mocked(mockClient.execute).mock.calls[0]!;
+      const [sql, params] = vi.mocked(mockDbWrite.execute).mock.calls[0]!;
       expect(sql).toContain("email_verified = ?");
       expect(params).toContain(null);
     });
 
     it("should skip execute when no fields provided (only id)", async () => {
-      vi.mocked(mockClient.firstOrNull).mockResolvedValueOnce({
+      vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce({
         id: "u1",
         email: "test@example.com",
         name: "Test",
@@ -347,15 +354,15 @@ describe("D1AuthAdapter", () => {
 
       expect(result.id).toBe("u1");
       // execute should NOT be called since sets.length === 0
-      expect(mockClient.execute).not.toHaveBeenCalled();
+      expect(mockDbWrite.execute).not.toHaveBeenCalled();
     });
 
     it("should throw if user not found after update", async () => {
-      vi.mocked(mockClient.execute).mockResolvedValueOnce({
+      vi.mocked(mockDbWrite.execute).mockResolvedValueOnce({
         changes: 1,
         duration: 0.01,
       });
-      vi.mocked(mockClient.firstOrNull).mockResolvedValueOnce(null);
+      vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce(null);
 
       await expect(
         adapter.updateUser!({ id: "u1", name: "Ghost" })

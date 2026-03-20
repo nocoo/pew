@@ -13,8 +13,9 @@ vi.mock("next-auth/providers/google", () => ({ default: {} }));
 vi.mock("@/lib/auth-adapter", () => ({
   D1AuthAdapter: vi.fn(),
 }));
-vi.mock("@/lib/d1", () => ({
-  getD1Client: vi.fn(),
+vi.mock("@/lib/db", () => ({
+  getDbRead: vi.fn(),
+  getDbWrite: vi.fn(),
 }));
 vi.mock("@/lib/invite", () => ({
   handleInviteGate: vi.fn(() => true),
