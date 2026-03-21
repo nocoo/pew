@@ -17,7 +17,7 @@ Claude Code, Codex, Gemini CLI, OpenCode, OpenClaw, VS Code Copilot, GitHub Copi
 - **Runtime**: Bun (package manager + runtime)
 - **TypeScript**: Strict mode, composite project references
 - **Port**: dev=7030, API E2E=17030, BDD E2E=27030
-- **Testing**: Vitest is the sole test runner for L1 unit tests (`bun run test`). Never use `bun test` directly for unit tests — it has incomplete `vi.mock`/`vi.mocked` support and cross-file mock leakage that causes false failures. Exception: L3 API E2E tests (`api-e2e.test.ts`) use `bun:test` because they need direct D1 database access via Bun runtime. Four-layer architecture (see docs/01-plan.md)
+- **Testing**: Quality system — L1 Unit + L2 Integration + L3 System/E2E + G1 Static Analysis + G2 Security (see docs/30-quality-system-upgrade.md). Vitest for L1 (`bun run test`), real HTTP E2E for L2 (`bun run test:e2e`), Playwright for L3 (`bun run test:e2e:ui`). Never use `bun test` directly for unit tests — it has incomplete `vi.mock`/`vi.mocked` support and cross-file mock leakage that causes false failures. Exception: L2 API E2E tests (`api-e2e.test.ts`) use `bun:test` because they need direct D1 database access via Bun runtime.
 - **TDD**: Always write tests first, then implement
 - **Commits**: Conventional Commits, atomic, auto-commit after changes
 - **`@pew/core` is NOT published**: Pure types, `import type` only, `devDependencies`
