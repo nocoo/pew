@@ -48,6 +48,21 @@ function makeRequest(
   });
 }
 
+/**
+ * Type-safe wrapper around worker.fetch!().
+ *
+ * `new Request()` produces `Request<unknown, CfProperties>` but
+ * `ExportedHandler.fetch()` expects `IncomingRequestCfProperties`.
+ * In production Cloudflare fills the cf properties; in tests we cast.
+ */
+async function callWorker(req: Request, env: Env): Promise<Response> {
+  return worker.fetch!(
+    req as unknown as Request<unknown, IncomingRequestCfProperties>,
+    env,
+    {} as ExecutionContext,
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -66,7 +81,7 @@ describe("pew read Worker", () => {
 
   describe("GET /live", () => {
     it("should return 200 with version and DB status when healthy", async () => {
-      const res = await worker.fetch!(makeRequest("GET", "/live"), env, {} as ExecutionContext);
+      const res = await callWorker(makeRequest("GET", "/live"), env);
       expect(res.status).toBe(200);
 
       const body = await res.json() as Record<string, unknown>;
@@ -87,7 +102,7 @@ describe("pew read Worker", () => {
       } as unknown as D1Database;
       const badEnv = createEnv({ DB: badDB });
 
-      const res = await worker.fetch!(makeRequest("GET", "/live"), badEnv, {} as ExecutionContext);
+      const res = await callWorker(makeRequest("GET", "/live"), badEnv);
       expect(res.status).toBe(503);
 
       const body = await res.json() as Record<string, unknown>;
@@ -101,12 +116,12 @@ describe("pew read Worker", () => {
       const req = new Request("https://pew.test.workers.dev/live", {
         method: "GET",
       });
-      const res = await worker.fetch!(req, env, {} as ExecutionContext);
+      const res = await callWorker(req, env);
       expect(res.status).toBe(200);
     });
 
     it("should return 405 for non-GET on /live", async () => {
-      const res = await worker.fetch!(makeRequest("POST", "/live"), env, {} as ExecutionContext);
+      const res = await callWorker(makeRequest("POST", "/live"), env);
       expect(res.status).toBe(405);
     });
   });
@@ -123,26 +138,24 @@ describe("pew read Worker", () => {
         body: JSON.stringify({ sql: "SELECT 1" }),
       });
 
-      const res = await worker.fetch!(req, env, {} as ExecutionContext);
+      const res = await callWorker(req, env);
       expect(res.status).toBe(401);
       const body = await res.json() as Record<string, unknown>;
       expect(body.error).toBe("Unauthorized");
     });
 
     it("should return 401 when token is wrong", async () => {
-      const res = await worker.fetch!(
+      const res = await callWorker(
         makeRequest("POST", "/query", { sql: "SELECT 1" }, "wrong-token"),
         env,
-        {} as ExecutionContext,
       );
       expect(res.status).toBe(401);
     });
 
     it("should pass auth with correct token", async () => {
-      const res = await worker.fetch!(
+      const res = await callWorker(
         makeRequest("POST", "/query", { sql: "SELECT 1" }, SECRET),
         env,
-        {} as ExecutionContext,
       );
       expect(res.status).toBe(200);
     });
@@ -174,10 +187,9 @@ describe("pew read Worker", () => {
       });
       const testEnv = createEnv({ DB: db });
 
-      const res = await worker.fetch!(
+      const res = await callWorker(
         makeRequest("POST", "/query", { sql: "SELECT * FROM usage_records" }, SECRET),
         testEnv,
-        {} as ExecutionContext,
       );
 
       expect(res.status).toBe(200);
@@ -200,7 +212,7 @@ describe("pew read Worker", () => {
       });
       const testEnv = createEnv({ DB: db });
 
-      await worker.fetch!(
+      await callWorker(
         makeRequest(
           "POST",
           "/query",
@@ -208,26 +220,23 @@ describe("pew read Worker", () => {
           SECRET,
         ),
         testEnv,
-        {} as ExecutionContext,
       );
 
       expect(mockBind).toHaveBeenCalledWith("usr_abc");
     });
 
     it("should work with empty params array", async () => {
-      const res = await worker.fetch!(
+      const res = await callWorker(
         makeRequest("POST", "/query", { sql: "SELECT 1", params: [] }, SECRET),
         env,
-        {} as ExecutionContext,
       );
       expect(res.status).toBe(200);
     });
 
     it("should return 400 for missing sql", async () => {
-      const res = await worker.fetch!(
+      const res = await callWorker(
         makeRequest("POST", "/query", { params: [] }, SECRET),
         env,
-        {} as ExecutionContext,
       );
       expect(res.status).toBe(400);
       const body = await res.json() as Record<string, unknown>;
@@ -235,19 +244,17 @@ describe("pew read Worker", () => {
     });
 
     it("should return 400 for empty sql", async () => {
-      const res = await worker.fetch!(
+      const res = await callWorker(
         makeRequest("POST", "/query", { sql: "  " }, SECRET),
         env,
-        {} as ExecutionContext,
       );
       expect(res.status).toBe(400);
     });
 
     it("should return 400 for non-string sql", async () => {
-      const res = await worker.fetch!(
+      const res = await callWorker(
         makeRequest("POST", "/query", { sql: 123 }, SECRET),
         env,
-        {} as ExecutionContext,
       );
       expect(res.status).toBe(400);
     });
@@ -261,7 +268,7 @@ describe("pew read Worker", () => {
         },
         body: "not-json",
       });
-      const res = await worker.fetch!(req, env, {} as ExecutionContext);
+      const res = await callWorker(req, env);
       expect(res.status).toBe(400);
       const body = await res.json() as Record<string, unknown>;
       expect(body.error).toContain("JSON");
@@ -269,10 +276,9 @@ describe("pew read Worker", () => {
 
     // Write statement rejection
     it("should reject INSERT → 403", async () => {
-      const res = await worker.fetch!(
+      const res = await callWorker(
         makeRequest("POST", "/query", { sql: "INSERT INTO users (id) VALUES (?)" }, SECRET),
         env,
-        {} as ExecutionContext,
       );
       expect(res.status).toBe(403);
       const body = await res.json() as Record<string, unknown>;
@@ -280,55 +286,49 @@ describe("pew read Worker", () => {
     });
 
     it("should reject UPDATE → 403", async () => {
-      const res = await worker.fetch!(
+      const res = await callWorker(
         makeRequest("POST", "/query", { sql: "UPDATE users SET name = ?" }, SECRET),
         env,
-        {} as ExecutionContext,
       );
       expect(res.status).toBe(403);
     });
 
     it("should reject DELETE → 403", async () => {
-      const res = await worker.fetch!(
+      const res = await callWorker(
         makeRequest("POST", "/query", { sql: "DELETE FROM users WHERE id = ?" }, SECRET),
         env,
-        {} as ExecutionContext,
       );
       expect(res.status).toBe(403);
     });
 
     it("should reject DROP → 403", async () => {
-      const res = await worker.fetch!(
+      const res = await callWorker(
         makeRequest("POST", "/query", { sql: "DROP TABLE users" }, SECRET),
         env,
-        {} as ExecutionContext,
       );
       expect(res.status).toBe(403);
     });
 
     it("should reject ALTER → 403", async () => {
-      const res = await worker.fetch!(
+      const res = await callWorker(
         makeRequest("POST", "/query", { sql: "ALTER TABLE users ADD COLUMN foo TEXT" }, SECRET),
         env,
-        {} as ExecutionContext,
       );
       expect(res.status).toBe(403);
     });
 
     it("should reject CREATE → 403", async () => {
-      const res = await worker.fetch!(
+      const res = await callWorker(
         makeRequest("POST", "/query", { sql: "CREATE TABLE evil (id TEXT)" }, SECRET),
         env,
-        {} as ExecutionContext,
       );
       expect(res.status).toBe(403);
     });
 
     it("should reject PRAGMA → 403", async () => {
-      const res = await worker.fetch!(
+      const res = await callWorker(
         makeRequest("POST", "/query", { sql: "PRAGMA table_info(users)" }, SECRET),
         env,
-        {} as ExecutionContext,
       );
       expect(res.status).toBe(403);
     });
@@ -344,10 +344,9 @@ describe("pew read Worker", () => {
       } as unknown as D1Database;
       const errEnv = createEnv({ DB: db });
 
-      const res = await worker.fetch!(
+      const res = await callWorker(
         makeRequest("POST", "/query", { sql: "SELECT * FROM nonexistent" }, SECRET),
         errEnv,
-        {} as ExecutionContext,
       );
       expect(res.status).toBe(500);
       const body = await res.json() as Record<string, unknown>;
@@ -361,19 +360,17 @@ describe("pew read Worker", () => {
 
   describe("router", () => {
     it("should return 404 for unknown path", async () => {
-      const res = await worker.fetch!(
+      const res = await callWorker(
         makeRequest("GET", "/unknown", undefined, SECRET),
         env,
-        {} as ExecutionContext,
       );
       expect(res.status).toBe(404);
     });
 
     it("should return 405 for GET on /query", async () => {
-      const res = await worker.fetch!(
+      const res = await callWorker(
         makeRequest("GET", "/query", undefined, SECRET),
         env,
-        {} as ExecutionContext,
       );
       expect(res.status).toBe(405);
     });
