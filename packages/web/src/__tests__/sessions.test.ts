@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import * as dbModule from "@/lib/db";
+import { createMockClient } from "./test-utils";
 
 // Mock DB
 vi.mock("@/lib/db", () => ({
@@ -16,15 +17,6 @@ vi.mock("@/lib/auth-helpers", () => ({
 const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
   resolveUser: ReturnType<typeof vi.fn>;
 };
-
-function createMockClient() {
-  return {
-    query: vi.fn(),
-    execute: vi.fn(),
-    batch: vi.fn(),
-    firstOrNull: vi.fn(),
-  };
-}
 
 function makeRequest(params: Record<string, string> = {}): Request {
   const url = new URL("http://localhost:7030/api/sessions");

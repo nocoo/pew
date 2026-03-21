@@ -22,19 +22,7 @@ vi.mock("@/auth", () => ({
 
 import { GET } from "@/app/api/seasons/route";
 import * as dbModule from "@/lib/db";
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function createMockClient() {
-  return {
-    query: vi.fn(),
-    execute: vi.fn(),
-    batch: vi.fn(),
-    firstOrNull: vi.fn(),
-  };
-}
+import { createMockClient } from "./test-utils";
 
 function makeRequest(
   url = "http://localhost:7030/api/seasons"

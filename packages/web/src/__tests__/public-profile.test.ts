@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "@/app/api/users/[slug]/route";
 import { generateMetadata } from "@/app/u/[slug]/page";
 import * as dbModule from "@/lib/db";
+import { createMockClient } from "./test-utils";
 
 // Mock DB
 vi.mock("@/lib/db", () => ({
@@ -9,15 +10,6 @@ vi.mock("@/lib/db", () => ({
   getDbWrite: vi.fn(),
   resetDb: vi.fn(),
 }));
-
-function createMockClient() {
-  return {
-    query: vi.fn(),
-    execute: vi.fn(),
-    batch: vi.fn(),
-    firstOrNull: vi.fn(),
-  };
-}
 
 function makeRequest(
   slug: string,

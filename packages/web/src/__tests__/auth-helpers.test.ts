@@ -25,6 +25,8 @@ const {
   E2E_TEST_USER_EMAIL,
 } = await import("@/lib/auth-helpers");
 
+import { createMockClient } from "./test-utils";
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -38,15 +40,6 @@ function makeRequest(token?: string): Request {
     method: "POST",
     headers,
   });
-}
-
-function createMockClient() {
-  return {
-    query: vi.fn(),
-    execute: vi.fn(),
-    batch: vi.fn(),
-    firstOrNull: vi.fn(),
-  };
 }
 
 // ---------------------------------------------------------------------------

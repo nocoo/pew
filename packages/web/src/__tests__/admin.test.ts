@@ -23,12 +23,7 @@ const { getDbRead } = (await import("@/lib/db")) as unknown as {
   getDbRead: ReturnType<typeof vi.fn>;
 };
 
-function createMockDbRead() {
-  return {
-    query: vi.fn(),
-    firstOrNull: vi.fn(),
-  };
-}
+import { createMockDbRead } from "./test-utils";
 
 // ---------------------------------------------------------------------------
 // Tests

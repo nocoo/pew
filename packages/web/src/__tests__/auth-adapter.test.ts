@@ -1,21 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { D1AuthAdapter } from "../lib/auth-adapter";
-import type { DbRead, DbWrite } from "../lib/db";
-
-// Create mock DbRead and DbWrite
-function createMockDbRead() {
-  return {
-    query: vi.fn(),
-    firstOrNull: vi.fn(),
-  } as unknown as DbRead;
-}
-
-function createMockDbWrite() {
-  return {
-    execute: vi.fn(),
-    batch: vi.fn(),
-  } as unknown as DbWrite;
-}
+import { createMockDbRead, createMockDbWrite } from "./test-utils";
 
 describe("D1AuthAdapter", () => {
   let mockDbRead: ReturnType<typeof createMockDbRead>;

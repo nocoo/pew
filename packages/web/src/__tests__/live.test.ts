@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createMockClient } from "./test-utils";
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -17,15 +18,6 @@ vi.mock("@/lib/version", () => ({
 const { getDbRead } = (await import("@/lib/db")) as unknown as {
   getDbRead: ReturnType<typeof vi.fn>;
 };
-
-function createMockClient() {
-  return {
-    query: vi.fn(),
-    execute: vi.fn(),
-    batch: vi.fn(),
-    firstOrNull: vi.fn(),
-  };
-}
 
 function makeGetRequest(): Request {
   return new Request("http://localhost:7030/api/live", { method: "GET" });

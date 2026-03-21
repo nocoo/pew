@@ -16,19 +16,11 @@ vi.mock("@/auth", () => ({
 
 import { POST } from "@/app/api/auth/verify-invite/route";
 import * as dbModule from "@/lib/db";
+import { createMockClient } from "./test-utils";
 
 const { shouldUseSecureCookies } = (await import("@/auth")) as unknown as {
   shouldUseSecureCookies: ReturnType<typeof vi.fn>;
 };
-
-function createMockClient() {
-  return {
-    query: vi.fn(),
-    execute: vi.fn(),
-    batch: vi.fn(),
-    firstOrNull: vi.fn(),
-  };
-}
 
 function makeRequest(body?: unknown): Request {
   if (body === undefined) {
