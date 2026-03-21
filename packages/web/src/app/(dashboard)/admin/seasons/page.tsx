@@ -11,6 +11,12 @@ import {
   Check,
   ChevronUp,
   RefreshCw,
+  Circle,
+  Clock,
+  CheckCircle2,
+  UserPlus,
+  ArrowLeftRight,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
@@ -60,25 +66,137 @@ function SeasonsSkeleton() {
 }
 
 // ---------------------------------------------------------------------------
-// Status badge
+// Status badge + rules display
 // ---------------------------------------------------------------------------
 
-const STATUS_STYLES: Record<SeasonStatus, string> = {
-  active: "bg-success/15 text-success",
-  upcoming: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
-  ended: "bg-muted text-muted-foreground",
+const STATUS_CONFIG: Record<
+  SeasonStatus,
+  { icon: typeof Circle; color: string; bg: string; dot: string }
+> = {
+  active: {
+    icon: Circle,
+    color: "text-success",
+    bg: "bg-success/15",
+    dot: "bg-success",
+  },
+  upcoming: {
+    icon: Clock,
+    color: "text-blue-600 dark:text-blue-400",
+    bg: "bg-blue-500/15",
+    dot: "bg-blue-500",
+  },
+  ended: {
+    icon: CheckCircle2,
+    color: "text-muted-foreground",
+    bg: "bg-muted",
+    dot: "bg-muted-foreground",
+  },
 };
 
 function StatusBadge({ status }: { status: SeasonStatus }) {
+  const config = STATUS_CONFIG[status];
+  const Icon = config.icon;
   return (
     <span
       className={cn(
-        "rounded-full px-2 py-0.5 text-[10px] font-medium",
-        STATUS_STYLES[status],
+        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none tracking-wide uppercase",
+        config.bg,
+        config.color,
       )}
     >
+      {status === "active" ? (
+        <span className="relative flex h-2 w-2">
+          <span className={cn("absolute inline-flex h-full w-full animate-ping rounded-full opacity-75", config.dot)} />
+          <span className={cn("relative inline-flex h-2 w-2 rounded-full", config.dot)} />
+        </span>
+      ) : (
+        <Icon className="h-3 w-3" strokeWidth={2} />
+      )}
       {status}
     </span>
+  );
+}
+
+const RULE_CONFIG = [
+  {
+    key: "allow_late_registration" as const,
+    label: "Late Registration",
+    shortLabel: "Registration",
+    icon: UserPlus,
+  },
+  {
+    key: "allow_roster_changes" as const,
+    label: "Roster Changes",
+    shortLabel: "Roster",
+    icon: ArrowLeftRight,
+  },
+  {
+    key: "allow_late_withdrawal" as const,
+    label: "Late Withdrawal",
+    shortLabel: "Withdrawal",
+    icon: LogOut,
+  },
+];
+
+function SeasonRules({ season }: { season: SeasonRow }) {
+  const activeRules = RULE_CONFIG.filter((r) => season[r.key]);
+  if (activeRules.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap gap-1 mt-1.5">
+      {activeRules.map((rule) => {
+        const Icon = rule.icon;
+        return (
+          <span
+            key={rule.key}
+            title={rule.label}
+            className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:text-foreground hover:border-border"
+          >
+            <Icon className="h-2.5 w-2.5" strokeWidth={1.5} />
+            {rule.shortLabel}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Season time progress bar — only shown for active seasons. */
+function SeasonProgress({ season }: { season: SeasonRow }) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (season.status !== "active") return;
+    // Update once per minute for a smooth progress bar
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, [season.status]);
+
+  if (season.status !== "active") return null;
+  const start = new Date(season.start_date).getTime();
+  const end = new Date(season.end_date).getTime();
+  const total = end - start;
+  if (total <= 0) return null;
+  const elapsed = Math.max(0, Math.min(now - start, total));
+  const pct = Math.round((elapsed / total) * 100);
+  const remaining = end - now;
+  const daysLeft = Math.max(0, Math.ceil(remaining / 86_400_000));
+
+  return (
+    <div className="mt-2 space-y-1">
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground tabular-nums">
+        <span>{pct}% elapsed</span>
+        <span>
+          {daysLeft}d left
+        </span>
+      </div>
+      <div className="h-1 w-full rounded-full bg-border/60 overflow-hidden">
+        <div
+          className="h-full rounded-full bg-success transition-all duration-500"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -857,27 +975,10 @@ function SeasonTableRow({
           </span>
         </td>
         <td className="px-4 py-3">
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col">
             <StatusBadge status={row.status} />
-            {(row.allow_late_registration || row.allow_roster_changes || row.allow_late_withdrawal) && (
-              <div className="flex flex-wrap gap-1">
-                {row.allow_late_registration && (
-                  <span className="rounded-full bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-medium text-blue-600 dark:text-blue-400">
-                    +reg
-                  </span>
-                )}
-                {row.allow_roster_changes && (
-                  <span className="rounded-full bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-medium text-blue-600 dark:text-blue-400">
-                    +roster
-                  </span>
-                )}
-                {row.allow_late_withdrawal && (
-                  <span className="rounded-full bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-medium text-blue-600 dark:text-blue-400">
-                    +wd
-                  </span>
-                )}
-              </div>
-            )}
+            <SeasonRules season={row} />
+            <SeasonProgress season={row} />
           </div>
         </td>
         <td className="px-4 py-3 hidden sm:table-cell">
