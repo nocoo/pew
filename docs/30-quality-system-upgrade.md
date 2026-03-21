@@ -123,12 +123,17 @@ brew install osv-scanner gitleaks
 
 **`package.json`** — add script:
 ```json
-"test:security": "osv-scanner --lockfile=bun.lock && gitleaks protect --staged --no-banner"
+"test:security": "osv-scanner --lockfile=bun.lock && gitleaks git --log-opts='origin/main..HEAD'"
 ```
+
+> **gitleaks version note**: `protect --staged` is deprecated since v8.19.0 and scans only
+> staged (index) files — that's a pre-commit semantic, not pre-push. In pre-push, the relevant
+> scope is "commits about to be pushed". Use `gitleaks git --log-opts='origin/main..HEAD'` which
+> scans the patch diff of all commits between the remote tracking branch and HEAD.
 
 **`.husky/pre-push`** — append G2 block after L2:
 ```bash
-# G2: Security — osv-scanner (dependency CVEs) + gitleaks (secret leak)
+# G2: Security — osv-scanner (dependency CVEs) + gitleaks (secret leak in commits)
 if command -v osv-scanner >/dev/null 2>&1; then
   osv-scanner --lockfile=bun.lock 2>&1
   OSV_EXIT=$?
@@ -139,10 +144,11 @@ if command -v osv-scanner >/dev/null 2>&1; then
 fi
 
 if command -v gitleaks >/dev/null 2>&1; then
-  gitleaks protect --staged --no-banner 2>&1
+  REMOTE_BRANCH=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null || echo "origin/main")
+  gitleaks git --log-opts="${REMOTE_BRANCH}..HEAD" 2>&1
   GITLEAKS_EXIT=$?
   if [ $GITLEAKS_EXIT -ne 0 ]; then
-    echo "❌ pre-push FAILED: gitleaks found secrets."
+    echo "❌ pre-push FAILED: gitleaks found secrets in commits."
     exit 1
   fi
 fi
@@ -164,6 +170,35 @@ Uses `command -v` guard so the hook doesn't fail on CI or machines without the t
 bun add -d @playwright/test
 npx playwright install chromium
 ```
+
+**Fix `scripts/run-e2e-ui.ts` env loading**: The API runner (`run-e2e.ts:22-40`) calls
+`loadEnvLocal()` to inject `packages/web/.env.local` (D1 credentials, auth secrets) into the
+server process. The UI runner (`run-e2e-ui.ts:46-56`) only passes `process.env`, which means
+the Next.js dev server lacks D1 credentials and any page that fetches real data will fail.
+Fix: import `loadEnvLocal` from `./e2e-utils` (it's already in the shared module) and merge
+into the server spawn env, matching the API runner pattern.
+
+**`scripts/run-e2e-ui.ts`** — change server spawn:
+```diff
++ import { ensurePortFree, cleanupBuildDir, loadEnvLocal } from "./e2e-utils";
+- import { ensurePortFree, cleanupBuildDir } from "./e2e-utils";
+
+  // in main():
++ const envLocal = loadEnvLocal();
++ const mergedEnv = { ...process.env, ...envLocal };
+  serverProcess = spawn(["bun", "run", "next", "dev", "-p", E2E_UI_PORT], {
+    cwd: "packages/web",
+    env: {
+-     ...process.env,
++     ...mergedEnv,
+      NEXT_DIST_DIR: ".next-e2e-ui",
+      E2E_SKIP_AUTH: "true",
+    },
+```
+
+> **Note**: If `loadEnvLocal` is currently defined inline in `run-e2e.ts` rather than exported
+> from `e2e-utils.ts`, move it to `e2e-utils.ts` first and re-export, so both runners share
+> the same implementation.
 
 **Why `packages/web/e2e/playwright.config.ts`**: The existing runner `scripts/run-e2e-ui.ts:74`
 hardcodes `--config packages/web/e2e/playwright.config.ts`. The config file **must** live there
@@ -199,11 +234,13 @@ test("app loads and shows page title", async ({ page }) => {
 });
 ```
 
-**Verify**: `bun run test:e2e:ui` → runner starts server, 1 spec passes, cleanup.
+**Verify**: `bun run test:e2e:ui` → runner starts server (with D1 credentials), 1 spec passes, cleanup.
 
 **Files**:
 - `package.json` (dep added)
 - `bun.lock`
+- `scripts/run-e2e-ui.ts` (add loadEnvLocal)
+- `scripts/e2e-utils.ts` (extract loadEnvLocal if needed)
 - `packages/web/e2e/playwright.config.ts` (new)
 - `packages/web/e2e/smoke.spec.ts` (new)
 - Add to `.gitignore`: `playwright-report/`, `test-results/`
