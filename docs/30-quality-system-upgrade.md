@@ -58,7 +58,7 @@ pre-commit (<30s):
 
 pre-push (<3min):
   ├── L2: bun run test:e2e       (scripts/run-e2e.ts → real HTTP on :17030)
-  └── G2: bun run test:security  (osv-scanner + gitleaks)
+  └── G2: bun run test:security  (scripts/run-security.ts → osv-scanner + gitleaks)
 
 CI / manual:
   └── L3: bun run test:e2e:ui    (scripts/run-e2e-ui.ts → Playwright on :27030)
@@ -123,43 +123,91 @@ brew install osv-scanner gitleaks
 
 **`package.json`** — add script:
 ```json
-"test:security": "osv-scanner --lockfile=bun.lock && gitleaks git --log-opts='origin/main..HEAD'"
+"test:security": "bun run scripts/run-security.ts"
+```
+
+**`scripts/run-security.ts`** (new) — single source of truth for G2 logic:
+```ts
+#!/usr/bin/env bun
+/**
+ * G2 Security Gate
+ * 1. osv-scanner: dependency CVE scan (bun.lock)
+ * 2. gitleaks: secret leak scan (unpushed commits)
+ */
+import { spawnSync } from "node:child_process";
+
+function hasCommand(name: string): boolean {
+  const r = spawnSync("command", ["-v", name], { shell: true });
+  return r.status === 0;
+}
+
+function resolveUpstreamRange(): string {
+  const r = spawnSync(
+    "git",
+    ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"],
+    { encoding: "utf-8" },
+  );
+  const upstream = r.status === 0 ? r.stdout.trim() : "origin/main";
+  return `${upstream}..HEAD`;
+}
+
+let failed = false;
+
+// osv-scanner
+if (hasCommand("osv-scanner")) {
+  console.log("🔍 osv-scanner: scanning bun.lock...");
+  const r = spawnSync("osv-scanner", ["--lockfile=bun.lock"], {
+    stdio: "inherit",
+  });
+  if (r.status !== 0) {
+    console.error("❌ osv-scanner found vulnerabilities.");
+    failed = true;
+  }
+} else {
+  console.warn("⚠️  osv-scanner not installed, skipping CVE scan");
+}
+
+// gitleaks
+if (hasCommand("gitleaks")) {
+  const range = resolveUpstreamRange();
+  console.log(`🔍 gitleaks: scanning commits ${range}...`);
+  const r = spawnSync("gitleaks", ["git", `--log-opts=${range}`], {
+    stdio: "inherit",
+  });
+  if (r.status !== 0) {
+    console.error("❌ gitleaks found secrets in commits.");
+    failed = true;
+  }
+} else {
+  console.warn("⚠️  gitleaks not installed, skipping secret scan");
+}
+
+process.exit(failed ? 1 : 0);
 ```
 
 > **gitleaks version note**: `protect --staged` is deprecated since v8.19.0 and scans only
 > staged (index) files — that's a pre-commit semantic, not pre-push. In pre-push, the relevant
-> scope is "commits about to be pushed". Use `gitleaks git --log-opts='origin/main..HEAD'` which
-> scans the patch diff of all commits between the remote tracking branch and HEAD.
+> scope is "commits about to be pushed". The script resolves the upstream tracking branch via
+> `@{u}` (falls back to `origin/main`) and scans the commit range with `gitleaks git`.
 
 **`.husky/pre-push`** — append G2 block after L2:
 ```bash
 # G2: Security — osv-scanner (dependency CVEs) + gitleaks (secret leak in commits)
-if command -v osv-scanner >/dev/null 2>&1; then
-  osv-scanner --lockfile=bun.lock 2>&1
-  OSV_EXIT=$?
-  if [ $OSV_EXIT -ne 0 ]; then
-    echo "❌ pre-push FAILED: osv-scanner found vulnerabilities."
-    exit 1
-  fi
-fi
-
-if command -v gitleaks >/dev/null 2>&1; then
-  REMOTE_BRANCH=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null || echo "origin/main")
-  gitleaks git --log-opts="${REMOTE_BRANCH}..HEAD" 2>&1
-  GITLEAKS_EXIT=$?
-  if [ $GITLEAKS_EXIT -ne 0 ]; then
-    echo "❌ pre-push FAILED: gitleaks found secrets in commits."
-    exit 1
-  fi
+bun run test:security 2>&1
+G2_EXIT=$?
+if [ $G2_EXIT -ne 0 ]; then
+  echo "❌ pre-push FAILED: G2 security gate."
+  exit 1
 fi
 ```
 
-Uses `command -v` guard so the hook doesn't fail on CI or machines without the tools.
+Pre-push hook delegates to the same `scripts/run-security.ts` — no duplicated logic.
 
 **Verify**: `bun run test:security` → clean.
 
 **Files**:
 - `package.json`
+- `scripts/run-security.ts` (new)
 - `.husky/pre-push`
 
 ---
