@@ -1,6 +1,8 @@
 #!/usr/bin/env sh
 
-# pre-commit: Unit Tests + Coverage (90% threshold enforced by vitest.config.ts)
+# pre-commit: L1 Unit Tests + Coverage + L2 Lint (four-layer test architecture)
+
+# L1: Unit Tests + Coverage (90% threshold enforced by vitest.config.ts)
 bun run test:coverage 2>&1
 TEST_EXIT=$?
 
@@ -9,4 +11,13 @@ if [ $TEST_EXIT -ne 0 ]; then
   exit 1
 fi
 
-echo "✅ pre-commit passed: UT + Coverage ≥90%"
+# L2: Lint (TypeScript strict type checking + ESLint)
+bun run lint 2>&1
+LINT_EXIT=$?
+
+if [ $LINT_EXIT -ne 0 ]; then
+  echo "❌ pre-commit FAILED: TypeScript type check or ESLint errors."
+  exit 1
+fi
+
+echo "✅ pre-commit passed: L1 UT + Coverage ≥90% + L2 Lint"
