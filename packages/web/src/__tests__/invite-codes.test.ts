@@ -1,11 +1,13 @@
 import { describe, it, expect, vi } from "vitest";
 
-// Mock auth and d1 modules to avoid next-auth import chain
+// Mock auth and db modules to avoid next-auth import chain
 vi.mock("@/auth", () => ({
   shouldUseSecureCookies: vi.fn(() => false),
 }));
-vi.mock("@/lib/d1", () => ({
-  getD1Client: vi.fn(),
+vi.mock("@/lib/db", () => ({
+  getDbRead: vi.fn(),
+  getDbWrite: vi.fn(),
+  resetDb: vi.fn(),
 }));
 
 import {

@@ -1,22 +1,13 @@
 /**
- * REST API adapters for DbRead / DbWrite.
+ * REST API adapter for DbWrite.
  *
  * Wraps the existing D1Client (Cloudflare REST API) behind the
- * abstract interfaces defined in db.ts.
+ * DbWrite interface defined in db.ts. Read operations use the
+ * Worker adapter (db-worker.ts) instead.
  */
 
 import { getD1Client } from "./d1";
-import type { DbRead, DbWrite } from "./db";
-
-export function createRestDbRead(): DbRead {
-  const client = getD1Client();
-  return {
-    query: <T>(sql: string, params?: unknown[]) =>
-      client.query<T>(sql, params ?? []),
-    firstOrNull: <T>(sql: string, params?: unknown[]) =>
-      client.firstOrNull<T>(sql, params ?? []),
-  };
-}
+import type { DbWrite } from "./db";
 
 export function createRestDbWrite(): DbWrite {
   const client = getD1Client();

@@ -1,9 +1,8 @@
 /**
  * Database abstraction layer.
  *
- * Separates read and write operations into distinct interfaces so that
- * the read path can be swapped from D1 REST API to a Cloudflare Worker
- * without touching write logic.
+ * Read operations go through the pew read Worker (Cloudflare, native D1
+ * binding). Write operations go through the D1 REST API.
  */
 
 // ---------------------------------------------------------------------------
@@ -16,7 +15,7 @@ export interface DbQueryResult<T = Record<string, unknown>> {
 }
 
 // ---------------------------------------------------------------------------
-// Read interface — safe to swap out for Worker adapter
+// Read interface — Worker adapter (pew read Worker)
 // ---------------------------------------------------------------------------
 
 export interface DbRead {
@@ -32,7 +31,7 @@ export interface DbRead {
 }
 
 // ---------------------------------------------------------------------------
-// Write interface — stays on REST API until future Worker migration
+// Write interface — stays on D1 REST API
 // ---------------------------------------------------------------------------
 
 export interface DbWrite {
@@ -55,27 +54,19 @@ let _write: DbWrite | undefined;
 
 /**
  * Get the read-only database accessor.
- *
- * Auto-switches based on WORKER_READ_URL env var:
- * - Set → Worker adapter (pew read Worker with native D1 binding)
- * - Absent → REST adapter (D1 HTTP API, fallback)
+ * Uses the pew read Worker (Cloudflare, native D1 binding).
  */
 export async function getDbRead(): Promise<DbRead> {
   if (!_read) {
-    if (process.env.WORKER_READ_URL) {
-      const { createWorkerDbRead } = await import("./db-worker");
-      _read = createWorkerDbRead();
-    } else {
-      const { createRestDbRead } = await import("./db-rest");
-      _read = createRestDbRead();
-    }
+    const { createWorkerDbRead } = await import("./db-worker");
+    _read = createWorkerDbRead();
   }
   return _read;
 }
 
 /**
  * Get the write-only database accessor.
- * Stays on REST API. Future: migrate to pew-ingest Worker.
+ * Stays on D1 REST API.
  */
 export async function getDbWrite(): Promise<DbWrite> {
   if (!_write) {

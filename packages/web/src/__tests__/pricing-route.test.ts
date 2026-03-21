@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import * as d1Module from "@/lib/d1";
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock("@/lib/d1", async (importOriginal) => {
-  const original = await importOriginal<typeof d1Module>();
-  return { ...original, getD1Client: vi.fn() };
-});
+vi.mock("@/lib/db", () => ({
+  getDbRead: vi.fn(),
+  getDbWrite: vi.fn(),
+  resetDb: vi.fn(),
+}));
 
 vi.mock("@/lib/auth-helpers", () => ({
   resolveUser: vi.fn(),
@@ -18,11 +18,13 @@ const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
   resolveUser: ReturnType<typeof vi.fn>;
 };
 
-function createMockClient() {
+const { getDbRead } = (await import("@/lib/db")) as unknown as {
+  getDbRead: ReturnType<typeof vi.fn>;
+};
+
+function createMockDbRead() {
   return {
     query: vi.fn(),
-    execute: vi.fn(),
-    batch: vi.fn(),
     firstOrNull: vi.fn(),
   };
 }
@@ -33,14 +35,12 @@ function createMockClient() {
 
 describe("GET /api/pricing", () => {
   let GET: (req: Request) => Promise<Response>;
-  let mockClient: ReturnType<typeof createMockClient>;
+  let mockDbRead: ReturnType<typeof createMockDbRead>;
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    mockClient = createMockClient();
-    vi.mocked(d1Module.getD1Client).mockReturnValue(
-      mockClient as unknown as d1Module.D1Client,
-    );
+    mockDbRead = createMockDbRead();
+    vi.mocked(getDbRead).mockResolvedValue(mockDbRead);
     const mod = await import("@/app/api/pricing/route");
     GET = mod.GET;
   });
@@ -55,7 +55,7 @@ describe("GET /api/pricing", () => {
 
   it("should return pricing map from DB rows", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
-    mockClient.query.mockResolvedValueOnce({
+    mockDbRead.query.mockResolvedValueOnce({
       results: [
         { model: "gpt-4o", input: 2.5, output: 10.0, cached: 1.25, source: null, note: null },
       ],
@@ -72,7 +72,7 @@ describe("GET /api/pricing", () => {
 
   it("should fall back to defaults when table does not exist", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
-    mockClient.query.mockRejectedValueOnce(
+    mockDbRead.query.mockRejectedValueOnce(
       new Error("no such table: model_pricing"),
     );
 
@@ -86,7 +86,7 @@ describe("GET /api/pricing", () => {
 
   it("should fall back to defaults on unexpected error", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
-    mockClient.query.mockRejectedValueOnce(new Error("D1 down"));
+    mockDbRead.query.mockRejectedValueOnce(new Error("D1 down"));
 
     const res = await GET(new Request("http://localhost:7030/api/pricing"));
 

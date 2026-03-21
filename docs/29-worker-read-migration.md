@@ -20,7 +20,7 @@
 | 10 | `fd1176b` | Fix: sanitize 'ok' from read worker /live error messages | ✅ done |
 | 11 | `764796e` | Refactor: change worker routes to /api/live and /api/query | ✅ done |
 | 12 | | Phase 3: E2E validation against dev Worker | ⏳ pending deploy |
-| 13 | | Phase 4: delete `RestDbRead` + REST-only env vars | ⏳ pending E2E |
+| 13 | | Phase 4: delete `RestDbRead` + REST-only env vars | ✅ done |
 | 14 | | docs: retrospective | |
 
 ## Problem

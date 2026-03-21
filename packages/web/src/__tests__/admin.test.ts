@@ -1,15 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { isAdmin, resolveAdmin } from "@/lib/admin";
-import * as d1Module from "@/lib/d1";
 
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
 
-vi.mock("@/lib/d1", async (importOriginal) => {
-  const original = await importOriginal<typeof d1Module>();
-  return { ...original, getD1Client: vi.fn() };
-});
+vi.mock("@/lib/db", () => ({
+  getDbRead: vi.fn(),
+  getDbWrite: vi.fn(),
+  resetDb: vi.fn(),
+}));
 
 vi.mock("@/lib/auth-helpers", () => ({
   resolveUser: vi.fn(),
@@ -19,11 +19,13 @@ const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
   resolveUser: ReturnType<typeof vi.fn>;
 };
 
-function createMockClient() {
+const { getDbRead } = (await import("@/lib/db")) as unknown as {
+  getDbRead: ReturnType<typeof vi.fn>;
+};
+
+function createMockDbRead() {
   return {
     query: vi.fn(),
-    execute: vi.fn(),
-    batch: vi.fn(),
     firstOrNull: vi.fn(),
   };
 }
@@ -84,15 +86,13 @@ describe("isAdmin", () => {
 });
 
 describe("resolveAdmin", () => {
-  let mockClient: ReturnType<typeof createMockClient>;
+  let mockDbRead: ReturnType<typeof createMockDbRead>;
   const ORIGINAL_ENV = process.env;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockClient = createMockClient();
-    vi.mocked(d1Module.getD1Client).mockReturnValue(
-      mockClient as unknown as d1Module.D1Client,
-    );
+    mockDbRead = createMockDbRead();
+    vi.mocked(getDbRead).mockResolvedValue(mockDbRead);
     process.env = { ...ORIGINAL_ENV, ADMIN_EMAILS: "admin@example.com" };
   });
 
@@ -127,39 +127,39 @@ describe("resolveAdmin", () => {
     expect(result).toEqual({ userId: "u1", email: "admin@example.com" });
   });
 
-  it("should fall back to D1 lookup when auth result has no email", async () => {
+  it("should fall back to DB lookup when auth result has no email", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({
       userId: "u1",
       email: undefined,
     });
-    mockClient.firstOrNull.mockResolvedValueOnce({ email: "admin@example.com" });
+    mockDbRead.firstOrNull.mockResolvedValueOnce({ email: "admin@example.com" });
 
     const result = await resolveAdmin(new Request("http://localhost"));
 
-    expect(mockClient.firstOrNull).toHaveBeenCalledWith(
+    expect(mockDbRead.firstOrNull).toHaveBeenCalledWith(
       "SELECT email FROM users WHERE id = ?",
       ["u1"],
     );
     expect(result).toEqual({ userId: "u1", email: "admin@example.com" });
   });
 
-  it("should return null when D1 lookup finds no email", async () => {
+  it("should return null when DB lookup finds no email", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({
       userId: "u1",
       email: undefined,
     });
-    mockClient.firstOrNull.mockResolvedValueOnce(null);
+    mockDbRead.firstOrNull.mockResolvedValueOnce(null);
 
     const result = await resolveAdmin(new Request("http://localhost"));
     expect(result).toBeNull();
   });
 
-  it("should return null when D1 lookup returns non-admin email", async () => {
+  it("should return null when DB lookup returns non-admin email", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({
       userId: "u1",
       email: undefined,
     });
-    mockClient.firstOrNull.mockResolvedValueOnce({ email: "user@example.com" });
+    mockDbRead.firstOrNull.mockResolvedValueOnce({ email: "user@example.com" });
 
     const result = await resolveAdmin(new Request("http://localhost"));
     expect(result).toBeNull();
