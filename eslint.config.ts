@@ -64,6 +64,18 @@ export default tseslint.config(
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/no-require-imports": "off",
       "no-constant-binary-expression": "off",
+      // Ban .skip and .only — prevent accidentally committed debug modifiers
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "MemberExpression[property.name='skip']",
+          message: "Do not commit .skip tests — remove before committing",
+        },
+        {
+          selector: "MemberExpression[property.name='only']",
+          message: "Do not commit .only tests — remove before committing",
+        },
+      ],
     },
   },
 );
