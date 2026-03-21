@@ -10,6 +10,7 @@ COPY packages/core/package.json packages/core/
 COPY packages/cli/package.json packages/cli/
 COPY packages/web/package.json packages/web/
 COPY packages/worker/package.json packages/worker/
+COPY packages/worker-read/package.json packages/worker-read/
 RUN bun install --frozen-lockfile --ignore-scripts
 
 # --- Build ---
