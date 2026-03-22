@@ -178,7 +178,10 @@ export function HeatmapCalendar({
                       <Tooltip key={dayIndex}>
                         <TooltipTrigger asChild>
                           <div
-                            className="rounded-sm cursor-pointer transition-colors hover:ring-1 hover:ring-foreground"
+                            className={cn(
+                              "rounded-sm cursor-pointer transition-colors hover:ring-1 hover:ring-foreground",
+                              colorIndex === 0 && "border border-border/60",
+                            )}
                             style={{
                               width: cellSize,
                               height: cellSize,
@@ -208,7 +211,10 @@ export function HeatmapCalendar({
             {colorScale.map((color, i) => (
               <div
                 key={i}
-                className="rounded-sm"
+                className={cn(
+                  "rounded-sm",
+                  i === 0 && "border border-border/60",
+                )}
                 style={{
                   width: cellSize,
                   height: cellSize,
