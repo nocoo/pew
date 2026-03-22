@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.14.3
+
+### UI
+
+- **Heatmap empty cell visibility** — Added a subtle border outline to zero-value and future-date cells in the Activity heatmap calendar. Previously these cells blended into the background in both light and dark themes.
+
+### CLI
+
+- **Aligned CLI output** — Replaced consola with a custom logger that uses a consistent 2-character icon column (icon + space). All message text now starts at the same column. Removed right-aligned timestamps that added visual noise. Dropped `consola` dependency.
+
 ## v1.14.2
 
 ### Quality System Upgrade
