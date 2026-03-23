@@ -311,3 +311,47 @@ bun run test:e2e:ui                # 10+ specs pass, using pew-db-test
 | G2 | ✅ | osv-scanner + gitleaks |
 | D1 | ✅ | pew-db-test + test Workers + _test_marker + guards |
 | **Tier** | **S** | All 6 dimensions green |
+
+---
+
+## Verification Record (2026-03-23)
+
+### Infrastructure
+
+| Resource | ID / URL | Status |
+|----------|----------|--------|
+| pew-db-test (D1) | `aa08a894-6a65-4baf-b756-2e611dff437d` | ✅ 22 tables + _test_marker |
+| pew-ingest-test (Worker) | `pew-ingest-test.worker.hexly.ai` | ✅ Deployed |
+| pew-test (Worker) | `pew-test.worker.hexly.ai` | ✅ Deployed |
+| _test_marker | `key='env', value='test'` | ✅ Verified |
+
+### Guard Verification
+
+```
+D1 test guard: 14 unit tests passed (4 layers × edge cases)
+  Layer 1 — existence: 3 tests
+  Layer 2 — DB non-equality: 1 test
+  Layer 3 — Worker URL non-equality: 2 tests
+  Layer 4 — _test_marker: 5 tests
+  Happy path: 3 tests
+```
+
+### Production Safety
+
+```
+Prod DB check: SELECT * FROM users WHERE id = 'e2e-test-user-id' → [] (empty)
+Test DB ID (aa08a894) ≠ Prod DB ID (5c00ebbf) ✅
+Test Worker URLs ≠ Prod Worker URLs ✅
+```
+
+### Commit Log
+
+| # | Hash | Message |
+|---|------|---------|
+| 1 | `7a60e88` | docs: add D1 test isolation upgrade plan (doc 31) |
+| 2 | `2a804c8` | chore: create test D1 database and deploy test Workers |
+| 3 | `a3acc0a` | feat: add D1 test isolation guard utilities |
+| 4 | `26d4807` | refactor: integrate test isolation into E2E runners |
+| 5 | `7aa4c44` | test: add D1 test guard unit tests |
+| 6 | `07911fd` | docs: update CLAUDE.md and doc 30 with D1 dimension |
+| 7 | — | docs: finalize doc 31 with verification record |
