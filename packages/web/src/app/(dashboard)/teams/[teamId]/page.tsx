@@ -8,6 +8,7 @@ import {
   Copy,
   Check,
   Trophy,
+  LogOut,
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -150,14 +151,17 @@ function SeasonRow({
               onClick={() => onWithdraw(season.id)}
               disabled={isBusy}
               className={cn(
-                "rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-destructive hover:border-destructive/50 transition-colors",
+                "flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-destructive hover:border-destructive/50 transition-colors",
                 isBusy && "opacity-50 cursor-not-allowed",
               )}
             >
               {isBusy ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
               ) : (
-                "Withdraw"
+                <>
+                  <LogOut className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  <span>Withdraw</span>
+                </>
               )}
             </button>
           ) : null
@@ -166,14 +170,17 @@ function SeasonRow({
             onClick={() => onRegister(season.id)}
             disabled={isBusy}
             className={cn(
-              "rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors",
+              "flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors",
               isBusy && "opacity-50 cursor-not-allowed",
             )}
           >
             {isBusy ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
             ) : (
-              "Register"
+              <>
+                <Trophy className="h-3.5 w-3.5" strokeWidth={1.5} />
+                <span>Register</span>
+              </>
             )}
           </button>
         ) : null}

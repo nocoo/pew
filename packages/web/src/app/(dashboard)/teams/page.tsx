@@ -7,6 +7,7 @@ import {
   Users,
   Plus,
   LogIn,
+  LogOut,
   Copy,
   Check,
   Trash2,
@@ -453,18 +454,34 @@ function TeamCard({
           {!(isOwner && hasOtherMembers) && (
             <button
               onClick={handleLeave}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+              className={cn(
+                "flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
+                isOwner
+                  ? "text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent",
+              )}
               title={isOwner ? "Delete team" : "Leave team"}
             >
-              <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+              {isOwner ? (
+                <>
+                  <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  <span>Delete</span>
+                </>
+              ) : (
+                <>
+                  <LogOut className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  <span>Leave</span>
+                </>
+              )}
             </button>
           )}
           {/* Navigate to detail */}
           <Link
             href={`/teams/${team.id}`}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             title="View team"
           >
+            <span>Details</span>
             <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} />
           </Link>
         </div>
@@ -505,10 +522,11 @@ function TeamCard({
                   ) : (
                     <button
                       onClick={() => handleKick(m.userId, m.name)}
-                      className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                       title={`Remove ${m.name ?? "member"}`}
                     >
                       <UserMinus className="h-3 w-3" strokeWidth={1.5} />
+                      <span>Remove</span>
                     </button>
                   )}
                 </li>
@@ -711,10 +729,11 @@ export default function TeamsPage() {
                 onClick={handleCreateTeam}
                 disabled={creatingTeam || !newTeamName.trim()}
                 className={cn(
-                  "rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shrink-0",
+                  "flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shrink-0",
                   (creatingTeam || !newTeamName.trim()) && "opacity-50 cursor-not-allowed",
                 )}
               >
+                <Plus className="h-3.5 w-3.5" strokeWidth={1.5} />
                 {creatingTeam ? "Creating..." : "Create"}
               </button>
             </div>
@@ -741,10 +760,11 @@ export default function TeamsPage() {
                 onClick={handleJoinTeam}
                 disabled={joiningTeam || !inviteCode.trim()}
                 className={cn(
-                  "rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shrink-0",
+                  "flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shrink-0",
                   (joiningTeam || !inviteCode.trim()) && "opacity-50 cursor-not-allowed",
                 )}
               >
+                <LogIn className="h-3.5 w-3.5" strokeWidth={1.5} />
                 {joiningTeam ? "Joining..." : "Join"}
               </button>
             </div>
