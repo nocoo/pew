@@ -21,9 +21,54 @@ import { UsageTrendChart } from "@/components/dashboard/usage-trend-chart";
 import { SourceDonutChart } from "@/components/dashboard/source-donut-chart";
 import { ModelBreakdownChart } from "@/components/dashboard/model-breakdown-chart";
 import { HeatmapCalendar } from "@/components/dashboard/heatmap-calendar";
-import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+// ---------------------------------------------------------------------------
+// Skeleton
+// ---------------------------------------------------------------------------
+
+function ProfileSkeleton() {
+  return (
+    <div className="space-y-4 md:space-y-6">
+      {/* 3-col stat grid × 2 rows */}
+      {Array.from({ length: 2 }).map((_, row) => (
+        <StatGrid key={row} columns={3}>
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div
+              key={i}
+              className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5 space-y-3"
+            >
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-7 w-28" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+          ))}
+        </StatGrid>
+      ))}
+
+      {/* Charts row: trend + donut */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-3 md:gap-4">
+        <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+          <Skeleton className="h-3 w-24 mb-4" />
+          <Skeleton className="h-[240px] md:h-[280px] w-full" />
+        </div>
+        <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+          <Skeleton className="h-3 w-20 mb-4" />
+          <div className="flex justify-center">
+            <Skeleton className="h-[180px] w-[180px] rounded-full" />
+          </div>
+        </div>
+      </div>
+
+      {/* Model breakdown */}
+      <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+        <Skeleton className="h-3 w-28 mb-4" />
+        <Skeleton className="h-[200px] md:h-[240px] w-full" />
+      </div>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -135,7 +180,7 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
         )}
 
         {/* Loading */}
-        {loading && <DashboardSkeleton />}
+        {loading && <ProfileSkeleton />}
 
         {/* Content */}
         {!loading && data && (

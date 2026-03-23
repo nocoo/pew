@@ -21,20 +21,54 @@ import type { Period } from "@/lib/date-helpers";
 
 function ModelsSkeleton() {
   return (
-    <div className="space-y-3">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="rounded-xl bg-secondary p-4">
-          <div className="flex items-center gap-4">
-            <Skeleton className="h-4 w-4 rounded-full" />
-            <div className="flex-1">
-              <Skeleton className="h-4 w-40" />
-              <Skeleton className="h-3 w-24 mt-1" />
-            </div>
-            <Skeleton className="h-4 w-16" />
+    <div className="space-y-4 md:space-y-6">
+      {/* 2-col chart grid (SourceTrend + ModelEvolution) */}
+      <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div key={i} className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+            <Skeleton className="h-3 w-24 mb-4" />
+            <Skeleton className="h-[240px] md:h-[280px] w-full" />
           </div>
-          <Skeleton className="h-2 w-full mt-3 rounded-full" />
-        </div>
-      ))}
+        ))}
+      </div>
+
+      {/* Breakdown chart */}
+      <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+        <Skeleton className="h-3 w-28 mb-4" />
+        <Skeleton className="h-[200px] md:h-[240px] w-full" />
+      </div>
+
+      {/* Summary table */}
+      <div className="rounded-xl bg-secondary p-1">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="px-4 py-3 text-left"><Skeleton className="h-3 w-12" /></th>
+              <th className="px-4 py-3 text-left hidden lg:table-cell"><Skeleton className="h-3 w-10" /></th>
+              <th className="px-4 py-3 text-right"><Skeleton className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-right"><Skeleton className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-right hidden md:table-cell"><Skeleton className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-right"><Skeleton className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-right hidden sm:table-cell"><Skeleton className="h-3 w-14 ml-auto" /></th>
+              <th className="px-4 py-3 text-right hidden md:table-cell"><Skeleton className="h-3 w-10 ml-auto" /></th>
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <tr key={i} className="border-b border-border/50 last:border-0">
+                <td className="px-4 py-3"><Skeleton className="h-4 w-32" /></td>
+                <td className="px-4 py-3 hidden lg:table-cell"><Skeleton className="h-4 w-16" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3 hidden md:table-cell"><Skeleton className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3 hidden sm:table-cell"><Skeleton className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3 hidden md:table-cell"><Skeleton className="h-2 w-full rounded-full" /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

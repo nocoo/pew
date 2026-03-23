@@ -9,7 +9,7 @@ import { StatCard, StatGrid } from "@/components/dashboard/stat-card";
 import { WorkingHoursHeatmap } from "@/components/dashboard/working-hours-heatmap";
 import { MessageStatsChart } from "@/components/dashboard/message-stats-chart";
 import { PeakHoursCard } from "@/components/dashboard/peak-hours-card";
-import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   PeriodSelector,
   periodToDateRange,
@@ -20,6 +20,62 @@ import { computeTokensPerHour } from "@/lib/session-helpers";
 import { computeReasoningRatio } from "@/lib/cost-helpers";
 import { detectPeakHours, getLocalToday, fillDateRange } from "@/lib/date-helpers";
 import { formatTokens } from "@/lib/utils";
+
+// ---------------------------------------------------------------------------
+// Skeleton
+// ---------------------------------------------------------------------------
+
+function SessionsSkeleton() {
+  return (
+    <div className="space-y-4 md:space-y-6">
+      {/* 4-col stat grid (SessionOverview) */}
+      <StatGrid columns={4}>
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div
+            key={i}
+            className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5 space-y-3"
+          >
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-7 w-28" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+        ))}
+      </StatGrid>
+
+      {/* 2-col efficiency row */}
+      <StatGrid columns={2}>
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div
+            key={i}
+            className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5 space-y-3"
+          >
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-7 w-28" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+        ))}
+      </StatGrid>
+
+      {/* 2-col chart row (heatmap + peak hours) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
+        <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+          <Skeleton className="h-3 w-28 mb-4" />
+          <Skeleton className="h-[200px] w-full" />
+        </div>
+        <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+          <Skeleton className="h-3 w-24 mb-4" />
+          <Skeleton className="h-[200px] w-full" />
+        </div>
+      </div>
+
+      {/* Message chart */}
+      <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+        <Skeleton className="h-3 w-28 mb-4" />
+        <Skeleton className="h-[240px] md:h-[280px] w-full" />
+      </div>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Page
@@ -97,7 +153,7 @@ export default function SessionsPage() {
       )}
 
       {/* Loading state */}
-      {(sessionData.loading || usageLoading || halfHourLoading) && <DashboardSkeleton />}
+      {(sessionData.loading || usageLoading || halfHourLoading) && <SessionsSkeleton />}
 
       {/* Content */}
       {!sessionData.loading && !usageLoading && !halfHourLoading && (
