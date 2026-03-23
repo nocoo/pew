@@ -460,3 +460,9 @@ Note:   all specs are read-only (no writes to prod D1)
 pre-commit: L1 Unit + G1 Static Analysis (renamed from four-layer)
 pre-push:   L2 Integration/API + G2 Security (renamed, G2 added)
 ```
+
+### D1 Test Isolation — see doc 31
+
+The sixth dimension (D1 Test Isolation) was upgraded separately in
+[docs/31-d1-test-isolation.md](31-d1-test-isolation.md). With D1 complete,
+pew achieves **Tier S** (all 6 dimensions green).
