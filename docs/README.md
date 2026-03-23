@@ -32,5 +32,6 @@
 | 28 | [28-notify-concurrency-dirty-key-loss.md](28-notify-concurrency-dirty-key-loss.md) | Notify concurrency: dirty-key loss under unlocked parallel sync | in-progress |
 | 29 | [29-worker-read-migration.md](29-worker-read-migration.md) | Worker read migration — D1 REST API → Worker native binding | in-progress |
 | 30 | [30-quality-system-upgrade.md](30-quality-system-upgrade.md) | Quality system upgrade — L1+L2+L3+G1+G2 | done |
+| 31 | [31-d1-test-isolation.md](31-d1-test-isolation.md) | D1 test isolation — quality system → Tier S | in-progress |
 
 > **Note:** Number 14 is intentionally vacant (original doc 14 was renumbered to 12 to fill a gap).
