@@ -11,3 +11,16 @@ custom_domain = true
 binding = "DB"
 database_name = "pew-db"
 database_id = "5c00ebbf-a0ed-49d9-a64f-5712c272e96f"
+
+# ---------- Test environment ----------
+[env.test]
+name = "pew-test"
+
+[[env.test.d1_databases]]
+binding = "DB"
+database_name = "pew-db-test"
+database_id = "aa08a894-6a65-4baf-b756-2e611dff437d"
+
+[[env.test.routes]]
+pattern = "pew-test.worker.hexly.ai"
+custom_domain = true
