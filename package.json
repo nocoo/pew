@@ -19,6 +19,7 @@
     "test:security": "bun run scripts/run-security.ts",
     "sync": "bun run build && NODE_TLS_REJECT_UNAUTHORIZED=0 bun packages/cli/dist/bin.js sync --dev",
     "sync:prod": "bun run build && bun packages/cli/dist/bin.js sync",
+    "release": "bun run scripts/release.ts",
     "prepare": "husky"
   },
   "lint-staged": {
