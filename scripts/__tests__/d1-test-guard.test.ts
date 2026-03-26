@@ -9,16 +9,16 @@ const PROD_ENV = {
   CF_ACCOUNT_ID: "acc-prod-123",
   CF_D1_DATABASE_ID: "prod-db-id-aaaa",
   CF_D1_API_TOKEN: "tok-prod-xxx",
-  WORKER_INGEST_URL: "https://pew-ingest.worker.hexly.ai/ingest",
-  WORKER_READ_URL: "https://pew.worker.hexly.ai",
+  WORKER_INGEST_URL: "https://pew-ingest.worker.example.com/ingest",
+  WORKER_READ_URL: "https://pew.worker.example.com",
   WORKER_SECRET: "shared-secret",
   WORKER_READ_SECRET: "shared-read-secret",
 };
 
 const TEST_ENV = {
   CF_D1_DATABASE_ID_TEST: "test-db-id-bbbb",
-  WORKER_INGEST_URL_TEST: "https://pew-ingest-test.worker.hexly.ai/ingest",
-  WORKER_READ_URL_TEST: "https://pew-test.worker.hexly.ai",
+  WORKER_INGEST_URL_TEST: "https://pew-ingest-test.worker.example.com/ingest",
+  WORKER_READ_URL_TEST: "https://pew-test.worker.example.com",
 };
 
 // ---------------------------------------------------------------------------

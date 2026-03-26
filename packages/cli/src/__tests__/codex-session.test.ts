@@ -16,7 +16,7 @@ function sessionMetaLine(overrides: Record<string, unknown> = {}): string {
     payload: {
       id: "019cb243-2c35-7f03-a94a-46b99385c1d6",
       timestamp: "2026-03-07T10:00:00.000Z",
-      cwd: "/Users/nocoo/workspace/personal/pew",
+      cwd: "/home/user/projects/example-project",
       model: "gpt-5.4",
       originator: "codex_exec",
       cli_version: "0.106.0",
@@ -32,7 +32,7 @@ function turnContextLine(model: string, ts: string): string {
     type: "turn_context",
     payload: {
       model,
-      cwd: "/Users/nocoo/workspace/personal/pew",
+      cwd: "/home/user/projects/example-project",
       approval_policy: "on-failure",
       sandbox_policy: "read-only",
     },
@@ -162,7 +162,7 @@ describe("collectCodexSessions", () => {
     expect(s.lastMessageAt).toBe("2026-03-07T10:03:30.000Z");
     expect(s.durationSeconds).toBe(210); // 3.5 min
     expect(s.model).toBe("gpt-5.4");
-    expect(s.projectRef).toBe("9f5e23b26651a98d");
+    expect(s.projectRef).toBe("a15bc89c911de474");
     expect(s.snapshotAt).toBeDefined();
   });
 
