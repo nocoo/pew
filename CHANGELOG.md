@@ -1,5 +1,31 @@
 # Changelog
 
+## v1.14.6
+
+### Added
+- Add automated release script replacing bump-version.ts
+- Show earliest data date in admin profile dialog
+- Enlarge profile dialog and stabilize tab transitions
+- Bypass is_public for admin/teammate/season peers
+- Add user profile popup dialog with charts
+
+### Changed
+- Add dev server run command to superset config
+- Sanitize real paths and domains in test fixtures
+- Add doc 32 proxy token gap investigation
+- Sanitize real IDs, paths, and domains with placeholders
+- Re-enable no-non-null-assertion ESLint rule and fix all violations
+- Rewrite README following personal project specification
+- Update publish procedure for new release script
+- Make G2 security gate hard-fail when tools missing
+- Add lint-staged for incremental eslint on pre-commit
+- Unify profile dialog tab system across all entry points
+- Add bump-version script for batch version updates
+
+### Fixed
+- Resolve picomatch and yaml vulnerabilities via overrides
+- Allow profile dialog for users without slug
+
 ## v1.14.5
 
 ### Quality
