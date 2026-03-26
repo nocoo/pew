@@ -398,7 +398,7 @@ compatibility_date = "2026-03-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "pew-db"
-database_id = "5c00ebbf-a0ed-49d9-a64f-5712c272e96f"
+database_id = "<D1_DATABASE_ID>"
 ```
 
 #### 2.2 Worker Implementation

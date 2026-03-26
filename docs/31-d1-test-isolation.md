@@ -6,7 +6,7 @@
 
 doc 30 upgraded five dimensions (L1+L2+L3+G1+G2), but the sixth — **D1 Test Isolation** — was left at ❌. Per the quality system rules, D1 is a **Tier A prerequisite**: without it, the project caps at Tier B regardless of other dimensions.
 
-Currently **all E2E tests directly hit the production D1 database** (`pew-db`, ID `5c00ebbf-...`). The API E2E suite both reads AND writes (seed user, ingest records, create API keys, cleanup). This violates the core D1 principle: "E2E 测试必须物理隔离于生产资源".
+Currently **all E2E tests directly hit the production D1 database** (`pew-db`, ID `<PROD_DB_ID>`). The API E2E suite both reads AND writes (seed user, ingest records, create API keys, cleanup). This violates the core D1 principle: "E2E 测试必须物理隔离于生产资源".
 
 pew is a **Variant B: External Application** (Next.js on Railway, connecting to Cloudflare D1 via HTTP API + Workers). It has 2 Workers:
 - `pew-ingest` (writes) → `WORKER_INGEST_URL` / `WORKER_SECRET`
@@ -26,7 +26,7 @@ pew is a **Variant B: External Application** (Next.js on Railway, connecting to 
 ```
 Production (unchanged)
 ┌──────────────────────────────────────────────┐
-│  pew-db (5c00ebbf-...)                       │
+│  pew-db (<PROD_DB_ID>)                        │
 │  ├── pew-ingest Worker (/ingest)             │
 │  └── pew Worker (/api/query)                 │
 └──────────────────────────────────────────────┘
@@ -114,7 +114,7 @@ database_name = "pew-db-test"
 database_id = "<test-d1-id>"
 
 [[env.test.routes]]
-pattern = "pew-ingest-test.worker.hexly.ai"
+pattern = "pew-ingest-test.worker.example.com"
 custom_domain = true
 ```
 
@@ -129,7 +129,7 @@ database_name = "pew-db-test"
 database_id = "<test-d1-id>"
 
 [[env.test.routes]]
-pattern = "pew-test.worker.hexly.ai"
+pattern = "pew-test.worker.example.com"
 custom_domain = true
 ```
 
@@ -158,8 +158,8 @@ npx wrangler secret put WORKER_READ_SECRET --env test
 CF_D1_DATABASE_ID_TEST=<test-d1-id>
 
 # Test Workers
-WORKER_INGEST_URL_TEST=https://pew-ingest-test.worker.hexly.ai/ingest
-WORKER_READ_URL_TEST=https://pew-test.worker.hexly.ai
+WORKER_INGEST_URL_TEST=https://pew-ingest-test.worker.example.com/ingest
+WORKER_READ_URL_TEST=https://pew-test.worker.example.com
 ```
 
 **Files:**
@@ -320,9 +320,9 @@ bun run test:e2e:ui                # 10+ specs pass, using pew-db-test
 
 | Resource | ID / URL | Status |
 |----------|----------|--------|
-| pew-db-test (D1) | `aa08a894-6a65-4baf-b756-2e611dff437d` | ✅ 22 tables + _test_marker |
-| pew-ingest-test (Worker) | `pew-ingest-test.worker.hexly.ai` | ✅ Deployed |
-| pew-test (Worker) | `pew-test.worker.hexly.ai` | ✅ Deployed |
+| pew-db-test (D1) | `<TEST_DB_ID>` | ✅ 22 tables + _test_marker |
+| pew-ingest-test (Worker) | `pew-ingest-test.worker.example.com` | ✅ Deployed |
+| pew-test (Worker) | `pew-test.worker.example.com` | ✅ Deployed |
 | _test_marker | `key='env', value='test'` | ✅ Verified |
 
 ### Guard Verification
@@ -340,7 +340,7 @@ D1 test guard: 14 unit tests passed (4 layers × edge cases)
 
 ```
 Prod DB check: SELECT * FROM users WHERE id = 'e2e-test-user-id' → [] (empty)
-Test DB ID (aa08a894) ≠ Prod DB ID (5c00ebbf) ✅
+Test DB ID (<TEST_DB_ID>) ≠ Prod DB ID (<PROD_DB_ID>) ✅
 Test Worker URLs ≠ Prod Worker URLs ✅
 ```
 

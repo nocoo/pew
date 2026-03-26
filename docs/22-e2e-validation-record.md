@@ -28,11 +28,11 @@
 
 ### Environment
 
-- **User ID**: `7f778922-52dc-4906-8405-ab331244370b`
-- **Device ID**: `14a28b16-39eb-492b-b92f-8aa244b97f1f` (shared `~/.config/pew/device.json`，dev/prod 共用)
-- **D1 Database**: `5c00ebbf-a0ed-49d9-a64f-5712c272e96f`
-- **Worker**: redeployed version `95bfb407-f2f1-4dbf-83c9-6818d4053219` (includes device_id support)
-- **API endpoint**: `pew.dev.hexly.ai` → Worker → D1
+- **User ID**: `<USER_ID>` (example: `aaaaaaaa-bbbb-cccc-dddd-111111111111`)
+- **Device ID**: `<DEVICE_ID>` (example: `aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee`, shared `~/.config/pew/device.json`，dev/prod 共用)
+- **D1 Database**: `<D1_DATABASE_ID>`
+- **Worker**: redeployed version `<DEPLOYMENT_ID>` (includes device_id support)
+- **API endpoint**: `<APP_HOST>` → Worker → D1
 
 ### State Reset
 

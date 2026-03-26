@@ -418,7 +418,7 @@ notify.cjs 需要可靠地找到 `pew` 可执行文件。**在 `pew init` 时固
 
 ```js
 // notify.cjs（编译时注入）
-const PEW_BIN = "/Users/nocoo/.bun/bin/pew";  // pew init 时解析的绝对路径
+const PEW_BIN = "/home/user/.bun/bin/pew";  // pew init 时解析的绝对路径
 ```
 
 解析优先级（在 `pew init` 执行时）：
@@ -1281,7 +1281,7 @@ pew init
 ```
 pew Init — Installing notifier hooks
 
-  pew binary: /Users/nocoo/.bun/bin/pew
+  pew binary: ~/.bun/bin/pew
 
   ✓ Claude Code    hook installed → ~/.claude/settings.json
   ✓ Gemini CLI     hook installed → ~/.gemini/settings.json
@@ -1301,7 +1301,7 @@ pew init --dry-run
 
 pew Init — Dry Run (no changes will be made)
 
-  pew binary: /Users/nocoo/.bun/bin/pew
+  pew binary: ~/.bun/bin/pew
 
   Claude Code    would install → ~/.claude/settings.json (exists)
   Gemini CLI     would install → ~/.gemini/settings.json (exists)

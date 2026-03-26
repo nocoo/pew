@@ -38,7 +38,7 @@
 
 ### 3.3 OpenCode 源码仓库
 
-- `/Users/nocoo/workspace/personal/opencode`
+- `~/workspace/personal/opencode`
 
 ## 4. 本机证据
 
@@ -158,9 +158,9 @@ payload。
 
 源码中关键文件：
 
-- `/Users/nocoo/workspace/personal/opencode/packages/opencode/src/index.ts`
-- `/Users/nocoo/workspace/personal/opencode/packages/opencode/src/storage/db.ts`
-- `/Users/nocoo/workspace/personal/opencode/packages/opencode/src/storage/json-migration.ts`
+- `~/workspace/personal/opencode/packages/opencode/src/index.ts`
+- `~/workspace/personal/opencode/packages/opencode/src/storage/db.ts`
+- `~/workspace/personal/opencode/packages/opencode/src/storage/json-migration.ts`
 
 从代码可以看出：
 

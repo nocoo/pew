@@ -25,10 +25,10 @@
 
 ### 3.1 VibeUsage
 
-- `/Users/nocoo/workspace/personal/vibeusage/src/commands/sync.js`
-- `/Users/nocoo/workspace/personal/vibeusage/src/lib/rollout.js`
-- `/Users/nocoo/workspace/personal/vibeusage/src/lib/uploader.js`
-- `/Users/nocoo/workspace/personal/vibeusage/src/lib/vibeusage-api.js`
+- `~/workspace/personal/vibeusage/src/commands/sync.js`
+- `~/workspace/personal/vibeusage/src/lib/rollout.js`
+- `~/workspace/personal/vibeusage/src/lib/uploader.js`
+- `~/workspace/personal/vibeusage/src/lib/vibeusage-api.js`
 - `~/.vibeusage/bin/notify.cjs`
 - `~/.vibeusage/tracker/config.json`
 - `~/.vibeusage/tracker/cursors.json`
@@ -36,12 +36,12 @@
 
 ### 3.2 pew
 
-- `/Users/nocoo/workspace/personal/pew/packages/cli/src/commands/sync.ts`
-- `/Users/nocoo/workspace/personal/pew/packages/cli/src/commands/session-sync.ts`
-- `/Users/nocoo/workspace/personal/pew/packages/cli/src/commands/upload.ts`
-- `/Users/nocoo/workspace/personal/pew/packages/cli/src/commands/session-upload.ts`
-- `/Users/nocoo/workspace/personal/pew/packages/cli/src/storage/local-queue.ts`
-- `/Users/nocoo/workspace/personal/pew/packages/core/src/types.ts`
+- `~/workspace/personal/pew/packages/cli/src/commands/sync.ts`
+- `~/workspace/personal/pew/packages/cli/src/commands/session-sync.ts`
+- `~/workspace/personal/pew/packages/cli/src/commands/upload.ts`
+- `~/workspace/personal/pew/packages/cli/src/commands/session-upload.ts`
+- `~/workspace/personal/pew/packages/cli/src/storage/local-queue.ts`
+- `~/workspace/personal/pew/packages/core/src/types.ts`
 
 ## 4. 共同主链路
 
