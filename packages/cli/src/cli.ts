@@ -23,7 +23,7 @@ import { ConfigManager } from "./config/manager.js";
 // CLI version — single source of truth within CLI runtime
 // ---------------------------------------------------------------------------
 
-const CLI_VERSION = "1.14.6";
+const CLI_VERSION = "1.14.7";
 
 // ---------------------------------------------------------------------------
 // Dev mode detection (otter pattern)
