@@ -101,7 +101,8 @@ function TeamRow({
   onMemberClick: (member: SeasonMember) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const hasMembers = entry.members && entry.members.length > 0;
+  const members = entry.members ?? [];
+  const hasMembers = members.length > 0;
   const tc = teamColor(entry.team.name);
 
   return (
@@ -151,8 +152,8 @@ function TeamRow({
             </div>
             {hasMembers && (
               <span className="text-[10px] text-muted-foreground">
-                {entry.members!.length}{" "}
-                {entry.members!.length === 1 ? "member" : "members"}
+                {members.length}{" "}
+                {members.length === 1 ? "member" : "members"}
               </span>
             )}
           </div>
@@ -193,7 +194,7 @@ function TeamRow({
       {/* Expanded member list */}
       {expanded && hasMembers && (
         <div className="rounded-b-[var(--radius-card)] border-t border-border bg-secondary/50 px-4 py-2 space-y-1">
-          {entry.members!.map((member) => {
+          {members.map((member) => {
             const displayName = member.name ?? "Anonymous";
             const initial = displayName[0]?.toUpperCase() ?? "?";
             return (

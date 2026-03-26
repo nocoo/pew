@@ -192,13 +192,19 @@ export async function PATCH(
        FROM seasons WHERE id = ?`,
       [seasonId]
     );
+    if (!updated) {
+      return NextResponse.json(
+        { error: "Season not found after update" },
+        { status: 404 },
+      );
+    }
 
     return NextResponse.json({
       ...updated,
-      status: deriveSeasonStatus(updated!.start_date, updated!.end_date),
-      allow_late_registration: !!updated!.allow_late_registration,
-      allow_roster_changes: !!updated!.allow_roster_changes,
-      allow_late_withdrawal: !!updated!.allow_late_withdrawal,
+      status: deriveSeasonStatus(updated.start_date, updated.end_date),
+      allow_late_registration: !!updated.allow_late_registration,
+      allow_roster_changes: !!updated.allow_roster_changes,
+      allow_late_withdrawal: !!updated.allow_late_withdrawal,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";

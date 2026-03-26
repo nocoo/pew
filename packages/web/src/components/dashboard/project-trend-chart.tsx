@@ -220,7 +220,7 @@ export function ProjectTrendChart({
                 key={name}
                 type="monotone"
                 dataKey={name}
-                stroke={CHART_COLORS[i % CHART_COLORS.length]!}
+                stroke={CHART_COLORS[i % CHART_COLORS.length] as string}
                 strokeWidth={2}
                 dot={false}
                 hide={hiddenProjects.has(name)}

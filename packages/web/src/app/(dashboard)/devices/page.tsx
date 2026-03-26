@@ -92,7 +92,7 @@ function DevicesSkeleton() {
 
 function StatGrid({ devices }: { devices: DeviceAggregate[] }) {
   const deviceCount = devices.length;
-  const mostActive = devices.length > 0 ? devices[0]! : null;
+  const mostActive = devices.length > 0 ? (devices[0] as (typeof devices)[number]) : null;
   const recentDays = 7;
   const recentCutoff = new Date();
   recentCutoff.setDate(recentCutoff.getDate() - recentDays);

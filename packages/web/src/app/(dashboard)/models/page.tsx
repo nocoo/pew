@@ -106,7 +106,7 @@ export default function ModelsPage() {
     const sparse = toSourceTrendPoints(data.records, tzOffset);
     if (sparse.length === 0) return sparse;
     // Collect all source keys for zero-fill factory
-    const allSources = Object.keys(sparse[0]!.sources);
+    const allSources = Object.keys((sparse[0] as (typeof sparse)[number]).sources);
     const zeroSources: Record<string, number> = {};
     for (const s of allSources) zeroSources[s] = 0;
     return fillDateRange(sparse, "date", (d) => ({ date: d, sources: { ...zeroSources } }), today);
@@ -116,7 +116,7 @@ export default function ModelsPage() {
     if (!data) return [];
     const sparse = toModelEvolutionPoints(data.records, undefined, tzOffset);
     if (sparse.length === 0) return sparse;
-    const allModels = Object.keys(sparse[0]!.models);
+    const allModels = Object.keys((sparse[0] as (typeof sparse)[number]).models);
     const zeroModels: Record<string, number> = {};
     for (const m of allModels) zeroModels[m] = 0;
     return fillDateRange(sparse, "date", (d) => ({ date: d, models: { ...zeroModels } }), today);

@@ -99,7 +99,7 @@ function hashString(s: string): number {
  */
 export function modelColor(model: string): ChartColor {
   const idx = hashString(model) % CHART_COLORS.length;
-  return { color: CHART_COLORS[idx]!, token: CHART_TOKENS[idx]! };
+  return { color: CHART_COLORS[idx] as string, token: CHART_TOKENS[idx] as string };
 }
 
 /**
@@ -108,5 +108,5 @@ export function modelColor(model: string): ChartColor {
  */
 export function teamColor(name: string): ChartColor {
   const idx = hashString(name) % CHART_COLORS.length;
-  return { color: CHART_COLORS[idx]!, token: CHART_TOKENS[idx]! };
+  return { color: CHART_COLORS[idx] as string, token: CHART_TOKENS[idx] as string };
 }

@@ -92,7 +92,8 @@ export function toWorkingHoursGrid(
     // We need Mon=0 ... Sun=6
     const dayIndex = jsDay === 0 ? 6 : jsDay - 1;
     const hour = local.getUTCHours();
-    grid[dayIndex]!.hours[hour]!++;
+    const entry = grid[dayIndex] as WorkingHoursDay;
+    entry.hours[hour] = (entry.hours[hour] ?? 0) + 1;
   }
 
   return grid;

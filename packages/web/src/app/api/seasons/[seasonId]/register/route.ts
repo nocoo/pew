@@ -142,7 +142,7 @@ export async function POST(
       ...members.results.map((m, i) => ({
         sql: `INSERT INTO season_team_members (id, season_id, team_id, user_id)
               VALUES (?, ?, ?, ?)`,
-        params: [memberIds[i]!, seasonId, team_id, m.user_id],
+        params: [memberIds[i] as string, seasonId, team_id, m.user_id],
       })),
     ];
 

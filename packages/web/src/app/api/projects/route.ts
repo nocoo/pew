@@ -528,6 +528,12 @@ export async function POST(request: Request) {
       "SELECT created_at FROM projects WHERE id = ?",
       [projectId],
     );
+    if (!created) {
+      return NextResponse.json(
+        { error: "Project not found after creation" },
+        { status: 500 },
+      );
+    }
 
     return NextResponse.json(
       {
@@ -545,7 +551,7 @@ export async function POST(request: Request) {
         total_messages: totalMessages,
         total_duration: totalDuration,
         models: [...modelSet],
-        created_at: created!.created_at,
+        created_at: created.created_at,
       },
       { status: 201 },
     );

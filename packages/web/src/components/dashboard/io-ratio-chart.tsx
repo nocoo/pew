@@ -40,7 +40,7 @@ function IoTooltip({
   }>;
 }) {
   if (!active || !payload?.length) return null;
-  const item = payload[0]!;
+  const item = payload[0] as (typeof payload)[number];
 
   return (
     <div className="rounded-[var(--radius-widget)] border border-border bg-card p-2.5 shadow-sm">
@@ -130,7 +130,7 @@ export function IoRatioChart({
                 paddingAngle={2}
               >
                 {chartData.map((entry, i) => (
-                  <Cell key={entry.name} fill={SLICE_COLORS[i]!} />
+                  <Cell key={entry.name} fill={SLICE_COLORS[i] as string} />
                 ))}
               </Pie>
               <Tooltip content={<IoTooltip />} isAnimationActive={false} />

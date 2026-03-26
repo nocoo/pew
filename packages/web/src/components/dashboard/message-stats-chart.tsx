@@ -26,8 +26,8 @@ interface MessageStatsChartProps {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const colorUser = CHART_COLORS[0]!; // teal
-const colorAssistant = CHART_COLORS[1]!; // sky
+const colorUser = CHART_COLORS[0] as string; // teal
+const colorAssistant = CHART_COLORS[1] as string; // sky
 
 /** Format date "2026-03-07" to "Mar 7" */
 function fmtDate(dateStr: string): string {

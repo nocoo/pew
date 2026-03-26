@@ -72,7 +72,7 @@ export function computePercentileBoundaries(
       Math.ceil((i / levels) * sortedValues.length) - 1,
       sortedValues.length - 1,
     );
-    boundaries.push(sortedValues[idx]!);
+    boundaries.push(sortedValues[idx] as number);
   }
   return boundaries;
 }
@@ -98,7 +98,7 @@ export function getColorIndex(
 
   // Find the first boundary that this value fits into
   for (let i = 0; i < boundaries.length; i++) {
-    if (value <= boundaries[i]!) return i + 1;
+    if (value <= (boundaries[i] as number)) return i + 1;
   }
   // Value exceeds all boundaries — top bucket
   return colorScale.length - 1;

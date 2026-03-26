@@ -625,11 +625,11 @@ export function computeStreak(
   let longestStart = "";
   let longestEnd = "";
   let runLength = 1;
-  let runStart = sortedDates[0]!;
+  let runStart = sortedDates[0] as string;
 
   for (let i = 1; i < sortedDates.length; i++) {
-    const prevDate = sortedDates[i - 1]!;
-    const currDate = sortedDates[i]!;
+    const prevDate = sortedDates[i - 1] as string;
+    const currDate = sortedDates[i] as string;
     const prevMs = new Date(prevDate + "T00:00:00Z").getTime();
     const currMs = new Date(currDate + "T00:00:00Z").getTime();
 
@@ -650,7 +650,7 @@ export function computeStreak(
   if (runLength > longestStreak) {
     longestStreak = runLength;
     longestStart = runStart;
-    longestEnd = sortedDates[sortedDates.length - 1]!;
+    longestEnd = sortedDates[sortedDates.length - 1] as string;
   }
 
   return {
@@ -695,7 +695,7 @@ export function toSourceTrendPoints(rows: UsageRow[], tzOffset: number = 0): Sou
   const sourceKeys = Array.from(allSources).sort();
 
   return dates.map((date) => {
-    const dateMap = byDate.get(date)!;
+    const dateMap = byDate.get(date) as Map<string, number>;
     const sources: Record<string, number> = {};
     for (const s of sourceKeys) {
       sources[s] = dateMap.get(s) ?? 0;

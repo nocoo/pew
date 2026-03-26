@@ -103,7 +103,7 @@ function StatGrid({ projects }: { projects: Project[] }) {
   // Most Active: client-side sort by session_count desc — API returns created_at DESC
   const mostActive = useMemo(() => {
     if (projects.length === 0) return null;
-    return [...projects].sort((a, b) => b.session_count - a.session_count)[0]!;
+    return [...projects].sort((a, b) => b.session_count - a.session_count)[0] as (typeof projects)[number];
   }, [projects]);
 
   // Active (7d): uses absolute_last_active (wall-clock, never period-scoped)

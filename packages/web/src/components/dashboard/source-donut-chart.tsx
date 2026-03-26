@@ -37,7 +37,7 @@ function DonutTooltip({
   }>;
 }) {
   if (!active || !payload?.length) return null;
-  const item = payload[0]!;
+  const item = payload[0] as (typeof payload)[number];
 
   return (
     <div className="rounded-[var(--radius-widget)] border border-border bg-card p-2.5 shadow-sm">

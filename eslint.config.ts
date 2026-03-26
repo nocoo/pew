@@ -32,8 +32,6 @@ export default tseslint.config(
           caughtErrorsIgnorePattern: "^_",
         },
       ],
-      // Allow non-null assertions — we use them intentionally in typed contexts
-      "@typescript-eslint/no-non-null-assertion": "off",
       // Allow dynamic delete — used intentionally in config manipulation (notifier hooks)
       "@typescript-eslint/no-dynamic-delete": "off",
     },

@@ -15,7 +15,7 @@ import type { DailyCostPoint } from "@/lib/cost-helpers";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 
 // Stable color references
-const colorOutput = CHART_COLORS[1]!;
+const colorOutput = CHART_COLORS[1] as string;
 
 // ---------------------------------------------------------------------------
 // Types

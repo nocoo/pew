@@ -396,6 +396,12 @@ export async function PATCH(
       "SELECT id, name, created_at FROM projects WHERE id = ?",
       [projectId],
     );
+    if (!updated) {
+      return NextResponse.json(
+        { error: "Project not found after update" },
+        { status: 404 },
+      );
+    }
 
     const aliasRows = await dbRead.query<AliasStatsRow>(
       `SELECT
@@ -444,8 +450,8 @@ export async function PATCH(
     );
 
     return NextResponse.json({
-      id: updated!.id,
-      name: updated!.name,
+      id: updated.id,
+      name: updated.name,
       aliases: aliasRows.results.map((a) => ({
         source: a.source,
         project_ref: a.project_ref,
@@ -458,7 +464,7 @@ export async function PATCH(
       total_messages: totalMessages,
       total_duration: totalDuration,
       models: [...modelSet],
-      created_at: updated!.created_at,
+      created_at: updated.created_at,
     });
   } catch (err) {
     // Best-effort rollback: undo any writes that succeeded before the failure

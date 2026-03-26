@@ -65,5 +65,5 @@ export async function resolveAdmin(
 
   if (!isAdmin(email)) return null;
 
-  return { userId: authResult.userId, email: email! };
+  return { userId: authResult.userId, email: email as string };
 }

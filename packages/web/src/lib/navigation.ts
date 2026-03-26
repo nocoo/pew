@@ -114,7 +114,7 @@ export function breadcrumbsFromPathname(pathname: string) {
 
   let href = "";
   for (let i = 0; i < segments.length; i++) {
-    const seg = segments[i]!;
+    const seg = segments[i] as string;
     href += `/${seg}`;
     const isLast = i === segments.length - 1;
     const label = ROUTE_LABELS[seg] ?? seg.slice(0, 8);

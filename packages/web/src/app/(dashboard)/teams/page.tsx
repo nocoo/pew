@@ -162,7 +162,7 @@ function TeamLogo({
         {hasLogo ? (
           // eslint-disable-next-line @next/next/no-img-element -- external team logos
           <img
-            src={team.logo_url!}
+            src={team.logo_url as string}
             alt={`${team.name} logo`}
             className="h-9 w-9 object-cover"
           />

@@ -13,7 +13,7 @@ import { resolve } from "node:path";
 // Load .env.local manually (no dotenv dependency)
 // ---------------------------------------------------------------------------
 
-const envPath = resolve(import.meta.dirname!, "../packages/web/.env.local");
+const envPath = resolve(import.meta.dirname as string, "../packages/web/.env.local");
 const envContent = readFileSync(envPath, "utf-8");
 const envVars: Record<string, string> = {};
 for (const line of envContent.split("\n")) {

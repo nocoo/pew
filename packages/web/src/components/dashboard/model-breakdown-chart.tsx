@@ -17,8 +17,8 @@ import { sourceLabel } from "@/hooks/use-usage-data";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 
 // Safe color references
-const colorOutput = CHART_COLORS[1]!;
-const colorCached = CHART_COLORS[2]!;
+const colorOutput = CHART_COLORS[1] as string;
+const colorCached = CHART_COLORS[2] as string;
 
 // ---------------------------------------------------------------------------
 // Types

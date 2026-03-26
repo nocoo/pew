@@ -114,7 +114,7 @@ export function SourceTrendChart({ data, className }: SourceTrendChartProps) {
   // Extract unique source keys from first data point (all points have same keys due to zero-fill)
   const sourceKeys = useMemo(() => {
     if (!data.length) return [];
-    return Object.keys(data[0]!.sources);
+    return Object.keys((data[0] as (typeof data)[number]).sources);
   }, [data]);
 
   // Build flat data for Recharts: [{ date, "claude-code": N, "gemini-cli": N, ... }]

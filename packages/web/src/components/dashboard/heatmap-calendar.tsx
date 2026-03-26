@@ -86,13 +86,13 @@ export function HeatmapCalendar({
     let lastMonth = -1;
 
     for (let weekIndex = 0; weekIndex < weeks.length; weekIndex++) {
-      const firstDayOfWeek = weeks[weekIndex]!.find(
+      const firstDayOfWeek = (weeks[weekIndex] as (typeof weeks)[number]).find(
         (d) => d.getFullYear() === year
       );
       if (firstDayOfWeek) {
         const month = firstDayOfWeek.getMonth();
         if (month !== lastMonth) {
-          monthLabels.push({ month: MONTHS[month]!, weekIndex });
+          monthLabels.push({ month: MONTHS[month] as string, weekIndex });
           lastMonth = month;
         }
       }

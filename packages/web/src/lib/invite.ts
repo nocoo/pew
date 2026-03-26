@@ -35,7 +35,7 @@ export function generateInviteCode(): string {
   crypto.getRandomValues(bytes);
   let code = "";
   for (let i = 0; i < INVITE_CODE_LENGTH; i++) {
-    code += INVITE_ALPHABET[bytes[i]! % INVITE_ALPHABET.length];
+    code += INVITE_ALPHABET[(bytes[i] as number) % INVITE_ALPHABET.length];
   }
   return code;
 }

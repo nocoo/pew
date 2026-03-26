@@ -36,7 +36,7 @@ interface RecentBarChartProps {
 // ---------------------------------------------------------------------------
 
 const colorInput = chart.teal;
-const colorOutput = CHART_COLORS[1]!;
+const colorOutput = CHART_COLORS[1] as string;
 
 // ---------------------------------------------------------------------------
 // Helpers

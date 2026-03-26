@@ -38,7 +38,7 @@ export function PeakHoursCard({ slots, className }: PeakHoursCardProps) {
     );
   }
 
-  const maxTokens = slots[0]!.totalTokens;
+  const maxTokens = (slots[0] as (typeof slots)[number]).totalTokens;
 
   return (
     <div

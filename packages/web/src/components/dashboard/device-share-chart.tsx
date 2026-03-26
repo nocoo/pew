@@ -144,7 +144,7 @@ export function DeviceShareChart({
               <div
                 className="h-2 w-2 rounded-full"
                 style={{
-                  background: CHART_COLORS[i % CHART_COLORS.length]!,
+                  background: CHART_COLORS[i % CHART_COLORS.length] as string,
                 }}
               />
               <span className="text-xs text-muted-foreground">
@@ -174,12 +174,12 @@ export function DeviceShareChart({
                 >
                   <stop
                     offset="0%"
-                    stopColor={CHART_COLORS[i % CHART_COLORS.length]!}
+                    stopColor={CHART_COLORS[i % CHART_COLORS.length] as string}
                     stopOpacity={0.6}
                   />
                   <stop
                     offset="100%"
-                    stopColor={CHART_COLORS[i % CHART_COLORS.length]!}
+                    stopColor={CHART_COLORS[i % CHART_COLORS.length] as string}
                     stopOpacity={0.2}
                   />
                 </linearGradient>
@@ -213,7 +213,7 @@ export function DeviceShareChart({
                 type="monotone"
                 dataKey={deviceId}
                 stackId="1"
-                stroke={CHART_COLORS[i % CHART_COLORS.length]!}
+                stroke={CHART_COLORS[i % CHART_COLORS.length] as string}
                 strokeWidth={1.5}
                 fill={`url(#gradDevice${i})`}
               />

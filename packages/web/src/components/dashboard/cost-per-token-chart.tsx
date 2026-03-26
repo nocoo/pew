@@ -19,7 +19,7 @@ import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 
 // Color scale: green (cheap) → amber (mid) → red (expensive)
 const colorCheap = chartPositive;
-const colorMid = CHART_COLORS[5]!; // amber
+const colorMid = CHART_COLORS[5] as string; // amber
 const colorExpensive = chartNegative;
 
 // ---------------------------------------------------------------------------

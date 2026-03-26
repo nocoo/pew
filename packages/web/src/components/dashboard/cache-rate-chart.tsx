@@ -60,7 +60,7 @@ function CacheRateTooltip({
   label?: string;
 }) {
   if (!active || !payload?.length) return null;
-  const point = payload[0]!.payload;
+  const point = (payload[0] as (typeof payload)[number]).payload;
 
   return (
     <div className="rounded-[var(--radius-widget)] border border-border bg-card p-2.5 shadow-sm">

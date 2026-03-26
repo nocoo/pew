@@ -185,7 +185,7 @@ export function detectPeakHours(
 
     // Extract local day + hour + minute using getUTC* on the shifted date
     const dayIndex = local.getUTCDay();
-    const dayName = DAY_NAMES_FULL[dayIndex]!;
+    const dayName = DAY_NAMES_FULL[dayIndex] as string;
     const hour = local.getUTCHours();
     const minute = local.getUTCMinutes();
     const isHalf = minute >= 30;
@@ -310,8 +310,8 @@ export function fillDateRange<T>(
     byDate.set(item[dateKey] as string, item);
   }
 
-  const firstDate = data[0]![dateKey] as string;
-  const lastDataDate = data[data.length - 1]![dateKey] as string;
+  const firstDate = (data[0] as T)[dateKey] as string;
+  const lastDataDate = (data[data.length - 1] as T)[dateKey] as string;
   const endDate = today && today > lastDataDate ? today : lastDataDate;
 
   const result: T[] = [];
@@ -357,9 +357,9 @@ export function fillTimelineGaps<T>(
     group.push(item);
   }
 
-  const firstDate = data[0]![dateKey] as string;
+  const firstDate = (data[0] as T)[dateKey] as string;
   const dates = Array.from(dateGroups.keys()).sort();
-  const lastDataDate = dates[dates.length - 1]!;
+  const lastDataDate = dates[dates.length - 1] as string;
   const endDate = today && today > lastDataDate ? today : lastDataDate;
 
   const result: T[] = [];

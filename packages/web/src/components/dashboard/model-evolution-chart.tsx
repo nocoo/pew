@@ -113,7 +113,7 @@ export function ModelEvolutionChart({
   // Extract unique model keys from first data point (all points zero-filled)
   const modelKeys = useMemo(() => {
     if (!data.length) return [];
-    return Object.keys(data[0]!.models);
+    return Object.keys((data[0] as (typeof data)[number]).models);
   }, [data]);
 
   // Convert absolute counts to percentages for 100% stacking

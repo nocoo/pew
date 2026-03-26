@@ -210,7 +210,7 @@ function DialogBody({
     switch (tab) {
       case "season":
         // season is guaranteed non-null when tab === "season"
-        return { from: season!.start, to: season!.end };
+        return { from: (season as ResolvedSeason).start, to: (season as ResolvedSeason).end };
       case "7d":
         return { days: 7 };
       case "30d":

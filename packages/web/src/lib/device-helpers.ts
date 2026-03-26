@@ -75,7 +75,7 @@ function roundPercentages(
 
   for (const { i } of indices) {
     if (remainder <= 0) break;
-    floored[i]!++;
+    (floored[i] as number)++;
     remainder--;
   }
 
@@ -173,7 +173,7 @@ export function toDeviceSharePoints(
         const rawPcts = values.map((v) => (v / total) * 100);
         const rounded = roundPercentages(rawPcts);
         for (let i = 0; i < deviceKeys.length; i++) {
-          point[deviceKeys[i]!] = rounded[i]!;
+          point[deviceKeys[i] as string] = rounded[i] as number;
         }
       } else {
         for (const id of deviceKeys) {

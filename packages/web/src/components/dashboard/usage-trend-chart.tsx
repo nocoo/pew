@@ -15,7 +15,7 @@ import type { DailyPoint } from "@/hooks/use-usage-data";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 
 // Safe color references (CHART_COLORS is guaranteed 8 elements)
-const colorOutput = CHART_COLORS[1]!;
+const colorOutput = CHART_COLORS[1] as string;
 
 // ---------------------------------------------------------------------------
 // Types

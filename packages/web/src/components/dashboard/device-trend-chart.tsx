@@ -236,7 +236,7 @@ export function DeviceTrendChart({
                 key={deviceId}
                 type="monotone"
                 dataKey={deviceId}
-                stroke={CHART_COLORS[i % CHART_COLORS.length]!}
+                stroke={CHART_COLORS[i % CHART_COLORS.length] as string}
                 strokeWidth={2}
                 dot={false}
                 hide={hiddenDevices.has(deviceId)}

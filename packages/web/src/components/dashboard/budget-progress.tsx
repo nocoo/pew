@@ -123,13 +123,13 @@ export function BudgetProgress({ status, className }: BudgetProgressProps) {
 
   // Compute projected percentages
   const projectedPercentUsd =
-    hasUsd && status.budgetUsd! > 0
-      ? Math.round((status.projectedUsd / status.budgetUsd!) * 100)
+    hasUsd && (status.budgetUsd as number) > 0
+      ? Math.round((status.projectedUsd / (status.budgetUsd as number)) * 100)
       : null;
 
   const projectedPercentTokens =
-    hasTokens && status.budgetTokens! > 0
-      ? Math.round((status.projectedTokens / status.budgetTokens!) * 100)
+    hasTokens && (status.budgetTokens as number) > 0
+      ? Math.round((status.projectedTokens / (status.budgetTokens as number)) * 100)
       : null;
 
   return (
@@ -144,7 +144,7 @@ export function BudgetProgress({ status, className }: BudgetProgressProps) {
           label="Cost Budget"
           icon={DollarSign}
           spent={formatCost(status.spentUsd)}
-          limit={formatCost(status.budgetUsd!)}
+          limit={formatCost(status.budgetUsd as number)}
           percent={status.usedPercentUsd}
           projectedPercent={projectedPercentUsd}
         />
@@ -155,7 +155,7 @@ export function BudgetProgress({ status, className }: BudgetProgressProps) {
           label="Token Budget"
           icon={Coins}
           spent={formatTokens(status.spentTokens)}
-          limit={formatTokens(status.budgetTokens!)}
+          limit={formatTokens(status.budgetTokens as number)}
           percent={status.usedPercentTokens}
           projectedPercent={projectedPercentTokens}
         />
