@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.14.10
+
+### Fixed
+- Remove card layer anti-patterns and add aria-sort to sortable headers
+
 ## v1.14.9
 
 ### Fixed
