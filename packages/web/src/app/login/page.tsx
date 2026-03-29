@@ -49,7 +49,8 @@ function GoogleIcon() {
 function LoginContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
+  const rawCallback = searchParams.get("callbackUrl");
+  const callbackUrl = rawCallback && rawCallback.startsWith("/") ? rawCallback : "/dashboard";
   const year = new Date().getFullYear();
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
 
