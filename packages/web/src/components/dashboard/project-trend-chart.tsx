@@ -63,7 +63,7 @@ function ProjectTrendTooltip({
   const total = visible.reduce((sum, e) => sum + e.value, 0);
 
   return (
-    <div className="rounded-[var(--radius-widget)] border border-border bg-card p-2.5 shadow-sm">
+    <div className="rounded-[var(--radius-widget)] bg-secondary p-2.5">
       <p className="mb-1.5 text-xs font-medium text-foreground">
         {label ? fmtDate(label) : ""}
       </p>

@@ -59,7 +59,7 @@ function DeviceBreakdownTooltip({
   const orderedKeys = ["input_tokens", "output_tokens", "cached_input_tokens"] as const;
 
   return (
-    <div className="rounded-[var(--radius-widget)] border border-border bg-card p-2.5 shadow-sm">
+    <div className="rounded-[var(--radius-widget)] bg-secondary p-2.5">
       <p className="mb-0.5 text-xs font-medium text-foreground">{label}</p>
       <div className="mb-1 border-b border-border/50 pb-1 flex items-center gap-2 text-xs">
         <span className="text-muted-foreground">Total</span>

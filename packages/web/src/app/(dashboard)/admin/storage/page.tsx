@@ -126,8 +126,17 @@ function SortHeader({
       : ArrowDown
     : ArrowUpDown;
 
+  const ariaSort = isActive
+    ? currentDir === "asc"
+      ? "ascending"
+      : "descending"
+    : "none";
+
   return (
-    <th className={cn("px-4 py-3 text-xs font-medium text-muted-foreground", className)}>
+    <th
+      aria-sort={ariaSort as "ascending" | "descending" | "none"}
+      className={cn("px-4 py-3 text-xs font-medium text-muted-foreground", className)}
+    >
       <button
         onClick={() => onSort(sortKey)}
         className={cn(

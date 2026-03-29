@@ -74,7 +74,7 @@ function CostPerTokenTooltip({
   if (!d) return null;
 
   return (
-    <div className="rounded-[var(--radius-widget)] border border-border bg-card p-2.5 shadow-sm">
+    <div className="rounded-[var(--radius-widget)] bg-secondary p-2.5">
       <p className="mb-0.5 text-xs font-medium text-foreground">{d.model}</p>
       <p className="mb-1.5 text-xs text-muted-foreground">{d.sourceLabel}</p>
       <div className="space-y-0.5 text-xs">

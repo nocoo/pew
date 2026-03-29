@@ -61,7 +61,7 @@ function ModelTooltip({
   const orderedKeys = ["input", "output", "cached"] as const;
 
   return (
-    <div className="rounded-[var(--radius-widget)] border border-border bg-card p-2.5 shadow-sm">
+    <div className="rounded-[var(--radius-widget)] bg-secondary p-2.5">
       <p className="mb-0.5 text-xs font-medium text-foreground">
         {label}
       </p>
