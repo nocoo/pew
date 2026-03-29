@@ -1,6 +1,6 @@
 {
   "name": "@pew/worker-read",
-  "version": "1.14.8",
+  "version": "1.14.9",
   "private": true,
   "scripts": {
     "dev": "wrangler dev",

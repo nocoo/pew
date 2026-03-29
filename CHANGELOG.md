@@ -1,5 +1,15 @@
 # Changelog
 
+## v1.14.9
+
+### Fixed
+- Override brace-expansion to fix GHSA-f886-m6hf-6m8v
+- Align web package version with monorepo root (1.14.7)
+- Harden callbackUrl validation and fix logo upscale blur
+- Remove ghost logo assets per basalt B-3 spec
+- Align dashboard framework with basalt B-2 spec
+- Validate callbackUrl to prevent open redirect
+
 ## v1.14.8
 
 ### Fixed
