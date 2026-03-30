@@ -19,7 +19,7 @@ import * as dbModule from "@/lib/db";
 import { createMockClient } from "./test-utils";
 
 function makeRequest(
-  url = "http://localhost:7030/api/seasons/season-1/leaderboard"
+  url = "http://localhost:7020/api/seasons/season-1/leaderboard"
 ): Request {
   return new Request(url, { method: "GET" });
 }
@@ -225,7 +225,7 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
     });
 
     const url =
-      "http://localhost:7030/api/seasons/season-1/leaderboard?expand=members";
+      "http://localhost:7020/api/seasons/season-1/leaderboard?expand=members";
     const res = await GET(makeRequest(url), { params: routeParams });
     const data = await res.json();
 
@@ -342,7 +342,7 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
     });
 
     const url =
-      "http://localhost:7030/api/seasons/season-1/leaderboard?expand=members";
+      "http://localhost:7020/api/seasons/season-1/leaderboard?expand=members";
     const res = await GET(makeRequest(url), {
       params: Promise.resolve({ seasonId: "season-2" }),
     });
@@ -396,7 +396,7 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
       mockClient.query.mockResolvedValueOnce({ results: [] });
 
       const req = makeRequest(
-        `http://localhost:7030/api/seasons/${UUID_SEASON_ID}/leaderboard`
+        `http://localhost:7020/api/seasons/${UUID_SEASON_ID}/leaderboard`
       );
       await GET(req, {
         params: Promise.resolve({ seasonId: UUID_SEASON_ID }),
@@ -414,7 +414,7 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
       mockClient.query.mockResolvedValueOnce({ results: [] });
 
       const req = makeRequest(
-        `http://localhost:7030/api/seasons/${SLUG_SEASON_ID}/leaderboard`
+        `http://localhost:7020/api/seasons/${SLUG_SEASON_ID}/leaderboard`
       );
       await GET(req, {
         params: Promise.resolve({ seasonId: SLUG_SEASON_ID }),
@@ -446,7 +446,7 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
 
       const uuidRes = await GET(
         makeRequest(
-          `http://localhost:7030/api/seasons/${UUID_SEASON_ID}/leaderboard`
+          `http://localhost:7020/api/seasons/${UUID_SEASON_ID}/leaderboard`
         ),
         { params: Promise.resolve({ seasonId: UUID_SEASON_ID }) }
       );
@@ -476,7 +476,7 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
 
       const slugRes = await GET(
         makeRequest(
-          `http://localhost:7030/api/seasons/${SLUG_SEASON_ID}/leaderboard`
+          `http://localhost:7020/api/seasons/${SLUG_SEASON_ID}/leaderboard`
         ),
         { params: Promise.resolve({ seasonId: SLUG_SEASON_ID }) }
       );
@@ -503,7 +503,7 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
 
       await GET(
         makeRequest(
-          `http://localhost:7030/api/seasons/${upperUUID}/leaderboard`
+          `http://localhost:7020/api/seasons/${upperUUID}/leaderboard`
         ),
         { params: Promise.resolve({ seasonId: upperUUID }) }
       );

@@ -20,7 +20,7 @@ const { getDbRead } = (await import("@/lib/db")) as unknown as {
 };
 
 function makeGetRequest(): Request {
-  return new Request("http://localhost:7030/api/live", { method: "GET" });
+  return new Request("http://localhost:7020/api/live", { method: "GET" });
 }
 
 // ---------------------------------------------------------------------------
@@ -171,7 +171,7 @@ describe("GET /api/live", () => {
     getDbRead.mockResolvedValue(mockClient);
 
     // No auth headers at all
-    const req = new Request("http://localhost:7030/api/live", {
+    const req = new Request("http://localhost:7020/api/live", {
       method: "GET",
     });
     const res = await GET(req);

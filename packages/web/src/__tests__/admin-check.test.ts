@@ -49,7 +49,7 @@ describe("GET /api/admin/check", () => {
   it("should return isAdmin: false when not authenticated", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce(null);
 
-    const res = await GET(new Request("http://localhost:7030/api/admin/check"));
+    const res = await GET(new Request("http://localhost:7020/api/admin/check"));
     const body = await res.json();
 
     expect(res.status).toBe(200);
@@ -62,7 +62,7 @@ describe("GET /api/admin/check", () => {
       email: "admin@example.com",
     });
 
-    const res = await GET(new Request("http://localhost:7030/api/admin/check"));
+    const res = await GET(new Request("http://localhost:7020/api/admin/check"));
     const body = await res.json();
 
     expect(body.isAdmin).toBe(true);
@@ -74,7 +74,7 @@ describe("GET /api/admin/check", () => {
       email: "user@example.com",
     });
 
-    const res = await GET(new Request("http://localhost:7030/api/admin/check"));
+    const res = await GET(new Request("http://localhost:7020/api/admin/check"));
     const body = await res.json();
 
     expect(body.isAdmin).toBe(false);
@@ -87,7 +87,7 @@ describe("GET /api/admin/check", () => {
     });
     mockDbRead.firstOrNull.mockResolvedValueOnce({ email: "admin@example.com" });
 
-    const res = await GET(new Request("http://localhost:7030/api/admin/check"));
+    const res = await GET(new Request("http://localhost:7020/api/admin/check"));
     const body = await res.json();
 
     expect(body.isAdmin).toBe(true);
@@ -101,7 +101,7 @@ describe("GET /api/admin/check", () => {
     });
     mockDbRead.firstOrNull.mockResolvedValueOnce(null);
 
-    const res = await GET(new Request("http://localhost:7030/api/admin/check"));
+    const res = await GET(new Request("http://localhost:7020/api/admin/check"));
     const body = await res.json();
 
     expect(body.isAdmin).toBe(false);

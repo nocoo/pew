@@ -27,7 +27,7 @@ function makeRequest(
   slug: string,
   params: Record<string, string> = {},
 ): [Request, { params: Promise<{ slug: string }> }] {
-  const url = new URL(`http://localhost:7030/api/users/${slug}`);
+  const url = new URL(`http://localhost:7020/api/users/${slug}`);
   for (const [k, v] of Object.entries(params)) {
     url.searchParams.set(k, v);
   }

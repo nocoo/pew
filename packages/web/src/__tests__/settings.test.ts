@@ -199,7 +199,7 @@ describe("PATCH /api/settings", () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
 
     const res = await PATCH(
-      new Request("http://localhost:7030/api/settings", {
+      new Request("http://localhost:7020/api/settings", {
         method: "PATCH",
         body: "not json",
       }),

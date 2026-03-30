@@ -26,11 +26,11 @@ function makeJson(method: string, body?: unknown): Request {
     opts.body = JSON.stringify(body);
     opts.headers = { "Content-Type": "application/json" };
   }
-  return new Request("http://localhost:7030/api/admin/pricing", opts);
+  return new Request("http://localhost:7020/api/admin/pricing", opts);
 }
 
 function makeDelete(params: Record<string, string> = {}): Request {
-  const url = new URL("http://localhost:7030/api/admin/pricing");
+  const url = new URL("http://localhost:7020/api/admin/pricing");
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   return new Request(url.toString(), { method: "DELETE" });
 }
@@ -137,7 +137,7 @@ describe("POST /api/admin/pricing", () => {
     });
 
     const res = await POST(
-      new Request("http://localhost:7030/api/admin/pricing", {
+      new Request("http://localhost:7020/api/admin/pricing", {
         method: "POST",
         body: "bad",
       }),

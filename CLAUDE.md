@@ -16,7 +16,7 @@ Claude Code, Codex, Gemini CLI, OpenCode, OpenClaw, VS Code Copilot, GitHub Copi
 
 - **Runtime**: Bun (package manager + runtime)
 - **TypeScript**: Strict mode, composite project references
-- **Port**: dev=7030, API E2E=17030, BDD E2E=27030
+- **Port**: dev=7020, API E2E=17020, BDD E2E=27020
 - **Testing**: Quality system — L1 Unit + L2 Integration + L3 System/E2E + G1 Static Analysis + G2 Security + D1 Test Isolation (see docs/30-quality-system-upgrade.md, docs/31-d1-test-isolation.md, memory: `b509b45c`). Vitest for L1 (`bun run test`), real HTTP E2E for L2 (`bun run test:e2e`), Playwright for L3 (`bun run test:e2e:ui`). Never use `bun test` directly for unit tests — it has incomplete `vi.mock`/`vi.mocked` support and cross-file mock leakage that causes false failures. Exception: L2 API E2E tests (`api-e2e.test.ts`) use `bun:test` because they need direct D1 database access via Bun runtime. Quality system requirements: G1 must enforce `--max-warnings=0` and ban `.skip`/`.only`; G2 must use `scripts/run-security.ts` as single entry point; L3 specs must be read-only (no writes to prod D1); D1 isolation: E2E tests use `pew-db-test` via test Workers (see docs/31-d1-test-isolation.md); `push tag` does not trigger pre-push hooks (no `--no-verify` needed).
 - **TDD**: Always write tests first, then implement
 - **Commits**: Conventional Commits, atomic, auto-commit after changes
@@ -40,7 +40,7 @@ All date/time values follow a strict UTC-in, local-out pattern:
 # Build all packages (core types → CLI → web → worker)
 bun run build
 
-# Start dev server (port 7030)
+# Start dev server (port 7020)
 bun run --filter '@pew/web' dev
 
 # Run sync against dev server

@@ -55,7 +55,7 @@ export function createMockClient() {
 // Request builders
 // ---------------------------------------------------------------------------
 
-const BASE = "http://localhost:7030";
+const BASE = "http://localhost:7020";
 
 /** Build a GET request with optional query params. */
 export function makeGetRequest(

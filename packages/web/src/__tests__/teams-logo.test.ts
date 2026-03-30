@@ -59,14 +59,14 @@ function makeUploadRequest(
     const file = new File([blob], "logo.png", { type: options?.type ?? "image/png" });
     formData.append("file", file);
   }
-  return new Request(`http://localhost:7030/api/teams/${teamId}/logo`, {
+  return new Request(`http://localhost:7020/api/teams/${teamId}/logo`, {
     method: "POST",
     body: formData,
   });
 }
 
 function makeDeleteRequest(teamId: string): Request {
-  return new Request(`http://localhost:7030/api/teams/${teamId}/logo`, {
+  return new Request(`http://localhost:7020/api/teams/${teamId}/logo`, {
     method: "DELETE",
   });
 }

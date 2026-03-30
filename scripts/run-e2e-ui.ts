@@ -2,7 +2,7 @@
 /**
  * L4 BDD Playwright E2E UI Test Runner
  *
- * 1. Ensures port 27030 is free
+ * 1. Ensures port 27020 is free
  * 2. Starts Next.js dev server with E2E_SKIP_AUTH=true
  * 3. Runs Playwright tests
  * 4. Cleans up
@@ -12,7 +12,7 @@ import { spawn, type Subprocess } from "bun";
 import { ensurePortFree, cleanupBuildDir, loadEnvLocal, loadEnvTest } from "./e2e-utils";
 import { validateAndOverride } from "./d1-test-guard";
 
-const E2E_UI_PORT = process.env.E2E_UI_PORT || "27030";
+const E2E_UI_PORT = process.env.E2E_UI_PORT || "27020";
 const E2E_DIST_DIR = "packages/web/.next-e2e-ui";
 
 let serverProcess: Subprocess | null = null;

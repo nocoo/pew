@@ -30,7 +30,7 @@ const { resolveAdmin } = (await import("@/lib/admin")) as unknown as {
 // ---------------------------------------------------------------------------
 
 function makeRequest(
-  url = "http://localhost:7030/api/admin/seasons/season-1/snapshot"
+  url = "http://localhost:7020/api/admin/seasons/season-1/snapshot"
 ): Request {
   return new Request(url, { method: "POST" });
 }

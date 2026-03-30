@@ -36,7 +36,7 @@ function makeRequest(token?: string): Request {
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
-  return new Request("http://localhost:7030/api/ingest", {
+  return new Request("http://localhost:7020/api/ingest", {
     method: "POST",
     headers,
   });
@@ -204,7 +204,7 @@ describe("resolveUser", () => {
     });
 
     it("should return null when Authorization header is not Bearer", async () => {
-      const req = new Request("http://localhost:7030/api/test", {
+      const req = new Request("http://localhost:7020/api/test", {
         headers: { Authorization: "Basic dXNlcjpwYXNz" },
       });
 

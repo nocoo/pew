@@ -22,7 +22,7 @@ const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
 };
 
 function makePostRequest(body: unknown): Request {
-  return new Request("http://localhost:7030/api/projects", {
+  return new Request("http://localhost:7020/api/projects", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -30,7 +30,7 @@ function makePostRequest(body: unknown): Request {
 }
 
 function makePatchRequest(body: unknown): Request {
-  return new Request("http://localhost:7030/api/projects/proj-1", {
+  return new Request("http://localhost:7020/api/projects/proj-1", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -38,7 +38,7 @@ function makePatchRequest(body: unknown): Request {
 }
 
 function makeDeleteRequest(): Request {
-  return new Request("http://localhost:7030/api/projects/proj-1", {
+  return new Request("http://localhost:7020/api/projects/proj-1", {
     method: "DELETE",
   });
 }
@@ -1012,7 +1012,7 @@ describe("GET /api/projects", () => {
 
   it("should reject unauthenticated requests", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce(null);
-    const res = await GET(new Request("http://localhost:7030/api/projects"));
+    const res = await GET(new Request("http://localhost:7020/api/projects"));
     expect(res.status).toBe(401);
   });
 
@@ -1061,7 +1061,7 @@ describe("GET /api/projects", () => {
       }) // Query 3: unassigned
       .mockResolvedValueOnce({ results: [], meta: {} }); // Query 4: tags
 
-    const res = await GET(new Request("http://localhost:7030/api/projects"));
+    const res = await GET(new Request("http://localhost:7020/api/projects"));
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -1095,7 +1095,7 @@ describe("GET /api/projects", () => {
       .mockResolvedValueOnce({ results: [], meta: {} })
       .mockResolvedValueOnce({ results: [], meta: {} }); // tags
 
-    const res = await GET(new Request("http://localhost:7030/api/projects"));
+    const res = await GET(new Request("http://localhost:7020/api/projects"));
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -1111,7 +1111,7 @@ describe("GET /api/projects", () => {
 
     mockDbRead.query.mockRejectedValueOnce(new Error("D1 down"));
 
-    const res = await GET(new Request("http://localhost:7030/api/projects"));
+    const res = await GET(new Request("http://localhost:7020/api/projects"));
 
     expect(res.status).toBe(500);
   });
@@ -1130,7 +1130,7 @@ describe("GET /api/projects", () => {
 
     const res = await GET(
       new Request(
-        "http://localhost:7030/api/projects?from=2026-03-01&to=2026-03-14",
+        "http://localhost:7020/api/projects?from=2026-03-01&to=2026-03-14",
       ),
     );
 
@@ -1162,7 +1162,7 @@ describe("GET /api/projects", () => {
       .mockResolvedValueOnce({ results: [], meta: {} })
       .mockResolvedValueOnce({ results: [], meta: {} });
 
-    await GET(new Request("http://localhost:7030/api/projects"));
+    await GET(new Request("http://localhost:7020/api/projects"));
 
     // Query 2: single JOIN, params = [userId] only
     const aliasCall = mockDbRead.query.mock.calls[1]!;
@@ -1184,7 +1184,7 @@ describe("GET /api/projects", () => {
       .mockResolvedValueOnce({ results: [], meta: {} }); // Query 4: tags
 
     const res = await GET(
-      new Request("http://localhost:7030/api/projects?from=2026-03-01"),
+      new Request("http://localhost:7020/api/projects?from=2026-03-01"),
     );
 
     expect(res.status).toBe(200);
@@ -1233,7 +1233,7 @@ describe("GET /api/projects", () => {
 
     const res = await GET(
       new Request(
-        "http://localhost:7030/api/projects?from=2026-03-01&to=2026-03-14",
+        "http://localhost:7020/api/projects?from=2026-03-01&to=2026-03-14",
       ),
     );
 
@@ -1284,7 +1284,7 @@ describe("GET /api/projects", () => {
 
     const res = await GET(
       new Request(
-        "http://localhost:7030/api/projects?from=2026-03-01&to=2026-03-14",
+        "http://localhost:7020/api/projects?from=2026-03-01&to=2026-03-14",
       ),
     );
 

@@ -41,7 +41,7 @@ const { syncAllRostersForSeason } = (await import(
 
 function makeRequest(): Request {
   return new Request(
-    "http://localhost:7030/api/admin/seasons/season-1/sync-rosters",
+    "http://localhost:7020/api/admin/seasons/season-1/sync-rosters",
     { method: "POST" },
   );
 }

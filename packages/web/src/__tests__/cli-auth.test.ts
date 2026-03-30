@@ -25,7 +25,7 @@ const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
 };
 
 function makeRequest(callback?: string, state?: string): Request {
-  let url = "http://localhost:7030/api/auth/cli";
+  let url = "http://localhost:7020/api/auth/cli";
   const params = new URLSearchParams();
   if (callback) params.set("callback", callback);
   if (state) params.set("state", state);
@@ -89,8 +89,8 @@ describe("GET /api/auth/cli", () => {
       const orig = process.env.NEXTAUTH_URL;
       delete process.env.NEXTAUTH_URL;
       try {
-        const req = new Request("http://localhost:7030/api/auth/cli");
-        expect(getPublicOrigin(req)).toBe("http://localhost:7030");
+        const req = new Request("http://localhost:7020/api/auth/cli");
+        expect(getPublicOrigin(req)).toBe("http://localhost:7020");
       } finally {
         if (orig === undefined) {
           delete process.env.NEXTAUTH_URL;

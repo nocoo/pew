@@ -43,7 +43,7 @@ describe("GET /api/pricing", () => {
   it("should reject unauthenticated with 401", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce(null);
 
-    const res = await GET(new Request("http://localhost:7030/api/pricing"));
+    const res = await GET(new Request("http://localhost:7020/api/pricing"));
 
     expect(res.status).toBe(401);
   });
@@ -56,7 +56,7 @@ describe("GET /api/pricing", () => {
       ],
     });
 
-    const res = await GET(new Request("http://localhost:7030/api/pricing"));
+    const res = await GET(new Request("http://localhost:7020/api/pricing"));
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -71,7 +71,7 @@ describe("GET /api/pricing", () => {
       new Error("no such table: model_pricing"),
     );
 
-    const res = await GET(new Request("http://localhost:7030/api/pricing"));
+    const res = await GET(new Request("http://localhost:7020/api/pricing"));
 
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -83,7 +83,7 @@ describe("GET /api/pricing", () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
     mockDbRead.query.mockRejectedValueOnce(new Error("D1 down"));
 
-    const res = await GET(new Request("http://localhost:7030/api/pricing"));
+    const res = await GET(new Request("http://localhost:7020/api/pricing"));
 
     expect(res.status).toBe(200);
     // Still returns a valid response (defaults)

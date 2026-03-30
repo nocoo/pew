@@ -55,7 +55,7 @@ describe("executeLogin", () => {
     // Simulate: browser callback sends api_key
     const loginPromise = executeLogin({
       configDir: tempDir,
-      apiUrl: "http://localhost:7030",
+      apiUrl: "http://localhost:7020",
       timeoutMs: 5000,
       generateNonce: () => FIXED_NONCE,
       openBrowser: async (url) => {
@@ -103,7 +103,7 @@ describe("executeLogin", () => {
 
     const result = await executeLogin({
       configDir: tempDir,
-      apiUrl: "http://localhost:7030",
+      apiUrl: "http://localhost:7020",
       timeoutMs: 5000,
       openBrowser: async () => {
         throw new Error("Should not open browser");
@@ -125,7 +125,7 @@ describe("executeLogin", () => {
 
     const loginPromise = executeLogin({
       configDir: tempDir,
-      apiUrl: "http://localhost:7030",
+      apiUrl: "http://localhost:7020",
       timeoutMs: 5000,
       force: true,
       generateNonce: () => FIXED_NONCE,
@@ -157,7 +157,7 @@ describe("executeLogin", () => {
   it("should timeout if no callback received", async () => {
     const result = await executeLogin({
       configDir: tempDir,
-      apiUrl: "http://localhost:7030",
+      apiUrl: "http://localhost:7020",
       timeoutMs: 500,
       openBrowser: async () => {
         // Do nothing — simulate user not completing login
@@ -171,7 +171,7 @@ describe("executeLogin", () => {
   it("should fail if callback has no api_key", async () => {
     const result = await executeLogin({
       configDir: tempDir,
-      apiUrl: "http://localhost:7030",
+      apiUrl: "http://localhost:7020",
       timeoutMs: 5000,
       generateNonce: () => FIXED_NONCE,
       openBrowser: async (url) => {
@@ -195,7 +195,7 @@ describe("executeLogin", () => {
   it("should return 404 for non-callback requests", async () => {
     const result = await executeLogin({
       configDir: tempDir,
-      apiUrl: "http://localhost:7030",
+      apiUrl: "http://localhost:7020",
       timeoutMs: 2000,
       generateNonce: () => FIXED_NONCE,
       openBrowser: async (url) => {
@@ -227,7 +227,7 @@ describe("executeLogin", () => {
   it("should fail if openBrowser rejects", async () => {
     const result = await executeLogin({
       configDir: tempDir,
-      apiUrl: "http://localhost:7030",
+      apiUrl: "http://localhost:7020",
       timeoutMs: 5000,
       openBrowser: async () => {
         throw new Error("xdg-open not found");
@@ -244,7 +244,7 @@ describe("executeLogin", () => {
   it("should reject callback with missing state parameter", async () => {
     const result = await executeLogin({
       configDir: tempDir,
-      apiUrl: "http://localhost:7030",
+      apiUrl: "http://localhost:7020",
       timeoutMs: 5000,
       generateNonce: () => FIXED_NONCE,
       openBrowser: async (url) => {
@@ -266,7 +266,7 @@ describe("executeLogin", () => {
   it("should reject callback with wrong state parameter", async () => {
     const result = await executeLogin({
       configDir: tempDir,
-      apiUrl: "http://localhost:7030",
+      apiUrl: "http://localhost:7020",
       timeoutMs: 5000,
       generateNonce: () => FIXED_NONCE,
       openBrowser: async (url) => {
@@ -296,7 +296,7 @@ describe("executeLogin", () => {
 
     const loginPromise = executeLogin({
       configDir: tempDir,
-      apiUrl: "http://localhost:7030",
+      apiUrl: "http://localhost:7020",
       timeoutMs: 5000,
       generateNonce: () => FIXED_NONCE,
       openBrowser: async (url) => {
@@ -328,7 +328,7 @@ describe("executeLogin", () => {
     // potentially dangerous email — the XSS prevention is structural.
     const result = await executeLogin({
       configDir: tempDir,
-      apiUrl: "http://localhost:7030",
+      apiUrl: "http://localhost:7020",
       timeoutMs: 5000,
       generateNonce: () => FIXED_NONCE,
       openBrowser: async (url) => {
@@ -356,7 +356,7 @@ describe("executeLogin", () => {
 
     const loginPromise = executeLogin({
       configDir: tempDir,
-      apiUrl: "http://localhost:7030",
+      apiUrl: "http://localhost:7020",
       timeoutMs: 5000,
       generateNonce: () => FIXED_NONCE,
       openBrowser: async (url) => {

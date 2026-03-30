@@ -240,7 +240,7 @@ events: {
 
 The cookie uses `shouldUseSecureCookies()` from `auth.ts` (reused as a shared
 export) to match the auth cookie security level. This ensures the cookie works
-in both `https://pew.dev.hexly.ai` (Secure) and `http://localhost:7030`
+in both `https://pew.dev.hexly.ai` (Secure) and `http://localhost:7020`
 (non-Secure).
 
 **Cookie expiry:** 10 minutes (`Max-Age=600`). This is generous enough for the

@@ -21,7 +21,7 @@ const { resolveAdmin } = (await import("@/lib/admin")) as unknown as {
 };
 
 function makeGet(): Request {
-  return new Request("http://localhost:7030/api/admin/settings");
+  return new Request("http://localhost:7020/api/admin/settings");
 }
 
 function makePut(body?: unknown): Request {
@@ -30,7 +30,7 @@ function makePut(body?: unknown): Request {
     opts.body = JSON.stringify(body);
     opts.headers = { "Content-Type": "application/json" };
   }
-  return new Request("http://localhost:7030/api/admin/settings", opts);
+  return new Request("http://localhost:7020/api/admin/settings", opts);
 }
 
 // ---------------------------------------------------------------------------
@@ -112,7 +112,7 @@ describe("PUT /api/admin/settings", () => {
   it("should reject invalid JSON", async () => {
     resolveAdmin.mockResolvedValueOnce({ userId: "admin1", email: "a@b.com" });
     const res = await PUT(
-      new Request("http://localhost:7030/api/admin/settings", {
+      new Request("http://localhost:7020/api/admin/settings", {
         method: "PUT",
         body: "not json",
       }),

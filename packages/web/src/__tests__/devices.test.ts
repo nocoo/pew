@@ -23,11 +23,11 @@ const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
 };
 
 function makeGetRequest(): Request {
-  return new Request("http://localhost:7030/api/devices");
+  return new Request("http://localhost:7020/api/devices");
 }
 
 function makePutRequest(body: unknown): Request {
-  return new Request("http://localhost:7030/api/devices", {
+  return new Request("http://localhost:7020/api/devices", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

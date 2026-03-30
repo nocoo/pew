@@ -38,7 +38,7 @@ Audit date: 2026-03-22. Test count: 2,170 (127 files). Coverage: 93.81%.
 | Requirement | Current State | Gap | Action |
 |------------|--------------|-----|--------|
 | L1 Unit ≥90%, pre-commit | ✅ 2,170 tests, 90% threshold enforced in `vitest.config.ts` | None | — |
-| L2 Integration/API, pre-push | ✅ `scripts/run-e2e.ts` launches real Next.js server on :17030 | None | — |
+| L2 Integration/API, pre-push | ✅ `scripts/run-e2e.ts` launches real Next.js server on :17020 | None | — |
 | L3 System/E2E (Playwright) | ❌ Runner `scripts/run-e2e-ui.ts` exists, 0 actual specs, Playwright not installed | Full layer missing | Commits 4–5 |
 | G1 `--max-warnings=0` | ⚠️ ESLint strict preset but no `--max-warnings=0` flag | Warnings silently pass | Commit 2 |
 | G1 `.skip`/`.only` ban | ❌ Test files can commit `.skip`/`.only` without error | Accidental debug leaks | Commit 2 |
@@ -57,11 +57,11 @@ pre-commit (<30s):
   └── G1: bun run lint           (tsc --noEmit ×5 + eslint --max-warnings=0)
 
 pre-push (<3min):
-  ├── L2: bun run test:e2e       (scripts/run-e2e.ts → real HTTP on :17030)
+  ├── L2: bun run test:e2e       (scripts/run-e2e.ts → real HTTP on :17020)
   └── G2: bun run test:security  (scripts/run-security.ts → osv-scanner + gitleaks)
 
 CI / manual:
-  └── L3: bun run test:e2e:ui    (scripts/run-e2e-ui.ts → Playwright on :27030)
+  └── L3: bun run test:e2e:ui    (scripts/run-e2e-ui.ts → Playwright on :27020)
 ```
 
 ---
@@ -251,14 +251,14 @@ into the server spawn env, matching the API runner pattern.
 **Why `packages/web/e2e/playwright.config.ts`**: The existing runner `scripts/run-e2e-ui.ts:74`
 hardcodes `--config packages/web/e2e/playwright.config.ts`. The config file **must** live there
 to avoid changing the runner or creating a path mismatch. The runner already handles server
-lifecycle (start on :27030, cleanup on exit), so the config **omits** `webServer` — no duplicate
+lifecycle (start on :27020, cleanup on exit), so the config **omits** `webServer` — no duplicate
 server management.
 
 **`packages/web/e2e/playwright.config.ts`** (new):
 ```ts
 import { defineConfig } from "@playwright/test";
 
-const E2E_UI_PORT = process.env.E2E_UI_PORT || "27030";
+const E2E_UI_PORT = process.env.E2E_UI_PORT || "27020";
 
 export default defineConfig({
   testDir: ".",
@@ -434,7 +434,7 @@ eslint --max-warnings=0: 0 errors, 0 warnings
 ### L2 Integration/API ✅
 ```
 19 tests passed, 53 expect() calls, 13.39s
-Entry:  bun run test:e2e → scripts/run-e2e.ts → :17030
+Entry:  bun run test:e2e → scripts/run-e2e.ts → :17020
 Note:   reads prod D1 via .env.local (all tests are read-only safe)
 ```
 
@@ -450,7 +450,7 @@ gitleaks v8.30.1: PASS — 12 commits scanned, no leaks found
 ### L3 System/E2E ✅
 ```
 10 tests passed, 4 workers, 7.1s
-Entry:  bun run test:e2e:ui → scripts/run-e2e-ui.ts → Playwright on :27030
+Entry:  bun run test:e2e:ui → scripts/run-e2e-ui.ts → Playwright on :27020
 Specs:  4 files (smoke.spec.ts, auth.spec.ts, dashboard.spec.ts, navigation.spec.ts)
 Note:   all specs are read-only (no writes to prod D1)
 ```

@@ -24,11 +24,11 @@ const { shouldUseSecureCookies } = (await import("@/auth")) as unknown as {
 
 function makeRequest(body?: unknown): Request {
   if (body === undefined) {
-    return new Request("http://localhost:7030/api/auth/verify-invite", {
+    return new Request("http://localhost:7020/api/auth/verify-invite", {
       method: "POST",
     });
   }
-  return new Request("http://localhost:7030/api/auth/verify-invite", {
+  return new Request("http://localhost:7020/api/auth/verify-invite", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -110,7 +110,7 @@ describe("POST /api/auth/verify-invite", () => {
 
   it("should return 400 for missing body", async () => {
     // Send request with no body — will fail JSON parse
-    const req = new Request("http://localhost:7030/api/auth/verify-invite", {
+    const req = new Request("http://localhost:7020/api/auth/verify-invite", {
       method: "POST",
     });
     const res = await POST(req);

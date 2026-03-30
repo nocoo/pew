@@ -21,7 +21,7 @@ const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
 };
 
 function makeRequest(method: string): Request {
-  return new Request("http://localhost:7030/api/teams/t1", { method });
+  return new Request("http://localhost:7020/api/teams/t1", { method });
 }
 
 function makeParams(teamId = "t1") {

@@ -25,7 +25,7 @@ function makeJson(method: string, body?: unknown): Request {
     opts.body = JSON.stringify(body);
     opts.headers = { "Content-Type": "application/json" };
   }
-  return new Request("http://localhost:7030/api/teams", opts);
+  return new Request("http://localhost:7020/api/teams", opts);
 }
 
 // ---------------------------------------------------------------------------
@@ -144,7 +144,7 @@ describe("POST /api/teams", () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
 
     const res = await POST(
-      new Request("http://localhost:7030/api/teams", {
+      new Request("http://localhost:7020/api/teams", {
         method: "POST",
         body: "not json",
       }),

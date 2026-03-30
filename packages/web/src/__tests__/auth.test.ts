@@ -64,7 +64,7 @@ describe("shouldUseSecureCookies", () => {
 
   it("should return false when NEXTAUTH_URL is http", () => {
     vi.stubEnv("NODE_ENV", "test");
-    vi.stubEnv("NEXTAUTH_URL", "http://localhost:7030");
+    vi.stubEnv("NEXTAUTH_URL", "http://localhost:7020");
     delete process.env.USE_SECURE_COOKIES;
     expect(shouldUseSecureCookies()).toBe(false);
   });

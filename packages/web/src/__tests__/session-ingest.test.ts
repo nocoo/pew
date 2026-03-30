@@ -23,7 +23,7 @@ function makeRequest(body: unknown, token?: string, clientVersion?: string): Req
   if (clientVersion) {
     headers["X-Pew-Client-Version"] = clientVersion;
   }
-  return new Request("http://localhost:7030/api/ingest/sessions", {
+  return new Request("http://localhost:7020/api/ingest/sessions", {
     method: "POST",
     headers,
     body: JSON.stringify(body),

@@ -30,7 +30,7 @@ function makeJson(body?: unknown): Request {
     opts.body = JSON.stringify(body);
     opts.headers = { "Content-Type": "application/json" };
   }
-  return new Request("http://localhost:7030/api/teams/join", opts);
+  return new Request("http://localhost:7020/api/teams/join", opts);
 }
 
 // ---------------------------------------------------------------------------
@@ -68,7 +68,7 @@ describe("POST /api/teams/join", () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
 
     const res = await POST(
-      new Request("http://localhost:7030/api/teams/join", {
+      new Request("http://localhost:7020/api/teams/join", {
         method: "POST",
         body: "not json",
       }),

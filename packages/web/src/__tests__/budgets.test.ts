@@ -21,13 +21,13 @@ const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
 
 function makeGetRequest(month?: string): Request {
   const url = month
-    ? `http://localhost:7030/api/budgets?month=${month}`
-    : "http://localhost:7030/api/budgets";
+    ? `http://localhost:7020/api/budgets?month=${month}`
+    : "http://localhost:7020/api/budgets";
   return new Request(url, { method: "GET" });
 }
 
 function makePutRequest(body: unknown): Request {
-  return new Request("http://localhost:7030/api/budgets", {
+  return new Request("http://localhost:7020/api/budgets", {
     method: "PUT",
     body: JSON.stringify(body),
     headers: { "Content-Type": "application/json" },
@@ -147,7 +147,7 @@ describe("PUT /api/budgets", () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
 
     const res = await PUT(
-      new Request("http://localhost:7030/api/budgets", {
+      new Request("http://localhost:7020/api/budgets", {
         method: "PUT",
         body: "not json",
         headers: { "Content-Type": "application/json" },
@@ -273,7 +273,7 @@ describe("DELETE /api/budgets", () => {
     vi.mocked(resolveUser).mockResolvedValueOnce(null);
 
     const res = await DELETE(
-      new Request("http://localhost:7030/api/budgets?month=2026-03", { method: "DELETE" }),
+      new Request("http://localhost:7020/api/budgets?month=2026-03", { method: "DELETE" }),
     );
     expect(res.status).toBe(401);
   });
@@ -282,7 +282,7 @@ describe("DELETE /api/budgets", () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
 
     const res = await DELETE(
-      new Request("http://localhost:7030/api/budgets", { method: "DELETE" }),
+      new Request("http://localhost:7020/api/budgets", { method: "DELETE" }),
     );
     expect(res.status).toBe(400);
     const body = await res.json();
@@ -293,7 +293,7 @@ describe("DELETE /api/budgets", () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
 
     const res = await DELETE(
-      new Request("http://localhost:7030/api/budgets?month=bad", { method: "DELETE" }),
+      new Request("http://localhost:7020/api/budgets?month=bad", { method: "DELETE" }),
     );
     expect(res.status).toBe(400);
   });
@@ -303,7 +303,7 @@ describe("DELETE /api/budgets", () => {
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
 
     const res = await DELETE(
-      new Request("http://localhost:7030/api/budgets?month=2026-03", { method: "DELETE" }),
+      new Request("http://localhost:7020/api/budgets?month=2026-03", { method: "DELETE" }),
     );
     const body = await res.json();
 
@@ -320,7 +320,7 @@ describe("DELETE /api/budgets", () => {
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 0 });
 
     const res = await DELETE(
-      new Request("http://localhost:7030/api/budgets?month=2026-03", { method: "DELETE" }),
+      new Request("http://localhost:7020/api/budgets?month=2026-03", { method: "DELETE" }),
     );
     expect(res.status).toBe(200);
   });
@@ -330,7 +330,7 @@ describe("DELETE /api/budgets", () => {
     mockDbWrite.execute.mockRejectedValueOnce(new Error("D1 boom"));
 
     const res = await DELETE(
-      new Request("http://localhost:7030/api/budgets?month=2026-03", { method: "DELETE" }),
+      new Request("http://localhost:7020/api/budgets?month=2026-03", { method: "DELETE" }),
     );
     expect(res.status).toBe(500);
   });

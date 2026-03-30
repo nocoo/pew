@@ -33,7 +33,7 @@ describe("GET /api/projects/timeline", () => {
   it("should reject unauthenticated requests", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce(null);
     const res = await GET(
-      new Request("http://localhost:7030/api/projects/timeline?from=2026-03-01&to=2026-03-14"),
+      new Request("http://localhost:7020/api/projects/timeline?from=2026-03-01&to=2026-03-14"),
     );
     expect(res.status).toBe(401);
   });
@@ -45,7 +45,7 @@ describe("GET /api/projects/timeline", () => {
     });
 
     const res = await GET(
-      new Request("http://localhost:7030/api/projects/timeline"),
+      new Request("http://localhost:7020/api/projects/timeline"),
     );
     expect(res.status).toBe(400);
     const body = await res.json();
@@ -61,7 +61,7 @@ describe("GET /api/projects/timeline", () => {
     mockClient.query.mockResolvedValueOnce({ results: [], meta: {} });
 
     const res = await GET(
-      new Request("http://localhost:7030/api/projects/timeline?from=2026-03-01"),
+      new Request("http://localhost:7020/api/projects/timeline?from=2026-03-01"),
     );
     expect(res.status).toBe(200);
 
@@ -91,7 +91,7 @@ describe("GET /api/projects/timeline", () => {
 
     const res = await GET(
       new Request(
-        "http://localhost:7030/api/projects/timeline?from=2026-03-01&to=2026-03-14",
+        "http://localhost:7020/api/projects/timeline?from=2026-03-01&to=2026-03-14",
       ),
     );
 
@@ -118,7 +118,7 @@ describe("GET /api/projects/timeline", () => {
 
     await GET(
       new Request(
-        "http://localhost:7030/api/projects/timeline?from=2026-03-01&to=2026-03-14",
+        "http://localhost:7020/api/projects/timeline?from=2026-03-01&to=2026-03-14",
       ),
     );
 
@@ -140,7 +140,7 @@ describe("GET /api/projects/timeline", () => {
 
     const res = await GET(
       new Request(
-        "http://localhost:7030/api/projects/timeline?from=2026-03-01&to=2026-03-14",
+        "http://localhost:7020/api/projects/timeline?from=2026-03-01&to=2026-03-14",
       ),
     );
 
@@ -159,7 +159,7 @@ describe("GET /api/projects/timeline", () => {
 
     const res = await GET(
       new Request(
-        "http://localhost:7030/api/projects/timeline?from=2026-03-01&to=2026-03-14",
+        "http://localhost:7020/api/projects/timeline?from=2026-03-01&to=2026-03-14",
       ),
     );
 

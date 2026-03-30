@@ -3,7 +3,7 @@
 # pre-push: L2 Integration/API + G2 Security (quality system)
 # L1+G1 already enforced by pre-commit.
 
-# L2 Integration/API: real HTTP E2E against dev server on :17030
+# L2 Integration/API: real HTTP E2E against dev server on :17020
 bun run test:e2e 2>&1
 E2E_EXIT=$?
 

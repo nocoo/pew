@@ -25,7 +25,7 @@ import * as dbModule from "@/lib/db";
 import { createMockClient } from "./test-utils";
 
 function makeRequest(
-  url = "http://localhost:7030/api/seasons"
+  url = "http://localhost:7020/api/seasons"
 ): Request {
   return new Request(url, { method: "GET" });
 }
@@ -120,7 +120,7 @@ describe("GET /api/seasons", () => {
     });
 
     const res = await GET(
-      makeRequest("http://localhost:7030/api/seasons?status=active")
+      makeRequest("http://localhost:7020/api/seasons?status=active")
     );
     const data = await res.json();
 
@@ -187,7 +187,7 @@ describe("GET /api/seasons", () => {
 
   it("should return 400 for invalid status filter", async () => {
     const res = await GET(
-      makeRequest("http://localhost:7030/api/seasons?status=invalid")
+      makeRequest("http://localhost:7020/api/seasons?status=invalid")
     );
     const data = await res.json();
 

@@ -1,11 +1,11 @@
 /**
- * L3 API E2E tests — hit real Next.js dev server on port 17030 with real D1.
+ * L3 API E2E tests — hit real Next.js dev server on port 17020 with real D1.
  *
  * The server runs with E2E_SKIP_AUTH=true, so all requests are authenticated
  * as E2E_TEST_USER_ID ("e2e-test-user-id") without needing OAuth.
  *
  * Prerequisites:
- *   - Next.js dev server running on E2E_PORT (default 17030) with E2E_SKIP_AUTH=true
+ *   - Next.js dev server running on E2E_PORT (default 17020) with E2E_SKIP_AUTH=true
  *   - Cloudflare D1 credentials in .env.local
  *   - Use `bun run test:e2e` which handles server lifecycle automatically
  *
@@ -24,7 +24,7 @@ import { D1Client } from "../../lib/d1";
 // Config
 // ---------------------------------------------------------------------------
 
-const E2E_PORT = process.env.E2E_PORT || "17030";
+const E2E_PORT = process.env.E2E_PORT || "17020";
 const BASE_URL = `http://localhost:${E2E_PORT}`;
 
 const TEST_USER_ID = "e2e-test-user-id";
