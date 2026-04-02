@@ -11,6 +11,7 @@ export type LeaderboardPeriod = "week" | "month" | "all";
 export interface LeaderboardEntry {
   rank: number;
   user: {
+    id: string;
     name: string | null;
     image: string | null;
     slug: string | null;

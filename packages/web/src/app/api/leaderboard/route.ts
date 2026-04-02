@@ -20,8 +20,8 @@ import { resolveAdmin } from "@/lib/admin";
 
 const VALID_PERIODS = new Set(["week", "month", "all"]);
 const MAX_LIMIT = 100;
-const DEFAULT_LIMIT = 10;
-const ADMIN_DEFAULT_LIMIT = 50;
+const DEFAULT_LIMIT = 100;
+const ADMIN_DEFAULT_LIMIT = 100;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -274,6 +274,7 @@ export async function GET(request: Request) {
       return {
         rank: index + 1,
         user: {
+          id: row.user_id,
           name: row.nickname ?? row.name,
           image: row.image,
           slug: row.slug,

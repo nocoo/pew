@@ -273,8 +273,7 @@ function LeaderboardRow({
   const content = (
     <div
       className={cn(
-        "relative flex items-center gap-3 overflow-hidden rounded-[var(--radius-card)] bg-secondary px-4 py-3 transition-colors animate-fade-up",
-        user.slug && "hover:bg-accent cursor-pointer",
+        "relative flex items-center gap-3 overflow-hidden rounded-[var(--radius-card)] bg-secondary px-4 py-3 transition-colors animate-fade-up hover:bg-accent cursor-pointer",
         rank <= 3 && "ring-1 ring-border/50",
       )}
       style={{ animationDelay: `${Math.min(index * 40, 600)}ms` }}
@@ -345,14 +344,13 @@ function LeaderboardRow({
     </div>
   );
 
-  if (user.slug) {
-    return (
-      <Link href={`/u/${user.slug}`} className="block">
-        {content}
-      </Link>
-    );
-  }
-  return content;
+  const profilePath = user.slug ? `/u/${user.slug}` : `/u/${user.id}`;
+
+  return (
+    <Link href={profilePath} className="block">
+      {content}
+    </Link>
+  );
 }
 
 // ---------------------------------------------------------------------------

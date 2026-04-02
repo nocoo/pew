@@ -68,7 +68,7 @@ describe("GET /api/leaderboard", () => {
   });
 
   describe("default behavior", () => {
-    it("should default to period=week and limit=50", async () => {
+    it("should default to period=week and limit=100", async () => {
       mockClient.query.mockResolvedValueOnce({ results: [] });
 
       const res = await GET(makeGetRequest("/api/leaderboard"));
@@ -129,6 +129,7 @@ describe("GET /api/leaderboard", () => {
       expect(body.entries[0]).toEqual({
         rank: 1,
         user: {
+          id: "u1",
           name: "Alice",
           image: "https://example.com/alice.jpg",
           slug: "alice",
