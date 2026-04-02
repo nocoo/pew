@@ -14,7 +14,7 @@ describe("D1AuthAdapter", () => {
   });
 
   describe("createUser()", () => {
-    it("should insert user and return it", async () => {
+    it("should insert user with is_public=1 by default and return it", async () => {
       const mockUser = {
         id: "u1",
         email: "test@example.com",
@@ -34,6 +34,7 @@ describe("D1AuthAdapter", () => {
       expect(mockDbWrite.execute).toHaveBeenCalledOnce();
       const [sql, params] = vi.mocked(mockDbWrite.execute).mock.calls[0]!;
       expect(sql).toContain("INSERT INTO users");
+      expect(sql).toContain("is_public");
       expect(params).toContain("test@example.com");
     });
 

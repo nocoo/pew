@@ -177,6 +177,15 @@ describe("GET /api/leaderboard", () => {
       expect(sqlCall[0]).toContain("u.slug IS NOT NULL");
     });
 
+    it("should filter out users with 0 total_tokens via HAVING", async () => {
+      mockClient.query.mockResolvedValueOnce({ results: [] });
+
+      await GET(makeGetRequest("/api/leaderboard"));
+
+      const sqlCall = mockClient.query.mock.calls[0]!;
+      expect(sqlCall[0]).toContain("HAVING total_tokens > 0");
+    });
+
     it("should pass limit to SQL", async () => {
       mockClient.query.mockResolvedValueOnce({ results: [] });
 

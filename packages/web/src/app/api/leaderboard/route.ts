@@ -156,6 +156,7 @@ export async function GET(request: Request) {
     ${teamJoin}
     WHERE ${conditions.join(" AND ")}
     GROUP BY ur.user_id
+    HAVING total_tokens > 0
     ORDER BY total_tokens DESC
     LIMIT ?
   `;
@@ -204,6 +205,7 @@ export async function GET(request: Request) {
           JOIN users u ON u.id = ur.user_id
           WHERE ${bareConditions.join(" AND ")}
           GROUP BY ur.user_id
+          HAVING total_tokens > 0
           ORDER BY total_tokens DESC
           LIMIT ?
         `;

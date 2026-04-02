@@ -40,8 +40,8 @@ export function D1AuthAdapter(dbRead: DbRead, dbWrite: DbWrite): Adapter {
     async createUser(user) {
       const id = user.id ?? crypto.randomUUID();
       await dbWrite.execute(
-        `INSERT INTO users (id, email, name, image, email_verified)
-         VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO users (id, email, name, image, email_verified, is_public)
+         VALUES (?, ?, ?, ?, ?, 1)`,
         [
           id,
           user.email,
