@@ -1,6 +1,6 @@
 {
   "name": "@pew/web",
-  "version": "1.14.11",
+  "version": "1.15.0",
   "private": true,
   "scripts": {
     "dev": "next dev --port 7020",

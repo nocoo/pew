@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.15.0
+
+### Added
+- Improve profile page layout and leaderboard UX
+- Add invite code toggle, improve profile pages and leaderboard
+- Default is_public to ON and hide 0-token users from leaderboard
+
+### Changed
+- Update leaderboard slogan
+- Align Dockerfile port to 7020
+- Migrate dev port 7030 → 7020
+
 ## v1.14.11
 
 ### Fixed

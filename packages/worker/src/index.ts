@@ -38,7 +38,7 @@ export type { IngestRecord, IngestRequest, SessionIngestRecord, SessionIngestReq
 // Version (kept in sync with package.json during version bumps)
 // ---------------------------------------------------------------------------
 
-export const WORKER_VERSION = "1.14.11";
+export const WORKER_VERSION = "1.15.0";
 
 // ---------------------------------------------------------------------------
 // Boot timestamp (for uptime calculation)

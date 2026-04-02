@@ -1,6 +1,6 @@
 {
   "name": "@pew/core",
-  "version": "1.14.11",
+  "version": "1.15.0",
   "private": true,
   "type": "module",
   "main": "./dist/index.js",
