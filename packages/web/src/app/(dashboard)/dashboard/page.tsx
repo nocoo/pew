@@ -242,9 +242,14 @@ export default function DashboardPage() {
                 subtitle={subtitle}
                 icon={Zap}
                 iconColor="text-primary"
-                {...(mom && mom.previousMonth.tokens > 0
-                  ? { trend: { value: Math.round(mom.tokenGrowth), label: "vs last month" } }
-                  : {})}
+                trends={mom ? [
+                  ...(mom.previousMonthSameDate.tokens > 0
+                    ? [{ value: Math.round(mom.sameDateTokenGrowth), label: "vs same period" }]
+                    : []),
+                  ...(mom.previousMonth.tokens > 0
+                    ? [{ value: Math.round(mom.tokenGrowth), label: "vs last month" }]
+                    : []),
+                ] : undefined}
               />
               <StatCard
                 title="Input Tokens"
@@ -264,9 +269,14 @@ export default function DashboardPage() {
                 subtitle="Based on public pricing"
                 icon={DollarSign}
                 iconColor="text-chart-6"
-                {...(mom && mom.previousMonth.cost > 0
-                  ? { trend: { value: -Math.round(mom.costGrowth), label: "vs last month" } }
-                  : {})}
+                trends={mom ? [
+                  ...(mom.previousMonthSameDate.cost > 0
+                    ? [{ value: -Math.round(mom.sameDateCostGrowth), label: "vs same period" }]
+                    : []),
+                  ...(mom.previousMonth.cost > 0
+                    ? [{ value: -Math.round(mom.costGrowth), label: "vs last month" }]
+                    : []),
+                ] : undefined}
               />
             </StatGrid>
 

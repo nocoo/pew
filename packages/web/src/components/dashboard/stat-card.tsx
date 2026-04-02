@@ -12,6 +12,7 @@ export interface StatCardProps {
   icon?: LucideIcon;
   iconColor?: string;
   trend?: { value: number; label?: string };
+  trends?: { value: number; label?: string }[] | undefined;
   className?: string;
 }
 
@@ -26,10 +27,11 @@ export function StatCard({
   icon: Icon,
   iconColor = "text-muted-foreground",
   trend,
+  trends,
   className,
 }: StatCardProps) {
-  const isPositive = trend && trend.value > 0;
-  const isNegative = trend && trend.value < 0;
+  // Merge single trend + trends array into one list
+  const allTrends = trends ?? (trend ? [trend] : []);
 
   return (
     <div className={cn("rounded-[var(--radius-card)] bg-secondary p-4 md:p-5", className)}>
@@ -49,22 +51,30 @@ export function StatCard({
           </div>
         )}
       </div>
-      {trend && (
-        <div className="mt-3 flex items-center gap-1 text-xs">
-          <span
-            className={cn(
-              "font-medium",
-              isPositive && "text-success",
-              isNegative && "text-destructive",
-              !isPositive && !isNegative && "text-muted-foreground"
-            )}
-          >
-            {isPositive && "+"}
-            {trend.value}%
-          </span>
-          {trend.label && (
-            <span className="text-muted-foreground">{trend.label}</span>
-          )}
+      {allTrends.length > 0 && (
+        <div className="mt-3 flex flex-col gap-1">
+          {allTrends.map((t, i) => {
+            const isPos = t.value > 0;
+            const isNeg = t.value < 0;
+            return (
+              <div key={i} className="flex items-center gap-1 text-xs">
+                <span
+                  className={cn(
+                    "font-medium",
+                    isPos && "text-success",
+                    isNeg && "text-destructive",
+                    !isPos && !isNeg && "text-muted-foreground"
+                  )}
+                >
+                  {isPos && "+"}
+                  {t.value}%
+                </span>
+                {t.label && (
+                  <span className="text-muted-foreground">{t.label}</span>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

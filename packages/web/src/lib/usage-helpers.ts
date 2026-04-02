@@ -104,10 +104,16 @@ export interface WeekdayWeekendStats {
 export interface MoMComparison {
   currentMonth: { tokens: number; cost: number; days: number };
   previousMonth: { tokens: number; cost: number; days: number };
+  /** Previous month data up to the same day-of-month as the reference date. */
+  previousMonthSameDate: { tokens: number; cost: number; days: number };
   /** Percentage change in tokens: (current - previous) / previous * 100 */
   tokenGrowth: number;
   /** Percentage change in cost: (current - previous) / previous * 100 */
   costGrowth: number;
+  /** Same-date token growth: current month vs previous month up to same day */
+  sameDateTokenGrowth: number;
+  /** Same-date cost growth: current month vs previous month up to same day */
+  sameDateCostGrowth: number;
 }
 
 /** Consecutive usage day streak info. */
@@ -507,6 +513,7 @@ export function computeMoMGrowth(
   const ref = now ?? new Date();
   const currentYear = ref.getFullYear();
   const currentMonth = ref.getMonth(); // 0-indexed
+  const currentDay = ref.getDate(); // 1-indexed day of month
 
   // Previous month (handles January → December of previous year)
   const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
@@ -520,10 +527,16 @@ export function computeMoMGrowth(
   let prevCost = 0;
   const prevDays = new Set<string>();
 
+  // Same-date subset: previous month rows where day <= currentDay
+  let prevSameDateTokens = 0;
+  let prevSameDateCost = 0;
+  const prevSameDateDays = new Set<string>();
+
   for (const r of rows) {
     const dateStr = toLocalDateStr(r.hour_start, tzOffset);
     const y = parseInt(dateStr.slice(0, 4), 10);
     const m = parseInt(dateStr.slice(5, 7), 10) - 1; // 0-indexed
+    const d = parseInt(dateStr.slice(8, 10), 10); // day of month
 
     const pricing = lookupPricing(pricingMap, r.model, r.source);
     const cost = estimateCost(
@@ -541,10 +554,17 @@ export function computeMoMGrowth(
       prevTokens += r.total_tokens;
       prevCost += cost.totalCost;
       prevDays.add(dateStr);
+
+      // Same-date subset: only count days up to the current day-of-month
+      if (d <= currentDay) {
+        prevSameDateTokens += r.total_tokens;
+        prevSameDateCost += cost.totalCost;
+        prevSameDateDays.add(dateStr);
+      }
     }
   }
 
-  // Growth: (current - previous) / previous * 100; 0 if no previous
+  // Full month growth: (current - previous) / previous * 100; 0 if no previous
   const tokenGrowth = prevTokens > 0
     ? ((curTokens - prevTokens) / prevTokens) * 100
     : 0;
@@ -552,11 +572,22 @@ export function computeMoMGrowth(
     ? ((curCost - prevCost) / prevCost) * 100
     : 0;
 
+  // Same-date growth: current month vs previous month up to same day
+  const sameDateTokenGrowth = prevSameDateTokens > 0
+    ? ((curTokens - prevSameDateTokens) / prevSameDateTokens) * 100
+    : 0;
+  const sameDateCostGrowth = prevSameDateCost > 0
+    ? ((curCost - prevSameDateCost) / prevSameDateCost) * 100
+    : 0;
+
   return {
     currentMonth: { tokens: curTokens, cost: curCost, days: curDays.size },
     previousMonth: { tokens: prevTokens, cost: prevCost, days: prevDays.size },
+    previousMonthSameDate: { tokens: prevSameDateTokens, cost: prevSameDateCost, days: prevSameDateDays.size },
     tokenGrowth,
     costGrowth,
+    sameDateTokenGrowth,
+    sameDateCostGrowth,
   };
 }
 

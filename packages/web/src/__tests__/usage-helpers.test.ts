@@ -421,8 +421,13 @@ describe("computeMoMGrowth", () => {
     expect(result.previousMonth.tokens).toBe(0);
     expect(result.previousMonth.cost).toBe(0);
     expect(result.previousMonth.days).toBe(0);
+    expect(result.previousMonthSameDate.tokens).toBe(0);
+    expect(result.previousMonthSameDate.cost).toBe(0);
+    expect(result.previousMonthSameDate.days).toBe(0);
     expect(result.tokenGrowth).toBe(0);
     expect(result.costGrowth).toBe(0);
+    expect(result.sameDateTokenGrowth).toBe(0);
+    expect(result.sameDateCostGrowth).toBe(0);
   });
 
   it("should split rows into current and previous month", () => {
@@ -494,6 +499,62 @@ describe("computeMoMGrowth", () => {
 
     expect(result.previousMonth.days).toBe(1);
     expect(result.currentMonth.days).toBe(2);
+  });
+
+  it("should compute same-date comparison (only previous month days <= current day)", () => {
+    // ref date = March 15 → only include Feb 1-15 for same-date comparison
+    const rows = [
+      // February: day 5 (included), day 10 (included), day 20 (excluded)
+      makeRow({ hour_start: "2026-02-05T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
+      makeRow({ hour_start: "2026-02-10T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
+      makeRow({ hour_start: "2026-02-20T10:00:00Z", total_tokens: 3000, input_tokens: 2400, output_tokens: 600, cached_input_tokens: 300 }),
+      // March (current): day 5 and day 10
+      makeRow({ hour_start: "2026-03-05T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
+      makeRow({ hour_start: "2026-03-10T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
+    ];
+
+    const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"));
+
+    // Full month: prev=5000, cur=4000 → tokenGrowth = -20%
+    expect(result.previousMonth.tokens).toBe(5000);
+    expect(result.currentMonth.tokens).toBe(4000);
+    expect(result.tokenGrowth).toBeCloseTo(-20);
+
+    // Same-date (Feb 1-15 only): prev=2000, cur=4000 → sameDateTokenGrowth = +100%
+    expect(result.previousMonthSameDate.tokens).toBe(2000);
+    expect(result.previousMonthSameDate.days).toBe(2);
+    expect(result.sameDateTokenGrowth).toBeCloseTo(100);
+  });
+
+  it("should include previous month day equal to current day in same-date subset", () => {
+    // ref date = March 15 → Feb 15 should be INCLUDED (d <= currentDay)
+    const rows = [
+      makeRow({ hour_start: "2026-02-15T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
+      makeRow({ hour_start: "2026-03-10T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
+    ];
+
+    const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-15"));
+
+    expect(result.previousMonthSameDate.tokens).toBe(1000);
+    expect(result.sameDateTokenGrowth).toBeCloseTo(100);
+  });
+
+  it("should return zero same-date growth when no previous same-date data", () => {
+    // ref date = March 2 → only Feb 1-2 for same-date; all Feb data is after day 2
+    const rows = [
+      makeRow({ hour_start: "2026-02-15T10:00:00Z", total_tokens: 3000, input_tokens: 2400, output_tokens: 600, cached_input_tokens: 300 }),
+      makeRow({ hour_start: "2026-03-01T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
+    ];
+
+    const result = computeMoMGrowth(rows, makePricingMap(), new Date("2026-03-02"));
+
+    // Full month comparison still works
+    expect(result.previousMonth.tokens).toBe(3000);
+    expect(result.tokenGrowth).toBeCloseTo(-66.67, 1);
+
+    // Same-date: no Feb data in days 1-2 → growth = 0
+    expect(result.previousMonthSameDate.tokens).toBe(0);
+    expect(result.sameDateTokenGrowth).toBe(0);
   });
 
   it("should assign UTC midnight row to previous month for west-of-UTC timezone (tzOffset=480, PST)", () => {
