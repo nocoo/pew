@@ -131,9 +131,8 @@ export async function GET(request: Request) {
     conditions.push("tm.team_id = ?");
     params.push(teamId);
   } else if (!isAdminMode) {
-    // Public leaderboard only shows users who opted in and have a slug
+    // Public leaderboard only shows users who opted in
     conditions.push("u.is_public = 1");
-    conditions.push("u.slug IS NOT NULL");
   }
 
   params.push(limit);
@@ -188,7 +187,6 @@ export async function GET(request: Request) {
           bareConditions.push("ur.hour_start >= ?");
           bareParams.push(fromDate);
         }
-        bareConditions.push("u.slug IS NOT NULL");
         bareParams.push(limit);
 
         const bareSql = `

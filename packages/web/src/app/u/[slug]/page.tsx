@@ -8,7 +8,8 @@ import { PublicProfileView } from "./profile-view";
 
 interface UserMeta {
   name: string | null;
-  slug: string;
+  slug: string | null;
+  id: string;
   is_public?: number | null;
 }
 
@@ -16,6 +17,9 @@ const GENERIC_METADATA: Metadata = {
   title: "Profile — pew",
   description: "Public profile on pew",
 };
+
+// UUID regex for user ID detection
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function generateMetadata({
   params,
@@ -29,9 +33,13 @@ export async function generateMetadata({
   let user: UserMeta | null;
   let hasIsPublicColumn = true;
 
+  // Check if slug looks like a UUID (user ID) or a custom slug
+  const isUUID = UUID_RE.test(slug);
+  const queryColumn = isUUID ? "id" : "slug";
+
   try {
     user = await db.firstOrNull<UserMeta>(
-      "SELECT name, slug, is_public FROM users WHERE slug = ?",
+      `SELECT id, name, slug, is_public FROM users WHERE ${queryColumn} = ?`,
       [slug],
     );
   } catch (err: unknown) {
@@ -41,7 +49,7 @@ export async function generateMetadata({
       hasIsPublicColumn = false;
       user = await db
         .firstOrNull<UserMeta>(
-          "SELECT name, slug FROM users WHERE slug = ?",
+          `SELECT id, name, slug FROM users WHERE ${queryColumn} = ?`,
           [slug],
         )
         .catch(() => null);
@@ -56,7 +64,7 @@ export async function generateMetadata({
     return GENERIC_METADATA;
   }
 
-  const displayName = user.name ?? slug;
+  const displayName = user.name ?? user.slug ?? slug;
 
   return {
     title: `${displayName} — pew`,

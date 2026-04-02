@@ -134,10 +134,12 @@ export async function GET(
 ) {
   const { slug } = await params;
 
-  // 1. Validate slug format (alphanumeric + hyphens, 1-64 chars)
-  if (!/^[a-z0-9][a-z0-9-]{0,63}$/i.test(slug)) {
+  // 1. Validate slug format (alphanumeric + hyphens, 1-64 chars) OR UUID
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,63}$/i;
+  if (!SLUG_RE.test(slug) && !UUID_RE.test(slug)) {
     return NextResponse.json(
-      { error: "Invalid profile slug" },
+      { error: "Invalid profile identifier" },
       { status: 400 },
     );
   }

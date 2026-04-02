@@ -5,6 +5,8 @@ import { useSession } from "next-auth/react";
 import {
   User,
   ExternalLink,
+  Copy,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -38,6 +40,12 @@ export default function SettingsPage() {
   const userName = session?.user?.name ?? "User";
   const userEmail = session?.user?.email ?? "";
   const userImage = session?.user?.image;
+  const userId = session?.user?.id;
+
+  // Profile URL state
+  const [copiedUrl, setCopiedUrl] = useState(false);
+  const profileIdentifier = slug || userId;
+  const profileUrl = profileIdentifier ? `https://pew.md/u/${profileIdentifier}` : null;
 
   // ---------------------------------------------------------------------------
   // Fetch settings
@@ -185,22 +193,45 @@ export default function SettingsPage() {
             <label htmlFor="slug" className="block text-xs font-medium text-muted-foreground mb-1.5">
               Profile URL
             </label>
-            <div className="flex items-center gap-0 rounded-lg border border-border bg-background overflow-hidden">
-              <span className="px-3 py-2 text-sm text-muted-foreground bg-accent/50 border-r border-border shrink-0">
-                pew.dev/u/
-              </span>
-              <input
-                id="slug"
-                type="text"
-                value={slug}
-                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                placeholder="your-slug"
-                maxLength={32}
-                className="flex-1 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none bg-transparent min-w-0"
-              />
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-0 rounded-lg border border-border bg-background overflow-hidden flex-1 min-w-0">
+                <span className="px-3 py-2 text-sm text-muted-foreground bg-accent/50 border-r border-border shrink-0">
+                  pew.md/u/
+                </span>
+                <input
+                  id="slug"
+                  type="text"
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                  placeholder={userId ?? "your-slug"}
+                  maxLength={32}
+                  className="flex-1 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none bg-transparent min-w-0"
+                />
+              </div>
+              {profileUrl && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(profileUrl);
+                    setCopiedUrl(true);
+                    setTimeout(() => setCopiedUrl(false), 2000);
+                  }}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
+                  title="Copy profile URL"
+                >
+                  {copiedUrl ? (
+                    <Check className="h-4 w-4 text-success" strokeWidth={1.5} />
+                  ) : (
+                    <Copy className="h-4 w-4" strokeWidth={1.5} />
+                  )}
+                </button>
+              )}
             </div>
             <p className="mt-1 text-[10px] text-muted-foreground">
               Your public profile URL. Lowercase letters, numbers, and hyphens only.
+              {!slug && userId && (
+                <span className="text-muted-foreground/70"> Using your user ID as default.</span>
+              )}
             </p>
           </div>
 
@@ -230,16 +261,6 @@ export default function SettingsPage() {
               <p className="mt-0.5 text-[10px] text-muted-foreground">
                 When enabled, your profile appears on the leaderboard and is accessible at your public URL.
               </p>
-              {isPublic && !slug && (
-                <p className="mt-1 text-[10px] text-amber-500">
-                  You need a slug to have a public profile URL.
-                </p>
-              )}
-              {!isPublic && slug && (
-                <p className="mt-1 text-[10px] text-muted-foreground/70">
-                  Set a slug to customize your profile URL when you go public.
-                </p>
-              )}
             </div>
           </div>
 

@@ -58,7 +58,7 @@ describe("GET /api/users/[slug]", () => {
 
       expect(res.status).toBe(400);
       const body = await res.json();
-      expect(body.error).toBe("Invalid profile slug");
+      expect(body.error).toBe("Invalid profile identifier");
     });
 
     it("should reject slug starting with hyphen", async () => {

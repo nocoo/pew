@@ -125,6 +125,15 @@ export async function handleInviteGate(
 
   if (existingUser) return true;
 
+  // Check if invite code is required (default: true)
+  const requireInviteSetting = await dbRead.firstOrNull<{ value: string }>(
+    "SELECT value FROM app_settings WHERE key = 'require_invite_code'"
+  );
+  const requireInviteCode = requireInviteSetting?.value !== "false";
+
+  // If invite code is not required, allow all new registrations
+  if (!requireInviteCode) return true;
+
   // New user — check invite code cookie
   const inviteCode = req.cookies.get("pew-invite-code")?.value;
   if (!inviteCode || !validateInviteCode(inviteCode)) {

@@ -94,6 +94,15 @@ export async function PUT(request: Request) {
     }
   }
 
+  if (key === "require_invite_code") {
+    if (value !== "true" && value !== "false") {
+      return NextResponse.json(
+        { error: "require_invite_code must be 'true' or 'false'" },
+        { status: 400 },
+      );
+    }
+  }
+
   const dbWrite = await getDbWrite();
 
   try {

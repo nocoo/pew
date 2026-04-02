@@ -159,22 +159,15 @@ describe("GET /api/leaderboard", () => {
       expect(sqlCall[0]).not.toContain("ur.hour_start >= ?");
     });
 
-    it("should filter by is_public = 1", async () => {
+    it("should filter by is_public = 1 (no slug requirement)", async () => {
       mockClient.query.mockResolvedValueOnce({ results: [] });
 
       await GET(makeGetRequest("/api/leaderboard"));
 
       const sqlCall = mockClient.query.mock.calls[0]!;
       expect(sqlCall[0]).toContain("u.is_public = 1");
-    });
-
-    it("should still require slug IS NOT NULL", async () => {
-      mockClient.query.mockResolvedValueOnce({ results: [] });
-
-      await GET(makeGetRequest("/api/leaderboard"));
-
-      const sqlCall = mockClient.query.mock.calls[0]!;
-      expect(sqlCall[0]).toContain("u.slug IS NOT NULL");
+      // slug IS NOT NULL was removed — all public users shown regardless of slug
+      expect(sqlCall[0]).not.toContain("u.slug IS NOT NULL");
     });
 
     it("should filter out users with 0 total_tokens via HAVING", async () => {
@@ -222,13 +215,12 @@ describe("GET /api/leaderboard", () => {
       expect(sqlCall[1]).toContain("team-abc");
     });
 
-    it("should not include slug IS NOT NULL or is_public when team is set", async () => {
+    it("should not include is_public when team is set", async () => {
       mockClient.query.mockResolvedValueOnce({ results: [] });
 
       await GET(makeGetRequest("/api/leaderboard", { team: "team-abc" }));
 
       const sqlCall = mockClient.query.mock.calls[0]!;
-      expect(sqlCall[0]).not.toContain("u.slug IS NOT NULL");
       expect(sqlCall[0]).not.toContain("u.is_public");
     });
   });
@@ -261,7 +253,6 @@ describe("GET /api/leaderboard", () => {
       expect(res.status).toBe(200);
       expect(mockClient.query).toHaveBeenCalledTimes(3);
       const bareSql = mockClient.query.mock.calls[2]![0] as string;
-      expect(bareSql).toContain("u.slug IS NOT NULL");
       expect(bareSql).not.toContain("u.is_public");
       expect(bareSql).not.toContain("u.nickname");
     });
@@ -406,7 +397,6 @@ describe("GET /api/leaderboard", () => {
       expect(mockClient.query).toHaveBeenCalledTimes(3);
       const bareSql = mockClient.query.mock.calls[2]![0] as string;
       expect(bareSql).not.toContain("team_members");
-      expect(bareSql).toContain("u.slug IS NOT NULL");
     });
   });
 
@@ -419,12 +409,11 @@ describe("GET /api/leaderboard", () => {
 
       expect(res.status).toBe(200);
       const sqlCall = mockClient.query.mock.calls[0]!;
-      // Admin mode skips the is_public filter and slug requirement in WHERE
+      // Admin mode skips the is_public filter in WHERE
       expect(sqlCall[0]).not.toContain("u.is_public = 1");
-      expect(sqlCall[0]).not.toContain("u.slug IS NOT NULL");
     });
 
-    it("should NOT include is_public or slug filter in admin SQL", async () => {
+    it("should NOT include is_public filter in admin SQL", async () => {
       resolveAdmin.mockResolvedValueOnce({ userId: "admin-1", email: "a@b.com" });
       mockClient.query.mockResolvedValueOnce({ results: [] });
 
@@ -433,7 +422,6 @@ describe("GET /api/leaderboard", () => {
       const sqlCall = mockClient.query.mock.calls[0]!;
       const sql = sqlCall[0] as string;
       expect(sql).not.toContain("u.is_public = 1");
-      expect(sql).not.toContain("u.slug IS NOT NULL");
       // Should still have basic conditions
       expect(sql).toContain("1=1");
     });
@@ -508,7 +496,6 @@ describe("GET /api/leaderboard", () => {
       expect(res.status).toBe(200);
       const sqlCall = mockClient.query.mock.calls[0]!;
       expect(sqlCall[0]).toContain("u.is_public = 1");
-      expect(sqlCall[0]).toContain("u.slug IS NOT NULL");
     });
 
     it("should apply normal filters when admin param is not 'true'", async () => {
@@ -519,7 +506,6 @@ describe("GET /api/leaderboard", () => {
       expect(res.status).toBe(200);
       const sqlCall = mockClient.query.mock.calls[0]!;
       expect(sqlCall[0]).toContain("u.is_public = 1");
-      expect(sqlCall[0]).toContain("u.slug IS NOT NULL");
       // Should not even call resolveAdmin
       expect(resolveAdmin).not.toHaveBeenCalled();
     });

@@ -23,6 +23,8 @@ import { ModelBreakdownChart } from "@/components/dashboard/model-breakdown-char
 import { HeatmapCalendar } from "@/components/dashboard/heatmap-calendar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PageHeader } from "@/components/leaderboard/page-header";
+import { LeaderboardNav } from "@/components/leaderboard/leaderboard-nav";
 
 // ---------------------------------------------------------------------------
 // Skeleton
@@ -92,22 +94,42 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
   // 404
   if (notFound) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold font-display text-foreground">
-            404
+      <div className="min-h-screen bg-background px-4 md:px-6">
+        <PageHeader>
+          <h1 className="tracking-tight text-foreground">
+            <span className="text-[36px] font-bold font-handwriting leading-none mr-2">pew</span>
+            <span className="text-[19px] font-normal text-muted-foreground">
+              Profile
+            </span>
           </h1>
-          <p className="text-muted-foreground">
-            No public profile found for &ldquo;{slug}&rdquo;
+        </PageHeader>
+        <main className="flex-1 py-8">
+          <LeaderboardNav />
+          <div className="mt-8 text-center space-y-4">
+            <h2 className="text-4xl font-bold font-display text-foreground">
+              404
+            </h2>
+            <p className="text-muted-foreground">
+              No public profile found for &ldquo;{slug}&rdquo;
+            </p>
+            <Link
+              href="/leaderboard"
+              className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to leaderboard
+            </Link>
+          </div>
+        </main>
+        <footer className="py-8 text-center border-t border-border">
+          <p className="text-xs text-muted-foreground">
+            Powered by{" "}
+            <Link href="/" className="text-primary hover:underline font-handwriting">
+              pew
+            </Link>{" "}
+            — show your tokens
           </p>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to <span className="font-handwriting">pew</span>
-          </Link>
-        </div>
+        </footer>
       </div>
     );
   }
@@ -115,37 +137,57 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
   // Error
   if (error && !loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-center space-y-4">
-          <p className="text-destructive">Failed to load profile: {error}</p>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to <span className="font-handwriting">pew</span>
-          </Link>
-        </div>
+      <div className="min-h-screen bg-background px-4 md:px-6">
+        <PageHeader>
+          <h1 className="tracking-tight text-foreground">
+            <span className="text-[36px] font-bold font-handwriting leading-none mr-2">pew</span>
+            <span className="text-[19px] font-normal text-muted-foreground">
+              Profile
+            </span>
+          </h1>
+        </PageHeader>
+        <main className="flex-1 py-8">
+          <LeaderboardNav />
+          <div className="mt-8 text-center space-y-4">
+            <p className="text-destructive">Failed to load profile: {error}</p>
+            <Link
+              href="/leaderboard"
+              className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to leaderboard
+            </Link>
+          </div>
+        </main>
+        <footer className="py-8 text-center border-t border-border">
+          <p className="text-xs text-muted-foreground">
+            Powered by{" "}
+            <Link href="/" className="text-primary hover:underline font-handwriting">
+              pew
+            </Link>{" "}
+            — show your tokens
+          </p>
+        </footer>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Compact top bar */}
-      <header className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-10">
-        <div className="mx-auto max-w-5xl flex items-center justify-between px-4 md:px-6 h-14">
-          <Link
-            href="/"
-            className="flex items-center gap-2 text-foreground hover:text-primary transition-colors"
-          >
-            <Zap className="h-5 w-5 text-primary" strokeWidth={1.5} />
-            <span className="font-bold font-handwriting tracking-tighter">pew</span>
-          </Link>
-        </div>
-      </header>
+    <div className="min-h-screen bg-background px-4 md:px-6">
+      {/* Header */}
+      <PageHeader>
+        <h1 className="tracking-tight text-foreground">
+          <span className="text-[36px] font-bold font-handwriting leading-none mr-2">pew</span>
+          <span className="text-[19px] font-normal text-muted-foreground">
+            Profile
+          </span>
+        </h1>
+      </PageHeader>
 
-      <main className="mx-auto max-w-5xl px-4 md:px-6 py-6 md:py-8 space-y-4 md:space-y-6">
+      <main className="flex-1 py-4 space-y-4 md:space-y-6">
+        {/* Tab nav */}
+        <LeaderboardNav />
+
         {/* Profile header */}
         {loading && !user ? (
           <div className="flex items-center gap-4">
@@ -167,9 +209,9 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h1 className="text-2xl font-bold font-display text-foreground">
+                <h2 className="text-2xl font-bold font-display text-foreground">
                   {user.name ?? slug}
-                </h1>
+                </h2>
                 <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   <Calendar className="h-3.5 w-3.5" />
                   Member since {formatMemberSince(user.created_at)}
@@ -262,18 +304,18 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
             </div>
           </>
         )}
-
-        {/* Footer */}
-        <footer className="pt-4 pb-8 text-center">
-          <p className="text-xs text-muted-foreground">
-            Powered by{" "}
-            <Link href="/" className="text-primary hover:underline font-handwriting">
-              pew
-            </Link>{" "}
-            — show your tokens
-          </p>
-        </footer>
       </main>
+
+      {/* Footer */}
+      <footer className="py-8 text-center border-t border-border">
+        <p className="text-xs text-muted-foreground">
+          Powered by{" "}
+          <Link href="/" className="text-primary hover:underline font-handwriting">
+            pew
+          </Link>{" "}
+          — show your tokens
+        </p>
+      </footer>
     </div>
   );
 }

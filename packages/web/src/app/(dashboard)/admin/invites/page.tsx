@@ -105,6 +105,11 @@ export default function AdminInvitesPage() {
     text: string;
   } | null>(null);
 
+  // Require invite code toggle
+  const [requireInvite, setRequireInvite] = useState(true);
+  const [requireInviteLoading, setRequireInviteLoading] = useState(true);
+  const [togglingRequireInvite, setTogglingRequireInvite] = useState(false);
+
   // Filter
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 
@@ -161,6 +166,75 @@ export default function AdminInvitesPage() {
   useEffect(() => {
     if (isAdmin) fetchRows();
   }, [isAdmin, fetchRows]);
+
+  // ---------------------------------------------------------------------------
+  // Fetch require_invite_code setting
+  // ---------------------------------------------------------------------------
+
+  const fetchRequireInvite = useCallback(async () => {
+    setRequireInviteLoading(true);
+    try {
+      const res = await fetch("/api/admin/settings");
+      if (res.ok) {
+        const json = (await res.json()) as {
+          settings: Array<{ key: string; value: string }>;
+        };
+        const setting = json.settings.find((s) => s.key === "require_invite_code");
+        setRequireInvite(setting?.value !== "false");
+      }
+    } catch {
+      // Silently fail, default to true
+    } finally {
+      setRequireInviteLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAdmin) fetchRequireInvite();
+  }, [isAdmin, fetchRequireInvite]);
+
+  // ---------------------------------------------------------------------------
+  // Toggle require_invite_code
+  // ---------------------------------------------------------------------------
+
+  const handleToggleRequireInvite = async () => {
+    const newValue = !requireInvite;
+    setTogglingRequireInvite(true);
+    setMessage(null);
+
+    try {
+      const res = await fetch("/api/admin/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          key: "require_invite_code",
+          value: newValue ? "true" : "false",
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(
+          (data as { error?: string }).error ?? `HTTP ${res.status}`
+        );
+      }
+
+      setRequireInvite(newValue);
+      setMessage({
+        type: "success",
+        text: newValue
+          ? "Invite code is now required for registration."
+          : "Invite code is no longer required. Anyone can register.",
+      });
+    } catch (err) {
+      setMessage({
+        type: "error",
+        text: err instanceof Error ? err.message : "Failed to update setting.",
+      });
+    } finally {
+      setTogglingRequireInvite(false);
+    }
+  };
 
   // ---------------------------------------------------------------------------
   // Generate
@@ -291,6 +365,41 @@ export default function AdminInvitesPage() {
           <Plus className="h-4 w-4" strokeWidth={1.5} />
           Generate Codes
         </button>
+      </div>
+
+      {/* Require invite code toggle */}
+      <div className="rounded-xl bg-secondary p-4">
+        <div className="flex items-start gap-3">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={requireInvite}
+            disabled={requireInviteLoading || togglingRequireInvite}
+            onClick={handleToggleRequireInvite}
+            className={cn(
+              "relative mt-0.5 inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+              requireInvite ? "bg-primary" : "bg-border",
+              (requireInviteLoading || togglingRequireInvite) && "opacity-50 cursor-not-allowed",
+            )}
+          >
+            <span
+              className={cn(
+                "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-background shadow-sm ring-0 transition-transform",
+                requireInvite ? "translate-x-4" : "translate-x-0",
+              )}
+            />
+          </button>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground">
+              Require invite code for registration
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {requireInvite
+                ? "New users must enter a valid invite code to register."
+                : "Anyone can register without an invite code."}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Messages */}
