@@ -77,8 +77,10 @@ This document plans a comprehensive overhaul inspired by WoW's Achievement syste
 | `streak` | **On Fire** | "Your streak is alive. Your social life is not." | 3 / 7 / 14 / 30 days |
 | `veteran` | **No Life** | "You've been here longer than some marriages." | 7 / 30 / 90 / 365 active days |
 | `weekend-warrior` | **No Rest for the Wicked** | "Saturday? More like Codeturday." | 4 / 12 / 26 / 52 weekend days |
-| `night-owl` | **Sleep is Overrated** | "2AM prompt submitted. 2:01AM regret." | 10 / 30 / 100 / 300 midnight-6am hours |
-| `early-bird` | **Dawn Debugger** | "The AI was your first conversation today." | 10 / 30 / 100 / 300 6am-9am hours |
+| `night-owl` | **Sleep is Overrated** | "2AM prompt submitted. 2:01AM regret." | 10 / 30 / 100 / 300 midnight-6am hours ⚠️ |
+| `early-bird` | **Dawn Debugger** | "The AI was your first conversation today." | 10 / 30 / 100 / 300 6am-9am hours ⚠️ |
+
+> ⚠️ **night-owl / early-bird**: These achievements require user timezone to compute. See Decision 5 for social feature limitations.
 
 ### Category: Efficiency (Copium)
 
@@ -310,7 +312,7 @@ The existing client-side dashboard achievement panel will be replaced with a sim
 
 ### Time-of-Day Achievements
 
-The `hour_start` field is stored in UTC. To compute "night owl" (midnight-6am local):
+The `hour_start` field is stored in UTC. To compute "night owl" (midnight-6am local) for the **current user**:
 
 ```typescript
 // Convert UTC hour to user's local hour
@@ -318,6 +320,8 @@ const utcHour = new Date(row.hour_start).getUTCHours();
 const localHour = (utcHour - tzOffset / 60 + 24) % 24;
 const isNightOwl = localHour >= 0 && localHour < 6;
 ```
+
+**Note**: This computation requires `tzOffset` from the client. Since we don't persist user timezone, these achievements (`night-owl`, `early-bird`) cannot be computed for other users. See Decision 5 for social feature handling.
 
 ### Device/Model/Source Diversity
 
@@ -400,7 +404,8 @@ This section resolves the blocking questions identified during review. These dec
 |----------|-------------|---------------|-----------------|
 | Volume | `usage_records` | `total_tokens`, `input_tokens`, `output_tokens`, `reasoning_output_tokens` | ✅ |
 | Consistency (streak, veteran) | `usage_records` | `hour_start` (distinct days) | ✅ |
-| Consistency (weekend, night-owl, early-bird) | `usage_records` | `hour_start` (UTC hour + day-of-week) | ✅ |
+| Consistency (weekend) | `usage_records` | `hour_start` (day-of-week in UTC) | ✅ |
+| Consistency (night-owl, early-bird) | `usage_records` | `hour_start` + **user timezone** | ⚠️ See Decision 5 |
 | Efficiency (cache-master) | `usage_records` | `cached_input_tokens`, `input_tokens` | ✅ |
 | Efficiency (quick-draw, marathon) | `session_records` | `duration_seconds` | ✅ |
 | Spending | `usage_records` + pricing | `total_tokens` by model | ✅ |
@@ -412,7 +417,28 @@ This section resolves the blocking questions identified during review. These dec
 | Sessions (automation-addict) | `session_records` | `kind = 'automated'` | ✅ |
 | Special (first-blood) | `usage_records` | `MIN(hour_start)` | ✅ |
 
-**Conclusion**: All planned achievements can be computed from existing tables. No schema changes required.
+**Conclusion**: All planned achievements can be computed from existing tables. No schema changes required. However, `night-owl` and `early-bird` have social feature limitations (see Decision 5).
+
+### Decision 5: Time-of-Day Achievements — No Social Features
+
+**Problem**: `night-owl` and `early-bird` require converting UTC `hour_start` to the user's local time. The current `users` table has no `timezone` field.
+
+**Options considered**:
+1. Add `timezone` column to `users`, require users to set it, define rules for historical data backfill
+2. Exclude these achievements from social features ("earned by" list, `/api/achievements/[id]/members`)
+
+**Choice**: Option 2 — exclude from social features.
+
+**Rationale**:
+- Adding timezone persistence requires migration, UI for setting timezone, and complex historical backfill rules (user may have changed timezones)
+- These achievements are inherently personal ("when do I work?") — social value is low
+- "Earned by" for night-owl would be misleading anyway: a user in UTC+8 and one in UTC-8 could both qualify with the same raw data
+
+**Implementation**:
+- `GET /api/achievements` computes `night-owl` and `early-bird` using the request's `tzOffset` query param (passed from client)
+- These two achievements return `earnedBy: []` and `totalEarned: 0` in the response
+- `GET /api/achievements/[id]/members` returns 404 for these achievement IDs
+- UI shows "Personal achievement — no leaderboard" instead of the avatar row
 
 ---
 
