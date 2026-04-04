@@ -172,13 +172,13 @@ This document plans a comprehensive overhaul inspired by WoW's Achievement syste
 
 ### Dashboard Hero Integration
 
-Replace current `AchievementPanel` with a single "Latest Achievement" card:
+Replace current `AchievementPanel` with a single "Top Achievement" card (shows highest-tier achievement, not "most recent" — see Decision 1):
 
 ```
-┌─ Latest Achievement ───────────────────┐
+┌─ Top Achievement ──────────────────────┐
 │                                        │
-│  🏆 On Fire — SILVER                   │
-│  7-day streak unlocked!                │
+│  🏆 On Fire — DIAMOND                  │
+│  30-day streak unlocked!               │
 │                                        │
 │  [View All Achievements →]             │
 └────────────────────────────────────────┘
@@ -247,25 +247,28 @@ interface AchievementMembersResponse {
 
 ## Implementation Plan
 
-### Phase 1: Achievement Definitions & Computation
+### Phase 1: Server-Side Achievement API
 
-1. Expand `achievement-helpers.ts` with all new achievement definitions
-2. Add `category` field to `AchievementDef`
-3. Add `flavorText` field for WoW-style descriptions
-4. Implement new value extractors for:
-   - Time-of-day achievements (night-owl, early-bird)
-   - Session-based achievements (marathon, quick-draw, chatterbox)
-   - Diversity achievements (tool-hoarder, model-tourist, device-nomad)
-5. Add unit tests for all new computations
+1. Create `GET /api/achievements` route:
+   - Compute all achievements server-side using SQL aggregations
+   - Return `achievements[]` + `summary` as specified in API Design
+   - Include "earned by" preview (top 5 users per achievement)
+2. Expand `achievement-helpers.ts`:
+   - Add `category` and `flavorText` fields to `AchievementDef`
+   - Add all new achievement definitions from Taxonomy
+   - Extract `computeTierProgress()` as shared utility
+3. Unit tests for all achievement value extractors
 
-### Phase 2: API Endpoints
+### Phase 2: Social Data & Members Endpoint
 
-1. Create `GET /api/achievements` route
-   - Compute all achievements for authenticated user
-   - Query "earned by" preview (top 5 users per achievement)
-2. Create `GET /api/achievements/[id]/members` route
-   - Paginated user list with tier and earned date
-3. Add achievement-related columns to users table (optional: cache computed tiers)
+1. Create `GET /api/achievements/[id]/members` route:
+   - Paginated list of users who earned the achievement
+   - Compute approximate `earnedAt` from historical data
+2. Add achievement-specific SQL queries:
+   - Time-of-day achievements (night-owl, early-bird): filter by UTC hour
+   - Session-based achievements: aggregate from `session_records`
+   - Diversity achievements: `COUNT(DISTINCT ...)` queries
+3. Integration tests with real D1 data
 
 ### Phase 3: Achievements Page
 
@@ -277,14 +280,15 @@ interface AchievementMembersResponse {
 
 ### Phase 4: Dashboard Integration
 
-1. Create `LatestAchievement` component
+1. Create `LatestAchievement` component (shows highest-tier achievement)
 2. Replace `AchievementPanel` in Hero sidebar
 3. Add "View All" link to achievements page
+4. Remove client-side achievement computation from dashboard
 
 ### Phase 5: Polish
 
 1. Add animations for tier upgrades
-2. Add toast notifications for new achievements
+2. Add toast notifications for new achievements (compare before/after on load)
 3. Consider push notifications for milestone achievements
 
 ## Technical Notes
@@ -323,18 +327,93 @@ FROM usage_records
 WHERE user_id = ?
 ```
 
-## Open Questions
+## Data Model Decisions
 
-1. **Persistence**: Should we store earned achievements in a separate table, or always compute on-the-fly?
-   - Pro persistence: faster queries for social features, "earned at" timestamp
-   - Pro computation: simpler schema, always up-to-date
+This section resolves the blocking questions identified during review. These decisions are **final** and should not be revisited without explicit approval.
 
-2. **Notifications**: How do we detect newly earned achievements?
-   - Option A: Compare before/after on each sync
-   - Option B: Background job that checks periodically
+### Decision 1: earnedAt Source — On-Demand Computation (No Persistence)
+
+**Choice**: Compute all achievement state on-the-fly from existing `usage_records` and `session_records` tables. No `achievement_unlocks` table.
+
+**Rationale**:
+- Adding a persistence layer requires: (a) migration, (b) backfill job, (c) sync logic to keep snapshots current, (d) handling edge cases when users re-sync and totals decrease
+- The "earned at" timestamp shown on `/api/achievements/[id]/members` will be **approximate** — derived from the earliest `hour_start` (for usage-based) or `started_at` (for session-based) that would have crossed the tier threshold
+- This approximation is acceptable because:
+  - Historical accuracy is not a product requirement (we're not a blockchain)
+  - The social feature ("earned by") is about **who**, not **when**
+  - Users won't notice if their "unlocked" date is off by a few hours
+
+**Implementation**:
+- For social queries, run a server-side aggregation per achievement that computes each user's current value, then derive the approximate unlock time by binary-searching historical data
+- Cache "earned by" lists for 5-10 minutes (low churn)
+- The "Latest Achievement" widget on dashboard will show the **highest-tier achievement** (not most recently unlocked), since we can't reliably track unlock order without persistence
+
+### Decision 2: Computation Boundary — Server-Side for All New Achievements
+
+**Choice**: Migrate achievement computation to a server-side API (`GET /api/achievements`). The existing client-side `achievement-helpers.ts` becomes a shared utility library, but the actual computation runs on the server.
+
+**Rationale**:
+- New achievements require data not currently available in `AchievementInputs`:
+  - `device_id` — only in `usage_records`, not exposed via `/api/usage`
+  - `session_records` fields — `kind`, `duration_seconds`, `started_at`
+- Expanding `/api/usage` to return all this data would bloat the response and duplicate `/api/sessions`
+- Server-side computation allows:
+  - Single SQL query to compute all achievements (efficient)
+  - Direct access to both `usage_records` and `session_records`
+  - Social data queries ("earned by") in the same request
+
+**Migration Path**:
+1. Phase 1: Move computation server-side, keep existing 6 achievements
+2. Phase 2: Add new achievements that require session/device data
+3. Phase 3: Remove client-side computation from dashboard (it becomes a simple fetch)
+
+### Decision 3: Summary Count — Unlocked Definition IDs, Not Tiers
+
+**Choice**: "42 / 78 Unlocked" counts **achievement definitions with at least one tier unlocked**, not total tier unlocks.
+
+**Rationale**:
+- Users intuitively think "I have 42 achievements" not "I have 42 tier unlocks across 20 achievements"
+- WoW counts achievement definitions, not individual tiers
+- The current taxonomy has ~22 achievement definitions × 4 tiers = 88 possible tier unlocks, but showing "42 / 88" is confusing
+- The mock shows "42 / 78" — this implies 78 definitions (some achievements are special/hidden with fewer tiers)
+
+**Implementation**:
+- `totalAchievements` = count of all `AchievementDef` entries
+- `totalUnlocked` = count of definitions where `tier !== "locked"`
+- `diamondCount` = count of definitions where `tier === "diamond"`
+
+### Decision 4: Input Data Requirements by Achievement Category
+
+| Category | Data Source | Fields Needed | Available Today |
+|----------|-------------|---------------|-----------------|
+| Volume | `usage_records` | `total_tokens`, `input_tokens`, `output_tokens`, `reasoning_output_tokens` | ✅ |
+| Consistency (streak, veteran) | `usage_records` | `hour_start` (distinct days) | ✅ |
+| Consistency (weekend, night-owl, early-bird) | `usage_records` | `hour_start` (UTC hour + day-of-week) | ✅ |
+| Efficiency (cache-master) | `usage_records` | `cached_input_tokens`, `input_tokens` | ✅ |
+| Efficiency (quick-draw, marathon) | `session_records` | `duration_seconds` | ✅ |
+| Spending | `usage_records` + pricing | `total_tokens` by model | ✅ |
+| Diversity (tool-hoarder) | `usage_records` | `COUNT(DISTINCT source)` | ✅ |
+| Diversity (model-tourist) | `usage_records` | `COUNT(DISTINCT model)` | ✅ |
+| Diversity (device-nomad) | `usage_records` | `COUNT(DISTINCT device_id)` | ✅ |
+| Sessions (chatterbox) | `session_records` | `total_messages` | ✅ |
+| Sessions (session-hoarder) | `session_records` | `COUNT(*)` | ✅ |
+| Sessions (automation-addict) | `session_records` | `kind = 'automated'` | ✅ |
+| Special (first-blood) | `usage_records` | `MIN(hour_start)` | ✅ |
+
+**Conclusion**: All planned achievements can be computed from existing tables. No schema changes required.
+
+---
+
+## Open Questions (Resolved)
+
+~~1. **Persistence**: Should we store earned achievements in a separate table, or always compute on-the-fly?~~
+   - **Resolved**: On-demand computation. See Decision 1.
+
+~~2. **Notifications**: How do we detect newly earned achievements?~~
+   - **Deferred to Phase 5**: Compare before/after on dashboard load. No background jobs.
 
 3. **Rarity Display**: Show what percentage of users earned each achievement?
-   - Requires periodic computation across all users
+   - **Deferred**: Nice-to-have. Can add `totalUsers` to response and compute client-side.
 
 ## References
 
