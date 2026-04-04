@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 const TABS = [
   { href: "/leaderboard", label: "Individual" },
   { href: "/leaderboard/seasons", label: "Seasons" },
+  { href: "/leaderboard/achievements", label: "Achievements" },
 ] as const;
 
 // ---------------------------------------------------------------------------
