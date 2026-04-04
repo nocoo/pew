@@ -248,6 +248,7 @@ export default function DashboardPage() {
                 icon={Zap}
                 iconColor="text-primary"
                 variant="primary"
+                accentColor="bg-gradient-to-r from-primary to-chart-8"
                 trends={mom ? [
                   ...(mom.previousMonthSameDate.tokens > 0 && mom.previousMonthSameDate.tokens !== mom.previousMonth.tokens
                     ? [{ value: Math.round(mom.sameDateTokenGrowth), label: "vs same period" }]
@@ -262,12 +263,14 @@ export default function DashboardPage() {
                 value={formatTokens(data.summary.input_tokens)}
                 subtitle="Prompts & context"
                 icon={ArrowDownToLine}
+                accentColor="bg-chart-3"
               />
               <StatCard
                 title="Output Tokens"
                 value={formatTokens(data.summary.output_tokens)}
                 subtitle="Responses & reasoning"
                 icon={ArrowUpFromLine}
+                accentColor="bg-chart-5"
               />
               <StatCard
                 title="Est. Cost"
@@ -276,6 +279,7 @@ export default function DashboardPage() {
                 icon={DollarSign}
                 iconColor="text-chart-6"
                 variant="primary"
+                accentColor="bg-chart-6"
                 trends={mom ? [
                   ...(mom.previousMonthSameDate.cost > 0 && mom.previousMonthSameDate.cost !== mom.previousMonth.cost
                     ? [{ value: -Math.round(mom.sameDateCostGrowth), label: "vs same period" }]

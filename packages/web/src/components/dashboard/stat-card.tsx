@@ -19,6 +19,11 @@ export interface StatCardProps {
    * - "secondary": compact (default, for supporting metrics)
    */
   variant?: "primary" | "secondary";
+  /**
+   * Accent bar at top of card — shows a colored line as visual decoration.
+   * Pass a Tailwind color class (e.g., "bg-primary", "bg-chart-5").
+   */
+  accentColor?: string;
   className?: string;
 }
 
@@ -39,6 +44,7 @@ export function StatCard({
   trend,
   trends,
   variant = "secondary",
+  accentColor,
   className,
 }: StatCardProps) {
   // Merge single trend + trends array into one list
@@ -54,9 +60,12 @@ export function StatCard({
         className
       )}
     >
-      {/* Primary variant: top accent line */}
-      {isPrimary && (
-        <div className="h-0.5 w-8 rounded-full bg-gradient-to-r from-primary to-chart-8 mb-4" />
+      {/* Top accent bar — custom color or gradient for primary */}
+      {(accentColor || isPrimary) && (
+        <div className={cn(
+          "h-0.5 w-8 rounded-full mb-4",
+          accentColor ?? "bg-gradient-to-r from-primary to-chart-8"
+        )} />
       )}
 
       <div className="flex items-start justify-between">
