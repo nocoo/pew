@@ -430,7 +430,7 @@ This section resolves the blocking questions identified during review. These dec
 | Sessions (automation-addict) | `session_records` | `kind = 'automated'` | ✅ |
 | Special (first-blood) | `usage_records` | `MIN(hour_start)` | ✅ |
 
-**Conclusion**: All planned achievements can be computed from existing tables. No schema changes required. However, `night-owl` and `early-bird` have social feature limitations (see Decision 5).
+**Conclusion**: All planned achievements can be computed from existing tables. No schema changes required. However, `weekend-warrior`, `night-owl`, and `early-bird` have social feature limitations (see Decision 5).
 
 ### Decision 5: Timezone-Dependent Achievements — No Social Features, Approximate Values
 
