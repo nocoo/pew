@@ -3,8 +3,14 @@ import {
   computeTierProgress,
   extractAchievementValues,
   computeAchievements,
+  computeAchievementState,
+  getAchievementDef,
   ACHIEVEMENT_DEFS,
+  TIMEZONE_DEPENDANT_IDS,
+  TIER_LABELS,
+  CATEGORY_LABELS,
   type AchievementInputs,
+  type AchievementCategory,
 } from "@/lib/achievement-helpers";
 import type { UsageRow, UsageSummary, ModelAggregate } from "@/hooks/use-usage-data";
 import { getDefaultPricingMap } from "@/lib/pricing";
@@ -132,10 +138,24 @@ describe("computeTierProgress", () => {
     expect(result.tier).toBe("diamond");
     expect(result.progress).toBe(1);
   });
+
+  it("handles single-tier achievements (all thresholds equal)", () => {
+    const singleTier = [100, 100, 100, 100] as const;
+
+    // Below threshold: locked
+    const below = computeTierProgress(50, singleTier);
+    expect(below.tier).toBe("locked");
+    expect(below.progress).toBe(0.5);
+
+    // At threshold: diamond (skips to max)
+    const at = computeTierProgress(100, singleTier);
+    expect(at.tier).toBe("diamond");
+    expect(at.progress).toBe(1);
+  });
 });
 
 // ---------------------------------------------------------------------------
-// extractAchievementValues
+// extractAchievementValues (legacy compatibility)
 // ---------------------------------------------------------------------------
 
 describe("extractAchievementValues", () => {
@@ -230,16 +250,22 @@ describe("extractAchievementValues", () => {
 });
 
 // ---------------------------------------------------------------------------
-// computeAchievements
+// computeAchievements (legacy compatibility - returns only 6 achievements)
 // ---------------------------------------------------------------------------
 
 describe("computeAchievements", () => {
-  it("returns one state per defined achievement", () => {
+  it("returns 6 legacy achievements (not all 25)", () => {
     const inputs = makeInputs();
     const achievements = computeAchievements(inputs);
 
-    expect(achievements).toHaveLength(ACHIEVEMENT_DEFS.length);
-    expect(achievements.map((a) => a.id)).toEqual(ACHIEVEMENT_DEFS.map((d) => d.id));
+    expect(achievements).toHaveLength(6);
+    const ids = achievements.map((a) => a.id);
+    expect(ids).toContain("streak");
+    expect(ids).toContain("big-day");
+    expect(ids).toContain("power-user");
+    expect(ids).toContain("big-spender");
+    expect(ids).toContain("veteran");
+    expect(ids).toContain("cache-master");
   });
 
   it("assigns correct tiers based on values", () => {
@@ -331,16 +357,31 @@ describe("computeAchievements", () => {
 // ---------------------------------------------------------------------------
 
 describe("ACHIEVEMENT_DEFS", () => {
-  it("has exactly 6 achievements", () => {
-    expect(ACHIEVEMENT_DEFS).toHaveLength(6);
+  it("has exactly 25 achievements", () => {
+    expect(ACHIEVEMENT_DEFS).toHaveLength(25);
   });
 
-  it("all tiers are in ascending order", () => {
-    for (const def of ACHIEVEMENT_DEFS) {
+  it("tiered achievements have ascending thresholds", () => {
+    // Special category achievements have single-tier (all same), skip those
+    const tieredDefs = ACHIEVEMENT_DEFS.filter((d) => d.category !== "special");
+
+    for (const def of tieredDefs) {
       const [a, b, c, d] = def.tiers;
       expect(a).toBeLessThan(b);
       expect(b).toBeLessThan(c);
       expect(c).toBeLessThan(d);
+    }
+  });
+
+  it("special achievements have single-tier thresholds (all equal)", () => {
+    const specialDefs = ACHIEVEMENT_DEFS.filter((d) => d.category === "special");
+
+    expect(specialDefs.length).toBe(4);
+    for (const def of specialDefs) {
+      const [a, b, c, d] = def.tiers;
+      expect(a).toBe(b);
+      expect(b).toBe(c);
+      expect(c).toBe(d);
     }
   });
 
@@ -354,5 +395,120 @@ describe("ACHIEVEMENT_DEFS", () => {
       expect(def.format(0).length).toBeGreaterThan(0);
       expect(def.format(def.tiers[3]).length).toBeGreaterThan(0);
     }
+  });
+
+  it("all achievements have required fields", () => {
+    for (const def of ACHIEVEMENT_DEFS) {
+      expect(def.id).toBeTruthy();
+      expect(def.name).toBeTruthy();
+      expect(def.flavorText).toBeTruthy();
+      expect(def.icon).toBeTruthy();
+      expect(def.category).toBeTruthy();
+      expect(def.unit).toBeTruthy();
+      expect(def.tiers).toHaveLength(4);
+    }
+  });
+
+  it("has correct category distribution", () => {
+    const byCategory = new Map<AchievementCategory, number>();
+    for (const def of ACHIEVEMENT_DEFS) {
+      byCategory.set(def.category, (byCategory.get(def.category) ?? 0) + 1);
+    }
+
+    expect(byCategory.get("volume")).toBe(5);
+    expect(byCategory.get("consistency")).toBe(5);
+    expect(byCategory.get("efficiency")).toBe(3);
+    expect(byCategory.get("spending")).toBe(2);
+    expect(byCategory.get("diversity")).toBe(3);
+    expect(byCategory.get("sessions")).toBe(3);
+    expect(byCategory.get("special")).toBe(4);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// TIMEZONE_DEPENDANT_IDS
+// ---------------------------------------------------------------------------
+
+describe("TIMEZONE_DEPENDANT_IDS", () => {
+  it("contains exactly 3 timezone-dependent achievements", () => {
+    expect(TIMEZONE_DEPENDANT_IDS.size).toBe(3);
+    expect(TIMEZONE_DEPENDANT_IDS.has("weekend-warrior")).toBe(true);
+    expect(TIMEZONE_DEPENDANT_IDS.has("night-owl")).toBe(true);
+    expect(TIMEZONE_DEPENDANT_IDS.has("early-bird")).toBe(true);
+  });
+
+  it("matches achievements with isTimezoneDependant flag", () => {
+    const flagged = ACHIEVEMENT_DEFS.filter((d) => d.isTimezoneDependant);
+    expect(flagged.length).toBe(3);
+    for (const def of flagged) {
+      expect(TIMEZONE_DEPENDANT_IDS.has(def.id)).toBe(true);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getAchievementDef
+// ---------------------------------------------------------------------------
+
+describe("getAchievementDef", () => {
+  it("returns definition for valid id", () => {
+    const def = getAchievementDef("streak");
+    expect(def).toBeDefined();
+    expect(def?.name).toBe("On Fire");
+  });
+
+  it("returns undefined for invalid id", () => {
+    const def = getAchievementDef("nonexistent");
+    expect(def).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// computeAchievementState
+// ---------------------------------------------------------------------------
+
+describe("computeAchievementState", () => {
+  it("computes state with all new fields", () => {
+    const def = getAchievementDef("streak")!;
+    // streak tiers: [3, 7, 14, 30], so 10 days = silver
+    const state = computeAchievementState(def, 10);
+
+    expect(state.id).toBe("streak");
+    expect(state.name).toBe("On Fire");
+    expect(state.flavorText).toBe("Your streak is alive. Your social life is not.");
+    expect(state.category).toBe("consistency");
+    expect(state.tier).toBe("silver");
+    expect(state.isTimezoneDependant).toBe(false);
+  });
+
+  it("marks timezone-dependent achievements", () => {
+    const def = getAchievementDef("night-owl")!;
+    const state = computeAchievementState(def, 50);
+
+    expect(state.isTimezoneDependant).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Label constants
+// ---------------------------------------------------------------------------
+
+describe("Label constants", () => {
+  it("TIER_LABELS has all tiers", () => {
+    expect(TIER_LABELS.locked).toBe("Locked");
+    expect(TIER_LABELS.bronze).toBe("Bronze");
+    expect(TIER_LABELS.silver).toBe("Silver");
+    expect(TIER_LABELS.gold).toBe("Gold");
+    expect(TIER_LABELS.diamond).toBe("Diamond");
+  });
+
+  it("CATEGORY_LABELS has all categories", () => {
+    expect(CATEGORY_LABELS.volume).toBe("Volume");
+    expect(CATEGORY_LABELS.consistency).toBe("Consistency");
+    expect(CATEGORY_LABELS.efficiency).toBe("Efficiency");
+    expect(CATEGORY_LABELS.spending).toBe("Spending");
+    expect(CATEGORY_LABELS.diversity).toBe("Diversity");
+    expect(CATEGORY_LABELS.sessions).toBe("Sessions");
+    expect(CATEGORY_LABELS.special).toBe("Special");
   });
 });
