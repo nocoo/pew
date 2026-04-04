@@ -76,11 +76,11 @@ This document plans a comprehensive overhaul inspired by WoW's Achievement syste
 |----|------|-------------|-------|
 | `streak` | **On Fire** | "Your streak is alive. Your social life is not." | 3 / 7 / 14 / 30 days |
 | `veteran` | **No Life** | "You've been here longer than some marriages." | 7 / 30 / 90 / 365 active days |
-| `weekend-warrior` | **No Rest for the Wicked** | "Saturday? More like Codeturday." | 4 / 12 / 26 / 52 weekend days |
+| `weekend-warrior` | **No Rest for the Wicked** | "Saturday? More like Codeturday." | 4 / 12 / 26 / 52 weekend days ⚠️ |
 | `night-owl` | **Sleep is Overrated** | "2AM prompt submitted. 2:01AM regret." | 10 / 30 / 100 / 300 midnight-6am hours ⚠️ |
 | `early-bird` | **Dawn Debugger** | "The AI was your first conversation today." | 10 / 30 / 100 / 300 6am-9am hours ⚠️ |
 
-> ⚠️ **night-owl / early-bird**: These achievements require user timezone to compute. See Decision 5 for social feature limitations.
+> ⚠️ **Timezone-dependent achievements** (`weekend-warrior`, `night-owl`, `early-bird`): These require user timezone to compute accurately. See Decision 5 for social feature limitations and DST approximation notes.
 
 ### Category: Efficiency (Copium)
 
@@ -310,18 +310,32 @@ The existing client-side dashboard achievement panel will be replaced with a sim
 - User progress changes on each sync — no caching
 - "Earned by" lists change slowly — cache for 5-10 minutes
 
-### Time-of-Day Achievements
+### Timezone-Dependent Achievements
 
-The `hour_start` field is stored in UTC. To compute "night owl" (midnight-6am local) for the **current user**:
+The `hour_start` field is stored in UTC. For `weekend-warrior`, `night-owl`, and `early-bird`, we convert to the **current user's** local time:
 
 ```typescript
-// Convert UTC hour to user's local hour
+// Convert UTC to user's local time (APPROXIMATE - ignores DST history)
 const utcHour = new Date(row.hour_start).getUTCHours();
 const localHour = (utcHour - tzOffset / 60 + 24) % 24;
+
+// For weekend-warrior: also need local day-of-week
+const utcDate = new Date(row.hour_start);
+const localDate = new Date(utcDate.getTime() - tzOffset * 60 * 1000);
+const localDayOfWeek = localDate.getUTCDay(); // 0=Sun, 6=Sat
+const isWeekend = localDayOfWeek === 0 || localDayOfWeek === 6;
+
+// For night-owl
 const isNightOwl = localHour >= 0 && localHour < 6;
+
+// For early-bird
+const isEarlyBird = localHour >= 6 && localHour < 9;
 ```
 
-**Note**: This computation requires `tzOffset` from the client. Since we don't persist user timezone, these achievements (`night-owl`, `early-bird`) cannot be computed for other users. See Decision 5 for social feature handling.
+**Limitations** (see Decision 5):
+- Requires `tzOffset` from the client — cannot compute for other users
+- Uses a fixed offset for all historical data — DST transitions cause ±1 hour error on ~2% of records
+- These achievements are excluded from social features ("earned by" list)
 
 ### Device/Model/Source Diversity
 
@@ -404,8 +418,7 @@ This section resolves the blocking questions identified during review. These dec
 |----------|-------------|---------------|-----------------|
 | Volume | `usage_records` | `total_tokens`, `input_tokens`, `output_tokens`, `reasoning_output_tokens` | ✅ |
 | Consistency (streak, veteran) | `usage_records` | `hour_start` (distinct days) | ✅ |
-| Consistency (weekend) | `usage_records` | `hour_start` (day-of-week in UTC) | ✅ |
-| Consistency (night-owl, early-bird) | `usage_records` | `hour_start` + **user timezone** | ⚠️ See Decision 5 |
+| Consistency (weekend-warrior, night-owl, early-bird) | `usage_records` | `hour_start` + **user timezone** | ⚠️ See Decision 5 |
 | Efficiency (cache-master) | `usage_records` | `cached_input_tokens`, `input_tokens` | ✅ |
 | Efficiency (quick-draw, marathon) | `session_records` | `duration_seconds` | ✅ |
 | Spending | `usage_records` + pricing | `total_tokens` by model | ✅ |
@@ -419,9 +432,14 @@ This section resolves the blocking questions identified during review. These dec
 
 **Conclusion**: All planned achievements can be computed from existing tables. No schema changes required. However, `night-owl` and `early-bird` have social feature limitations (see Decision 5).
 
-### Decision 5: Time-of-Day Achievements — No Social Features
+### Decision 5: Timezone-Dependent Achievements — No Social Features, Approximate Values
 
-**Problem**: `night-owl` and `early-bird` require converting UTC `hour_start` to the user's local time. The current `users` table has no `timezone` field.
+**Problem**: `weekend-warrior`, `night-owl`, and `early-bird` require converting UTC `hour_start` to the user's local time. The current `users` table has no `timezone` field.
+
+**Affected achievements**:
+- `weekend-warrior` — needs local Saturday/Sunday, not UTC Saturday/Sunday
+- `night-owl` — needs local midnight-6am
+- `early-bird` — needs local 6am-9am
 
 **Options considered**:
 1. Add `timezone` column to `users`, require users to set it, define rules for historical data backfill
@@ -435,10 +453,25 @@ This section resolves the blocking questions identified during review. These dec
 - "Earned by" for night-owl would be misleading anyway: a user in UTC+8 and one in UTC-8 could both qualify with the same raw data
 
 **Implementation**:
-- `GET /api/achievements` computes `night-owl` and `early-bird` using the request's `tzOffset` query param (passed from client)
-- These two achievements return `earnedBy: []` and `totalEarned: 0` in the response
+- `GET /api/achievements` computes these three using the request's `tzOffset` query param (passed from client)
+- These achievements return `earnedBy: []` and `totalEarned: 0` in the response
 - `GET /api/achievements/[id]/members` returns 404 for these achievement IDs
 - UI shows "Personal achievement — no leaderboard" instead of the avatar row
+
+**DST Approximation Warning**:
+
+Even for the current user's own achievements, the computation is **approximate**, not exact:
+
+```typescript
+// This applies a FIXED offset to all historical data
+const localHour = (utcHour - tzOffset / 60 + 24) % 24;
+```
+
+The `tzOffset` from the client reflects the user's **current** timezone offset, but:
+- DST transitions shift the offset by 1 hour twice a year
+- Historical records from 6 months ago may have had a different offset
+
+**Accepted trade-off**: For a gamification feature, ±1 hour accuracy on ~2% of records (DST transition weeks) is acceptable. The alternative — storing per-record local time or requiring full timezone database lookups — adds significant complexity for minimal user value.
 
 ---
 
