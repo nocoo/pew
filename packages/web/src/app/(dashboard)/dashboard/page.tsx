@@ -33,6 +33,7 @@ import { BudgetAlert } from "@/components/dashboard/budget-alert";
 import { BudgetDialog } from "@/components/dashboard/budget-dialog";
 import { SnapshotAlert } from "@/components/dashboard/snapshot-alert";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
+import { DashboardEmptyState } from "@/components/dashboard/empty-state";
 import { DashboardSegment } from "@/components/dashboard/dashboard-segment";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
@@ -216,8 +217,13 @@ export default function DashboardPage() {
       {/* Loading state */}
       {loading && <DashboardSkeleton />}
 
-      {/* Content */}
-      {!loading && data && (
+      {/* Empty state — no usage data yet */}
+      {!loading && data && data.summary.total_tokens === 0 && (
+        <DashboardEmptyState />
+      )}
+
+      {/* Content — only show when there's actual data */}
+      {!loading && data && data.summary.total_tokens > 0 && (
         <>
           {/* ── Hero: Year Activity Heatmap ──────────────────── */}
           <HeatmapHero

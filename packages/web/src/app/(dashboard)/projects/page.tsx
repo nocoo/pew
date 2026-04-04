@@ -23,6 +23,7 @@ import type { Period } from "@/lib/date-helpers";
 import { sourceLabel } from "@/hooks/use-usage-data";
 import { CHART_COLORS } from "@/lib/palette";
 import { FilterDropdown } from "@/components/dashboard/filter-dropdown";
+import { ProjectsEmptyState } from "@/components/dashboard/empty-state";
 import { Plus, X } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -689,11 +690,10 @@ export default function ProjectsPage() {
       {!loading && data && (
         <>
           {!hasAnyData ? (
-            <div className="rounded-[var(--radius-card)] bg-secondary p-8 text-center text-sm text-muted-foreground">
-              {isTagFilterEmpty
-                ? `No projects match the tag "${tagFilter}".`
-                : "No project data yet. Sync sessions from projects to see usage breakdown."}
-            </div>
+            <ProjectsEmptyState
+              isFilterEmpty={isTagFilterEmpty}
+              filterValue={tagFilter}
+            />
           ) : (
             <>
               {/* Stat grid */}

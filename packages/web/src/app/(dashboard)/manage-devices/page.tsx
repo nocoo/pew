@@ -6,6 +6,7 @@ import { cn, formatTokens } from "@/lib/utils";
 import { sourceLabel } from "@/hooks/use-usage-data";
 import { deviceLabel, shortDeviceId } from "@/lib/device-helpers";
 import { useDevices } from "@/hooks/use-devices";
+import { DevicesEmptyState } from "@/components/dashboard/empty-state";
 import type { DeviceSummary } from "@pew/core";
 
 // ---------------------------------------------------------------------------
@@ -304,15 +305,7 @@ export default function ManageDevicesPage() {
 
       {/* Empty state */}
       {devices.length === 0 && (
-        <div className="rounded-xl bg-secondary p-8 text-center">
-          <Monitor
-            className="mx-auto h-10 w-10 text-muted-foreground/40"
-            strokeWidth={1}
-          />
-          <p className="mt-3 text-sm text-muted-foreground">
-            No devices found. Sync your AI tools to see device data.
-          </p>
-        </div>
+        <DevicesEmptyState />
       )}
 
       {/* Device list */}
