@@ -135,62 +135,62 @@
   --popover-foreground: 260 10% 10%;
 
   /* Electric Violet primary */
-  --primary: 270 85% 58%;
+  --primary: 270 85% 52%;
   --primary-foreground: 0 0% 100%;
 
   --muted: 260 15% 92%;
-  --muted-foreground: 260 5% 40%;
+  --muted-foreground: 260 8% 32%;
 
   --accent: 260 15% 92%;
   --accent-foreground: 260 10% 10%;
 
-  --destructive: 0 72% 51%;
+  --destructive: 0 72% 48%;
   --destructive-foreground: 0 0% 100%;
 
-  --border: 260 12% 88%;
-  --input: 260 12% 88%;
-  --ring: 270 85% 58%;
+  --border: 260 12% 85%;
+  --input: 260 12% 85%;
+  --ring: 270 85% 52%;
 
   --radius: 0.75rem;
 
   --sidebar-background: 260 20% 95%;
   --sidebar-foreground: 260 10% 10%;
-  --sidebar-primary: 270 85% 58%;
+  --sidebar-primary: 270 85% 52%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 260 15% 90%;
+  --sidebar-accent: 260 15% 88%;
   --sidebar-accent-foreground: 260 10% 10%;
-  --sidebar-border: 260 12% 88%;
-  --sidebar-ring: 270 85% 58%;
+  --sidebar-border: 260 12% 85%;
+  --sidebar-ring: 270 85% 52%;
 
-  --success: 142 71% 35%;
+  --success: 142 71% 32%;
   --success-foreground: 0 0% 100%;
-  --badge-red: 340 82% 55%;
+  --badge-red: 340 82% 50%;
   --badge-red-foreground: 0 0% 100%;
 
-  /* 8 sequential chart colors — Violet to Lime energy spectrum */
-  --chart-1: 270 85% 58%;
-  --chart-2: 290 75% 55%;
-  --chart-3: 320 70% 52%;
-  --chart-4: 350 75% 55%;
-  --chart-5: 30 85% 55%;
-  --chart-6: 55 90% 48%;
-  --chart-7: 75 85% 45%;
-  --chart-8: 82 90% 50%;
+  /* 8 sequential chart colors — Violet to Lime energy spectrum (boosted saturation + contrast) */
+  --chart-1: 270 85% 52%;
+  --chart-2: 290 78% 48%;
+  --chart-3: 320 72% 48%;
+  --chart-4: 350 78% 50%;
+  --chart-5: 30 88% 48%;
+  --chart-6: 55 92% 42%;
+  --chart-7: 75 88% 38%;
+  --chart-8: 82 92% 42%;
 
   /* Chart utility tokens */
-  --chart-axis: 260 5% 40%;
-  --chart-muted: 260 5% 70%;
+  --chart-axis: 260 8% 32%;
+  --chart-muted: 260 8% 58%;
 
-  /* Heatmap color scales — Acid Lime (laser intensity) */
-  --heatmap-green-1: 82 40% 88%;
-  --heatmap-green-2: 82 60% 70%;
-  --heatmap-green-3: 82 80% 50%;
-  --heatmap-green-4: 82 90% 38%;
+  /* Heatmap color scales — Acid Lime (boosted for light bg contrast) */
+  --heatmap-green-1: 82 45% 82%;
+  --heatmap-green-2: 82 65% 58%;
+  --heatmap-green-3: 82 85% 42%;
+  --heatmap-green-4: 82 92% 32%;
 
   /* Rank badge colors (leaderboard podium) */
-  --rank-gold: 45 90% 48%;
-  --rank-silver: 260 8% 55%;
-  --rank-bronze: 25 70% 45%;
+  --rank-gold: 45 92% 42%;
+  --rank-silver: 260 8% 48%;
+  --rank-bronze: 25 72% 38%;
 }
 
 .dark {
