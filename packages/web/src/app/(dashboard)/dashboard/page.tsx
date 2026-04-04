@@ -9,7 +9,6 @@ import {
   DollarSign,
   PiggyBank,
   TrendingUp,
-  ChevronRight,
 } from "lucide-react";
 import { useUsageData, toHeatmapData } from "@/hooks/use-usage-data";
 import { formatTokens, cn } from "@/lib/utils";
@@ -20,7 +19,6 @@ import { computeBudgetStatus } from "@/lib/budget-helpers";
 import { computeAchievements } from "@/lib/achievement-helpers";
 import { useBudget } from "@/hooks/use-budget";
 import { StatCard, StatGrid } from "@/components/dashboard/stat-card";
-import { AchievementShelf } from "@/components/dashboard/achievement-shelf";
 import { UsageTrendChart } from "@/components/dashboard/usage-trend-chart";
 import { CostTrendChart } from "@/components/dashboard/cost-trend-chart";
 import { CacheRateChart } from "@/components/dashboard/cache-rate-chart";
@@ -35,7 +33,6 @@ import { SnapshotAlert } from "@/components/dashboard/snapshot-alert";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { DashboardEmptyState } from "@/components/dashboard/empty-state";
 import { DashboardSegment } from "@/components/dashboard/dashboard-segment";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
 import { periodToDateRange, periodLabel, getLocalToday, fillDateRange } from "@/lib/date-helpers";
 import type { Period } from "@/lib/date-helpers";
@@ -225,7 +222,7 @@ export default function DashboardPage() {
       {/* Content — only show when there's actual data */}
       {!loading && data && data.summary.total_tokens > 0 && (
         <>
-          {/* ── Hero: Year Activity Heatmap ──────────────────── */}
+          {/* ── Hero: Year Activity Heatmap + Achievements ────── */}
           <HeatmapHero
             data={heatmapData}
             year={currentYear}
@@ -233,31 +230,9 @@ export default function DashboardPage() {
             currentStreak={streakInfo.currentStreak}
             longestStreak={streakInfo.longestStreak}
             activeDays={activeDays}
+            achievements={achievements}
             loading={yearData.loading || yearHalfHourData.loading}
           />
-
-          {/* ── Achievements (collapsible, default closed) ──── */}
-          {achievements.length > 0 && (
-            <Collapsible>
-              <section className="space-y-3 md:space-y-4">
-                <CollapsibleTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-3 group cursor-pointer"
-                  >
-                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform [[data-state=open]>&]:rotate-90" />
-                    <h2 className="shrink-0 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      Achievements
-                    </h2>
-                    <div className="h-px flex-1 bg-border/60" />
-                  </button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="overflow-hidden data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up">
-                  <AchievementShelf achievements={achievements} />
-                </CollapsibleContent>
-              </section>
-            </Collapsible>
-          )}
 
           {/* ── Overview ────────────────────────────────────── */}
           <DashboardSegment title="Overview">

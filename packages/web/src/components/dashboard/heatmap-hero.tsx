@@ -4,7 +4,9 @@ import { useMemo } from "react";
 import { Flame, Zap, Calendar } from "lucide-react";
 import { cn, formatTokens } from "@/lib/utils";
 import { HeatmapCalendar, type HeatmapDataPoint } from "./heatmap-calendar";
+import { AchievementPanel } from "./achievement-panel";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { AchievementState } from "@/lib/achievement-helpers";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -23,6 +25,8 @@ export interface HeatmapHeroProps {
   longestStreak: number;
   /** Number of active days in the year */
   activeDays: number;
+  /** Achievement states to display in sidebar */
+  achievements?: AchievementState[];
   /** Loading state */
   loading?: boolean;
   className?: string;
@@ -108,13 +112,19 @@ function MiniStat({
 // ---------------------------------------------------------------------------
 
 /**
- * Hero section featuring the contribution heatmap as the primary visual.
+ * Hero section featuring the contribution heatmap as the primary visual,
+ * with achievements displayed in a right sidebar.
+ *
+ * Layout:
+ * - Left: Heatmap with year stats and streak badge
+ * - Right: Achievement panel (on large screens)
  *
  * Displays:
  * - Large year total token count
  * - Current streak with fire indicator
  * - Activity heatmap (GitHub-style)
  * - Quick stats (active days, longest streak)
+ * - Achievement cards with progress rings
  */
 export function HeatmapHero({
   data,
@@ -123,6 +133,7 @@ export function HeatmapHero({
   currentStreak,
   longestStreak,
   activeDays,
+  achievements = [],
   loading = false,
   className,
 }: HeatmapHeroProps) {
@@ -140,22 +151,33 @@ export function HeatmapHero({
   }, [year]);
 
   const activityRate = daysInYear > 0 ? Math.round((activeDays / daysInYear) * 100) : 0;
+  const hasAchievements = achievements.length > 0;
 
   if (loading) {
     return (
       <div className={cn("rounded-[var(--radius-card)] bg-secondary p-4 md:p-6", className)}>
-        <div className="flex flex-col gap-4">
-          <div className="flex items-start justify-between">
-            <div className="space-y-2">
-              <Skeleton className="h-8 w-32" />
-              <Skeleton className="h-5 w-48" />
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Left: Heatmap skeleton */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between mb-4">
+              <div className="space-y-2">
+                <Skeleton className="h-8 w-32" />
+                <Skeleton className="h-5 w-48" />
+              </div>
+              <Skeleton className="h-8 w-24" />
             </div>
-            <Skeleton className="h-8 w-24" />
+            <Skeleton className="h-[120px] w-full" />
+            <div className="mt-4 flex gap-6 border-t border-border/50 pt-4">
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-5 w-32" />
+            </div>
           </div>
-          <Skeleton className="h-[120px] w-full" />
-          <div className="flex gap-6">
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="h-5 w-32" />
+          {/* Right: Achievements skeleton */}
+          <div className="lg:w-[280px] shrink-0 space-y-2">
+            <Skeleton className="h-5 w-24 mb-3" />
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-[72px] w-full rounded-xl" />
+            ))}
           </div>
         </div>
       </div>
@@ -164,39 +186,51 @@ export function HeatmapHero({
 
   return (
     <div className={cn("rounded-[var(--radius-card)] bg-secondary p-4 md:p-6", className)}>
-      {/* Header row: Year total + Streak badge */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
-        <div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl md:text-4xl font-bold font-display tracking-tight text-foreground">
-              {formatTokens(totalTokens)}
-            </span>
-            <span className="text-sm text-muted-foreground">tokens</span>
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Left: Heatmap section */}
+        <div className="flex-1 min-w-0">
+          {/* Header row: Year total + Streak badge */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
+            <div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl md:text-4xl font-bold font-display tracking-tight text-foreground">
+                  {formatTokens(totalTokens)}
+                </span>
+                <span className="text-sm text-muted-foreground">tokens</span>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {year} contribution · {activityRate}% active days
+              </p>
+            </div>
+            <StreakBadge current={currentStreak} longest={longestStreak} />
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {year} contribution · {activityRate}% active days
-          </p>
+
+          {/* Heatmap */}
+          <HeatmapCalendar
+            data={data}
+            year={year}
+            valueFormatter={(v) => formatTokens(v)}
+            metricLabel="Tokens"
+          />
+
+          {/* Footer stats */}
+          <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-t border-border/50 pt-4">
+            <MiniStat icon={Calendar} value={activeDays} label="active days" />
+            <MiniStat icon={Flame} value={longestStreak} label="longest streak" />
+            <MiniStat
+              icon={Zap}
+              value={activeDays > 0 ? formatTokens(Math.round(totalTokens / activeDays)) : "0"}
+              label="avg per active day"
+            />
+          </div>
         </div>
-        <StreakBadge current={currentStreak} longest={longestStreak} />
-      </div>
 
-      {/* Heatmap */}
-      <HeatmapCalendar
-        data={data}
-        year={year}
-        valueFormatter={(v) => formatTokens(v)}
-        metricLabel="Tokens"
-      />
-
-      {/* Footer stats */}
-      <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2 border-t border-border/50 pt-4">
-        <MiniStat icon={Calendar} value={activeDays} label="active days" />
-        <MiniStat icon={Flame} value={longestStreak} label="longest streak" />
-        <MiniStat
-          icon={Zap}
-          value={activeDays > 0 ? formatTokens(Math.round(totalTokens / activeDays)) : "0"}
-          label="avg per active day"
-        />
+        {/* Right: Achievements panel (large screens only, or below on mobile) */}
+        {hasAchievements && (
+          <div className="lg:w-[280px] shrink-0 lg:border-l lg:border-border/50 lg:pl-6">
+            <AchievementPanel achievements={achievements} />
+          </div>
+        )}
       </div>
     </div>
   );
