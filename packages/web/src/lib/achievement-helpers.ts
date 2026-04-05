@@ -182,6 +182,7 @@ export function formatCount(n: number): string {
 export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
   // -------------------------------------------------------------------------
   // Category: Volume (Token Gluttony) - 5 achievements
+  // Baseline: Heavy users do 1B+/week, power users 10B+/week
   // -------------------------------------------------------------------------
   {
     id: "power-user",
@@ -189,7 +190,8 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
     flavorText: "Your wallet weeps. Your AI rejoices.",
     icon: "Zap",
     category: "volume",
-    tiers: [100_000, 1_000_000, 10_000_000, 50_000_000],
+    tiers: [1_000_000_000, 10_000_000_000, 50_000_000_000, 200_000_000_000],
+    // 1B → 10B → 50B → 200B total tokens
     unit: "tokens",
     format: formatShortTokens,
   },
@@ -199,7 +201,8 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
     flavorText: "You said 'just one more prompt' 47 times.",
     icon: "Trophy",
     category: "volume",
-    tiers: [10_000, 50_000, 100_000, 500_000],
+    tiers: [100_000_000, 500_000_000, 2_000_000_000, 10_000_000_000],
+    // 100M → 500M → 2B → 10B tokens in a single day
     unit: "tokens/day",
     format: formatShortTokens,
   },
@@ -209,7 +212,8 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
     flavorText: "Did you just paste your entire codebase again?",
     icon: "FileText",
     category: "volume",
-    tiers: [50_000, 200_000, 1_000_000, 5_000_000],
+    tiers: [500_000_000, 5_000_000_000, 25_000_000_000, 100_000_000_000],
+    // 500M → 5B → 25B → 100B input tokens
     unit: "input",
     format: formatShortTokens,
   },
@@ -219,7 +223,8 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
     flavorText: "You could've read the docs. But no.",
     icon: "MessageSquare",
     category: "volume",
-    tiers: [50_000, 200_000, 1_000_000, 5_000_000],
+    tiers: [500_000_000, 5_000_000_000, 25_000_000_000, 100_000_000_000],
+    // 500M → 5B → 25B → 100B output tokens
     unit: "output",
     format: formatShortTokens,
   },
@@ -229,7 +234,8 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
     flavorText: "Watching an AI think about thinking.",
     icon: "Brain",
     category: "volume",
-    tiers: [10_000, 100_000, 500_000, 2_000_000],
+    tiers: [100_000_000, 1_000_000_000, 5_000_000_000, 20_000_000_000],
+    // 100M → 1B → 5B → 20B reasoning tokens
     unit: "reasoning",
     format: formatShortTokens,
   },
@@ -243,7 +249,8 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
     flavorText: "Your streak is alive. Your social life is not.",
     icon: "Flame",
     category: "consistency",
-    tiers: [3, 7, 14, 30],
+    tiers: [7, 30, 90, 365],
+    // 1 week → 1 month → 3 months → 1 year streak
     unit: "days",
     format: formatDays,
   },
@@ -253,7 +260,8 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
     flavorText: "You've been here longer than some marriages.",
     icon: "Calendar",
     category: "consistency",
-    tiers: [7, 30, 90, 365],
+    tiers: [30, 90, 180, 365],
+    // 1 month → 3 months → 6 months → 1 year active days
     unit: "days",
     format: formatDays,
   },
@@ -263,7 +271,8 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
     flavorText: "Saturday? More like Codeturday.",
     icon: "Sunset",
     category: "consistency",
-    tiers: [4, 12, 26, 52],
+    tiers: [12, 26, 52, 104],
+    // 3 months → 6 months → 1 year → 2 years of weekend days
     unit: "weekend days",
     format: formatDays,
     isTimezoneDependant: true,
@@ -274,7 +283,8 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
     flavorText: "2AM prompt submitted. 2:01AM regret.",
     icon: "Moon",
     category: "consistency",
-    tiers: [10, 30, 100, 300],
+    tiers: [50, 200, 500, 1000],
+    // Night coding hours (midnight-6am)
     unit: "hours",
     format: formatHours,
     isTimezoneDependant: true,
@@ -285,7 +295,8 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
     flavorText: "The AI was your first conversation today.",
     icon: "Sunrise",
     category: "consistency",
-    tiers: [10, 30, 100, 300],
+    tiers: [50, 200, 500, 1000],
+    // Early morning hours (6am-9am)
     unit: "hours",
     format: formatHours,
     isTimezoneDependant: true,
@@ -300,7 +311,8 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
     flavorText: "At least SOMETHING is being reused.",
     icon: "Shield",
     category: "efficiency",
-    tiers: [10, 25, 50, 75],
+    tiers: [20, 40, 60, 80],
+    // Cache hit rate %
     unit: "%",
     format: formatPercent,
   },
@@ -310,7 +322,8 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
     flavorText: "In, out, shipped. Respect.",
     icon: "Zap",
     category: "efficiency",
-    tiers: [10, 50, 200, 500],
+    tiers: [50, 200, 1000, 5000],
+    // Quick sessions (<5 min)
     unit: "sessions",
     format: formatSessions,
   },
@@ -320,13 +333,15 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
     flavorText: "This session is older than some startups.",
     icon: "Clock",
     category: "efficiency",
-    tiers: [1, 5, 20, 50],
+    tiers: [10, 50, 200, 1000],
+    // Marathon sessions (>2 hours)
     unit: "sessions",
     format: formatSessions,
   },
 
   // -------------------------------------------------------------------------
   // Category: Spending (Financial Ruin) - 2 achievements
+  // Baseline: ~$3/M input, ~$15/M output → 1B tokens ≈ $10-20
   // -------------------------------------------------------------------------
   {
     id: "big-spender",
@@ -334,7 +349,8 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
     flavorText: "Anthropic sends you a Christmas card.",
     icon: "DollarSign",
     category: "spending",
-    tiers: [1, 10, 50, 100],
+    tiers: [100, 500, 2000, 10000],
+    // $100 → $500 → $2K → $10K total spend
     unit: "$",
     format: formatDollars,
   },
@@ -344,7 +360,8 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
     flavorText: "Your daily API bill could feed a small village.",
     icon: "TrendingUp",
     category: "spending",
-    tiers: [0.5, 2, 10, 50],
+    tiers: [10, 50, 200, 1000],
+    // $10 → $50 → $200 → $1K per day
     unit: "$/day",
     format: formatDollars,
   },
@@ -359,6 +376,7 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
     icon: "Wrench",
     category: "diversity",
     tiers: [2, 4, 5, 7],
+    // AI tools used
     unit: "sources",
     format: formatCount,
   },
@@ -368,7 +386,8 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
     flavorText: "Opus? Sonnet? Haiku? Yes.",
     icon: "Layers",
     category: "diversity",
-    tiers: [3, 5, 8, 12],
+    tiers: [3, 6, 10, 15],
+    // Different models used
     unit: "models",
     format: formatCount,
   },
@@ -378,7 +397,8 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
     flavorText: "Your code runs on 4 different machines. None of them work.",
     icon: "Monitor",
     category: "diversity",
-    tiers: [2, 3, 5, 8],
+    tiers: [2, 4, 6, 10],
+    // Different devices used
     unit: "devices",
     format: formatCount,
   },
@@ -392,7 +412,8 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
     flavorText: "Your sessions have more messages than group chats.",
     icon: "MessageCircle",
     category: "sessions",
-    tiers: [50, 100, 500, 1000],
+    tiers: [100, 500, 2000, 5000],
+    // Max messages in a single session
     unit: "msgs/session",
     format: formatMessages,
   },
@@ -402,7 +423,8 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
     flavorText: "You've started more sessions than you've finished.",
     icon: "Inbox",
     category: "sessions",
-    tiers: [100, 500, 2000, 10000],
+    tiers: [500, 2000, 10000, 50000],
+    // Total sessions
     unit: "sessions",
     format: formatSessions,
   },
@@ -412,7 +434,8 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
     flavorText: "Let the robots talk to the robots.",
     icon: "Bot",
     category: "sessions",
-    tiers: [10, 50, 200, 1000],
+    tiers: [50, 200, 1000, 5000],
+    // Automated sessions
     unit: "sessions",
     format: formatSessions,
   },
@@ -442,11 +465,11 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
   },
   {
     id: "millionaire",
-    name: "Club 1M",
+    name: "Club 1B",
     flavorText: "Welcome to the club nobody wanted to join.",
     icon: "Crown",
     category: "special",
-    tiers: [1_000_000, 1_000_000, 1_000_000, 1_000_000], // Single-tier
+    tiers: [1_000_000_000, 1_000_000_000, 1_000_000_000, 1_000_000_000], // 1B milestone
     unit: "tokens",
     format: formatShortTokens,
   },
@@ -456,7 +479,7 @@ export const ACHIEVEMENT_DEFS: readonly AchievementDef[] = [
     flavorText: "Seriously, are you okay?",
     icon: "Rocket",
     category: "special",
-    tiers: [1_000_000_000, 1_000_000_000, 1_000_000_000, 1_000_000_000], // Aspirational
+    tiers: [100_000_000_000, 100_000_000_000, 100_000_000_000, 100_000_000_000], // 100B milestone
     unit: "tokens",
     format: formatShortTokens,
   },

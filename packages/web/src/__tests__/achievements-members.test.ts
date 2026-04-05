@@ -101,7 +101,7 @@ describe("GET /api/achievements/[id]/members", () => {
     it("should return correct member fields", async () => {
       mockClient.query.mockResolvedValueOnce({
         results: [
-          { id: "u1", name: "Alice", image: "https://example.com/alice.jpg", slug: "alice", value: 50_000_000, earned_at: "2026-01-15T10:00:00Z" },
+          { id: "u1", name: "Alice", image: "https://example.com/alice.jpg", slug: "alice", value: 200_000_000_000, earned_at: "2026-01-15T10:00:00Z" },
         ],
       });
 
@@ -117,18 +117,18 @@ describe("GET /api/achievements/[id]/members", () => {
       expect(member.name).toBe("Alice");
       expect(member.image).toBe("https://example.com/alice.jpg");
       expect(member.slug).toBe("alice");
-      expect(member.tier).toBe("diamond"); // 50M tokens with tiers [100K, 1M, 10M, 50M]
+      expect(member.tier).toBe("diamond"); // 200B tokens with tiers [1B, 10B, 50B, 200B]
       expect(member.earnedAt).toBe("2026-01-15T10:00:00Z");
-      expect(member.currentValue).toBe(50_000_000);
+      expect(member.currentValue).toBe(200_000_000_000);
     });
 
     it("should compute correct tier from value", async () => {
       mockClient.query.mockResolvedValueOnce({
         results: [
-          { id: "u1", name: "Diamond", image: null, slug: null, value: 50_000_000, earned_at: "2026-01-01T00:00:00Z" },
-          { id: "u2", name: "Gold", image: null, slug: null, value: 10_000_000, earned_at: "2026-01-01T00:00:00Z" },
-          { id: "u3", name: "Silver", image: null, slug: null, value: 1_000_000, earned_at: "2026-01-01T00:00:00Z" },
-          { id: "u4", name: "Bronze", image: null, slug: null, value: 100_000, earned_at: "2026-01-01T00:00:00Z" },
+          { id: "u1", name: "Diamond", image: null, slug: null, value: 200_000_000_000, earned_at: "2026-01-01T00:00:00Z" },
+          { id: "u2", name: "Gold", image: null, slug: null, value: 50_000_000_000, earned_at: "2026-01-01T00:00:00Z" },
+          { id: "u3", name: "Silver", image: null, slug: null, value: 10_000_000_000, earned_at: "2026-01-01T00:00:00Z" },
+          { id: "u4", name: "Bronze", image: null, slug: null, value: 1_000_000_000, earned_at: "2026-01-01T00:00:00Z" },
         ],
       });
 
@@ -147,7 +147,7 @@ describe("GET /api/achievements/[id]/members", () => {
     it("should handle null name as Anonymous", async () => {
       mockClient.query.mockResolvedValueOnce({
         results: [
-          { id: "u1", name: null, image: null, slug: null, value: 1_000_000, earned_at: "2026-01-01T00:00:00Z" },
+          { id: "u1", name: null, image: null, slug: null, value: 1_000_000_000, earned_at: "2026-01-01T00:00:00Z" },
         ],
       });
 

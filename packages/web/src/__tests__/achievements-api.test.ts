@@ -160,9 +160,9 @@ describe("GET /api/achievements", () => {
       const res = await GET(makeGetRequest("/api/achievements"));
       const body = await res.json();
 
-      // power-user: 1M tokens, tiers [100K, 1M, 10M, 50M] → silver
+      // power-user: 1M tokens, tiers [1B, 10B, 50B, 200B] → locked (far below bronze)
       const powerUser = body.achievements.find((a: any) => a.id === "power-user");
-      expect(powerUser.tier).toBe("silver");
+      expect(powerUser.tier).toBe("locked");
       expect(powerUser.currentValue).toBe(1_000_000);
 
       // first-blood: any usage unlocks diamond (single-tier)
@@ -172,12 +172,12 @@ describe("GET /api/achievements", () => {
       // streak: depends on whether mock dates include today, so just verify structure
       const streak = body.achievements.find((a: any) => a.id === "streak");
       expect(typeof streak.currentValue).toBe("number");
-      expect(streak.tiers).toEqual([3, 7, 14, 30]);
+      expect(streak.tiers).toEqual([7, 30, 90, 365]);
 
       // veteran: 3 unique active days in mock data
       const veteran = body.achievements.find((a: any) => a.id === "veteran");
       expect(veteran.currentValue).toBe(3);
-      // tiers [7, 30, 90, 365] → 3 days = locked
+      // tiers [30, 90, 180, 365] → 3 days = locked
       expect(veteran.tier).toBe("locked");
     });
 

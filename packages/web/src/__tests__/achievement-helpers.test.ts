@@ -269,9 +269,9 @@ describe("computeAchievements", () => {
   });
 
   it("assigns correct tiers based on values", () => {
-    // 5-day streak → bronze (threshold: 3), 1.5M total → silver power-user (threshold: 1M)
-    const rows: UsageRow[] = Array.from({ length: 5 }, (_, i) =>
-      makeRow({ hour_start: `2026-03-${String(7 + i).padStart(2, "0")}T10:00:00Z` }),
+    // 10-day streak → bronze (threshold: 7), 1.5M total → locked power-user (threshold: 1B)
+    const rows: UsageRow[] = Array.from({ length: 10 }, (_, i) =>
+      makeRow({ hour_start: `2026-03-${String(2 + i).padStart(2, "0")}T10:00:00Z` }),
     );
     const inputs = makeInputs({
       rows,
@@ -282,23 +282,23 @@ describe("computeAchievements", () => {
 
     const streakAch = achievements.find((a) => a.id === "streak")!;
     expect(streakAch.tier).toBe("bronze");
-    expect(streakAch.currentValue).toBe(5);
+    expect(streakAch.currentValue).toBe(10);
     expect(streakAch.tierLabel).toBe("Bronze");
 
     const powerAch = achievements.find((a) => a.id === "power-user")!;
-    expect(powerAch.tier).toBe("silver");
+    expect(powerAch.tier).toBe("locked"); // 1.5M is far below 1B bronze threshold
     expect(powerAch.currentValue).toBe(1_500_000);
   });
 
   it("includes formatted display values", () => {
     const inputs = makeInputs({
-      summary: makeSummary({ total_tokens: 50_000_000 }),
+      summary: makeSummary({ total_tokens: 200_000_000_000 }), // 200B = diamond
     });
     const achievements = computeAchievements(inputs);
 
     const powerAch = achievements.find((a) => a.id === "power-user")!;
     expect(powerAch.tier).toBe("diamond");
-    expect(powerAch.displayValue).toBe("50.0M");
+    expect(powerAch.displayValue).toBe("200.0B");
     expect(powerAch.progress).toBe(1);
   });
 
@@ -470,8 +470,8 @@ describe("getAchievementDef", () => {
 describe("computeAchievementState", () => {
   it("computes state with all new fields", () => {
     const def = getAchievementDef("streak")!;
-    // streak tiers: [3, 7, 14, 30], so 10 days = silver
-    const state = computeAchievementState(def, 10);
+    // streak tiers: [7, 30, 90, 365], so 35 days = silver
+    const state = computeAchievementState(def, 35);
 
     expect(state.id).toBe("streak");
     expect(state.name).toBe("On Fire");
