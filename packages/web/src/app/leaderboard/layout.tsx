@@ -45,7 +45,7 @@ export default function LeaderboardLayout({
       </div>
 
       {/* Centered content area — pages render header + nav + main */}
-      <div className="mx-auto w-full max-w-4xl flex-1 flex flex-col px-6">
+      <div className="mx-auto w-full max-w-6xl flex-1 flex flex-col px-6">
         {children}
       </div>
 
