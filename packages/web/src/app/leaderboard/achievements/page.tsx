@@ -142,8 +142,6 @@ const TIER_STYLES: Record<AchievementTier, {
 
 const RING_SIZE = 56;
 const RING_STROKE = 3;
-const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
 interface AchievementRingProps {
   progress: number;
@@ -322,8 +320,6 @@ function MemberList({ members, loading, hasMore, onLoadMore, unit, onUserClick }
           </button>
         );
       })}
-        );
-      })}
 
       {loading && (
         <div className="flex items-center justify-center py-2">
@@ -462,7 +458,7 @@ function AchievementCard({ achievement, index, isExpanded, onToggle, onUserClick
             <div className="flex gap-2 flex-wrap">
               {(["bronze", "silver", "gold", "diamond"] as const).map((tier, i) => {
                 const tierStyle = TIER_STYLES[tier];
-                const threshold = achievement.tiers[i];
+                const threshold = achievement.tiers[i] ?? 0;
                 const isReached = achievement.currentValue >= threshold;
                 return (
                   <div
@@ -680,8 +676,8 @@ export default function AchievementsPage() {
         open={profileDialogOpen}
         onOpenChange={setProfileDialogOpen}
         slug={profileTarget?.slug ?? profileTarget?.name ?? null}
-        name={profileTarget?.name}
-        image={profileTarget?.image}
+        name={profileTarget?.name ?? null}
+        image={profileTarget?.image ?? null}
       />
     </>
   );
