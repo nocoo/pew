@@ -273,7 +273,7 @@ interface AchievementMembersResponse {
 
 ## Implementation Plan
 
-### Phase 1: Server-Side Achievement API
+### Phase 1: Server-Side Achievement API ✅
 
 1. Create `GET /api/achievements` route:
    - Compute all achievements server-side using SQL aggregations
@@ -285,7 +285,7 @@ interface AchievementMembersResponse {
    - Extract `computeTierProgress()` as shared utility
 3. Unit tests for all achievement value extractors
 
-### Phase 2: Social Data & Members Endpoint
+### Phase 2: Social Data & Members Endpoint ✅
 
 1. Create `GET /api/achievements/[id]/members` route:
    - Paginated list of users who earned the achievement
@@ -297,7 +297,7 @@ interface AchievementMembersResponse {
    - **Exclude** timezone-dependent achievements from social queries (no `earnedBy`, no members endpoint)
 3. Integration tests with real D1 data
 
-### Phase 3: Achievements Page
+### Phase 3: Achievements Page ✅
 
 1. Add "Achievements" tab to `LeaderboardNav`
 2. Create `/leaderboard/achievements/page.tsx`
@@ -305,7 +305,7 @@ interface AchievementMembersResponse {
 4. Build expanded `AchievementCard` with social avatars
 5. Wire up `UserProfileDialog` for avatar clicks
 
-### Phase 4: Dashboard Integration
+### Phase 4: Dashboard Integration ✅
 
 1. Create `TopAchievement` component (shows highest-tier achievement, not most recent)
 2. Replace `AchievementPanel` in Hero sidebar
