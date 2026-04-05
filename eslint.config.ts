@@ -11,6 +11,7 @@ export default tseslint.config(
       "**/node_modules/**",
       "**/.next/**",
       "**/.next-e2e/**",
+      "**/.next-e2e-ui/**",
       "**/coverage/**",
       "packages/web/next-env.d.ts",
     ],
