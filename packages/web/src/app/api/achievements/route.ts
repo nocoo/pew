@@ -565,8 +565,72 @@ export async function GET(request: Request) {
           bronzeThreshold
         );
       }
-      // Skip complex achievements: big-day, chatterbox, cache-master, big-spender, daily-burn, streak
-      // These require CTEs or complex calculations not easily done in earnedBy format
+      // Big day — max tokens in a single day (using CTE)
+      else if (def.id === "big-day") {
+        await queryEarnedBy(
+          def,
+          `WITH daily AS (
+             SELECT user_id, DATE(hour_start) AS day, SUM(total_tokens) AS day_tokens
+             FROM usage_records GROUP BY user_id, DATE(hour_start)
+           ), user_max AS (
+             SELECT user_id, MAX(day_tokens) AS value FROM daily GROUP BY user_id
+           )
+           SELECT u.id, u.name, u.image, u.slug, um.value
+           FROM users u JOIN user_max um ON um.user_id = u.id
+           WHERE u.is_public = 1 AND um.value >= ?
+           ORDER BY um.value DESC LIMIT ? OFFSET ?`,
+          `WITH daily AS (
+             SELECT user_id, DATE(hour_start) AS day, SUM(total_tokens) AS day_tokens
+             FROM usage_records GROUP BY user_id, DATE(hour_start)
+           ), user_max AS (
+             SELECT user_id, MAX(day_tokens) AS value FROM daily GROUP BY user_id
+           )
+           SELECT COUNT(*) AS count FROM users u JOIN user_max um ON um.user_id = u.id
+           WHERE u.is_public = 1 AND um.value >= ?`,
+          bronzeThreshold
+        );
+      }
+      // Chatterbox — max messages in a single session
+      else if (def.id === "chatterbox") {
+        await queryEarnedBy(
+          def,
+          `WITH user_max AS (
+             SELECT user_id, MAX(total_messages) AS value FROM session_records GROUP BY user_id
+           )
+           SELECT u.id, u.name, u.image, u.slug, um.value
+           FROM users u JOIN user_max um ON um.user_id = u.id
+           WHERE u.is_public = 1 AND um.value >= ?
+           ORDER BY um.value DESC LIMIT ? OFFSET ?`,
+          `WITH user_max AS (
+             SELECT user_id, MAX(total_messages) AS value FROM session_records GROUP BY user_id
+           )
+           SELECT COUNT(*) AS count FROM users u JOIN user_max um ON um.user_id = u.id
+           WHERE u.is_public = 1 AND um.value >= ?`,
+          bronzeThreshold
+        );
+      }
+      // Cache master — cache hit rate percentage
+      else if (def.id === "cache-master") {
+        await queryEarnedBy(
+          def,
+          `SELECT u.id, u.name, u.image, u.slug,
+                  CASE WHEN SUM(ur.input_tokens) > 0
+                       THEN (SUM(ur.cached_input_tokens) * 100.0 / SUM(ur.input_tokens))
+                       ELSE 0 END AS value
+           FROM users u JOIN usage_records ur ON ur.user_id = u.id
+           WHERE u.is_public = 1 GROUP BY u.id HAVING value >= ? ORDER BY value DESC LIMIT ? OFFSET ?`,
+          `SELECT COUNT(*) AS count FROM (
+             SELECT u.id,
+                    CASE WHEN SUM(ur.input_tokens) > 0
+                         THEN (SUM(ur.cached_input_tokens) * 100.0 / SUM(ur.input_tokens))
+                         ELSE 0 END AS value
+             FROM users u JOIN usage_records ur ON ur.user_id = u.id
+             WHERE u.is_public = 1 GROUP BY u.id HAVING value >= ?
+           )`,
+          bronzeThreshold
+        );
+      }
+      // big-spender, daily-burn, streak: Skip - require runtime pricing lookup or complex date logic
     }
 
     // 6. Build response
