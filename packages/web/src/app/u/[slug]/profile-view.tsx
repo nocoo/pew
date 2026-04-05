@@ -23,6 +23,7 @@ import { UsageTrendChart } from "@/components/dashboard/usage-trend-chart";
 import { SourceDonutChart } from "@/components/dashboard/source-donut-chart";
 import { ModelBreakdownChart } from "@/components/dashboard/model-breakdown-chart";
 import { HeatmapCalendar } from "@/components/dashboard/heatmap-calendar";
+import { ProfileAchievements } from "@/components/profile/profile-achievements";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PageHeader } from "@/components/leaderboard/page-header";
@@ -338,6 +339,9 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
 
               {/* Model breakdown */}
               <ModelBreakdownChart data={models} />
+
+              {/* Achievements */}
+              <ProfileAchievements slug={slug} />
 
               {/* Activity heatmap */}
               <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
