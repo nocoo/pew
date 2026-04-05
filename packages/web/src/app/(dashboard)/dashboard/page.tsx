@@ -11,11 +11,11 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useUsageData, toHeatmapData } from "@/hooks/use-usage-data";
+import { useAchievements } from "@/hooks/use-achievements";
 import { formatTokens, cn } from "@/lib/utils";
 import { usePricingMap, formatCost } from "@/hooks/use-pricing";
 import { computeTotalCost, toDailyCostPoints, computeCacheSavings, forecastMonthlyCost, toDailyCacheRates } from "@/lib/cost-helpers";
 import { compareWeekdayWeekend, computeMoMGrowth, computeStreak, toLocalDailyBuckets } from "@/lib/usage-helpers";
-import { computeAchievements } from "@/lib/achievement-helpers";
 import { StatCard, StatGrid } from "@/components/dashboard/stat-card";
 import { UsageTrendChart } from "@/components/dashboard/usage-trend-chart";
 import { CostTrendChart } from "@/components/dashboard/cost-trend-chart";
@@ -57,8 +57,11 @@ export default function DashboardPage() {
     ...(to ? { to } : {}),
     granularity: "half-hour",
   });
-  // Half-hour granularity for achievements (needs 365 days of data)
+  // Half-hour granularity for streak (needs 365 days of data)
   const yearHalfHourData = useUsageData({ days: 365, granularity: "half-hour" });
+
+  // Server-side achievements
+  const { data: achievementsData, loading: achievementsLoading } = useAchievements();
 
   const currentYear = new Date().getFullYear();
   const heatmapData = toHeatmapData(yearData.daily);
@@ -125,22 +128,13 @@ export default function DashboardPage() {
     return compareWeekdayWeekend(halfHourData.data.records, { from, to: toStr }, pricingMap, tzOffset);
   }, [halfHourData.data, from, to, pricingMap, tzOffset]);
 
-  // Achievements (always 365-day scope)
-  const achievements = useMemo(() => {
-    if (!yearHalfHourData.data) return [];
-    return computeAchievements({
-      rows: yearHalfHourData.data.records,
-      summary: yearHalfHourData.data.summary,
-      models,
-      pricingMap,
-      tzOffset,
-    });
-  }, [yearHalfHourData.data, models, pricingMap, tzOffset]);
+  // Streak data for HeatmapHero (from server-side achievements or fallback)
+  const currentStreak = achievementsData?.summary.currentStreak ?? 0;
 
-  // Streak data for HeatmapHero
-  const streakInfo = useMemo(() => {
-    if (!yearHalfHourData.data) return { currentStreak: 0, longestStreak: 0 };
-    return computeStreak(yearHalfHourData.data.records, today, tzOffset);
+  // Streak info from yearHalfHourData for longest streak (not available in achievements API)
+  const longestStreak = useMemo(() => {
+    if (!yearHalfHourData.data) return 0;
+    return computeStreak(yearHalfHourData.data.records, today, tzOffset).longestStreak;
   }, [yearHalfHourData.data, today, tzOffset]);
 
   // Active days count for HeatmapHero
@@ -196,11 +190,11 @@ export default function DashboardPage() {
             data={heatmapData}
             year={currentYear}
             totalTokens={yearTotalTokens}
-            currentStreak={streakInfo.currentStreak}
-            longestStreak={streakInfo.longestStreak}
+            currentStreak={currentStreak}
+            longestStreak={longestStreak}
             activeDays={activeDays}
-            achievements={achievements}
-            loading={yearData.loading || yearHalfHourData.loading}
+            achievements={achievementsData?.achievements ?? []}
+            loading={yearData.loading || yearHalfHourData.loading || achievementsLoading}
           />
 
           {/* ── Overview ────────────────────────────────────── */}

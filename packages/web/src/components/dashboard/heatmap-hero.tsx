@@ -4,9 +4,9 @@ import { useMemo } from "react";
 import { Flame, Zap, Calendar, Activity } from "lucide-react";
 import { cn, formatTokens } from "@/lib/utils";
 import { HeatmapCalendar, type HeatmapDataPoint } from "./heatmap-calendar";
-import { AchievementPanel } from "./achievement-panel";
+import { TopAchievement } from "./top-achievement";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { AchievementState } from "@/lib/achievement-helpers";
+import type { Achievement } from "@/hooks/use-achievements";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -25,8 +25,8 @@ export interface HeatmapHeroProps {
   longestStreak: number;
   /** Number of active days in the year */
   activeDays: number;
-  /** Achievement states to display in sidebar */
-  achievements?: AchievementState[];
+  /** Achievement data from server (optional — if not provided, panel is hidden) */
+  achievements?: Achievement[];
   /** Loading state */
   loading?: boolean;
   className?: string;
@@ -237,10 +237,10 @@ export function HeatmapHero({
           </div>
         </div>
 
-        {/* Right: Achievements panel (40%) */}
+        {/* Right: Top Achievement (40%) */}
         {hasAchievements && (
           <div className="lg:border-l lg:border-border/50 lg:pl-6">
-            <AchievementPanel achievements={achievements} />
+            <TopAchievement achievements={achievements} />
           </div>
         )}
       </div>
