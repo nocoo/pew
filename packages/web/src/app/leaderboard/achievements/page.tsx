@@ -1,7 +1,6 @@
 "use client";
 
-import { useMemo, Fragment, useState } from "react";
-import Link from "next/link";
+import { useMemo, Fragment, useState, useCallback } from "react";
 import {
   Flame,
   Trophy,
@@ -50,6 +49,7 @@ import {
 import { LeaderboardNav } from "@/components/leaderboard/leaderboard-nav";
 import { PageHeader } from "@/components/leaderboard/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
+import { UserProfileDialog } from "@/components/user-profile-dialog";
 
 // ---------------------------------------------------------------------------
 // Icon map — all icons from achievement definitions
@@ -204,15 +204,26 @@ function AchievementRing({ progress, tier, icon, size = RING_SIZE }: Achievement
 }
 
 // ---------------------------------------------------------------------------
+// User profile dialog target type
+// ---------------------------------------------------------------------------
+
+interface UserTarget {
+  slug: string | null;
+  name: string;
+  image: string | null;
+}
+
+// ---------------------------------------------------------------------------
 // Earned By Avatars (compact preview)
 // ---------------------------------------------------------------------------
 
 interface EarnedByAvatarsProps {
   earnedBy: EarnedByUser[];
   totalEarned: number;
+  onUserClick: (user: UserTarget) => void;
 }
 
-function EarnedByAvatars({ earnedBy, totalEarned }: EarnedByAvatarsProps) {
+function EarnedByAvatars({ earnedBy, totalEarned, onUserClick }: EarnedByAvatarsProps) {
   if (earnedBy.length === 0) return null;
 
   const displayCount = Math.min(earnedBy.length, 4);
@@ -223,12 +234,22 @@ function EarnedByAvatars({ earnedBy, totalEarned }: EarnedByAvatarsProps) {
       <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Earned by</span>
       <div className="flex -space-x-1.5">
         {earnedBy.slice(0, displayCount).map((user) => (
-          <Avatar key={user.id} className="h-5 w-5 ring-2 ring-background">
-            {user.image && <AvatarImage src={user.image} alt={user.name} />}
-            <AvatarFallback className="text-[8px] bg-muted text-muted-foreground">
-              {user.name[0]?.toUpperCase() ?? "?"}
-            </AvatarFallback>
-          </Avatar>
+          <button
+            key={user.id}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onUserClick({ slug: user.slug, name: user.name, image: user.image });
+            }}
+            className="focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background rounded-full"
+          >
+            <Avatar className="h-5 w-5 ring-2 ring-background hover:ring-primary transition-all">
+              {user.image && <AvatarImage src={user.image} alt={user.name} />}
+              <AvatarFallback className="text-[8px] bg-muted text-muted-foreground">
+                {user.name[0]?.toUpperCase() ?? "?"}
+              </AvatarFallback>
+            </Avatar>
+          </button>
         ))}
       </div>
       {remainingCount > 0 && (
@@ -250,9 +271,10 @@ interface MemberListProps {
   hasMore: boolean;
   onLoadMore: () => void;
   unit: string;
+  onUserClick: (user: UserTarget) => void;
 }
 
-function MemberList({ members, loading, hasMore, onLoadMore, unit }: MemberListProps) {
+function MemberList({ members, loading, hasMore, onLoadMore, unit, onUserClick }: MemberListProps) {
   if (members.length === 0 && !loading) {
     return (
       <div className="text-xs text-muted-foreground text-center py-4">
@@ -264,14 +286,14 @@ function MemberList({ members, loading, hasMore, onLoadMore, unit }: MemberListP
   return (
     <div className="space-y-2">
       {members.map((member, i) => {
-        const profilePath = member.slug ? `/u/${member.slug}` : `/u/${member.id}`;
         const tierStyle = TIER_STYLES[member.tier];
 
         return (
-          <Link
+          <button
             key={member.id}
-            href={profilePath}
-            className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
+            type="button"
+            onClick={() => onUserClick({ slug: member.slug, name: member.name, image: member.image })}
+            className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors text-left"
           >
             <span className="text-xs text-muted-foreground w-5 text-right tabular-nums">
               {i + 1}
@@ -297,7 +319,9 @@ function MemberList({ members, loading, hasMore, onLoadMore, unit }: MemberListP
                 {formatShortTokens(member.currentValue)} {unit}
               </div>
             </div>
-          </Link>
+          </button>
+        );
+      })}
         );
       })}
 
@@ -329,9 +353,10 @@ interface AchievementCardProps {
   index: number;
   isExpanded: boolean;
   onToggle: () => void;
+  onUserClick: (user: UserTarget) => void;
 }
 
-function AchievementCard({ achievement, index, isExpanded, onToggle }: AchievementCardProps) {
+function AchievementCard({ achievement, index, isExpanded, onToggle, onUserClick }: AchievementCardProps) {
   const styles = TIER_STYLES[achievement.tier];
   const isUnlocked = achievement.tier !== "locked";
   const isMaxed = achievement.tier === "diamond";
@@ -423,6 +448,7 @@ function AchievementCard({ achievement, index, isExpanded, onToggle }: Achieveme
           <EarnedByAvatars
             earnedBy={achievement.earnedBy}
             totalEarned={achievement.totalEarned}
+            onUserClick={onUserClick}
           />
         )}
       </button>
@@ -466,6 +492,7 @@ function AchievementCard({ achievement, index, isExpanded, onToggle }: Achieveme
               hasMore={hasMore}
               onLoadMore={loadMore}
               unit={achievement.unit}
+              onUserClick={onUserClick}
             />
           </div>
         </div>
@@ -550,6 +577,10 @@ export default function AchievementsPage() {
   const { data, loading, error } = useAchievements();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
+  // User profile dialog state
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [profileTarget, setProfileTarget] = useState<UserTarget | null>(null);
+
   // Group achievements by category
   const grouped = useMemo(() => {
     if (!data) return new Map<AchievementCategory, Achievement[]>();
@@ -566,6 +597,11 @@ export default function AchievementsPage() {
   const handleToggle = (id: string) => {
     setExpandedId((prev) => (prev === id ? null : id));
   };
+
+  const handleUserClick = useCallback((user: UserTarget) => {
+    setProfileTarget(user);
+    setProfileDialogOpen(true);
+  }, []);
 
   return (
     <>
@@ -627,6 +663,7 @@ export default function AchievementsPage() {
                           index={i}
                           isExpanded={expandedId === ach.id}
                           onToggle={() => handleToggle(ach.id)}
+                          onUserClick={handleUserClick}
                         />
                       ))}
                     </div>
@@ -637,6 +674,15 @@ export default function AchievementsPage() {
           </>
         )}
       </main>
+
+      {/* User profile dialog */}
+      <UserProfileDialog
+        open={profileDialogOpen}
+        onOpenChange={setProfileDialogOpen}
+        slug={profileTarget?.slug ?? profileTarget?.name ?? null}
+        name={profileTarget?.name}
+        image={profileTarget?.image}
+      />
     </>
   );
 }
