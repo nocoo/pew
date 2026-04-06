@@ -1,6 +1,6 @@
 {
   "name": "@nocoo/pew",
-  "version": "2.0.2",
+  "version": "2.0.4",
   "description": "The contribution graph for AI-native developers",
   "type": "module",
   "bin": {
@@ -13,7 +13,9 @@
     "test": "vitest run",
     "test:watch": "vitest"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "publishConfig": {
     "access": "public"
   },
@@ -39,7 +41,7 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "@nocoo/cli-base": "^0.1.7"
+    "@nocoo/cli-base": "^0.2.0"
   },
   "devDependencies": {
     "@pew/core": "workspace:*",

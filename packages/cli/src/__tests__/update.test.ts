@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { executeUpdate } from "../commands/update.js";
 
 describe("executeUpdate", () => {
-  it("should return success when npm install succeeds", async () => {
+  it("should return success when command succeeds", async () => {
     const result = await executeUpdate({
       currentVersion: "1.0.0",
       execFn: async () => ({
@@ -16,7 +16,7 @@ describe("executeUpdate", () => {
     expect(result.error).toBeUndefined();
   });
 
-  it("should return failure when npm install throws", async () => {
+  it("should return failure when command throws", async () => {
     const result = await executeUpdate({
       currentVersion: "1.0.0",
       execFn: async () => {
@@ -42,20 +42,20 @@ describe("executeUpdate", () => {
     expect(result.output).toContain("npm warn deprecated");
   });
 
-  it("should pass correct args to exec", async () => {
+  it("should execute a valid update command string", async () => {
     let capturedCmd = "";
-    let capturedArgs: string[] = [];
 
     await executeUpdate({
       currentVersion: "1.0.0",
-      execFn: async (cmd, args) => {
+      execFn: async (cmd) => {
         capturedCmd = cmd;
-        capturedArgs = args;
         return { stdout: "", stderr: "" };
       },
     });
 
-    expect(capturedCmd).toBe("npm");
-    expect(capturedArgs).toEqual(["install", "-g", "@nocoo/pew@latest"]);
+    // detectPackageManager may return null (fallback) or an actual pm
+    // The command should be one of: npm install -g, bun update -g, pnpm update -g, yarn global upgrade
+    expect(capturedCmd).toMatch(/@nocoo\/pew/);
+    expect(capturedCmd).toMatch(/(npm|bun|pnpm|yarn)/);
   });
 });

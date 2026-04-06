@@ -369,6 +369,8 @@ export interface PewConfig {
    * Kept for backward-compat migration — ensureDeviceId() moves it on first read.
    */
   deviceId?: string;
+  /** Index signature for cli-base ConfigManager compatibility */
+  [key: string]: unknown;
 }
 
 // ---------------------------------------------------------------------------

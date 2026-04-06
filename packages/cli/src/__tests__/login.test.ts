@@ -1,8 +1,8 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { join } from "node:path";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { executeLogin, resolveHost, escapeHtml, DEFAULT_HOST, DEV_HOST } from "../commands/login.js";
+import { executeLogin, resolveHost, DEFAULT_HOST, DEV_HOST } from "../commands/login.js";
 
 // ---------------------------------------------------------------------------
 // resolveHost
@@ -15,23 +15,6 @@ describe("resolveHost", () => {
 
   it("should return DEV_HOST when dev is true", () => {
     expect(resolveHost(true)).toBe(DEV_HOST);
-  });
-});
-
-// ---------------------------------------------------------------------------
-// escapeHtml
-// ---------------------------------------------------------------------------
-
-describe("escapeHtml", () => {
-  it("should escape < > & \" '", () => {
-    expect(escapeHtml('<script>alert("xss")</script>')).toBe(
-      "&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;",
-    );
-    expect(escapeHtml("it's & done")).toBe("it&#39;s &amp; done");
-  });
-
-  it("should leave safe strings unchanged", () => {
-    expect(escapeHtml("hello@example.com")).toBe("hello@example.com");
   });
 });
 
@@ -224,19 +207,21 @@ describe("executeLogin", () => {
     expect(result.email).toBe("test@example.com");
   });
 
-  it("should fail if openBrowser rejects", async () => {
+  it("should timeout when browser open fails (cli-base logs but continues)", async () => {
+    // cli-base performLogin logs a message when browser fails but doesn't reject
+    // It still waits for the timeout since user could manually open the URL
     const result = await executeLogin({
       configDir: tempDir,
       apiUrl: "http://localhost:7020",
-      timeoutMs: 5000,
+      timeoutMs: 500, // Short timeout
       openBrowser: async () => {
         throw new Error("xdg-open not found");
       },
     });
 
+    // Login times out because no callback was received
     expect(result.success).toBe(false);
-    expect(result.error).toContain("Failed to open browser");
-    expect(result.error).toContain("xdg-open not found");
+    expect(result.error).toContain("timeout");
   });
 
   // ---- Security: state/nonce validation ----
@@ -260,7 +245,7 @@ describe("executeLogin", () => {
     });
 
     expect(result.success).toBe(false);
-    expect(result.error).toContain("State mismatch");
+    expect(result.error).toContain("CSRF");
   });
 
   it("should reject callback with wrong state parameter", async () => {
@@ -282,7 +267,7 @@ describe("executeLogin", () => {
     });
 
     expect(result.success).toBe(false);
-    expect(result.error).toContain("State mismatch");
+    expect(result.error).toContain("CSRF");
 
     // Verify config was NOT saved
     const configExists = await readFile(join(tempDir, "config.json"), "utf-8").catch(() => null);
@@ -318,37 +303,6 @@ describe("executeLogin", () => {
 
     await loginPromise;
     expect(serverAddress).toBe("localhost");
-  });
-
-  // ---- Security: HTML escaping ----
-
-  it("should escape email in HTML output to prevent XSS", async () => {
-    // We test the escapeHtml function directly above, and verify it's
-    // called on the email by checking the login succeeds with a
-    // potentially dangerous email — the XSS prevention is structural.
-    const result = await executeLogin({
-      configDir: tempDir,
-      apiUrl: "http://localhost:7020",
-      timeoutMs: 5000,
-      generateNonce: () => FIXED_NONCE,
-      openBrowser: async (url) => {
-        const parsed = new URL(url);
-        const callbackParam = parsed.searchParams.get("callback")!;
-        const state = parsed.searchParams.get("state")!;
-        const callbackUrl = new URL(callbackParam);
-        callbackUrl.searchParams.set("api_key", "pk_xss_test");
-        callbackUrl.searchParams.set("email", '<script>alert("xss")</script>');
-        callbackUrl.searchParams.set("state", state);
-
-        await new Promise((r) => setTimeout(r, 100));
-        await fetch(callbackUrl.toString());
-      },
-    });
-
-    expect(result.success).toBe(true);
-    // The email in the result is the raw value (for programmatic use),
-    // but the HTML output is escaped (tested via escapeHtml unit tests)
-    expect(result.email).toBe('<script>alert("xss")</script>');
   });
 
   it("should include state in the login URL sent to browser", async () => {
