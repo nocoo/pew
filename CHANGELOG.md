@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.0.2
+
+### Changed
+- Add unit tests for admin, auth, and teams endpoints
+- Add from/to date filter test to reach 90% branch coverage
+- Migrate to @nocoo/cli-base for shared dependencies
+
+### Fixed
+- Add .next-e2e-ui to eslint ignores
+
 ## v2.0.1
 
 ### Changed
