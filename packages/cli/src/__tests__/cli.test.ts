@@ -3,13 +3,19 @@
  *
  * Validates that the CLI entry point and all subcommands are defined correctly.
  */
+import { readVersion } from "@nocoo/cli-base";
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { main } from "../cli.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const expectedVersion = readVersion(dirname(dirname(__dirname)));
 
 describe("CLI main command", () => {
   it("should have correct meta", () => {
     expect(main.meta?.name).toBe("pew");
-    expect(main.meta?.version).toBe("2.0.2");
+    expect(main.meta?.version).toBe(expectedVersion);
     expect(main.meta?.description).toBeDefined();
   });
 
