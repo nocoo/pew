@@ -1,5 +1,24 @@
 # Changelog
 
+## v2.2.0
+
+### Added
+- Add salary trend chart to Salary Estimator
+- Add Salary Estimator card to dashboard Insights
+- Migrate to cli-base 0.2.0 with mandatory CSRF
+
+### Changed
+- Sync all package versions to 2.0.5
+- Use readVersion for dynamic version assertion
+
+### Fixed
+- Correct salary trend upper/lower bound calculation
+- Salary estimator use primary theme color, prevent layout shift
+- Read version from package.json via cli-base readVersion
+
+### Removed
+- Remove CLI version targets from release script
+
 ## v2.1.0
 
 ### Added
