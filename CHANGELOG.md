@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.2.2
+
+### Added
+- Add hourly usage chart split by weekday/weekend
+
 ## v2.2.1
 
 ### Added
