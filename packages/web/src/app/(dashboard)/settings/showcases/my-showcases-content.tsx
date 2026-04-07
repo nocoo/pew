@@ -5,14 +5,17 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Plus, Pencil, Trash2, Eye, EyeOff, ExternalLink, ChevronUp } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, EyeOff, ExternalLink, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useShowcases, type Showcase } from "@/hooks/use-showcases";
 import { ShowcaseImage, ShowcaseFormModal } from "@/components/showcase";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
 
+const PAGE_SIZE = 20;
+
 export function MyShowcasesContent() {
-  const { data, loading, error, refetch } = useShowcases({ mine: true });
+  const [offset, setOffset] = useState(0);
+  const { data, loading, error, refetch } = useShowcases({ mine: true, limit: PAGE_SIZE, offset });
   const [showAddModal, setShowAddModal] = useState(false);
   const [editShowcase, setEditShowcase] = useState<Showcase | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -68,6 +71,9 @@ export function MyShowcasesContent() {
   }
 
   const showcases = data?.showcases ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.ceil(total / PAGE_SIZE);
+  const currentPage = Math.floor(offset / PAGE_SIZE) + 1;
 
   return (
     <div className="space-y-4">
@@ -185,6 +191,41 @@ export function MyShowcasesContent() {
           </div>
         ))}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-2">
+          <button
+            onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
+            disabled={offset === 0 || loading}
+            className={cn(
+              "flex h-8 w-8 items-center justify-center rounded-md border border-border transition-colors",
+              offset === 0 || loading
+                ? "opacity-50 cursor-not-allowed"
+                : "hover:bg-accent hover:text-foreground"
+            )}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+
+          <span className="text-sm text-muted-foreground tabular-nums px-2">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => setOffset(offset + PAGE_SIZE)}
+            disabled={currentPage >= totalPages || loading}
+            className={cn(
+              "flex h-8 w-8 items-center justify-center rounded-md border border-border transition-colors",
+              currentPage >= totalPages || loading
+                ? "opacity-50 cursor-not-allowed"
+                : "hover:bg-accent hover:text-foreground"
+            )}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* Add modal */}
       <ShowcaseFormModal
