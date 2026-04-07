@@ -21,6 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
 import { formatSeasonDate } from "@/lib/seasons";
 import { utcToLocalDatetimeValue, localDatetimeValueToUtc } from "@/lib/date-helpers";
 import type { SeasonStatus } from "@pew/core";
@@ -619,6 +620,7 @@ export default function AdminSeasonsPage() {
 
   // Roster syncing
   const [syncing, setSyncing] = useState<string | null>(null);
+  const { confirm, dialogProps } = useConfirm();
 
   // ---------------------------------------------------------------------------
   // Redirect non-admins
@@ -704,12 +706,12 @@ export default function AdminSeasonsPage() {
   // ---------------------------------------------------------------------------
 
   const handleSnapshot = async (season: SeasonRow) => {
-    if (
-      !confirm(
-        `Generate final snapshot for "${season.name}"? This freezes rankings.`,
-      )
-    )
-      return;
+    const confirmed = await confirm({
+      title: "Generate final snapshot?",
+      description: `This will freeze rankings for "${season.name}". Once generated, rankings cannot be changed.`,
+      confirmText: "Generate Snapshot",
+    });
+    if (!confirmed) return;
 
     setSnapshotting(season.id);
     setMessage(null);
@@ -928,6 +930,9 @@ export default function AdminSeasonsPage() {
           )}
         </>
       )}
+
+      {/* Confirm dialog */}
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

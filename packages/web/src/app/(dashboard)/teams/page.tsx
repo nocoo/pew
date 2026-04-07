@@ -20,6 +20,7 @@ import {
   UserMinus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -88,6 +89,7 @@ function TeamLogo({
 }) {
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { confirm, dialogProps } = useConfirm();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -135,7 +137,13 @@ function TeamLogo({
 
   const handleRemoveLogo = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm("Remove team logo?")) return;
+    const confirmed = await confirm({
+      title: "Remove team logo?",
+      description: "The current logo will be deleted. You can upload a new one anytime.",
+      confirmText: "Remove",
+      variant: "destructive",
+    });
+    if (!confirmed) return;
 
     try {
       const res = await fetch(`/api/teams/${team.id}/logo`, { method: "DELETE" });
@@ -198,6 +206,9 @@ function TeamLogo({
           />
         </>
       )}
+
+      {/* Confirm dialog */}
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }
@@ -232,6 +243,7 @@ function TeamCard({
   const [editName, setEditName] = useState(team.name);
   const [saving, setSaving] = useState(false);
   const editInputRef = useRef<HTMLInputElement>(null);
+  const { confirm, dialogProps } = useConfirm();
 
   // -------------------------------------------------------------------------
   // Fetch members on expand
@@ -316,7 +328,13 @@ function TeamCard({
 
   const handleKick = async (userId: string, memberName: string | null) => {
     const displayName = memberName ?? "this member";
-    if (!confirm(`Remove ${displayName} from the team?`)) return;
+    const confirmed = await confirm({
+      title: `Remove ${displayName}?`,
+      description: `${displayName} will be removed from the team and will need a new invite to rejoin.`,
+      confirmText: "Remove",
+      variant: "destructive",
+    });
+    if (!confirmed) return;
 
     try {
       const res = await fetch(`/api/teams/${team.id}/members/${userId}`, {
@@ -345,10 +363,15 @@ function TeamCard({
   // -------------------------------------------------------------------------
 
   const handleLeave = async () => {
-    const msg = isOwner
-      ? "Delete this team? This cannot be undone."
-      : "Are you sure you want to leave this team?";
-    if (!confirm(msg)) return;
+    const confirmed = await confirm({
+      title: isOwner ? "Delete team?" : "Leave team?",
+      description: isOwner
+        ? "This will permanently delete the team and all its data. This action cannot be undone."
+        : "You will be removed from this team. You can rejoin if you have a valid invite code.",
+      confirmText: isOwner ? "Delete" : "Leave",
+      variant: "destructive",
+    });
+    if (!confirmed) return;
 
     try {
       const res = await fetch(`/api/teams/${team.id}`, { method: "DELETE" });
@@ -540,6 +563,9 @@ function TeamCard({
           )}
         </div>
       )}
+
+      {/* Confirm dialog */}
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

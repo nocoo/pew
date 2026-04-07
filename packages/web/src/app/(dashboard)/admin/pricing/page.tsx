@@ -6,6 +6,7 @@ import { Plus, Pencil, Trash2, X, Check, DollarSign } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
 import type { DbPricingRow } from "@/lib/pricing";
 import {
   type PricingFormData as FormData,
@@ -57,6 +58,7 @@ export default function AdminPricingPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [createForm, setCreateForm] = useState<FormData>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const { confirm, dialogProps } = useConfirm();
 
   // ---------------------------------------------------------------------------
   // Redirect non-admins
@@ -193,7 +195,13 @@ export default function AdminPricingPage() {
   // ---------------------------------------------------------------------------
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Delete this pricing entry?")) return;
+    const confirmed = await confirm({
+      title: "Delete pricing entry?",
+      description: "This pricing override will be removed. The default pricing will apply.",
+      confirmText: "Delete",
+      variant: "destructive",
+    });
+    if (!confirmed) return;
     setMessage(null);
 
     try {
@@ -516,6 +524,9 @@ export default function AdminPricingPage() {
           </div>
         </>
       )}
+
+      {/* Confirm dialog */}
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

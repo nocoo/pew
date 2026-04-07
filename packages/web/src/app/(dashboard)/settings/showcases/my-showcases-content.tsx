@@ -9,15 +9,23 @@ import { Plus, Pencil, Trash2, Eye, EyeOff, ExternalLink, ChevronUp } from "luci
 import { cn } from "@/lib/utils";
 import { useShowcases, type Showcase } from "@/hooks/use-showcases";
 import { ShowcaseImage, ShowcaseFormModal } from "@/components/showcase";
+import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
 
 export function MyShowcasesContent() {
   const { data, loading, error, refetch } = useShowcases({ mine: true });
   const [showAddModal, setShowAddModal] = useState(false);
   const [editShowcase, setEditShowcase] = useState<Showcase | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const { confirm, dialogProps } = useConfirm();
 
   const handleDelete = useCallback(async (id: string) => {
-    if (!confirm("Are you sure you want to delete this showcase?")) return;
+    const confirmed = await confirm({
+      title: "Delete showcase?",
+      description: "Are you sure you want to delete this showcase? This action cannot be undone.",
+      confirmText: "Delete",
+      variant: "destructive",
+    });
+    if (!confirmed) return;
 
     setDeleting(id);
     try {
@@ -32,7 +40,7 @@ export function MyShowcasesContent() {
     } finally {
       setDeleting(null);
     }
-  }, [refetch]);
+  }, [refetch, confirm]);
 
   const handleSuccess = useCallback(() => {
     refetch();
@@ -204,6 +212,9 @@ export function MyShowcasesContent() {
           }}
         />
       )}
+
+      {/* Confirm dialog */}
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }

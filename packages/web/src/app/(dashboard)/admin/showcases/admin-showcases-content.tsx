@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ShowcaseImage } from "@/components/showcase";
+import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,6 +75,7 @@ export function AdminShowcasesContent() {
   const [offset, setOffset] = useState(0);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const { confirm, dialogProps } = useConfirm();
 
   // Fetch data
   const fetchData = useCallback(async () => {
@@ -141,7 +143,13 @@ export function AdminShowcasesContent() {
 
   // Delete
   const handleDelete = useCallback(async (id: string) => {
-    if (!confirm("Are you sure you want to delete this showcase? This cannot be undone.")) return;
+    const confirmed = await confirm({
+      title: "Delete showcase?",
+      description: "Are you sure you want to delete this showcase? This action cannot be undone.",
+      confirmText: "Delete",
+      variant: "destructive",
+    });
+    if (!confirmed) return;
 
     setActionLoading(id);
     try {
@@ -166,7 +174,7 @@ export function AdminShowcasesContent() {
     } finally {
       setActionLoading(null);
     }
-  }, []);
+  }, [confirm]);
 
   // Loading state
   if (loading && !data) {
@@ -456,6 +464,9 @@ export function AdminShowcasesContent() {
           </button>
         </div>
       )}
+
+      {/* Confirm dialog */}
+      <ConfirmDialog {...dialogProps} />
     </div>
   );
 }
