@@ -362,6 +362,11 @@ const loginCommand = defineCommand({
       description: "Force re-login even if already authenticated",
       default: false,
     },
+    token: {
+      type: "string",
+      description: "Authenticate with an API key directly (for headless/SSH environments)",
+      required: false,
+    },
     dev: {
       type: "boolean",
       description: "Use the dev host (pew.dev.hexly.ai)",
@@ -372,6 +377,30 @@ const loginCommand = defineCommand({
     const paths = resolveDefaultPaths();
     const dev = isDevMode();
     const host = resolveHost(dev);
+
+    // Direct token login — for headless/SSH environments
+    if (args.token) {
+      const { ConfigManager } = await import("./config/manager.js");
+      const configManager = new ConfigManager(paths.stateDir, dev);
+
+      if (!args.force) {
+        const existing = await configManager.load();
+        if (existing.token) {
+          log.info(
+            `Already logged in. Use ${pc.cyan("pew login --token <key> --force")} to replace.`,
+          );
+          return;
+        }
+      }
+
+      await configManager.save({ token: args.token });
+      log.success("Token saved successfully");
+      log.info(
+        `Config: ${pc.dim(paths.stateDir + (dev ? "/config.dev.json" : "/config.json"))}`,
+      );
+      return;
+    }
+
     log.start("Opening browser for authentication...");
 
     const result = await executeLogin({
