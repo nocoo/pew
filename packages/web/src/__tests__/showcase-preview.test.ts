@@ -198,6 +198,12 @@ describe("POST /api/showcases/preview", () => {
         description: "A cool project",
         og_image_url: "https://opengraph.githubassets.com/1/owner/repo",
         already_exists: false,
+        stars: 100,
+        forks: 10,
+        language: "TypeScript",
+        license: "MIT",
+        topics: ["test"],
+        homepage: null,
       });
     });
 
