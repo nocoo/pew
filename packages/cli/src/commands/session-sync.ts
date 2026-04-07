@@ -134,6 +134,7 @@ function sourceKey(source: Source): keyof SessionSyncResult["sources"] | null {
     case "opencode": return "opencode";
     case "openclaw": return "openclaw";
     case "codex": return "codex";
+    case "pi": return null;
     case "vscode-copilot": return null;
     case "copilot-cli": return null;
   }

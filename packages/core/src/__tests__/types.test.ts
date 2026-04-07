@@ -37,10 +37,11 @@ describe("Source type", () => {
       "gemini-cli",
       "opencode",
       "openclaw",
+      "pi",
       "vscode-copilot",
       "copilot-cli",
     ];
-    expect(sources).toHaveLength(7);
+    expect(sources).toHaveLength(8);
   });
 
   it("should reject unsupported tools at type level", () => {

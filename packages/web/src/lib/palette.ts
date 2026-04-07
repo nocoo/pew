@@ -67,12 +67,13 @@ const AGENT_COLOR_MAP: Record<string, ChartColor> = {
   "gemini-cli":    { color: chart.pink,    token: "chart-3" },
   "codex":         { color: chart.coral,   token: "chart-4" },
   "openclaw":      { color: chart.orange,  token: "chart-5" },
+  "pi":            { color: chart.acid,    token: "chart-8" },
   "vscode-copilot":{ color: chart.gold,    token: "chart-6" },
   "copilot-cli":   { color: chart.lime,    token: "chart-7" },
 };
 
 /** Default color for unknown agents. */
-const AGENT_FALLBACK: ChartColor = { color: chart.acid, token: "chart-8" };
+const AGENT_FALLBACK: ChartColor = { color: chart.teal, token: "chart-9" };
 
 /**
  * Get a stable color for an agent (source slug).

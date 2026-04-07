@@ -58,25 +58,32 @@ describe("createTokenDrivers", () => {
     expect(fileDrivers).toHaveLength(0);
   });
 
+  it("includes pi file driver when piSessionsDir is set", () => {
+    const { fileDrivers } = createTokenDrivers({ piSessionsDir: "/tmp/pi/sessions" });
+    expect(fileDrivers).toHaveLength(1);
+    expect(fileDrivers[0].source).toBe("pi");
+  });
+
   it("includes copilot-cli file driver when copilotCliLogsDir is set", () => {
     const { fileDrivers } = createTokenDrivers({ copilotCliLogsDir: "/tmp/copilot/logs" });
     expect(fileDrivers).toHaveLength(1);
     expect(fileDrivers[0].source).toBe("copilot-cli");
   });
 
-  it("returns all 7 file drivers when all dirs are set", () => {
+  it("returns all 8 file drivers when all dirs are set", () => {
     const { fileDrivers, dbDrivers } = createTokenDrivers({
       claudeDir: "/tmp/claude",
       geminiDir: "/tmp/gemini",
       openCodeMessageDir: "/tmp/oc",
       openclawDir: "/tmp/openclaw",
+      piSessionsDir: "/tmp/pi/sessions",
       codexSessionsDir: "/tmp/codex",
       vscodeCopilotDirs: ["/tmp/vsc"],
       copilotCliLogsDir: "/tmp/copilot/logs",
     });
-    expect(fileDrivers).toHaveLength(7);
+    expect(fileDrivers).toHaveLength(8);
     const sources = fileDrivers.map((d) => d.source);
-    expect(sources).toEqual(["claude-code", "codex", "gemini-cli", "opencode", "openclaw", "vscode-copilot", "copilot-cli"]);
+    expect(sources).toEqual(["claude-code", "codex", "gemini-cli", "opencode", "openclaw", "pi", "vscode-copilot", "copilot-cli"]);
     expect(dbDrivers).toHaveLength(0);
   });
 

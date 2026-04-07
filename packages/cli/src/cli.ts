@@ -184,6 +184,7 @@ const syncCommand = defineCommand({
       openCodeDbPath: paths.openCodeDbPath,
       openMessageDb,
       openclawDir: paths.openclawDir,
+      piSessionsDir: paths.piSessionsDir,
       vscodeCopilotDirs: paths.vscodeCopilotDirs,
       copilotCliLogsDir: paths.copilotCliLogsDir,
       onCorruptLine: handleCorruptLine,
@@ -207,6 +208,7 @@ const syncCommand = defineCommand({
       if (result.sources.gemini > 0) deltaParts.push(`Gemini: ${result.sources.gemini}`);
       if (result.sources.opencode > 0) deltaParts.push(`OpenCode: ${result.sources.opencode}`);
       if (result.sources.openclaw > 0) deltaParts.push(`OpenClaw: ${result.sources.openclaw}`);
+      if (result.sources.pi > 0) deltaParts.push(`Pi: ${result.sources.pi}`);
       if (result.sources.vscodeCopilot > 0) deltaParts.push(`VSCode Copilot: ${result.sources.vscodeCopilot}`);
       if (result.sources.copilotCli > 0) deltaParts.push(`Copilot CLI: ${result.sources.copilotCli}`);
       if (deltaParts.length > 0) {
@@ -222,6 +224,7 @@ const syncCommand = defineCommand({
     if (fs.gemini > 0) scanParts.push(`Gemini: ${fs.gemini}`);
     if (fs.opencode > 0) scanParts.push(`OpenCode: ${fs.opencode}`);
     if (fs.openclaw > 0) scanParts.push(`OpenClaw: ${fs.openclaw}`);
+    if (fs.pi > 0) scanParts.push(`Pi: ${fs.pi}`);
     if (fs.vscodeCopilot > 0) scanParts.push(`VSCode Copilot: ${fs.vscodeCopilot}`);
     if (fs.copilotCli > 0) scanParts.push(`Copilot CLI: ${fs.copilotCli}`);
     if (scanParts.length > 0) {
@@ -306,6 +309,7 @@ const statusCommand = defineCommand({
         geminiDir: paths.geminiDir,
         openCodeMessageDir: paths.openCodeMessageDir,
         openclawDir: paths.openclawDir,
+        piSessionsDir: paths.piSessionsDir,
         vscodeCopilotDirs: paths.vscodeCopilotDirs,
         copilotCliLogsDir: paths.copilotCliLogsDir,
       },
@@ -468,6 +472,7 @@ const notifyCommand = defineCommand({
       openMessageDb: openMessageDb2,
       openSessionDb: openSessionDb2,
       openclawDir: paths.openclawDir,
+      piSessionsDir: paths.piSessionsDir,
       vscodeCopilotDirs: paths.vscodeCopilotDirs,
       copilotCliLogsDir: paths.copilotCliLogsDir,
       version: CLI_VERSION,

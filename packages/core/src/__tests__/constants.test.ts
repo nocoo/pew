@@ -12,13 +12,14 @@ import {
 } from "../constants.js";
 
 describe("SOURCES", () => {
-  it("should contain exactly 7 supported AI tools", () => {
-    expect(SOURCES).toHaveLength(7);
+  it("should contain exactly 8 supported AI tools", () => {
+    expect(SOURCES).toHaveLength(8);
     expect(SOURCES).toContain("claude-code");
     expect(SOURCES).toContain("codex");
     expect(SOURCES).toContain("gemini-cli");
     expect(SOURCES).toContain("opencode");
     expect(SOURCES).toContain("openclaw");
+    expect(SOURCES).toContain("pi");
     expect(SOURCES).toContain("vscode-copilot");
     expect(SOURCES).toContain("copilot-cli");
   });
@@ -32,6 +33,7 @@ describe("SOURCES", () => {
       "gemini-cli",
       "opencode",
       "openclaw",
+      "pi",
       "vscode-copilot",
       "copilot-cli",
     ]);

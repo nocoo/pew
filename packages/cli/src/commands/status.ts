@@ -10,6 +10,7 @@ export interface SourceDirs {
   geminiDir: string;
   openCodeMessageDir: string;
   openclawDir: string;
+  piSessionsDir: string;
   vscodeCopilotDirs: string[];
   copilotCliLogsDir: string;
 }
@@ -40,6 +41,7 @@ function classifySource(filePath: string, dirs: SourceDirs): string {
   if (filePath.startsWith(dirs.geminiDir)) return "gemini-cli";
   if (filePath.startsWith(dirs.openCodeMessageDir)) return "opencode";
   if (filePath.startsWith(dirs.openclawDir)) return "openclaw";
+  if (filePath.startsWith(dirs.piSessionsDir)) return "pi";
   for (const dir of dirs.vscodeCopilotDirs) {
     if (filePath.startsWith(dir)) return "vscode-copilot";
   }

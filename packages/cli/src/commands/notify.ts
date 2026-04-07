@@ -43,6 +43,7 @@ export async function executeNotify(
           openCodeDbPath: opts.openCodeDbPath,
           openMessageDb: opts.openMessageDb,
           openclawDir: opts.openclawDir,
+          piSessionsDir: opts.piSessionsDir,
           vscodeCopilotDirs: opts.vscodeCopilotDirs,
           copilotCliLogsDir: opts.copilotCliLogsDir,
         });

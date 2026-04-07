@@ -69,6 +69,7 @@ export interface DiscoverOpts {
   openCodeMessageDir?: string;
   openCodeDbPath?: string;
   openclawDir?: string;
+  piSessionsDir?: string;
   vscodeCopilotDirs?: string[];
   copilotCliLogsDir?: string;
 }

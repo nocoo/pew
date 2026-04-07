@@ -24,6 +24,7 @@ const VALID_SOURCES = new Set([
   "gemini-cli",
   "opencode",
   "openclaw",
+  "pi",
   "vscode-copilot",
   "copilot-cli",
 ]);

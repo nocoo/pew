@@ -19,6 +19,7 @@ export const SOURCES: readonly Source[] = Object.freeze([
   "gemini-cli",
   "opencode",
   "openclaw",
+  "pi",
   "vscode-copilot",
   "copilot-cli",
 ] as const);

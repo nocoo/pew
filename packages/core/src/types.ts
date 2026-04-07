@@ -10,13 +10,14 @@
 // Source: Supported AI coding tools
 // ---------------------------------------------------------------------------
 
-/** The 7 supported AI coding tools */
+/** The 8 supported AI coding tools */
 export type Source =
   | "claude-code"
   | "codex"
   | "gemini-cli"
   | "opencode"
   | "openclaw"
+  | "pi"
   | "vscode-copilot"
   | "copilot-cli";
 

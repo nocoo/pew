@@ -70,6 +70,8 @@ export function resolveDefaultPaths(home = homedir()) {
     openCodeDbPath: join(home, ".local", "share", "opencode", "opencode.db"),
     /** OpenClaw data: ~/.openclaw */
     openclawDir: join(home, ".openclaw"),
+    /** Pi session data: ~/.pi/agent/sessions */
+    piSessionsDir: join(home, ".pi", "agent", "sessions"),
     /** VSCode Copilot base dirs (stable + insiders, platform-aware) */
     vscodeCopilotDirs: resolveVscodeCopilotDirs(home),
     /** GitHub Copilot CLI logs: ~/.copilot/logs */

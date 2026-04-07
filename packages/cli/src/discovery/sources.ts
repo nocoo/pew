@@ -145,6 +145,16 @@ export async function discoverOpenClawFiles(
 }
 
 /**
+ * Discover pi session JSONL files.
+ * Path pattern: ~/.pi/agent/sessions/<encoded-cwd>/*.jsonl
+ */
+export async function discoverPiFiles(
+  piSessionsDir: string,
+): Promise<string[]> {
+  return collectFiles(piSessionsDir, (name) => name.endsWith(".jsonl"));
+}
+
+/**
  * Discover Codex CLI rollout files.
  * Path pattern: ~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl
  */

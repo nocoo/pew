@@ -38,6 +38,8 @@ export interface SyncOptions {
   openMessageDb?: (dbPath: string) => { queryMessages: QueryMessagesFn; close: () => void } | null;
   /** Override: OpenClaw data directory (~/.openclaw) */
   openclawDir?: string;
+  /** Override: Pi session directory (~/.pi/agent/sessions) */
+  piSessionsDir?: string;
   /** Override: VSCode Copilot base directories (stable + insiders) */
   vscodeCopilotDirs?: string[];
   /** Override: GitHub Copilot CLI logs directory (~/.copilot/logs) */
@@ -67,6 +69,7 @@ export interface SyncResult {
     gemini: number;
     opencode: number;
     openclaw: number;
+    pi: number;
     vscodeCopilot: number;
     copilotCli: number;
   };
@@ -77,6 +80,7 @@ export interface SyncResult {
     gemini: number;
     opencode: number;
     openclaw: number;
+    pi: number;
     vscodeCopilot: number;
     copilotCli: number;
   };
@@ -97,6 +101,7 @@ function sourceKey(source: Source): keyof SyncResult["sources"] {
     case "gemini-cli": return "gemini";
     case "opencode": return "opencode";
     case "openclaw": return "openclaw";
+    case "pi": return "pi";
     case "codex": return "codex";
     case "vscode-copilot": return "vscodeCopilot";
     case "copilot-cli": return "copilotCli";
@@ -181,8 +186,8 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   let replayDetected = false;
 
   const allDeltas: ParsedDelta[] = [];
-  const sourceCounts = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0, copilotCli: 0 };
-  const filesScanned = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0, copilotCli: 0 };
+  const sourceCounts = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, pi: 0, vscodeCopilot: 0, copilotCli: 0 };
+  const filesScanned = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, pi: 0, vscodeCopilot: 0, copilotCli: 0 };
 
   // Collect all discovered file paths (across all drivers) for knownFilePaths
   const discoveredFiles = new Set<string>();
@@ -201,6 +206,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     openCodeMessageDir: opts.openCodeMessageDir,
     openCodeDbPath: opts.openCodeDbPath,
     openclawDir: opts.openclawDir,
+    piSessionsDir: opts.piSessionsDir,
     vscodeCopilotDirs: opts.vscodeCopilotDirs,
     copilotCliLogsDir: opts.copilotCliLogsDir,
   };

@@ -204,6 +204,7 @@ describe("sourceLabel", () => {
     expect(sourceLabel("gemini-cli")).toBe("Gemini CLI");
     expect(sourceLabel("opencode")).toBe("OpenCode");
     expect(sourceLabel("openclaw")).toBe("OpenClaw");
+    expect(sourceLabel("pi")).toBe("Pi");
     expect(sourceLabel("vscode-copilot")).toBe("VS Code Copilot");
     expect(sourceLabel("copilot-cli")).toBe("GitHub Copilot CLI");
   });
