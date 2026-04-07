@@ -1,5 +1,55 @@
 # Changelog
 
+## v2.5.0
+
+### Added
+- Increase rate limit from 5 to 20/hour
+- Store and display GitHub stats in database
+- Fetch and display GitHub stats in preview
+- Add pagination to My Showcases page
+- Replace browser confirm() with custom ConfirmDialog component
+- Add statistics cards to showcase moderation page
+- Add rate limiting for showcase creation
+- Add admin showcases moderation page
+- Add user's my showcases settings page
+- Add public showcases leaderboard page
+- Add Showcases to navigation and leaderboard tabs
+- Add showcase UI components
+- Add useShowcases and useShowcasePreview hooks
+- Implement admin showcases list endpoint
+- Implement showcase upvote toggle endpoint
+- Implement showcase refresh endpoint
+- Implement showcase single CRUD endpoints
+- Implement showcases list and create endpoints
+- Implement showcase preview endpoint
+- Add GitHub URL normalization and metadata fetch helpers
+- Add showcases and upvotes tables (016-showcases.sql)
+
+### Changed
+- Update preview test for new GitHub stats fields
+- Update fetchGitHubMetadata test for new stats fields
+- Update tests for /settings/general route change
+- Use resolveAdmin/isAdminUser for consistent auth
+- Reorganize settings routes to /settings/general
+- Move showcases to leaderboard layout
+- Unify h1 styles across dashboard pages
+- Extract showcase types and constants to shared module
+- Add L2 API E2E tests for Showcase feature
+- Mark Phase 2 (Frontend) complete in showcase system design
+- Mark Phase 1 complete in showcase system design
+- Fix SQL query and admin response type
+- Address review feedback on pagination and consistency
+- Add showcase system design (34-showcase-system.md)
+
+### Fixed
+- Update showcase test mocks for admin and github stats
+- Sync UpvoteButton state when parent refetches data
+- Invalidate preview when URL changes after successful fetch
+- Fix useShowcases dependency issue
+
+### Removed
+- Remove upvote_count, add admin moderation, fix refresh conflict
+
 ## v2.4.0
 
 ### Added
