@@ -398,6 +398,9 @@ export const HermesNotifierDriver: NotifierDriver = {
       };
     }
     
+    // 获取 pew 可执行路径
+    const pewBin = await findPewBinary();  // 查找 pew 命令路径
+    
     // 创建插件目录
     await mkdir(pluginDir, { recursive: true });
     
@@ -405,8 +408,8 @@ export const HermesNotifierDriver: NotifierDriver = {
     const yamlContent = buildPluginYaml();
     await writeFile(join(pluginDir, "plugin.yaml"), yamlContent);
     
-    // 写入 __init__.py（注入绝对路径）
-    const pyContent = buildPluginPython(paths.notifyPath);  // 使用 notify.cjs 路径
+    // 写入 __init__.py（注入 pew 绝对路径）
+    const pyContent = buildPluginPython(pewBin);  // 注入 pew 命令路径
     await writeFile(join(pluginDir, "__init__.py"), pyContent);
     
     return {
@@ -479,8 +482,19 @@ export const SOURCES: readonly Source[] = Object.freeze([
 
 **CLI**:
 ```typescript
-// packages/cli/src/cli.ts (如果有 runtime guard，复用 VALID_SOURCES)
-import { VALID_SOURCES } from "@pew/core";
+// packages/cli/src/cli.ts (第 42 行)
+function isSource(value: string): value is Source {
+  return [
+    "claude-code",
+    "codex",
+    "gemini-cli",
+    "opencode",
+    "openclaw",
+    "vscode-copilot",
+    "copilot-cli",
+    "hermes",  // ← 新增
+  ].includes(value);
+}
 ```
 
 **Web API** (每个路由各自维护 VALID_SOURCES，必须逐个添加):
@@ -547,6 +561,7 @@ const AGENT_COLOR_MAP: Record<string, ChartColor> = {
 ```
 M packages/core/src/types.ts          # Source union 添加 "hermes"
 M packages/core/src/constants.ts      # SOURCES 数组添加 "hermes"
+M packages/cli/src/cli.ts             # isSource() 添加 "hermes"
 M packages/web/src/lib/pricing.ts     # DEFAULT_SOURCE_DEFAULTS 添加 hermes
 M packages/web/src/lib/palette.ts     # AGENT_COLOR_MAP 添加 hermes
 M packages/web/src/app/api/usage/route.ts        # VALID_SOURCES 添加 "hermes"
@@ -564,10 +579,11 @@ bun run build  # 确保 Web 编译通过
 
 **Commit Message**:
 ```
-feat(core,web): add hermes to Source type globally
+feat(core,web,cli): add hermes to Source type globally
 
 - Add "hermes" to Source union type (types.ts)
 - Add to SOURCES runtime array (constants.ts)
+- Add to CLI isSource() guard (cli.ts line 42)
 - Add hermes pricing (conservative: $3/$15/$0.3)
 - Add hermes color palette (acid green, chart-8)
 - Update VALID_SOURCES in 5 Web API routes (usage/sessions/projects/users)
@@ -768,8 +784,9 @@ M packages/cli/src/notifier/registry.ts
 ```
 
 **核心实现**:
+- `findPewBinary()` - 查找 pew 可执行文件路径（`which pew` 或 argv[1] 兄弟目录）
 - `buildPluginPython(pewBin: string)` - 注入绝对路径到 plugin
-- `install()` - 创建 `~/.hermes/plugins/pew/`
+- `install()` - 创建 `~/.hermes/plugins/pew/`，注入 pew 绝对路径
 - `uninstall()` - 删除插件目录
 - `status()` - 检查 marker（与接口方法名一致）
 
@@ -779,7 +796,8 @@ feat(cli): add hermes notifier driver
 
 - Install pew plugin to $HERMES_HOME/plugins/pew/
 - Plugin triggers `PEW_BIN notify --source=hermes` on post_llm_call
-- Inject absolute pew path (避免 PATH 不完整的环境)
+- Inject absolute pew path via findPewBinary() (避免 PATH 不完整)
+- buildPluginPython() takes pewBin not notifyPath (Python env needs pew CLI)
 - Support HERMES_HOME override
 - Add install/uninstall/status tests
 ```
