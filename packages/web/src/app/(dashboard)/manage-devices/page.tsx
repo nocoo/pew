@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { Dialog } from "radix-ui";
 import { Monitor, Info, Trash2, Terminal, Copy, Check, X } from "lucide-react";
 import { cn, formatTokens } from "@/lib/utils";
 import { sourceLabel } from "@/hooks/use-usage-data";
@@ -258,10 +259,10 @@ function DeviceCard({
 
 function AuthCodeModal({
   open,
-  onClose,
+  onOpenChange,
 }: {
   open: boolean;
-  onClose: () => void;
+  onOpenChange: (open: boolean) => void;
 }) {
   const [authCode, setAuthCode] = useState<string | null>(null);
   const [authCodeExpiresAt, setAuthCodeExpiresAt] = useState<Date | null>(null);
@@ -269,19 +270,6 @@ function AuthCodeModal({
   const [generatingCode, setGeneratingCode] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const dialogRef = useRef<HTMLDialogElement>(null);
-
-  // Open/close dialog element
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    if (open) {
-      dialog.showModal();
-    } else {
-      dialog.close();
-    }
-  }, [open]);
 
   // Reset state when modal closes
   useEffect(() => {
@@ -346,103 +334,113 @@ function AuthCodeModal({
     }
   };
 
-  const handleBackdropClick = (e: React.MouseEvent<HTMLDialogElement>) => {
-    // Close when clicking the backdrop (the dialog element itself, not content)
-    if (e.target === dialogRef.current) {
-      onClose();
-    }
-  };
-
   return (
-    <dialog
-      ref={dialogRef}
-      onClick={handleBackdropClick}
-      onCancel={onClose}
-      className="backdrop:bg-black/50 bg-transparent p-4 max-w-md w-full"
-    >
-      <div className="rounded-xl bg-background border border-border p-5 space-y-4 shadow-lg">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Terminal className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
-            <h3 className="text-sm font-medium text-foreground">CLI Login Code</h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          >
-            <X className="h-4 w-4" strokeWidth={1.5} />
-          </button>
-        </div>
-
-        <p className="text-xs text-muted-foreground">
-          Generate a one-time code to authenticate the pew CLI on a headless machine (no browser).
-        </p>
-
-        {authCode ? (
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <code className="flex-1 rounded-lg border border-border bg-secondary px-4 py-3 text-center font-mono text-lg font-semibold tracking-widest text-foreground">
-                {authCode}
-              </code>
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl bg-card p-6 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95">
+          {/* Header */}
+          <div className="flex items-start justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                <Terminal className="h-4 w-4 text-primary" strokeWidth={1.5} />
+              </div>
+              <Dialog.Title className="text-base font-semibold text-foreground">
+                CLI Login Code
+              </Dialog.Title>
+            </div>
+            <Dialog.Close asChild>
               <button
-                type="button"
-                onClick={async () => {
-                  await navigator.clipboard.writeText(authCode);
-                  setCopiedCode(true);
-                  setTimeout(() => setCopiedCode(false), 2000);
-                }}
-                className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-secondary text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
-                title="Copy code"
+                className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                aria-label="Close"
               >
-                {copiedCode ? (
-                  <Check className="h-4 w-4 text-success" strokeWidth={1.5} />
-                ) : (
-                  <Copy className="h-4 w-4" strokeWidth={1.5} />
+                <X className="h-4 w-4" strokeWidth={1.5} />
+              </button>
+            </Dialog.Close>
+          </div>
+
+          <Dialog.Description className="text-sm text-muted-foreground mb-5">
+            Generate a one-time code to authenticate the pew CLI on a headless machine (no browser).
+          </Dialog.Description>
+
+          {authCode ? (
+            <div className="space-y-4">
+              {/* Code display */}
+              <div className="flex items-center gap-2">
+                <div className="flex-1 rounded-lg bg-secondary border border-border px-4 py-3">
+                  <code className="block text-center font-mono text-xl font-bold tracking-[0.2em] text-foreground">
+                    {authCode}
+                  </code>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(authCode);
+                    setCopiedCode(true);
+                    setTimeout(() => setCopiedCode(false), 2000);
+                  }}
+                  className={cn(
+                    "flex h-12 w-12 items-center justify-center rounded-lg border transition-all shrink-0",
+                    copiedCode
+                      ? "border-success/30 bg-success/10 text-success"
+                      : "border-border bg-secondary text-muted-foreground hover:text-foreground hover:bg-accent"
+                  )}
+                  title="Copy code"
+                >
+                  {copiedCode ? (
+                    <Check className="h-4 w-4" strokeWidth={2} />
+                  ) : (
+                    <Copy className="h-4 w-4" strokeWidth={1.5} />
+                  )}
+                </button>
+              </div>
+
+              {/* Expiry countdown */}
+              <div className="flex items-center justify-center gap-2 text-sm">
+                <span className="text-muted-foreground">Expires in</span>
+                <span className={cn(
+                  "font-mono font-semibold tabular-nums",
+                  authCodeRemaining <= 60 ? "text-destructive" : "text-foreground"
+                )}>
+                  {Math.floor(authCodeRemaining / 60)}:{String(authCodeRemaining % 60).padStart(2, "0")}
+                </span>
+              </div>
+
+              {/* Command preview */}
+              <div className="rounded-lg bg-secondary/50 border border-border/50 p-3">
+                <p className="text-[11px] text-muted-foreground mb-1.5">Run on your machine:</p>
+                <code className="block text-sm font-mono text-foreground">
+                  pew login --code {authCode}
+                </code>
+              </div>
+
+              {/* Regenerate button */}
+              <button
+                onClick={handleGenerateAuthCode}
+                disabled={generatingCode}
+                className={cn(
+                  "w-full rounded-lg border border-border bg-secondary px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent",
+                  generatingCode && "opacity-50 cursor-not-allowed",
                 )}
+              >
+                Generate New Code
               </button>
             </div>
-
-            <p className="text-xs text-muted-foreground">
-              Expires in{" "}
-              <span className={cn(
-                "font-mono font-medium",
-                authCodeRemaining <= 60 ? "text-destructive" : "text-foreground"
-              )}>
-                {Math.floor(authCodeRemaining / 60)}:{String(authCodeRemaining % 60).padStart(2, "0")}
-              </span>
-            </p>
-
-            <div className="rounded-lg border border-border bg-secondary p-3">
-              <p className="text-[10px] text-muted-foreground mb-1">On your machine, run:</p>
-              <code className="text-xs font-mono text-foreground">pew login --code {authCode}</code>
-            </div>
-
+          ) : (
             <button
               onClick={handleGenerateAuthCode}
               disabled={generatingCode}
               className={cn(
-                "w-full rounded-lg border border-border bg-secondary px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent",
+                "w-full rounded-lg bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90",
                 generatingCode && "opacity-50 cursor-not-allowed",
               )}
             >
-              Generate New Code
+              {generatingCode ? "Generating..." : "Generate Code"}
             </button>
-          </div>
-        ) : (
-          <button
-            onClick={handleGenerateAuthCode}
-            disabled={generatingCode}
-            className={cn(
-              "w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90",
-              generatingCode && "opacity-50 cursor-not-allowed",
-            )}
-          >
-            {generatingCode ? "Generating..." : "Generate Code"}
-          </button>
-        )}
-      </div>
-    </dialog>
+          )}
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
@@ -503,7 +501,7 @@ export default function ManageDevicesPage() {
       {/* Auth Code Modal */}
       <AuthCodeModal
         open={showAuthCodeModal}
-        onClose={() => setShowAuthCodeModal(false)}
+        onOpenChange={setShowAuthCodeModal}
       />
 
       {/* Error */}
