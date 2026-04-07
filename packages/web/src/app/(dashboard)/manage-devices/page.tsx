@@ -460,7 +460,7 @@ export default function ManageDevicesPage() {
     return (
       <div className="space-y-8">
         <div>
-          <h1 className="text-2xl font-bold font-display">Devices</h1>
+          <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">Devices</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Loading device data...
           </p>
@@ -484,7 +484,7 @@ export default function ManageDevicesPage() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold font-display">Devices</h1>
+          <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">Devices</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Manage your synced devices and set aliases.
           </p>

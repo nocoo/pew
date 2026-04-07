@@ -381,7 +381,7 @@ export default function TeamDetailPage() {
             <Users className="h-5 w-5" strokeWidth={1.5} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold font-display">{team.name}</h1>
+            <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">{team.name}</h1>
             <p className="text-sm text-muted-foreground">
               {team.members.length} member
               {team.members.length !== 1 ? "s" : ""}

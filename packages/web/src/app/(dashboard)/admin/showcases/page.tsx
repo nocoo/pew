@@ -23,7 +23,7 @@ export default async function AdminShowcasesPage() {
     <div className="space-y-4 md:space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold font-display">Showcase Moderation</h1>
+        <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">Showcase Moderation</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Review and moderate community-submitted GitHub showcases.
         </p>

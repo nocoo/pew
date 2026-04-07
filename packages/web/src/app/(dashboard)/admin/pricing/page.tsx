@@ -236,7 +236,7 @@ export default function AdminPricingPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold font-display">Token Pricing</h1>
+          <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">Token Pricing</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Manage model pricing overrides (USD per 1M tokens). DB entries override static defaults.
           </p>

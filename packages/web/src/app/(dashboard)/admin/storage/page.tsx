@@ -291,7 +291,7 @@ export default function AdminStoragePage() {
       <div className="space-y-4 md:space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold font-display">Storage</h1>
+          <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">Storage</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Database usage overview across all users.
           </p>

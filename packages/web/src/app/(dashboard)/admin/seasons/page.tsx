@@ -804,7 +804,7 @@ export default function AdminSeasonsPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold font-display">Seasons</h1>
+          <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">Seasons</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Manage competition seasons. Teams register and compete on token
             usage.
