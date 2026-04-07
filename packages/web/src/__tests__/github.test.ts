@@ -255,6 +255,12 @@ describe("fetchGitHubMetadata", () => {
           description: "A cool project",
           full_name: "owner/my-repo",
           owner: { login: "owner" },
+          stargazers_count: 100,
+          forks_count: 10,
+          language: "TypeScript",
+          license: { spdx_id: "MIT" },
+          topics: ["test", "example"],
+          homepage: "https://example.com",
         }),
         { status: 200, headers: { "Content-Type": "application/json" } }
       )
@@ -268,6 +274,12 @@ describe("fetchGitHubMetadata", () => {
       title: "my-repo",
       description: "A cool project",
       fullName: "owner/my-repo",
+      stars: 100,
+      forks: 10,
+      language: "TypeScript",
+      license: "MIT",
+      topics: ["test", "example"],
+      homepage: "https://example.com",
     });
   });
 
