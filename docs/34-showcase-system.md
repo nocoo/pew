@@ -170,20 +170,34 @@ interface ShowcaseListResponse {
 
 #### Upvote Count Query
 
-Since there's no denormalized `upvote_count` column, compute it via JOIN:
+Since there's no denormalized `upvote_count` column, compute it via JOIN.
+
+**Authenticated user** — include `has_upvoted` via subquery:
 
 ```sql
 SELECT
   s.*,
-  COUNT(u.id) as upvote_count,
-  MAX(CASE WHEN u.user_id = ? THEN 1 ELSE 0 END) as has_upvoted
+  (SELECT COUNT(*) FROM showcase_upvotes WHERE showcase_id = s.id) as upvote_count,
+  EXISTS(SELECT 1 FROM showcase_upvotes WHERE showcase_id = s.id AND user_id = ?) as has_upvoted
 FROM showcases s
-LEFT JOIN showcase_upvotes u ON u.showcase_id = s.id
 WHERE s.is_public = 1
-GROUP BY s.id
 ORDER BY s.created_at DESC, s.id DESC
 LIMIT ? OFFSET ?
 ```
+
+**Unauthenticated** — separate query without `has_upvoted` (return `null` in response):
+
+```sql
+SELECT
+  s.*,
+  (SELECT COUNT(*) FROM showcase_upvotes WHERE showcase_id = s.id) as upvote_count
+FROM showcases s
+WHERE s.is_public = 1
+ORDER BY s.created_at DESC, s.id DESC
+LIMIT ? OFFSET ?
+```
+
+Implementation note: Use two separate SQL strings based on auth state. Do NOT pass `null` as user_id parameter — SQLite's `user_id = NULL` always evaluates to `NULL` (not `FALSE`), which would break the query logic.
 
 #### POST Request
 
@@ -375,10 +389,39 @@ GET /api/admin/showcases         — list all showcases (admin only)
 
 #### GET Response
 
-Same as `/api/showcases` response, but:
-- Returns ALL showcases (public and hidden)
-- Always includes actual `is_public` value
-- Includes submitter info for moderation context
+Admin response uses a **dedicated type** with additional fields for moderation:
+
+```typescript
+interface AdminShowcaseListResponse {
+  showcases: Array<{
+    id: string;
+    repo_key: string;
+    github_url: string;
+    title: string;
+    description: string | null;
+    tagline: string | null;
+    og_image_url: string | null;
+    upvote_count: number;
+    is_public: boolean;
+    created_at: string;
+    refreshed_at: string;
+    // Admin-only: full user info for moderation
+    user: {
+      id: string;
+      email: string;            // admin-only field
+      name: string | null;
+      nickname: string | null;
+      image: string | null;
+      slug: string | null;
+    };
+  }>;
+  total: number;
+  limit: number;
+  offset: number;
+}
+```
+
+Note: This is NOT the same type as public `ShowcaseListResponse`. Do not reuse — admin response includes `user.email` and omits `has_upvoted` (not relevant for moderation).
 
 **Response codes:**
 - `200` — Success
