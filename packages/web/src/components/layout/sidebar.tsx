@@ -26,6 +26,7 @@ import {
   FolderKanban,
   FolderGit2,
   Database,
+  Star,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/version";
@@ -67,6 +68,7 @@ const ICON_MAP: Record<string, ElementType> = {
   FolderKanban,
   FolderGit2,
   Database,
+  Star,
 };
 
 interface NavItem {

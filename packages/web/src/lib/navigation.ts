@@ -57,6 +57,7 @@ export const BASE_NAV_GROUPS: NavGroupDef[] = [
       { href: "/teams", label: "Teams", icon: "Users" },
       { href: "/manage-projects", label: "Projects", icon: "FolderKanban" },
       { href: "/manage-devices", label: "Devices", icon: "MonitorSmartphone" },
+      { href: "/settings/showcases", label: "Showcases", icon: "Star" },
       { href: "/settings", label: "General", icon: "Settings" },
     ],
   },
@@ -69,6 +70,7 @@ export const ADMIN_NAV_GROUP: NavGroupDef = {
     { href: "/admin/pricing", label: "Token Pricing", icon: "DollarSign" },
     { href: "/admin/invites", label: "Invite Codes", icon: "Ticket" },
     { href: "/admin/seasons", label: "Seasons", icon: "Trophy" },
+    { href: "/admin/showcases", label: "Showcases", icon: "Star" },
     { href: "/admin/storage", label: "Storage", icon: "Database" },
   ],
 };
@@ -94,6 +96,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   devices: "By Device",
   "manage-devices": "Devices",
   leaderboard: "Leaderboard",
+  showcases: "Showcases",
   admin: "Admin",
   seasons: "Seasons",
   storage: "Storage",
