@@ -654,14 +654,14 @@ packages/web/src/
 7. ✅ **API: Upvote** — `api/showcases/[id]/upvote/route.ts`
 8. ✅ **API: Admin list** — `api/admin/showcases/route.ts`
 
-### Phase 2: Frontend
+### Phase 2: Frontend ✅
 
-9. **LeaderboardNav update** — add Showcases tab
-10. **Showcase components** — card, image, upvote button
-11. **Leaderboard showcases page** — `/leaderboard/showcases`
-12. **Settings showcases page** — `/settings/showcases`
-13. **Form modal** — add/edit with preview and refresh
-14. **Admin showcases page** — `/admin/showcases`
+9. ✅ **LeaderboardNav update** — add Showcases tab
+10. ✅ **Showcase components** — card, image, upvote button
+11. ✅ **Leaderboard showcases page** — `/leaderboard/showcases`
+12. ✅ **Settings showcases page** — `/settings/showcases`
+13. ✅ **Form modal** — add/edit with preview and refresh
+14. ✅ **Admin showcases page** — `/admin/showcases`
 
 ## Atomic Commits
 
@@ -789,6 +789,6 @@ docs: update README index with 34-showcase-system
 
 ---
 
-**Status:** design-complete
+**Status:** implementation-complete
 **Author:** Claude
 **Date:** 2026-04-07
