@@ -12,17 +12,17 @@ vi.mock("@/lib/db", () => ({
 }));
 
 vi.mock("@/lib/admin", () => ({
-  isAdmin: vi.fn(),
+  isAdminUser: vi.fn(),
 }));
 
 import { resolveUser } from "@/lib/auth-helpers";
 import { getDbRead, getDbWrite } from "@/lib/db";
-import { isAdmin } from "@/lib/admin";
+import { isAdminUser } from "@/lib/admin";
 
 const mockResolveUser = vi.mocked(resolveUser);
 const mockGetDbRead = vi.mocked(getDbRead);
 const mockGetDbWrite = vi.mocked(getDbWrite);
-const mockIsAdmin = vi.mocked(isAdmin);
+const mockIsAdminUser = vi.mocked(isAdminUser);
 
 function createRequest(method: string, body?: unknown): Request {
   const init: RequestInit = { method };
@@ -49,6 +49,12 @@ const mockShowcase = {
   is_public: 1,
   created_at: "2026-01-01T00:00:00Z",
   refreshed_at: "2026-01-01T00:00:00Z",
+  stars: 100,
+  forks: 10,
+  language: "TypeScript",
+  license: "MIT",
+  topics: '["test"]',
+  homepage: "https://example.com",
   user_name: "Test User",
   user_nickname: null,
   user_image: null,
@@ -87,7 +93,7 @@ describe("GET /api/showcases/[id]", () => {
 
   it("includes has_upvoted when authenticated", async () => {
     mockResolveUser.mockResolvedValue({ userId: "u2", email: "test@example.com" });
-    mockIsAdmin.mockReturnValue(false);
+    mockIsAdminUser.mockResolvedValue(false);
     const mockDb = {
       firstOrNull: vi.fn().mockResolvedValue(mockShowcase),
     };
@@ -114,7 +120,7 @@ describe("GET /api/showcases/[id]", () => {
 
   it("returns 404 for hidden showcase to non-owner", async () => {
     mockResolveUser.mockResolvedValue({ userId: "u2", email: "test@example.com" });
-    mockIsAdmin.mockReturnValue(false);
+    mockIsAdminUser.mockResolvedValue(false);
     const mockDb = {
       firstOrNull: vi.fn().mockResolvedValue({ ...mockShowcase, is_public: 0 }),
     };
@@ -127,7 +133,7 @@ describe("GET /api/showcases/[id]", () => {
 
   it("returns hidden showcase to owner", async () => {
     mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
-    mockIsAdmin.mockReturnValue(false);
+    mockIsAdminUser.mockResolvedValue(false);
     const mockDb = {
       firstOrNull: vi.fn().mockResolvedValue({ ...mockShowcase, is_public: 0 }),
     };
@@ -142,7 +148,7 @@ describe("GET /api/showcases/[id]", () => {
 
   it("returns hidden showcase to admin", async () => {
     mockResolveUser.mockResolvedValue({ userId: "admin", email: "admin@example.com" });
-    mockIsAdmin.mockReturnValue(true);
+    mockIsAdminUser.mockResolvedValue(true);
     const mockDb = {
       firstOrNull: vi.fn().mockResolvedValue({ ...mockShowcase, is_public: 0 }),
     };
@@ -198,7 +204,7 @@ describe("PATCH /api/showcases/[id]", () => {
   describe("authorization", () => {
     it("allows owner to update", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
-      mockIsAdmin.mockReturnValue(false);
+      mockIsAdminUser.mockResolvedValue(false);
       const mockDbRead = {
         firstOrNull: vi.fn().mockResolvedValue({ id: "s1", user_id: "u1" }),
       };
@@ -215,7 +221,7 @@ describe("PATCH /api/showcases/[id]", () => {
 
     it("allows admin to update any showcase", async () => {
       mockResolveUser.mockResolvedValue({ userId: "admin", email: "admin@example.com" });
-      mockIsAdmin.mockReturnValue(true);
+      mockIsAdminUser.mockResolvedValue(true);
       const mockDbRead = {
         firstOrNull: vi.fn().mockResolvedValue({ id: "s1", user_id: "u1" }),
       };
@@ -232,7 +238,7 @@ describe("PATCH /api/showcases/[id]", () => {
 
     it("returns 403 for non-owner non-admin", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u2", email: "other@example.com" });
-      mockIsAdmin.mockReturnValue(false);
+      mockIsAdminUser.mockResolvedValue(false);
       const mockDbRead = {
         firstOrNull: vi.fn().mockResolvedValue({ id: "s1", user_id: "u1" }),
       };
@@ -245,7 +251,7 @@ describe("PATCH /api/showcases/[id]", () => {
 
     it("returns 404 when showcase not found", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
-      mockIsAdmin.mockReturnValue(false);
+      mockIsAdminUser.mockResolvedValue(false);
       const mockDbRead = {
         firstOrNull: vi.fn().mockResolvedValue(null),
       };
@@ -260,7 +266,7 @@ describe("PATCH /api/showcases/[id]", () => {
   describe("validation", () => {
     beforeEach(() => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
-      mockIsAdmin.mockReturnValue(false);
+      mockIsAdminUser.mockResolvedValue(false);
       const mockDbRead = {
         firstOrNull: vi.fn().mockResolvedValue({ id: "s1", user_id: "u1" }),
       };
@@ -328,7 +334,7 @@ describe("PATCH /api/showcases/[id]", () => {
   describe("error handling", () => {
     it("handles missing table gracefully", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
-      mockIsAdmin.mockReturnValue(false);
+      mockIsAdminUser.mockResolvedValue(false);
       const mockDbRead = {
         firstOrNull: vi.fn().mockRejectedValue(new Error("no such table: showcases")),
       };
@@ -341,7 +347,7 @@ describe("PATCH /api/showcases/[id]", () => {
 
     it("returns 500 on DB read error", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
-      mockIsAdmin.mockReturnValue(false);
+      mockIsAdminUser.mockResolvedValue(false);
       const mockDbRead = {
         firstOrNull: vi.fn().mockRejectedValue(new Error("Connection refused")),
       };
@@ -356,7 +362,7 @@ describe("PATCH /api/showcases/[id]", () => {
 
     it("returns 500 on DB write error", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
-      mockIsAdmin.mockReturnValue(false);
+      mockIsAdminUser.mockResolvedValue(false);
       const mockDbRead = {
         firstOrNull: vi.fn().mockResolvedValue({ id: "s1", user_id: "u1" }),
       };
@@ -393,7 +399,7 @@ describe("DELETE /api/showcases/[id]", () => {
   describe("authorization", () => {
     it("allows owner to delete", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
-      mockIsAdmin.mockReturnValue(false);
+      mockIsAdminUser.mockResolvedValue(false);
       const mockDbRead = {
         firstOrNull: vi.fn().mockResolvedValue({ id: "s1", user_id: "u1" }),
       };
@@ -412,7 +418,7 @@ describe("DELETE /api/showcases/[id]", () => {
 
     it("allows admin to delete any showcase", async () => {
       mockResolveUser.mockResolvedValue({ userId: "admin", email: "admin@example.com" });
-      mockIsAdmin.mockReturnValue(true);
+      mockIsAdminUser.mockResolvedValue(true);
       const mockDbRead = {
         firstOrNull: vi.fn().mockResolvedValue({ id: "s1", user_id: "u1" }),
       };
@@ -429,7 +435,7 @@ describe("DELETE /api/showcases/[id]", () => {
 
     it("returns 403 for non-owner non-admin", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u2", email: "other@example.com" });
-      mockIsAdmin.mockReturnValue(false);
+      mockIsAdminUser.mockResolvedValue(false);
       const mockDbRead = {
         firstOrNull: vi.fn().mockResolvedValue({ id: "s1", user_id: "u1" }),
       };
@@ -442,7 +448,7 @@ describe("DELETE /api/showcases/[id]", () => {
 
     it("returns 404 when showcase not found", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
-      mockIsAdmin.mockReturnValue(false);
+      mockIsAdminUser.mockResolvedValue(false);
       const mockDbRead = {
         firstOrNull: vi.fn().mockResolvedValue(null),
       };
@@ -457,7 +463,7 @@ describe("DELETE /api/showcases/[id]", () => {
   describe("error handling", () => {
     it("handles missing table gracefully", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
-      mockIsAdmin.mockReturnValue(false);
+      mockIsAdminUser.mockResolvedValue(false);
       const mockDbRead = {
         firstOrNull: vi.fn().mockRejectedValue(new Error("no such table: showcases")),
       };
@@ -470,7 +476,7 @@ describe("DELETE /api/showcases/[id]", () => {
 
     it("returns 500 on DB read error", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
-      mockIsAdmin.mockReturnValue(false);
+      mockIsAdminUser.mockResolvedValue(false);
       const mockDbRead = {
         firstOrNull: vi.fn().mockRejectedValue(new Error("Connection refused")),
       };
@@ -485,7 +491,7 @@ describe("DELETE /api/showcases/[id]", () => {
 
     it("returns 500 on DB write error", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
-      mockIsAdmin.mockReturnValue(false);
+      mockIsAdminUser.mockResolvedValue(false);
       const mockDbRead = {
         firstOrNull: vi.fn().mockResolvedValue({ id: "s1", user_id: "u1" }),
       };

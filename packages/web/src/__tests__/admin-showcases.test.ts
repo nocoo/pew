@@ -2,25 +2,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { GET } from "@/app/api/admin/showcases/route";
 
 // Mock dependencies
-vi.mock("@/lib/auth-helpers", () => ({
-  resolveUser: vi.fn(),
-}));
-
 vi.mock("@/lib/db", () => ({
   getDbRead: vi.fn(),
 }));
 
 vi.mock("@/lib/admin", () => ({
-  isAdmin: vi.fn(),
+  resolveAdmin: vi.fn(),
 }));
 
-import { resolveUser } from "@/lib/auth-helpers";
 import { getDbRead } from "@/lib/db";
-import { isAdmin } from "@/lib/admin";
+import { resolveAdmin } from "@/lib/admin";
 
-const mockResolveUser = vi.mocked(resolveUser);
 const mockGetDbRead = vi.mocked(getDbRead);
-const mockIsAdmin = vi.mocked(isAdmin);
+const mockResolveAdmin = vi.mocked(resolveAdmin);
 
 function createRequest(params: Record<string, string> = {}): Request {
   const url = new URL("http://localhost/api/admin/showcases");
@@ -42,6 +36,12 @@ const mockShowcase = {
   is_public: 1,
   created_at: "2026-01-01T00:00:00Z",
   refreshed_at: "2026-01-01T00:00:00Z",
+  stars: 100,
+  forks: 10,
+  language: "TypeScript",
+  license: "MIT",
+  topics: '["test"]',
+  homepage: "https://example.com",
   user_name: "Test User",
   user_nickname: null,
   user_image: null,
@@ -64,17 +64,8 @@ afterEach(() => {
 
 describe("GET /api/admin/showcases", () => {
   describe("authentication and authorization", () => {
-    it("returns 401 when not authenticated", async () => {
-      mockResolveUser.mockResolvedValue(null);
-
-      const res = await GET(createRequest());
-
-      expect(res.status).toBe(401);
-    });
-
     it("returns 403 when not admin", async () => {
-      mockResolveUser.mockResolvedValue({ userId: "u1", email: "user@example.com" });
-      mockIsAdmin.mockReturnValue(false);
+      mockResolveAdmin.mockResolvedValue(null);
 
       const res = await GET(createRequest());
 
@@ -84,8 +75,7 @@ describe("GET /api/admin/showcases", () => {
 
   describe("successful listing", () => {
     beforeEach(() => {
-      mockResolveUser.mockResolvedValue({ userId: "admin", email: "admin@example.com" });
-      mockIsAdmin.mockReturnValue(true);
+      mockResolveAdmin.mockResolvedValue({ userId: "admin", email: "admin@example.com" });
     });
 
     it("returns all showcases with user email", async () => {
@@ -196,8 +186,7 @@ describe("GET /api/admin/showcases", () => {
 
   describe("error handling", () => {
     beforeEach(() => {
-      mockResolveUser.mockResolvedValue({ userId: "admin", email: "admin@example.com" });
-      mockIsAdmin.mockReturnValue(true);
+      mockResolveAdmin.mockResolvedValue({ userId: "admin", email: "admin@example.com" });
     });
 
     it("handles missing table gracefully", async () => {
