@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.2.9
+
+### Added
+- Add one-time code authentication for headless CLI login
+
+### Changed
+- Improve CLI Login Code modal design
+
+### Fixed
+- Handle JSON null body in code verification
+- Remove code invalidation to prevent concurrent generation race
+- Atomic conditional api_key generation to prevent race
+- Consume code only after credentials are ready
+- Regenerate code on collision and insert-before-invalidate
+- Invalidate code on any failed verification attempt
+- Resolve button nesting hydration error and improve progress bar visibility
+
 ## v2.2.8
 
 ### Added
