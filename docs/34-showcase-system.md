@@ -12,6 +12,7 @@ Showcase is a community feature where pew users can submit their GitHub projects
 2. **Viewer**: As anyone (logged in or not), I want to browse showcased projects publicly
 3. **Voter**: As a logged-in user, I want to upvote showcases I like
 4. **Manager**: As a submitter, I want to manage my showcases (toggle visibility, delete)
+5. **Admin**: As an admin, I want to moderate all showcases (view hidden, edit, delete)
 
 ### Access Model
 
@@ -27,6 +28,9 @@ Consistent with existing leaderboard:
 | Delete own showcase | Yes (owner only) |
 | View hidden showcase | Yes (owner/admin only) |
 | Refresh from GitHub | Yes (owner only) |
+| **Admin: list all showcases** | Yes (admin only) |
+| **Admin: edit any showcase** | Yes (admin only) |
+| **Admin: delete any showcase** | Yes (admin only) |
 
 ## Database Schema
 
@@ -49,7 +53,6 @@ CREATE TABLE IF NOT EXISTS showcases (
   tagline         TEXT,                                     -- user-provided recommendation (editable)
   og_image_url    TEXT,                                     -- GitHub OG image URL
   is_public       INTEGER NOT NULL DEFAULT 1,               -- 1=visible, 0=hidden
-  upvote_count    INTEGER NOT NULL DEFAULT 0,               -- denormalized, updated atomically
   refreshed_at    TEXT NOT NULL DEFAULT (datetime('now')),  -- last GitHub metadata sync
   created_at      TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
@@ -58,6 +61,7 @@ CREATE TABLE IF NOT EXISTS showcases (
 
 CREATE INDEX IF NOT EXISTS idx_showcases_user ON showcases(user_id);
 CREATE INDEX IF NOT EXISTS idx_showcases_public_sort ON showcases(is_public, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_showcases_created ON showcases(created_at DESC);
 
 -- ============================================================
 -- Showcase Upvotes (one per user per showcase)
@@ -80,9 +84,9 @@ CREATE INDEX IF NOT EXISTS idx_showcase_upvotes_user ON showcase_upvotes(user_id
 - **`repo_key`** (not `github_url`) has UNIQUE constraint — normalized `owner/repo` lowercase
 - **`title` / `description`** fetched from GitHub, can be refreshed via owner action
 - **`tagline`** is user-editable recommendation text (optional, max 280 chars)
-- **`upvote_count`** updated atomically with upvote insert/delete (same SQL statement batch)
 - **`og_image_url`** constructed from repo_key, with fallback placeholder
 - **`refreshed_at`** tracks last GitHub metadata sync
+- **No `upvote_count` column** — v1 computes count via JOIN at read time (simpler, always accurate)
 
 ### URL Normalization
 
@@ -123,14 +127,10 @@ POST /api/showcases              — submit new showcase (auth required)
 
 Rationale:
 - Showcase list is expected to be small in v1 (<1000 items)
-- `upvote_count` changes frequently via user actions
-- Cursor-based pagination with mutable sort keys (upvote_count) would require complex tuple cursors (`{upvote_count, created_at, id}`) and still exhibit instability during concurrent upvotes
 - Offset/limit is simpler to implement and debug
 - Trade-off: deep pagination may show duplicates/gaps if data changes mid-browse — acceptable for v1 given small dataset
 
-Future: If showcase count grows significantly, revisit with:
-- Keyset pagination on stable sort (created_at DESC, id DESC)
-- Or accept upvote_count instability as "live leaderboard" behavior
+Future: If showcase count grows significantly, revisit with keyset pagination on stable sort (created_at DESC, id DESC).
 
 #### GET Response
 
@@ -144,8 +144,8 @@ interface ShowcaseListResponse {
     description: string | null;
     tagline: string | null;
     og_image_url: string | null;
-    upvote_count: number;
-    is_public: boolean;         // included for mine=1; always true for public list
+    upvote_count: number;           // computed via COUNT(*)
+    is_public: boolean;             // included for mine=1 and admin; always true for public list
     created_at: string;
     user: {
       id: string;
@@ -154,9 +154,9 @@ interface ShowcaseListResponse {
       image: string | null;
       slug: string | null;
     };
-    has_upvoted: boolean | null;  // null if not logged in
+    has_upvoted: boolean | null;    // null if not logged in
   }>;
-  total: number;                  // total count for pagination UI
+  total: number;                    // total count for pagination UI
   limit: number;
   offset: number;
 }
@@ -168,10 +168,22 @@ interface ShowcaseListResponse {
 - `has_upvoted` is `null` for unauthenticated requests
 - Sorted by `created_at DESC, id DESC` (stable sort)
 
-**Sorting rationale:**
-- v1 uses `created_at DESC` (newest first) as primary sort, not `upvote_count`
-- This avoids pagination instability from concurrent upvotes
-- "Most upvoted" can be a future sort option with explicit instability trade-off
+#### Upvote Count Query
+
+Since there's no denormalized `upvote_count` column, compute it via JOIN:
+
+```sql
+SELECT
+  s.*,
+  COUNT(u.id) as upvote_count,
+  MAX(CASE WHEN u.user_id = ? THEN 1 ELSE 0 END) as has_upvoted
+FROM showcases s
+LEFT JOIN showcase_upvotes u ON u.showcase_id = s.id
+WHERE s.is_public = 1
+GROUP BY s.id
+ORDER BY s.created_at DESC, s.id DESC
+LIMIT ? OFFSET ?
+```
 
 #### POST Request
 
@@ -228,8 +240,8 @@ interface PreviewResponse {
 
 ```
 GET    /api/showcases/[id]       — get single showcase
-PATCH  /api/showcases/[id]       — update showcase (owner only)
-DELETE /api/showcases/[id]       — delete showcase (owner only)
+PATCH  /api/showcases/[id]       — update showcase (owner or admin)
+DELETE /api/showcases/[id]       — delete showcase (owner or admin)
 ```
 
 #### GET Access Control
@@ -246,7 +258,16 @@ interface UpdateShowcaseRequest {
 }
 ```
 
+**Access:**
+- Owner can edit own showcase
+- Admin can edit any showcase (for moderation — e.g., hide inappropriate content)
+
 **Note:** `title` and `description` are NOT directly editable. Use the refresh endpoint to re-fetch from GitHub.
+
+#### DELETE Access
+
+- Owner can delete own showcase
+- Admin can delete any showcase
 
 ### `/api/showcases/[id]/refresh` — Refresh from GitHub
 
@@ -263,6 +284,8 @@ interface RefreshResponse {
   title: string;
   description: string | null;
   og_image_url: string;
+  repo_key: string;          // may change if renamed
+  github_url: string;        // may change if renamed
   refreshed_at: string;
 }
 ```
@@ -270,14 +293,19 @@ interface RefreshResponse {
 **Behavior:**
 - Re-fetches metadata from GitHub API
 - Updates `title`, `description`, `og_image_url`, `refreshed_at`
-- If repo was renamed/transferred, updates `repo_key` and `github_url`
-- If repo no longer exists (404), returns error but does NOT delete showcase
+- If repo was renamed/transferred:
+  - Compute new `repo_key` from GitHub response
+  - **Check if new `repo_key` already exists** in another showcase
+  - If conflict: return `409` with message "Repository was renamed to {new_key} but that repo is already showcased"
+  - If no conflict: update `repo_key` and `github_url`
+- If repo no longer exists (404), returns `410` but does NOT delete showcase
 
 **Response codes:**
 - `200` — Refreshed successfully
 - `401` — Not authenticated
 - `403` — Not owner
 - `404` — Showcase not found (or hidden and not owner)
+- `409` — Repo was renamed but new repo_key conflicts with existing showcase
 - `410` — GitHub repo no longer exists ("Repository was deleted or made private")
 - `422` — GitHub API error
 
@@ -292,67 +320,70 @@ POST /api/showcases/[id]/upvote  — toggle upvote (auth required)
 ```typescript
 interface UpvoteResponse {
   upvoted: boolean;       // new state after toggle
-  upvote_count: number;   // updated count (from showcase_upvotes, not denormalized)
+  upvote_count: number;   // fresh COUNT(*) from showcase_upvotes
 }
 ```
 
-#### Atomic Update Strategy
+#### Implementation
 
-To maintain consistency between `showcase_upvotes` and `showcases.upvote_count`, use a single batch write:
+Simple insert/delete — no denormalized count to maintain:
 
 ```typescript
-// Toggle ON (add upvote)
-await dbWrite.batch([
-  {
-    sql: `INSERT INTO showcase_upvotes (showcase_id, user_id) VALUES (?, ?)`,
-    params: [showcaseId, userId],
-  },
-  {
-    sql: `UPDATE showcases SET upvote_count = upvote_count + 1, updated_at = datetime('now') WHERE id = ?`,
-    params: [showcaseId],
-  },
-]);
+// Check current state
+const existing = await dbRead.firstOrNull(
+  `SELECT id FROM showcase_upvotes WHERE showcase_id = ? AND user_id = ?`,
+  [showcaseId, userId]
+);
 
-// Toggle OFF (remove upvote)
-await dbWrite.batch([
-  {
-    sql: `DELETE FROM showcase_upvotes WHERE showcase_id = ? AND user_id = ?`,
-    params: [showcaseId, userId],
-  },
-  {
-    sql: `UPDATE showcases SET upvote_count = upvote_count - 1, updated_at = datetime('now') WHERE id = ?`,
-    params: [showcaseId],
-  },
-]);
+if (existing) {
+  // Remove upvote
+  await dbWrite.execute(
+    `DELETE FROM showcase_upvotes WHERE showcase_id = ? AND user_id = ?`,
+    [showcaseId, userId]
+  );
+} else {
+  // Add upvote
+  await dbWrite.execute(
+    `INSERT INTO showcase_upvotes (showcase_id, user_id) VALUES (?, ?)`,
+    [showcaseId, userId]
+  );
+}
+
+// Get fresh count
+const { count } = await dbRead.first(
+  `SELECT COUNT(*) as count FROM showcase_upvotes WHERE showcase_id = ?`,
+  [showcaseId]
+);
+
+return { upvoted: !existing, upvote_count: count };
 ```
 
-#### Upvote Count Consistency
+### `/api/admin/showcases` — Admin List All
 
-**D1 batch is NOT transactional.** On partial failure, `upvote_count` may drift from actual `COUNT(*)` of `showcase_upvotes`.
+```
+GET /api/admin/showcases         — list all showcases (admin only)
+```
 
-**Mitigation strategy:**
+#### GET Query Parameters
 
-1. **Read-time truth**: When returning `upvote_count` in API responses, read from `showcase_upvotes` aggregate:
-   ```sql
-   SELECT s.*, COUNT(u.id) as actual_upvote_count
-   FROM showcases s
-   LEFT JOIN showcase_upvotes u ON u.showcase_id = s.id
-   WHERE s.id = ?
-   GROUP BY s.id
-   ```
+| Param | Type | Description |
+|-------|------|-------------|
+| `is_public` | `"0"` or `"1"` | Filter by visibility (omit for all) |
+| `user_id` | string | Filter by submitter |
+| `limit` | number | Max results (default 50, max 200) |
+| `offset` | number | Skip first N results (default 0) |
 
-2. **Denormalized field for sorting only**: `showcases.upvote_count` is used for index-based sorting but NOT trusted for display.
+#### GET Response
 
-3. **Periodic reconciliation**: Admin endpoint or cron job to fix drift:
-   ```sql
-   UPDATE showcases SET upvote_count = (
-     SELECT COUNT(*) FROM showcase_upvotes WHERE showcase_id = showcases.id
-   )
-   ```
+Same as `/api/showcases` response, but:
+- Returns ALL showcases (public and hidden)
+- Always includes actual `is_public` value
+- Includes submitter info for moderation context
 
-4. **Optimistic UI**: Frontend shows optimistic count; on error rollback, re-fetch true count.
-
-This approach ensures **display accuracy** while accepting **sort-order may lag by 1** in rare partial-failure scenarios.
+**Response codes:**
+- `200` — Success
+- `401` — Not authenticated
+- `403` — Not admin
 
 ## GitHub Integration
 
@@ -506,29 +537,57 @@ Dashboard page for managing user's showcases.
 - Note: "Title and description are synced from GitHub"
 - Save/Cancel buttons
 
+### Admin → Showcases (`/admin/showcases`)
+
+Admin page for moderating all showcases.
+
+**Layout:**
+- Header: "Showcase Moderation"
+- Filters: visibility (all/public/hidden), search by user
+- Table view with columns:
+  - Thumbnail
+  - Title / repo_key
+  - Submitter (name + email)
+  - Upvote count
+  - Status (Public/Hidden badge)
+  - Created at
+  - Actions: View, Edit, Hide/Unhide, Delete
+
+**Actions:**
+- **View**: Opens showcase in new tab
+- **Edit**: Opens modal to edit tagline and visibility
+- **Hide/Unhide**: Quick toggle for `is_public`
+- **Delete**: Confirmation dialog, then hard delete
+
 ## Component Hierarchy
 
 ```
 packages/web/src/
 ├── app/
 │   ├── (dashboard)/
-│   │   └── settings/
+│   │   ├── settings/
+│   │   │   └── showcases/
+│   │   │       └── page.tsx           # Settings → Showcases management
+│   │   └── admin/
 │   │       └── showcases/
-│   │           └── page.tsx           # Settings → Showcases management
+│   │           └── page.tsx           # Admin → Showcase moderation
 │   ├── leaderboard/
 │   │   └── showcases/
 │   │       └── page.tsx               # Leaderboard → Showcases tab
 │   └── api/
-│       └── showcases/
-│           ├── route.ts               # GET list, POST create
-│           ├── preview/
-│           │   └── route.ts           # POST preview
-│           └── [id]/
-│               ├── route.ts           # GET, PATCH, DELETE
-│               ├── refresh/
-│               │   └── route.ts       # POST refresh from GitHub
-│               └── upvote/
-│                   └── route.ts       # POST toggle
+│       ├── showcases/
+│       │   ├── route.ts               # GET list, POST create
+│       │   ├── preview/
+│       │   │   └── route.ts           # POST preview
+│       │   └── [id]/
+│       │       ├── route.ts           # GET, PATCH, DELETE
+│       │       ├── refresh/
+│       │       │   └── route.ts       # POST refresh from GitHub
+│       │       └── upvote/
+│       │           └── route.ts       # POST toggle
+│       └── admin/
+│           └── showcases/
+│               └── route.ts           # GET all (admin)
 ├── components/
 │   └── showcase/
 │       ├── showcase-card.tsx          # Card for list display
@@ -550,14 +609,16 @@ packages/web/src/
 5. **API: Single CRUD** — `api/showcases/[id]/route.ts`
 6. **API: Refresh** — `api/showcases/[id]/refresh/route.ts`
 7. **API: Upvote** — `api/showcases/[id]/upvote/route.ts`
+8. **API: Admin list** — `api/admin/showcases/route.ts`
 
 ### Phase 2: Frontend
 
-8. **LeaderboardNav update** — add Showcases tab
-9. **Showcase components** — card, image, upvote button
-10. **Leaderboard showcases page** — `/leaderboard/showcases`
-11. **Settings showcases page** — `/settings/showcases`
-12. **Form modal** — add/edit with preview and refresh
+9. **LeaderboardNav update** — add Showcases tab
+10. **Showcase components** — card, image, upvote button
+11. **Leaderboard showcases page** — `/leaderboard/showcases`
+12. **Settings showcases page** — `/settings/showcases`
+13. **Form modal** — add/edit with preview and refresh
+14. **Admin showcases page** — `/admin/showcases`
 
 ## Atomic Commits
 
@@ -569,11 +630,13 @@ feat(api): implement showcases list and create endpoints
 feat(api): implement showcase single CRUD operations
 feat(api): implement showcase refresh from GitHub
 feat(api): implement showcase upvote toggle
+feat(api): implement admin showcases list endpoint
 feat(web): add Showcases tab to LeaderboardNav
 feat(web): add showcase card and image components
 feat(web): add leaderboard showcases page
 feat(web): add settings showcases management page
 feat(web): add showcase form modal with preview
+feat(web): add admin showcases moderation page
 docs: update README index with 34-showcase-system
 ```
 
@@ -583,7 +646,6 @@ docs: update README index with 34-showcase-system
 
 - `normalizeGitHubUrl()` — valid/invalid URLs, case normalization
 - `parseGitHubError()` — error type mapping
-- Upvote state derivation
 
 ### L2 — Integration Tests (API E2E)
 
@@ -594,6 +656,9 @@ docs: update README index with 34-showcase-system
 - Guest gets 404 for hidden showcase
 - Owner can GET own hidden showcase
 - Non-owner gets 404 for others' hidden showcase
+- Admin can GET any hidden showcase
+- Admin can GET `/api/admin/showcases`
+- Non-admin gets 403 on `/api/admin/showcases`
 
 **CRUD:**
 - Create with valid URL → 201 + metadata populated
@@ -604,12 +669,16 @@ docs: update README index with 34-showcase-system
 - Update title directly (should fail or be ignored)
 - Delete own → 200
 - Delete others' → 403
+- Admin delete any → 200
+- Admin hide any → 200
 
 **Refresh:**
 - Owner refresh → 200 + updated metadata
 - Non-owner refresh → 403
 - Refresh deleted repo → 410
 - Refresh with rate limit → 422
+- Refresh renamed repo (no conflict) → 200 + updated repo_key
+- Refresh renamed repo (conflict exists) → 409
 
 **Upvote:**
 - Toggle on → upvoted=true, count+1
@@ -639,15 +708,19 @@ docs: update README index with 34-showcase-system
 - Refresh from GitHub updates title/description
 - Delete showcase with confirmation
 - Pagination: load more works correctly
+- Admin: view all showcases including hidden
+- Admin: hide/unhide showcase
+- Admin: delete showcase
 
 ## Security Considerations
 
 1. **Public browse, auth for actions** — consistent with leaderboard
-2. **Ownership enforcement** — PATCH/DELETE/refresh check `user_id`
-3. **Hidden showcase isolation** — non-owner/admin returns 404, not 403
-4. **URL validation** — strict regex prevents injection
-5. **Tagline sanitization** — escape HTML on display
-6. **No GitHub token** — public API only, accept rate limits
+2. **Ownership enforcement** — PATCH/DELETE/refresh check `user_id` (or admin)
+3. **Admin bypass** — Admin can view/edit/delete any showcase for moderation
+4. **Hidden showcase isolation** — non-owner/non-admin returns 404, not 403
+5. **URL validation** — strict regex prevents injection
+6. **Tagline sanitization** — escape HTML on display
+7. **No GitHub token** — public API only, accept rate limits
 
 ## Decisions
 
@@ -665,7 +738,11 @@ docs: update README index with 34-showcase-system
 
 7. **Sort by created_at, not upvote_count** — Stable pagination. "Most upvoted" sort can be added later with explicit instability trade-off.
 
-8. **Read-time upvote count** — Display shows COUNT(*) from upvotes table; denormalized field for sort index only.
+8. **No denormalized upvote_count** — v1 computes count via JOIN. Simpler, always accurate, no drift. If performance becomes an issue at scale, add denormalized column then.
+
+9. **Refresh conflict handling** — If repo renamed to an already-showcased repo, return 409 with explanation. User must manually resolve (e.g., delete one showcase).
+
+10. **Admin moderation** — Admins can view all, edit any, delete any. Primary use case: hiding inappropriate content or spam.
 
 ---
 
