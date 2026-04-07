@@ -5,10 +5,17 @@
 "use client";
 
 import Link from "next/link";
-import { ExternalLink, Github } from "lucide-react";
+import { ExternalLink, Github, Star, GitFork, Code, Scale } from "lucide-react";
 import { ShowcaseImage } from "./showcase-image";
 import { UpvoteButton } from "./upvote-button";
 import type { Showcase } from "@/hooks/use-showcases";
+
+// Format large numbers (1000 -> 1k, 1000000 -> 1M)
+function formatCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return String(n);
+}
 
 interface ShowcaseCardProps {
   showcase: Showcase;
@@ -68,6 +75,34 @@ export function ShowcaseCard({ showcase, isLoggedIn, onLoginRequired }: Showcase
               {showcase.description}
             </p>
           )}
+
+          {/* GitHub stats badges */}
+          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            {showcase.stars > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                <Star className="h-2.5 w-2.5" />
+                {formatCount(showcase.stars)}
+              </span>
+            )}
+            {showcase.forks > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400">
+                <GitFork className="h-2.5 w-2.5" />
+                {formatCount(showcase.forks)}
+              </span>
+            )}
+            {showcase.language && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/15 px-2 py-0.5 text-[10px] font-medium text-purple-600 dark:text-purple-400">
+                <Code className="h-2.5 w-2.5" />
+                {showcase.language}
+              </span>
+            )}
+            {showcase.license && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-[10px] font-medium text-green-600 dark:text-green-400">
+                <Scale className="h-2.5 w-2.5" />
+                {showcase.license}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Footer: Submitter + GitHub owner */}

@@ -79,6 +79,7 @@ export async function GET(request: Request) {
       SELECT
         s.id, s.user_id, s.repo_key, s.github_url, s.title, s.description,
         s.tagline, s.og_image_url, s.is_public, s.created_at, s.refreshed_at,
+        s.stars, s.forks, s.language, s.license, s.topics, s.homepage,
         u.name as user_name, u.nickname as user_nickname, u.image as user_image,
         u.slug as user_slug, u.email as user_email,
         (SELECT COUNT(*) FROM showcase_upvotes WHERE showcase_id = s.id) as upvote_count
@@ -107,6 +108,12 @@ export async function GET(request: Request) {
         is_public: s.is_public === 1,
         created_at: s.created_at,
         refreshed_at: s.refreshed_at,
+        stars: s.stars ?? 0,
+        forks: s.forks ?? 0,
+        language: s.language ?? null,
+        license: s.license ?? null,
+        topics: s.topics ? JSON.parse(s.topics as string) : [],
+        homepage: s.homepage ?? null,
         user: {
           id: s.user_id,
           email: s.user_email,

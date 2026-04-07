@@ -30,6 +30,14 @@ export interface Showcase {
   is_public: boolean;
   created_at: string;
   refreshed_at?: string;
+  // GitHub stats
+  stars: number;
+  forks: number;
+  language: string | null;
+  license: string | null;
+  topics: string[];
+  homepage: string | null;
+  // User info
   user: ShowcaseUser;
   has_upvoted: boolean | null;
 }

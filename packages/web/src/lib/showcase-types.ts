@@ -40,6 +40,13 @@ export interface ShowcaseRowBase {
   is_public: number;
   created_at: string;
   refreshed_at: string;
+  // GitHub stats
+  stars: number;
+  forks: number;
+  language: string | null;
+  license: string | null;
+  topics: string | null; // JSON string in DB
+  homepage: string | null;
   // Computed via subquery
   upvote_count: number;
 }

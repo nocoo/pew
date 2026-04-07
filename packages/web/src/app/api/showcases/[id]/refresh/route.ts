@@ -14,6 +14,7 @@ import {
   GitHubError,
   gitHubErrorToStatus,
   gitHubErrorMessage,
+  type GitHubMetadata,
 } from "@/lib/github";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -82,13 +83,7 @@ export async function POST(request: Request, context: RouteContext) {
   const [, currentOwner, currentRepo] = urlMatch;
 
   // Fetch fresh metadata from GitHub
-  let metadata: {
-    owner: string;
-    name: string;
-    title: string;
-    description: string | null;
-    fullName: string;
-  };
+  let metadata: GitHubMetadata;
 
   try {
     metadata = await fetchGitHubMetadata(currentOwner, currentRepo);
@@ -147,7 +142,9 @@ export async function POST(request: Request, context: RouteContext) {
   try {
     await dbWrite.execute(
       `UPDATE showcases
-       SET title = ?, description = ?, og_image_url = ?, repo_key = ?, github_url = ?, refreshed_at = ?, updated_at = ?
+       SET title = ?, description = ?, og_image_url = ?, repo_key = ?, github_url = ?,
+           stars = ?, forks = ?, language = ?, license = ?, topics = ?, homepage = ?,
+           refreshed_at = ?, updated_at = ?
        WHERE id = ?`,
       [
         metadata.title,
@@ -155,6 +152,12 @@ export async function POST(request: Request, context: RouteContext) {
         ogImageUrl,
         newRepoKey,
         newGithubUrl,
+        metadata.stars,
+        metadata.forks,
+        metadata.language,
+        metadata.license,
+        JSON.stringify(metadata.topics),
+        metadata.homepage,
         now,
         now,
         id,
@@ -174,6 +177,12 @@ export async function POST(request: Request, context: RouteContext) {
     og_image_url: ogImageUrl,
     repo_key: newRepoKey,
     github_url: newGithubUrl,
+    stars: metadata.stars,
+    forks: metadata.forks,
+    language: metadata.language,
+    license: metadata.license,
+    topics: metadata.topics,
+    homepage: metadata.homepage,
     refreshed_at: now,
   });
 }

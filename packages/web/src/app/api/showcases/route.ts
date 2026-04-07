@@ -60,6 +60,7 @@ export async function GET(request: Request) {
         SELECT
           s.id, s.user_id, s.repo_key, s.github_url, s.title, s.description,
           s.tagline, s.og_image_url, s.is_public, s.created_at, s.refreshed_at,
+          s.stars, s.forks, s.language, s.license, s.topics, s.homepage,
           u.name as user_name, u.nickname as user_nickname, u.image as user_image, u.slug as user_slug,
           (SELECT COUNT(*) FROM showcase_upvotes WHERE showcase_id = s.id) as upvote_count,
           EXISTS(SELECT 1 FROM showcase_upvotes WHERE showcase_id = s.id AND user_id = ?) as has_upvoted
@@ -90,6 +91,7 @@ export async function GET(request: Request) {
           SELECT
             s.id, s.user_id, s.repo_key, s.github_url, s.title, s.description,
             s.tagline, s.og_image_url, s.is_public, s.created_at, s.refreshed_at,
+            s.stars, s.forks, s.language, s.license, s.topics, s.homepage,
             u.name as user_name, u.nickname as user_nickname, u.image as user_image, u.slug as user_slug,
             (SELECT COUNT(*) FROM showcase_upvotes WHERE showcase_id = s.id) as upvote_count,
             EXISTS(SELECT 1 FROM showcase_upvotes WHERE showcase_id = s.id AND user_id = ?) as has_upvoted
@@ -107,6 +109,7 @@ export async function GET(request: Request) {
           SELECT
             s.id, s.user_id, s.repo_key, s.github_url, s.title, s.description,
             s.tagline, s.og_image_url, s.is_public, s.created_at, s.refreshed_at,
+            s.stars, s.forks, s.language, s.license, s.topics, s.homepage,
             u.name as user_name, u.nickname as user_nickname, u.image as user_image, u.slug as user_slug,
             (SELECT COUNT(*) FROM showcase_upvotes WHERE showcase_id = s.id) as upvote_count
           FROM showcases s
@@ -132,6 +135,12 @@ export async function GET(request: Request) {
         upvote_count: s.upvote_count,
         is_public: mine ? s.is_public === 1 : true,
         created_at: s.created_at,
+        stars: s.stars ?? 0,
+        forks: s.forks ?? 0,
+        language: s.language ?? null,
+        license: s.license ?? null,
+        topics: s.topics ? JSON.parse(s.topics as string) : [],
+        homepage: s.homepage ?? null,
         user: {
           id: s.user_id,
           name: s.user_name,
@@ -243,10 +252,22 @@ export async function POST(request: Request) {
   // Fetch metadata from GitHub
   let title: string;
   let description: string | null;
+  let stars: number;
+  let forks: number;
+  let language: string | null;
+  let license: string | null;
+  let topics: string[];
+  let homepage: string | null;
   try {
     const metadata = await fetchGitHubMetadata(owner, repo);
     title = metadata.title;
     description = metadata.description;
+    stars = metadata.stars;
+    forks = metadata.forks;
+    language = metadata.language;
+    license = metadata.license;
+    topics = metadata.topics;
+    homepage = metadata.homepage;
   } catch (err) {
     if (err instanceof GitHubError) {
       return NextResponse.json(
@@ -294,9 +315,9 @@ export async function POST(request: Request) {
 
   try {
     await dbWrite.execute(
-      `INSERT INTO showcases (id, user_id, repo_key, github_url, title, description, tagline, og_image_url, is_public, refreshed_at, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`,
-      [id, user.userId, repoKey, displayUrl, title, description, tagline || null, ogImageUrl, now, now, now]
+      `INSERT INTO showcases (id, user_id, repo_key, github_url, title, description, tagline, og_image_url, is_public, stars, forks, language, license, topics, homepage, refreshed_at, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, user.userId, repoKey, displayUrl, title, description, tagline || null, ogImageUrl, stars, forks, language, license, JSON.stringify(topics), homepage, now, now, now]
     );
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
@@ -324,6 +345,12 @@ export async function POST(request: Request) {
       og_image_url: ogImageUrl,
       is_public: true,
       upvote_count: 0,
+      stars,
+      forks,
+      language,
+      license,
+      topics,
+      homepage,
       created_at: now,
     },
     { status: 201 }
