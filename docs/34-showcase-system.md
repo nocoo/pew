@@ -26,6 +26,7 @@ Consistent with existing leaderboard:
 | Edit own showcase | Yes (owner only) |
 | Delete own showcase | Yes (owner only) |
 | View hidden showcase | Yes (owner/admin only) |
+| Refresh from GitHub | Yes (owner only) |
 
 ## Database Schema
 
@@ -43,19 +44,20 @@ CREATE TABLE IF NOT EXISTS showcases (
   user_id         TEXT NOT NULL REFERENCES users(id),       -- submitter
   repo_key        TEXT NOT NULL,                            -- normalized: "owner/repo" lowercase
   github_url      TEXT NOT NULL,                            -- display URL (original casing)
-  title           TEXT NOT NULL,                            -- fetched from GitHub, immutable
-  description     TEXT,                                     -- fetched from GitHub, immutable
+  title           TEXT NOT NULL,                            -- fetched from GitHub
+  description     TEXT,                                     -- fetched from GitHub
   tagline         TEXT,                                     -- user-provided recommendation (editable)
   og_image_url    TEXT,                                     -- GitHub OG image URL
   is_public       INTEGER NOT NULL DEFAULT 1,               -- 1=visible, 0=hidden
   upvote_count    INTEGER NOT NULL DEFAULT 0,               -- denormalized, updated atomically
+  refreshed_at    TEXT NOT NULL DEFAULT (datetime('now')),  -- last GitHub metadata sync
   created_at      TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at      TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(repo_key)                                          -- one submission per repo (normalized)
 );
 
 CREATE INDEX IF NOT EXISTS idx_showcases_user ON showcases(user_id);
-CREATE INDEX IF NOT EXISTS idx_showcases_public_sort ON showcases(is_public, upvote_count DESC, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_showcases_public_sort ON showcases(is_public, created_at DESC);
 
 -- ============================================================
 -- Showcase Upvotes (one per user per showcase)
@@ -76,10 +78,11 @@ CREATE INDEX IF NOT EXISTS idx_showcase_upvotes_user ON showcase_upvotes(user_id
 ### Schema Notes
 
 - **`repo_key`** (not `github_url`) has UNIQUE constraint — normalized `owner/repo` lowercase
-- **`title` / `description`** are immutable after creation (fetched from GitHub)
+- **`title` / `description`** fetched from GitHub, can be refreshed via owner action
 - **`tagline`** is user-editable recommendation text (optional, max 280 chars)
 - **`upvote_count`** updated atomically with upvote insert/delete (same SQL statement batch)
 - **`og_image_url`** constructed from repo_key, with fallback placeholder
+- **`refreshed_at`** tracks last GitHub metadata sync
 
 ### URL Normalization
 
@@ -112,7 +115,22 @@ POST /api/showcases              — submit new showcase (auth required)
 |-------|------|-------------|
 | `mine` | `"1"` | If set, return current user's showcases (auth required) |
 | `limit` | number | Max results (default 20, max 100) |
-| `cursor` | string | Pagination cursor (showcase ID) |
+| `offset` | number | Skip first N results (default 0) |
+
+#### Pagination Strategy: Offset/Limit
+
+**v1 uses simple offset/limit pagination** instead of cursor-based pagination.
+
+Rationale:
+- Showcase list is expected to be small in v1 (<1000 items)
+- `upvote_count` changes frequently via user actions
+- Cursor-based pagination with mutable sort keys (upvote_count) would require complex tuple cursors (`{upvote_count, created_at, id}`) and still exhibit instability during concurrent upvotes
+- Offset/limit is simpler to implement and debug
+- Trade-off: deep pagination may show duplicates/gaps if data changes mid-browse — acceptable for v1 given small dataset
+
+Future: If showcase count grows significantly, revisit with:
+- Keyset pagination on stable sort (created_at DESC, id DESC)
+- Or accept upvote_count instability as "live leaderboard" behavior
 
 #### GET Response
 
@@ -127,6 +145,7 @@ interface ShowcaseListResponse {
     tagline: string | null;
     og_image_url: string | null;
     upvote_count: number;
+    is_public: boolean;         // included for mine=1; always true for public list
     created_at: string;
     user: {
       id: string;
@@ -137,14 +156,22 @@ interface ShowcaseListResponse {
     };
     has_upvoted: boolean | null;  // null if not logged in
   }>;
-  next_cursor: string | null;
+  total: number;                  // total count for pagination UI
+  limit: number;
+  offset: number;
 }
 ```
 
 **Behavior:**
-- Without `mine`: returns `is_public=1` showcases only
-- With `mine=1`: returns all showcases owned by current user (requires auth)
+- Without `mine`: returns `is_public=1` showcases only, `is_public` always `true` in response
+- With `mine=1`: returns all showcases owned by current user (requires auth), includes actual `is_public` value
 - `has_upvoted` is `null` for unauthenticated requests
+- Sorted by `created_at DESC, id DESC` (stable sort)
+
+**Sorting rationale:**
+- v1 uses `created_at DESC` (newest first) as primary sort, not `upvote_count`
+- This avoids pagination instability from concurrent upvotes
+- "Most upvoted" can be a future sort option with explicit instability trade-off
 
 #### POST Request
 
@@ -219,7 +246,40 @@ interface UpdateShowcaseRequest {
 }
 ```
 
-**Note:** `title` and `description` are NOT editable — they come from GitHub. If user wants to change them, they should update their GitHub repo.
+**Note:** `title` and `description` are NOT directly editable. Use the refresh endpoint to re-fetch from GitHub.
+
+### `/api/showcases/[id]/refresh` — Refresh from GitHub
+
+```
+POST /api/showcases/[id]/refresh  — re-fetch metadata from GitHub (owner only)
+```
+
+This endpoint allows showcase owners to update title, description, and OG image when they've changed their GitHub repository.
+
+#### Response
+
+```typescript
+interface RefreshResponse {
+  title: string;
+  description: string | null;
+  og_image_url: string;
+  refreshed_at: string;
+}
+```
+
+**Behavior:**
+- Re-fetches metadata from GitHub API
+- Updates `title`, `description`, `og_image_url`, `refreshed_at`
+- If repo was renamed/transferred, updates `repo_key` and `github_url`
+- If repo no longer exists (404), returns error but does NOT delete showcase
+
+**Response codes:**
+- `200` — Refreshed successfully
+- `401` — Not authenticated
+- `403` — Not owner
+- `404` — Showcase not found (or hidden and not owner)
+- `410` — GitHub repo no longer exists ("Repository was deleted or made private")
+- `422` — GitHub API error
 
 ### `/api/showcases/[id]/upvote` — Toggle Upvote
 
@@ -232,7 +292,7 @@ POST /api/showcases/[id]/upvote  — toggle upvote (auth required)
 ```typescript
 interface UpvoteResponse {
   upvoted: boolean;       // new state after toggle
-  upvote_count: number;   // updated count
+  upvote_count: number;   // updated count (from showcase_upvotes, not denormalized)
 }
 ```
 
@@ -266,7 +326,33 @@ await dbWrite.batch([
 ]);
 ```
 
-**Note:** D1 batch is NOT transactional, but both statements affect independent rows. Worst case on partial failure: count drifts by 1. Acceptable for v1; can add periodic reconciliation job later if needed.
+#### Upvote Count Consistency
+
+**D1 batch is NOT transactional.** On partial failure, `upvote_count` may drift from actual `COUNT(*)` of `showcase_upvotes`.
+
+**Mitigation strategy:**
+
+1. **Read-time truth**: When returning `upvote_count` in API responses, read from `showcase_upvotes` aggregate:
+   ```sql
+   SELECT s.*, COUNT(u.id) as actual_upvote_count
+   FROM showcases s
+   LEFT JOIN showcase_upvotes u ON u.showcase_id = s.id
+   WHERE s.id = ?
+   GROUP BY s.id
+   ```
+
+2. **Denormalized field for sorting only**: `showcases.upvote_count` is used for index-based sorting but NOT trusted for display.
+
+3. **Periodic reconciliation**: Admin endpoint or cron job to fix drift:
+   ```sql
+   UPDATE showcases SET upvote_count = (
+     SELECT COUNT(*) FROM showcase_upvotes WHERE showcase_id = showcases.id
+   )
+   ```
+
+4. **Optimistic UI**: Frontend shows optimistic count; on error rollback, re-fetch true count.
+
+This approach ensures **display accuracy** while accepting **sort-order may lag by 1** in rare partial-failure scenarios.
 
 ## GitHub Integration
 
@@ -315,8 +401,12 @@ async function fetchGitHubMetadata(owner: string, repo: string): Promise<GitHubM
 
   const data = await res.json();
   return {
+    // Handle repo rename/transfer: use current owner/name from API response
+    owner: data.owner?.login || owner,
+    name: data.name || repo,
     title: data.name || `${owner}/${repo}`,
     description: data.description || null,
+    fullName: data.full_name,  // "current_owner/current_name" for rename detection
   };
 }
 ```
@@ -379,7 +469,7 @@ New tab in LeaderboardNav alongside Individual, Seasons, Achievements.
   - Submitter avatar + name (bottom)
   - Upvote button + count (right side)
 
-**Sorting:** `upvote_count DESC, created_at DESC, id DESC`
+**Sorting:** `created_at DESC, id DESC` (newest first, stable)
 
 **Upvote interaction:**
 - Not logged in: clicking upvote shows "Login to upvote" tooltip or redirects
@@ -400,7 +490,7 @@ Dashboard page for managing user's showcases.
   - Title, tagline (truncated)
   - Upvote count
   - Public/Hidden badge
-  - Actions: Edit (tagline + visibility), Delete
+  - Actions: Edit (tagline + visibility), Refresh, Delete
 
 **Add Showcase Modal:**
 1. Input: GitHub URL
@@ -412,7 +502,8 @@ Dashboard page for managing user's showcases.
 **Edit Showcase Modal:**
 - Tagline input (editable)
 - Public/Hidden toggle
-- "Title and description come from GitHub" note with link to edit on GitHub
+- "Refresh from GitHub" button (updates title/description)
+- Note: "Title and description are synced from GitHub"
 - Save/Cancel buttons
 
 ## Component Hierarchy
@@ -434,6 +525,8 @@ packages/web/src/
 │           │   └── route.ts           # POST preview
 │           └── [id]/
 │               ├── route.ts           # GET, PATCH, DELETE
+│               ├── refresh/
+│               │   └── route.ts       # POST refresh from GitHub
 │               └── upvote/
 │                   └── route.ts       # POST toggle
 ├── components/
@@ -455,15 +548,16 @@ packages/web/src/
 3. **API: Preview** — `api/showcases/preview/route.ts`
 4. **API: List & Create** — `api/showcases/route.ts`
 5. **API: Single CRUD** — `api/showcases/[id]/route.ts`
-6. **API: Upvote** — `api/showcases/[id]/upvote/route.ts`
+6. **API: Refresh** — `api/showcases/[id]/refresh/route.ts`
+7. **API: Upvote** — `api/showcases/[id]/upvote/route.ts`
 
 ### Phase 2: Frontend
 
-7. **LeaderboardNav update** — add Showcases tab
-8. **Showcase components** — card, image, upvote button
-9. **Leaderboard showcases page** — `/leaderboard/showcases`
-10. **Settings showcases page** — `/settings/showcases`
-11. **Form modal** — add/edit with preview
+8. **LeaderboardNav update** — add Showcases tab
+9. **Showcase components** — card, image, upvote button
+10. **Leaderboard showcases page** — `/leaderboard/showcases`
+11. **Settings showcases page** — `/settings/showcases`
+12. **Form modal** — add/edit with preview and refresh
 
 ## Atomic Commits
 
@@ -473,6 +567,7 @@ feat(lib): add GitHub URL normalization and metadata fetch helpers
 feat(api): implement showcase preview endpoint
 feat(api): implement showcases list and create endpoints
 feat(api): implement showcase single CRUD operations
+feat(api): implement showcase refresh from GitHub
 feat(api): implement showcase upvote toggle
 feat(web): add Showcases tab to LeaderboardNav
 feat(web): add showcase card and image components
@@ -506,19 +601,33 @@ docs: update README index with 34-showcase-system
 - Create with non-existent repo → 404
 - Create duplicate repo_key → 409
 - Update tagline → 200
-- Update title (should fail or be ignored)
+- Update title directly (should fail or be ignored)
 - Delete own → 200
 - Delete others' → 403
+
+**Refresh:**
+- Owner refresh → 200 + updated metadata
+- Non-owner refresh → 403
+- Refresh deleted repo → 410
+- Refresh with rate limit → 422
 
 **Upvote:**
 - Toggle on → upvoted=true, count+1
 - Toggle off → upvoted=false, count-1
 - Idempotent: double toggle = original state
+- Verify returned count matches actual COUNT(*)
+
+**Pagination:**
+- offset=0, limit=10 returns first 10
+- offset=10, limit=10 returns next 10
+- offset beyond total returns empty array
+- total count is accurate
 
 **Edge cases:**
 - GitHub API rate limit simulation → 422
 - GitHub timeout → 422
 - Empty description from GitHub → null stored
+- URL case variations normalize to same repo_key
 
 ### L3 — E2E (Playwright)
 
@@ -527,12 +636,14 @@ docs: update README index with 34-showcase-system
 - Add showcase from leaderboard page
 - Add showcase from settings page
 - Edit tagline, toggle visibility
+- Refresh from GitHub updates title/description
 - Delete showcase with confirmation
+- Pagination: load more works correctly
 
 ## Security Considerations
 
 1. **Public browse, auth for actions** — consistent with leaderboard
-2. **Ownership enforcement** — PATCH/DELETE check `user_id`
+2. **Ownership enforcement** — PATCH/DELETE/refresh check `user_id`
 3. **Hidden showcase isolation** — non-owner/admin returns 404, not 403
 4. **URL validation** — strict regex prevents injection
 5. **Tagline sanitization** — escape HTML on display
@@ -540,7 +651,7 @@ docs: update README index with 34-showcase-system
 
 ## Decisions
 
-1. **Title/description immutable** — Source of truth is GitHub. Encourages users to maintain good GitHub READMEs.
+1. **Title/description from GitHub with refresh** — Source of truth is GitHub. Owner can manually trigger refresh when they update their repo.
 
 2. **Tagline field** — Allows personal recommendation without duplicating GitHub metadata. Max 280 chars (tweet-length).
 
@@ -550,7 +661,11 @@ docs: update README index with 34-showcase-system
 
 5. **Plain img, not next/image** — Avoids remote domain whitelist complexity. Fallback handles failures gracefully.
 
-6. **20 items per page** — Reasonable for ProductHunt-style browsing. Cursor pagination for performance.
+6. **Offset/limit pagination** — Simple and correct for small dataset. Cursor pagination deferred until scale requires it.
+
+7. **Sort by created_at, not upvote_count** — Stable pagination. "Most upvoted" sort can be added later with explicit instability trade-off.
+
+8. **Read-time upvote count** — Display shows COUNT(*) from upvotes table; denormalized field for sort index only.
 
 ---
 
