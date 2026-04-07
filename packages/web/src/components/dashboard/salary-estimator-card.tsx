@@ -38,12 +38,11 @@ const RANGE_OPTIONS: RangeOption[] = [
   { value: "all", label: "All time" },
 ];
 
-// Default I/O ratios for upper/lower bounds
-// Based on typical pricing: input=$3, output=$15 per 1M tokens
-// At 100% output (worst case), effective rate is highest
-// At 100% input (best case), effective rate is lowest
-const LOWER_BOUND_OUTPUT_RATIO = 0.1; // 10% output = cheaper
-const UPPER_BOUND_OUTPUT_RATIO = 0.4; // 40% output = more expensive
+// Upper/lower bound multipliers for salary range
+// Based on typical I/O ratio variance: more output = higher cost = higher implied salary
+// Actual cost already reflects real I/O ratio, so we apply a ±30% range
+const LOWER_BOUND_MULTIPLIER = 0.7; // 70% of actual (if I/O ratio were more favorable)
+const UPPER_BOUND_MULTIPLIER = 1.3; // 130% of actual (if I/O ratio were less favorable)
 
 // ---------------------------------------------------------------------------
 // Context for sharing slider state between card and chart
@@ -96,24 +95,6 @@ function dailyCostToYearlySalary(
   const ratio = huangRatio / 100;
   if (ratio === 0) return 0;
   return (adjustedCost * 365) / ratio;
-}
-
-/**
- * Estimate cost based on token counts and output ratio.
- * Uses default fallback pricing: input=$3/1M, output=$15/1M
- */
-function estimateCostWithRatio(
-  totalTokens: number,
-  outputRatio: number
-): number {
-  const M = 1_000_000;
-  const inputPrice = 3; // $/1M tokens
-  const outputPrice = 15; // $/1M tokens
-
-  const outputTokens = totalTokens * outputRatio;
-  const inputTokens = totalTokens * (1 - outputRatio);
-
-  return (inputTokens / M) * inputPrice + (outputTokens / M) * outputPrice;
 }
 
 /** Format date string "2026-03-07" to "Mar 7" */
@@ -274,17 +255,13 @@ function SalaryTrendChart({ data, className }: SalaryTrendChartProps) {
 
   const chartData = useMemo(() => {
     return data.map((d) => {
-      const totalTokens = d.inputTokens + d.outputTokens;
-
       // Use actual cost for the "actual" line
       const actualSalary = dailyCostToYearlySalary(d.totalCost, huangRatio, priceMultiplier);
 
-      // Calculate upper/lower bounds using fixed output ratios
-      const lowerCost = estimateCostWithRatio(totalTokens, LOWER_BOUND_OUTPUT_RATIO);
-      const upperCost = estimateCostWithRatio(totalTokens, UPPER_BOUND_OUTPUT_RATIO);
-
-      const lowerSalary = dailyCostToYearlySalary(lowerCost, huangRatio, priceMultiplier);
-      const upperSalary = dailyCostToYearlySalary(upperCost, huangRatio, priceMultiplier);
+      // Upper/lower bounds are ±30% of actual salary
+      // This reflects variance from different I/O ratios and model choices
+      const lowerSalary = actualSalary * LOWER_BOUND_MULTIPLIER;
+      const upperSalary = actualSalary * UPPER_BOUND_MULTIPLIER;
 
       return {
         date: d.date,
