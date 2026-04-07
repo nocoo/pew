@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.2.3
+
+### Changed
+- Update @nocoo/cli-base to 0.2.2
+
 ## v2.2.2
 
 ### Added
