@@ -21,7 +21,7 @@
     },
     "packages/cli": {
       "name": "@nocoo/pew",
-      "version": "2.2.1",
+      "version": "2.2.2",
       "bin": {
         "pew": "dist/bin.js",
       },
@@ -35,14 +35,14 @@
     },
     "packages/core": {
       "name": "@pew/core",
-      "version": "2.2.1",
+      "version": "2.2.2",
       "devDependencies": {
         "@types/node": "^22.0.0",
       },
     },
     "packages/web": {
       "name": "@pew/web",
-      "version": "2.2.1",
+      "version": "2.2.2",
       "dependencies": {
         "@auth/core": "^0.34.3",
         "@aws-sdk/client-s3": "^3.1007.0",
@@ -72,7 +72,7 @@
     },
     "packages/worker": {
       "name": "@pew/worker",
-      "version": "2.2.1",
+      "version": "2.2.2",
       "devDependencies": {
         "@cloudflare/workers-types": "^4.20250307.0",
         "@pew/core": "workspace:*",
@@ -82,7 +82,7 @@
     },
     "packages/worker-read": {
       "name": "@pew/worker-read",
-      "version": "2.2.1",
+      "version": "2.2.2",
       "devDependencies": {
         "@cloudflare/workers-types": "^4.20250307.0",
         "typescript": "^5.9.0",
@@ -408,7 +408,7 @@
 
     "@next/swc-win32-x64-msvc": ["@next/swc-win32-x64-msvc@16.2.1", "", { "os": "win32", "cpu": "x64" }, "sha512-qvU+3a39Hay+ieIztkGSbF7+mccbbg1Tk25hc4JDylf8IHjYmY/Zm64Qq1602yPyQqvie+vf5T/uPwNxDNIoeg=="],
 
-    "@nocoo/cli-base": ["@nocoo/cli-base@0.2.0", "", { "dependencies": { "citty": "^0.2.2", "consola": "^3.4.2", "picocolors": "^1.1.1", "yocto-spinner": "^1.1.0" } }, "sha512-P/Etnv8G1MCO9ztAMPrNnSWPUs6XM4OOtwrqV9eurlDgFDfxtZxfLfkuZ61ifyYdRuV/PdDs4uxIHfGuKsTgZQ=="],
+    "@nocoo/cli-base": ["@nocoo/cli-base@0.2.2", "", { "dependencies": { "citty": "^0.2.2", "consola": "^3.4.2", "picocolors": "^1.1.1", "yocto-spinner": "^1.1.0" } }, "sha512-ZHenk0iGyOqaTJVnvmNsKsbqYq5Q/brp6qYOIkSye1DeLibNqU7HGNON6uvCkbg6SwKzYG3ZiTNcB+N80zUlrA=="],
 
     "@nocoo/pew": ["@nocoo/pew@workspace:packages/cli"],
 
