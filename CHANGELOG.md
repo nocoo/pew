@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.2.7
+
+### Added
+- Add danger zone with account deletion
+- Improve leaderboard token column and seasons timeline
+
+### Fixed
+- Remove bare fallback to enforce fail-closed on missing is_public
+- Enforce is_public opt-out across all public leaderboard APIs
+- Use fixed 280px token column width for alignment
+- Add gap between season timeline cards
+
+### Removed
+- Remove admin mode from public leaderboard API
+
 ## v2.2.6
 
 ### Fixed
