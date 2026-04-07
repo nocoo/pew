@@ -41,11 +41,16 @@ function generateApiKey(): string {
 
 export async function POST(request: Request) {
   // 1. Parse and validate request body
-  let body: { code?: string };
+  let body: { code?: string } | null;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  // Handle null/non-object JSON (e.g. JSON.parse("null") returns null)
+  if (!body || typeof body !== "object") {
+    return NextResponse.json({ error: "code is required" }, { status: 400 });
   }
 
   const code = body.code?.trim().toUpperCase();

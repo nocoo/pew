@@ -575,6 +575,20 @@ describe("POST /api/auth/code/verify", () => {
     expect(body.error).toBe("Invalid JSON body");
   });
 
+  it("should return 400 when body is JSON null", async () => {
+    const request = new Request("http://localhost/api/auth/code/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "null",
+    });
+
+    const response = await verifyPOST(request);
+    expect(response.status).toBe(400);
+
+    const body = await response.json();
+    expect(body.error).toBe("code is required");
+  });
+
   it("should return 500 when user not found and NOT consume code", async () => {
     const mockFirstOrNull = vi.fn()
       .mockResolvedValueOnce({
