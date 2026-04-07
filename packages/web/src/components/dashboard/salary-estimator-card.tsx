@@ -3,7 +3,6 @@
 import { useState, useMemo } from "react";
 import { Banknote, ExternalLink, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { chart } from "@/lib/palette";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -105,7 +104,7 @@ export function SalaryEstimatorCard({
       {/* Header */}
       <div className="mb-4 flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
-          <div className="rounded-md bg-card p-2 text-chart-6">
+          <div className="rounded-md bg-card p-2 text-primary">
             <Banknote className="h-4 w-4" strokeWidth={1.5} />
           </div>
           <div>
@@ -257,11 +256,15 @@ function SliderControl({
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-foreground">{label}</span>
-          {isDefault && (
-            <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-              Default
-            </span>
-          )}
+          {/* Always render badge container to prevent layout shift */}
+          <span
+            className={cn(
+              "rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary transition-opacity",
+              isDefault ? "opacity-100" : "opacity-0"
+            )}
+          >
+            Default
+          </span>
         </div>
         <span className="text-xs font-semibold tabular-nums text-foreground">
           {formatValue(value)}
@@ -294,8 +297,8 @@ function SliderControl({
           border-radius: 3px;
           background: linear-gradient(
             to right,
-            ${chart.gold} 0%,
-            ${chart.gold} var(--slider-pct),
+            hsl(var(--primary)) 0%,
+            hsl(var(--primary)) var(--slider-pct),
             hsl(var(--muted)) var(--slider-pct),
             hsl(var(--muted)) 100%
           );
@@ -308,7 +311,7 @@ function SliderControl({
           width: 16px;
           height: 16px;
           border-radius: 50%;
-          background: hsl(var(--foreground));
+          background: hsl(var(--primary));
           border: 2px solid hsl(var(--background));
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
           cursor: pointer;
@@ -323,7 +326,7 @@ function SliderControl({
           width: 16px;
           height: 16px;
           border-radius: 50%;
-          background: hsl(var(--foreground));
+          background: hsl(var(--primary));
           border: 2px solid hsl(var(--background));
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
           cursor: pointer;
