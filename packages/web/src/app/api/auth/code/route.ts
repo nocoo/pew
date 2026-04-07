@@ -45,20 +45,11 @@ export async function POST(request: Request) {
   const dbWrite = await getDbWrite();
 
   try {
-    // 2. Invalidate any existing unused codes for this user
-    await dbWrite.execute(
-      `UPDATE auth_codes
-       SET used_at = datetime('now')
-       WHERE user_id = ? AND used_at IS NULL`,
-      [userId]
-    );
-
-    // 3. Generate new code
-    const code = generateCode();
+    // 2. Generate new code and insert (retry with new code on collision)
     const expiresAt = new Date(Date.now() + EXPIRY_MINUTES * 60 * 1000).toISOString();
-
-    // 4. Insert (retry on collision, extremely unlikely)
+    let code = generateCode();
     let attempts = 0;
+
     while (attempts < 3) {
       try {
         await dbWrite.execute(
@@ -71,11 +62,21 @@ export async function POST(request: Request) {
         const message = err instanceof Error ? err.message : String(err);
         if (message.includes("UNIQUE constraint") && attempts < 2) {
           attempts++;
+          code = generateCode(); // Generate a fresh code for next attempt
           continue;
         }
         throw err;
       }
     }
+
+    // 3. Invalidate any OTHER existing unused codes for this user (after successful insert)
+    // This ensures the user always has at least one valid code (the new one we just created)
+    await dbWrite.execute(
+      `UPDATE auth_codes
+       SET used_at = datetime('now')
+       WHERE user_id = ? AND used_at IS NULL AND code != ?`,
+      [userId, code]
+    );
 
     return NextResponse.json({
       code,

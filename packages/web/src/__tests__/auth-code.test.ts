@@ -76,7 +76,7 @@ describe("POST /api/auth/code", () => {
     expect(diffMinutes).toBeLessThanOrEqual(5);
   });
 
-  it("should invalidate previous unused codes for the same user", async () => {
+  it("should invalidate previous unused codes AFTER successful insert", async () => {
     mockResolveUser.mockResolvedValue({
       userId: "user-123",
       email: "test@example.com",
@@ -94,17 +94,24 @@ describe("POST /api/auth/code", () => {
 
     await POST(request);
 
-    // First call should invalidate existing codes
-    expect(mockExecute).toHaveBeenCalledWith(
-      expect.stringContaining("UPDATE auth_codes"),
-      ["user-123"]
-    );
-
-    // Second call should insert new code
-    expect(mockExecute).toHaveBeenCalledWith(
+    // First call should INSERT new code
+    expect(mockExecute).toHaveBeenNthCalledWith(
+      1,
       expect.stringContaining("INSERT INTO auth_codes"),
       expect.arrayContaining(["user-123"])
     );
+
+    // Second call should invalidate OTHER codes (after successful insert)
+    expect(mockExecute).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining("UPDATE auth_codes"),
+      expect.arrayContaining(["user-123"])
+    );
+
+    // The UPDATE should exclude the newly inserted code
+    const secondCall = mockExecute.mock.calls[1] as [string, unknown[]] | undefined;
+    expect(secondCall).toBeDefined();
+    expect(secondCall![0]).toContain("code != ?");
   });
 
   it("should return 500 on database error", async () => {
@@ -130,19 +137,52 @@ describe("POST /api/auth/code", () => {
     expect(body.error).toBe("Failed to generate code");
   });
 
-  it("should retry on UNIQUE constraint violation and eventually fail", async () => {
+  it("should retry with NEW code on UNIQUE constraint violation", async () => {
     mockResolveUser.mockResolvedValue({
       userId: "user-123",
       email: "test@example.com",
     });
 
-    // First call succeeds (invalidate), second/third/fourth calls fail (UNIQUE constraint)
-    const mockExecute = vi.fn()
-      .mockResolvedValueOnce({ changes: 0 }) // invalidate existing codes
-      .mockRejectedValueOnce(new Error("UNIQUE constraint failed"))
-      .mockRejectedValueOnce(new Error("UNIQUE constraint failed"))
-      .mockRejectedValue(new Error("UNIQUE constraint failed")); // 3rd retry triggers throw
+    // Track the codes that were attempted
+    const attemptedCodes: string[] = [];
 
+    const mockExecute = vi.fn().mockImplementation((sql: string, params: unknown[]) => {
+      if (sql.includes("INSERT")) {
+        const code = params[0] as string;
+        attemptedCodes.push(code); // code is first param
+        if (attemptedCodes.length < 3) {
+          throw new Error("UNIQUE constraint failed");
+        }
+      }
+      return Promise.resolve({ changes: 1 });
+    });
+
+    mockGetDbWrite.mockResolvedValue({
+      execute: mockExecute,
+      batch: vi.fn(),
+    });
+
+    const request = new Request("http://localhost/api/auth/code", {
+      method: "POST",
+    });
+
+    const response = await POST(request);
+    expect(response.status).toBe(200);
+
+    // Should have tried 3 different codes
+    expect(attemptedCodes.length).toBe(3);
+    // Each code should be different (regenerated)
+    const uniqueCodes = new Set(attemptedCodes);
+    expect(uniqueCodes.size).toBe(3);
+  });
+
+  it("should return 500 after exhausting all retry attempts", async () => {
+    mockResolveUser.mockResolvedValue({
+      userId: "user-123",
+      email: "test@example.com",
+    });
+
+    const mockExecute = vi.fn().mockRejectedValue(new Error("UNIQUE constraint failed"));
     mockGetDbWrite.mockResolvedValue({
       execute: mockExecute,
       batch: vi.fn(),
@@ -158,8 +198,8 @@ describe("POST /api/auth/code", () => {
     const body = await response.json();
     expect(body.error).toBe("Failed to generate code");
 
-    // Should have tried 3 times + 1 invalidate
-    expect(mockExecute).toHaveBeenCalledTimes(4);
+    // Should have tried 3 times (initial + 2 retries)
+    expect(mockExecute).toHaveBeenCalledTimes(3);
   });
 });
 
