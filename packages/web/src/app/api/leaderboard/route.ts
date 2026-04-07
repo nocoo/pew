@@ -154,45 +154,9 @@ export async function GET(request: Request) {
         throw firstErr;
       }
 
-      // Level 1: retry without nickname (keeps is_public, admin, team semantics)
-      try {
-        result = await db.query<LeaderboardRow>(buildSql(false), params);
-      } catch (secondErr) {
-        const msg2 = secondErr instanceof Error ? secondErr.message : "";
-        if (!msg2.includes("no such column") && !msg2.includes("no such table")) {
-          throw secondErr;
-        }
-
-        // Level 2: strip everything new — no nickname, no is_public, no team join.
-        // This is the pre-migration baseline: slug IS NOT NULL only.
-        const bareConditions = ["1=1"];
-        const bareParams: unknown[] = [];
-        if (fromDate) {
-          bareConditions.push("ur.hour_start >= ?");
-          bareParams.push(fromDate);
-        }
-        bareParams.push(limit);
-
-        const bareSql = `
-          SELECT
-            ur.user_id,
-            u.name,
-            u.image,
-            u.slug,
-            SUM(ur.total_tokens) AS total_tokens,
-            SUM(ur.input_tokens) AS input_tokens,
-            SUM(ur.output_tokens) AS output_tokens,
-            SUM(ur.cached_input_tokens) AS cached_input_tokens
-          FROM usage_records ur
-          JOIN users u ON u.id = ur.user_id
-          WHERE ${bareConditions.join(" AND ")}
-          GROUP BY ur.user_id
-          HAVING total_tokens > 0
-          ORDER BY total_tokens DESC
-          LIMIT ?
-        `;
-        result = await db.query<LeaderboardRow>(bareSql, bareParams);
-      }
+      // Level 1: retry without nickname (keeps is_public and team semantics)
+      // If this also fails, fail closed — do not bypass opt-out filters
+      result = await db.query<LeaderboardRow>(buildSql(false), params);
     }
 
     // Fetch teams for all users in the leaderboard

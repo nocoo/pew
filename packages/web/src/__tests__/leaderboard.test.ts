@@ -234,30 +234,27 @@ describe("GET /api/leaderboard", () => {
       expect(fallbackSql).toContain("u.is_public = 1");
     });
 
-    it("should reach bare fallback when is_public column is missing", async () => {
-      // Full query fails, level 1 also fails (is_public missing), level 2 bare succeeds
+    it("should fail closed when is_public column is missing (no bare fallback)", async () => {
+      // Both queries fail because is_public column is missing — fail closed, don't bypass opt-out
       mockClient.query
         .mockRejectedValueOnce(new Error("no such column: u.is_public"))
-        .mockRejectedValueOnce(new Error("no such column: u.is_public"))
-        .mockResolvedValueOnce({ results: [] });
+        .mockRejectedValueOnce(new Error("no such column: u.is_public"));
 
       const res = await GET(makeGetRequest("/api/leaderboard"));
 
-      expect(res.status).toBe(200);
-      expect(mockClient.query).toHaveBeenCalledTimes(3);
-      const bareSql = mockClient.query.mock.calls[2]![0] as string;
-      expect(bareSql).not.toContain("u.is_public");
-      expect(bareSql).not.toContain("u.nickname");
+      expect(res.status).toBe(500);
+      expect(mockClient.query).toHaveBeenCalledTimes(2);
     });
 
-    it("should retry when first query throws 'no such table'", async () => {
+    it("should fail closed when team_members table is missing", async () => {
+      // Both queries fail because team_members table is missing — fail closed
       mockClient.query
         .mockRejectedValueOnce(new Error("no such table: team_members"))
-        .mockResolvedValueOnce({ results: [] });
+        .mockRejectedValueOnce(new Error("no such table: team_members"));
 
       const res = await GET(makeGetRequest("/api/leaderboard", { team: "t1" }));
 
-      expect(res.status).toBe(200);
+      expect(res.status).toBe(500);
       expect(mockClient.query).toHaveBeenCalledTimes(2);
     });
 
@@ -342,21 +339,6 @@ describe("GET /api/leaderboard", () => {
       const fallbackSql = mockClient.query.mock.calls[1]![0] as string;
       expect(fallbackSql).toContain("JOIN team_members tm");
       expect(fallbackSql).toContain("tm.team_id = ?");
-    });
-
-    it("should drop team join in level 2 bare fallback when team_members table missing", async () => {
-      // Both level 0 and level 1 fail because team_members doesn't exist
-      mockClient.query
-        .mockRejectedValueOnce(new Error("no such table: team_members"))
-        .mockRejectedValueOnce(new Error("no such table: team_members"))
-        .mockResolvedValueOnce({ results: [] });
-
-      const res = await GET(makeGetRequest("/api/leaderboard", { team: "t1" }));
-
-      expect(res.status).toBe(200);
-      expect(mockClient.query).toHaveBeenCalledTimes(3);
-      const bareSql = mockClient.query.mock.calls[2]![0] as string;
-      expect(bareSql).not.toContain("team_members");
     });
   });
 
