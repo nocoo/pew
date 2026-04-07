@@ -75,6 +75,59 @@ function normalizeModelId(raw: string): string {
   return raw.startsWith("copilot/") ? raw.slice(8) : raw;
 }
 
+/**
+ * Approximate chars-per-token ratio used for estimation.
+ * English prose and JSON/code average roughly 4 chars per token.
+ */
+const CHARS_PER_TOKEN = 4;
+
+/**
+ * Estimate tokens generated from tool call rounds that are NOT captured
+ * in metadata.outputTokens.
+ *
+ * VSCode Copilot's outputTokens only counts the final visible text reply.
+ * Two additional categories of model-generated content are omitted:
+ *
+ *   1. Tool call arguments (the JSON the model writes for each tool call)
+ *      → added to outputTokens (model generated, billed as output)
+ *
+ *   2. Extended thinking text (reasoning blocks visible in thinking.text)
+ *      → added to reasoningOutputTokens
+ *
+ * Returns integer estimates via floor(chars / CHARS_PER_TOKEN).
+ */
+export function estimateToolRoundTokens(rounds: unknown[]): {
+  toolArgsTokens: number;
+  thinkingTokens: number;
+} {
+  let toolArgsChars = 0;
+  let thinkingChars = 0;
+  for (const round of rounds) {
+    if (!round || typeof round !== "object") continue;
+    const r = round as Record<string, unknown>;
+
+    const toolCalls = r.toolCalls;
+    if (Array.isArray(toolCalls)) {
+      for (const tc of toolCalls) {
+        if (tc && typeof tc === "object") {
+          const args = (tc as Record<string, unknown>).arguments;
+          if (typeof args === "string") toolArgsChars += args.length;
+        }
+      }
+    }
+
+    const thinking = r.thinking;
+    if (thinking && typeof thinking === "object") {
+      const text = (thinking as Record<string, unknown>).text;
+      if (typeof text === "string") thinkingChars += text.length;
+    }
+  }
+  return {
+    toolArgsTokens: Math.floor(toolArgsChars / CHARS_PER_TOKEN),
+    thinkingTokens: Math.floor(thinkingChars / CHARS_PER_TOKEN),
+  };
+}
+
 /** Extract modelId and timestamp from a request object */
 function extractRequestMeta(req: Record<string, unknown>): RequestMeta | null {
   const rawModelId = req.modelId;
@@ -238,9 +291,11 @@ export async function parseVscodeCopilotFile(
 
         const promptTokens = toNonNegInt(metadata.promptTokens);
         const outputTokens = toNonNegInt(metadata.outputTokens);
+        const toolCallRounds = Array.isArray(metadata.toolCallRounds) ? metadata.toolCallRounds : [];
+        const { toolArgsTokens, thinkingTokens } = estimateToolRoundTokens(toolCallRounds);
 
-        // Skip zero-token results
-        if (promptTokens === 0 && outputTokens === 0) {
+        // Skip zero-token results (check all token sources)
+        if (promptTokens === 0 && outputTokens === 0 && toolArgsTokens === 0 && thinkingTokens === 0) {
           const modelState = typeof metadata.modelState === "number" ? metadata.modelState : undefined;
           onSkip?.({ index, reason: "zero tokens (promptTokens=0, outputTokens=0)", modelState });
           continue;
@@ -252,9 +307,9 @@ export async function parseVscodeCopilotFile(
           timestamp: new Date(meta.timestamp).toISOString(),
           tokens: {
             inputTokens: promptTokens,
-            outputTokens,
+            outputTokens: outputTokens + toolArgsTokens,
             cachedInputTokens: 0,
-            reasoningOutputTokens: 0,
+            reasoningOutputTokens: thinkingTokens,
           },
         });
       }
@@ -286,8 +341,10 @@ export async function parseVscodeCopilotFile(
 
     const promptTokens = toNonNegInt(metadata.promptTokens);
     const outputTokens = toNonNegInt(metadata.outputTokens);
+    const toolCallRounds = Array.isArray(metadata.toolCallRounds) ? metadata.toolCallRounds : [];
+    const { toolArgsTokens, thinkingTokens } = estimateToolRoundTokens(toolCallRounds);
 
-    if (promptTokens === 0 && outputTokens === 0) {
+    if (promptTokens === 0 && outputTokens === 0 && toolArgsTokens === 0 && thinkingTokens === 0) {
       const modelState = typeof metadata.modelState === "number" ? metadata.modelState : undefined;
       onSkip?.({ index, reason: "zero tokens (deferred)", modelState });
       continue;
@@ -299,9 +356,9 @@ export async function parseVscodeCopilotFile(
       timestamp: new Date(meta.timestamp).toISOString(),
       tokens: {
         inputTokens: promptTokens,
-        outputTokens,
+        outputTokens: outputTokens + toolArgsTokens,
         cachedInputTokens: 0,
-        reasoningOutputTokens: 0,
+        reasoningOutputTokens: thinkingTokens,
       },
     });
   }
