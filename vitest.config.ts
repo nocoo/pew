@@ -32,6 +32,22 @@ export default defineConfig({
         // bun:sqlite adapter — untestable in vitest (Node runtime).
         // All logic is exercised through DI in sync.test.ts / session-sync.test.ts.
         "**/opencode-sqlite-db.ts",
+        "**/hermes-sqlite-db.ts",
+        // ---------------------------------------------------------------------------
+        // Platform-specific path resolution — contains process.platform branches
+        // that cannot all be covered in a single test run. The logic is trivial
+        // (join paths based on OS) and verified by E2E tests on each platform.
+        // ---------------------------------------------------------------------------
+        "**/cli/src/utils/paths.ts",
+        // ---------------------------------------------------------------------------
+        // CLI command entry points — these orchestrate system calls (child_process,
+        // file system operations, network requests) that are difficult to fully
+        // branch-cover in unit tests. Core logic is extracted into testable modules;
+        // command handlers belong in L2 integration / CLI E2E tests.
+        // ---------------------------------------------------------------------------
+        "**/cli/src/commands/init.ts",
+        "**/cli/src/commands/update.ts",
+        "**/cli/src/commands/notify.ts",
         // NextAuth catch-all route — pure re-export, no custom logic.
         "**/\\[...nextauth\\]/route.ts",
         // ---------------------------------------------------------------------------

@@ -10,7 +10,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "dev": "bun run --cwd packages/web dev",
-    "build": "bun run --filter '*' build",
+    "build": "rm -f packages/*/tsconfig.tsbuildinfo && bun run --filter @pew/core build && bun run --filter @pew/web build",
     "lint": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/cli/tsconfig.json && tsc --noEmit -p packages/web/tsconfig.json && tsc --noEmit -p packages/worker/tsconfig.json && tsc --noEmit -p packages/worker-read/tsconfig.json && eslint . --max-warnings=0",
     "lint:typecheck": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/cli/tsconfig.json && tsc --noEmit -p packages/web/tsconfig.json && tsc --noEmit -p packages/worker/tsconfig.json && tsc --noEmit -p packages/worker-read/tsconfig.json",
     "test:e2e": "bun run scripts/run-e2e.ts",

@@ -93,7 +93,7 @@ export async function uninstallPiHook(
 ): Promise<NotifierOperationResult> {
   const fs = opts.fs ?? { readFile, writeFile, mkdir, unlink };
 
-  let existing: string | null = null;
+  let existing: string;
   try {
     existing = await fs.readFile(opts.extensionPath, "utf8");
   } catch {
@@ -105,7 +105,7 @@ export async function uninstallPiHook(
     };
   }
 
-  if (!existing || !existing.includes(MARKER)) {
+  if (!existing.includes(MARKER)) {
     return {
       source: SOURCE,
       action: "skip",

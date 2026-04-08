@@ -37,6 +37,27 @@ describe("resolveNotifierPaths", () => {
     expect(paths.hermesPluginDir).toBe(join("/home/tester", ".hermes", "plugins"));
   });
 
+  it("should ignore whitespace-only env values and use defaults", () => {
+    const paths = resolveNotifierPaths("/home/tester", {
+      GEMINI_HOME: "   ",
+      OPENCODE_CONFIG_DIR: "  \t  ",
+      CODEX_HOME: "",
+    });
+
+    // All should fall back to defaults since env values are whitespace-only
+    expect(paths.geminiDir).toBe(join("/home/tester", ".gemini"));
+    expect(paths.opencodeConfigDir).toBe(join("/home/tester", ".config", "opencode"));
+    expect(paths.codexHome).toBe(join("/home/tester", ".codex"));
+  });
+
+  it("should trim whitespace from env values", () => {
+    const paths = resolveNotifierPaths("/home/tester", {
+      GEMINI_HOME: "  /tmp/gemini  ",
+    });
+
+    expect(paths.geminiDir).toBe("/tmp/gemini");
+  });
+
   it("should follow GEMINI_HOME when set", () => {
     const paths = resolveNotifierPaths("/home/tester", {
       GEMINI_HOME: "/tmp/gemini-home",
