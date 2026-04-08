@@ -18,7 +18,8 @@ export type Source =
   | "opencode"
   | "openclaw"
   | "vscode-copilot"
-  | "copilot-cli";
+  | "copilot-cli"
+  | "hermes";
 
 // ---------------------------------------------------------------------------
 // Token types
@@ -143,6 +144,22 @@ export interface OpenCodeSqliteCursor {
   updatedAt: string;
 }
 
+/** Cursor for Hermes Agent SQLite database (session-level diff model) */
+export interface HermesSqliteCursor {
+  /** Map of session_id → last known token totals */
+  sessionTotals: Record<string, {
+    input: number;
+    output: number;
+    cacheRead: number;
+    cacheWrite: number;
+    reasoning: number;
+  }>;
+  /** DB file inode (detect file replacement) */
+  inode: number;
+  /** ISO 8601 timestamp of last update */
+  updatedAt: string;
+}
+
 /** Union of all cursor types, keyed by absolute file path */
 export type FileCursor =
   | ByteOffsetCursor
@@ -173,14 +190,16 @@ export interface CursorState {
    */
   knownFilePaths?: Record<string, true>;
   /**
-   * Set of DB source keys (e.g. "openCodeSqlite") that have been synced
-   * at least once. Parallel to `knownFilePaths` but for DB-based drivers.
-   * Used to detect "DB cursor lost" vs "first-time DB sync".
+   * Set of DB source keys (e.g. "openCodeSqlite", "hermesSqlite") that have
+   * been synced at least once. Parallel to `knownFilePaths` but for DB-based
+   * drivers. Used to detect "DB cursor lost" vs "first-time DB sync".
    *
    * Backfilled from existing cursor state on first access — no full
    * rescan needed for the upgrade path since the DB cursor itself is valid.
    */
   knownDbSources?: Record<string, true>;
+  /** Hermes Agent SQLite database cursor (separate from per-file cursors) */
+  hermesSqlite?: HermesSqliteCursor;
   /** ISO 8601 timestamp of last cursor update */
   updatedAt: string | null;
 }
