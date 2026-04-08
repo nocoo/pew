@@ -134,7 +134,7 @@ export function LandingContent() {
           </span>
           <span>
             <Code>pew init</Code> — install auto-sync hooks{" "}
-            <span className="text-muted-foreground/60">(runs sync on every session end)</span>
+            <span className="text-muted-foreground/60">(runs sync on every session end; Hermes requires manual plugin setup)</span>
           </span>
         </li>
         <li className="flex items-baseline gap-2">
