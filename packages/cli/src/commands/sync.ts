@@ -486,7 +486,17 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       return executeSync(opts);
     }
 
-    const result = await driver.run(prevCursor, ctx);
+    let result;
+    try {
+      result = await driver.run(prevCursor, ctx);
+    } catch (err) {
+      onProgress?.({
+        source: driver.source,
+        phase: "warn",
+        message: `Skipping ${displayName}: ${err instanceof Error ? err.message : String(err)}`,
+      });
+      continue; // Skip this DB source, continue with others
+    }
 
     // Detect DB inode change (same logic as file drivers)
     const dbCursor = result.cursor as { inode?: number };

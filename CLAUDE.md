@@ -10,7 +10,17 @@ pew is a monorepo (Bun workspaces) for tracking token usage from local AI coding
 
 ### Supported AI Tools
 
-Claude Code, Codex, Gemini CLI, OpenCode, OpenClaw, VS Code Copilot, GitHub Copilot CLI, Hermes Agent
+Claude Code, Codex, Gemini CLI, Hermes Agent, OpenCode, OpenClaw, Pi, VS Code Copilot, GitHub Copilot CLI
+
+### Source Scanning Principles
+
+Three inviolable rules govern how pew interacts with source data:
+
+1. **Raw Data is READ-ONLY**: Never modify, delete, or move any original log files from AI tools. pew only reads these files; write operations are limited to pew's own state files under `~/.config/pew/`.
+
+2. **Source Isolation**: Each source must be completely independent. Even if a parser has a bug, the worst case is that one source returns incorrect data — it must never corrupt or affect data from other sources.
+
+3. **Idempotent Uploads**: Users can `pew reset && pew sync` at any time. Duplicate uploads are safely deduplicated via `ON CONFLICT` upserts, never summed. The same raw data always produces the same final state.
 
 ### Key Conventions
 
@@ -21,7 +31,6 @@ Claude Code, Codex, Gemini CLI, OpenCode, OpenClaw, VS Code Copilot, GitHub Copi
 - **TDD**: Always write tests first, then implement
 - **Commits**: Conventional Commits, atomic, auto-commit after changes
 - **`@pew/core` is NOT published**: Pure types, `import type` only, `devDependencies`
-- **Raw data is READ-ONLY**: Never modify, delete, or move user's local AI tool log files (`~/.claude/`, `~/.gemini/`, `~/.local/share/opencode/`, `~/.openclaw/`). pew only reads these files. Write operations are limited to pew's own state files under `~/.config/pew/`.
 
 ### DateTime Strategy
 
