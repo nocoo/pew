@@ -178,8 +178,8 @@ This ensures RPC migration doesn't break production behavior.
 
 ### Phase 2: RPC Migration
 - [x] users (P0) — RPC handlers, DbRead interface, adapter methods, partial route migration
-- [ ] projects (P0)
-- [ ] teams (P1)
+- [x] projects (P0)
+- [x] teams (P1)
 - [ ] seasons (P1)
 - [ ] usage (P1)
 - [ ] achievements (P1)

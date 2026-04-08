@@ -19,6 +19,10 @@
 import { handleUsersRpc, type UsersRpcRequest } from "./rpc/users";
 import { handleProjectsRpc, type ProjectsRpcRequest } from "./rpc/projects";
 import { handleTeamsRpc, type TeamsRpcRequest } from "./rpc/teams";
+import { handleSeasonsRpc, type SeasonsRpcRequest } from "./rpc/seasons";
+import { handleUsageRpc, type UsageRpcRequest } from "./rpc/usage";
+import { handleAchievementsRpc, type AchievementsRpcRequest } from "./rpc/achievements";
+import { handleDevicesRpc, type DevicesRpcRequest } from "./rpc/devices";
 
 // ---------------------------------------------------------------------------
 // Version
@@ -279,7 +283,14 @@ async function handleQuery(body: unknown, env: Env): Promise<Response> {
 
 // Union of all RPC request types (add new domains here as they are implemented)
 // Exported for use in type guards and client-side type safety
-export type RpcRequest = UsersRpcRequest | ProjectsRpcRequest | TeamsRpcRequest;
+export type RpcRequest =
+  | UsersRpcRequest
+  | ProjectsRpcRequest
+  | TeamsRpcRequest
+  | SeasonsRpcRequest
+  | UsageRpcRequest
+  | AchievementsRpcRequest
+  | DevicesRpcRequest;
 
 async function handleRpc(body: unknown, env: Env): Promise<Response> {
   if (typeof body !== "object" || body === null) {
@@ -303,6 +314,14 @@ async function handleRpc(body: unknown, env: Env): Promise<Response> {
         return handleProjectsRpc(body as ProjectsRpcRequest, env.DB);
       case "teams":
         return handleTeamsRpc(body as TeamsRpcRequest, env.DB);
+      case "seasons":
+        return handleSeasonsRpc(body as SeasonsRpcRequest, env.DB);
+      case "usage":
+        return handleUsageRpc(body as UsageRpcRequest, env.DB);
+      case "achievements":
+        return handleAchievementsRpc(body as AchievementsRpcRequest, env.DB);
+      case "devices":
+        return handleDevicesRpc(body as DevicesRpcRequest, env.DB);
       default:
         return Response.json(
           { error: `Unknown RPC domain: ${domain}` },
