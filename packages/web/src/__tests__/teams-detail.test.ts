@@ -14,10 +14,18 @@ vi.mock("@/lib/auth-helpers", () => ({
   resolveUser: vi.fn(),
 }));
 
+vi.mock("@/lib/r2", () => ({
+  deleteTeamLogoByUrl: vi.fn(),
+}));
+
 import * as dbModule from "@/lib/db";
 
 const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
   resolveUser: ReturnType<typeof vi.fn>;
+};
+
+const { deleteTeamLogoByUrl } = (await import("@/lib/r2")) as unknown as {
+  deleteTeamLogoByUrl: ReturnType<typeof vi.fn>;
 };
 
 function makeRequest(method: string, body?: Record<string, unknown>): Request {
@@ -334,6 +342,40 @@ describe("DELETE /api/teams/[teamId]", () => {
     expect(batchCalls.some((s) => s.sql.includes("DELETE FROM season_roster_snapshots"))).toBe(false);
   });
 
+  it("should delete logo from R2 when last member leaves and team has logo", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    mockDbRead.firstOrNull
+      .mockResolvedValueOnce({ role: "owner" })
+      .mockResolvedValueOnce({ cnt: 1 }) // last member
+      .mockResolvedValueOnce({ logo_url: "https://r2.example.com/logo.png" }); // team HAS logo
+    mockDbWrite.execute.mockResolvedValue({ changes: 1 });
+    mockDbWrite.batch.mockResolvedValue([]);
+    deleteTeamLogoByUrl.mockResolvedValueOnce(undefined);
+
+    const res = await DELETE(makeRequest("DELETE"), makeParams());
+
+    expect(res.status).toBe(200);
+    expect(deleteTeamLogoByUrl).toHaveBeenCalledWith("https://r2.example.com/logo.png");
+  });
+
+  it("should succeed even if logo deletion fails", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    mockDbRead.firstOrNull
+      .mockResolvedValueOnce({ role: "owner" })
+      .mockResolvedValueOnce({ cnt: 1 }) // last member
+      .mockResolvedValueOnce({ logo_url: "https://r2.example.com/logo.png" }); // team HAS logo
+    mockDbWrite.execute.mockResolvedValue({ changes: 1 });
+    mockDbWrite.batch.mockResolvedValue([]);
+    deleteTeamLogoByUrl.mockRejectedValueOnce(new Error("R2 unavailable"));
+
+    const res = await DELETE(makeRequest("DELETE"), makeParams());
+
+    // Should still succeed — logo cleanup is best-effort
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.ok).toBe(true);
+  });
+
   it("should return 503 when teams table does not exist (DELETE)", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
     mockDbRead.firstOrNull.mockRejectedValueOnce(
@@ -396,6 +438,19 @@ describe("PATCH /api/teams/[teamId]", () => {
 
     expect(res.status).toBe(403);
     expect((await res.json()).error).toContain("Only the team owner");
+  });
+
+  it("should reject non-member with 403", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u2" });
+    mockDbRead.firstOrNull.mockResolvedValueOnce(null); // not a member at all
+
+    const res = await PATCH(
+      makeRequest("PATCH", { name: "New Name" }),
+      makeParams(),
+    );
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toContain("Not a member");
   });
 
   it("should toggle auto_register_season on", async () => {
