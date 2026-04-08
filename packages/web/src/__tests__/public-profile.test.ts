@@ -333,6 +333,210 @@ describe("GET /api/users/[slug]", () => {
       const body = await res.json();
       expect(body.user.name).toBe("Legacy User");
     });
+
+    it("should rethrow non-column errors from user lookup", async () => {
+      mockClient.firstOrNull
+        .mockRejectedValueOnce(new Error("DB totally dead"));
+
+      const [req, ctx] = makeRequest("test");
+      await expect(GET(req, ctx)).rejects.toThrow("DB totally dead");
+    });
+
+    it("should fall back to id lookup when slug not found and column missing", async () => {
+      // First call throws "no such column", second (slug lookup) returns null, third (id lookup) returns user
+      mockClient.firstOrNull
+        .mockRejectedValueOnce(new Error("no such column: is_public"))
+        .mockResolvedValueOnce(null) // slug lookup
+        .mockResolvedValueOnce({
+          id: "u1",
+          name: "Legacy ID User",
+          image: null,
+          slug: null,
+          created_at: "2026-01-01",
+        }); // id lookup
+      mockClient.query.mockResolvedValueOnce({ results: [] });
+
+      const [req, ctx] = makeRequest("u1");
+      const res = await GET(req, ctx);
+
+      // Will return 404 since uuid format is expected for ID lookup
+      // But the code actually works with any string in id lookup
+      expect(res.status).toBe(200);
+    });
+
+    it("should allow admin to view non-public profile", async () => {
+      mockClient.firstOrNull.mockResolvedValueOnce({
+        id: "u1",
+        name: "Private User",
+        image: null,
+        slug: "privuser",
+        is_public: 0,
+        created_at: "2026-01-01",
+      });
+      // admin bypass
+      vi.mocked(authHelpersModule.resolveUser).mockResolvedValue({ userId: "admin-1", email: "admin@test.com" });
+      vi.mocked(adminModule.isAdmin).mockReturnValue(true);
+
+      mockClient.query.mockResolvedValueOnce({ results: [] });
+
+      const [req, ctx] = makeRequest("privuser");
+      const res = await GET(req, ctx);
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.user.name).toBe("Private User");
+    });
+
+    it("should allow teammate to view non-public profile", async () => {
+      mockClient.firstOrNull
+        .mockResolvedValueOnce({
+          id: "u2",
+          name: "Private Teammate",
+          image: null,
+          slug: "privteam",
+          is_public: 0,
+          created_at: "2026-01-01",
+        })
+        // teammate check
+        .mockResolvedValueOnce({ team_id: "team-1" });
+      vi.mocked(authHelpersModule.resolveUser).mockResolvedValue({ userId: "u1", email: "user@test.com" });
+      vi.mocked(adminModule.isAdmin).mockReturnValue(false);
+
+      mockClient.query.mockResolvedValueOnce({ results: [] });
+
+      const [req, ctx] = makeRequest("privteam");
+      const res = await GET(req, ctx);
+
+      expect(res.status).toBe(200);
+    });
+
+    it("should allow same-season participant to view non-public profile", async () => {
+      mockClient.firstOrNull
+        .mockResolvedValueOnce({
+          id: "u2",
+          name: "Private Season Peer",
+          image: null,
+          slug: "privseason",
+          is_public: 0,
+          created_at: "2026-01-01",
+        })
+        // teammate check - not a teammate
+        .mockResolvedValueOnce(null)
+        // same season check - yes
+        .mockResolvedValueOnce({ season_id: "season-1" });
+      vi.mocked(authHelpersModule.resolveUser).mockResolvedValue({ userId: "u1", email: "user@test.com" });
+      vi.mocked(adminModule.isAdmin).mockReturnValue(false);
+
+      mockClient.query.mockResolvedValueOnce({ results: [] });
+
+      const [req, ctx] = makeRequest("privseason");
+      const res = await GET(req, ctx);
+
+      expect(res.status).toBe(200);
+    });
+
+    it("should handle team_members table not existing (graceful)", async () => {
+      mockClient.firstOrNull
+        .mockResolvedValueOnce({
+          id: "u2",
+          name: "Private User No Teams",
+          image: null,
+          slug: "privnoteam",
+          is_public: 0,
+          created_at: "2026-01-01",
+        })
+        // teammate check throws (no table)
+        .mockRejectedValueOnce(new Error("no such table: team_members"))
+        // same season check throws (no table)
+        .mockRejectedValueOnce(new Error("no such table: season_teams"));
+      vi.mocked(authHelpersModule.resolveUser).mockResolvedValue({ userId: "u1", email: "user@test.com" });
+      vi.mocked(adminModule.isAdmin).mockReturnValue(false);
+
+      const [req, ctx] = makeRequest("privnoteam");
+      const res = await GET(req, ctx);
+
+      expect(res.status).toBe(404);
+    });
+
+    it("should return first_seen when available", async () => {
+      mockClient.firstOrNull
+        .mockResolvedValueOnce({
+          id: "u1",
+          name: "Test",
+          image: null,
+          slug: "test",
+          is_public: 1,
+          created_at: "2026-01-01",
+        })
+        .mockResolvedValueOnce({ first_seen: "2026-01-15T00:00:00Z" });
+      mockClient.query.mockResolvedValueOnce({ results: [] });
+
+      const [req, ctx] = makeRequest("test");
+      const res = await GET(req, ctx);
+      const body = await res.json();
+      expect(body.user.first_seen).toBe("2026-01-15T00:00:00Z");
+    });
+
+    it("should reject invalid from/to datetime format", async () => {
+      mockClient.firstOrNull.mockResolvedValueOnce({
+        id: "u1",
+        name: "Test",
+        image: null,
+        slug: "test",
+        is_public: 1,
+        created_at: "2026-01-01",
+      });
+
+      const [req, ctx] = makeRequest("test", {
+        from: "not-a-date",
+        to: "also-not-a-date",
+      });
+      const res = await GET(req, ctx);
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("Invalid from/to");
+    });
+
+    it("should accept UUID as profile identifier", async () => {
+      const uuid = "12345678-1234-1234-1234-123456789abc";
+      mockClient.firstOrNull
+        .mockResolvedValueOnce(null) // slug lookup
+        .mockResolvedValueOnce({
+          id: uuid,
+          name: "UUID User",
+          image: null,
+          slug: null,
+          is_public: 1,
+          created_at: "2026-01-01",
+        }); // id lookup
+      mockClient.query.mockResolvedValueOnce({ results: [] });
+
+      const [req, ctx] = makeRequest(uuid);
+      const res = await GET(req, ctx);
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.user.name).toBe("UUID User");
+    });
+
+    it("should return NaN from/to date as 400", async () => {
+      mockClient.firstOrNull.mockResolvedValueOnce({
+        id: "u1",
+        name: "Test",
+        image: null,
+        slug: "test",
+        is_public: 1,
+        created_at: "2026-01-01",
+      });
+
+      const [req, ctx] = makeRequest("test", {
+        from: "2026-03-01",
+        to: "invalid",
+      });
+      const res = await GET(req, ctx);
+      expect(res.status).toBe(400);
+    });
   });
 });
 
