@@ -23,11 +23,11 @@ describe("sidebar navigation", () => {
       expect(labels).not.toContain("Account");
     });
 
-    it("Settings group should contain Teams, Projects, Devices, Showcases, then General", () => {
+    it("Settings group should contain Teams, Projects, Devices, Organizations, Showcases, then General", () => {
       const settingsGroup = BASE_NAV_GROUPS.find((g) => g.label === "Settings");
       expect(settingsGroup).toBeDefined();
       const items = settingsGroup!.items.map((i) => i.label);
-      expect(items).toEqual(["Teams", "Projects", "Devices", "Showcases", "General"]);
+      expect(items).toEqual(["Teams", "Projects", "Devices", "Organizations", "Showcases", "General"]);
     });
 
     it("Teams should link to /teams", () => {
@@ -60,6 +60,7 @@ describe("sidebar navigation", () => {
       expect(allHrefs).toContain("/manage-devices");
       expect(allHrefs).toContain("/settings/general");
       expect(allHrefs).toContain("/settings/showcases");
+      expect(allHrefs).toContain("/settings/organizations");
     });
 
     it("should mark leaderboard as external", () => {
@@ -224,6 +225,7 @@ describe("route labels", () => {
       "manage-devices": "Devices",
       leaderboard: "Leaderboard",
       showcases: "Showcases",
+      organizations: "Organizations",
       admin: "Admin",
       seasons: "Seasons",
       storage: "Storage",

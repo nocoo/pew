@@ -185,6 +185,28 @@ describe("handleInviteGate", () => {
     );
   });
 
+  it("should use __Secure- prefixed cookie name when secure cookies enabled", async () => {
+    // Configure secure cookies
+    const { shouldUseSecureCookies } = await import("@/auth");
+    vi.mocked(shouldUseSecureCookies).mockReturnValue(true);
+
+    vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce(null);
+
+    const result = await handleInviteGate(
+      makeReq({ "__Secure-authjs.callback-url": "/secure-dashboard" }),
+      GOOGLE_ACCOUNT,
+      mockDbRead,
+      mockDbWrite
+    );
+    expect(typeof result).toBe("string");
+    expect(result).toContain(
+      `callbackUrl=${encodeURIComponent("/secure-dashboard")}`
+    );
+
+    // Reset mock
+    vi.mocked(shouldUseSecureCookies).mockReturnValue(false);
+  });
+
   it("should skip check when E2E_SKIP_AUTH=true in non-production", async () => {
     vi.stubEnv("E2E_SKIP_AUTH", "true");
     vi.stubEnv("NODE_ENV", "test");
@@ -212,5 +234,28 @@ describe("handleInviteGate", () => {
   it("should handle null account gracefully", async () => {
     const result = await handleInviteGate(makeReq(), null, mockDbRead, mockDbWrite);
     expect(result).toBe(true);
+  });
+
+  it("should use default getDbRead/getDbWrite when overrides not provided", async () => {
+    // Import the mocked getDbRead/getDbWrite
+    const { getDbRead, getDbWrite } = await import("@/lib/db");
+
+    // Set up mocked DB functions
+    vi.mocked(getDbRead).mockResolvedValue(mockDbRead as never);
+    vi.mocked(getDbWrite).mockResolvedValue(mockDbWrite as never);
+
+    // getUserByAccount returns a user → existing
+    vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce({ id: "user-1" });
+
+    // Call without overrides — this exercises the fallback to getDbRead/getDbWrite
+    const result = await handleInviteGate(
+      makeReq(),
+      GOOGLE_ACCOUNT
+      // No dbReadOverride, no dbWriteOverride
+    );
+    expect(result).toBe(true);
+
+    // Verify getDbRead was called (and indirectly getDbWrite would be called if needed)
+    expect(getDbRead).toHaveBeenCalled();
   });
 });

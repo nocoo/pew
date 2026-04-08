@@ -510,6 +510,8 @@ export default function LeaderboardPage() {
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // Validate stored scope against available orgs/teams
+  // (intentionally calling setState in effect to correct invalid state after async load)
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!scopeInitialized) return;
 
@@ -527,6 +529,7 @@ export default function LeaderboardPage() {
       }
     }
   }, [scopeInitialized, scope, organizations, teams]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Handle scope change
   const handleScopeChange = (newScope: ScopeSelection) => {
