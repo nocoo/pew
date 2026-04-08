@@ -199,9 +199,12 @@ function AutoRegisterToggle({
 
       if (!res.ok) {
         // Revert on failure
+        const errorText = await res.text();
+        console.error("Auto-register toggle failed:", res.status, errorText);
         setEnabled(!newValue);
       }
-    } catch {
+    } catch (err) {
+      console.error("Auto-register toggle error:", err);
       setEnabled(!newValue);
     } finally {
       setSaving(false);
