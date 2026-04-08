@@ -44,7 +44,7 @@ describe("OpenClaw hook installer", () => {
     expect(spawn).toHaveBeenNthCalledWith(
       1,
       "openclaw",
-      ["plugins", "install", "--link", pluginDir],
+      ["plugins", "install", "--link", "--dangerously-force-unsafe-install", pluginDir],
       expect.any(Object),
     );
     expect(spawn).toHaveBeenNthCalledWith(
