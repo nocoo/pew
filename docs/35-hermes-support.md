@@ -553,9 +553,11 @@ const AGENT_COLOR_MAP: Record<string, ChartColor> = {
 
 ## 五、原子化提交计划
 
-### Commit 1: Source 类型全局扩展
+### Commit 1: Source 类型全局扩展 ✅
 
 **范围**: 所有 Source 引用点（一次性完成，避免遗漏）
+
+**状态**: 已完成（commit: feat(core,web,cli): add hermes to Source type globally）
 
 **文件变更**:
 ```
@@ -593,9 +595,11 @@ BREAKING CHANGE: Source type now includes "hermes"
 
 ---
 
-### Commit 2: 路径解析与 sync 主链路集成
+### Commit 2: 路径解析与 sync 主链路集成 ✅
 
 **范围**: Path resolution + sync orchestration
+
+**状态**: 已完成（commit: feat(cli): add HERMES_HOME support and sync orchestration）
 
 **文件变更**:
 ```
@@ -691,9 +695,11 @@ feat(cli): add HERMES_HOME support and sync orchestration
 
 ---
 
-### Commit 3: Hermes SQLite parser + session-level diff
+### Commit 3: Hermes SQLite parser + session-level diff ✅
 
 **范围**: Parser + diff cursor
+
+**状态**: 已完成（commit: feat(cli): implement hermes SQLite parser with session-level diff）
 
 **新增文件**:
 ```
@@ -741,9 +747,11 @@ Ref: similar to Gemini/OpenCode cumulative diff model
 
 ---
 
-### Commit 4: Hermes token driver
+### Commit 4: Hermes token driver ✅
 
 **范围**: Driver + registry integration
+
+**状态**: 已完成（commit: feat(cli): implement hermes token driver）
 
 **新增文件**:
 ```
