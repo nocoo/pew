@@ -118,7 +118,6 @@ export function openHermesDb(
        reasoning_tokens
      FROM sessions
      WHERE started_at IS NOT NULL
-       AND model IS NOT NULL
      ORDER BY started_at ASC`,
   );
 
