@@ -17,12 +17,6 @@ import {
   uninstallCodexNotifier,
   getCodexNotifierStatus,
 } from "./codex-notifier.js";
-import {
-  installHermesHook,
-  uninstallHermesHook,
-  getHermesHookStatus,
-} from "./hermes-hook.js";
-import { resolvePewBin } from "./notify-handler.js";
 
 interface RegistryDeps {
   spawn?: (cmd: string, args: string[], opts?: object) => { status: number | null };
@@ -139,31 +133,6 @@ const DRIVERS: NotifierDriver[] = [
         notifyPath: paths.notifyPath,
         openclawConfigPath: paths.openclawConfigPath,
       }),
-  },
-  {
-    source: "hermes",
-    displayName: "Hermes Agent",
-    install: async (paths) => {
-      const pewBin = await resolvePewBin();
-      return installHermesHook({
-        pluginDir: paths.hermesPluginDir,
-        pewBin,
-      });
-    },
-    uninstall: async (paths) => {
-      const pewBin = await resolvePewBin();
-      return uninstallHermesHook({
-        pluginDir: paths.hermesPluginDir,
-        pewBin,
-      });
-    },
-    status: async (paths) => {
-      const pewBin = await resolvePewBin();
-      return getHermesHookStatus({
-        pluginDir: paths.hermesPluginDir,
-        pewBin,
-      });
-    },
   },
 ];
 

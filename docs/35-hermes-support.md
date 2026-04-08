@@ -776,51 +776,34 @@ feat(cli): add hermes token driver
 
 ---
 
-### Commit 5: Hermes notifier driver ✅
+### Commit 5: Hermes notifier driver ❌ (Removed)
 
 **范围**: Notifier install/uninstall
 
-**状态**: 已完成（commit: feat(cli): implement hermes notifier driver）
+**状态**: **已移除**（JSON 插件格式与 Hermes 官方插件系统不兼容）
 
-**⚠️ 实现差异**: 
-Hermes 插件系统要求**目录插件**（`plugin.yaml` + `__init__.py` Python 代码）。在 TypeScript CLI 中生成 Python 代码超出实现范围，因此当前 notifier driver 实现了 **JSON 插件格式**（简化版本，仅用于测试）。
+**原始实现问题**:
+- 写入 JSON 文件 (`pew-tracker.json`) 而非目录插件
+- Hermes 插件系统要求目录结构 (`plugin.yaml` + `__init__.py`)
+- JSON 格式 Hermes 不会加载，`pew init --source=hermes` 报告成功但实际无效
 
-**实际用户安装**: 需要**手动创建目录插件**（见下方"Manual Plugin Installation"章节）。
+**最终决策** (commit: `fix(cli): remove broken Hermes notifier`):
+- 删除 `hermes-hook.ts` 和 `hermes-hook.test.ts` (9 tests)
+- 从 notifier registry 移除 hermes driver (5 drivers remain)
+- **Hermes notifier 仅支持手动安装**（见下方"Manual Plugin Installation"）
 
-**新增文件**:
-```
-A packages/cli/src/notifier/hermes-hook.ts          # JSON 插件格式（测试用）
-A packages/cli/src/__tests__/hermes-hook.test.ts    # 9 个单元测试
-```
-
-**变更文件**:
-```
-M packages/cli/src/notifier/registry.ts              # 注册 hermes driver
-M packages/cli/src/__tests__/registry.test.ts       # 更新断言 (5→6 drivers)
-```
-
-**核心实现**:
-- `installHermesHook()` - 写入 `pew-tracker.json` (JSON 格式)
-- `uninstallHermesHook()` - 清空 hooks 数组（不删除文件）
-- `getHermesHookStatus()` - 检查 JSON 内容是否匹配
-- 复用 `resolvePewBin()` 获取 pew 绝对路径
-
-**Commit Message**:
-```
-feat(cli): implement hermes notifier driver
-
-- Add hermes-hook.ts (JSON plugin format for testing)
-- Register hermes driver in notifier registry
-- Reuse resolvePewBin() from notify-handler.ts
-- Plugin triggers `pew notify --source=hermes` on session:end hook
-- Add 9 unit tests for install/uninstall/status
-```
+**原因**:
+- TypeScript CLI 无法生成 Python 代码（超出实现范围）
+- 尝试自动化安装会给用户错误的"已安装"信号
+- 手动安装文档更诚实且可靠
 
 ---
 
-#### Manual Plugin Installation
+#### Manual Plugin Installation (Required)
 
-由于 Hermes 插件系统要求 Python 代码（`__init__.py`），TypeScript CLI 无法自动生成。用户需要**手动创建目录插件**。
+由于 Hermes 插件系统要求 Python 代码（`__init__.py`），TypeScript CLI 无法自动生成。**所有用户必须手动创建目录插件**。
+
+**⚠️ 重要**: `pew init` **不支持** Hermes。必须按以下步骤手动安装。
 
 **步骤**:
 
@@ -1198,6 +1181,63 @@ pew 记录:
 - 测试更新断言
 
 **Result**: 进度日志正确显示扫描 session 数，而非 delta 数。例如："Parsed 5 deltas from 100 SQLite rows" 表示 100 个 sessions 被查询，5 个有增量变化。
+
+---
+
+### Issue 5: SQL 查询表和列名完全错误 (High) ✅
+
+**Problem**:
+- `hermes-sqlite-db.ts` 查询的是 **不存在的 `llm_calls` 表**
+- 使用错误的列名：`session_id` (应为 `id`), `model_id` (应为 `model`), `created_at` (应为 `started_at`)
+- 错误地使用 `GROUP BY` 和 `SUM()` (Hermes `sessions` 表已经是聚合后的)
+- 这会导致真实运行时 Hermes token driver 返回零数据
+
+**Root Cause**:
+- 实现基于错误的 schema 假设，未对照真实 Hermes 数据库结构
+- 测试使用 mock functions，未验证 SQL 查询是否能在真实 DB 上执行
+
+**Solution** (commit: `fix(cli): correct Hermes SQL query to use sessions table`):
+- 查询 `sessions` 表（参考 `hermes_state.py:41-69`）
+- 使用正确列名：`id`, `model`, `started_at`
+- 移除 `GROUP BY` 和 `SUM()` - `sessions` 表已经是 per-session 聚合
+- 直接 `SELECT` token 列（`input_tokens`, `output_tokens`, 等）
+
+**Result**: Hermes token driver 现在能正确读取真实 Hermes `state.db` 中的 token 数据。
+
+Reference: `/Users/nocoo/workspace/reference/hermes-agent/hermes_state.py:41-69`
+
+---
+
+### Issue 6: Notifier 插件格式不兼容 (High) ✅
+
+**Problem**:
+- 原实现写入 JSON 文件 (`~/.hermes/plugins/pew-tracker.json`)
+- Hermes 官方插件系统要求**目录插件**（`~/.hermes/plugins/<name>/plugin.yaml` + `__init__.py`）
+- JSON 格式 Hermes 不会加载，但 `pew init --source=hermes` 会报告"安装成功"（假阳性）
+- 9 个单元测试验证的是自定义 JSON 格式，不是 Hermes 真实插件加载行为
+
+**Root Cause**:
+- TypeScript CLI 无法生成 Python 代码（`__init__.py` 需要 Python 函数）
+- 尝试实现自动安装超出了 CLI 工具的实现范围
+
+**Solution** (commit: `fix(cli): remove broken Hermes notifier`):
+- **删除** `hermes-hook.ts` 和 `hermes-hook.test.ts` (9 tests)
+- 从 notifier registry 移除 hermes driver (6 → 5 drivers)
+- 更新 `registry.test.ts` 所有断言
+- 更新文档明确说明：**Hermes notifier 仅支持手动安装**
+
+**Manual Installation** (唯一可行方案):
+- 用户需手动创建 `~/.hermes/plugins/pew-tracker/` 目录
+- 写入 `plugin.yaml` (manifest)
+- 写入 `__init__.py` (Python hook 代码)
+- 详细步骤见 Section 5 "Manual Plugin Installation"
+
+**Status**:
+- ⚠️ `pew init` **不支持** Hermes（设计限制）
+- ✅ 文档提供完整手动安装步骤
+- ✅ 诚实告知用户限制，避免假阳性安装信号
+
+Reference: `/Users/nocoo/workspace/reference/hermes-agent/hermes_cli/plugins.py:414-442`
 
 ---
 

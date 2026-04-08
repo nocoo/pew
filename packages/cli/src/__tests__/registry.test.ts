@@ -47,16 +47,15 @@ describe("notifier registry", () => {
     await rm(tempDir, { recursive: true, force: true });
   });
 
-  it("registers all 6 drivers", () => {
+  it("registers all 5 drivers", () => {
     const drivers = getAllDrivers();
-    expect(drivers).toHaveLength(6);
+    expect(drivers).toHaveLength(5);
     expect(drivers.map((driver) => driver.source)).toEqual([
       "claude-code",
       "codex",
       "gemini-cli",
       "opencode",
       "openclaw",
-      "hermes",
     ]);
   });
 
@@ -75,16 +74,16 @@ describe("notifier registry", () => {
     const installed = await installAll(paths, { spawn });
     const uninstalled = await uninstallAll(paths, { spawn });
 
-    expect(installed).toHaveLength(6);
+    expect(installed).toHaveLength(5);
     expect(installed.find((item) => item.source === "openclaw")?.action).toBe("skip");
     expect(installed.find((item) => item.source === "codex")?.changed).toBe(true);
-    expect(uninstalled).toHaveLength(6);
+    expect(uninstalled).toHaveLength(5);
   });
 
   it("reports status for all sources", async () => {
     const statuses = await statusAll(paths);
 
-    expect(Object.keys(statuses)).toHaveLength(6);
+    expect(Object.keys(statuses)).toHaveLength(5);
     expect(statuses.codex).toBe("not-installed");
     expect(statuses["claude-code"]).toBe("not-installed");
   });
@@ -107,7 +106,7 @@ describe("notifier registry", () => {
       expect(claudeResult!.warnings).toContain("Driver install failed");
 
       // Other drivers should still have completed
-      expect(results).toHaveLength(6);
+      expect(results).toHaveLength(5);
     } finally {
       spy.mockRestore();
     }
@@ -139,7 +138,7 @@ describe("notifier registry", () => {
       expect(geminiResult!.warnings).toContain("Driver uninstall failed");
 
       // Other drivers should still have completed
-      expect(results).toHaveLength(6);
+      expect(results).toHaveLength(5);
     } finally {
       spy.mockRestore();
     }
