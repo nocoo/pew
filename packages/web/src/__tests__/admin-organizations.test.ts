@@ -248,10 +248,22 @@ describe("POST /api/admin/organizations", () => {
     );
     expect(res.status).toBe(503);
   });
-});
 
-// ---------------------------------------------------------------------------
-// GET /api/admin/organizations/[orgId]
+  it("should return 500 on unexpected POST error", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.firstOrNull.mockRejectedValueOnce(new Error("DB connection failed"));
+
+    const res = await POST(
+      makeJsonRequest("POST", "/api/admin/organizations", {
+        name: "Test",
+        slug: "test",
+      })
+    );
+    expect(res.status).toBe(500);
+    const json = await res.json();
+    expect(json.error).toContain("Failed to create");
+  });
+});
 // ---------------------------------------------------------------------------
 
 describe("GET /api/admin/organizations/[orgId]", () => {

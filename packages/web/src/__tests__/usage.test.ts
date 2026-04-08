@@ -221,5 +221,23 @@ describe("GET /api/usage", () => {
 
       expect(res.status).toBe(500);
     });
+
+    it("should return 400 for invalid granularity", async () => {
+      const res = await GET(makeGetRequest("/api/usage", { granularity: "invalid" }));
+
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toContain("Invalid granularity");
+    });
+
+    it("should return 400 for invalid to date format", async () => {
+      const res = await GET(
+        makeGetRequest("/api/usage", { from: "2026-03-01", to: "baddate" }),
+      );
+
+      expect(res.status).toBe(400);
+      const json = await res.json();
+      expect(json.error).toContain("Invalid to date");
+    });
   });
 });

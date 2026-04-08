@@ -249,6 +249,19 @@ describe("admin organization member management", () => {
       );
       expect(res.status).toBe(503);
     });
+
+    it("should return 500 on unexpected POST error", async () => {
+      vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
+      mockDbRead.firstOrNull.mockRejectedValueOnce(new Error("DB connection timeout"));
+
+      const res = await POST(
+        makeJsonRequest("POST", { userId: "u1" }),
+        makeParams("org-1"),
+      );
+      expect(res.status).toBe(500);
+      const json = await res.json();
+      expect(json.error).toContain("Failed to add member");
+    });
   });
 
   // -------------------------------------------------------------------------
