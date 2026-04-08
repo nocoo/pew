@@ -359,11 +359,13 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
 
   // ---------- Phase 2: DB-based drivers ----------
   // SQLite warning paths are handled at the orchestrator level because:
-  // - "SQLite not available": registry doesn't create a driver (no openMessageDb)
+  // - "SQLite not available": registry doesn't create a driver (no openMessageDb/openHermesDb)
   // - "Failed to open": factory returns null, driver would silently return empty
   // We pre-probe the factory here to emit warnings BEFORE running the driver,
   // avoiding the need for double-open detection after the fact.
   let activeDbDrivers = dbDrivers;
+
+  // OpenCode pre-check
   if (opts.openCodeDbPath) {
     const dbStat = await stat(opts.openCodeDbPath).catch(() => null);
     if (dbStat) {
@@ -397,6 +399,47 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
           });
           // Skip only OpenCode driver, keep other DB drivers (e.g. Hermes)
           activeDbDrivers = activeDbDrivers.filter((d) => d.source !== "opencode");
+        } else {
+          handle.close();
+        }
+      }
+    }
+  }
+
+  // Hermes pre-check (parallel to OpenCode)
+  if (opts.hermesDbPath) {
+    const dbStat = await stat(opts.hermesDbPath).catch(() => null);
+    if (dbStat) {
+      if (!opts.openHermesDb) {
+        // Case 1: DB file exists but SQLite adapter is missing (native module not available)
+        onProgress?.({
+          source: "hermes",
+          phase: "discover",
+          message: "Checking Hermes SQLite database...",
+        });
+        onProgress?.({
+          source: "hermes",
+          phase: "warn",
+          message: `Hermes SQLite database found at ${opts.hermesDbPath} but SQLite is not available — Hermes token data will NOT be synced`,
+        });
+        // Skip only Hermes driver, keep other DB drivers (e.g. OpenCode)
+        activeDbDrivers = activeDbDrivers.filter((d) => d.source !== "hermes");
+      } else {
+        // Case 2: Both provided — pre-probe if factory returns null
+        const handle = opts.openHermesDb(opts.hermesDbPath);
+        if (!handle) {
+          onProgress?.({
+            source: "hermes",
+            phase: "discover",
+            message: "Checking Hermes SQLite database...",
+          });
+          onProgress?.({
+            source: "hermes",
+            phase: "warn",
+            message: `Failed to open Hermes SQLite database at ${opts.hermesDbPath} — Hermes token data will NOT be synced`,
+          });
+          // Skip only Hermes driver, keep other DB drivers (e.g. OpenCode)
+          activeDbDrivers = activeDbDrivers.filter((d) => d.source !== "hermes");
         } else {
           handle.close();
         }
