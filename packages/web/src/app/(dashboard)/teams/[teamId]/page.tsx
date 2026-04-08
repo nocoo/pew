@@ -5,15 +5,18 @@ import { useParams, useRouter } from "next/navigation";
 import {
   Users,
   ArrowLeft,
-  Copy,
-  Check,
   Trophy,
   LogOut,
   Loader2,
+  UserMinus,
+  UserPlus,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
+import { InviteDialog, useInviteDialog } from "@/components/teams/invite-dialog";
 import {
   useSeasonRegistration,
   type AvailableSeason,
@@ -44,34 +47,6 @@ interface TeamDetail {
   role: string;
   members: TeamMember[];
   auto_register_season: boolean;
-}
-
-// ---------------------------------------------------------------------------
-// CopyButton
-// ---------------------------------------------------------------------------
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <button
-      onClick={handleCopy}
-      className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-      title="Copy to clipboard"
-    >
-      {copied ? (
-        <Check className="h-3.5 w-3.5 text-success" strokeWidth={1.5} />
-      ) : (
-        <Copy className="h-3.5 w-3.5" strokeWidth={1.5} />
-      )}
-    </button>
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -259,7 +234,7 @@ function AutoRegisterToggle({
             <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" strokeWidth={1.5} />
           )}
         </div>
-        <p className="mt-0.5 text-[10px] text-muted-foreground">
+        <p className="mt-0.5 text-xs text-muted-foreground">
           When enabled, your team will be automatically registered for every new
           season. You can still manually withdraw from individual seasons.
         </p>
@@ -362,10 +337,17 @@ export default function TeamDetailPage() {
   const [team, setTeam] = useState<TeamDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Profile dialog state
   const [dialogMember, setDialogMember] = useState<TeamMember | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Confirm dialog for kick/delete
+  const { confirm, dialogProps } = useConfirm();
+
+  // Invite dialog
+  const { openInviteDialog, dialogProps: inviteDialogProps } = useInviteDialog();
 
   const handleMemberClick = useCallback((member: TeamMember) => {
     setDialogMember(member);
@@ -396,6 +378,77 @@ export default function TeamDetailPage() {
   useEffect(() => {
     fetchTeam();
   }, [fetchTeam]);
+
+  // -------------------------------------------------------------------------
+  // Kick member (owner only)
+  // -------------------------------------------------------------------------
+
+  const handleKick = async (e: React.MouseEvent, member: TeamMember) => {
+    e.stopPropagation(); // Don't trigger profile dialog
+    const displayName = member.name ?? "this member";
+
+    const confirmed = await confirm({
+      title: `Remove ${displayName}?`,
+      description: `${displayName} will be removed from the team and will need a new invite to rejoin.`,
+      confirmText: "Remove",
+      variant: "destructive",
+    });
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`/api/teams/${teamId}/members/${member.userId}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        setMessage({ type: "success", text: `${displayName} removed.` });
+        fetchTeam();
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setMessage({
+          type: "error",
+          text: (data as { error?: string }).error ?? "Failed to remove member.",
+        });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Network error." });
+    }
+  };
+
+  // -------------------------------------------------------------------------
+  // Leave or delete team
+  // -------------------------------------------------------------------------
+
+  const handleLeaveOrDelete = async () => {
+    if (!team) return;
+    const isOwner = team.role === "owner";
+    const isSoloOwner = isOwner && team.members.length === 1;
+
+    const confirmed = await confirm({
+      title: isSoloOwner ? "Delete team?" : isOwner ? "Leave team?" : "Leave team?",
+      description: isSoloOwner
+        ? "This will permanently delete the team and all its data. This action cannot be undone."
+        : "You will be removed from this team. You can rejoin if you have a valid invite code.",
+      confirmText: isSoloOwner ? "Delete" : "Leave",
+      variant: "destructive",
+    });
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`/api/teams/${teamId}`, { method: "DELETE" });
+      if (res.ok) {
+        router.push("/teams");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setMessage({
+          type: "error",
+          text: (data as { error?: string }).error ?? "Failed to leave team.",
+        });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Network error." });
+    }
+  };
 
   // -------------------------------------------------------------------------
   // Loading skeleton
@@ -435,6 +488,7 @@ export default function TeamDetailPage() {
   }
 
   const isOwner = team.role === "owner";
+  const isSoloOwner = isOwner && team.members.length === 1;
 
   // -------------------------------------------------------------------------
   // Render
@@ -451,13 +505,27 @@ export default function TeamDetailPage() {
         Back to Teams
       </button>
 
+      {/* Message */}
+      {message && (
+        <div
+          className={cn(
+            "rounded-lg p-3 text-xs",
+            message.type === "success"
+              ? "bg-success/10 text-success"
+              : "bg-destructive/10 text-destructive",
+          )}
+        >
+          {message.text}
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent text-muted-foreground shrink-0">
             <Users className="h-5 w-5" strokeWidth={1.5} />
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">{team.name}</h1>
             <p className="text-sm text-muted-foreground">
               {team.members.length} member
@@ -465,15 +533,16 @@ export default function TeamDetailPage() {
               {isOwner && " · You are the owner"}
             </p>
           </div>
-        </div>
-
-        {/* Invite code */}
-        <div className="mt-3 flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Invite code:</span>
-          <code className="rounded bg-accent px-2 py-0.5 text-xs font-mono text-muted-foreground">
-            {team.invite_code}
-          </code>
-          <CopyButton text={team.invite_code} />
+          {/* Invite button (owner only) */}
+          {isOwner && (
+            <button
+              onClick={() => openInviteDialog(team.name, team.invite_code)}
+              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
+            >
+              <UserPlus className="h-3.5 w-3.5" strokeWidth={1.5} />
+              Invite
+            </button>
+          )}
         </div>
       </div>
 
@@ -485,33 +554,43 @@ export default function TeamDetailPage() {
         </h2>
         <div className="space-y-1.5">
           {team.members.map((member) => (
-            <button
+            <div
               key={member.userId}
-              onClick={() => handleMemberClick(member)}
-              className="flex w-full items-center gap-3 rounded-lg bg-secondary px-4 py-2.5 text-left transition-colors hover:bg-accent cursor-pointer"
+              className="flex items-center gap-3 rounded-lg bg-secondary px-4 py-2.5"
             >
-              <Avatar className="h-7 w-7">
-                {member.image && <AvatarImage src={member.image} />}
-                <AvatarFallback className="text-xs">
-                  {(member.name ?? "?").charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-foreground truncate">
+              <button
+                onClick={() => handleMemberClick(member)}
+                className="flex flex-1 items-center gap-3 text-left transition-colors hover:opacity-80 cursor-pointer min-w-0"
+              >
+                <Avatar className="h-7 w-7 shrink-0">
+                  {member.image && <AvatarImage src={member.image} />}
+                  <AvatarFallback className="text-xs">
+                    {(member.name ?? "?").charAt(0).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <p className="text-sm text-foreground truncate flex-1 min-w-0">
                   {member.name ?? "Unknown"}
                 </p>
-              </div>
-              <span
-                className={cn(
-                  "text-xs font-medium",
-                  member.role === "owner"
-                    ? "text-primary"
-                    : "text-muted-foreground",
-                )}
-              >
-                {member.role === "owner" ? "Owner" : "Member"}
-              </span>
-            </button>
+              </button>
+              {member.role === "owner" ? (
+                <span className="text-xs font-medium text-primary shrink-0">
+                  Owner
+                </span>
+              ) : isOwner ? (
+                <button
+                  onClick={(e) => handleKick(e, member)}
+                  className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
+                  title={`Remove ${member.name ?? "member"}`}
+                >
+                  <UserMinus className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  <span className="hidden sm:inline">Remove</span>
+                </button>
+              ) : (
+                <span className="text-xs font-medium text-muted-foreground shrink-0">
+                  Member
+                </span>
+              )}
+            </div>
           ))}
         </div>
       </section>
@@ -537,6 +616,43 @@ export default function TeamDetailPage() {
         </section>
       )}
 
+      {/* Leave/Delete Team */}
+      <section>
+        <div className="rounded-lg border border-border p-4">
+          <h3 className="text-sm font-medium text-foreground mb-2">
+            {isSoloOwner ? "Delete Team" : "Leave Team"}
+          </h3>
+          <p className="text-xs text-muted-foreground mb-3">
+            {isSoloOwner
+              ? "Permanently delete this team and all its data. This action cannot be undone."
+              : isOwner
+                ? "You cannot delete this team while other members remain. Remove all members first, or leave the team."
+                : "Leave this team. You can rejoin if you have a valid invite code."}
+          </p>
+          <button
+            onClick={handleLeaveOrDelete}
+            className={cn(
+              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+              isSoloOwner
+                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                : "border border-border text-muted-foreground hover:text-foreground hover:bg-accent",
+            )}
+          >
+            {isSoloOwner ? (
+              <>
+                <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+                Delete Team
+              </>
+            ) : (
+              <>
+                <LogOut className="h-3.5 w-3.5" strokeWidth={1.5} />
+                Leave Team
+              </>
+            )}
+          </button>
+        </div>
+      </section>
+
       {/* Profile dialog */}
       {dialogMember && (
         <UserProfileDialog
@@ -547,6 +663,12 @@ export default function TeamDetailPage() {
           image={dialogMember.image}
         />
       )}
+
+      {/* Confirm dialog */}
+      <ConfirmDialog {...dialogProps} />
+
+      {/* Invite dialog */}
+      <InviteDialog {...inviteDialogProps} />
     </div>
   );
 }
