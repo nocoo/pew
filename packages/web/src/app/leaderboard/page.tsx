@@ -316,6 +316,13 @@ function LeaderboardRow({
 }
 
 // ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const PAGE_SIZE = 20;
+const MAX_ENTRIES = 100;
+
+// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
@@ -323,13 +330,22 @@ export default function LeaderboardPage() {
   const [period, setPeriod] = useState<LeaderboardPeriod>("week");
   const [scope, setScope] = useState<ScopeValue>("global");
   const [teams, setTeams] = useState<Team[]>([]);
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   const teamId = scope !== "global" ? scope : null;
 
   const { data, loading, refreshing, error } = useLeaderboard({
     period,
     teamId,
+    limit: MAX_ENTRIES,
   });
+
+  // Reset visible count when period or scope changes
+  /* eslint-disable react-hooks/set-state-in-effect -- reset pagination on filter change is intentional */
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [period, scope]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const fetchTeams = useCallback(async () => {
     try {
@@ -426,13 +442,24 @@ export default function LeaderboardPage() {
                 No usage data for this period yet.
               </div>
             ) : (
-              data.entries.map((entry, i) => (
-                <LeaderboardRow
-                  key={entry.rank}
-                  entry={entry}
-                  index={i}
-                />
-              ))
+              <>
+                {data.entries.slice(0, visibleCount).map((entry, i) => (
+                  <LeaderboardRow
+                    key={entry.rank}
+                    entry={entry}
+                    index={i}
+                  />
+                ))}
+                {/* Load more button */}
+                {visibleCount < data.entries.length && visibleCount < MAX_ENTRIES && (
+                  <button
+                    onClick={() => setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, MAX_ENTRIES))}
+                    className="w-full rounded-[var(--radius-card)] bg-secondary py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                  >
+                    Show more
+                  </button>
+                )}
+              </>
             )}
           </div>
         )}

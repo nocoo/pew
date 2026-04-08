@@ -16,6 +16,7 @@
 - **GitHub Copilot CLI** — Added as 7th supported source for token tracking (#22)
 - **Tool call & reasoning tokens** — VS Code Copilot now tracks tool call and reasoning tokens (#26)
 - **Teams UI improvements** — InviteDialog, AvatarStack, member management on detail page
+- **Leaderboard pagination** — Show 20 entries per page with "Show more" button (max 100)
 - Hide season list when auto-register enabled
 
 ### Changed
@@ -26,6 +27,7 @@
 ### Fixed
 - **OpenClaw WSL/headless fix** — Plugin install now works on WSL with `--dangerously-force-unsafe-install` (#32)
 - **Login URL fallback** — Print auth URL when browser fails to open (WSL/headless support) (#32)
+- **Leaderboard session stats** — Fix silent failure when querying 100+ users by batching requests
 - Clean up season_teams before deleting team (FK constraint fix)
 - Preserve partial success on read errors
 - Enforce season eligibility rules
