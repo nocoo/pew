@@ -29,6 +29,9 @@ import { handleSettingsRpc, type SettingsRpcRequest } from "./rpc/settings";
 import { handleAuthRpc, type AuthRpcRequest } from "./rpc/auth";
 import { handleSessionsRpc, type SessionsRpcRequest } from "./rpc/sessions";
 import { handleLeaderboardRpc, type LeaderboardRpcRequest } from "./rpc/leaderboard";
+import { handlePricingRpc, type PricingRpcRequest } from "./rpc/pricing";
+import { handleAdminRpc, type AdminRpcRequest } from "./rpc/admin";
+import { handleLiveRpc, type LiveRpcRequest } from "./rpc/live";
 
 // ---------------------------------------------------------------------------
 // Version
@@ -302,7 +305,10 @@ export type RpcRequest =
   | SettingsRpcRequest
   | AuthRpcRequest
   | SessionsRpcRequest
-  | LeaderboardRpcRequest;
+  | LeaderboardRpcRequest
+  | PricingRpcRequest
+  | AdminRpcRequest
+  | LiveRpcRequest;
 
 async function handleRpc(body: unknown, env: Env): Promise<Response> {
   if (typeof body !== "object" || body === null) {
@@ -346,6 +352,12 @@ async function handleRpc(body: unknown, env: Env): Promise<Response> {
         return handleSessionsRpc(body as SessionsRpcRequest, env.DB);
       case "leaderboard":
         return handleLeaderboardRpc(body as LeaderboardRpcRequest, env.DB);
+      case "pricing":
+        return handlePricingRpc(body as PricingRpcRequest, env.DB);
+      case "admin":
+        return handleAdminRpc(body as AdminRpcRequest, env.DB);
+      case "live":
+        return handleLiveRpc(body as LiveRpcRequest, env.DB);
       default:
         return Response.json(
           { error: `Unknown RPC domain: ${domain}` },
