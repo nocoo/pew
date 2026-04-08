@@ -1,5 +1,36 @@
 # Changelog
 
+## v2.9.0
+
+🎉 **Community Release** — This release includes contributions from multiple community members. Thank you!
+
+### Contributors
+
+- [@LeePepe](https://github.com/LeePepe) — Auto season registration toggle, same-period comparison stats, GitHub Copilot CLI support (#31, #23, #22)
+- [@huangjy](https://github.com/huangjy) — Tool call tokens & reasoning tokens for VS Code Copilot (#26)
+- [@cangelzz](https://github.com/cangelzz) — OpenClaw plugin install fix for WSL/headless environments (#32)
+
+### Added
+- **Auto season registration** — Team owners can enable automatic registration for all new seasons (#31)
+- **Same-period month comparison** — Dashboard stats now show "vs same period" alongside "vs last month" (#23)
+- **GitHub Copilot CLI** — Added as 7th supported source for token tracking (#22)
+- **Tool call & reasoning tokens** — VS Code Copilot now tracks tool call and reasoning tokens (#26)
+- **Teams UI improvements** — InviteDialog, AvatarStack, member management on detail page
+- Hide season list when auto-register enabled
+
+### Changed
+- Simplify team list cards, move editing to detail page
+- Use hover overlay for logo editing
+- Improve E2E test reliability
+
+### Fixed
+- **OpenClaw WSL/headless fix** — Plugin install now works on WSL with `--dangerously-force-unsafe-install` (#32)
+- **Login URL fallback** — Print auth URL when browser fails to open (WSL/headless support) (#32)
+- Clean up season_teams before deleting team (FK constraint fix)
+- Preserve partial success on read errors
+- Enforce season eligibility rules
+- Display "Hermes Agent" instead of raw "hermes" source slug
+
 ## v2.8.1
 
 ## v2.8.0
