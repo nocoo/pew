@@ -180,19 +180,21 @@ This ensures RPC migration doesn't break production behavior.
 - [x] users (P0) — RPC handlers, DbRead interface, adapter methods, partial route migration
 - [x] projects (P0)
 - [x] teams (P1)
-- [ ] seasons (P1)
-- [ ] usage (P1)
-- [ ] achievements (P1)
-- [ ] devices (P1)
-- [ ] organizations (P2)
-- [ ] showcases (P2)
-- [ ] settings (P2)
-- [ ] auth (P2)
-- [ ] sessions (P2)
-- [ ] leaderboard (P2)
-- [ ] pricing (P3)
-- [ ] admin (P3)
-- [ ] live (P3)
+- [x] seasons (P1)
+- [x] usage (P1)
+- [x] achievements (P1)
+- [x] devices (P1)
+- [x] organizations (P2)
+- [x] showcases (P2)
+- [x] settings (P2)
+- [x] auth (P2)
+- [x] sessions (P2)
+- [x] leaderboard (P2)
+- [x] pricing (P3)
+- [x] admin (P3)
+- [x] live (P3)
+
+**Status**: All 16 domain RPC handlers complete. 302 handler tests passing.
 
 ## References
 
