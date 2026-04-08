@@ -17,7 +17,7 @@
 | 7 | `feat: add admin organization members API` | `POST/DELETE /api/admin/organizations/[orgId]/members` | done |
 | 8 | `feat: add admin organization management page` | `/admin/organizations` CRUD UI | done |
 | 9 | `feat: add user organization APIs` | List all orgs, list my orgs, view members, join, leave | done |
-| 10 | `test: add L1 tests for user org APIs` | Join/leave/list unit tests | |
+| 10 | `test: add L1 tests for user org APIs` | Join/leave/list unit tests | done |
 | 11 | `feat: add organizations settings page` | `/settings/organizations` with join/leave UI | |
 | 12 | `feat: add organization leaderboard API` | `GET /api/leaderboard?org=xxx` with EXISTS filter | |
 | 13 | `test: add L1 tests for organization leaderboard` | Org-scoped aggregation tests | |
