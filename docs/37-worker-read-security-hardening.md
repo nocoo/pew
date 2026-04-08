@@ -22,7 +22,11 @@ While the endpoint requires a shared secret (`WORKER_READ_SECRET`) between Next.
 - `packages/worker-read/src/index.ts` — SQL validation logic
 - `packages/web/src/lib/db-worker.ts` — DbRead adapter
 - `packages/web/src/lib/db.ts` — DbRead interface
-- All API routes using `getDbRead()` (~30 files, ~179 query calls)
+- All consumers of `getDbRead()` (~30+ files, ~179 query calls):
+  - API routes (`packages/web/src/app/api/**/*.ts`)
+  - Auth layer (`packages/web/src/auth.ts`)
+  - Lib modules (`packages/web/src/lib/invite.ts`, `admin.ts`, etc.)
+  - SSR pages (`packages/web/src/app/u/[slug]/page.tsx`, etc.)
 
 ### Out of Scope
 - `packages/worker/` (write Worker) — already uses explicit INSERT statements
