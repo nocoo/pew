@@ -17,6 +17,8 @@
  */
 
 import { handleUsersRpc, type UsersRpcRequest } from "./rpc/users";
+import { handleProjectsRpc, type ProjectsRpcRequest } from "./rpc/projects";
+import { handleTeamsRpc, type TeamsRpcRequest } from "./rpc/teams";
 
 // ---------------------------------------------------------------------------
 // Version
@@ -276,8 +278,8 @@ async function handleQuery(body: unknown, env: Env): Promise<Response> {
 // ---------------------------------------------------------------------------
 
 // Union of all RPC request types (add new domains here as they are implemented)
-// type RpcRequest = UsersRpcRequest | ProjectsRpcRequest | ...;
-// For now, only users domain is implemented.
+// Exported for use in type guards and client-side type safety
+export type RpcRequest = UsersRpcRequest | ProjectsRpcRequest | TeamsRpcRequest;
 
 async function handleRpc(body: unknown, env: Env): Promise<Response> {
   if (typeof body !== "object" || body === null) {
@@ -297,6 +299,10 @@ async function handleRpc(body: unknown, env: Env): Promise<Response> {
     switch (domain) {
       case "users":
         return handleUsersRpc(body as UsersRpcRequest, env.DB);
+      case "projects":
+        return handleProjectsRpc(body as ProjectsRpcRequest, env.DB);
+      case "teams":
+        return handleTeamsRpc(body as TeamsRpcRequest, env.DB);
       default:
         return Response.json(
           { error: `Unknown RPC domain: ${domain}` },
