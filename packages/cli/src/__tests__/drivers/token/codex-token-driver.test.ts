@@ -152,6 +152,25 @@ describe("codexTokenDriver", () => {
       });
     });
 
+    it("defaults undefined fields to null/0 when inode matches (old cursor)", () => {
+      const cursor: CodexCursor = {
+        inode: 500,
+        mtimeMs: 1709827200000,
+        size: 2048,
+        offset: undefined as unknown as number,
+        lastTotals: undefined as unknown as null,
+        lastModel: undefined as unknown as null,
+        updatedAt: "2026-01-01T00:00:00Z",
+      };
+      const state = codexTokenDriver.resumeState(cursor, fingerprint);
+      expect(state).toEqual({
+        kind: "codex",
+        startOffset: 0,
+        lastTotals: null,
+        lastModel: null,
+      });
+    });
+
     it("resets state when inode differs", () => {
       const cursor: CodexCursor = {
         inode: 999,

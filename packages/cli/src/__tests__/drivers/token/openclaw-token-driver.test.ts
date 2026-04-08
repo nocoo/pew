@@ -110,6 +110,18 @@ describe("openClawTokenDriver", () => {
       expect(state).toEqual({ kind: "byte-offset", startOffset: 200 });
     });
 
+    it("defaults offset to 0 when cursor.offset is undefined", () => {
+      const cursor: ByteOffsetCursor = {
+        inode: 400,
+        mtimeMs: 1709827200000,
+        size: 1024,
+        offset: undefined as unknown as number,
+        updatedAt: "2026-01-01T00:00:00Z",
+      };
+      const state = openClawTokenDriver.resumeState(cursor, fingerprint);
+      expect(state).toEqual({ kind: "byte-offset", startOffset: 0 });
+    });
+
     it("resets offset when inode differs", () => {
       const cursor: ByteOffsetCursor = {
         inode: 999,

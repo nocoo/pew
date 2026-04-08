@@ -143,6 +143,24 @@ describe("geminiTokenDriver", () => {
         lastTotals: null,
       });
     });
+
+    it("defaults undefined fields when inode matches (old cursor format)", () => {
+      const cursor: GeminiCursor = {
+        inode: 200,
+        mtimeMs: 1709827200000,
+        size: 2048,
+        lastIndex: undefined as unknown as number,
+        lastTotals: undefined as unknown as null,
+        lastModel: null,
+        updatedAt: "2026-01-01T00:00:00Z",
+      };
+      const state = geminiTokenDriver.resumeState(cursor, fingerprint);
+      expect(state).toEqual({
+        kind: "array-index",
+        startIndex: -1,
+        lastTotals: null,
+      });
+    });
   });
 
   describe("parse + buildCursor", () => {

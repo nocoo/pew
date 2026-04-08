@@ -126,6 +126,19 @@ describe("openCodeJsonTokenDriver", () => {
       const state = openCodeJsonTokenDriver.resumeState(cursor, fingerprint);
       expect(state).toEqual({ kind: "opencode-json", lastTotals });
     });
+
+    it("defaults lastTotals to null when cursor.lastTotals is undefined", () => {
+      const cursor: OpenCodeCursor = {
+        inode: 300,
+        mtimeMs: 1709827200000,
+        size: 512,
+        lastTotals: undefined as unknown as null,
+        messageKey: null,
+        updatedAt: "2026-01-01T00:00:00Z",
+      };
+      const state = openCodeJsonTokenDriver.resumeState(cursor, fingerprint);
+      expect(state).toEqual({ kind: "opencode-json", lastTotals: null });
+    });
   });
 
   describe("parse + buildCursor", () => {
@@ -146,6 +159,22 @@ describe("openCodeJsonTokenDriver", () => {
       const cursor = openCodeJsonTokenDriver.buildCursor(fingerprint, result);
       expect(cursor.inode).toBe(300);
       expect(cursor.updatedAt).toBeDefined();
+    });
+
+    it("returns empty deltas for a user message (no delta branch)", async () => {
+      const filePath = join(tempDir, "msg-user.json");
+      await writeFile(filePath, JSON.stringify({
+        id: "msg_u1",
+        sessionID: "ses_001",
+        role: "user",
+        modelID: "claude-opus-4.6",
+        time: { created: 1739600000000, completed: 1739600001000 },
+        tokens: null,
+      }));
+
+      const resume = { kind: "opencode-json" as const, lastTotals: null };
+      const result = await openCodeJsonTokenDriver.parse(filePath, resume);
+      expect(result.deltas).toEqual([]);
     });
   });
 
