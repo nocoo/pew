@@ -45,13 +45,15 @@ Analysis of 179 `dbRead.query/firstOrNull` calls:
 
 Two-phase approach:
 
-### Phase 1: Enhanced Regex (Immediate)
+### Phase 1: SQL Tokenizer/Validator (Immediate)
 
-Harden the SQL validation in `worker-read` to reject:
-1. SQL with comments (`--`, `/* */`)
-2. SQL with semicolons (multi-statement)
-3. SQL with CTE write patterns (`WITH...DELETE/UPDATE/INSERT`)
-4. SQL not starting with SELECT (after normalization)
+Harden the SQL validation in `worker-read` using a minimal SQL tokenizer (not regex) to:
+1. Strip comments (`--`, `/* */`) while preserving string literals
+2. Reject semicolons outside string literals (multi-statement)
+3. Detect CTE write patterns (`WITH...DELETE/UPDATE/INSERT`)
+4. Require query to start with `SELECT` or `WITH` (for CTE SELECT)
+
+**Note**: This is a tokenizer-based approach, not pure regex. Functions `stripComments()` and `containsMultiStatement()` scan character-by-character to correctly handle string literals like `'-- not a comment'` and `'value; with semicolon'`.
 
 ### Phase 2: Business-Level RPC (Incremental)
 
@@ -64,19 +66,27 @@ Replace generic SQL proxy with typed query functions. Group by domain:
 | `teams` | `getTeam`, `listTeamMembers`, `checkMembership` | P1 |
 | `seasons` | `getSeason`, `getLeaderboard`, `getSnapshot` | P1 |
 | `usage` | `getUsageStats`, `getDeviceUsage` | P1 |
+| `achievements` | `getAchievement`, `listAchievements`, `getAchievementMembers` | P1 |
+| `devices` | `getDevice`, `listDevices`, `getDeviceAliases` | P1 |
 | `organizations` | `getOrg`, `listOrgMembers` | P2 |
 | `showcases` | `getShowcase`, `listShowcases` | P2 |
 | `settings` | `getAppSetting`, `getUserSettings` | P2 |
+| `auth` | `getInviteCode`, `verifyInvite`, `getAuthCode` | P2 |
+| `sessions` | `getSessionStats` | P2 |
+| `leaderboard` | `getLeaderboardData` | P2 |
 | `pricing` | `getPricing`, `listPricing` | P3 |
 | `admin` | `listInviteCodes`, `getAdminStats` | P3 |
+| `live` | (health check, no DB query) | N/A |
+
+**Goal**: Once all domains are migrated, the generic `/api/query` endpoint can be removed entirely. Until then, Phase 1 validation provides defense-in-depth.
 
 ## Atomic Commits Plan
 
-### Phase 1: Enhanced Regex
+### Phase 1: SQL Tokenizer/Validator
 
 ```
-P1-1: Add SQL normalization and multi-bypass rejection tests (RED)
-P1-2: Implement enhanced SQL validation (GREEN)
+P1-1: Add SQL validation and bypass rejection tests (RED)
+P1-2: Implement tokenizer-based SQL validation (GREEN)
 P1-3: Deploy worker-read, verify in production
 ```
 
@@ -141,9 +151,9 @@ P2-{domain}-6: Remove raw SQL from migrated routes
 
 ## Progress Tracking
 
-### Phase 1: Enhanced Regex
+### Phase 1: SQL Tokenizer/Validator
 - [x] P1-1: SQL validation tests
-- [x] P1-2: Implement validation
+- [x] P1-2: Implement tokenizer-based validation
 - [ ] P1-3: Deploy and verify
 
 ### Phase 2: RPC Migration
@@ -152,9 +162,14 @@ P2-{domain}-6: Remove raw SQL from migrated routes
 - [ ] teams (P1)
 - [ ] seasons (P1)
 - [ ] usage (P1)
+- [ ] achievements (P1)
+- [ ] devices (P1)
 - [ ] organizations (P2)
 - [ ] showcases (P2)
 - [ ] settings (P2)
+- [ ] auth (P2)
+- [ ] sessions (P2)
+- [ ] leaderboard (P2)
 - [ ] pricing (P3)
 - [ ] admin (P3)
 
