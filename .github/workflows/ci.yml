@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: G1 Static Analysis
+        run: bun run lint
+
+      - name: L1 Unit Tests + Coverage
+        run: bun run test:coverage
+
+      - name: Build
+        run: bun run build
+
+      - name: G2a Dependency CVE Scan
+        uses: google/osv-scanner-action@v2
+        with:
+          scan-args: |-
+            --lockfile=bun.lock
