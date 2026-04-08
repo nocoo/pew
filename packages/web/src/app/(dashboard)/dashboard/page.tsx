@@ -53,12 +53,18 @@ export default function DashboardPage() {
   });
   const yearData = useUsageData({ days: 365 });
 
-  // Half-hour granularity fetch for weekday/weekend + streak analysis
+  // Half-hour granularity fetch for weekday/weekend analysis (period-bounded)
   const halfHourData = useUsageData({
     from,
     ...(to ? { to } : {}),
     granularity: "half-hour",
   });
+
+  // Fixed 14-day window for WoW comparison (ensures both weeks are present)
+  const wowData = useUsageData({ days: 14, granularity: "half-hour" });
+
+  // Fixed 62-day window for MoM comparison (ensures both months are present)
+  const momData = useUsageData({ days: 62, granularity: "half-hour" });
   // Half-hour granularity for streak (needs 365 days of data)
   const yearHalfHourData = useUsageData({ days: 365, granularity: "half-hour" });
 
@@ -116,17 +122,16 @@ export default function DashboardPage() {
     [data, tzOffset, today],
   );
 
-  // MoM growth (needs 2 months of data — use half-hour records)
-
+  // MoM growth (fixed 62-day window ensures both months are present)
   const mom = useMemo(
-    () => (halfHourData.data ? computeMoMGrowth(halfHourData.data.records, pricingMap, undefined, tzOffset) : null),
-    [halfHourData.data, pricingMap, tzOffset],
+    () => (momData.data ? computeMoMGrowth(momData.data.records, pricingMap, undefined, tzOffset) : null),
+    [momData.data, pricingMap, tzOffset],
   );
 
-  // WoW growth (needs 2 weeks of data — use half-hour records)
+  // WoW growth (fixed 14-day window ensures both weeks are present)
   const wow = useMemo(
-    () => (halfHourData.data ? computeWoWGrowth(halfHourData.data.records, pricingMap, undefined, tzOffset) : null),
-    [halfHourData.data, pricingMap, tzOffset],
+    () => (wowData.data ? computeWoWGrowth(wowData.data.records, pricingMap, undefined, tzOffset) : null),
+    [wowData.data, pricingMap, tzOffset],
   );
 
   // Weekday vs weekend comparison

@@ -608,8 +608,9 @@ describe("computeWoWGrowth", () => {
   }
 
   // 2026-03-18 is a Wednesday
-  // Current week Mon: 2026-03-16
-  // Previous week Mon: 2026-03-09, Sun: 2026-03-15
+  // With Sunday-start weeks:
+  // Current week Sun: 2026-03-15 → Sat: 2026-03-21
+  // Previous week Sun: 2026-03-08 → Sat: 2026-03-14
 
   it("should return zeros for empty input", () => {
     const result = computeWoWGrowth([], makePricingMap(), new Date("2026-03-18T12:00:00Z"));
@@ -630,11 +631,13 @@ describe("computeWoWGrowth", () => {
   });
 
   it("should split rows into current and previous week", () => {
+    // With Sunday-start: current week = Sun Mar 15 → Wed Mar 18
+    // Previous week = Sun Mar 8 → Sat Mar 14
     const rows = [
-      // Previous week: Mon Mar 9 – Sun Mar 15
+      // Previous week: Sun Mar 8 – Sat Mar 14
       makeRow({ hour_start: "2026-03-10T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
       makeRow({ hour_start: "2026-03-12T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
-      // Current week: Mon Mar 16 – Wed Mar 18
+      // Current week: Sun Mar 15 – Wed Mar 18
       makeRow({ hour_start: "2026-03-17T10:00:00Z", total_tokens: 4000, input_tokens: 3200, output_tokens: 800, cached_input_tokens: 400 }),
     ];
 
@@ -677,12 +680,13 @@ describe("computeWoWGrowth", () => {
   });
 
   it("should count distinct active days per week", () => {
+    // With Sunday-start: prev week = Sun Mar 8 – Sat Mar 14, cur week = Sun Mar 15 – Wed Mar 18
     const rows = [
       // Same day in prev week — should count as 1 day
       makeRow({ hour_start: "2026-03-10T08:00:00Z", total_tokens: 500, input_tokens: 400, output_tokens: 100, cached_input_tokens: 50 }),
       makeRow({ hour_start: "2026-03-10T16:00:00Z", total_tokens: 500, input_tokens: 400, output_tokens: 100, cached_input_tokens: 50 }),
-      // Two days in current week
-      makeRow({ hour_start: "2026-03-16T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
+      // Two days in current week (Sun Mar 15 and Tue Mar 17)
+      makeRow({ hour_start: "2026-03-15T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
       makeRow({ hour_start: "2026-03-17T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
     ];
 
@@ -693,14 +697,18 @@ describe("computeWoWGrowth", () => {
   });
 
   it("should compute same-day comparison (previous week up to same day-of-week)", () => {
-    // ref = Wed Mar 18 → same-day cutoff = Wed of prev week = Mar 11
-    // Previous week: Mon Mar 9 (included), Tue Mar 10 (included), Wed Mar 11 (included), Thu Mar 12 (excluded)
+    // ref = Wed Mar 18, dow=3 (Sun=0, Mon=1, Tue=2, Wed=3)
+    // With Sunday-start: current week = Sun Mar 15 → Wed Mar 18
+    // Previous week = Sun Mar 8 → Sat Mar 14
+    // Same-day cutoff = prev Sun + 3 = Wed Mar 11
+    // So same-day subset includes: Sun Mar 8, Mon Mar 9, Tue Mar 10, Wed Mar 11
     const rows = [
-      makeRow({ hour_start: "2026-03-09T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
+      // Previous week: Sun Mar 8 (included in same-day), Wed Mar 11 (included in same-day), Fri Mar 13 (excluded from same-day)
+      makeRow({ hour_start: "2026-03-08T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
       makeRow({ hour_start: "2026-03-11T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
       makeRow({ hour_start: "2026-03-13T10:00:00Z", total_tokens: 3000, input_tokens: 2400, output_tokens: 600, cached_input_tokens: 300 }),
-      // Current week
-      makeRow({ hour_start: "2026-03-16T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
+      // Current week: Sun Mar 15, Wed Mar 18
+      makeRow({ hour_start: "2026-03-15T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
       makeRow({ hour_start: "2026-03-18T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
     ];
 
@@ -711,7 +719,7 @@ describe("computeWoWGrowth", () => {
     expect(result.currentWeek.tokens).toBe(4000);
     expect(result.tokenGrowth).toBeCloseTo(-20);
 
-    // Same-day (Mon-Wed only): prev=2000, cur=4000 → sameDayTokenGrowth = +100%
+    // Same-day (Sun-Wed only): prev=2000 (Mar 8 + Mar 11), cur=4000 → sameDayTokenGrowth = +100%
     expect(result.previousWeekSameDay.tokens).toBe(2000);
     expect(result.previousWeekSameDay.days).toBe(2);
     expect(result.sameDayTokenGrowth).toBeCloseTo(100);
@@ -719,9 +727,11 @@ describe("computeWoWGrowth", () => {
 
   it("should include same day-of-week in same-day subset (boundary test)", () => {
     // ref = Wed Mar 18 → prev week Wed = Mar 11 should be INCLUDED
+    // With Sunday-start: prev week = Sun Mar 8 – Sat Mar 14
     const rows = [
       makeRow({ hour_start: "2026-03-11T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
-      makeRow({ hour_start: "2026-03-16T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
+      // Current week (Sun Mar 15)
+      makeRow({ hour_start: "2026-03-15T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
     ];
 
     const result = computeWoWGrowth(rows, makePricingMap(), new Date("2026-03-18T12:00:00Z"));
@@ -731,66 +741,71 @@ describe("computeWoWGrowth", () => {
   });
 
   it("should return zero same-day growth when no previous same-day data", () => {
-    // ref = Mon Mar 16 (isoDow=0) → same-day cutoff = Mon of prev week = Mar 9
-    // All prev week data is after Monday
+    // ref = Sun Mar 15 (dow=0) → same-day cutoff = Sun of prev week = Mar 8
+    // With Sunday-start: prev week = Sun Mar 8 – Sat Mar 14
+    // All prev week data is after Sunday (Mar 12)
     const rows = [
       makeRow({ hour_start: "2026-03-12T10:00:00Z", total_tokens: 3000, input_tokens: 2400, output_tokens: 600, cached_input_tokens: 300 }),
-      makeRow({ hour_start: "2026-03-16T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
+      makeRow({ hour_start: "2026-03-15T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
     ];
 
-    const result = computeWoWGrowth(rows, makePricingMap(), new Date("2026-03-16T12:00:00Z"));
+    const result = computeWoWGrowth(rows, makePricingMap(), new Date("2026-03-15T12:00:00Z"));
 
     // Full week comparison still works
     expect(result.previousWeek.tokens).toBe(3000);
     expect(result.tokenGrowth).toBeCloseTo(-66.67, 1);
 
-    // Same-day: only Mon Mar 9 would count, but no data there → growth = 0
+    // Same-day: only Sun Mar 8 would count, but no data there → growth = 0
     expect(result.previousWeekSameDay.tokens).toBe(0);
     expect(result.sameDayTokenGrowth).toBe(0);
   });
 
-  it("should handle Sunday reference (full previous week is same-day subset)", () => {
-    // 2026-03-15 is a Sunday, isoDow=6
-    // Current week Mon: 2026-03-09, Previous week Mon: 2026-03-02
-    // Same-day cutoff = prev Mon + 6 = prev Sun = 2026-03-08
+  it("should handle Saturday reference (full previous week is same-day subset)", () => {
+    // 2026-03-14 is a Saturday, dow=6 (last day of the week in Sunday-start)
+    // With Sunday-start: current week = Sun Mar 8 → Sat Mar 14
+    // Previous week = Sun Mar 1 → Sat Mar 7
+    // Same-day cutoff = prev Sun + 6 = prev Sat = Mar 7 (entire prev week)
     const rows = [
       makeRow({ hour_start: "2026-03-03T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
       makeRow({ hour_start: "2026-03-07T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
       makeRow({ hour_start: "2026-03-10T10:00:00Z", total_tokens: 5000, input_tokens: 4000, output_tokens: 1000, cached_input_tokens: 500 }),
     ];
 
-    const result = computeWoWGrowth(rows, makePricingMap(), new Date("2026-03-15T12:00:00Z"));
+    const result = computeWoWGrowth(rows, makePricingMap(), new Date("2026-03-14T12:00:00Z"));
 
-    // Previous week: Mon Mar 2 – Sun Mar 8 → 1000 + 2000 = 3000
+    // Previous week: Sun Mar 1 – Sat Mar 7 → 1000 + 2000 = 3000
     expect(result.previousWeek.tokens).toBe(3000);
-    // Same-day subset = entire previous week (isoDow=6, cutoff = Sun)
+    // Same-day subset = entire previous week (dow=6, cutoff = Sat)
     expect(result.previousWeekSameDay.tokens).toBe(3000);
-    // Current week: Mon Mar 9 – Sun Mar 15 → 5000
+    // Current week: Sun Mar 8 – Sat Mar 14 → 5000
     expect(result.currentWeek.tokens).toBe(5000);
   });
 
   it("should assign UTC midnight row to previous week for west-of-UTC timezone (tzOffset=480, PST)", () => {
-    // 2026-03-16T01:00:00Z → PST local = 2026-03-15T17:00:00 → Sunday → previous week
+    // 2026-03-15T01:00:00Z → PST local = 2026-03-14T17:00:00 → Saturday → previous week
+    // ref = 2026-03-18 (Wed), with Sunday-start: current week = Sun Mar 15 → Sat Mar 21
+    // Previous week = Sun Mar 8 → Sat Mar 14
     const rows = [
-      makeRow({ hour_start: "2026-03-16T01:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
+      makeRow({ hour_start: "2026-03-15T01:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
     ];
 
     const result = computeWoWGrowth(rows, makePricingMap(), new Date("2026-03-18T12:00:00Z"), 480);
 
-    // Should be assigned to previous week (Sunday in PST), not current week
+    // Should be assigned to previous week (Saturday in PST = Mar 14), not current week
     expect(result.previousWeek.tokens).toBe(1000);
     expect(result.currentWeek.tokens).toBe(0);
   });
 
   it("should keep row in current week for east-of-UTC timezone (tzOffset=-540, JST)", () => {
-    // 2026-03-15T20:00:00Z → JST local = 2026-03-16T05:00:00 → Monday → current week
+    // 2026-03-14T20:00:00Z → JST local = 2026-03-15T05:00:00 → Sunday → current week start
+    // ref = 2026-03-18 (Wed), with Sunday-start: current week = Sun Mar 15 → Sat Mar 21
     const rows = [
-      makeRow({ hour_start: "2026-03-15T20:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
+      makeRow({ hour_start: "2026-03-14T20:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
     ];
 
     const result = computeWoWGrowth(rows, makePricingMap(), new Date("2026-03-18T12:00:00Z"), -540);
 
-    // Should be assigned to current week (Monday in JST), not previous week
+    // Should be assigned to current week (Sunday in JST = Mar 15), not previous week
     expect(result.currentWeek.tokens).toBe(2000);
     expect(result.previousWeek.tokens).toBe(0);
   });

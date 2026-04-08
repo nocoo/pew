@@ -614,13 +614,13 @@ export function computeMoMGrowth(
 /**
  * Compute week-over-week growth for tokens and cost.
  *
- * Weeks start on Monday (ISO 8601). Splits rows by local date into current
- * week (Monday → today) and previous week (Mon−7 → Sun), computes totals,
- * and calculates percentage change.
+ * Weeks start on Sunday by default (US convention, matching periodToDateRange).
+ * Splits rows by local date into current week (Sunday → today) and previous
+ * week (Sun−7 → Sat), computes totals, and calculates percentage change.
  *
  * The "same-day" comparison only includes previous week data up to the same
  * day-of-week as the reference date (e.g. if today is Wednesday, include
- * previous week Mon–Wed).
+ * previous week Sun–Wed).
  *
  * Returns 0 growth when previous week has no data (avoids Infinity).
  *
@@ -643,22 +643,21 @@ export function computeWoWGrowth(
   const todayStr = localRef.toISOString().slice(0, 10);
 
   // Day of week: getUTCDay() → 0=Sun, 1=Mon, …, 6=Sat
-  // Convert to ISO week day: Mon=0, Tue=1, …, Sun=6
+  // Use Sunday-start week (US convention): Sun=0, Mon=1, …, Sat=6
   const dow = localRef.getUTCDay();
-  const isoDow = dow === 0 ? 6 : dow - 1;
 
-  // Current week Monday (as YYYY-MM-DD)
-  const curWeekStartMs = new Date(todayStr + "T00:00:00Z").getTime() - isoDow * 86_400_000;
+  // Current week Sunday (as YYYY-MM-DD)
+  const curWeekStartMs = new Date(todayStr + "T00:00:00Z").getTime() - dow * 86_400_000;
   const curWeekStart = new Date(curWeekStartMs).toISOString().slice(0, 10);
 
-  // Previous week Monday and Sunday
+  // Previous week Sunday and Saturday
   const prevWeekStartMs = curWeekStartMs - 7 * 86_400_000;
   const prevWeekStart = new Date(prevWeekStartMs).toISOString().slice(0, 10);
   const prevWeekEndMs = curWeekStartMs - 86_400_000;
   const prevWeekEnd = new Date(prevWeekEndMs).toISOString().slice(0, 10);
 
-  // Previous week same-day cutoff: Mon of prev week + isoDow days
-  const prevWeekSameDayEndMs = prevWeekStartMs + isoDow * 86_400_000;
+  // Previous week same-day cutoff: Sunday of prev week + dow days
+  const prevWeekSameDayEndMs = prevWeekStartMs + dow * 86_400_000;
   const prevWeekSameDayEnd = new Date(prevWeekSameDayEndMs).toISOString().slice(0, 10);
 
   let curTokens = 0;
