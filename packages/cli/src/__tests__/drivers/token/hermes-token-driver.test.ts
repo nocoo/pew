@@ -187,7 +187,7 @@ describe("hermesSqliteTokenDriver", () => {
     const result = await driver.run(prevCursor, ctx);
 
     expect(result.deltas).toHaveLength(0);
-    expect(result.rowCount).toBe(0);
+    expect(result.rowCount).toBe(1); // 1 session queried, 0 deltas emitted
   });
 
   it("handles new session appearing", async () => {
@@ -240,6 +240,7 @@ describe("hermesSqliteTokenDriver", () => {
 
     expect(result.deltas).toHaveLength(1);
     expect(result.deltas[0].tokens.inputTokens).toBe(2000);
+    expect(result.rowCount).toBe(2); // 2 sessions queried, 1 delta emitted
     expect(result.cursor.sessionTotals["session-1"]).toBeDefined();
     expect(result.cursor.sessionTotals["session-2"]).toBeDefined();
   });

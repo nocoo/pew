@@ -9,6 +9,8 @@ export interface HermesSqliteResult {
   deltas: ParsedDelta[];
   /** Updated cursor (session totals + inode) */
   cursor: HermesSqliteCursor;
+  /** Number of raw rows queried (for progress reporting) */
+  rowCount: number;
 }
 
 /** Row shape from the sessions table */
@@ -134,5 +136,5 @@ export async function parseHermesDatabase(
   cursor.inode = currentInode;
   cursor.updatedAt = syncTime;
 
-  return { deltas, cursor };
+  return { deltas, cursor, rowCount: rows.length };
 }

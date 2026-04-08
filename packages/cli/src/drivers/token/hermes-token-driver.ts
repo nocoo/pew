@@ -71,7 +71,7 @@ export function createHermesSqliteTokenDriver(
         return {
           deltas: result.deltas,
           cursor: result.cursor,
-          rowCount: result.deltas.length,
+          rowCount: result.rowCount,
         };
       } finally {
         handle.close();
