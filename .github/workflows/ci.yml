@@ -6,12 +6,6 @@ on:
   push:
     branches: [main]
 
-# Permissions required for osv-scanner SARIF upload
-permissions:
-  actions: read
-  contents: read
-  security-events: write
-
 jobs:
   quality-gate:
     runs-on: ubuntu-latest
@@ -39,7 +33,9 @@ jobs:
         run: bun run build
 
       - name: G2a Dependency CVE Scan
-        uses: google/osv-scanner-action@c51854704019a247608d928f370c98740469d4b5 # v2.3.5
-        with:
-          scan-args: |-
-            --lockfile=bun.lock
+        run: |
+          # Install osv-scanner
+          curl -sSfL https://github.com/google/osv-scanner/releases/download/v2.0.2/osv-scanner_linux_amd64 -o /tmp/osv-scanner
+          chmod +x /tmp/osv-scanner
+          # Scan bun.lock for vulnerabilities
+          /tmp/osv-scanner --lockfile=bun.lock
