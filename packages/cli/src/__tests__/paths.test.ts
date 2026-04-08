@@ -1,8 +1,31 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { join } from "node:path";
 import { resolveDefaultPaths } from "../utils/paths.js";
 
 describe("resolveDefaultPaths", () => {
+  let savedHermesHome: string | undefined;
+  let savedCodexHome: string | undefined;
+
+  beforeEach(() => {
+    savedHermesHome = process.env.HERMES_HOME;
+    savedCodexHome = process.env.CODEX_HOME;
+    delete process.env.HERMES_HOME;
+    delete process.env.CODEX_HOME;
+  });
+
+  afterEach(() => {
+    if (savedHermesHome !== undefined) {
+      process.env.HERMES_HOME = savedHermesHome;
+    } else {
+      delete process.env.HERMES_HOME;
+    }
+    if (savedCodexHome !== undefined) {
+      process.env.CODEX_HOME = savedCodexHome;
+    } else {
+      delete process.env.CODEX_HOME;
+    }
+  });
+
   it("should resolve all paths relative to home directory", () => {
     const paths = resolveDefaultPaths("/fakehome");
     expect(paths.stateDir).toBe(join("/fakehome", ".config", "pew"));
