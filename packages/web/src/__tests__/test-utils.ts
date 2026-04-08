@@ -16,14 +16,36 @@ import type { DbRead, DbWrite } from "@/lib/db";
 // Mock DB factories
 // ---------------------------------------------------------------------------
 
-/** Mock DbRead with `query` + `firstOrNull`. */
+/** Mock DbRead with all methods (legacy SQL proxy + users RPC). */
 export function createMockDbRead() {
   return {
+    // Legacy SQL proxy
     query: vi.fn(),
     firstOrNull: vi.fn(),
+    // Users RPC methods
+    getUserById: vi.fn(),
+    getUserBySlug: vi.fn(),
+    getUserByEmail: vi.fn(),
+    getUserByApiKey: vi.fn(),
+    getUserByOAuthAccount: vi.fn(),
+    checkSlugExists: vi.fn(),
+    getUserSettings: vi.fn(),
+    getUserApiKey: vi.fn(),
+    getUserEmail: vi.fn(),
+    searchUsers: vi.fn(),
   } as unknown as DbRead & {
     query: ReturnType<typeof vi.fn>;
     firstOrNull: ReturnType<typeof vi.fn>;
+    getUserById: ReturnType<typeof vi.fn>;
+    getUserBySlug: ReturnType<typeof vi.fn>;
+    getUserByEmail: ReturnType<typeof vi.fn>;
+    getUserByApiKey: ReturnType<typeof vi.fn>;
+    getUserByOAuthAccount: ReturnType<typeof vi.fn>;
+    checkSlugExists: ReturnType<typeof vi.fn>;
+    getUserSettings: ReturnType<typeof vi.fn>;
+    getUserApiKey: ReturnType<typeof vi.fn>;
+    getUserEmail: ReturnType<typeof vi.fn>;
+    searchUsers: ReturnType<typeof vi.fn>;
   };
 }
 
@@ -44,10 +66,22 @@ export function createMockDbWrite() {
  */
 export function createMockClient() {
   return {
+    // Legacy SQL proxy
     query: vi.fn(),
     execute: vi.fn(),
     batch: vi.fn(),
     firstOrNull: vi.fn(),
+    // Users RPC methods
+    getUserById: vi.fn(),
+    getUserBySlug: vi.fn(),
+    getUserByEmail: vi.fn(),
+    getUserByApiKey: vi.fn(),
+    getUserByOAuthAccount: vi.fn(),
+    checkSlugExists: vi.fn(),
+    getUserSettings: vi.fn(),
+    getUserApiKey: vi.fn(),
+    getUserEmail: vi.fn(),
+    searchUsers: vi.fn(),
   };
 }
 

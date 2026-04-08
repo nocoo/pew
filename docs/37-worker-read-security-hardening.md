@@ -174,10 +174,10 @@ This ensures RPC migration doesn't break production behavior.
 ### Phase 1: SQL Tokenizer/Validator
 - [x] P1-1: SQL validation tests
 - [x] P1-2: Implement tokenizer-based validation
-- [ ] P1-3: Deploy and verify
+- [x] P1-3: Deploy and verify
 
 ### Phase 2: RPC Migration
-- [ ] users (P0)
+- [x] users (P0) — RPC handlers, DbRead interface, adapter methods, partial route migration
 - [ ] projects (P0)
 - [ ] teams (P1)
 - [ ] seasons (P1)

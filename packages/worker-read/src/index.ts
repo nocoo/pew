@@ -7,13 +7,16 @@
  *
  * Routes:
  * - GET  /api/live   — health check (no auth, no cache)
- * - POST /api/query  — execute read-only SQL query
+ * - POST /api/query  — execute read-only SQL query (legacy, being migrated)
+ * - POST /api/rpc    — typed RPC endpoint for domain-specific queries
  *
  * Auth: shared secret (WORKER_READ_SECRET) between Next.js and this Worker.
  *       /api/live is excluded from auth (public health endpoint).
  *
- * Safety: regex guard rejects write statements (INSERT, UPDATE, DELETE, etc.)
+ * Safety: tokenizer-based validation rejects write statements
  */
+
+import { handleUsersRpc, type UsersRpcRequest } from "./rpc/users";
 
 // ---------------------------------------------------------------------------
 // Version
@@ -269,6 +272,47 @@ async function handleQuery(body: unknown, env: Env): Promise<Response> {
 }
 
 // ---------------------------------------------------------------------------
+// Route: POST /api/rpc
+// ---------------------------------------------------------------------------
+
+// Union of all RPC request types (add new domains here as they are implemented)
+// type RpcRequest = UsersRpcRequest | ProjectsRpcRequest | ...;
+// For now, only users domain is implemented.
+
+async function handleRpc(body: unknown, env: Env): Promise<Response> {
+  if (typeof body !== "object" || body === null) {
+    return Response.json({ error: "Invalid request body" }, { status: 400 });
+  }
+
+  const { method } = body as { method?: string };
+
+  if (typeof method !== "string" || method.length === 0) {
+    return Response.json({ error: "Missing or empty method" }, { status: 400 });
+  }
+
+  // Route to domain handler based on method prefix
+  const domain = method.split(".")[0];
+
+  try {
+    switch (domain) {
+      case "users":
+        return handleUsersRpc(body as UsersRpcRequest, env.DB);
+      default:
+        return Response.json(
+          { error: `Unknown RPC domain: ${domain}` },
+          { status: 400 },
+        );
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return Response.json(
+      { error: `RPC failed: ${message}` },
+      { status: 500 },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Main handler
 // ---------------------------------------------------------------------------
 
@@ -295,7 +339,7 @@ const worker: ExportedHandler<Env> = {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // POST /api/query
+    // POST /api/query (legacy SQL proxy, being migrated to RPC)
     if (path === "/api/query") {
       if (request.method !== "POST") {
         return Response.json(
@@ -315,6 +359,28 @@ const worker: ExportedHandler<Env> = {
       }
 
       return handleQuery(body, env);
+    }
+
+    // POST /api/rpc — typed RPC endpoint
+    if (path === "/api/rpc") {
+      if (request.method !== "POST") {
+        return Response.json(
+          { error: "Method not allowed" },
+          { status: 405 },
+        );
+      }
+
+      let body: unknown;
+      try {
+        body = await request.json();
+      } catch {
+        return Response.json(
+          { error: "Invalid JSON body" },
+          { status: 400 },
+        );
+      }
+
+      return handleRpc(body, env);
     }
 
     // Unknown route

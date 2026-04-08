@@ -5,6 +5,14 @@
  * binding). Write operations go through the D1 REST API.
  */
 
+import type {
+  UserProfile,
+  UserAuth,
+  UserApiKeyAuth,
+  UserSettings,
+  UserSearchResult,
+} from "./rpc-types";
+
 // ---------------------------------------------------------------------------
 // Result types
 // ---------------------------------------------------------------------------
@@ -19,6 +27,7 @@ export interface DbQueryResult<T = Record<string, unknown>> {
 // ---------------------------------------------------------------------------
 
 export interface DbRead {
+  // Legacy SQL proxy (being migrated to typed RPC)
   query<T = Record<string, unknown>>(
     sql: string,
     params?: unknown[],
@@ -28,6 +37,43 @@ export interface DbRead {
     sql: string,
     params?: unknown[],
   ): Promise<T | null>;
+
+  // ---------------------------------------------------------------------------
+  // Users domain RPC methods
+  // ---------------------------------------------------------------------------
+
+  /** Get user by ID (for auth) */
+  getUserById(id: string): Promise<UserAuth | null>;
+
+  /** Get user profile by slug (for public profile page) */
+  getUserBySlug(slug: string): Promise<UserProfile | null>;
+
+  /** Get user by email (for auth) */
+  getUserByEmail(email: string): Promise<UserAuth | null>;
+
+  /** Authenticate user by API key */
+  getUserByApiKey(apiKey: string): Promise<UserApiKeyAuth | null>;
+
+  /** Get user by OAuth provider account */
+  getUserByOAuthAccount(
+    provider: string,
+    providerAccountId: string,
+  ): Promise<UserAuth | null>;
+
+  /** Check if slug exists (optionally excluding a user) */
+  checkSlugExists(slug: string, excludeUserId?: string): Promise<boolean>;
+
+  /** Get user settings */
+  getUserSettings(userId: string): Promise<UserSettings | null>;
+
+  /** Get user's API key */
+  getUserApiKey(userId: string): Promise<string | null>;
+
+  /** Get user email (admin) */
+  getUserEmail(userId: string): Promise<string | null>;
+
+  /** Search users by name/email (admin) */
+  searchUsers(query: string, limit?: number): Promise<UserSearchResult[]>;
 }
 
 // ---------------------------------------------------------------------------

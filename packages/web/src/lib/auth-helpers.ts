@@ -46,10 +46,7 @@ export async function resolveUser(
   if (authHeader?.startsWith("Bearer ")) {
     const apiKey = authHeader.slice(7);
     const db = await getDbRead();
-    const row = await db.firstOrNull<{ id: string; email: string }>(
-      "SELECT id, email FROM users WHERE api_key = ?",
-      [apiKey],
-    );
+    const row = await db.getUserByApiKey(apiKey);
     if (row) {
       return { userId: row.id, email: row.email };
     }

@@ -144,7 +144,7 @@ describe("resolveUser", () => {
       auth.mockResolvedValueOnce(null);
 
       const mockClient = createMockClient();
-      mockClient.firstOrNull.mockResolvedValueOnce({
+      mockClient.getUserByApiKey.mockResolvedValueOnce({
         id: "u-api-key-1",
         email: "api@example.com",
       });
@@ -168,7 +168,7 @@ describe("resolveUser", () => {
 
     it("should resolve user from valid API key", async () => {
       const mockClient = createMockClient();
-      mockClient.firstOrNull.mockResolvedValueOnce({
+      mockClient.getUserByApiKey.mockResolvedValueOnce({
         id: "u-api-1",
         email: "apiuser@example.com",
       });
@@ -180,15 +180,12 @@ describe("resolveUser", () => {
         userId: "u-api-1",
         email: "apiuser@example.com",
       });
-      expect(mockClient.firstOrNull).toHaveBeenCalledWith(
-        "SELECT id, email FROM users WHERE api_key = ?",
-        ["pk_test_key_123"],
-      );
+      expect(mockClient.getUserByApiKey).toHaveBeenCalledWith("pk_test_key_123");
     });
 
     it("should return null for invalid API key (no DB match)", async () => {
       const mockClient = createMockClient();
-      mockClient.firstOrNull.mockResolvedValueOnce(null);
+      mockClient.getUserByApiKey.mockResolvedValueOnce(null);
       getDbRead.mockResolvedValueOnce(mockClient);
 
       const result = await resolveUser(makeRequest("pk_bad_key"));

@@ -127,14 +127,11 @@ describe("resolveAdmin", () => {
       userId: "u1",
       email: undefined,
     });
-    mockDbRead.firstOrNull.mockResolvedValueOnce({ email: "admin@example.com" });
+    mockDbRead.getUserEmail.mockResolvedValueOnce("admin@example.com");
 
     const result = await resolveAdmin(new Request("http://localhost"));
 
-    expect(mockDbRead.firstOrNull).toHaveBeenCalledWith(
-      "SELECT email FROM users WHERE id = ?",
-      ["u1"],
-    );
+    expect(mockDbRead.getUserEmail).toHaveBeenCalledWith("u1");
     expect(result).toEqual({ userId: "u1", email: "admin@example.com" });
   });
 
@@ -143,7 +140,7 @@ describe("resolveAdmin", () => {
       userId: "u1",
       email: undefined,
     });
-    mockDbRead.firstOrNull.mockResolvedValueOnce(null);
+    mockDbRead.getUserEmail.mockResolvedValueOnce(null);
 
     const result = await resolveAdmin(new Request("http://localhost"));
     expect(result).toBeNull();
@@ -154,7 +151,7 @@ describe("resolveAdmin", () => {
       userId: "u1",
       email: undefined,
     });
-    mockDbRead.firstOrNull.mockResolvedValueOnce({ email: "user@example.com" });
+    mockDbRead.getUserEmail.mockResolvedValueOnce("user@example.com");
 
     const result = await resolveAdmin(new Request("http://localhost"));
     expect(result).toBeNull();
@@ -193,22 +190,19 @@ describe("isAdminUser", () => {
   });
 
   it("should fall back to DB lookup when auth result has no email", async () => {
-    mockDbRead.firstOrNull.mockResolvedValueOnce({ email: "admin@example.com" });
+    mockDbRead.getUserEmail.mockResolvedValueOnce("admin@example.com");
 
     const result = await isAdminUser({
       userId: "u1",
       email: undefined,
     });
 
-    expect(mockDbRead.firstOrNull).toHaveBeenCalledWith(
-      "SELECT email FROM users WHERE id = ?",
-      ["u1"],
-    );
+    expect(mockDbRead.getUserEmail).toHaveBeenCalledWith("u1");
     expect(result).toBe(true);
   });
 
   it("should return false when DB lookup finds no email", async () => {
-    mockDbRead.firstOrNull.mockResolvedValueOnce(null);
+    mockDbRead.getUserEmail.mockResolvedValueOnce(null);
 
     const result = await isAdminUser({
       userId: "u1",
@@ -219,7 +213,7 @@ describe("isAdminUser", () => {
   });
 
   it("should return false when DB lookup returns non-admin email", async () => {
-    mockDbRead.firstOrNull.mockResolvedValueOnce({ email: "user@example.com" });
+    mockDbRead.getUserEmail.mockResolvedValueOnce("user@example.com");
 
     const result = await isAdminUser({
       userId: "u1",

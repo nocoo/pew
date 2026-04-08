@@ -52,15 +52,11 @@ export async function resolveAdmin(
   if (!authResult) return null;
 
   // resolveUser may not always have the email (e.g. session without email)
-  // If email is missing, look it up from D1
+  // If email is missing, look it up via RPC
   let email = authResult.email;
   if (!email) {
     const db = await getDbRead();
-    const row = await db.firstOrNull<{ email: string }>(
-      "SELECT email FROM users WHERE id = ?",
-      [authResult.userId]
-    );
-    email = row?.email;
+    email = await db.getUserEmail(authResult.userId) ?? undefined;
   }
 
   if (!isAdmin(email)) return null;
@@ -78,11 +74,7 @@ export async function isAdminUser(
   let email = authResult.email;
   if (!email) {
     const db = await getDbRead();
-    const row = await db.firstOrNull<{ email: string }>(
-      "SELECT email FROM users WHERE id = ?",
-      [authResult.userId]
-    );
-    email = row?.email;
+    email = await db.getUserEmail(authResult.userId) ?? undefined;
   }
   return isAdmin(email);
 }

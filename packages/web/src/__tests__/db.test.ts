@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { createMockDbRead } from "./test-utils";
 
 // Mock d1 module (still needed for createRestDbWrite tests)
 vi.mock("@/lib/d1", () => ({
@@ -29,10 +30,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   resetDb();
   vi.mocked(getD1Client).mockReturnValue(mockClient as never);
-  vi.mocked(createWorkerDbRead).mockImplementation(() => ({
-    query: vi.fn(),
-    firstOrNull: vi.fn(),
-  }));
+  vi.mocked(createWorkerDbRead).mockImplementation(() => createMockDbRead());
 });
 
 // ---------------------------------------------------------------------------

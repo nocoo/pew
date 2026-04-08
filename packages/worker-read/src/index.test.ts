@@ -504,5 +504,91 @@ describe("pew read Worker", () => {
       );
       expect(res.status).toBe(405);
     });
+
+    it("should return 405 for GET on /api/rpc", async () => {
+      const res = await callWorker(
+        makeRequest("GET", "/api/rpc", undefined, SECRET),
+        env,
+      );
+      expect(res.status).toBe(405);
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // POST /api/rpc
+  // -----------------------------------------------------------------------
+
+  describe("POST /api/rpc", () => {
+    it("should return 401 without auth", async () => {
+      const req = new Request("https://pew.test.workers.dev/api/rpc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method: "users.getById", id: "usr_123" }),
+      });
+
+      const res = await callWorker(req, env);
+      expect(res.status).toBe(401);
+    });
+
+    it("should return 400 for missing method", async () => {
+      const res = await callWorker(
+        makeRequest("POST", "/api/rpc", { id: "usr_123" }, SECRET),
+        env,
+      );
+      expect(res.status).toBe(400);
+      const body = await res.json() as Record<string, unknown>;
+      expect(body.error).toContain("method");
+    });
+
+    it("should return 400 for unknown domain", async () => {
+      const res = await callWorker(
+        makeRequest("POST", "/api/rpc", { method: "unknown.method" }, SECRET),
+        env,
+      );
+      expect(res.status).toBe(400);
+      const body = await res.json() as Record<string, unknown>;
+      expect(body.error).toContain("Unknown RPC domain");
+    });
+
+    it("should route users domain to users handler", async () => {
+      const mockUser = {
+        id: "usr_123",
+        email: "test@example.com",
+        name: "Test",
+        image: null,
+        email_verified: null,
+      };
+      const db = createMockDB();
+      (db.prepare as ReturnType<typeof vi.fn>).mockReturnValue({
+        bind: vi.fn().mockReturnValue({
+          first: vi.fn().mockResolvedValue(mockUser),
+        }),
+      });
+      const testEnv = createEnv({ DB: db });
+
+      const res = await callWorker(
+        makeRequest("POST", "/api/rpc", { method: "users.getById", id: "usr_123" }, SECRET),
+        testEnv,
+      );
+
+      expect(res.status).toBe(200);
+      const body = await res.json() as Record<string, unknown>;
+      expect(body.result).toEqual(mockUser);
+    });
+
+    it("should return 400 for invalid JSON body", async () => {
+      const req = new Request("https://pew.test.workers.dev/api/rpc", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${SECRET}`,
+        },
+        body: "not-json",
+      });
+      const res = await callWorker(req, env);
+      expect(res.status).toBe(400);
+      const body = await res.json() as Record<string, unknown>;
+      expect(body.error).toContain("JSON");
+    });
   });
 });

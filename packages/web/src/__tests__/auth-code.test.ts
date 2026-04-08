@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST } from "@/app/api/auth/code/route";
 import { POST as verifyPOST } from "@/app/api/auth/code/verify/route";
+import { createMockDbRead, createMockDbWrite } from "./test-utils";
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -16,7 +17,7 @@ vi.mock("@/lib/db", () => ({
 }));
 
 import { resolveUser } from "@/lib/auth-helpers";
-import { getDbRead, getDbWrite } from "@/lib/db";
+import { getDbRead, getDbWrite, type DbRead, type DbWrite } from "@/lib/db";
 
 const mockResolveUser = vi.mocked(resolveUser);
 const mockGetDbRead = vi.mocked(getDbRead);
@@ -51,11 +52,9 @@ describe("POST /api/auth/code", () => {
       email: "test@example.com",
     });
 
-    const mockExecute = vi.fn().mockResolvedValue({ changes: 1 });
-    mockGetDbWrite.mockResolvedValue({
-      execute: mockExecute,
-      batch: vi.fn(),
-    });
+    const mockDbWrite = createMockDbWrite();
+    mockDbWrite.execute.mockResolvedValue({ changes: 1 });
+    mockGetDbWrite.mockResolvedValue(mockDbWrite as unknown as DbWrite);
 
     const request = new Request("http://localhost/api/auth/code", {
       method: "POST",
@@ -82,11 +81,9 @@ describe("POST /api/auth/code", () => {
       email: "test@example.com",
     });
 
-    const mockExecute = vi.fn().mockResolvedValue({ changes: 1 });
-    mockGetDbWrite.mockResolvedValue({
-      execute: mockExecute,
-      batch: vi.fn(),
-    });
+    const mockDbWrite = createMockDbWrite();
+    mockDbWrite.execute.mockResolvedValue({ changes: 1 });
+    mockGetDbWrite.mockResolvedValue(mockDbWrite as unknown as DbWrite);
 
     const request = new Request("http://localhost/api/auth/code", {
       method: "POST",
@@ -95,8 +92,8 @@ describe("POST /api/auth/code", () => {
     await POST(request);
 
     // Should only have ONE call (INSERT) - no UPDATE to invalidate other codes
-    expect(mockExecute).toHaveBeenCalledTimes(1);
-    expect(mockExecute).toHaveBeenCalledWith(
+    expect(mockDbWrite.execute).toHaveBeenCalledTimes(1);
+    expect(mockDbWrite.execute).toHaveBeenCalledWith(
       expect.stringContaining("INSERT INTO auth_codes"),
       expect.arrayContaining(["user-123"])
     );
@@ -108,11 +105,9 @@ describe("POST /api/auth/code", () => {
       email: "test@example.com",
     });
 
-    const mockExecute = vi.fn().mockRejectedValue(new Error("D1 is down"));
-    mockGetDbWrite.mockResolvedValue({
-      execute: mockExecute,
-      batch: vi.fn(),
-    });
+    const mockDbWrite = createMockDbWrite();
+    mockDbWrite.execute.mockRejectedValue(new Error("D1 is down"));
+    mockGetDbWrite.mockResolvedValue(mockDbWrite as unknown as DbWrite);
 
     const request = new Request("http://localhost/api/auth/code", {
       method: "POST",
@@ -134,7 +129,8 @@ describe("POST /api/auth/code", () => {
     // Track the codes that were attempted
     const attemptedCodes: string[] = [];
 
-    const mockExecute = vi.fn().mockImplementation((sql: string, params: unknown[]) => {
+    const mockDbWrite = createMockDbWrite();
+    mockDbWrite.execute.mockImplementation((sql: string, params: unknown[]) => {
       if (sql.includes("INSERT")) {
         const code = params[0] as string;
         attemptedCodes.push(code); // code is first param
@@ -144,11 +140,7 @@ describe("POST /api/auth/code", () => {
       }
       return Promise.resolve({ changes: 1 });
     });
-
-    mockGetDbWrite.mockResolvedValue({
-      execute: mockExecute,
-      batch: vi.fn(),
-    });
+    mockGetDbWrite.mockResolvedValue(mockDbWrite as unknown as DbWrite);
 
     const request = new Request("http://localhost/api/auth/code", {
       method: "POST",
@@ -170,11 +162,9 @@ describe("POST /api/auth/code", () => {
       email: "test@example.com",
     });
 
-    const mockExecute = vi.fn().mockRejectedValue(new Error("UNIQUE constraint failed"));
-    mockGetDbWrite.mockResolvedValue({
-      execute: mockExecute,
-      batch: vi.fn(),
-    });
+    const mockDbWrite = createMockDbWrite();
+    mockDbWrite.execute.mockRejectedValue(new Error("UNIQUE constraint failed"));
+    mockGetDbWrite.mockResolvedValue(mockDbWrite as unknown as DbWrite);
 
     const request = new Request("http://localhost/api/auth/code", {
       method: "POST",
@@ -187,7 +177,7 @@ describe("POST /api/auth/code", () => {
     expect(body.error).toBe("Failed to generate code");
 
     // Should have tried 3 times (initial + 2 retries)
-    expect(mockExecute).toHaveBeenCalledTimes(3);
+    expect(mockDbWrite.execute).toHaveBeenCalledTimes(3);
   });
 });
 
@@ -218,10 +208,9 @@ describe("POST /api/auth/code/verify", () => {
   });
 
   it("should return 401 when code is invalid", async () => {
-    mockGetDbRead.mockResolvedValue({
-      query: vi.fn(),
-      firstOrNull: vi.fn().mockResolvedValue(null),
-    });
+    const mockDbRead = createMockDbRead();
+    mockDbRead.firstOrNull.mockResolvedValue(null);
+    mockGetDbRead.mockResolvedValue(mockDbRead as unknown as DbRead);
 
     const request = new Request("http://localhost/api/auth/code/verify", {
       method: "POST",
@@ -237,22 +226,19 @@ describe("POST /api/auth/code/verify", () => {
   });
 
   it("should return 401 and increment failed_attempts when code is already used", async () => {
-    mockGetDbRead.mockResolvedValue({
-      query: vi.fn(),
-      firstOrNull: vi.fn().mockResolvedValue({
-        code: "ABCD-1234",
-        user_id: "user-123",
-        expires_at: new Date(Date.now() + 300_000).toISOString(),
-        used_at: new Date().toISOString(), // Already used
-        failed_attempts: 0,
-      }),
+    const mockDbRead = createMockDbRead();
+    mockDbRead.firstOrNull.mockResolvedValue({
+      code: "ABCD-1234",
+      user_id: "user-123",
+      expires_at: new Date(Date.now() + 300_000).toISOString(),
+      used_at: new Date().toISOString(), // Already used
+      failed_attempts: 0,
     });
+    mockGetDbRead.mockResolvedValue(mockDbRead as unknown as DbRead);
 
-    const mockExecute = vi.fn().mockResolvedValue({ changes: 1 });
-    mockGetDbWrite.mockResolvedValue({
-      execute: mockExecute,
-      batch: vi.fn(),
-    });
+    const mockDbWrite = createMockDbWrite();
+    mockDbWrite.execute.mockResolvedValue({ changes: 1 });
+    mockGetDbWrite.mockResolvedValue(mockDbWrite as unknown as DbWrite);
 
     const request = new Request("http://localhost/api/auth/code/verify", {
       method: "POST",
@@ -267,29 +253,26 @@ describe("POST /api/auth/code/verify", () => {
     expect(body.error).toBe(AUTH_ERROR);
 
     // Should increment failed_attempts
-    expect(mockExecute).toHaveBeenCalledWith(
+    expect(mockDbWrite.execute).toHaveBeenCalledWith(
       expect.stringContaining("failed_attempts = failed_attempts + 1"),
       ["ABCD-1234"]
     );
   });
 
   it("should return 401 and increment failed_attempts when code is expired", async () => {
-    mockGetDbRead.mockResolvedValue({
-      query: vi.fn(),
-      firstOrNull: vi.fn().mockResolvedValue({
-        code: "ABCD-1234",
-        user_id: "user-123",
-        expires_at: new Date(Date.now() - 1000).toISOString(), // Expired
-        used_at: null,
-        failed_attempts: 0,
-      }),
+    const mockDbRead = createMockDbRead();
+    mockDbRead.firstOrNull.mockResolvedValue({
+      code: "ABCD-1234",
+      user_id: "user-123",
+      expires_at: new Date(Date.now() - 1000).toISOString(), // Expired
+      used_at: null,
+      failed_attempts: 0,
     });
+    mockGetDbRead.mockResolvedValue(mockDbRead as unknown as DbRead);
 
-    const mockExecute = vi.fn().mockResolvedValue({ changes: 1 });
-    mockGetDbWrite.mockResolvedValue({
-      execute: mockExecute,
-      batch: vi.fn(),
-    });
+    const mockDbWrite = createMockDbWrite();
+    mockDbWrite.execute.mockResolvedValue({ changes: 1 });
+    mockGetDbWrite.mockResolvedValue(mockDbWrite as unknown as DbWrite);
 
     const request = new Request("http://localhost/api/auth/code/verify", {
       method: "POST",
@@ -304,29 +287,26 @@ describe("POST /api/auth/code/verify", () => {
     expect(body.error).toBe(AUTH_ERROR);
 
     // Should increment failed_attempts
-    expect(mockExecute).toHaveBeenCalledWith(
+    expect(mockDbWrite.execute).toHaveBeenCalledWith(
       expect.stringContaining("failed_attempts = failed_attempts + 1"),
       ["ABCD-1234"]
     );
   });
 
   it("should return 401 when code has failed_attempts > 0", async () => {
-    mockGetDbRead.mockResolvedValue({
-      query: vi.fn(),
-      firstOrNull: vi.fn().mockResolvedValue({
-        code: "ABCD-1234",
-        user_id: "user-123",
-        expires_at: new Date(Date.now() + 300_000).toISOString(),
-        used_at: null,
-        failed_attempts: 1, // Already had a failed attempt
-      }),
+    const mockDbRead = createMockDbRead();
+    mockDbRead.firstOrNull.mockResolvedValue({
+      code: "ABCD-1234",
+      user_id: "user-123",
+      expires_at: new Date(Date.now() + 300_000).toISOString(),
+      used_at: null,
+      failed_attempts: 1, // Already had a failed attempt
     });
+    mockGetDbRead.mockResolvedValue(mockDbRead as unknown as DbRead);
 
-    const mockExecute = vi.fn().mockResolvedValue({ changes: 1 });
-    mockGetDbWrite.mockResolvedValue({
-      execute: mockExecute,
-      batch: vi.fn(),
-    });
+    const mockDbWrite = createMockDbWrite();
+    mockDbWrite.execute.mockResolvedValue({ changes: 1 });
+    mockGetDbWrite.mockResolvedValue(mockDbWrite as unknown as DbWrite);
 
     const request = new Request("http://localhost/api/auth/code/verify", {
       method: "POST",
@@ -342,7 +322,8 @@ describe("POST /api/auth/code/verify", () => {
   });
 
   it("should return api_key and email for valid code", async () => {
-    const mockFirstOrNull = vi.fn()
+    const mockDbRead = createMockDbRead();
+    mockDbRead.firstOrNull
       .mockResolvedValueOnce({
         code: "ABCD-1234",
         user_id: "user-123",
@@ -355,17 +336,11 @@ describe("POST /api/auth/code/verify", () => {
         email: "test@example.com",
         api_key: "pk_existing_key",
       });
+    mockGetDbRead.mockResolvedValue(mockDbRead as unknown as DbRead);
 
-    mockGetDbRead.mockResolvedValue({
-      query: vi.fn(),
-      firstOrNull: mockFirstOrNull,
-    });
-
-    const mockExecute = vi.fn().mockResolvedValue({ changes: 1 });
-    mockGetDbWrite.mockResolvedValue({
-      execute: mockExecute,
-      batch: vi.fn(),
-    });
+    const mockDbWrite = createMockDbWrite();
+    mockDbWrite.execute.mockResolvedValue({ changes: 1 });
+    mockGetDbWrite.mockResolvedValue(mockDbWrite as unknown as DbWrite);
 
     const request = new Request("http://localhost/api/auth/code/verify", {
       method: "POST",
@@ -381,14 +356,15 @@ describe("POST /api/auth/code/verify", () => {
     expect(body.email).toBe("test@example.com");
 
     // Verify code was marked as used AFTER user lookup succeeded
-    expect(mockExecute).toHaveBeenCalledWith(
+    expect(mockDbWrite.execute).toHaveBeenCalledWith(
       expect.stringContaining("SET used_at"),
       expect.arrayContaining(["ABCD-1234"])
     );
   });
 
   it("should generate api_key if user has none (atomic conditional update)", async () => {
-    const mockFirstOrNull = vi.fn()
+    const mockDbRead = createMockDbRead();
+    mockDbRead.firstOrNull
       .mockResolvedValueOnce({
         code: "ABCD-1234",
         user_id: "user-123",
@@ -401,17 +377,11 @@ describe("POST /api/auth/code/verify", () => {
         email: "test@example.com",
         api_key: null, // No existing key
       });
+    mockGetDbRead.mockResolvedValue(mockDbRead as unknown as DbRead);
 
-    mockGetDbRead.mockResolvedValue({
-      query: vi.fn(),
-      firstOrNull: mockFirstOrNull,
-    });
-
-    const mockExecute = vi.fn().mockResolvedValue({ changes: 1 });
-    mockGetDbWrite.mockResolvedValue({
-      execute: mockExecute,
-      batch: vi.fn(),
-    });
+    const mockDbWrite = createMockDbWrite();
+    mockDbWrite.execute.mockResolvedValue({ changes: 1 });
+    mockGetDbWrite.mockResolvedValue(mockDbWrite as unknown as DbWrite);
 
     const request = new Request("http://localhost/api/auth/code/verify", {
       method: "POST",
@@ -427,14 +397,15 @@ describe("POST /api/auth/code/verify", () => {
     expect(body.email).toBe("test@example.com");
 
     // Verify api_key update uses conditional WHERE api_key IS NULL
-    expect(mockExecute).toHaveBeenCalledWith(
+    expect(mockDbWrite.execute).toHaveBeenCalledWith(
       expect.stringContaining("WHERE id = ? AND api_key IS NULL"),
       expect.arrayContaining([expect.stringMatching(/^pk_/), "user-123"])
     );
   });
 
   it("should re-read api_key if another request set it concurrently", async () => {
-    const mockFirstOrNull = vi.fn()
+    const mockDbRead = createMockDbRead();
+    mockDbRead.firstOrNull
       .mockResolvedValueOnce({
         code: "ABCD-1234",
         user_id: "user-123",
@@ -450,21 +421,14 @@ describe("POST /api/auth/code/verify", () => {
       .mockResolvedValueOnce({
         api_key: "pk_set_by_other_request", // Another request already set it
       });
-
-    mockGetDbRead.mockResolvedValue({
-      query: vi.fn(),
-      firstOrNull: mockFirstOrNull,
-    });
+    mockGetDbRead.mockResolvedValue(mockDbRead as unknown as DbRead);
 
     // First UPDATE (api_key) returns 0 changes (lost race), second UPDATE (used_at) succeeds
-    const mockExecute = vi.fn()
+    const mockDbWrite = createMockDbWrite();
+    mockDbWrite.execute
       .mockResolvedValueOnce({ changes: 0 }) // Lost the race to set api_key
       .mockResolvedValueOnce({ changes: 1 }); // Successfully consumed code
-
-    mockGetDbWrite.mockResolvedValue({
-      execute: mockExecute,
-      batch: vi.fn(),
-    });
+    mockGetDbWrite.mockResolvedValue(mockDbWrite as unknown as DbWrite);
 
     const request = new Request("http://localhost/api/auth/code/verify", {
       method: "POST",
@@ -481,7 +445,8 @@ describe("POST /api/auth/code/verify", () => {
   });
 
   it("should normalize code format (accept without hyphen)", async () => {
-    const mockFirstOrNull = vi.fn()
+    const mockDbRead = createMockDbRead();
+    mockDbRead.firstOrNull
       .mockResolvedValueOnce({
         code: "ABCD-1234",
         user_id: "user-123",
@@ -494,16 +459,11 @@ describe("POST /api/auth/code/verify", () => {
         email: "test@example.com",
         api_key: "pk_test",
       });
+    mockGetDbRead.mockResolvedValue(mockDbRead as unknown as DbRead);
 
-    mockGetDbRead.mockResolvedValue({
-      query: vi.fn(),
-      firstOrNull: mockFirstOrNull,
-    });
-
-    mockGetDbWrite.mockResolvedValue({
-      execute: vi.fn().mockResolvedValue({ changes: 1 }),
-      batch: vi.fn(),
-    });
+    const mockDbWrite = createMockDbWrite();
+    mockDbWrite.execute.mockResolvedValue({ changes: 1 });
+    mockGetDbWrite.mockResolvedValue(mockDbWrite as unknown as DbWrite);
 
     const request = new Request("http://localhost/api/auth/code/verify", {
       method: "POST",
@@ -515,14 +475,15 @@ describe("POST /api/auth/code/verify", () => {
     expect(response.status).toBe(200);
 
     // Verify it queried with the hyphenated version
-    expect(mockFirstOrNull).toHaveBeenCalledWith(
+    expect(mockDbRead.firstOrNull).toHaveBeenCalledWith(
       expect.stringContaining("SELECT"),
       ["ABCD-1234"]
     );
   });
 
   it("should handle race condition (concurrent use)", async () => {
-    const mockFirstOrNull = vi.fn()
+    const mockDbRead = createMockDbRead();
+    mockDbRead.firstOrNull
       .mockResolvedValueOnce({
         code: "ABCD-1234",
         user_id: "user-123",
@@ -535,18 +496,12 @@ describe("POST /api/auth/code/verify", () => {
         email: "test@example.com",
         api_key: "pk_existing",
       });
-
-    mockGetDbRead.mockResolvedValue({
-      query: vi.fn(),
-      firstOrNull: mockFirstOrNull,
-    });
+    mockGetDbRead.mockResolvedValue(mockDbRead as unknown as DbRead);
 
     // Simulate race: SET used_at returns 0 rows (someone else used it first)
-    const mockExecute = vi.fn().mockResolvedValue({ changes: 0 });
-    mockGetDbWrite.mockResolvedValue({
-      execute: mockExecute,
-      batch: vi.fn(),
-    });
+    const mockDbWrite = createMockDbWrite();
+    mockDbWrite.execute.mockResolvedValue({ changes: 0 });
+    mockGetDbWrite.mockResolvedValue(mockDbWrite as unknown as DbWrite);
 
     const request = new Request("http://localhost/api/auth/code/verify", {
       method: "POST",
@@ -590,7 +545,8 @@ describe("POST /api/auth/code/verify", () => {
   });
 
   it("should return 500 when user not found and NOT consume code", async () => {
-    const mockFirstOrNull = vi.fn()
+    const mockDbRead = createMockDbRead();
+    mockDbRead.firstOrNull
       .mockResolvedValueOnce({
         code: "ABCD-1234",
         user_id: "user-deleted",
@@ -599,17 +555,11 @@ describe("POST /api/auth/code/verify", () => {
         failed_attempts: 0,
       })
       .mockResolvedValueOnce(null); // User was deleted
+    mockGetDbRead.mockResolvedValue(mockDbRead as unknown as DbRead);
 
-    mockGetDbRead.mockResolvedValue({
-      query: vi.fn(),
-      firstOrNull: mockFirstOrNull,
-    });
-
-    const mockExecute = vi.fn().mockResolvedValue({ changes: 1 });
-    mockGetDbWrite.mockResolvedValue({
-      execute: mockExecute,
-      batch: vi.fn(),
-    });
+    const mockDbWrite = createMockDbWrite();
+    mockDbWrite.execute.mockResolvedValue({ changes: 1 });
+    mockGetDbWrite.mockResolvedValue(mockDbWrite as unknown as DbWrite);
 
     const request = new Request("http://localhost/api/auth/code/verify", {
       method: "POST",
@@ -624,17 +574,16 @@ describe("POST /api/auth/code/verify", () => {
     expect(body.error).toBe("User not found");
 
     // Verify code was NOT consumed (no SET used_at call)
-    const usedAtCalls = mockExecute.mock.calls.filter(
+    const usedAtCalls = mockDbWrite.execute.mock.calls.filter(
       (call) => (call[0] as string).includes("SET used_at")
     );
     expect(usedAtCalls.length).toBe(0);
   });
 
   it("should return 500 on database error", async () => {
-    mockGetDbRead.mockResolvedValue({
-      query: vi.fn(),
-      firstOrNull: vi.fn().mockRejectedValue(new Error("D1 is down")),
-    });
+    const mockDbRead = createMockDbRead();
+    mockDbRead.firstOrNull.mockRejectedValue(new Error("D1 is down"));
+    mockGetDbRead.mockResolvedValue(mockDbRead as unknown as DbRead);
 
     const request = new Request("http://localhost/api/auth/code/verify", {
       method: "POST",

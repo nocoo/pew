@@ -8,20 +8,13 @@
 
 import type { Adapter, AdapterUser, AdapterAccount } from "next-auth/adapters";
 import type { DbRead, DbWrite } from "./db";
+import type { UserAuth } from "./rpc-types";
 
 // ---------------------------------------------------------------------------
 // Row ↔ AdapterUser mapping
 // ---------------------------------------------------------------------------
 
-interface UserRow {
-  id: string;
-  email: string;
-  name: string | null;
-  image: string | null;
-  email_verified: string | null;
-}
-
-function rowToUser(row: UserRow): AdapterUser {
+function rowToUser(row: UserAuth): AdapterUser {
   return {
     id: row.id,
     email: row.email,
@@ -54,29 +47,17 @@ export function D1AuthAdapter(dbRead: DbRead, dbWrite: DbWrite): Adapter {
     },
 
     async getUser(id) {
-      const row = await dbRead.firstOrNull<UserRow>(
-        "SELECT id, email, name, image, email_verified FROM users WHERE id = ?",
-        [id]
-      );
+      const row = await dbRead.getUserById(id);
       return row ? rowToUser(row) : null;
     },
 
     async getUserByEmail(email) {
-      const row = await dbRead.firstOrNull<UserRow>(
-        "SELECT id, email, name, image, email_verified FROM users WHERE email = ?",
-        [email]
-      );
+      const row = await dbRead.getUserByEmail(email);
       return row ? rowToUser(row) : null;
     },
 
     async getUserByAccount({ provider, providerAccountId }) {
-      const row = await dbRead.firstOrNull<UserRow>(
-        `SELECT u.id, u.email, u.name, u.image, u.email_verified
-         FROM users u
-         JOIN accounts a ON u.id = a.user_id
-         WHERE a.provider = ? AND a.provider_account_id = ?`,
-        [provider, providerAccountId]
-      );
+      const row = await dbRead.getUserByOAuthAccount(provider, providerAccountId);
       return row ? rowToUser(row) : null;
     },
 
@@ -133,10 +114,7 @@ export function D1AuthAdapter(dbRead: DbRead, dbWrite: DbWrite): Adapter {
       }
 
       // Return updated user
-      const row = await dbRead.firstOrNull<UserRow>(
-        "SELECT id, email, name, image, email_verified FROM users WHERE id = ?",
-        [user.id]
-      );
+      const row = await dbRead.getUserById(user.id);
       if (!row) throw new Error(`User ${user.id} not found after update`);
       return rowToUser(row);
     },
