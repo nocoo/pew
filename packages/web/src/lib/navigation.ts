@@ -69,6 +69,7 @@ export const ADMIN_NAV_GROUP: NavGroupDef = {
   items: [
     { href: "/admin/pricing", label: "Token Pricing", icon: "DollarSign" },
     { href: "/admin/invites", label: "Invite Codes", icon: "Ticket" },
+    { href: "/admin/organizations", label: "Organizations", icon: "Building2" },
     { href: "/admin/seasons", label: "Seasons", icon: "Trophy" },
     { href: "/admin/showcases", label: "Showcases", icon: "Star" },
     { href: "/admin/storage", label: "Storage", icon: "Database" },
