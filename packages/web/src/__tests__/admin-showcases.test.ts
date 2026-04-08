@@ -215,5 +215,50 @@ describe("GET /api/admin/showcases", () => {
       const json = await res.json();
       expect(json.error).toBe("Failed to list showcases");
     });
+
+    it("returns 500 when error is not Error instance", async () => {
+      const mockDb = {
+        firstOrNull: vi.fn().mockRejectedValue("string error"),
+      };
+      mockGetDbRead.mockResolvedValue(mockDb as never);
+
+      const res = await GET(createRequest());
+
+      expect(res.status).toBe(500);
+    });
+
+    it("handles null countResult gracefully", async () => {
+      const showcaseWithNulls = {
+        ...mockShowcase,
+        stars: null,
+        forks: null,
+        language: null,
+        license: null,
+        topics: null,
+        homepage: null,
+      };
+      const mockDb = {
+        firstOrNull: vi.fn()
+          .mockResolvedValueOnce(null) // null count result
+          .mockResolvedValueOnce(null), // null stats result
+        query: vi.fn().mockResolvedValue({ results: [showcaseWithNulls] }),
+      };
+      mockGetDbRead.mockResolvedValue(mockDb as never);
+
+      const res = await GET(createRequest());
+
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.total).toBe(0);
+      expect(json.stats.totalShowcases).toBe(0);
+      expect(json.stats.uniqueUsers).toBe(0);
+      expect(json.stats.uniqueGithubOwners).toBe(0);
+      expect(json.showcases[0].stars).toBe(0);
+      expect(json.showcases[0].forks).toBe(0);
+      expect(json.showcases[0].language).toBeNull();
+      expect(json.showcases[0].license).toBeNull();
+      expect(json.showcases[0].topics).toEqual([]);
+      expect(json.showcases[0].homepage).toBeNull();
+    });
   });
 });

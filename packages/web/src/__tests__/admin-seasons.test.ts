@@ -108,6 +108,51 @@ describe("GET /api/admin/seasons", () => {
     const json = await res.json();
     expect(json.error).toContain("not yet migrated");
   });
+
+  it("should return 500 on unexpected error", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.query.mockRejectedValueOnce(new Error("DB connection failed"));
+
+    const res = await GET(makeJsonRequest("GET", "/api/admin/seasons"));
+    expect(res.status).toBe(500);
+    const json = await res.json();
+    expect(json.error).toBe("Failed to list seasons");
+  });
+
+  it("should return 500 when error is not Error instance", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.query.mockRejectedValueOnce("string error");
+
+    const res = await GET(makeJsonRequest("GET", "/api/admin/seasons"));
+    expect(res.status).toBe(500);
+  });
+
+  it("should return toggle flags correctly", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+
+    mockDbRead.query.mockResolvedValueOnce({
+      results: [
+        {
+          id: "s1",
+          name: "Season 1",
+          slug: "s1",
+          start_date: "2099-01-01T00:00:00Z",
+          end_date: "2099-12-31T23:59:00Z",
+          created_at: "2026-01-01T00:00:00Z",
+          team_count: 0,
+          allow_late_registration: 1,
+          allow_roster_changes: 0,
+          allow_late_withdrawal: 1,
+        },
+      ],
+    });
+
+    const res = await GET(makeJsonRequest("GET", "/api/admin/seasons"));
+    const json = await res.json();
+    expect(json.seasons[0].allow_late_registration).toBe(true);
+    expect(json.seasons[0].allow_roster_changes).toBe(false);
+    expect(json.seasons[0].allow_late_withdrawal).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -248,6 +293,131 @@ describe("POST /api/admin/seasons", () => {
       })
     );
     expect(res.status).toBe(403);
+  });
+
+  it("should reject invalid JSON", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    const req = new Request("http://localhost:7020/api/admin/seasons", {
+      method: "POST",
+      body: "not json",
+      headers: { "Content-Type": "application/json" },
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toBe("Invalid JSON");
+  });
+
+  it("should reject missing name", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    const res = await POST(
+      makeJsonRequest("POST", "/api/admin/seasons", {
+        slug: "s1",
+        start_date: "2099-04-01T00:00:00Z",
+        end_date: "2099-04-30T23:59:00Z",
+      })
+    );
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toContain("name");
+  });
+
+  it("should reject missing slug", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    const res = await POST(
+      makeJsonRequest("POST", "/api/admin/seasons", {
+        name: "Season 1",
+        start_date: "2099-04-01T00:00:00Z",
+        end_date: "2099-04-30T23:59:00Z",
+      })
+    );
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toContain("slug");
+  });
+
+  it("should reject invalid end_date format", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    const res = await POST(
+      makeJsonRequest("POST", "/api/admin/seasons", {
+        name: "Season 1",
+        slug: "s1",
+        start_date: "2099-04-01T00:00:00Z",
+        end_date: "not-a-date",
+      })
+    );
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toContain("end_date must be ISO 8601");
+  });
+
+  it("should handle no-such-table on POST", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.firstOrNull.mockRejectedValueOnce(new Error("no such table: seasons"));
+
+    const res = await POST(
+      makeJsonRequest("POST", "/api/admin/seasons", {
+        name: "Season 1",
+        slug: "s1",
+        start_date: "2099-04-01T00:00:00Z",
+        end_date: "2099-04-30T23:59:00Z",
+      })
+    );
+    expect(res.status).toBe(503);
+  });
+
+  it("should return 500 on unexpected POST error", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.firstOrNull.mockRejectedValueOnce(new Error("DB connection failed"));
+
+    const res = await POST(
+      makeJsonRequest("POST", "/api/admin/seasons", {
+        name: "Season 1",
+        slug: "s1",
+        start_date: "2099-04-01T00:00:00Z",
+        end_date: "2099-04-30T23:59:00Z",
+      })
+    );
+    expect(res.status).toBe(500);
+  });
+
+  it("should return 500 when POST error is not Error instance", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.firstOrNull.mockRejectedValueOnce("string error");
+
+    const res = await POST(
+      makeJsonRequest("POST", "/api/admin/seasons", {
+        name: "Season 1",
+        slug: "s1",
+        start_date: "2099-04-01T00:00:00Z",
+        end_date: "2099-04-30T23:59:00Z",
+      })
+    );
+    expect(res.status).toBe(500);
+  });
+
+  it("should create season with toggle flags", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.firstOrNull.mockResolvedValueOnce(null);
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
+    autoRegisterTeamsForSeason.mockResolvedValueOnce({ registered: 0, skipped: 0, seasonEligible: true });
+
+    const res = await POST(
+      makeJsonRequest("POST", "/api/admin/seasons", {
+        name: "Season Toggles",
+        slug: "toggles",
+        start_date: "2099-04-01T00:00:00Z",
+        end_date: "2099-04-30T23:59:00Z",
+        allow_late_registration: true,
+        allow_roster_changes: true,
+        allow_late_withdrawal: false,
+      })
+    );
+    expect(res.status).toBe(201);
+    const json = await res.json();
+    expect(json.allow_late_registration).toBe(true);
+    expect(json.allow_roster_changes).toBe(true);
+    expect(json.allow_late_withdrawal).toBe(false);
   });
 });
 
