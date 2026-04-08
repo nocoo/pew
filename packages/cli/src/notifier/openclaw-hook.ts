@@ -44,7 +44,7 @@ export async function installOpenClawHook(
   try {
     const installResult = spawn(
       "openclaw",
-      ["plugins", "install", "--link", pluginDir],
+      ["plugins", "install", "--link", "--dangerously-force-unsafe-install", pluginDir],
       { cwd: pluginDir },
     );
     const enableResult = spawn(
