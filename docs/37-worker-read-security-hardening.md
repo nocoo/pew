@@ -142,8 +142,8 @@ P2-{domain}-6: Remove raw SQL from migrated routes
 ## Progress Tracking
 
 ### Phase 1: Enhanced Regex
-- [ ] P1-1: SQL validation tests
-- [ ] P1-2: Implement validation
+- [x] P1-1: SQL validation tests
+- [x] P1-2: Implement validation
 - [ ] P1-3: Deploy and verify
 
 ### Phase 2: RPC Migration
