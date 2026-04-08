@@ -539,5 +539,26 @@ describe("executeLogin", () => {
       );
       expect(config.token).toBe("pk_new_from_code");
     });
+
+    it("should fail when response has no api_key", async () => {
+      const mockFetch = async () => {
+        return new Response(JSON.stringify({
+          email: "nokey@example.com",
+        }), { status: 200 });
+      };
+
+      const result = await executeLogin({
+        configDir: tempDir,
+        apiUrl: "http://localhost:7020",
+        code: "ABCD-NOKEY",
+        fetch: mockFetch as typeof globalThis.fetch,
+        openBrowser: async () => {
+          throw new Error("Should not open browser");
+        },
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("No API key");
+    });
   });
 });
