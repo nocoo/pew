@@ -38,18 +38,49 @@ export async function GET(
       return NextResponse.json({ error: "Not a member" }, { status: 403 });
     }
 
-    // Get team details
-    const team = await dbRead.firstOrNull<{
+    // Get team details — try with auto_register_season, fall back without (migration lag)
+    let team: {
       id: string;
       name: string;
       slug: string;
       invite_code: string;
       created_at: string;
       logo_url: string | null;
-    }>(
-      "SELECT id, name, slug, invite_code, created_at, logo_url FROM teams WHERE id = ?",
-      [teamId],
-    );
+      auto_register_season: number;
+    } | null;
+    try {
+      team = await dbRead.firstOrNull<{
+        id: string;
+        name: string;
+        slug: string;
+        invite_code: string;
+        created_at: string;
+        logo_url: string | null;
+        auto_register_season: number;
+      }>(
+        "SELECT id, name, slug, invite_code, created_at, logo_url, auto_register_season FROM teams WHERE id = ?",
+        [teamId],
+      );
+    } catch (teamErr) {
+      const teamMsg = teamErr instanceof Error ? teamErr.message : "";
+      if (teamMsg.includes("no such column")) {
+        // Migration 016 not applied yet — fall back without auto_register_season
+        const fallback = await dbRead.firstOrNull<{
+          id: string;
+          name: string;
+          slug: string;
+          invite_code: string;
+          created_at: string;
+          logo_url: string | null;
+        }>(
+          "SELECT id, name, slug, invite_code, created_at, logo_url FROM teams WHERE id = ?",
+          [teamId],
+        );
+        team = fallback ? { ...fallback, auto_register_season: 0 } : null;
+      } else {
+        throw teamErr;
+      }
+    }
 
     if (!team) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 });
@@ -118,6 +149,7 @@ export async function GET(
     return NextResponse.json({
       ...team,
       logo_url: team.logo_url ?? null,
+      auto_register_season: !!team.auto_register_season,
       role: membership.role,
       members: members.results.map((m) => ({
         userId: m.user_id,
@@ -157,17 +189,26 @@ export async function PATCH(
 
   const { teamId } = await params;
 
-  let name: string;
+  let name: string | undefined;
+  let autoRegisterSeason: boolean | undefined;
   try {
     const body = await request.json();
-    name = typeof body.name === "string" ? body.name.trim() : "";
+    name = typeof body.name === "string" ? body.name.trim() : undefined;
+    autoRegisterSeason = typeof body.auto_register_season === "boolean" ? body.auto_register_season : undefined;
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  if (!name || name.length > 64) {
+  if (name !== undefined && (!name || name.length > 64)) {
     return NextResponse.json(
       { error: "Team name is required (max 64 characters)" },
+      { status: 400 },
+    );
+  }
+
+  if (name === undefined && autoRegisterSeason === undefined) {
+    return NextResponse.json(
+      { error: "No valid fields to update" },
       { status: 400 },
     );
   }
@@ -186,12 +227,45 @@ export async function PATCH(
       return NextResponse.json({ error: "Not a member" }, { status: 403 });
     }
     if (membership.role !== "owner") {
-      return NextResponse.json({ error: "Only the team owner can rename" }, { status: 403 });
+      return NextResponse.json({ error: "Only the team owner can update settings" }, { status: 403 });
     }
 
-    await dbWrite.execute("UPDATE teams SET name = ? WHERE id = ?", [name, teamId]);
+    const updates: string[] = [];
+    const values: unknown[] = [];
 
-    return NextResponse.json({ ok: true, name });
+    if (name !== undefined) {
+      updates.push("name = ?");
+      values.push(name);
+    }
+
+    if (autoRegisterSeason !== undefined) {
+      updates.push("auto_register_season = ?");
+      values.push(autoRegisterSeason ? 1 : 0);
+    }
+
+    values.push(teamId);
+    try {
+      await dbWrite.execute(
+        `UPDATE teams SET ${updates.join(", ")} WHERE id = ?`,
+        values,
+      );
+    } catch (updateErr) {
+      const updateMsg = updateErr instanceof Error ? updateErr.message : "";
+      if (updateMsg.includes("no such column") && autoRegisterSeason !== undefined) {
+        // Migration 016 not applied yet — auto_register_season column doesn't exist
+        return NextResponse.json(
+          { error: "Auto-registration feature not available yet (database migration pending)" },
+          { status: 503 },
+        );
+      }
+      throw updateErr;
+    }
+
+    // Only return fields that were actually updated
+    const response: Record<string, unknown> = { ok: true };
+    if (name !== undefined) response.name = name;
+    if (autoRegisterSeason !== undefined) response.auto_register_season = autoRegisterSeason;
+    return NextResponse.json(response);
   } catch (err) {
     console.error("Failed to rename team:", err);
     return NextResponse.json({ error: "Failed to rename team" }, { status: 500 });

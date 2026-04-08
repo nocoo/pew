@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { resolveAdmin } from "@/lib/admin";
 import { getDbRead, getDbWrite } from "@/lib/db";
 import { deriveSeasonStatus } from "@/lib/seasons";
+import { autoRegisterTeamsForSeason } from "@/lib/auto-register";
 
 // ---------------------------------------------------------------------------
 // Validation helpers
@@ -177,6 +178,17 @@ export async function POST(request: Request) {
       [id, name, slug, start_date, end_date, admin.userId, allow_late_registration ? 1 : 0, allow_roster_changes ? 1 : 0, allow_late_withdrawal ? 1 : 0]
     );
 
+    // Auto-register teams that have opted in (best-effort, don't fail the request)
+    // Note: autoRegisterTeamsForSeason enforces the same rules as manual registration
+    // (no ended seasons, no active seasons without late_registration)
+    let autoRegistered = 0;
+    try {
+      const result = await autoRegisterTeamsForSeason(dbRead, dbWrite, id);
+      autoRegistered = result.registered;
+    } catch (err) {
+      console.error("Auto-registration failed (non-fatal):", err);
+    }
+
     return NextResponse.json(
       {
         id,
@@ -189,6 +201,7 @@ export async function POST(request: Request) {
         allow_late_registration,
         allow_roster_changes,
         allow_late_withdrawal,
+        auto_registered_teams: autoRegistered,
       },
       { status: 201 }
     );

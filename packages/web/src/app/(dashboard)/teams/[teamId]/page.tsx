@@ -43,6 +43,7 @@ interface TeamDetail {
   created_at: string;
   role: string;
   members: TeamMember[];
+  auto_register_season: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -186,6 +187,82 @@ function SeasonRow({
             )}
           </button>
         ) : null}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Auto-Register Toggle
+// ---------------------------------------------------------------------------
+
+function AutoRegisterToggle({
+  teamId,
+  initialValue,
+}: {
+  teamId: string;
+  initialValue: boolean;
+}) {
+  const [enabled, setEnabled] = useState(initialValue);
+  const [saving, setSaving] = useState(false);
+
+  const handleToggle = async () => {
+    const newValue = !enabled;
+    setEnabled(newValue);
+    setSaving(true);
+
+    try {
+      const res = await fetch(`/api/teams/${teamId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ auto_register_season: newValue }),
+      });
+
+      if (!res.ok) {
+        // Revert on failure
+        setEnabled(!newValue);
+      }
+    } catch {
+      setEnabled(!newValue);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="flex items-start gap-3 rounded-lg bg-accent/50 px-4 py-3">
+      <button
+        type="button"
+        role="switch"
+        aria-checked={enabled}
+        disabled={saving}
+        onClick={handleToggle}
+        className={cn(
+          "relative mt-0.5 inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
+          enabled ? "bg-primary" : "bg-border",
+          saving && "opacity-50 cursor-not-allowed",
+        )}
+      >
+        <span
+          className={cn(
+            "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-background shadow-sm ring-0 transition-transform",
+            enabled ? "translate-x-4" : "translate-x-0",
+          )}
+        />
+      </button>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-medium text-foreground">
+            Auto-register for new seasons
+          </p>
+          {saving && (
+            <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" strokeWidth={1.5} />
+          )}
+        </div>
+        <p className="mt-0.5 text-[10px] text-muted-foreground">
+          When enabled, your team will be automatically registered for every new
+          season. You can still manually withdraw from individual seasons.
+        </p>
       </div>
     </div>
   );
@@ -450,7 +527,13 @@ export default function TeamDetailPage() {
             Register your team for upcoming seasons to compete on the
             leaderboard. Rosters are frozen at registration time.
           </p>
-          <SeasonRegistration teamId={team.id} />
+          <div className="space-y-3">
+            <AutoRegisterToggle
+              teamId={team.id}
+              initialValue={team.auto_register_season}
+            />
+            <SeasonRegistration teamId={team.id} />
+          </div>
         </section>
       )}
 

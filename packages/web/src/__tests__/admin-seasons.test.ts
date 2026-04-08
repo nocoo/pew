@@ -17,6 +17,10 @@ vi.mock("@/lib/season-roster", () => ({
   syncAllRostersForSeason: vi.fn(),
 }));
 
+vi.mock("@/lib/auto-register", () => ({
+  autoRegisterTeamsForSeason: vi.fn(),
+}));
+
 vi.mock("@/auth", () => ({
   shouldUseSecureCookies: vi.fn(() => false),
 }));
@@ -34,6 +38,12 @@ const { syncAllRostersForSeason } = (await import(
   "@/lib/season-roster"
 )) as unknown as {
   syncAllRostersForSeason: ReturnType<typeof vi.fn>;
+};
+
+const { autoRegisterTeamsForSeason } = (await import(
+  "@/lib/auto-register"
+)) as unknown as {
+  autoRegisterTeamsForSeason: ReturnType<typeof vi.fn>;
 };
 
 // ---------------------------------------------------------------------------
@@ -120,6 +130,7 @@ describe("POST /api/admin/seasons", () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
     mockDbRead.firstOrNull.mockResolvedValueOnce(null); // no slug collision
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
+    autoRegisterTeamsForSeason.mockResolvedValueOnce({ registered: 0, skipped: 0, seasonEligible: true });
 
     const res = await POST(
       makeJsonRequest("POST", "/api/admin/seasons", {
@@ -134,6 +145,47 @@ describe("POST /api/admin/seasons", () => {
     expect(json.name).toBe("Season 1");
     expect(json.slug).toBe("s1");
     expect(json.status).toBe("upcoming");
+    expect(json.auto_registered_teams).toBe(0);
+    expect(autoRegisterTeamsForSeason).toHaveBeenCalledTimes(1);
+  });
+
+  it("should auto-register teams and return count", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.firstOrNull.mockResolvedValueOnce(null); // no slug collision
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
+    autoRegisterTeamsForSeason.mockResolvedValueOnce({ registered: 3, skipped: 1, seasonEligible: true });
+
+    const res = await POST(
+      makeJsonRequest("POST", "/api/admin/seasons", {
+        name: "Season 2",
+        slug: "s2",
+        start_date: "2099-05-01T00:00:00Z",
+        end_date: "2099-05-31T23:59:00Z",
+      })
+    );
+    expect(res.status).toBe(201);
+    const json = await res.json();
+    expect(json.auto_registered_teams).toBe(3);
+  });
+
+  it("should still succeed if auto-registration fails (non-fatal)", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.firstOrNull.mockResolvedValueOnce(null);
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
+    autoRegisterTeamsForSeason.mockRejectedValueOnce(new Error("auto-reg boom"));
+
+    const res = await POST(
+      makeJsonRequest("POST", "/api/admin/seasons", {
+        name: "Season 3",
+        slug: "s3",
+        start_date: "2099-06-01T00:00:00Z",
+        end_date: "2099-06-30T23:59:00Z",
+      })
+    );
+    // Should still succeed — auto-registration is best-effort
+    expect(res.status).toBe(201);
+    const json = await res.json();
+    expect(json.auto_registered_teams).toBe(0);
   });
 
   it("should reject duplicate slug", async () => {

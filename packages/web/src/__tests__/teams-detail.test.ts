@@ -20,8 +20,13 @@ const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
   resolveUser: ReturnType<typeof vi.fn>;
 };
 
-function makeRequest(method: string): Request {
-  return new Request("http://localhost:7020/api/teams/t1", { method });
+function makeRequest(method: string, body?: Record<string, unknown>): Request {
+  const init: RequestInit = { method };
+  if (body) {
+    init.headers = { "Content-Type": "application/json" };
+    init.body = JSON.stringify(body);
+  }
+  return new Request("http://localhost:7020/api/teams/t1", init);
 }
 
 function makeParams(teamId = "t1") {
@@ -154,6 +159,71 @@ describe("GET /api/teams/[teamId]", () => {
     expect(body.members[0].name).toBe("Alice");
   });
 
+  it("should fall back when auto_register_season column does not exist (migration lag)", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    mockDbRead.firstOrNull
+      .mockResolvedValueOnce({ role: "member" })
+      // First team query fails (no such column: auto_register_season)
+      .mockRejectedValueOnce(new Error("no such column: auto_register_season"))
+      // Fallback query without auto_register_season succeeds
+      .mockResolvedValueOnce({
+        id: "t1",
+        name: "Team",
+        slug: "team",
+        invite_code: "x",
+        created_at: "2026-01-01T00:00:00Z",
+        logo_url: null,
+      });
+    mockDbRead.query
+      .mockResolvedValueOnce({
+        results: [
+          {
+            user_id: "u1",
+            name: "Alice",
+            nickname: null,
+            slug: null,
+            image: null,
+            role: "owner",
+            joined_at: "2026-01-01T00:00:00Z",
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ results: [] }); // season registrations
+
+    const res = await GET(makeRequest("GET"), makeParams());
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    // auto_register_season should default to false when column doesn't exist
+    expect(body.auto_register_season).toBe(false);
+  });
+
+  it("should return 404 when team not found during migration lag fallback", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    mockDbRead.firstOrNull
+      .mockResolvedValueOnce({ role: "member" })
+      // First team query fails (no such column)
+      .mockRejectedValueOnce(new Error("no such column: auto_register_season"))
+      // Fallback query returns null (team not found)
+      .mockResolvedValueOnce(null);
+
+    const res = await GET(makeRequest("GET"), makeParams());
+
+    expect(res.status).toBe(404);
+  });
+
+  it("should rethrow non-column errors from team query", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    mockDbRead.firstOrNull
+      .mockResolvedValueOnce({ role: "member" })
+      // Team query fails with unexpected error
+      .mockRejectedValueOnce(new Error("D1 connection failed"));
+
+    const res = await GET(makeRequest("GET"), makeParams());
+
+    expect(res.status).toBe(500);
+  });
+
   it("should return 503 when teams table does not exist", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
     mockDbRead.firstOrNull.mockRejectedValueOnce(
@@ -275,5 +345,187 @@ describe("DELETE /api/teams/[teamId]", () => {
     const res = await DELETE(makeRequest("DELETE"), makeParams());
 
     expect(res.status).toBe(500);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PATCH /api/teams/[teamId] — update team settings
+// ---------------------------------------------------------------------------
+
+describe("PATCH /api/teams/[teamId]", () => {
+  let PATCH: (req: Request, ctx: { params: Promise<{ teamId: string }> }) => Promise<Response>;
+  let mockDbRead: ReturnType<typeof createMockDbRead>;
+  let mockDbWrite: ReturnType<typeof createMockDbWrite>;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mockDbRead = createMockDbRead();
+    mockDbWrite = createMockDbWrite();
+    vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDbRead as never);
+    vi.mocked(dbModule.getDbWrite).mockResolvedValue(mockDbWrite as never);
+    const mod = await import("@/app/api/teams/[teamId]/route");
+    PATCH = mod.PATCH;
+  });
+
+  it("should reject unauthenticated with 401", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce(null);
+
+    const res = await PATCH(
+      makeRequest("PATCH", { auto_register_season: true }),
+      makeParams(),
+    );
+
+    expect(res.status).toBe(401);
+  });
+
+  it("should reject non-owner with 403", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u2" });
+    mockDbRead.firstOrNull.mockResolvedValueOnce({ role: "member" }); // not owner
+
+    const res = await PATCH(
+      makeRequest("PATCH", { auto_register_season: true }),
+      makeParams(),
+    );
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toContain("Only the team owner");
+  });
+
+  it("should toggle auto_register_season on", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    mockDbRead.firstOrNull.mockResolvedValueOnce({ role: "owner" });
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
+
+    const res = await PATCH(
+      makeRequest("PATCH", { auto_register_season: true }),
+      makeParams(),
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.auto_register_season).toBe(true);
+    // Should not include `name` when only auto_register_season was updated
+    expect(body.name).toBeUndefined();
+    expect(mockDbWrite.execute).toHaveBeenCalledTimes(1);
+    expect(mockDbWrite.execute.mock.calls[0]![0]).toContain("auto_register_season");
+  });
+
+  it("should toggle auto_register_season off", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    mockDbRead.firstOrNull.mockResolvedValueOnce({ role: "owner" });
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
+
+    const res = await PATCH(
+      makeRequest("PATCH", { auto_register_season: false }),
+      makeParams(),
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.auto_register_season).toBe(false);
+  });
+
+  it("should rename team", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    mockDbRead.firstOrNull.mockResolvedValueOnce({ role: "owner" });
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
+
+    const res = await PATCH(
+      makeRequest("PATCH", { name: "New Name" }),
+      makeParams(),
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.name).toBe("New Name");
+    // Should not include `auto_register_season` when only name was updated
+    expect(body.auto_register_season).toBeUndefined();
+  });
+
+  it("should update both name and auto_register_season together", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    mockDbRead.firstOrNull.mockResolvedValueOnce({ role: "owner" });
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
+
+    const res = await PATCH(
+      makeRequest("PATCH", { name: "Updated", auto_register_season: true }),
+      makeParams(),
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.name).toBe("Updated");
+    expect(body.auto_register_season).toBe(true);
+    // Single execute with both fields
+    expect(mockDbWrite.execute).toHaveBeenCalledTimes(1);
+    const sql = mockDbWrite.execute.mock.calls[0]![0] as string;
+    expect(sql).toContain("name = ?");
+    expect(sql).toContain("auto_register_season = ?");
+  });
+
+  it("should return 400 when no valid fields provided", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+
+    const res = await PATCH(
+      makeRequest("PATCH", { foo: "bar" }),
+      makeParams(),
+    );
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toContain("No valid fields");
+  });
+
+  it("should return 503 when auto_register_season column does not exist (migration lag)", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    mockDbRead.firstOrNull.mockResolvedValueOnce({ role: "owner" });
+    // UPDATE fails because column doesn't exist yet
+    mockDbWrite.execute.mockRejectedValueOnce(
+      new Error("no such column: auto_register_season"),
+    );
+
+    const res = await PATCH(
+      makeRequest("PATCH", { auto_register_season: true }),
+      makeParams(),
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(503);
+    expect(body.error).toContain("migration pending");
+  });
+
+  it("should still allow name-only updates when auto_register_season column does not exist", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    mockDbRead.firstOrNull.mockResolvedValueOnce({ role: "owner" });
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
+
+    const res = await PATCH(
+      makeRequest("PATCH", { name: "New Name" }),
+      makeParams(),
+    );
+    const body = await res.json();
+
+    // Name-only update doesn't touch the new column, should succeed
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.name).toBe("New Name");
+  });
+
+  it("should return 500 when UPDATE fails with non-column error", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    mockDbRead.firstOrNull.mockResolvedValueOnce({ role: "owner" });
+    // UPDATE fails with unexpected error
+    mockDbWrite.execute.mockRejectedValueOnce(new Error("D1 connection timeout"));
+
+    const res = await PATCH(
+      makeRequest("PATCH", { name: "New Name" }),
+      makeParams(),
+    );
+
+    expect(res.status).toBe(500);
+    expect((await res.json()).error).toContain("Failed to rename");
   });
 });
