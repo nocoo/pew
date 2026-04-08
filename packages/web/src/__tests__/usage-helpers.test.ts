@@ -7,7 +7,22 @@ import {
   sourceLabel,
   type UsageRow,
 } from "@/hooks/use-usage-data";
-import { toLocalDailyBuckets, compareWeekdayWeekend, computeMoMGrowth, computeWoWGrowth, computeStreak, toSourceTrendPoints, toDominantSourceTimeline } from "@/lib/usage-helpers";
+import {
+  toLocalDailyBuckets,
+  compareWeekdayWeekend,
+  computeMoMGrowth,
+  computeWoWGrowth,
+  computeStreak,
+  toSourceTrendPoints,
+  toDominantSourceTimeline,
+  groupByModel,
+  groupByAgent,
+  groupByDate,
+  extractSources,
+  extractModels,
+  toHourlyWeekdayWeekend,
+  toLocalDateStr,
+} from "@/lib/usage-helpers";
 import { getDefaultPricingMap } from "@/lib/pricing";
 import type { PricingMap } from "@/lib/pricing";
 
@@ -1092,5 +1107,407 @@ describe("toDominantSourceTimeline", () => {
     expect(result[0]!.dominantSource).toBe("claude-code");
     expect(result[0]!.sources["claude-code"]).toBe(5000);
     expect(result[0]!.sources["gemini-cli"]).toBe(1000);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// groupByModel
+// ---------------------------------------------------------------------------
+
+describe("groupByModel", () => {
+  function makePricingMap(): PricingMap {
+    return getDefaultPricingMap();
+  }
+
+  it("should return empty array for empty input", () => {
+    expect(groupByModel([], makePricingMap())).toEqual([]);
+  });
+
+  it("should group records by model and compute aggregates", () => {
+    const rows = [
+      makeRow({ model: "claude-sonnet-4-20250514", source: "claude-code", input_tokens: 1000, output_tokens: 500, cached_input_tokens: 200, total_tokens: 1700 }),
+      makeRow({ model: "claude-sonnet-4-20250514", source: "opencode", input_tokens: 2000, output_tokens: 1000, cached_input_tokens: 400, total_tokens: 3400 }),
+      makeRow({ model: "gpt-4.1", source: "opencode", input_tokens: 500, output_tokens: 250, cached_input_tokens: 100, total_tokens: 850 }),
+    ];
+
+    const result = groupByModel(rows, makePricingMap());
+
+    expect(result).toHaveLength(2);
+    // Sorted by totalTokens descending
+    expect(result[0]!.model).toBe("claude-sonnet-4-20250514");
+    expect(result[0]!.totalTokens).toBe(5100);
+    expect(result[0]!.inputTokens).toBe(3000);
+    expect(result[0]!.outputTokens).toBe(1500);
+    expect(result[0]!.cachedTokens).toBe(600);
+    expect(result[0]!.sources).toContain("claude-code");
+    expect(result[0]!.sources).toContain("opencode");
+    expect(result[0]!.estimatedCost).toBeGreaterThan(0);
+
+    expect(result[1]!.model).toBe("gpt-4.1");
+    expect(result[1]!.totalTokens).toBe(850);
+  });
+
+  it("should compute pctOfTotal correctly", () => {
+    const rows = [
+      makeRow({ model: "model-a", total_tokens: 7500, input_tokens: 5000, output_tokens: 2500, cached_input_tokens: 0 }),
+      makeRow({ model: "model-b", total_tokens: 2500, input_tokens: 2000, output_tokens: 500, cached_input_tokens: 0 }),
+    ];
+
+    const result = groupByModel(rows, makePricingMap());
+
+    // model-a: 7500 / 10000 = 75%
+    expect(result[0]!.pctOfTotal).toBeCloseTo(75, 0);
+    // model-b: 2500 / 10000 = 25%
+    expect(result[1]!.pctOfTotal).toBeCloseTo(25, 0);
+  });
+
+  it("should handle single record", () => {
+    const rows = [
+      makeRow({ model: "test-model", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
+    ];
+
+    const result = groupByModel(rows, makePricingMap());
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.pctOfTotal).toBeCloseTo(100, 0);
+  });
+
+  it("should return 0 pctOfTotal when grandTotal is 0", () => {
+    const rows = [
+      makeRow({ model: "test-model", total_tokens: 0, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0 }),
+    ];
+
+    const result = groupByModel(rows, makePricingMap());
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.pctOfTotal).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// groupByAgent
+// ---------------------------------------------------------------------------
+
+describe("groupByAgent", () => {
+  function makePricingMap(): PricingMap {
+    return getDefaultPricingMap();
+  }
+
+  it("should return empty array for empty input", () => {
+    expect(groupByAgent([], makePricingMap())).toEqual([]);
+  });
+
+  it("should group records by source and compute aggregates", () => {
+    const rows = [
+      makeRow({ source: "claude-code", model: "sonnet-4", input_tokens: 1000, output_tokens: 500, cached_input_tokens: 200, total_tokens: 1700 }),
+      makeRow({ source: "claude-code", model: "opus-4", input_tokens: 2000, output_tokens: 1000, cached_input_tokens: 400, total_tokens: 3400 }),
+      makeRow({ source: "opencode", model: "gpt-4.1", input_tokens: 500, output_tokens: 250, cached_input_tokens: 100, total_tokens: 850 }),
+    ];
+
+    const result = groupByAgent(rows, makePricingMap());
+
+    expect(result).toHaveLength(2);
+    // Sorted by totalTokens descending
+    expect(result[0]!.source).toBe("claude-code");
+    expect(result[0]!.label).toBe("Claude Code");
+    expect(result[0]!.totalTokens).toBe(5100);
+    expect(result[0]!.inputTokens).toBe(3000);
+    expect(result[0]!.outputTokens).toBe(1500);
+    expect(result[0]!.cachedTokens).toBe(600);
+    expect(result[0]!.records).toHaveLength(2);
+    expect(result[0]!.estimatedCost).toBeGreaterThan(0);
+
+    expect(result[1]!.source).toBe("opencode");
+    expect(result[1]!.totalTokens).toBe(850);
+  });
+
+  it("should include nested models breakdown sorted by total descending", () => {
+    const rows = [
+      makeRow({ source: "claude-code", model: "sonnet-4", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
+      makeRow({ source: "claude-code", model: "opus-4", total_tokens: 3000, input_tokens: 2400, output_tokens: 600, cached_input_tokens: 300 }),
+      makeRow({ source: "claude-code", model: "haiku-4", total_tokens: 500, input_tokens: 400, output_tokens: 100, cached_input_tokens: 50 }),
+    ];
+
+    const result = groupByAgent(rows, makePricingMap());
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.models).toHaveLength(3);
+    // Sorted by total descending
+    expect(result[0]!.models[0]!.model).toBe("opus-4");
+    expect(result[0]!.models[0]!.total).toBe(3000);
+    expect(result[0]!.models[1]!.model).toBe("sonnet-4");
+    expect(result[0]!.models[1]!.total).toBe(1000);
+    expect(result[0]!.models[2]!.model).toBe("haiku-4");
+    expect(result[0]!.models[2]!.total).toBe(500);
+  });
+
+  it("should aggregate multiple records of same model within same source", () => {
+    const rows = [
+      makeRow({ source: "claude-code", model: "sonnet-4", input_tokens: 100, output_tokens: 50, cached_input_tokens: 10, total_tokens: 160 }),
+      makeRow({ source: "claude-code", model: "sonnet-4", input_tokens: 200, output_tokens: 100, cached_input_tokens: 20, total_tokens: 320 }),
+    ];
+
+    const result = groupByAgent(rows, makePricingMap());
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.models).toHaveLength(1);
+    expect(result[0]!.models[0]!.input).toBe(300);
+    expect(result[0]!.models[0]!.output).toBe(150);
+    expect(result[0]!.models[0]!.cached).toBe(30);
+    expect(result[0]!.models[0]!.total).toBe(480);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// groupByDate
+// ---------------------------------------------------------------------------
+
+describe("groupByDate", () => {
+  function makePricingMap(): PricingMap {
+    return getDefaultPricingMap();
+  }
+
+  it("should return empty array for empty input", () => {
+    expect(groupByDate([], makePricingMap())).toEqual([]);
+  });
+
+  it("should group records by date and compute aggregates", () => {
+    const rows = [
+      makeRow({ hour_start: "2026-03-07T10:00:00Z", input_tokens: 1000, output_tokens: 500, cached_input_tokens: 200, total_tokens: 1700 }),
+      makeRow({ hour_start: "2026-03-07T14:00:00Z", input_tokens: 500, output_tokens: 250, cached_input_tokens: 100, total_tokens: 850 }),
+      makeRow({ hour_start: "2026-03-08T10:00:00Z", input_tokens: 2000, output_tokens: 1000, cached_input_tokens: 400, total_tokens: 3400 }),
+    ];
+
+    const result = groupByDate(rows, makePricingMap());
+
+    expect(result).toHaveLength(2);
+    // Sorted by date descending (newest first)
+    expect(result[0]!.date).toBe("2026-03-08");
+    expect(result[0]!.totalTokens).toBe(3400);
+    expect(result[0]!.inputTokens).toBe(2000);
+    expect(result[0]!.outputTokens).toBe(1000);
+    expect(result[0]!.cachedTokens).toBe(400);
+    expect(result[0]!.records).toHaveLength(1);
+    expect(result[0]!.estimatedCost).toBeGreaterThan(0);
+
+    expect(result[1]!.date).toBe("2026-03-07");
+    expect(result[1]!.totalTokens).toBe(2550);
+    expect(result[1]!.records).toHaveLength(2);
+  });
+
+  it("should apply tzOffset to shift dates across midnight", () => {
+    // 2026-03-08T03:00Z → 2026-03-07T19:00 PST → local date 2026-03-07
+    const rows = [
+      makeRow({ hour_start: "2026-03-07T20:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
+      makeRow({ hour_start: "2026-03-08T03:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
+    ];
+
+    const result = groupByDate(rows, makePricingMap(), 480); // UTC-8
+
+    expect(result).toHaveLength(1);
+    expect(result[0]!.date).toBe("2026-03-07");
+    expect(result[0]!.totalTokens).toBe(3000);
+  });
+
+  it("should handle bare date strings (day-granularity queries)", () => {
+    const rows = [
+      makeRow({ hour_start: "2026-03-07", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
+      makeRow({ hour_start: "2026-03-08", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
+    ];
+
+    // Even with tzOffset, bare dates should NOT be shifted
+    const result = groupByDate(rows, makePricingMap(), 480);
+
+    expect(result).toHaveLength(2);
+    expect(result[0]!.date).toBe("2026-03-08");
+    expect(result[1]!.date).toBe("2026-03-07");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// extractSources
+// ---------------------------------------------------------------------------
+
+describe("extractSources", () => {
+  it("should return empty array for empty input", () => {
+    expect(extractSources([])).toEqual([]);
+  });
+
+  it("should extract unique sources sorted alphabetically", () => {
+    const rows = [
+      makeRow({ source: "opencode" }),
+      makeRow({ source: "claude-code" }),
+      makeRow({ source: "gemini-cli" }),
+      makeRow({ source: "claude-code" }), // duplicate
+    ];
+
+    const result = extractSources(rows);
+
+    expect(result).toEqual(["claude-code", "gemini-cli", "opencode"]);
+  });
+
+  it("should handle single source", () => {
+    const rows = [
+      makeRow({ source: "claude-code" }),
+      makeRow({ source: "claude-code" }),
+    ];
+
+    const result = extractSources(rows);
+
+    expect(result).toEqual(["claude-code"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// extractModels
+// ---------------------------------------------------------------------------
+
+describe("extractModels", () => {
+  it("should return empty array for empty input", () => {
+    expect(extractModels([])).toEqual([]);
+  });
+
+  it("should extract unique models sorted alphabetically", () => {
+    const rows = [
+      makeRow({ model: "sonnet-4" }),
+      makeRow({ model: "gpt-4.1" }),
+      makeRow({ model: "opus-4" }),
+      makeRow({ model: "sonnet-4" }), // duplicate
+    ];
+
+    const result = extractModels(rows);
+
+    expect(result).toEqual(["gpt-4.1", "opus-4", "sonnet-4"]);
+  });
+
+  it("should handle single model", () => {
+    const rows = [
+      makeRow({ model: "sonnet-4" }),
+      makeRow({ model: "sonnet-4" }),
+    ];
+
+    const result = extractModels(rows);
+
+    expect(result).toEqual(["sonnet-4"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// toHourlyWeekdayWeekend
+// ---------------------------------------------------------------------------
+
+describe("toHourlyWeekdayWeekend", () => {
+  it("should return 24 hourly buckets for empty input", () => {
+    const result = toHourlyWeekdayWeekend([], { from: "2026-03-02", to: "2026-03-08" });
+
+    expect(result).toHaveLength(24);
+    expect(result[0]!.hour).toBe(0);
+    expect(result[0]!.weekday).toBe(0);
+    expect(result[0]!.weekend).toBe(0);
+    expect(result[23]!.hour).toBe(23);
+  });
+
+  it("should compute average hourly usage for weekdays and weekends", () => {
+    // 2026-03-02 (Mon) to 2026-03-08 (Sun) = 5 weekdays + 2 weekend days
+    // Add data at 10:00 on a weekday and a weekend day
+    const rows = [
+      // Weekday usage at 10:00 (March 2 is Monday)
+      makeRow({ hour_start: "2026-03-02T10:00:00Z", total_tokens: 5000, input_tokens: 4000, output_tokens: 1000, cached_input_tokens: 500 }),
+      // Weekend usage at 10:00 (March 7 is Saturday)
+      makeRow({ hour_start: "2026-03-07T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
+    ];
+
+    const result = toHourlyWeekdayWeekend(rows, { from: "2026-03-02", to: "2026-03-08" });
+
+    // Hour 10: weekday avg = 5000/5 = 1000, weekend avg = 2000/2 = 1000
+    expect(result[10]!.weekday).toBe(1000);
+    expect(result[10]!.weekend).toBe(1000);
+
+    // Other hours should be 0
+    expect(result[9]!.weekday).toBe(0);
+    expect(result[9]!.weekend).toBe(0);
+  });
+
+  it("should accumulate multiple records in the same hour", () => {
+    // 2026-03-02 (Mon) to 2026-03-02 (Mon) = 1 weekday
+    const rows = [
+      makeRow({ hour_start: "2026-03-02T14:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
+      makeRow({ hour_start: "2026-03-02T14:30:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
+    ];
+
+    const result = toHourlyWeekdayWeekend(rows, { from: "2026-03-02", to: "2026-03-02" });
+
+    // Hour 14: 3000 tokens / 1 weekday = 3000
+    expect(result[14]!.weekday).toBe(3000);
+    expect(result[14]!.weekend).toBe(0);
+  });
+
+  it("should apply tzOffset to shift hours and days", () => {
+    // 2026-03-02T01:00Z → PST = 2026-03-01T17:00 → hour 17, Sunday (prev day)
+    // But our range is 2026-03-02 to 2026-03-02, so Sunday is not in the range
+    // Let's use a simpler test: shift hour across midnight
+    // 2026-03-07 (Sat) in UTC, but 2026-03-08T03:00Z → 2026-03-07T19:00 PST = hour 19, Saturday
+    const rows = [
+      makeRow({ hour_start: "2026-03-08T03:00:00Z", total_tokens: 4800, input_tokens: 3840, output_tokens: 960, cached_input_tokens: 480 }),
+    ];
+
+    const result = toHourlyWeekdayWeekend(rows, { from: "2026-03-07", to: "2026-03-07" }, 480); // UTC-8
+
+    // In PST: hour 19 on Saturday (weekend), range has 0 weekdays, 1 weekend day
+    expect(result[19]!.weekend).toBe(4800);
+    expect(result[19]!.weekday).toBe(0);
+  });
+
+  it("should return 0 averages when range has no weekdays or weekends", () => {
+    // 2026-03-07 (Sat) to 2026-03-08 (Sun) = 0 weekdays, 2 weekend days
+    const rows = [
+      makeRow({ hour_start: "2026-03-07T10:00:00Z", total_tokens: 2000, input_tokens: 1600, output_tokens: 400, cached_input_tokens: 200 }),
+    ];
+
+    const result = toHourlyWeekdayWeekend(rows, { from: "2026-03-07", to: "2026-03-08" });
+
+    // No weekdays in range → weekday average = 0
+    expect(result[10]!.weekday).toBe(0);
+    expect(result[10]!.weekend).toBe(1000); // 2000 / 2 weekend days
+  });
+
+  it("should handle range with only weekdays", () => {
+    // 2026-03-02 (Mon) to 2026-03-06 (Fri) = 5 weekdays, 0 weekend days
+    const rows = [
+      makeRow({ hour_start: "2026-03-03T08:00:00Z", total_tokens: 5000, input_tokens: 4000, output_tokens: 1000, cached_input_tokens: 500 }),
+    ];
+
+    const result = toHourlyWeekdayWeekend(rows, { from: "2026-03-02", to: "2026-03-06" });
+
+    // Hour 8: 5000 / 5 weekdays = 1000
+    expect(result[8]!.weekday).toBe(1000);
+    // No weekend days → weekend average = 0
+    expect(result[8]!.weekend).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// toLocalDateStr (edge cases)
+// ---------------------------------------------------------------------------
+
+describe("toLocalDateStr", () => {
+  it("should return bare date as-is (no shift)", () => {
+    // Bare dates from day-granularity queries should not be shifted
+    expect(toLocalDateStr("2026-03-07", 480)).toBe("2026-03-07");
+    expect(toLocalDateStr("2026-03-07", -540)).toBe("2026-03-07");
+  });
+
+  it("should return date portion when tzOffset is 0", () => {
+    expect(toLocalDateStr("2026-03-07T14:30:00Z", 0)).toBe("2026-03-07");
+  });
+
+  it("should shift date for positive tzOffset (west of UTC)", () => {
+    // 2026-03-08T03:00Z → UTC-8 = 2026-03-07T19:00 → date 2026-03-07
+    expect(toLocalDateStr("2026-03-08T03:00:00Z", 480)).toBe("2026-03-07");
+  });
+
+  it("should shift date for negative tzOffset (east of UTC)", () => {
+    // 2026-03-07T20:00Z → UTC+9 = 2026-03-08T05:00 → date 2026-03-08
+    expect(toLocalDateStr("2026-03-07T20:00:00Z", -540)).toBe("2026-03-08");
   });
 });
