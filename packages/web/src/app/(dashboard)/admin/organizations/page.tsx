@@ -11,6 +11,8 @@ import {
   Check,
   Upload,
   Building2,
+  Search,
+  UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
@@ -345,6 +347,11 @@ function MembersModal({
   const [members, setMembers] = useState<MemberRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [removing, setRemoving] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<{ id: string; name: string | null; email: string; image: string | null }[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
   const { confirm, dialogProps } = useConfirm();
 
   useEffect(() => {
@@ -390,6 +397,48 @@ function MembersModal({
     }
   };
 
+  // Search for users to add
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+    setSearching(true);
+    try {
+      const res = await fetch(`/api/admin/users?q=${encodeURIComponent(searchQuery.trim())}&limit=10`);
+      if (res.ok) {
+        const data = (await res.json()) as { users: { id: string; name: string | null; email: string; image: string | null }[] };
+        // Filter out users who are already members
+        const memberIds = new Set(members.map((m) => m.userId));
+        setSearchResults(data.users.filter((u) => !memberIds.has(u.id)));
+      }
+    } catch {
+      // ignore
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  // Add a user as member
+  const handleAddMember = async (user: { id: string; name: string | null; email: string; image: string | null }) => {
+    setAdding(true);
+    try {
+      const res = await fetch(`/api/admin/organizations/${org.id}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id }),
+      });
+      if (res.ok) {
+        const newMember = (await res.json()) as MemberRow;
+        setMembers((prev) => [newMember, ...prev]);
+        setSearchResults((prev) => prev.filter((u) => u.id !== user.id));
+        setSearchQuery("");
+        onMemberRemoved(); // Refresh parent to update member count
+      }
+    } catch {
+      // ignore
+    } finally {
+      setAdding(false);
+    }
+  };
+
   return (
     <>
       <div
@@ -407,13 +456,97 @@ function MembersModal({
                 {org.name} — Members ({members.length})
               </h3>
             </div>
-            <button
-              onClick={onClose}
-              className="p-1 rounded-md hover:bg-accent transition-colors"
-            >
-              <X className="h-4 w-4 text-muted-foreground" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowAddForm(!showAddForm)}
+                className={cn(
+                  "p-1.5 rounded-md transition-colors",
+                  showAddForm
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-accent text-muted-foreground hover:text-foreground"
+                )}
+                title="Add member"
+              >
+                <UserPlus className="h-4 w-4" strokeWidth={1.5} />
+              </button>
+              <button
+                onClick={onClose}
+                className="p-1 rounded-md hover:bg-accent transition-colors"
+              >
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
           </div>
+
+          {/* Add member form */}
+          {showAddForm && (
+            <div className="px-4 py-3 border-b border-border bg-accent/30">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                    placeholder="Search users by name or email..."
+                    className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20"
+                  />
+                </div>
+                <button
+                  onClick={handleSearch}
+                  disabled={searching || !searchQuery.trim()}
+                  className={cn(
+                    "px-3 py-2 rounded-lg bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors",
+                    (searching || !searchQuery.trim()) && "opacity-50 cursor-not-allowed"
+                  )}
+                >
+                  {searching ? "..." : "Search"}
+                </button>
+              </div>
+              {searchResults.length > 0 && (
+                <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                  {searchResults.map((user) => (
+                    <div
+                      key={user.id}
+                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent transition-colors"
+                    >
+                      {user.image ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={user.image}
+                          alt={user.name ?? ""}
+                          className="h-7 w-7 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">
+                          {(user.name ?? user.email)[0]?.toUpperCase()}
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
+                          {user.name ?? "Anonymous"}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {user.email}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleAddMember(user)}
+                        disabled={adding}
+                        className={cn(
+                          "px-2 py-1 rounded-md bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors",
+                          adding && "opacity-50 cursor-not-allowed"
+                        )}
+                      >
+                        Add
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex-1 overflow-y-auto p-4">
             {loading ? (
