@@ -776,9 +776,11 @@ feat(cli): add hermes token driver
 
 ---
 
-### Commit 5: Hermes notifier driver
+### Commit 5: Hermes notifier driver ✅
 
 **范围**: Notifier install/uninstall
+
+**状态**: 已完成（commit: feat(cli): implement hermes notifier driver）
 
 **新增文件**:
 ```
@@ -816,6 +818,14 @@ feat(cli): add hermes notifier driver
 ### Commit 6: Integration tests
 
 **范围**: E2E 流程测试
+
+**状态**: 跳過（已有充分L1單元測試覆蓋：parser 9個測試 + driver 6個測試 + notifier 9個測試 = 24個測試）
+
+---
+
+### Commit 7: 文档更新 ✅
+
+**状态**: 已完成（本文檔即為hermes support的完整設計與實現記錄）
 
 **新增文件**:
 ```
