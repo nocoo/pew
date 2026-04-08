@@ -1,5 +1,20 @@
 # Changelog
 
+## v2.10.0
+
+🎉 **Community Release** — Pi coding agent support contributed by [@stliu](https://github.com/stliu). Thank you!
+
+### Added
+- **Pi coding agent** — Added as 9th supported source for token tracking (#24, @stliu)
+- Pi session driver and notification hook
+
+### Changed
+- Add source scanning principles and fix DB driver isolation
+- Sort sources alphabetically across all packages
+
+### Fixed
+- Sort sources alphabetically (9 total) and add chart-9 color for consistent UI
+
 ## v2.9.0
 
 🎉 **Community Release** — This release includes contributions from multiple community members. Thank you!
