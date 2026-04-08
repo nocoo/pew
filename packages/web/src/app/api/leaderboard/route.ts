@@ -280,7 +280,11 @@ export async function GET(request: Request) {
     const scope = orgId ? "org" : teamId ? "team" : "global";
     const scopeId = orgId ?? teamId ?? undefined;
 
-    const headers: HeadersInit = (teamId || orgId)
+    // Cache policy: any request with scope params (even anonymous, degraded to global)
+    // must use private, no-store to prevent cache pollution.
+    // Only truly global requests (no scope params at all) can be publicly cached.
+    const hasAnyScopeParam = !!(teamIdParam || orgIdParam);
+    const headers: HeadersInit = hasAnyScopeParam
       ? { "Cache-Control": "private, no-store" }
       : { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120" };
 

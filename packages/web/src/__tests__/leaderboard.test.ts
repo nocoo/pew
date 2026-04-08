@@ -244,6 +244,17 @@ describe("GET /api/leaderboard", () => {
       const sqlCall = mockClient.query.mock.calls[0]!;
       expect(sqlCall[0]).not.toContain("team_members");
     });
+
+    it("should set Cache-Control: private, no-store for anonymous team-scoped request", async () => {
+      resolveUser.mockResolvedValueOnce(null); // Anonymous
+      mockClient.query.mockResolvedValueOnce({ results: [] });
+
+      const res = await GET(makeGetRequest("/api/leaderboard", { team: "team-abc" }));
+
+      expect(res.status).toBe(200);
+      // Even though data is global, scope param was present so must not be public cached
+      expect(res.headers.get("Cache-Control")).toBe("private, no-store");
+    });
   });
 
   describe("nickname fallback", () => {
@@ -406,6 +417,17 @@ describe("GET /api/leaderboard", () => {
       // Should NOT have org filter in SQL
       const sqlCall = mockClient.query.mock.calls[0]!;
       expect(sqlCall[0]).not.toContain("organization_members");
+    });
+
+    it("should set Cache-Control: private, no-store for anonymous org-scoped request", async () => {
+      resolveUser.mockResolvedValueOnce(null); // Anonymous
+      mockClient.query.mockResolvedValueOnce({ results: [] });
+
+      const res = await GET(makeGetRequest("/api/leaderboard", { org: "org-123" }));
+
+      expect(res.status).toBe(200);
+      // Even though data is global, scope param was present so must not be public cached
+      expect(res.headers.get("Cache-Control")).toBe("private, no-store");
     });
 
     it("should include is_public filter even when org is set (opt-out respected)", async () => {
