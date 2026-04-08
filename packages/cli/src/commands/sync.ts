@@ -3,7 +3,6 @@ import type {
   CursorState,
   FileCursor,
   FileCursorBase,
-  OpenCodeSqliteCursor,
   QueueRecord,
   Source,
   TokenDelta,
@@ -127,7 +126,9 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   // Full-scan detection: if cursors were completely empty at start (first run
   // or after `pew reset`), all records represent the complete picture.
   const initialCursorEmpty =
-    Object.keys(cursors.files).length === 0 && !cursors.openCodeSqlite;
+    Object.keys(cursors.files).length === 0 &&
+    !cursors.openCodeSqlite &&
+    !cursors.hermesSqlite;
 
   // Upgrade detection: cursors.json created before knownFilePaths was added
   // (pre-v1.6.0). We can't distinguish "cursor lost" from "new file" without
@@ -149,18 +150,21 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   // Backfill knownDbSources for cursors created between v1.6.0 (added
   // knownFilePaths) and this fix (added knownDbSources).
   //
-  // If the openCodeSqlite cursor still exists, we can safely seed
-  // knownDbSources from it. If the cursor is already gone AND other
-  // cursors exist (!initialCursorEmpty), we can't distinguish "never
+  // If any DB cursor (openCodeSqlite / hermesSqlite) still exists, we can
+  // safely seed knownDbSources from it. If all cursors are already gone AND
+  // other cursors exist (!initialCursorEmpty), we can't distinguish "never
   // used SQLite" from "cursor lost" — trigger full rescan to be safe.
-  // If the cursor is gone AND cursors are empty (first run / post-reset),
-  // {} is safe because there's nothing to double-count.
+  // If cursors are empty (first run / post-reset), {} is safe because
+  // there's nothing to double-count.
   if (!cursors.knownDbSources) {
-    if (cursors.openCodeSqlite) {
-      cursors.knownDbSources = { openCodeSqlite: true };
+    const dbCursorsExist = cursors.openCodeSqlite || cursors.hermesSqlite;
+    if (dbCursorsExist) {
+      cursors.knownDbSources = {};
+      if (cursors.openCodeSqlite) cursors.knownDbSources.openCodeSqlite = true;
+      if (cursors.hermesSqlite) cursors.knownDbSources.hermesSqlite = true;
     } else if (!initialCursorEmpty) {
       onProgress?.({
-        source: "opencode-sqlite",
+        source: "all",
         phase: "warn",
         message: "Upgrading cursor format (DB) — one-time full rescan",
       });
@@ -400,22 +404,26 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
 
   for (const driver of activeDbDrivers) {
     const key = sourceKey(driver.source);
+    // Map driver.source to cursor field name
+    const dbCursorKey = driver.source === "opencode" ? "openCodeSqlite" : "hermesSqlite";
+    const dbSourceKey = driver.source === "opencode" ? "openCodeSqlite" : "hermesSqlite";
+    const displayName = driver.source === "opencode" ? "OpenCode SQLite" : "Hermes SQLite";
 
     onProgress?.({
-      source: "opencode-sqlite",
+      source: driver.source,
       phase: "discover",
-      message: "Checking OpenCode SQLite database...",
+      message: `Checking ${displayName} database...`,
     });
 
-    const prevCursor = cursors.openCodeSqlite as OpenCodeSqliteCursor | undefined;
+    const prevCursor = cursors[dbCursorKey] as typeof result.cursor | undefined;
 
     // Detect DB cursor loss (parallel to file-based knownFilePaths logic):
     // If the DB was previously synced (tracked in knownDbSources) but the
     // cursor entry is missing, the driver will replay from rowId 0 — SUM'ing
     // that with the existing queue would double-count. Trigger full rescan.
-    if (!initialCursorEmpty && !prevCursor && cursors.knownDbSources?.["openCodeSqlite"]) {
+    if (!initialCursorEmpty && !prevCursor && cursors.knownDbSources?.[dbSourceKey]) {
       onProgress?.({
-        source: "opencode-sqlite",
+        source: driver.source,
         phase: "warn",
         message: "SQLite cursor entry lost — restarting as full scan",
       });
@@ -430,14 +438,16 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     const result = await driver.run(prevCursor, ctx);
 
     // Detect DB inode change (same logic as file drivers)
-    const dbCursor = result.cursor as OpenCodeSqliteCursor;
+    const dbCursor = result.cursor as { inode?: number };
     if (
       !initialCursorEmpty &&
       prevCursor &&
-      dbCursor.inode !== prevCursor.inode
+      dbCursor.inode !== undefined &&
+      (prevCursor as { inode?: number }).inode !== undefined &&
+      dbCursor.inode !== (prevCursor as { inode?: number }).inode
     ) {
       onProgress?.({
-        source: "opencode-sqlite",
+        source: driver.source,
         phase: "warn",
         message: "SQLite database inode changed — restarting full scan",
       });
@@ -449,11 +459,16 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       return executeSync(opts);
     }
 
-    cursors.openCodeSqlite = result.cursor as CursorState["openCodeSqlite"];
+    // Write cursor back to the correct field (type-safe cast via index signature)
+    if (dbCursorKey === "openCodeSqlite") {
+      cursors.openCodeSqlite = result.cursor as CursorState["openCodeSqlite"];
+    } else {
+      cursors.hermesSqlite = result.cursor as CursorState["hermesSqlite"];
+    }
 
     // Track this DB source as "previously synced" for cursor-loss detection
     const knownDb: Record<string, true> = cursors.knownDbSources ?? {};
-    knownDb["openCodeSqlite"] = true;
+    knownDb[dbSourceKey] = true;
     cursors.knownDbSources = knownDb;
 
     allDeltas.push(...result.deltas);
@@ -461,7 +476,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
 
     const dedupSkipped = result.rowCount - (result.deltas.length > 0 ? result.deltas.length : 0);
     onProgress?.({
-      source: "opencode-sqlite",
+      source: driver.source,
       phase: "parse",
       message: `Parsed ${result.deltas.length} deltas from ${result.rowCount} SQLite rows${dedupSkipped > 0 ? ` (${dedupSkipped} deduped)` : ""}`,
     });

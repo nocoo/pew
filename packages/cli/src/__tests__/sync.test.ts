@@ -1414,13 +1414,13 @@ describe("executeSync", () => {
 
     // Verify SQLite discover event
     const discoverEvents = events.filter(
-      (e) => e.source === "opencode-sqlite" && e.phase === "discover",
+      (e) => e.source === "opencode" && e.phase === "discover",
     );
     expect(discoverEvents).toHaveLength(1);
 
     // Verify SQLite parse progress event with delta details
     const parseEvents = events.filter(
-      (e) => e.source === "opencode-sqlite" && e.phase === "parse",
+      (e) => e.source === "opencode" && e.phase === "parse",
     );
     expect(parseEvents).toHaveLength(1);
     expect(parseEvents[0].message).toContain("Parsed");
