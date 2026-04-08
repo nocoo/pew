@@ -21,7 +21,7 @@
 | 11 | `feat: add organizations settings page` | `/settings/organizations` with join/leave UI | done |
 | 12 | `feat: add organization leaderboard API` | `GET /api/leaderboard?org=xxx` with EXISTS filter | done |
 | 13 | `test: add L1 tests for organization leaderboard` | Org-scoped aggregation tests | done |
-| 14 | `feat: upgrade leaderboard scope dropdown` | Org + Team selector; auth-gated; localStorage persistence | |
+| 14 | `feat: upgrade leaderboard scope dropdown` | Org + Team selector; auth-gated; localStorage persistence | done |
 | 15 | `test: add L2 E2E tests for organization flow` | End-to-end organization scenarios | |
 
 ---
