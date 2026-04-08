@@ -98,10 +98,11 @@ export function LandingContent() {
         The contribution graph for AI-native devs.
         Reads local logs from{" "}
         <span className="text-foreground">
-          Claude Code, Codex, Gemini CLI, OpenCode, OpenClaw, VS Code Copilot
+          Claude Code, Codex, Gemini CLI, OpenCode, OpenClaw, VS Code Copilot,
+          GitHub Copilot CLI
         </span>{" "}
         &amp;{" "}
-        <span className="text-foreground">GitHub Copilot CLI</span> —
+        <span className="text-foreground">Hermes Agent</span> —
         counts tokens, never conversations.
       </p>
 
