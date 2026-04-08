@@ -9,7 +9,8 @@ import { test, expect } from "@playwright/test";
  * Tests cover:
  * - Admin organizations page loads and shows header
  * - Settings organizations page loads and shows header
- * - Leaderboard scope dropdown behavior for logged-in users
+ * - Leaderboard page and period selector
+ * - Navigation to organizations from sidebar
  */
 
 test.describe("organizations", () => {
@@ -18,16 +19,16 @@ test.describe("organizations", () => {
       await page.goto("/admin/organizations");
       // Should see the Organizations heading
       await expect(page.locator("h1")).toContainText("Organizations");
-      // Should see description text
+      // Should see description text (actual text from page.tsx:750-751)
       await expect(
-        page.getByText("Manage organizations and their members."),
+        page.getByText("Manage interest-based organizations"),
       ).toBeVisible();
     });
 
     test("shows create organization button", async ({ page }) => {
       await page.goto("/admin/organizations");
       await expect(
-        page.getByRole("button", { name: /create/i }),
+        page.getByRole("button", { name: /create organization/i }),
       ).toBeVisible();
     });
 
@@ -36,9 +37,11 @@ test.describe("organizations", () => {
       const createButton = page.getByRole("button", { name: /create organization/i });
       await createButton.click();
 
-      // Form inputs should appear
-      await expect(page.getByPlaceholder("Organization name")).toBeVisible();
-      await expect(page.getByPlaceholder("url-safe-slug")).toBeVisible();
+      // Form section should appear with "Create Organization" heading
+      await expect(page.getByText("Create Organization")).toBeVisible();
+      // Form inputs should appear (actual placeholders from page.tsx:184, 197)
+      await expect(page.getByPlaceholder("Anthropic")).toBeVisible();
+      await expect(page.getByPlaceholder("anthropic")).toBeVisible();
     });
   });
 
@@ -63,11 +66,7 @@ test.describe("organizations", () => {
   });
 
   test.describe("leaderboard", () => {
-    test("leaderboard page loads without scope dropdown for unauthenticated user", async ({
-      page,
-    }) => {
-      // Note: E2E_SKIP_AUTH bypasses auth check but doesn't create a real session
-      // The useSession() hook returns "unauthenticated" status
+    test("leaderboard page loads", async ({ page }) => {
       await page.goto("/leaderboard");
 
       // Should see the leaderboard
