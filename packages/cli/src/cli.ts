@@ -219,6 +219,7 @@ const syncCommand = defineCommand({
       if (result.sources.openclaw > 0) deltaParts.push(`OpenClaw: ${result.sources.openclaw}`);
       if (result.sources.vscodeCopilot > 0) deltaParts.push(`VSCode Copilot: ${result.sources.vscodeCopilot}`);
       if (result.sources.copilotCli > 0) deltaParts.push(`Copilot CLI: ${result.sources.copilotCli}`);
+      if (result.sources.hermes > 0) deltaParts.push(`Hermes: ${result.sources.hermes}`);
       if (deltaParts.length > 0) {
         log.text(pc.dim(deltaParts.join("  |  ")));
       }
@@ -234,6 +235,7 @@ const syncCommand = defineCommand({
     if (fs.openclaw > 0) scanParts.push(`OpenClaw: ${fs.openclaw}`);
     if (fs.vscodeCopilot > 0) scanParts.push(`VSCode Copilot: ${fs.vscodeCopilot}`);
     if (fs.copilotCli > 0) scanParts.push(`Copilot CLI: ${fs.copilotCli}`);
+    if (fs.hermes > 0) scanParts.push(`Hermes: ${fs.hermes}`);
     if (scanParts.length > 0) {
       log.text(`Files scanned: ${pc.dim(scanParts.join("  |  "))}`);
     }
