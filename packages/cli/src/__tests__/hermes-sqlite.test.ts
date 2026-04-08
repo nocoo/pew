@@ -242,7 +242,8 @@ describe("parseHermesDatabase", () => {
     await teardownDb();
   });
 
-  it("should reset cursor on DB inode change", async () => {
+  // Skip in CI: inode behavior is filesystem-dependent and unreliable in containers
+  it.skipIf(!!process.env.CI)("should reset cursor on DB inode change", async () => {
     await setupDb();
 
     const sessions: SessionRow[] = [
