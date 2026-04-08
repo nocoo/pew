@@ -434,4 +434,28 @@ describe("DELETE /api/seasons/[seasonId]/register", () => {
     });
     expect(res.status).toBe(500);
   });
+
+  it("should return 404 when season not found in DELETE", async () => {
+    resolveUser.mockResolvedValueOnce(USER);
+    mockDbRead.firstOrNull.mockResolvedValueOnce(null);
+
+    const res = await DELETE(makeJsonRequest("DELETE", "/api/seasons/season-1/register", { team_id: "team-1" }), {
+      params: regParams,
+    });
+    expect(res.status).toBe(404);
+    const json = await res.json();
+    expect(json.error).toContain("Season not found");
+  });
+
+  it("should return 503 when DELETE hits 'no such table' error", async () => {
+    resolveUser.mockResolvedValueOnce(USER);
+    mockDbRead.firstOrNull.mockRejectedValueOnce(new Error("no such table: season_teams"));
+
+    const res = await DELETE(makeJsonRequest("DELETE", "/api/seasons/season-1/register", { team_id: "team-1" }), {
+      params: regParams,
+    });
+    expect(res.status).toBe(503);
+    const json = await res.json();
+    expect(json.error).toContain("not yet migrated");
+  });
 });

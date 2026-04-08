@@ -442,6 +442,24 @@ describe("PATCH /api/projects/:id", () => {
       expect(insertCall![1]).toContain("real-tag");
       expect(insertCall![1]).not.toContain("phantom-tag");
     });
+
+    it("should handle rollback failure gracefully", async () => {
+      // Write fails, and then rollback also fails → should still return 500
+      mockDbRead.firstOrNull
+        .mockResolvedValueOnce({ id: "proj-1", name: "Old Name" })
+        .mockResolvedValueOnce(null);
+
+      mockDbWrite.execute
+        .mockResolvedValueOnce({ meta: {} }) // UPDATE name succeeds
+        .mockRejectedValueOnce(new Error("updated_at fails")) // updated_at UPDATE fails
+        .mockRejectedValueOnce(new Error("rollback also fails")); // rollback also fails
+
+      const res = await callPatch({ name: "New Name" });
+
+      expect(res.status).toBe(500);
+      const body = await res.json();
+      expect(body.error).toBe("Failed to update project");
+    });
   });
 
   describe("successful update", () => {
@@ -676,6 +694,21 @@ describe("DELETE /api/projects/:id", () => {
     const body = await res.json();
     expect(body.success).toBe(true);
     expect(mockDbWrite.execute).toHaveBeenCalledTimes(3);
+  });
+
+  it("should return 500 when delete fails", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({
+      userId: "u1",
+      email: "test@example.com",
+    });
+    mockDbRead.firstOrNull.mockResolvedValueOnce({ id: "proj-1" });
+    mockDbWrite.execute.mockRejectedValueOnce(new Error("DB error"));
+
+    const res = await callDelete();
+
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.error).toBe("Failed to delete project");
   });
 });
 

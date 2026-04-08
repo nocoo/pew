@@ -191,6 +191,24 @@ describe("removeNotifyHandler", () => {
     expect(result.changed).toBe(false);
     expect(result.warnings).toContain("File does not contain pew marker");
   });
+
+  it("re-throws non-ENOENT readFile errors", async () => {
+    const fs = {
+      readFile: vi.fn(async () => {
+        const err = new Error("permission denied") as NodeJS.ErrnoException;
+        err.code = "EACCES";
+        throw err;
+      }),
+      unlink: vi.fn(async () => {}),
+    };
+
+    await expect(
+      removeNotifyHandler({
+        notifyPath: "/tmp/pew/bin/notify.cjs",
+        fs,
+      }),
+    ).rejects.toThrow("permission denied");
+  });
 });
 
 describe("resolvePewBin", () => {
