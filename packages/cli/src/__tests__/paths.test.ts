@@ -48,7 +48,12 @@ describe("resolveDefaultPaths", () => {
     expect(paths.copilotCliLogsDir).toBe(join("/fakehome", ".copilot", "logs"));
   });
 
-  it("should return exactly 11 path properties", () => {
+  it("should resolve hermesDbPath to ~/.hermes/state.db", () => {
+    const paths = resolveDefaultPaths("/fakehome");
+    expect(paths.hermesDbPath).toBe(join("/fakehome", ".hermes", "state.db"));
+  });
+
+  it("should return exactly 12 path properties", () => {
     const keys = [
       "stateDir",
       "binDir",
@@ -61,6 +66,7 @@ describe("resolveDefaultPaths", () => {
       "openclawDir",
       "vscodeCopilotDirs",
       "copilotCliLogsDir",
+      "hermesDbPath",
     ];
     const paths = resolveDefaultPaths("/fakehome");
     expect(Object.keys(paths)).toHaveLength(keys.length);

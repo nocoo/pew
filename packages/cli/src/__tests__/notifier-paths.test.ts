@@ -33,6 +33,8 @@ describe("resolveNotifierPaths", () => {
     expect(paths.codexNotifyOriginalPath).toBe(
       join("/home/tester", ".config", "pew", "codex_notify_original.json"),
     );
+    expect(paths.hermesHome).toBe(join("/home/tester", ".hermes"));
+    expect(paths.hermesPluginDir).toBe(join("/home/tester", ".hermes", "plugins"));
   });
 
   it("should follow GEMINI_HOME when set", () => {
@@ -78,6 +80,22 @@ describe("resolveNotifierPaths", () => {
 
     expect(paths.codexHome).toBe("/tmp/codex-home");
     expect(paths.codexConfigPath).toBe("/tmp/codex-home/config.toml");
+  });
+
+  it("should follow HERMES_HOME when set", () => {
+    const paths = resolveNotifierPaths("/home/tester", {
+      HERMES_HOME: "/tmp/hermes-home",
+    });
+
+    expect(paths.hermesHome).toBe("/tmp/hermes-home");
+    expect(paths.hermesPluginDir).toBe("/tmp/hermes-home/plugins");
+  });
+
+  it("should use default hermesHome when HERMES_HOME not set", () => {
+    const paths = resolveNotifierPaths("/home/tester", {});
+
+    expect(paths.hermesHome).toBe(join("/home/tester", ".hermes"));
+    expect(paths.hermesPluginDir).toBe(join("/home/tester", ".hermes", "plugins"));
   });
 
   it("should follow OPENCLAW_STATE_DIR when set", () => {

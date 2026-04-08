@@ -12,6 +12,7 @@ import { CursorStore } from "../storage/cursor-store.js";
 import { LocalQueue } from "../storage/local-queue.js";
 import type { OnCorruptLine } from "../storage/base-queue.js";
 import type { QueryMessagesFn } from "../parsers/opencode-sqlite.js";
+import type { QuerySessionsFn } from "../parsers/hermes-sqlite.js";
 import type { ParsedDelta } from "../parsers/claude.js";
 import { toUtcHalfHourStart, bucketKey, addTokens, emptyTokenDelta } from "../utils/buckets.js";
 import { createTokenDrivers } from "../drivers/registry.js";
@@ -42,6 +43,10 @@ export interface SyncOptions {
   vscodeCopilotDirs?: string[];
   /** Override: GitHub Copilot CLI logs directory (~/.copilot/logs) */
   copilotCliLogsDir?: string;
+  /** Override: Hermes Agent database path (~/.hermes/state.db) */
+  hermesDbPath?: string;
+  /** Factory for opening the Hermes SQLite DB (DI for testability) */
+  openHermesDb?: (dbPath: string) => { querySessions: QuerySessionsFn; close: () => void } | null;
   /** Progress callback */
   onProgress?: (event: ProgressEvent) => void;
   /** Callback invoked when a corrupted JSONL line is found in the queue */
@@ -69,6 +74,7 @@ export interface SyncResult {
     openclaw: number;
     vscodeCopilot: number;
     copilotCli: number;
+    hermes: number;
   };
   /** Total files scanned per source */
   filesScanned: {
@@ -79,6 +85,7 @@ export interface SyncResult {
     openclaw: number;
     vscodeCopilot: number;
     copilotCli: number;
+    hermes: number;
   };
 }
 
@@ -100,6 +107,7 @@ function sourceKey(source: Source): keyof SyncResult["sources"] {
     case "codex": return "codex";
     case "vscode-copilot": return "vscodeCopilot";
     case "copilot-cli": return "copilotCli";
+    case "hermes": return "hermes";
   }
 }
 
@@ -181,8 +189,8 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   let replayDetected = false;
 
   const allDeltas: ParsedDelta[] = [];
-  const sourceCounts = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0, copilotCli: 0 };
-  const filesScanned = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0, copilotCli: 0 };
+  const sourceCounts = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0, copilotCli: 0, hermes: 0 };
+  const filesScanned = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0, copilotCli: 0, hermes: 0 };
 
   // Collect all discovered file paths (across all drivers) for knownFilePaths
   const discoveredFiles = new Set<string>();

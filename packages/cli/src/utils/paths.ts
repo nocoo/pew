@@ -44,6 +44,7 @@ function resolveVscodeCopilotDirs(home: string): string[] {
  */
 export function resolveDefaultPaths(home = homedir()) {
   const codexHome = process.env.CODEX_HOME || join(home, ".codex");
+  const hermesHome = process.env.HERMES_HOME || join(home, ".hermes");
   return {
     /** pew state directory: ~/.config/pew/ */
     stateDir: join(home, ".config", "pew"),
@@ -74,5 +75,7 @@ export function resolveDefaultPaths(home = homedir()) {
     vscodeCopilotDirs: resolveVscodeCopilotDirs(home),
     /** GitHub Copilot CLI logs: ~/.copilot/logs */
     copilotCliLogsDir: join(home, ".copilot", "logs"),
+    /** Hermes Agent database: ~/.hermes/state.db (or $HERMES_HOME/state.db) */
+    hermesDbPath: join(hermesHome, "state.db"),
   };
 }
