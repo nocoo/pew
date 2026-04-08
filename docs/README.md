@@ -36,5 +36,7 @@
 | 32 | [32-proxy-token-gap-investigation.md](32-proxy-token-gap-investigation.md) | Proxy token gap investigation | reference |
 | 33 | [33-achievement-system-overhaul.md](33-achievement-system-overhaul.md) | Achievement system overhaul | in-progress |
 | 34 | [34-showcase-system.md](34-showcase-system.md) | ProductHunt-style showcase system | design-complete |
+| 35 | [35-hermes-support.md](35-hermes-support.md) | Hermes CLI token tracking support | done |
+| 36 | [36-organization-system.md](36-organization-system.md) | Organization entity for company/community grouping | |
 
 > **Note:** Number 14 is intentionally vacant (original doc 14 was renumbered to 12 to fill a gap).
