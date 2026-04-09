@@ -48,6 +48,7 @@ function isSource(value: string): value is Source {
     "opencode",
     "openclaw",
     "pi",
+    "pmstudio",
     "vscode-copilot",
     "copilot-cli",
     "hermes",
@@ -153,6 +154,7 @@ const SOURCE_LABELS: Record<string, string> = {
   opencode: "OpenCode",
   openclaw: "OpenClaw",
   pi: "Pi",
+  pmstudio: "PM Studio",
   vscodeCopilot: "VSCode Copilot",
   copilotCli: "Copilot CLI",
   hermes: "Hermes",
@@ -242,7 +244,8 @@ const syncCommand = defineCommand({
       claudeDir: paths.claudeDir,
       codexSessionsDir: paths.codexSessionsDir,
       geminiDir: paths.geminiDir,
-      kosmosDataDirs: paths.kosmosDataDirs,
+      kosmosDataDir: paths.kosmosDataDir,
+      pmstudioDataDir: paths.pmstudioDataDir,
       openCodeMessageDir: paths.openCodeMessageDir,
       openCodeDbPath: paths.openCodeDbPath,
       openMessageDb,
@@ -276,6 +279,7 @@ const syncCommand = defineCommand({
       if (result.sources.opencode > 0) deltaParts.push(`OpenCode: ${result.sources.opencode}`);
       if (result.sources.openclaw > 0) deltaParts.push(`OpenClaw: ${result.sources.openclaw}`);
       if (result.sources.pi > 0) deltaParts.push(`Pi: ${result.sources.pi}`);
+      if (result.sources.pmstudio > 0) deltaParts.push(`PM Studio: ${result.sources.pmstudio}`);
       if (result.sources.vscodeCopilot > 0) deltaParts.push(`VSCode Copilot: ${result.sources.vscodeCopilot}`);
       if (result.sources.copilotCli > 0) deltaParts.push(`Copilot CLI: ${result.sources.copilotCli}`);
       if (result.sources.hermes > 0) deltaParts.push(`Hermes: ${result.sources.hermes}`);
@@ -297,7 +301,8 @@ const syncCommand = defineCommand({
       claudeDir: paths.claudeDir,
       codexSessionsDir: paths.codexSessionsDir,
       geminiDir: paths.geminiDir,
-      kosmosDataDirs: paths.kosmosDataDirs,
+      kosmosDataDir: paths.kosmosDataDir,
+      pmstudioDataDir: paths.pmstudioDataDir,
       openCodeMessageDir: paths.openCodeMessageDir,
       openCodeDbPath: paths.openCodeDbPath,
       openSessionDb,
@@ -325,6 +330,7 @@ const syncCommand = defineCommand({
       if (sessionResult.sources.opencode > 0) sessParts.push(`OpenCode: ${sessionResult.sources.opencode}`);
       if (sessionResult.sources.openclaw > 0) sessParts.push(`OpenClaw: ${sessionResult.sources.openclaw}`);
       if (sessionResult.sources.pi > 0) sessParts.push(`Pi: ${sessionResult.sources.pi}`);
+      if (sessionResult.sources.pmstudio > 0) sessParts.push(`PM Studio: ${sessionResult.sources.pmstudio}`);
       if (sessParts.length > 0) {
         log.text(pc.dim(sessParts.join("  ")));
       }
@@ -358,7 +364,8 @@ const statusCommand = defineCommand({
         claudeDir: paths.claudeDir,
         codexSessionsDir: paths.codexSessionsDir,
         geminiDir: paths.geminiDir,
-        kosmosDataDirs: paths.kosmosDataDirs,
+        kosmosDataDir: paths.kosmosDataDir,
+      pmstudioDataDir: paths.pmstudioDataDir,
         openCodeMessageDir: paths.openCodeMessageDir,
         openclawDir: paths.openclawDir,
         piSessionsDir: paths.piSessionsDir,
@@ -527,7 +534,8 @@ const notifyCommand = defineCommand({
       claudeDir: paths.claudeDir,
       codexSessionsDir: paths.codexSessionsDir,
       geminiDir: paths.geminiDir,
-      kosmosDataDirs: paths.kosmosDataDirs,
+      kosmosDataDir: paths.kosmosDataDir,
+      pmstudioDataDir: paths.pmstudioDataDir,
       openCodeMessageDir: paths.openCodeMessageDir,
       openCodeDbPath: paths.openCodeDbPath,
       openMessageDb: openMessageDb2,

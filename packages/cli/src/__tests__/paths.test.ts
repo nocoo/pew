@@ -84,7 +84,7 @@ describe("resolveDefaultPaths", () => {
     expect(paths.hermesDbPath).toBe(join("/fakehome", ".hermes", "state.db"));
   });
 
-  it("should return exactly 15 path properties", () => {
+  it("should return exactly 16 path properties", () => {
     const keys = [
       "stateDir",
       "binDir",
@@ -95,11 +95,12 @@ describe("resolveDefaultPaths", () => {
       "geminiDir",
       "hermesDbPath",
       "hermesProfileDbPaths",
-      "kosmosDataDirs",
+      "kosmosDataDir",
       "openCodeDbPath",
       "openCodeMessageDir",
       "openclawDir",
       "piSessionsDir",
+      "pmstudioDataDir",
       "vscodeCopilotDirs",
     ];
     const paths = resolveDefaultPaths("/fakehome");

@@ -58,8 +58,10 @@ export interface SessionSyncOptions {
   openclawDir?: string;
   /** Override: Pi session directory (~/.pi/agent/sessions) */
   piSessionsDir?: string;
-  /** Override: Kosmos data directories (kosmos-app + pm-studio-app) */
-  kosmosDataDirs?: string[];
+  /** Override: Kosmos data directory (kosmos-app) */
+  kosmosDataDir?: string;
+  /** Override: PM Studio data directory (pm-studio-app) */
+  pmstudioDataDir?: string;
   /** Progress callback */
   onProgress?: (event: SessionProgressEvent) => void;
   /** Callback invoked when a corrupted JSONL line is found in the queue */
@@ -87,6 +89,7 @@ export interface SessionSyncResult {
     opencode: number;
     openclaw: number;
     pi: number;
+    pmstudio: number;
   };
   /** Total files/directories scanned per source */
   filesScanned: {
@@ -97,6 +100,7 @@ export interface SessionSyncResult {
     opencode: number;
     openclaw: number;
     pi: number;
+    pmstudio: number;
   };
   /** Total SQLite databases scanned per source */
   dbsScanned: {
@@ -148,6 +152,7 @@ function sourceKey(source: Source): keyof SessionSyncResult["sources"] | null {
     case "openclaw": return "openclaw";
     case "codex": return "codex";
     case "pi": return "pi";
+    case "pmstudio": return "pmstudio";
     case "vscode-copilot": return null;
     case "copilot-cli": return null;
     case "hermes": return null;
@@ -177,8 +182,8 @@ export async function executeSessionSync(
   const cursors = await cursorStore.load();
 
   const allSnapshots: SessionSnapshot[] = [];
-  const sourceCounts = { claude: 0, codex: 0, gemini: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0 };
-  const filesScanned = { claude: 0, codex: 0, gemini: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0 };
+  const sourceCounts = { claude: 0, codex: 0, gemini: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0 };
+  const filesScanned = { claude: 0, codex: 0, gemini: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0 };
   const dbsScanned = { opencode: 0 };
 
   // Build driver sets from options
@@ -189,7 +194,8 @@ export async function executeSessionSync(
     claudeDir: opts.claudeDir,
     codexSessionsDir: opts.codexSessionsDir,
     geminiDir: opts.geminiDir,
-    kosmosDataDirs: opts.kosmosDataDirs,
+    kosmosDataDir: opts.kosmosDataDir,
+    pmstudioDataDir: opts.pmstudioDataDir,
     openCodeMessageDir: opts.openCodeMessageDir,
     openCodeDbPath: opts.openCodeDbPath,
     openclawDir: opts.openclawDir,

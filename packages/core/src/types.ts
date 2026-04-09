@@ -10,7 +10,7 @@
 // Source: Supported AI coding tools
 // ---------------------------------------------------------------------------
 
-/** The 10 supported AI coding tools */
+/** The 11 supported AI coding tools */
 export type Source =
   | "claude-code"
   | "codex"
@@ -21,6 +21,7 @@ export type Source =
   | "opencode"
   | "openclaw"
   | "pi"
+  | "pmstudio"
   | "vscode-copilot";
 
 // ---------------------------------------------------------------------------

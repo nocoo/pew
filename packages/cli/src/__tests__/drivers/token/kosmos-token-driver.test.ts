@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { kosmosTokenDriver } from "../../../drivers/token/kosmos-token-driver.js";
+import { kosmosTokenDriver, pmstudioTokenDriver } from "../../../drivers/token/kosmos-token-driver.js";
 import type { KosmosCursor } from "@pew/core";
 import type { SyncContext, FileFingerprint } from "../../../drivers/types.js";
 
@@ -48,22 +48,17 @@ describe("kosmosTokenDriver", () => {
   });
 
   describe("discover", () => {
-    it("returns [] when kosmosDataDirs is not set", async () => {
+    it("returns [] when kosmosDataDir is not set", async () => {
       const files = await kosmosTokenDriver.discover({}, ctx);
       expect(files).toEqual([]);
     });
 
-    it("returns [] when kosmosDataDirs is empty", async () => {
-      const files = await kosmosTokenDriver.discover({ kosmosDataDirs: [] }, ctx);
-      expect(files).toEqual([]);
-    });
-
-    it("discovers chatSession_*.json files under dataDirs", async () => {
+    it("discovers chatSession_*.json files under dataDir", async () => {
       const dataDir = join(tempDir, "kosmos-app");
       await mkdir(dataDir, { recursive: true });
       await writeFile(join(dataDir, "chatSession_001.json"), kosmosSession({}));
 
-      const files = await kosmosTokenDriver.discover({ kosmosDataDirs: [dataDir] }, ctx);
+      const files = await kosmosTokenDriver.discover({ kosmosDataDir: dataDir }, ctx);
       expect(files).toHaveLength(1);
       expect(files[0]).toContain("chatSession_001.json");
     });
@@ -171,6 +166,57 @@ describe("kosmosTokenDriver", () => {
 
       expect(cursor.processedMessageIds).toContain("msg-old");
       expect(cursor.processedMessageIds).toContain("msg-new");
+    });
+  });
+});
+
+describe("pmstudioTokenDriver", () => {
+  let tempDir: string;
+  const ctx: SyncContext = {};
+
+  beforeEach(async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "pew-pmstudio-token-driver-"));
+  });
+
+  afterEach(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it("has correct kind and source", () => {
+    expect(pmstudioTokenDriver.kind).toBe("file");
+    expect(pmstudioTokenDriver.source).toBe("pmstudio");
+  });
+
+  describe("discover", () => {
+    it("returns [] when pmstudioDataDir is not set", async () => {
+      const files = await pmstudioTokenDriver.discover({}, ctx);
+      expect(files).toEqual([]);
+    });
+
+    it("discovers chatSession_*.json files under dataDir", async () => {
+      const dataDir = join(tempDir, "pm-studio-app");
+      await mkdir(dataDir, { recursive: true });
+      await writeFile(join(dataDir, "chatSession_001.json"), kosmosSession({}));
+
+      const files = await pmstudioTokenDriver.discover({ pmstudioDataDir: dataDir }, ctx);
+      expect(files).toHaveLength(1);
+      expect(files[0]).toContain("chatSession_001.json");
+    });
+  });
+
+  describe("parse", () => {
+    it("parses JSON and produces deltas with source=pmstudio", async () => {
+      const filePath = join(tempDir, "chatSession_001.json");
+      await writeFile(filePath, kosmosSession({
+        messages: [
+          { id: "msg-1", role: "assistant", model: "gpt-4o", timestamp: 1700000000000, usage: { prompt_tokens: 100, completion_tokens: 50 } },
+        ],
+      }));
+
+      const resume = { kind: "kosmos" as const, knownMessageIds: null };
+      const result = await pmstudioTokenDriver.parse(filePath, resume);
+      expect(result.deltas).toHaveLength(1);
+      expect(result.deltas[0].source).toBe("pmstudio");
     });
   });
 });

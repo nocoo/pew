@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import type { SessionSnapshot, Source } from "@pew/core";
 
-export async function collectKosmosSessionSnapshots(opts: { filePath: string }): Promise<SessionSnapshot[]> {
-  const { filePath } = opts;
+export async function collectKosmosSessionSnapshots(opts: { filePath: string; source: Source }): Promise<SessionSnapshot[]> {
+  const { filePath, source } = opts;
   let raw: string;
   try { raw = await readFile(filePath, "utf8"); } catch { return []; }
   if (!raw.trim()) return [];
@@ -27,5 +27,5 @@ export async function collectKosmosSessionSnapshots(opts: { filePath: string }):
   }
   if (!Number.isFinite(firstTimestamp) || lastTimestamp === 0) return [];
   const durationSeconds = Math.max(0, Math.round((lastTimestamp - firstTimestamp) / 1000));
-  return [{ sessionKey: `kosmos:${sessionId}`, source: "kosmos" as Source, kind: "human", startedAt: new Date(firstTimestamp).toISOString(), lastMessageAt: new Date(lastTimestamp).toISOString(), durationSeconds, userMessages, assistantMessages, totalMessages, projectRef: null, model: lastModel, snapshotAt: new Date().toISOString() }];
+  return [{ sessionKey: `${source}:${sessionId}`, source: source as Source, kind: "human", startedAt: new Date(firstTimestamp).toISOString(), lastMessageAt: new Date(lastTimestamp).toISOString(), durationSeconds, userMessages, assistantMessages, totalMessages, projectRef: null, model: lastModel, snapshotAt: new Date().toISOString() }];
 }

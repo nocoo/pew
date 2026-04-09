@@ -30,7 +30,7 @@ import type {
 } from "../types.js";
 
 describe("Source type", () => {
-  it("should accept all 10 supported AI tools", () => {
+  it("should accept all 11 supported AI tools", () => {
     const sources: Source[] = [
       "claude-code",
       "codex",
@@ -41,9 +41,10 @@ describe("Source type", () => {
       "opencode",
       "openclaw",
       "pi",
+      "pmstudio",
       "vscode-copilot",
     ];
-    expect(sources).toHaveLength(10);
+    expect(sources).toHaveLength(11);
   });
 
   it("should reject unsupported tools at type level", () => {

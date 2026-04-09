@@ -21,6 +21,7 @@ const VALID_SOURCES = new Set([
   "opencode",
   "openclaw",
   "pi",
+  "pmstudio",
   "vscode-copilot",
 ]);
 

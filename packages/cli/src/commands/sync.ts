@@ -51,8 +51,10 @@ export interface SyncOptions {
   hermesProfileDbPaths?: Array<{ dbPath: string; dbKey: string }>;
   /** Factory for opening the Hermes SQLite DB (DI for testability) */
   openHermesDb?: (dbPath: string) => { querySessions: QuerySessionsFn; close: () => void } | null;
-  /** Override: Kosmos data directories (kosmos-app + pm-studio-app) */
-  kosmosDataDirs?: string[];
+  /** Override: Kosmos data directory (kosmos-app) */
+  kosmosDataDir?: string;
+  /** Override: PM Studio data directory (pm-studio-app) */
+  pmstudioDataDir?: string;
   /** Progress callback */
   onProgress?: (event: ProgressEvent) => void;
   /** Callback invoked when a corrupted JSONL line is found in the queue */
@@ -80,6 +82,7 @@ export interface SyncResult {
     opencode: number;
     openclaw: number;
     pi: number;
+    pmstudio: number;
     vscodeCopilot: number;
     copilotCli: number;
     hermes: number;
@@ -93,6 +96,7 @@ export interface SyncResult {
     opencode: number;
     openclaw: number;
     pi: number;
+    pmstudio: number;
     vscodeCopilot: number;
     copilotCli: number;
     hermes: number;
@@ -121,6 +125,7 @@ function sourceKey(source: Source): keyof SyncResult["sources"] {
     case "opencode": return "opencode";
     case "openclaw": return "openclaw";
     case "pi": return "pi";
+    case "pmstudio": return "pmstudio";
     case "codex": return "codex";
     case "vscode-copilot": return "vscodeCopilot";
     case "copilot-cli": return "copilotCli";
@@ -241,8 +246,8 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   let replayDetected = false;
 
   const allDeltas: ParsedDelta[] = [];
-  const sourceCounts = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, hermes: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, vscodeCopilot: 0 };
-  const filesScanned = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, hermes: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, vscodeCopilot: 0 };
+  const sourceCounts = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, hermes: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0, vscodeCopilot: 0 };
+  const filesScanned = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, hermes: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0, vscodeCopilot: 0 };
   const dbsScanned = { opencode: 0, hermes: 0 };
 
   // Collect all discovered file paths (across all drivers) for knownFilePaths
@@ -259,7 +264,8 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     claudeDir: opts.claudeDir,
     codexSessionsDir: opts.codexSessionsDir,
     geminiDir: opts.geminiDir,
-    kosmosDataDirs: opts.kosmosDataDirs,
+    kosmosDataDir: opts.kosmosDataDir,
+    pmstudioDataDir: opts.pmstudioDataDir,
     openCodeMessageDir: opts.openCodeMessageDir,
     openCodeDbPath: opts.openCodeDbPath,
     openclawDir: opts.openclawDir,

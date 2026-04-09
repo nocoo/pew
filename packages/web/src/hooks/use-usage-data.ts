@@ -159,6 +159,7 @@ const SOURCE_LABELS: Record<string, string> = {
   opencode: "OpenCode",
   openclaw: "OpenClaw",
   pi: "Pi",
+  pmstudio: "PM Studio",
   "vscode-copilot": "VS Code Copilot",
 };
 

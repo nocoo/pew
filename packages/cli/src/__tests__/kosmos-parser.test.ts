@@ -48,7 +48,7 @@ describe("parseKosmosFile", () => {
       ],
     }));
 
-    const result = await parseKosmosFile({ filePath, knownMessageIds: null });
+    const result = await parseKosmosFile({ filePath, knownMessageIds: null, source: "kosmos" });
     expect(result.deltas).toHaveLength(1);
     expect(result.deltas[0].source).toBe("kosmos");
     expect(result.deltas[0].model).toBe("gpt-4o");
@@ -68,7 +68,7 @@ describe("parseKosmosFile", () => {
       ],
     }));
 
-    const result = await parseKosmosFile({ filePath, knownMessageIds: null });
+    const result = await parseKosmosFile({ filePath, knownMessageIds: null, source: "kosmos" });
     expect(result.deltas).toHaveLength(1);
     expect(result.deltas[0].tokens.inputTokens).toBe(100);
   });
@@ -83,7 +83,7 @@ describe("parseKosmosFile", () => {
     }));
 
     const known = new Set(["msg-1"]);
-    const result = await parseKosmosFile({ filePath, knownMessageIds: known });
+    const result = await parseKosmosFile({ filePath, knownMessageIds: known, source: "kosmos" });
     expect(result.deltas).toHaveLength(1);
     expect(result.deltas[0].tokens.inputTokens).toBe(200);
     expect(result.allMessageIds).toEqual(["msg-1", "msg-2"]);
@@ -99,7 +99,7 @@ describe("parseKosmosFile", () => {
     });
     await writeFile(filePath, content);
 
-    const result = await parseKosmosFile({ filePath, knownMessageIds: null });
+    const result = await parseKosmosFile({ filePath, knownMessageIds: null, source: "kosmos" });
     expect(result.deltas).toHaveLength(0);
     expect(result.allMessageIds).toHaveLength(0);
   });
@@ -112,7 +112,7 @@ describe("parseKosmosFile", () => {
       ],
     }));
 
-    const result = await parseKosmosFile({ filePath, knownMessageIds: null });
+    const result = await parseKosmosFile({ filePath, knownMessageIds: null, source: "kosmos" });
     expect(result.deltas).toHaveLength(0);
     expect(result.allMessageIds).toEqual(["msg-1"]);
   });
@@ -127,7 +127,7 @@ describe("parseKosmosFile", () => {
     const filePath = join(tempDir, "chatSession_bad.json");
     await writeFile(filePath, "not valid json{{{");
 
-    const result = await parseKosmosFile({ filePath, knownMessageIds: null });
+    const result = await parseKosmosFile({ filePath, knownMessageIds: null, source: "kosmos" });
     expect(result.deltas).toHaveLength(0);
   });
 
@@ -135,7 +135,7 @@ describe("parseKosmosFile", () => {
     const filePath = join(tempDir, "chatSession_empty.json");
     await writeFile(filePath, "");
 
-    const result = await parseKosmosFile({ filePath, knownMessageIds: null });
+    const result = await parseKosmosFile({ filePath, knownMessageIds: null, source: "kosmos" });
     expect(result.deltas).toHaveLength(0);
   });
 
@@ -149,7 +149,7 @@ describe("parseKosmosFile", () => {
       ],
     }));
 
-    const result = await parseKosmosFile({ filePath, knownMessageIds: null });
+    const result = await parseKosmosFile({ filePath, knownMessageIds: null, source: "kosmos" });
     expect(result.deltas).toHaveLength(2);
     expect(result.deltas[0].model).toBe("gpt-4o");
     expect(result.deltas[1].model).toBe("claude-sonnet-4");
@@ -164,7 +164,7 @@ describe("parseKosmosFile", () => {
       ],
     });
     await writeFile(filePath, content);
-    const result = await parseKosmosFile({ filePath, knownMessageIds: null });
+    const result = await parseKosmosFile({ filePath, knownMessageIds: null, source: "kosmos" });
     expect(result.deltas).toHaveLength(1);
     expect(result.deltas[0].model).toBe("unknown");
   });
@@ -178,7 +178,7 @@ describe("parseKosmosFile", () => {
       ],
     });
     await writeFile(filePath, content);
-    const result = await parseKosmosFile({ filePath, knownMessageIds: null });
+    const result = await parseKosmosFile({ filePath, knownMessageIds: null, source: "kosmos" });
     expect(result.deltas).toHaveLength(0);
     expect(result.allMessageIds).toHaveLength(0);
   });
@@ -192,7 +192,7 @@ describe("parseKosmosFile", () => {
       ],
     });
     await writeFile(filePath, content);
-    const result = await parseKosmosFile({ filePath, knownMessageIds: null });
+    const result = await parseKosmosFile({ filePath, knownMessageIds: null, source: "kosmos" });
     expect(result.deltas).toHaveLength(0);
     expect(result.allMessageIds).toEqual(["msg-1"]);
   });
@@ -200,7 +200,7 @@ describe("parseKosmosFile", () => {
   it("should handle chat_history not being an array", async () => {
     const filePath = join(tempDir, "chatSession_badhist.json");
     await writeFile(filePath, JSON.stringify({ chatSession_id: "ses-bad", chat_history: "not-array" }));
-    const result = await parseKosmosFile({ filePath, knownMessageIds: null });
+    const result = await parseKosmosFile({ filePath, knownMessageIds: null, source: "kosmos" });
     expect(result.deltas).toHaveLength(0);
   });
 
@@ -210,7 +210,20 @@ describe("parseKosmosFile", () => {
       chatSession_id: "ses-null",
       chat_history: [null, undefined, { id: "msg-1", role: "assistant", model: "gpt-4o", timestamp: 1700000000000, usage: { prompt_tokens: 10, completion_tokens: 5 } }],
     }));
-    const result = await parseKosmosFile({ filePath, knownMessageIds: null });
+    const result = await parseKosmosFile({ filePath, knownMessageIds: null, source: "kosmos" });
     expect(result.deltas).toHaveLength(1);
+  });
+
+  it("should use the provided source parameter (pmstudio)", async () => {
+    const filePath = join(tempDir, "chatSession_pmstudio.json");
+    await writeFile(filePath, kosmosSession({
+      messages: [
+        { id: "msg-1", role: "assistant", model: "gpt-4o", timestamp: 1700000000000, usage: { prompt_tokens: 500, completion_tokens: 200 } },
+      ],
+    }));
+
+    const result = await parseKosmosFile({ filePath, knownMessageIds: null, source: "pmstudio" });
+    expect(result.deltas).toHaveLength(1);
+    expect(result.deltas[0].source).toBe("pmstudio");
   });
 });

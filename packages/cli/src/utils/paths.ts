@@ -51,43 +51,6 @@ function discoverHermesProfileDbs(hermesHome: string): Array<{ dbPath: string; d
 }
 
 /**
- * Resolve the platform-specific Kosmos data directories.
- *
- * Returns an array of base dirs for both kosmos-app and pm-studio-app:
- *   macOS:   ~/Library/Application Support/kosmos-app
- *            ~/Library/Application Support/pm-studio-app
- *   Linux:   ~/.config/kosmos-app
- *            ~/.config/pm-studio-app
- *   Windows: %APPDATA%/kosmos-app
- *            %APPDATA%/pm-studio-app
- */
-function resolveKosmosDataDirs(home: string): string[] {
-  const platform = process.platform;
-
-  if (platform === "darwin") {
-    const base = join(home, "Library", "Application Support");
-    return [
-      join(base, "kosmos-app"),
-      join(base, "pm-studio-app"),
-    ];
-  }
-
-  if (platform === "win32") {
-    const appdata = process.env.APPDATA || join(home, "AppData", "Roaming");
-    return [
-      join(appdata, "kosmos-app"),
-      join(appdata, "pm-studio-app"),
-    ];
-  }
-
-  // Linux and other Unix
-  return [
-    join(home, ".config", "kosmos-app"),
-    join(home, ".config", "pm-studio-app"),
-  ];
-}
-
-/**
  * Resolve the platform-specific VSCode Copilot base directories.
  *
  * Returns an array of base dirs for both stable and Insiders builds:
@@ -167,7 +130,19 @@ export function resolveDefaultPaths(home = homedir()) {
     hermesDbPath: join(hermesHome, "state.db"),
     /** Hermes Agent profile databases: ~/.hermes/profiles/<name>/state.db */
     hermesProfileDbPaths: discoverHermesProfileDbs(hermesHome),
-    /** Kosmos data directories (kosmos-app + pm-studio-app, platform-aware) */
-    kosmosDataDirs: resolveKosmosDataDirs(home),
+    /** Kosmos data directory (kosmos-app, platform-aware) */
+    kosmosDataDir: (() => {
+      const platform = process.platform;
+      if (platform === "darwin") return join(home, "Library", "Application Support", "kosmos-app");
+      if (platform === "win32") return join(process.env.APPDATA || join(home, "AppData", "Roaming"), "kosmos-app");
+      return join(home, ".config", "kosmos-app");
+    })(),
+    /** PM Studio data directory (pm-studio-app, platform-aware) */
+    pmstudioDataDir: (() => {
+      const platform = process.platform;
+      if (platform === "darwin") return join(home, "Library", "Application Support", "pm-studio-app");
+      if (platform === "win32") return join(process.env.APPDATA || join(home, "AppData", "Roaming"), "pm-studio-app");
+      return join(home, ".config", "pm-studio-app");
+    })(),
   };
 }

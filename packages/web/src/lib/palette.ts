@@ -12,8 +12,8 @@ const v = (token: string) => `hsl(var(--${token}))`;
 export const withAlpha = (token: string, alpha: number) =>
   `hsl(var(--${token}) / ${alpha})`;
 
-// -- 10 sequential chart colors --
-// Spectrum: Violet → Magenta → Pink → Coral → Orange → Gold → Lime → Acid Lime → Teal → Sky
+// -- 11 sequential chart colors --
+// Spectrum: Violet → Magenta → Pink → Coral → Orange → Gold → Lime → Acid Lime → Teal → Sky → Indigo
 
 export const chart = {
   violet:  v("chart-1"),  // Brand violet (= --primary)
@@ -26,13 +26,14 @@ export const chart = {
   acid:    v("chart-8"),  // Acid Lime — heatmap/achievement accent
   teal:    v("chart-9"),  // Teal/Cyan — 9th color
   sky:     v("chart-10"), // Sky blue — 10th color
+  indigo:  v("chart-11"), // Indigo — 11th color
 } as const;
 
 /** Ordered array — use for pie / donut / bar where you need N colors by index. */
 export const CHART_COLORS = Object.values(chart);
 
 /** CSS variable names (without --) matching CHART_COLORS order — for withAlpha(). */
-export const CHART_TOKENS = Array.from({ length: 10 }, (_, i) => `chart-${i + 1}`) as readonly string[];
+export const CHART_TOKENS = Array.from({ length: 11 }, (_, i) => `chart-${i + 1}`) as readonly string[];
 
 // -- Semantic aliases --
 
@@ -73,7 +74,8 @@ const AGENT_COLOR_MAP: Record<string, ChartColor> = {
   "opencode":      { color: chart.lime,    token: "chart-7" },
   "openclaw":      { color: chart.acid,    token: "chart-8" },
   "pi":            { color: chart.teal,    token: "chart-9" },
-  "vscode-copilot":{ color: chart.sky,     token: "chart-10" },
+  "pmstudio":      { color: chart.sky,     token: "chart-10" },
+  "vscode-copilot":{ color: chart.indigo,  token: "chart-11" },
 };
 
 /** Default color for unknown agents. */

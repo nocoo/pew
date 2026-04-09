@@ -49,7 +49,7 @@ describe("collectKosmosSessionSnapshots", () => {
       ],
     }));
 
-    const snapshots = await collectKosmosSessionSnapshots({ filePath });
+    const snapshots = await collectKosmosSessionSnapshots({ filePath, source: "kosmos" });
     expect(snapshots).toHaveLength(1);
     expect(snapshots[0].sessionKey).toBe("kosmos:ses-123");
     expect(snapshots[0].source).toBe("kosmos");
@@ -69,7 +69,7 @@ describe("collectKosmosSessionSnapshots", () => {
   it("should return empty for invalid JSON", async () => {
     const filePath = join(tempDir, "chatSession_bad.json");
     await writeFile(filePath, "not json");
-    const snapshots = await collectKosmosSessionSnapshots({ filePath });
+    const snapshots = await collectKosmosSessionSnapshots({ filePath, source: "kosmos" });
     expect(snapshots).toHaveLength(0);
   });
 
@@ -78,7 +78,7 @@ describe("collectKosmosSessionSnapshots", () => {
     await writeFile(filePath, JSON.stringify({
       chat_history: [{ role: "user", timestamp: 1700000000000 }],
     }));
-    const snapshots = await collectKosmosSessionSnapshots({ filePath });
+    const snapshots = await collectKosmosSessionSnapshots({ filePath, source: "kosmos" });
     expect(snapshots).toHaveLength(0);
   });
 
@@ -88,7 +88,7 @@ describe("collectKosmosSessionSnapshots", () => {
       chatSession_id: "ses-empty",
       chat_history: [],
     }));
-    const snapshots = await collectKosmosSessionSnapshots({ filePath });
+    const snapshots = await collectKosmosSessionSnapshots({ filePath, source: "kosmos" });
     expect(snapshots).toHaveLength(0);
   });
 
@@ -101,7 +101,7 @@ describe("collectKosmosSessionSnapshots", () => {
       ],
     }));
 
-    const snapshots = await collectKosmosSessionSnapshots({ filePath });
+    const snapshots = await collectKosmosSessionSnapshots({ filePath, source: "kosmos" });
     expect(snapshots).toHaveLength(1);
     expect(snapshots[0].durationSeconds).toBe(0);
     expect(snapshots[0].userMessages).toBe(1);
@@ -111,14 +111,14 @@ describe("collectKosmosSessionSnapshots", () => {
   it("should return empty for empty file", async () => {
     const filePath = join(tempDir, "chatSession_blank.json");
     await writeFile(filePath, "");
-    const snapshots = await collectKosmosSessionSnapshots({ filePath });
+    const snapshots = await collectKosmosSessionSnapshots({ filePath, source: "kosmos" });
     expect(snapshots).toHaveLength(0);
   });
 
   it("should handle chat_history not being an array", async () => {
     const filePath = join(tempDir, "chatSession_badhist.json");
     await writeFile(filePath, JSON.stringify({ chatSession_id: "ses-bad", chat_history: "oops" }));
-    const snapshots = await collectKosmosSessionSnapshots({ filePath });
+    const snapshots = await collectKosmosSessionSnapshots({ filePath, source: "kosmos" });
     expect(snapshots).toHaveLength(0);
   });
 
@@ -128,7 +128,7 @@ describe("collectKosmosSessionSnapshots", () => {
       chatSession_id: "ses-null",
       chat_history: [null, { role: "user", timestamp: 1700000000000 }],
     }));
-    const snapshots = await collectKosmosSessionSnapshots({ filePath });
+    const snapshots = await collectKosmosSessionSnapshots({ filePath, source: "kosmos" });
     expect(snapshots).toHaveLength(1);
     expect(snapshots[0].totalMessages).toBe(1);
   });
@@ -139,7 +139,7 @@ describe("collectKosmosSessionSnapshots", () => {
       chatSession_id: "ses-nots",
       chat_history: [{ role: "user" }, { role: "assistant" }],
     }));
-    const snapshots = await collectKosmosSessionSnapshots({ filePath });
+    const snapshots = await collectKosmosSessionSnapshots({ filePath, source: "kosmos" });
     expect(snapshots).toHaveLength(0); // no valid timestamps → empty
   });
 
@@ -152,8 +152,24 @@ describe("collectKosmosSessionSnapshots", () => {
         { role: "assistant", timestamp: 1700000001000 },
       ],
     }));
-    const snapshots = await collectKosmosSessionSnapshots({ filePath });
+    const snapshots = await collectKosmosSessionSnapshots({ filePath, source: "kosmos" });
     expect(snapshots).toHaveLength(1);
     expect(snapshots[0].model).toBeNull();
+  });
+
+  it("should use the provided source parameter (pmstudio)", async () => {
+    const filePath = join(tempDir, "chatSession_pmstudio.json");
+    await writeFile(filePath, kosmosSession({
+      chatSessionId: "ses-pm",
+      messages: [
+        { role: "user", timestamp: 1700000000000 },
+        { role: "assistant", model: "gpt-4o", timestamp: 1700000005000 },
+      ],
+    }));
+
+    const snapshots = await collectKosmosSessionSnapshots({ filePath, source: "pmstudio" });
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0].source).toBe("pmstudio");
+    expect(snapshots[0].sessionKey).toBe("pmstudio:ses-pm");
   });
 });

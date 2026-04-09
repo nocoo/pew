@@ -66,7 +66,8 @@ export interface DiscoverOpts {
   claudeDir?: string;
   codexSessionsDir?: string;
   geminiDir?: string;
-  kosmosDataDirs?: string[];
+  kosmosDataDir?: string;
+  pmstudioDataDir?: string;
   openCodeMessageDir?: string;
   openCodeDbPath?: string;
   openclawDir?: string;

@@ -11,8 +11,9 @@ export interface KosmosFileResult {
 export async function parseKosmosFile(opts: {
   filePath: string;
   knownMessageIds: Set<string> | null;
+  source: Source;
 }): Promise<KosmosFileResult> {
-  const { filePath, knownMessageIds } = opts;
+  const { filePath, knownMessageIds, source } = opts;
   const deltas: ParsedDelta[] = [];
   const allMessageIds: string[] = [];
 
@@ -44,7 +45,7 @@ export async function parseKosmosFile(opts: {
       reasoningOutputTokens: 0,
     };
     if (isAllZero(tokens)) continue;
-    deltas.push({ source: "kosmos" as Source, model, timestamp: new Date(timestamp).toISOString(), tokens });
+    deltas.push({ source, model, timestamp: new Date(timestamp).toISOString(), tokens });
   }
   return { deltas, allMessageIds };
 }

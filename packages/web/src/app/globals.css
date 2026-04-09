@@ -55,7 +55,7 @@
   --color-badge-red: hsl(var(--badge-red));
   --color-badge-red-foreground: hsl(var(--badge-red-foreground));
 
-  /* 10 sequential chart colors + utility tokens */
+  /* 11 sequential chart colors + utility tokens */
   --color-chart-1: hsl(var(--chart-1));
   --color-chart-2: hsl(var(--chart-2));
   --color-chart-3: hsl(var(--chart-3));
@@ -66,6 +66,7 @@
   --color-chart-8: hsl(var(--chart-8));
   --color-chart-9: hsl(var(--chart-9));
   --color-chart-10: hsl(var(--chart-10));
+  --color-chart-11: hsl(var(--chart-11));
   --color-chart-axis: hsl(var(--chart-axis));
   --color-chart-muted: hsl(var(--chart-muted));
 
@@ -180,6 +181,7 @@
   --chart-8: 82 92% 42%;
   --chart-9: 180 70% 40%;
   --chart-10: 200 80% 45%;
+  --chart-11: 240 72% 52%;
 
   /* Chart utility tokens */
   --chart-axis: 260 8% 32%;
@@ -255,6 +257,7 @@
   --chart-8: 82 95% 55%;
   --chart-9: 180 75% 50%;
   --chart-10: 200 85% 55%;
+  --chart-11: 240 78% 62%;
 
   /* Chart utility tokens */
   --chart-axis: 260 5% 55%;

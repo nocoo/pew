@@ -23,6 +23,7 @@ export const SOURCES: readonly Source[] = Object.freeze([
   "opencode",
   "openclaw",
   "pi",
+  "pmstudio",
   "vscode-copilot",
 ] as const);
 

@@ -104,6 +104,7 @@ export const DEFAULT_SOURCE_DEFAULTS: Record<string, ModelPricing> = {
   opencode: { input: 2, output: 8, cached: 0.5 },
   openclaw: { input: 2, output: 8, cached: 0.5 },
   pi: { input: 3, output: 15, cached: 0.3 },
+  pmstudio: { input: 3, output: 15, cached: 0.3 },
   "vscode-copilot": { input: 3, output: 15, cached: 0.3 },
 };
 
