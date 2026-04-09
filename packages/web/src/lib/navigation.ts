@@ -74,6 +74,7 @@ export const ADMIN_NAV_GROUP: NavGroupDef = {
     { href: "/admin/seasons", label: "Seasons", icon: "Trophy" },
     { href: "/admin/showcases", label: "Showcases", icon: "Star" },
     { href: "/admin/storage", label: "Storage", icon: "Database" },
+    { href: "/admin/compare", label: "Compare Users", icon: "GitCompareArrows" },
   ],
 };
 
@@ -106,6 +107,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   storage: "Storage",
   pricing: "Token Pricing",
   invites: "Invite Codes",
+  compare: "Compare Users",
 };
 
 /**

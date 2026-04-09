@@ -231,6 +231,7 @@ describe("route labels", () => {
       storage: "Storage",
       pricing: "Token Pricing",
       invites: "Invite Codes",
+      compare: "Compare Users",
     });
   });
 });
