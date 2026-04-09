@@ -342,22 +342,30 @@ function DropdownItem({
 function LeaderboardRow({
   entry,
   index,
+  animationStartIndex,
 }: {
   entry: LeaderboardEntry;
   index: number;
+  /** Index of first newly loaded entry — entries before this don't animate */
+  animationStartIndex: number;
 }) {
   const { rank, user, teams, total_tokens, session_count, total_duration_seconds } =
     entry;
   const displayName = user.name ?? "Anonymous";
   const initial = displayName[0]?.toUpperCase() ?? "?";
 
+  // Only animate newly loaded entries (index >= animationStartIndex)
+  const shouldAnimate = index >= animationStartIndex;
+  const animationIndex = index - animationStartIndex;
+
   const content = (
     <div
       className={cn(
-        "relative flex items-center gap-3 overflow-hidden rounded-[var(--radius-card)] bg-secondary px-4 py-3 transition-colors animate-fade-up hover:bg-accent cursor-pointer",
+        "relative flex items-center gap-3 overflow-hidden rounded-[var(--radius-card)] bg-secondary px-4 py-3 transition-colors hover:bg-accent cursor-pointer",
+        shouldAnimate && "animate-fade-up",
         rank <= 3 && "ring-1 ring-border/50",
       )}
-      style={{ animationDelay: `${Math.min(index * 40, 600)}ms` }}
+      style={shouldAnimate ? { animationDelay: `${Math.min(animationIndex * 40, 600)}ms` } : undefined}
     >
       <CheckRuling />
 
@@ -451,6 +459,8 @@ export default function LeaderboardPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [offset, setOffset] = useState(0);
   const [allEntries, setAllEntries] = useState<LeaderboardEntry[]>([]);
+  // Track the starting index for animation (entries before this don't animate)
+  const [animationStartIndex, setAnimationStartIndex] = useState(0);
 
   const teamId = scope.type === "team" ? scope.id ?? null : null;
   const orgId = scope.type === "org" ? scope.id ?? null : null;
@@ -471,16 +481,21 @@ export default function LeaderboardPage() {
     if (data?.entries && data !== lastProcessedDataRef.current) {
       lastProcessedDataRef.current = data;
       if (offset === 0) {
-        // First page - replace all entries
+        // First page - replace all entries, animate from start
+        setAnimationStartIndex(0);
         setAllEntries(data.entries);
       } else {
-        // Subsequent pages - append entries
-        setAllEntries((prev) => [...prev, ...data.entries]);
+        // Subsequent pages - new entries animate from current length
+        setAllEntries((prev) => {
+          setAnimationStartIndex(prev.length);
+          return [...prev, ...data.entries];
+        });
       }
     }
     // When data becomes null (filter change), clear entries
     if (data === null && lastProcessedDataRef.current !== null) {
       lastProcessedDataRef.current = null;
+      setAnimationStartIndex(0);
       setAllEntries([]);
     }
   }, [data, offset]);
@@ -638,6 +653,7 @@ export default function LeaderboardPage() {
                 key={entry.user.id}
                 entry={entry}
                 index={i}
+                animationStartIndex={animationStartIndex}
               />
             ))}
             {/* Load more button — hide when reached max or no more data */}
