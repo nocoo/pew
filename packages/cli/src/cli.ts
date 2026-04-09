@@ -195,6 +195,7 @@ const syncCommand = defineCommand({
       openCodeDbPath: paths.openCodeDbPath,
       openMessageDb,
       hermesDbPath: paths.hermesDbPath,
+      hermesProfileDbPaths: paths.hermesProfileDbPaths,
       openHermesDb,
       openclawDir: paths.openclawDir,
       piSessionsDir: paths.piSessionsDir,

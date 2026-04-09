@@ -19,16 +19,22 @@ import type { DbTokenDriver, DbTokenResult, SyncContext } from "../types.js";
 export interface HermesSqliteTokenDriverOpts {
   /** Path to the Hermes SQLite database */
   dbPath: string;
+  /**
+   * Key identifying this DB instance for cursor storage.
+   * E.g. "default" for ~/.hermes/state.db, "profiles/tomato" for profile DBs.
+   */
+  dbKey: string;
   /** Factory for opening the DB (DI for testability — native SQLite not always available) */
   openHermesDb: (dbPath: string) => { querySessions: QuerySessionsFn; close: () => void } | null;
 }
 
 export function createHermesSqliteTokenDriver(
   opts: HermesSqliteTokenDriverOpts,
-): DbTokenDriver<HermesSqliteCursor> {
+): DbTokenDriver<HermesSqliteCursor> & { dbKey: string } {
   return {
     kind: "db",
     source: "hermes",
+    dbKey: opts.dbKey,
 
     async run(
       prevCursor: HermesSqliteCursor | undefined,

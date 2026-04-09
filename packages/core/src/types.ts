@@ -207,8 +207,18 @@ export interface CursorState {
    * rescan needed for the upgrade path since the DB cursor itself is valid.
    */
   knownDbSources?: Record<string, true>;
-  /** Hermes Agent SQLite database cursor (separate from per-file cursors) */
-  hermesSqlite?: HermesSqliteCursor;
+  /**
+   * Hermes Agent SQLite database cursors, keyed by DB path identifier.
+   *
+   * Keys are path identifiers:
+   *   - "default" for ~/.hermes/state.db (or $HERMES_HOME/state.db)
+   *   - "profiles/<name>" for ~/.hermes/profiles/<name>/state.db
+   *
+   * Migration: Old cursors.json files (pre-multi-profile) have hermesSqlite
+   * as a flat HermesSqliteCursor object. sync.ts detects this and migrates
+   * to { "default": oldCursor } on first access.
+   */
+  hermesSqlite?: Record<string, HermesSqliteCursor>;
   /** ISO 8601 timestamp of last cursor update */
   updatedAt: string | null;
 }

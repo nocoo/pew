@@ -1,10 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { join } from "node:path";
+import { mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { resolveDefaultPaths } from "../utils/paths.js";
 
 describe("resolveDefaultPaths", () => {
   let savedHermesHome: string | undefined;
   let savedCodexHome: string | undefined;
+  let tempDir: string | null = null;
 
   beforeEach(() => {
     savedHermesHome = process.env.HERMES_HOME;
@@ -23,6 +27,10 @@ describe("resolveDefaultPaths", () => {
       process.env.CODEX_HOME = savedCodexHome;
     } else {
       delete process.env.CODEX_HOME;
+    }
+    if (tempDir) {
+      rmSync(tempDir, { recursive: true, force: true });
+      tempDir = null;
     }
   });
 
@@ -76,7 +84,7 @@ describe("resolveDefaultPaths", () => {
     expect(paths.hermesDbPath).toBe(join("/fakehome", ".hermes", "state.db"));
   });
 
-  it("should return exactly 14 path properties", () => {
+  it("should return exactly 15 path properties", () => {
     const keys = [
       "stateDir",
       "binDir",
@@ -86,6 +94,7 @@ describe("resolveDefaultPaths", () => {
       "copilotCliLogsDir",
       "geminiDir",
       "hermesDbPath",
+      "hermesProfileDbPaths",
       "kosmosDataDirs",
       "openCodeDbPath",
       "openCodeMessageDir",
@@ -100,5 +109,53 @@ describe("resolveDefaultPaths", () => {
         ...keys,
       ]),
     );
+  });
+
+  it("should return empty hermesProfileDbPaths when no profiles exist", () => {
+    const paths = resolveDefaultPaths("/fakehome");
+    expect(paths.hermesProfileDbPaths).toEqual([]);
+  });
+
+  it("should discover hermes profile databases", () => {
+    tempDir = mkdtempSync(join(tmpdir(), "pew-paths-test-"));
+    const hermesDir = join(tempDir, ".hermes");
+    const profilesDir = join(hermesDir, "profiles");
+    const tomatoDir = join(profilesDir, "tomato");
+    const potatoDir = join(profilesDir, "potato");
+
+    // Create profile directories with state.db files
+    mkdirSync(tomatoDir, { recursive: true });
+    mkdirSync(potatoDir, { recursive: true });
+    writeFileSync(join(tomatoDir, "state.db"), "fake-db");
+    writeFileSync(join(potatoDir, "state.db"), "fake-db");
+
+    const paths = resolveDefaultPaths(tempDir);
+    expect(paths.hermesProfileDbPaths).toHaveLength(2);
+    expect(paths.hermesProfileDbPaths).toContainEqual({
+      dbPath: join(tomatoDir, "state.db"),
+      dbKey: "profiles/tomato",
+    });
+    expect(paths.hermesProfileDbPaths).toContainEqual({
+      dbPath: join(potatoDir, "state.db"),
+      dbKey: "profiles/potato",
+    });
+  });
+
+  it("should skip profiles without state.db", () => {
+    tempDir = mkdtempSync(join(tmpdir(), "pew-paths-test-"));
+    const hermesDir = join(tempDir, ".hermes");
+    const profilesDir = join(hermesDir, "profiles");
+    const tomatoDir = join(profilesDir, "tomato");
+    const emptyDir = join(profilesDir, "empty");
+
+    // Create one profile with state.db, one without
+    mkdirSync(tomatoDir, { recursive: true });
+    mkdirSync(emptyDir, { recursive: true });
+    writeFileSync(join(tomatoDir, "state.db"), "fake-db");
+    // emptyDir has no state.db
+
+    const paths = resolveDefaultPaths(tempDir);
+    expect(paths.hermesProfileDbPaths).toHaveLength(1);
+    expect(paths.hermesProfileDbPaths[0].dbKey).toBe("profiles/tomato");
   });
 });

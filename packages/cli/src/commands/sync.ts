@@ -3,6 +3,7 @@ import type {
   CursorState,
   FileCursor,
   FileCursorBase,
+  HermesSqliteCursor,
   QueueRecord,
   Source,
   TokenDelta,
@@ -46,6 +47,8 @@ export interface SyncOptions {
   copilotCliLogsDir?: string;
   /** Override: Hermes Agent database path (~/.hermes/state.db) */
   hermesDbPath?: string;
+  /** Override: Hermes profile database paths (~/.hermes/profiles/<name>/state.db) */
+  hermesProfileDbPaths?: Array<{ dbPath: string; dbKey: string }>;
   /** Factory for opening the Hermes SQLite DB (DI for testability) */
   openHermesDb?: (dbPath: string) => { querySessions: QuerySessionsFn; close: () => void } | null;
   /** Override: Kosmos data directories (kosmos-app + pm-studio-app) */
@@ -138,12 +141,32 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   const queue = new LocalQueue(stateDir, opts.onCorruptLine);
   const cursors = await cursorStore.load();
 
+  // Migrate hermesSqlite from flat object (pre-multi-profile) to Record format.
+  // Old cursors.json: { hermesSqlite: { sessionTotals: {...}, inode: N, updatedAt: "..." } }
+  // New cursors.json: { hermesSqlite: { "default": { sessionTotals: {...}, ... } } }
+  // Detection: if hermesSqlite exists and has `sessionTotals` at top level, it's old format.
+  if (cursors.hermesSqlite && "sessionTotals" in cursors.hermesSqlite) {
+    const oldCursor = cursors.hermesSqlite as unknown as HermesSqliteCursor;
+    cursors.hermesSqlite = { default: oldCursor };
+    onProgress?.({
+      source: "hermes",
+      phase: "warn",
+      message: "Migrating Hermes cursor to multi-profile format",
+    });
+  }
+
+  // Helper to check if hermesSqlite Record is effectively empty
+  const isHermesCursorsEmpty = () => {
+    if (!cursors.hermesSqlite) return true;
+    return Object.keys(cursors.hermesSqlite).length === 0;
+  };
+
   // Full-scan detection: if cursors were completely empty at start (first run
   // or after `pew reset`), all records represent the complete picture.
   const initialCursorEmpty =
     Object.keys(cursors.files).length === 0 &&
     !cursors.openCodeSqlite &&
-    !cursors.hermesSqlite;
+    isHermesCursorsEmpty();
 
   // Upgrade detection: cursors.json created before knownFilePaths was added
   // (pre-v1.6.0). We can't distinguish "cursor lost" from "new file" without
@@ -172,11 +195,16 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   // If cursors are empty (first run / post-reset), {} is safe because
   // there's nothing to double-count.
   if (!cursors.knownDbSources) {
-    const dbCursorsExist = cursors.openCodeSqlite || cursors.hermesSqlite;
+    const dbCursorsExist = cursors.openCodeSqlite || !isHermesCursorsEmpty();
     if (dbCursorsExist) {
       cursors.knownDbSources = {};
       if (cursors.openCodeSqlite) cursors.knownDbSources.openCodeSqlite = true;
-      if (cursors.hermesSqlite) cursors.knownDbSources.hermesSqlite = true;
+      // Track each Hermes DB key (e.g. "hermesSqlite:default", "hermesSqlite:profiles/tomato")
+      if (cursors.hermesSqlite) {
+        for (const dbKey of Object.keys(cursors.hermesSqlite)) {
+          cursors.knownDbSources[`hermesSqlite:${dbKey}`] = true;
+        }
+      }
     } else if (!initialCursorEmpty) {
       onProgress?.({
         source: "all",
@@ -423,53 +451,70 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     }
   }
 
-  // Hermes pre-check (parallel to OpenCode)
+  // Hermes pre-check: validate all Hermes DBs (default + profiles)
+  // Build a list of valid DB paths for filtering drivers
+  const validHermesDbKeys = new Set<string>();
+  const allHermesDbs: Array<{ dbPath: string; dbKey: string }> = [];
   if (opts.hermesDbPath) {
-    const dbStat = await stat(opts.hermesDbPath).catch(() => null);
+    allHermesDbs.push({ dbPath: opts.hermesDbPath, dbKey: "default" });
+  }
+  if (opts.hermesProfileDbPaths) {
+    allHermesDbs.push(...opts.hermesProfileDbPaths);
+  }
+
+  for (const { dbPath, dbKey } of allHermesDbs) {
+    const dbStat = await stat(dbPath).catch(() => null);
     if (dbStat) {
       if (!opts.openHermesDb) {
-        // Case 1: DB file exists but SQLite adapter is missing (native module not available)
-        onProgress?.({
-          source: "hermes",
-          phase: "discover",
-          message: "Checking Hermes SQLite database...",
-        });
+        // Case 1: DB file exists but SQLite adapter is missing
         onProgress?.({
           source: "hermes",
           phase: "warn",
-          message: `Hermes SQLite database found at ${opts.hermesDbPath} but SQLite is not available — Hermes token data will NOT be synced`,
+          message: `Hermes SQLite database found at ${dbPath} but SQLite is not available — Hermes token data will NOT be synced`,
         });
-        // Skip only Hermes driver, keep other DB drivers (e.g. OpenCode)
-        activeDbDrivers = activeDbDrivers.filter((d) => d.source !== "hermes");
+        // Don't add to validHermesDbKeys - driver will be filtered out
       } else {
         // Case 2: Both provided — pre-probe if factory returns null
-        const handle = opts.openHermesDb(opts.hermesDbPath);
+        const handle = opts.openHermesDb(dbPath);
         if (!handle) {
           onProgress?.({
             source: "hermes",
-            phase: "discover",
-            message: "Checking Hermes SQLite database...",
-          });
-          onProgress?.({
-            source: "hermes",
             phase: "warn",
-            message: `Failed to open Hermes SQLite database at ${opts.hermesDbPath} — Hermes token data will NOT be synced`,
+            message: `Failed to open Hermes SQLite database at ${dbPath} — Hermes token data will NOT be synced`,
           });
-          // Skip only Hermes driver, keep other DB drivers (e.g. OpenCode)
-          activeDbDrivers = activeDbDrivers.filter((d) => d.source !== "hermes");
+          // Don't add to validHermesDbKeys - driver will be filtered out
         } else {
           handle.close();
+          validHermesDbKeys.add(dbKey);
         }
       }
     }
   }
 
+  // Filter out Hermes drivers that failed pre-check
+  activeDbDrivers = activeDbDrivers.filter((d) => {
+    if (d.source !== "hermes") return true;
+    // Hermes drivers have dbKey property
+    const hermesDriver = d as typeof d & { dbKey?: string };
+    return hermesDriver.dbKey && validHermesDbKeys.has(hermesDriver.dbKey);
+  });
+
   for (const driver of activeDbDrivers) {
     const key = sourceKey(driver.source);
-    // Map driver.source to cursor field name
-    const dbCursorKey = driver.source === "opencode" ? "openCodeSqlite" : "hermesSqlite";
-    const dbSourceKey = driver.source === "opencode" ? "openCodeSqlite" : "hermesSqlite";
-    const displayName = driver.source === "opencode" ? "OpenCode SQLite" : "Hermes SQLite";
+    const isOpenCode = driver.source === "opencode";
+    const isHermes = driver.source === "hermes";
+
+    // For Hermes, extract dbKey from the driver instance
+    const hermesDbKey = isHermes
+      ? (driver as typeof driver & { dbKey: string }).dbKey
+      : null;
+
+    // Display name for progress messages
+    const displayName = isOpenCode
+      ? "OpenCode SQLite"
+      : hermesDbKey
+        ? `Hermes SQLite (${hermesDbKey})`
+        : "Hermes SQLite";
 
     onProgress?.({
       source: driver.source,
@@ -477,17 +522,28 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       message: `Checking ${displayName} database...`,
     });
 
-    const prevCursor = cursors[dbCursorKey] as unknown;
+    // Get previous cursor based on driver type
+    let prevCursor: unknown;
+    if (isOpenCode) {
+      prevCursor = cursors.openCodeSqlite;
+    } else if (isHermes && hermesDbKey) {
+      // Hermes uses Record<dbKey, HermesSqliteCursor>
+      prevCursor = cursors.hermesSqlite?.[hermesDbKey];
+    }
 
     // Detect DB cursor loss (parallel to file-based knownFilePaths logic):
     // If the DB was previously synced (tracked in knownDbSources) but the
     // cursor entry is missing, the driver will replay from rowId 0 — SUM'ing
     // that with the existing queue would double-count. Trigger full rescan.
+    const dbSourceKey = isOpenCode
+      ? "openCodeSqlite"
+      : `hermesSqlite:${hermesDbKey}`;
+
     if (!initialCursorEmpty && !prevCursor && cursors.knownDbSources?.[dbSourceKey]) {
       onProgress?.({
         source: driver.source,
         phase: "warn",
-        message: "SQLite cursor entry lost — restarting as full scan",
+        message: `${displayName} cursor entry lost — restarting as full scan`,
       });
       await cursorStore.save({
         version: 1,
@@ -521,7 +577,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       onProgress?.({
         source: driver.source,
         phase: "warn",
-        message: "SQLite database inode changed — restarting full scan",
+        message: `${displayName} inode changed — restarting full scan`,
       });
       await cursorStore.save({
         version: 1,
@@ -531,11 +587,15 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       return executeSync(opts);
     }
 
-    // Write cursor back to the correct field (type-safe cast via index signature)
-    if (dbCursorKey === "openCodeSqlite") {
+    // Write cursor back to the correct field
+    if (isOpenCode) {
       cursors.openCodeSqlite = result.cursor as CursorState["openCodeSqlite"];
-    } else {
-      cursors.hermesSqlite = result.cursor as CursorState["hermesSqlite"];
+    } else if (isHermes && hermesDbKey) {
+      // Initialize hermesSqlite Record if needed
+      if (!cursors.hermesSqlite) {
+        cursors.hermesSqlite = {};
+      }
+      cursors.hermesSqlite[hermesDbKey] = result.cursor as HermesSqliteCursor;
     }
 
     // Track this DB source as "previously synced" for cursor-loss detection

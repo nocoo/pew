@@ -1,5 +1,54 @@
 import { homedir } from "node:os";
+import { readdirSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
+
+/**
+ * Discover Hermes profile databases at ~/.hermes/profiles/<name>/state.db.
+ *
+ * Returns an array of { dbPath, dbKey } objects:
+ *   - dbPath: absolute path to the state.db file
+ *   - dbKey: profile identifier (e.g. "profiles/tomato")
+ *
+ * Only returns profiles that have an existing state.db file.
+ */
+function discoverHermesProfileDbs(hermesHome: string): Array<{ dbPath: string; dbKey: string }> {
+  const profilesDir = join(hermesHome, "profiles");
+  if (!existsSync(profilesDir)) {
+    return [];
+  }
+
+  try {
+    const st = statSync(profilesDir);
+    if (!st.isDirectory()) {
+      return [];
+    }
+  } catch {
+    return [];
+  }
+
+  const results: Array<{ dbPath: string; dbKey: string }> = [];
+  try {
+    const entries = readdirSync(profilesDir);
+    for (const name of entries) {
+      const profileDir = join(profilesDir, name);
+      try {
+        const profileStat = statSync(profileDir);
+        if (!profileStat.isDirectory()) continue;
+
+        const dbPath = join(profileDir, "state.db");
+        if (existsSync(dbPath)) {
+          results.push({ dbPath, dbKey: `profiles/${name}` });
+        }
+      } catch {
+        // Skip inaccessible profile directories
+      }
+    }
+  } catch {
+    // profiles dir unreadable
+  }
+
+  return results;
+}
 
 /**
  * Resolve the platform-specific Kosmos data directories.
@@ -116,6 +165,8 @@ export function resolveDefaultPaths(home = homedir()) {
     copilotCliLogsDir: join(home, ".copilot", "logs"),
     /** Hermes Agent database: ~/.hermes/state.db (or $HERMES_HOME/state.db) */
     hermesDbPath: join(hermesHome, "state.db"),
+    /** Hermes Agent profile databases: ~/.hermes/profiles/<name>/state.db */
+    hermesProfileDbPaths: discoverHermesProfileDbs(hermesHome),
     /** Kosmos data directories (kosmos-app + pm-studio-app, platform-aware) */
     kosmosDataDirs: resolveKosmosDataDirs(home),
   };

@@ -27,18 +27,30 @@ describe("hermesSqliteTokenDriver", () => {
     await rm(tempDir, { recursive: true, force: true });
   });
 
-  it("has correct kind and source", () => {
+  it("has correct kind, source, and dbKey", () => {
     const driver = createHermesSqliteTokenDriver({
       dbPath,
+      dbKey: "default",
       openHermesDb: () => null,
     });
     expect(driver.kind).toBe("db");
     expect(driver.source).toBe("hermes");
+    expect(driver.dbKey).toBe("default");
+  });
+
+  it("has correct dbKey for profile databases", () => {
+    const driver = createHermesSqliteTokenDriver({
+      dbPath,
+      dbKey: "profiles/tomato",
+      openHermesDb: () => null,
+    });
+    expect(driver.dbKey).toBe("profiles/tomato");
   });
 
   it("returns empty result when openHermesDb returns null", async () => {
     const driver = createHermesSqliteTokenDriver({
       dbPath,
+      dbKey: "default",
       openHermesDb: () => null,
     });
 
@@ -66,6 +78,7 @@ describe("hermesSqliteTokenDriver", () => {
     let closeCalled = false;
     const driver = createHermesSqliteTokenDriver({
       dbPath,
+      dbKey: "default",
       openHermesDb: () => ({
         querySessions: mockSessions(sessions),
         close: () => { closeCalled = true; },
@@ -127,6 +140,7 @@ describe("hermesSqliteTokenDriver", () => {
 
     const driver = createHermesSqliteTokenDriver({
       dbPath,
+      dbKey: "default",
       openHermesDb: () => ({
         querySessions: mockSessions(sessions),
         close: () => {},
@@ -177,6 +191,7 @@ describe("hermesSqliteTokenDriver", () => {
 
     const driver = createHermesSqliteTokenDriver({
       dbPath,
+      dbKey: "default",
       openHermesDb: () => ({
         querySessions: mockSessions(sessions),
         close: () => {},
@@ -229,6 +244,7 @@ describe("hermesSqliteTokenDriver", () => {
 
     const driver = createHermesSqliteTokenDriver({
       dbPath,
+      dbKey: "default",
       openHermesDb: () => ({
         querySessions: mockSessions(sessions),
         close: () => {},

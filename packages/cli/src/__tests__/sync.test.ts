@@ -2537,12 +2537,12 @@ describe("executeSync", () => {
     });
     expect(r1.totalDeltas).toBe(2);
 
-    // Tamper cursor: change the hermesSqlite inode to force mismatch
+    // Tamper cursor: change the hermesSqlite.default inode to force mismatch
     const { CursorStore } = await import("../storage/cursor-store.js");
     const cursorStore = new CursorStore(stateDir);
     const cursors = await cursorStore.load();
-    const hermesCursor = (cursors as Record<string, unknown>).hermesSqlite as Record<string, unknown>;
-    hermesCursor.inode = 999999; // fake inode
+    const hermesCursors = (cursors as Record<string, unknown>).hermesSqlite as Record<string, Record<string, unknown>>;
+    hermesCursors["default"]!.inode = 999999; // fake inode
     await cursorStore.save(cursors);
 
     const events: Array<{ source: string; phase: string; message?: string }> = [];

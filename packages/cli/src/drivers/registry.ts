@@ -71,7 +71,10 @@ export interface TokenDriverRegistryOpts {
   copilotCliLogsDir?: string;
   openCodeDbPath?: string;
   openMessageDb?: OpenCodeSqliteTokenDriverOpts["openMessageDb"];
+  /** Default Hermes DB path (~/.hermes/state.db) */
   hermesDbPath?: string;
+  /** Additional Hermes profile DBs (e.g. ~/.hermes/profiles/<name>/state.db) */
+  hermesProfileDbPaths?: Array<{ dbPath: string; dbKey: string }>;
   openHermesDb?: HermesSqliteTokenDriverOpts["openHermesDb"];
 }
 
@@ -121,13 +124,30 @@ export function createTokenDrivers(opts: TokenDriverRegistryOpts): TokenDriverSe
   }
 
   // DB drivers (alphabetical by source)
-  if (opts.hermesDbPath && opts.openHermesDb) {
-    dbDrivers.push(
-      createHermesSqliteTokenDriver({
-        dbPath: opts.hermesDbPath,
-        openHermesDb: opts.openHermesDb,
-      }),
-    );
+  // Hermes: create driver for default DB + all profile DBs
+  if (opts.openHermesDb) {
+    // Default DB at ~/.hermes/state.db (or $HERMES_HOME/state.db)
+    if (opts.hermesDbPath) {
+      dbDrivers.push(
+        createHermesSqliteTokenDriver({
+          dbPath: opts.hermesDbPath,
+          dbKey: "default",
+          openHermesDb: opts.openHermesDb,
+        }),
+      );
+    }
+    // Profile DBs at ~/.hermes/profiles/<name>/state.db
+    if (opts.hermesProfileDbPaths) {
+      for (const { dbPath, dbKey } of opts.hermesProfileDbPaths) {
+        dbDrivers.push(
+          createHermesSqliteTokenDriver({
+            dbPath,
+            dbKey,
+            openHermesDb: opts.openHermesDb,
+          }),
+        );
+      }
+    }
   }
   if (opts.openCodeDbPath && opts.openMessageDb) {
     dbDrivers.push(
