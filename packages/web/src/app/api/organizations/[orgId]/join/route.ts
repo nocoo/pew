@@ -23,22 +23,16 @@ export async function POST(
 
   try {
     // Verify org exists
-    const org = await dbRead.firstOrNull<{ id: string; name: string; slug: string }>(
-      "SELECT id, name, slug FROM organizations WHERE id = ?",
-      [orgId]
-    );
+    const org = await dbRead.getOrganizationById(orgId);
 
     if (!org) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 });
     }
 
     // Check if already a member
-    const existing = await dbRead.firstOrNull<{ id: string }>(
-      "SELECT id FROM organization_members WHERE org_id = ? AND user_id = ?",
-      [orgId, authResult.userId]
-    );
+    const isMember = await dbRead.checkOrgMembership(orgId, authResult.userId);
 
-    if (existing) {
+    if (isMember) {
       return NextResponse.json(
         { error: "Already a member of this organization" },
         { status: 409 }

@@ -33,6 +33,13 @@ export function createMockDbRead() {
     getUserApiKey: vi.fn(),
     getUserEmail: vi.fn(),
     searchUsers: vi.fn(),
+    // Organizations RPC methods
+    listOrganizations: vi.fn(),
+    listUserOrganizations: vi.fn(),
+    getOrganizationById: vi.fn(),
+    getOrganizationBySlug: vi.fn(),
+    checkOrgMembership: vi.fn(),
+    listOrgMembers: vi.fn(),
     // Teams RPC methods
     getTeamLogoUrl: vi.fn(),
     countTeamMembers: vi.fn(),
@@ -50,6 +57,12 @@ export function createMockDbRead() {
     getUserApiKey: ReturnType<typeof vi.fn>;
     getUserEmail: ReturnType<typeof vi.fn>;
     searchUsers: ReturnType<typeof vi.fn>;
+    listOrganizations: ReturnType<typeof vi.fn>;
+    listUserOrganizations: ReturnType<typeof vi.fn>;
+    getOrganizationById: ReturnType<typeof vi.fn>;
+    getOrganizationBySlug: ReturnType<typeof vi.fn>;
+    checkOrgMembership: ReturnType<typeof vi.fn>;
+    listOrgMembers: ReturnType<typeof vi.fn>;
     getTeamLogoUrl: ReturnType<typeof vi.fn>;
     countTeamMembers: ReturnType<typeof vi.fn>;
     getTeamMembership: ReturnType<typeof vi.fn>;
