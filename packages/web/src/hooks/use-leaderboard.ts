@@ -64,26 +64,25 @@ export function useLeaderboard(
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Track the request parameters to detect when they change
-  const paramsRef = useRef({ period, limit, offset, teamId, orgId });
-  const isParamsChanged =
-    paramsRef.current.period !== period ||
-    paramsRef.current.limit !== limit ||
-    paramsRef.current.offset !== offset ||
-    paramsRef.current.teamId !== teamId ||
-    paramsRef.current.orgId !== orgId;
-
-  // Update ref after comparison
-  if (isParamsChanged) {
-    paramsRef.current = { period, limit, offset, teamId, orgId };
-  }
+  // Track scope parameters to detect scope changes (independent of offset)
+  // This ensures data is cleared when switching scopes, even if offset hasn't reset yet
+  const prevScopeRef = useRef({ teamId, orgId, period });
 
   const fetchData = useCallback(async () => {
-    // When offset is 0 (first page), always show loading state to avoid stale data flash
-    // For pagination (offset > 0), show refreshing to keep existing entries visible
-    if (offset === 0) {
+    // Clear data on scope/period change OR when offset is 0 (first page)
+    // This prevents stale entries from accumulating when switching scopes
+    const shouldClearData =
+      offset === 0 ||
+      prevScopeRef.current.teamId !== teamId ||
+      prevScopeRef.current.orgId !== orgId ||
+      prevScopeRef.current.period !== period;
+
+    // Update scope ref after comparison
+    prevScopeRef.current = { teamId, orgId, period };
+
+    if (shouldClearData) {
       setLoading(true);
-      setData(null); // Clear stale data on filter change
+      setData(null); // Clear stale data on filter/scope change
     } else if (data !== null) {
       setRefreshing(true);
     } else {
