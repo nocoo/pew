@@ -152,10 +152,11 @@ export async function GET(request: Request) {
       sourcesSet.add(row.source);
       modelsSet.add(row.model);
 
-      if (!dailyMap.has(row.date)) {
-        dailyMap.set(row.date, {});
+      let dayUsers = dailyMap.get(row.date);
+      if (!dayUsers) {
+        dayUsers = {};
+        dailyMap.set(row.date, dayUsers);
       }
-      const dayUsers = dailyMap.get(row.date)!;
       dayUsers[row.user_id] = (dayUsers[row.user_id] ?? 0) + row.total_tokens;
     }
 
