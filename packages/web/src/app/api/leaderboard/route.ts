@@ -121,16 +121,21 @@ export async function GET(request: Request) {
       }
     }
 
-    // Fetch session stats for all users
+    // Fetch session stats for all users (batch to avoid Worker timeout)
     const sessionStatsByUser = new Map<string, { session_count: number; total_duration_seconds: number }>();
 
     if (userIds.length > 0) {
-      const sessionRows = await db.getLeaderboardSessionStats(userIds, fromDate);
-      for (const row of sessionRows) {
-        sessionStatsByUser.set(row.user_id, {
-          session_count: row.session_count,
-          total_duration_seconds: row.total_duration_seconds,
-        });
+      // Batch in chunks of 50 to avoid Worker CPU timeout
+      const BATCH_SIZE = 50;
+      for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
+        const batch = userIds.slice(i, i + BATCH_SIZE);
+        const sessionRows = await db.getLeaderboardSessionStats(batch, fromDate);
+        for (const row of sessionRows) {
+          sessionStatsByUser.set(row.user_id, {
+            session_count: row.session_count,
+            total_duration_seconds: row.total_duration_seconds,
+          });
+        }
       }
     }
 
