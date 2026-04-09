@@ -20,6 +20,7 @@ export interface SeasonRow {
   team_count: number;
   has_snapshot: number;
   allow_late_registration: number;
+  allow_roster_changes: number;
   allow_late_withdrawal: number;
 }
 
@@ -187,6 +188,38 @@ export interface GetSeasonTeamMembersRequest {
   teamId: string;
 }
 
+export interface AggregateTeamTokensRequest {
+  method: "seasons.aggregateTeamTokens";
+  seasonId: string;
+  fromDate: string;
+  toDate: string;
+}
+
+export interface AggregateMemberTokensRequest {
+  method: "seasons.aggregateMemberTokens";
+  seasonId: string;
+  fromDate: string;
+  toDate: string;
+  teamIds: string[];
+}
+
+export interface TeamAggRow {
+  team_id: string;
+  total_tokens: number;
+  input_tokens: number;
+  output_tokens: number;
+  cached_input_tokens: number;
+}
+
+export interface MemberAggRow {
+  team_id: string;
+  user_id: string;
+  total_tokens: number;
+  input_tokens: number;
+  output_tokens: number;
+  cached_input_tokens: number;
+}
+
 export type SeasonsRpcRequest =
   | ListSeasonsRequest
   | GetSeasonByIdRequest
@@ -199,7 +232,9 @@ export type SeasonsRpcRequest =
   | GetSeasonMemberTokensRequest
   | GetSeasonTeamSessionStatsRequest
   | GetSeasonMemberSessionStatsRequest
-  | GetSeasonTeamMembersRequest;
+  | GetSeasonTeamMembersRequest
+  | AggregateTeamTokensRequest
+  | AggregateMemberTokensRequest;
 
 // ---------------------------------------------------------------------------
 // Handlers
@@ -210,7 +245,7 @@ async function handleListSeasons(db: D1Database): Promise<Response> {
     .prepare(
       `SELECT
          s.id, s.name, s.slug, s.start_date, s.end_date, s.created_at,
-         s.allow_late_registration, s.allow_late_withdrawal,
+         s.allow_late_registration, s.allow_roster_changes, s.allow_late_withdrawal,
          COUNT(st.id) AS team_count,
          s.snapshot_ready AS has_snapshot
        FROM seasons s
@@ -541,6 +576,76 @@ async function handleGetSeasonTeamMembers(
   return Response.json({ result: results.results.map((r) => r.user_id) });
 }
 
+async function handleAggregateTeamTokens(
+  req: AggregateTeamTokensRequest,
+  db: D1Database
+): Promise<Response> {
+  if (!req.seasonId || !req.fromDate || !req.toDate) {
+    return Response.json(
+      { error: "seasonId, fromDate, and toDate are required" },
+      { status: 400 }
+    );
+  }
+
+  const results = await db
+    .prepare(
+      `SELECT
+        st.team_id,
+        COALESCE(SUM(ur.total_tokens), 0) AS total_tokens,
+        COALESCE(SUM(ur.input_tokens), 0) AS input_tokens,
+        COALESCE(SUM(ur.output_tokens), 0) AS output_tokens,
+        COALESCE(SUM(ur.cached_input_tokens), 0) AS cached_input_tokens
+      FROM season_teams st
+      LEFT JOIN season_team_members tm ON tm.team_id = st.team_id AND tm.season_id = st.season_id
+      LEFT JOIN usage_records ur ON ur.user_id = tm.user_id
+        AND ur.hour_start >= ?
+        AND ur.hour_start < ?
+      WHERE st.season_id = ?
+      GROUP BY st.team_id
+      ORDER BY total_tokens DESC`
+    )
+    .bind(req.fromDate, req.toDate, req.seasonId)
+    .all<TeamAggRow>();
+
+  return Response.json({ result: results.results });
+}
+
+async function handleAggregateMemberTokens(
+  req: AggregateMemberTokensRequest,
+  db: D1Database
+): Promise<Response> {
+  if (!req.seasonId || !req.fromDate || !req.toDate || !req.teamIds?.length) {
+    return Response.json(
+      { error: "seasonId, fromDate, toDate, and teamIds are required" },
+      { status: 400 }
+    );
+  }
+
+  const placeholders = req.teamIds.map(() => "?").join(",");
+  const results = await db
+    .prepare(
+      `SELECT
+        tm.team_id,
+        tm.user_id,
+        COALESCE(SUM(ur.total_tokens), 0) AS total_tokens,
+        COALESCE(SUM(ur.input_tokens), 0) AS input_tokens,
+        COALESCE(SUM(ur.output_tokens), 0) AS output_tokens,
+        COALESCE(SUM(ur.cached_input_tokens), 0) AS cached_input_tokens
+      FROM season_team_members tm
+      LEFT JOIN usage_records ur ON ur.user_id = tm.user_id
+        AND ur.hour_start >= ?
+        AND ur.hour_start < ?
+      WHERE tm.season_id = ?
+        AND tm.team_id IN (${placeholders})
+      GROUP BY tm.team_id, tm.user_id
+      ORDER BY total_tokens DESC`
+    )
+    .bind(req.fromDate, req.toDate, req.seasonId, ...req.teamIds)
+    .all<MemberAggRow>();
+
+  return Response.json({ result: results.results });
+}
+
 // ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
@@ -574,6 +679,10 @@ export async function handleSeasonsRpc(
       return handleGetSeasonMemberSessionStats(request, db);
     case "seasons.getTeamMembers":
       return handleGetSeasonTeamMembers(request, db);
+    case "seasons.aggregateTeamTokens":
+      return handleAggregateTeamTokens(request, db);
+    case "seasons.aggregateMemberTokens":
+      return handleAggregateMemberTokens(request, db);
     default:
       return Response.json(
         { error: `Unknown seasons method: ${(request as { method: string }).method}` },

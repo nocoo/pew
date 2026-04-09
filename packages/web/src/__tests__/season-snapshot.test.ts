@@ -70,57 +70,49 @@ describe("POST /api/admin/seasons/[seasonId]/snapshot", () => {
 
   it("should create snapshots for all registered teams", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    // Season lookup
     mockDbRead.getSeasonById.mockResolvedValueOnce(ENDED_SEASON);
-    // Team aggregation: two teams
-    mockDbRead.query.mockResolvedValueOnce({
-      results: [
-        {
-          team_id: "team-a",
-          total_tokens: 15000,
-          input_tokens: 10000,
-          output_tokens: 5000,
-          cached_input_tokens: 3000,
-        },
-        {
-          team_id: "team-b",
-          total_tokens: 8000,
-          input_tokens: 5000,
-          output_tokens: 3000,
-          cached_input_tokens: 1000,
-        },
-      ],
-    });
-    // Member aggregation
-    mockDbRead.query.mockResolvedValueOnce({
-      results: [
-        {
-          team_id: "team-a",
-          user_id: "user-1",
-          total_tokens: 9000,
-          input_tokens: 6000,
-          output_tokens: 3000,
-          cached_input_tokens: 2000,
-        },
-        {
-          team_id: "team-a",
-          user_id: "user-2",
-          total_tokens: 6000,
-          input_tokens: 4000,
-          output_tokens: 2000,
-          cached_input_tokens: 1000,
-        },
-        {
-          team_id: "team-b",
-          user_id: "user-3",
-          total_tokens: 8000,
-          input_tokens: 5000,
-          output_tokens: 3000,
-          cached_input_tokens: 1000,
-        },
-      ],
-    });
-    // batch calls (upsert + cleanup)
+    mockDbRead.aggregateSeasonTeamTokens.mockResolvedValueOnce([
+      {
+        team_id: "team-a",
+        total_tokens: 15000,
+        input_tokens: 10000,
+        output_tokens: 5000,
+        cached_input_tokens: 3000,
+      },
+      {
+        team_id: "team-b",
+        total_tokens: 8000,
+        input_tokens: 5000,
+        output_tokens: 3000,
+        cached_input_tokens: 1000,
+      },
+    ]);
+    mockDbRead.aggregateSeasonMemberTokens.mockResolvedValueOnce([
+      {
+        team_id: "team-a",
+        user_id: "user-1",
+        total_tokens: 9000,
+        input_tokens: 6000,
+        output_tokens: 3000,
+        cached_input_tokens: 2000,
+      },
+      {
+        team_id: "team-a",
+        user_id: "user-2",
+        total_tokens: 6000,
+        input_tokens: 4000,
+        output_tokens: 2000,
+        cached_input_tokens: 1000,
+      },
+      {
+        team_id: "team-b",
+        user_id: "user-3",
+        total_tokens: 8000,
+        input_tokens: 5000,
+        output_tokens: 3000,
+        cached_input_tokens: 1000,
+      },
+    ]);
     mockDbWrite.batch.mockResolvedValue([]);
 
     const res = await POST(makeRequest(), { params: routeParams });
@@ -132,12 +124,10 @@ describe("POST /api/admin/seasons/[seasonId]/snapshot", () => {
     expect(data.season_id).toBe("season-1");
     expect(data.created_at).toBeDefined();
 
-    // Verify batch was called for upserts (first call: team + member upserts)
     expect(mockDbWrite.batch).toHaveBeenCalled();
     const firstBatchCall = mockDbWrite.batch.mock.calls[0]![0] as {
       sql: string;
     }[];
-    // 2 team upserts + 3 member upserts = 5 statements
     expect(firstBatchCall).toHaveLength(5);
     expect(firstBatchCall[0]!.sql).toContain("INSERT OR REPLACE INTO season_snapshots");
     expect(firstBatchCall[2]!.sql).toContain(
@@ -148,22 +138,19 @@ describe("POST /api/admin/seasons/[seasonId]/snapshot", () => {
   it("should pass ISO 8601 date bounds to aggregation queries", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
     mockDbRead.getSeasonById.mockResolvedValueOnce(ENDED_SEASON);
-    // Team aggregation
-    mockDbRead.query.mockResolvedValueOnce({ results: [] });
+    mockDbRead.aggregateSeasonTeamTokens.mockResolvedValueOnce([]);
     mockDbWrite.batch.mockResolvedValue([]);
 
     await POST(makeRequest(), { params: routeParams });
 
-    // Team aggregation query: params[0]=fromDate, params[1]=toDate
-    const teamParams = mockDbRead.query.mock.calls[0]![1] as string[];
-    expect(teamParams[0]).toBe("2026-01-01T00:00:00.000Z");
-    // end_date 2026-01-31T23:59:00Z + 1 minute
-    expect(teamParams[1]).toBe("2026-02-01T00:00:00.000Z");
+    expect(mockDbRead.aggregateSeasonTeamTokens).toHaveBeenCalledWith(
+      "season-1",
+      "2026-01-01T00:00:00.000Z",
+      "2026-02-01T00:00:00.000Z"
+    );
   });
 
-  it("should use ISO 8601 format with T separator for snapshot date bounds (not space-separated)", async () => {
-    // Regression: space-separated dates cause SQLite to match all records on
-    // the boundary date, freezing wrong rankings into the snapshot permanently.
+  it("should use ISO 8601 format with T separator for snapshot date bounds", async () => {
     const SEASON_WITH_OFFSET = {
       id: "season-1",
       start_date: "2026-03-14T16:00:00Z",
@@ -171,73 +158,63 @@ describe("POST /api/admin/seasons/[seasonId]/snapshot", () => {
     };
     resolveAdmin.mockResolvedValueOnce(ADMIN);
     mockDbRead.getSeasonById.mockResolvedValueOnce(SEASON_WITH_OFFSET);
-    mockDbRead.query.mockResolvedValueOnce({
-      results: [
-        {
-          team_id: "team-a",
-          total_tokens: 10000,
-          input_tokens: 6000,
-          output_tokens: 4000,
-          cached_input_tokens: 2000,
-        },
-      ],
-    });
-    mockDbRead.query.mockResolvedValueOnce({ results: [] });
+    mockDbRead.aggregateSeasonTeamTokens.mockResolvedValueOnce([
+      {
+        team_id: "team-a",
+        total_tokens: 10000,
+        input_tokens: 6000,
+        output_tokens: 4000,
+        cached_input_tokens: 2000,
+      },
+    ]);
+    mockDbRead.aggregateSeasonMemberTokens.mockResolvedValueOnce([]);
     mockDbWrite.batch.mockResolvedValue([]);
 
     await POST(makeRequest(), { params: routeParams });
 
-    // Both team and member aggregation queries must use T-separated ISO format
-    const teamParams = mockDbRead.query.mock.calls[0]![1] as string[];
-    expect(teamParams[0]).toContain("T");
-    expect(teamParams[1]).toContain("T");
-    expect(teamParams[0]).not.toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:/);
-    expect(teamParams[1]).not.toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:/);
-    expect(teamParams[0]).toBe("2026-03-14T16:00:00.000Z");
-    expect(teamParams[1]).toBe("2026-03-21T16:00:00.000Z");
-
-    // Member aggregation query uses the same date bounds
-    const memberParams = mockDbRead.query.mock.calls[1]![1] as string[];
-    expect(memberParams[0]).toBe("2026-03-14T16:00:00.000Z");
-    expect(memberParams[1]).toBe("2026-03-21T16:00:00.000Z");
+    expect(mockDbRead.aggregateSeasonTeamTokens).toHaveBeenCalledWith(
+      "season-1",
+      "2026-03-14T16:00:00.000Z",
+      "2026-03-21T16:00:00.000Z"
+    );
+    expect(mockDbRead.aggregateSeasonMemberTokens).toHaveBeenCalledWith(
+      "season-1",
+      "2026-03-14T16:00:00.000Z",
+      "2026-03-21T16:00:00.000Z",
+      ["team-a"]
+    );
   });
 
   it("should create member snapshots for all team members", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
     mockDbRead.getSeasonById.mockResolvedValueOnce(ENDED_SEASON);
-    // Team aggregation: one team
-    mockDbRead.query.mockResolvedValueOnce({
-      results: [
-        {
-          team_id: "team-a",
-          total_tokens: 20000,
-          input_tokens: 12000,
-          output_tokens: 8000,
-          cached_input_tokens: 5000,
-        },
-      ],
-    });
-    // Member aggregation: two members
-    mockDbRead.query.mockResolvedValueOnce({
-      results: [
-        {
-          team_id: "team-a",
-          user_id: "user-1",
-          total_tokens: 12000,
-          input_tokens: 7000,
-          output_tokens: 5000,
-          cached_input_tokens: 3000,
-        },
-        {
-          team_id: "team-a",
-          user_id: "user-2",
-          total_tokens: 8000,
-          input_tokens: 5000,
-          output_tokens: 3000,
-          cached_input_tokens: 2000,
-        },
-      ],
-    });
+    mockDbRead.aggregateSeasonTeamTokens.mockResolvedValueOnce([
+      {
+        team_id: "team-a",
+        total_tokens: 20000,
+        input_tokens: 12000,
+        output_tokens: 8000,
+        cached_input_tokens: 5000,
+      },
+    ]);
+    mockDbRead.aggregateSeasonMemberTokens.mockResolvedValueOnce([
+      {
+        team_id: "team-a",
+        user_id: "user-1",
+        total_tokens: 12000,
+        input_tokens: 7000,
+        output_tokens: 5000,
+        cached_input_tokens: 3000,
+      },
+      {
+        team_id: "team-a",
+        user_id: "user-2",
+        total_tokens: 8000,
+        input_tokens: 5000,
+        output_tokens: 3000,
+        cached_input_tokens: 2000,
+      },
+    ]);
     mockDbWrite.batch.mockResolvedValue([]);
 
     const res = await POST(makeRequest(), { params: routeParams });
@@ -246,7 +223,6 @@ describe("POST /api/admin/seasons/[seasonId]/snapshot", () => {
     expect(res.status).toBe(201);
     expect(data.member_count).toBe(2);
 
-    // Verify upsert batch: 1 team + 2 members = 3 statements
     const upsertBatch = mockDbWrite.batch.mock.calls[0]![0] as {
       sql: string;
     }[];
@@ -259,39 +235,34 @@ describe("POST /api/admin/seasons/[seasonId]/snapshot", () => {
   it("should compute correct ranks by total_tokens DESC", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
     mockDbRead.getSeasonById.mockResolvedValueOnce(ENDED_SEASON);
-    // Teams ordered by total_tokens DESC (the route's SQL has ORDER BY total_tokens DESC)
-    mockDbRead.query.mockResolvedValueOnce({
-      results: [
-        {
-          team_id: "team-a",
-          total_tokens: 20000,
-          input_tokens: 12000,
-          output_tokens: 8000,
-          cached_input_tokens: 5000,
-        },
-        {
-          team_id: "team-b",
-          total_tokens: 10000,
-          input_tokens: 6000,
-          output_tokens: 4000,
-          cached_input_tokens: 2000,
-        },
-        {
-          team_id: "team-c",
-          total_tokens: 5000,
-          input_tokens: 3000,
-          output_tokens: 2000,
-          cached_input_tokens: 1000,
-        },
-      ],
-    });
-    // No members
-    mockDbRead.query.mockResolvedValueOnce({ results: [] });
+    mockDbRead.aggregateSeasonTeamTokens.mockResolvedValueOnce([
+      {
+        team_id: "team-a",
+        total_tokens: 20000,
+        input_tokens: 12000,
+        output_tokens: 8000,
+        cached_input_tokens: 5000,
+      },
+      {
+        team_id: "team-b",
+        total_tokens: 10000,
+        input_tokens: 6000,
+        output_tokens: 4000,
+        cached_input_tokens: 2000,
+      },
+      {
+        team_id: "team-c",
+        total_tokens: 5000,
+        input_tokens: 3000,
+        output_tokens: 2000,
+        cached_input_tokens: 1000,
+      },
+    ]);
+    mockDbRead.aggregateSeasonMemberTokens.mockResolvedValueOnce([]);
     mockDbWrite.batch.mockResolvedValue([]);
 
     await POST(makeRequest(), { params: routeParams });
 
-    // Verify upsert batch has 3 team statements with correct ranks
     const upsertBatch = mockDbWrite.batch.mock.calls[0]![0] as {
       sql: string;
       params: unknown[];
@@ -301,39 +272,33 @@ describe("POST /api/admin/seasons/[seasonId]/snapshot", () => {
     );
 
     expect(teamUpserts).toHaveLength(3);
-    // Rank is the 6th param (index 5) in the INSERT OR REPLACE params:
-    // [seasonId, team_id, uuid, seasonId, team_id, rank, ...]
-    expect(teamUpserts[0]!.params[5]).toBe(1); // team-a: rank 1
-    expect(teamUpserts[1]!.params[5]).toBe(2); // team-b: rank 2
-    expect(teamUpserts[2]!.params[5]).toBe(3); // team-c: rank 3
+    expect(teamUpserts[0]!.params[5]).toBe(1);
+    expect(teamUpserts[1]!.params[5]).toBe(2);
+    expect(teamUpserts[2]!.params[5]).toBe(3);
   });
 
   it("should be idempotent (upsert overwrites existing data)", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
     mockDbRead.getSeasonById.mockResolvedValueOnce(ENDED_SEASON);
-    mockDbRead.query.mockResolvedValueOnce({
-      results: [
-        {
-          team_id: "team-a",
-          total_tokens: 15000,
-          input_tokens: 10000,
-          output_tokens: 5000,
-          cached_input_tokens: 3000,
-        },
-      ],
-    });
-    mockDbRead.query.mockResolvedValueOnce({
-      results: [
-        {
-          team_id: "team-a",
-          user_id: "user-1",
-          total_tokens: 15000,
-          input_tokens: 10000,
-          output_tokens: 5000,
-          cached_input_tokens: 3000,
-        },
-      ],
-    });
+    mockDbRead.aggregateSeasonTeamTokens.mockResolvedValueOnce([
+      {
+        team_id: "team-a",
+        total_tokens: 15000,
+        input_tokens: 10000,
+        output_tokens: 5000,
+        cached_input_tokens: 3000,
+      },
+    ]);
+    mockDbRead.aggregateSeasonMemberTokens.mockResolvedValueOnce([
+      {
+        team_id: "team-a",
+        user_id: "user-1",
+        total_tokens: 15000,
+        input_tokens: 10000,
+        output_tokens: 5000,
+        cached_input_tokens: 3000,
+      },
+    ]);
     mockDbWrite.batch.mockResolvedValue([]);
 
     const res = await POST(makeRequest(), { params: routeParams });
@@ -341,7 +306,6 @@ describe("POST /api/admin/seasons/[seasonId]/snapshot", () => {
 
     expect(res.status).toBe(201);
 
-    // Uses INSERT OR REPLACE (upsert) so re-running is safe
     const upsertBatch = mockDbWrite.batch.mock.calls[0]![0] as {
       sql: string;
     }[];
@@ -353,35 +317,29 @@ describe("POST /api/admin/seasons/[seasonId]/snapshot", () => {
   it("should clean up stale team and member rows after upsert", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
     mockDbRead.getSeasonById.mockResolvedValueOnce(ENDED_SEASON);
-    // Only one team left (team-b was removed)
-    mockDbRead.query.mockResolvedValueOnce({
-      results: [
-        {
-          team_id: "team-a",
-          total_tokens: 15000,
-          input_tokens: 10000,
-          output_tokens: 5000,
-          cached_input_tokens: 3000,
-        },
-      ],
-    });
-    mockDbRead.query.mockResolvedValueOnce({
-      results: [
-        {
-          team_id: "team-a",
-          user_id: "user-1",
-          total_tokens: 15000,
-          input_tokens: 10000,
-          output_tokens: 5000,
-          cached_input_tokens: 3000,
-        },
-      ],
-    });
+    mockDbRead.aggregateSeasonTeamTokens.mockResolvedValueOnce([
+      {
+        team_id: "team-a",
+        total_tokens: 15000,
+        input_tokens: 10000,
+        output_tokens: 5000,
+        cached_input_tokens: 3000,
+      },
+    ]);
+    mockDbRead.aggregateSeasonMemberTokens.mockResolvedValueOnce([
+      {
+        team_id: "team-a",
+        user_id: "user-1",
+        total_tokens: 15000,
+        input_tokens: 10000,
+        output_tokens: 5000,
+        cached_input_tokens: 3000,
+      },
+    ]);
     mockDbWrite.batch.mockResolvedValue([]);
 
     await POST(makeRequest(), { params: routeParams });
 
-    // Second batch call should clean up stale teams
     const cleanupBatch = mockDbWrite.batch.mock.calls[1]![0] as {
       sql: string;
       params: unknown[];
@@ -425,43 +383,34 @@ describe("POST /api/admin/seasons/[seasonId]/snapshot", () => {
     expect(data.error).toContain("Season not found");
   });
 
-  // -------------------------------------------------------------------------
-  // snapshot_ready flag — write-then-switch mechanism
-  // -------------------------------------------------------------------------
-
   it("should set snapshot_ready=0 before writes and snapshot_ready=1 after all writes succeed", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
     mockDbRead.getSeasonById.mockResolvedValueOnce(ENDED_SEASON);
-    mockDbRead.query.mockResolvedValueOnce({
-      results: [
-        {
-          team_id: "team-a",
-          total_tokens: 10000,
-          input_tokens: 6000,
-          output_tokens: 4000,
-          cached_input_tokens: 2000,
-        },
-      ],
-    });
-    mockDbRead.query.mockResolvedValueOnce({
-      results: [
-        {
-          team_id: "team-a",
-          user_id: "user-1",
-          total_tokens: 10000,
-          input_tokens: 6000,
-          output_tokens: 4000,
-          cached_input_tokens: 2000,
-        },
-      ],
-    });
+    mockDbRead.aggregateSeasonTeamTokens.mockResolvedValueOnce([
+      {
+        team_id: "team-a",
+        total_tokens: 10000,
+        input_tokens: 6000,
+        output_tokens: 4000,
+        cached_input_tokens: 2000,
+      },
+    ]);
+    mockDbRead.aggregateSeasonMemberTokens.mockResolvedValueOnce([
+      {
+        team_id: "team-a",
+        user_id: "user-1",
+        total_tokens: 10000,
+        input_tokens: 6000,
+        output_tokens: 4000,
+        cached_input_tokens: 2000,
+      },
+    ]);
     mockDbWrite.execute.mockResolvedValue(undefined);
     mockDbWrite.batch.mockResolvedValue([]);
 
     const res = await POST(makeRequest(), { params: routeParams });
     expect(res.status).toBe(201);
 
-    // execute called exactly twice: snapshot_ready=0 then snapshot_ready=1
     expect(mockDbWrite.execute).toHaveBeenCalledTimes(2);
 
     const [sql0, params0] = [
@@ -469,7 +418,6 @@ describe("POST /api/admin/seasons/[seasonId]/snapshot", () => {
       mockDbWrite.execute.mock.calls[0]![1],
     ];
     expect(sql0).toContain("snapshot_ready");
-    expect(sql0).toContain("UPDATE seasons");
     expect(params0).toEqual([0, "season-1"]);
 
     const [sql1, params1] = [
@@ -477,38 +425,28 @@ describe("POST /api/admin/seasons/[seasonId]/snapshot", () => {
       mockDbWrite.execute.mock.calls[1]![1],
     ];
     expect(sql1).toContain("snapshot_ready");
-    expect(sql1).toContain("UPDATE seasons");
     expect(params1).toEqual([1, "season-1"]);
-
-    // Verify ordering: snapshot_ready=0 before batch, snapshot_ready=1 after
-    // execute call indices vs batch call indices confirm ordering
-    // (execute[0] < batch[0] < execute[1])
   });
 
   it("should NOT set snapshot_ready=1 if upsert batch fails", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
     mockDbRead.getSeasonById.mockResolvedValueOnce(ENDED_SEASON);
-    mockDbRead.query.mockResolvedValueOnce({
-      results: [
-        {
-          team_id: "team-a",
-          total_tokens: 10000,
-          input_tokens: 6000,
-          output_tokens: 4000,
-          cached_input_tokens: 2000,
-        },
-      ],
-    });
-    mockDbRead.query.mockResolvedValueOnce({ results: [] });
-    // snapshot_ready=0 succeeds
+    mockDbRead.aggregateSeasonTeamTokens.mockResolvedValueOnce([
+      {
+        team_id: "team-a",
+        total_tokens: 10000,
+        input_tokens: 6000,
+        output_tokens: 4000,
+        cached_input_tokens: 2000,
+      },
+    ]);
+    mockDbRead.aggregateSeasonMemberTokens.mockResolvedValueOnce([]);
     mockDbWrite.execute.mockResolvedValueOnce(undefined);
-    // upsert batch fails
     mockDbWrite.batch.mockRejectedValueOnce(new Error("D1 write error"));
 
     const res = await POST(makeRequest(), { params: routeParams });
     expect(res.status).toBe(500);
 
-    // execute called only once (snapshot_ready=0), never set to 1
     expect(mockDbWrite.execute).toHaveBeenCalledTimes(1);
     expect(mockDbWrite.execute.mock.calls[0]![1]).toEqual([0, "season-1"]);
   });
@@ -516,40 +454,32 @@ describe("POST /api/admin/seasons/[seasonId]/snapshot", () => {
   it("should NOT set snapshot_ready=1 if cleanup batch fails", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
     mockDbRead.getSeasonById.mockResolvedValueOnce(ENDED_SEASON);
-    mockDbRead.query.mockResolvedValueOnce({
-      results: [
-        {
-          team_id: "team-a",
-          total_tokens: 10000,
-          input_tokens: 6000,
-          output_tokens: 4000,
-          cached_input_tokens: 2000,
-        },
-      ],
-    });
-    mockDbRead.query.mockResolvedValueOnce({
-      results: [
-        {
-          team_id: "team-a",
-          user_id: "user-1",
-          total_tokens: 10000,
-          input_tokens: 6000,
-          output_tokens: 4000,
-          cached_input_tokens: 2000,
-        },
-      ],
-    });
-    // snapshot_ready=0 succeeds
+    mockDbRead.aggregateSeasonTeamTokens.mockResolvedValueOnce([
+      {
+        team_id: "team-a",
+        total_tokens: 10000,
+        input_tokens: 6000,
+        output_tokens: 4000,
+        cached_input_tokens: 2000,
+      },
+    ]);
+    mockDbRead.aggregateSeasonMemberTokens.mockResolvedValueOnce([
+      {
+        team_id: "team-a",
+        user_id: "user-1",
+        total_tokens: 10000,
+        input_tokens: 6000,
+        output_tokens: 4000,
+        cached_input_tokens: 2000,
+      },
+    ]);
     mockDbWrite.execute.mockResolvedValueOnce(undefined);
-    // upsert batch succeeds
     mockDbWrite.batch.mockResolvedValueOnce([]);
-    // cleanup batch fails
     mockDbWrite.batch.mockRejectedValueOnce(new Error("D1 cleanup error"));
 
     const res = await POST(makeRequest(), { params: routeParams });
     expect(res.status).toBe(500);
 
-    // execute called only once (snapshot_ready=0), never set to 1
     expect(mockDbWrite.execute).toHaveBeenCalledTimes(1);
     expect(mockDbWrite.execute.mock.calls[0]![1]).toEqual([0, "season-1"]);
   });

@@ -57,9 +57,10 @@ describe("POST /api/seasons/[seasonId]/register", () => {
     // No existing registration
     mockDbRead.getSeasonRegistration.mockResolvedValueOnce(null);
     // Fetch current team members
-    mockDbRead.query.mockResolvedValueOnce({
-      results: [{ user_id: "user-1" }, { user_id: "user-2" }],
-    });
+    mockDbRead.getTeamMembers.mockResolvedValueOnce([
+      { user_id: "user-1", name: null, nickname: null, slug: null, image: null, role: "member", joined_at: "" },
+      { user_id: "user-2", name: null, nickname: null, slug: null, image: null, role: "member", joined_at: "" },
+    ]);
     // Pre-validation: no member conflict
     mockDbRead.checkSeasonMemberConflict.mockResolvedValueOnce(null);
     // Batch write succeeds
@@ -74,10 +75,7 @@ describe("POST /api/seasons/[seasonId]/register", () => {
     expect(json.team_id).toBe("team-1");
 
     // Verify frozen roster: fetch members then batch write
-    expect(mockDbRead.query).toHaveBeenCalledWith(
-      "SELECT user_id FROM team_members WHERE team_id = ?",
-      ["team-1"]
-    );
+    expect(mockDbRead.getTeamMembers).toHaveBeenCalledWith("team-1");
     expect(mockDbWrite.batch).toHaveBeenCalledTimes(1);
     const batchStatements = mockDbWrite.batch.mock.calls[0]![0] as Array<{ sql: string; params: unknown[] }>;
     // 1 season_teams INSERT + 2 season_team_members INSERTs
@@ -92,9 +90,10 @@ describe("POST /api/seasons/[seasonId]/register", () => {
     mockDbRead.getSeasonById.mockResolvedValueOnce({ id: "season-1", start_date: "2099-01-01T00:00:00Z", end_date: "2099-12-31T23:59:00Z" });
     mockDbRead.getTeamMembership.mockResolvedValueOnce("owner");
     mockDbRead.getSeasonRegistration.mockResolvedValueOnce(null);
-    mockDbRead.query.mockResolvedValueOnce({
-      results: [{ user_id: "user-1" }, { user_id: "user-2" }],
-    });
+    mockDbRead.getTeamMembers.mockResolvedValueOnce([
+      { user_id: "user-1", name: null, nickname: null, slug: null, image: null, role: "member", joined_at: "" },
+      { user_id: "user-2", name: null, nickname: null, slug: null, image: null, role: "member", joined_at: "" },
+    ]);
     // Pre-validation: user-2 is already on another team
     mockDbRead.checkSeasonMemberConflict.mockResolvedValueOnce({ user_id: "user-2" });
 
@@ -152,9 +151,9 @@ describe("POST /api/seasons/[seasonId]/register", () => {
     });
     mockDbRead.getTeamMembership.mockResolvedValueOnce("owner");
     mockDbRead.getSeasonRegistration.mockResolvedValueOnce(null);
-    mockDbRead.query.mockResolvedValueOnce({
-      results: [{ user_id: "user-1" }],
-    });
+    mockDbRead.getTeamMembers.mockResolvedValueOnce([
+      { user_id: "user-1", name: null, nickname: null, slug: null, image: null, role: "member", joined_at: "" },
+    ]);
     mockDbRead.checkSeasonMemberConflict.mockResolvedValueOnce(null);
     mockDbWrite.batch.mockResolvedValueOnce(undefined);
 
@@ -232,9 +231,10 @@ describe("POST /api/seasons/[seasonId]/register", () => {
     mockDbRead.getSeasonById.mockResolvedValueOnce({ id: "season-1", start_date: "2099-01-01T00:00:00Z", end_date: "2099-12-31T23:59:00Z" });
     mockDbRead.getTeamMembership.mockResolvedValueOnce("owner");
     mockDbRead.getSeasonRegistration.mockResolvedValueOnce(null);
-    mockDbRead.query.mockResolvedValueOnce({
-      results: [{ user_id: "user-1" }, { user_id: "user-2" }],
-    });
+    mockDbRead.getTeamMembers.mockResolvedValueOnce([
+      { user_id: "user-1", name: null, nickname: null, slug: null, image: null, role: "member", joined_at: "" },
+      { user_id: "user-2", name: null, nickname: null, slug: null, image: null, role: "member", joined_at: "" },
+    ]);
     mockDbRead.checkSeasonMemberConflict.mockResolvedValueOnce(null);
     // Batch fails (e.g. UNIQUE constraint from concurrent request)
     mockDbWrite.batch.mockRejectedValueOnce(new Error("UNIQUE constraint failed"));

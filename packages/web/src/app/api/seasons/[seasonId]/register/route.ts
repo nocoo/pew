@@ -89,16 +89,13 @@ export async function POST(
     }
 
     // Fetch current team members to freeze into season roster
-    const members = await dbRead.query<{ user_id: string }>(
-      "SELECT user_id FROM team_members WHERE team_id = ?",
-      [team_id]
-    );
+    const members = await dbRead.getTeamMembers(team_id);
 
     // Pre-validate: ensure no member is already registered for this season
     // via another team (UNIQUE(season_id, user_id) would reject anyway,
     // but checking upfront avoids partial writes)
-    if (members.results.length > 0) {
-      const userIds = members.results.map((m) => m.user_id);
+    if (members.length > 0) {
+      const userIds = members.map((m) => m.user_id);
       const conflict = await dbRead.checkSeasonMemberConflict(seasonId, userIds);
       if (conflict) {
         return NextResponse.json(
@@ -115,14 +112,14 @@ export async function POST(
     // (identified by their UUIDs), never by (season_id, team_id) which
     // would also wipe data from a concurrent successful request.
     const id = crypto.randomUUID();
-    const memberIds = members.results.map(() => crypto.randomUUID());
+    const memberIds = members.map(() => crypto.randomUUID());
     const statements: Array<{ sql: string; params: unknown[] }> = [
       {
         sql: `INSERT INTO season_teams (id, season_id, team_id, registered_by)
               VALUES (?, ?, ?, ?)`,
         params: [id, seasonId, team_id, user.userId],
       },
-      ...members.results.map((m, i) => ({
+      ...members.map((m, i) => ({
         sql: `INSERT INTO season_team_members (id, season_id, team_id, user_id)
               VALUES (?, ?, ?, ?)`,
         params: [memberIds[i] as string, seasonId, team_id, m.user_id],

@@ -17,19 +17,6 @@ import { getDbRead, getDbWrite } from "@/lib/db";
 // Generic error message for all auth failures (avoids information leakage)
 const AUTH_ERROR = "Invalid or expired code";
 
-interface AuthCodeRow {
-  code: string;
-  user_id: string;
-  expires_at: string;
-  used_at: string | null;
-  failed_attempts: number;
-}
-
-interface UserRow {
-  id: string;
-  email: string;
-  api_key: string | null;
-}
 
 /** Generate a random API key: pk_ prefix + 32 hex chars */
 function generateApiKey(): string {
@@ -66,10 +53,7 @@ export async function POST(request: Request) {
 
   try {
     // 2. Look up the code
-    const authCode = await dbRead.firstOrNull<AuthCodeRow>(
-      `SELECT code, user_id, expires_at, used_at, failed_attempts FROM auth_codes WHERE code = ?`,
-      [normalizedCode]
-    );
+    const authCode = await dbRead.getAuthCode(normalizedCode);
 
     // Code not found — return generic error
     if (!authCode) {
@@ -96,10 +80,7 @@ export async function POST(request: Request) {
 
     // 4. Get user info and api_key BEFORE consuming the code
     // This ensures that if user lookup or api_key generation fails, the code remains usable
-    const user = await dbRead.firstOrNull<UserRow>(
-      `SELECT id, email, api_key FROM users WHERE id = ?`,
-      [authCode.user_id]
-    );
+    const user = await dbRead.getUserById(authCode.user_id);
 
     if (!user) {
       // User was deleted after code creation — don't consume the code, just fail
@@ -107,7 +88,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 500 });
     }
 
-    let apiKey = user.api_key;
+    let apiKey = await dbRead.getUserApiKey(user.id);
 
     // 5. Generate api_key if not exists using atomic conditional update
     // Uses "WHERE api_key IS NULL" to ensure only one concurrent request succeeds in writing.
@@ -125,11 +106,7 @@ export async function POST(request: Request) {
         apiKey = newKey;
       } else {
         // Another request already set a key — re-read to get the actual value
-        const refreshedUser = await dbRead.firstOrNull<UserRow>(
-          `SELECT api_key FROM users WHERE id = ?`,
-          [user.id]
-        );
-        apiKey = refreshedUser?.api_key ?? null;
+        apiKey = await dbRead.getUserApiKey(user.id);
 
         if (!apiKey) {
           // Shouldn't happen, but defensive

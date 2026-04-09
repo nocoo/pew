@@ -144,6 +144,7 @@ export interface SeasonRow {
   team_count: number;
   has_snapshot: number;
   allow_late_registration: number;
+  allow_roster_changes: number;
   allow_late_withdrawal: number;
 }
 
@@ -169,6 +170,25 @@ export interface SeasonTeamRegistrationRow {
   team_id: string;
   registered_by: string;
   created_at: string;
+}
+
+/** Aggregated team token data for snapshot generation */
+export interface TeamAggRow {
+  team_id: string;
+  total_tokens: number;
+  input_tokens: number;
+  output_tokens: number;
+  cached_input_tokens: number;
+}
+
+/** Aggregated member token data for snapshot generation */
+export interface MemberAggRow {
+  team_id: string;
+  user_id: string;
+  total_tokens: number;
+  input_tokens: number;
+  output_tokens: number;
+  cached_input_tokens: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -308,9 +328,11 @@ export interface DeviceRecordCount {
 
 /** Auth code record */
 export interface AuthCodeRow {
+  code: string;
   user_id: string;
   expires_at: string;
-  used: number;
+  used_at: string | null;
+  failed_attempts: number;
 }
 
 /** Invite code record */

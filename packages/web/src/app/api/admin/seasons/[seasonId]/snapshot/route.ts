@@ -29,27 +29,7 @@ import { NextResponse } from "next/server";
 import { resolveAdmin } from "@/lib/admin";
 import { getDbRead, getDbWrite } from "@/lib/db";
 import { deriveSeasonStatus } from "@/lib/seasons";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface TeamAggRow {
-  team_id: string;
-  total_tokens: number;
-  input_tokens: number;
-  output_tokens: number;
-  cached_input_tokens: number;
-}
-
-interface MemberAggRow {
-  team_id: string;
-  user_id: string;
-  total_tokens: number;
-  input_tokens: number;
-  output_tokens: number;
-  cached_input_tokens: number;
-}
+import type { MemberAggRow } from "@/lib/rpc-types";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -111,48 +91,13 @@ export async function POST(
     const toDate = endDateExclusive(season.end_date);
 
     // 3. Aggregate team-level tokens
-    const teamRows = await dbRead.query<TeamAggRow>(
-      `SELECT
-        st.team_id,
-        COALESCE(SUM(ur.total_tokens), 0) AS total_tokens,
-        COALESCE(SUM(ur.input_tokens), 0) AS input_tokens,
-        COALESCE(SUM(ur.output_tokens), 0) AS output_tokens,
-        COALESCE(SUM(ur.cached_input_tokens), 0) AS cached_input_tokens
-      FROM season_teams st
-      LEFT JOIN season_team_members tm ON tm.team_id = st.team_id AND tm.season_id = st.season_id
-      LEFT JOIN usage_records ur ON ur.user_id = tm.user_id
-        AND ur.hour_start >= ?
-        AND ur.hour_start < ?
-      WHERE st.season_id = ?
-      GROUP BY st.team_id
-      ORDER BY total_tokens DESC`,
-      [fromDate, toDate, seasonId]
-    );
+    const teamRows = await dbRead.aggregateSeasonTeamTokens(seasonId, fromDate, toDate);
 
     // 4. Aggregate member-level tokens
     let memberRows: MemberAggRow[] = [];
-    if (teamRows.results.length > 0) {
-      const teamIds = teamRows.results.map((r) => r.team_id);
-      const placeholders = teamIds.map(() => "?").join(",");
-      const result = await dbRead.query<MemberAggRow>(
-        `SELECT
-          tm.team_id,
-          tm.user_id,
-          COALESCE(SUM(ur.total_tokens), 0) AS total_tokens,
-          COALESCE(SUM(ur.input_tokens), 0) AS input_tokens,
-          COALESCE(SUM(ur.output_tokens), 0) AS output_tokens,
-          COALESCE(SUM(ur.cached_input_tokens), 0) AS cached_input_tokens
-        FROM season_team_members tm
-        LEFT JOIN usage_records ur ON ur.user_id = tm.user_id
-          AND ur.hour_start >= ?
-          AND ur.hour_start < ?
-        WHERE tm.season_id = ?
-          AND tm.team_id IN (${placeholders})
-        GROUP BY tm.team_id, tm.user_id
-        ORDER BY total_tokens DESC`,
-        [fromDate, toDate, seasonId, ...teamIds]
-      );
-      memberRows = result.results;
+    if (teamRows.length > 0) {
+      const teamIds = teamRows.map((r) => r.team_id);
+      memberRows = await dbRead.aggregateSeasonMemberTokens(seasonId, fromDate, toDate, teamIds);
     }
 
     // 5. Mark snapshot as not-ready before writing data.
@@ -165,7 +110,7 @@ export async function POST(
     // 6a. Upsert team snapshots via INSERT OR REPLACE.
     //     NOT atomic — see JSDoc for failure semantics. Re-running converges.
     const now = new Date().toISOString();
-    const teamStatements = teamRows.results.map((row, i) => ({
+    const teamStatements = teamRows.map((row, i) => ({
       sql: `INSERT OR REPLACE INTO season_snapshots
           (id, season_id, team_id, rank, total_tokens, input_tokens, output_tokens, cached_input_tokens, created_at)
         VALUES (
@@ -217,7 +162,7 @@ export async function POST(
     // 7. Clean up stale rows (teams/members removed since last snapshot).
     //    If this fails after upserts succeeded, stale rows remain but
     //    a re-run will clean them up (idempotent convergence).
-    const activeTeamIds = teamRows.results.map((r) => r.team_id);
+    const activeTeamIds = teamRows.map((r) => r.team_id);
     if (activeTeamIds.length > 0) {
       const ph = activeTeamIds.map(() => "?").join(",");
       await dbWrite.batch([
@@ -276,7 +221,7 @@ export async function POST(
     return NextResponse.json(
       {
         season_id: seasonId,
-        team_count: teamRows.results.length,
+        team_count: teamRows.length,
         member_count: memberRows.length,
         created_at: now,
       },

@@ -69,19 +69,21 @@ describe("GET /api/admin/seasons", () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
 
     // A season in the future → upcoming
-    mockDbRead.query.mockResolvedValueOnce({
-      results: [
-        {
-          id: "s1",
-          name: "Season 1",
-          slug: "s1",
-          start_date: "2099-01-01T00:00:00Z",
-          end_date: "2099-12-31T23:59:00Z",
-          created_at: "2026-01-01T00:00:00Z",
-          team_count: 3,
-        },
-      ],
-    });
+    mockDbRead.listSeasons.mockResolvedValueOnce([
+      {
+        id: "s1",
+        name: "Season 1",
+        slug: "s1",
+        start_date: "2099-01-01T00:00:00Z",
+        end_date: "2099-12-31T23:59:00Z",
+        created_at: "2026-01-01T00:00:00Z",
+        team_count: 3,
+        has_snapshot: 0,
+        allow_late_registration: 0,
+        allow_roster_changes: 0,
+        allow_late_withdrawal: 0,
+      },
+    ]);
 
     const res = await GET(makeJsonRequest("GET", "/api/admin/seasons"));
     expect(res.status).toBe(200);
@@ -101,7 +103,7 @@ describe("GET /api/admin/seasons", () => {
 
   it("should handle no-such-table gracefully", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.query.mockRejectedValueOnce(new Error("no such table: seasons"));
+    mockDbRead.listSeasons.mockRejectedValueOnce(new Error("no such table: seasons"));
 
     const res = await GET(makeJsonRequest("GET", "/api/admin/seasons"));
     expect(res.status).toBe(503);

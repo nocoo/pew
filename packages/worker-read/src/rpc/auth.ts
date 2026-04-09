@@ -19,11 +19,11 @@ export interface InviteCodeRow {
 }
 
 export interface AuthCodeRow {
-  id: string;
   code: string;
   user_id: string;
   expires_at: string;
-  created_at: string;
+  used_at: string | null;
+  failed_attempts: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -136,7 +136,7 @@ async function handleGetAuthCode(
 
   const result = await db
     .prepare(
-      `SELECT id, code, user_id, expires_at, created_at
+      `SELECT code, user_id, expires_at, used_at, failed_attempts
        FROM auth_codes
        WHERE code = ?`
     )

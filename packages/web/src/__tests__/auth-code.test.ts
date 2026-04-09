@@ -209,7 +209,7 @@ describe("POST /api/auth/code/verify", () => {
 
   it("should return 401 when code is invalid", async () => {
     const mockDbRead = createMockDbRead();
-    mockDbRead.firstOrNull.mockResolvedValue(null);
+    mockDbRead.getAuthCode.mockResolvedValue(null);
     mockGetDbRead.mockResolvedValue(mockDbRead as unknown as DbRead);
 
     const request = new Request("http://localhost/api/auth/code/verify", {
@@ -227,7 +227,7 @@ describe("POST /api/auth/code/verify", () => {
 
   it("should return 401 and increment failed_attempts when code is already used", async () => {
     const mockDbRead = createMockDbRead();
-    mockDbRead.firstOrNull.mockResolvedValue({
+    mockDbRead.getAuthCode.mockResolvedValue({
       code: "ABCD-1234",
       user_id: "user-123",
       expires_at: new Date(Date.now() + 300_000).toISOString(),
@@ -261,7 +261,7 @@ describe("POST /api/auth/code/verify", () => {
 
   it("should return 401 and increment failed_attempts when code is expired", async () => {
     const mockDbRead = createMockDbRead();
-    mockDbRead.firstOrNull.mockResolvedValue({
+    mockDbRead.getAuthCode.mockResolvedValue({
       code: "ABCD-1234",
       user_id: "user-123",
       expires_at: new Date(Date.now() - 1000).toISOString(), // Expired
@@ -295,7 +295,7 @@ describe("POST /api/auth/code/verify", () => {
 
   it("should return 401 when code has failed_attempts > 0", async () => {
     const mockDbRead = createMockDbRead();
-    mockDbRead.firstOrNull.mockResolvedValue({
+    mockDbRead.getAuthCode.mockResolvedValue({
       code: "ABCD-1234",
       user_id: "user-123",
       expires_at: new Date(Date.now() + 300_000).toISOString(),
@@ -323,19 +323,21 @@ describe("POST /api/auth/code/verify", () => {
 
   it("should return api_key and email for valid code", async () => {
     const mockDbRead = createMockDbRead();
-    mockDbRead.firstOrNull
-      .mockResolvedValueOnce({
-        code: "ABCD-1234",
-        user_id: "user-123",
-        expires_at: new Date(Date.now() + 300_000).toISOString(),
-        used_at: null,
-        failed_attempts: 0,
-      })
-      .mockResolvedValueOnce({
-        id: "user-123",
-        email: "test@example.com",
-        api_key: "pk_existing_key",
-      });
+    mockDbRead.getAuthCode.mockResolvedValue({
+      code: "ABCD-1234",
+      user_id: "user-123",
+      expires_at: new Date(Date.now() + 300_000).toISOString(),
+      used_at: null,
+      failed_attempts: 0,
+    });
+    mockDbRead.getUserById.mockResolvedValue({
+      id: "user-123",
+      email: "test@example.com",
+      name: null,
+      image: null,
+      email_verified: null,
+    });
+    mockDbRead.getUserApiKey.mockResolvedValue("pk_existing_key");
     mockGetDbRead.mockResolvedValue(mockDbRead as unknown as DbRead);
 
     const mockDbWrite = createMockDbWrite();
@@ -364,19 +366,21 @@ describe("POST /api/auth/code/verify", () => {
 
   it("should generate api_key if user has none (atomic conditional update)", async () => {
     const mockDbRead = createMockDbRead();
-    mockDbRead.firstOrNull
-      .mockResolvedValueOnce({
-        code: "ABCD-1234",
-        user_id: "user-123",
-        expires_at: new Date(Date.now() + 300_000).toISOString(),
-        used_at: null,
-        failed_attempts: 0,
-      })
-      .mockResolvedValueOnce({
-        id: "user-123",
-        email: "test@example.com",
-        api_key: null, // No existing key
-      });
+    mockDbRead.getAuthCode.mockResolvedValue({
+      code: "ABCD-1234",
+      user_id: "user-123",
+      expires_at: new Date(Date.now() + 300_000).toISOString(),
+      used_at: null,
+      failed_attempts: 0,
+    });
+    mockDbRead.getUserById.mockResolvedValue({
+      id: "user-123",
+      email: "test@example.com",
+      name: null,
+      image: null,
+      email_verified: null,
+    });
+    mockDbRead.getUserApiKey.mockResolvedValue(null); // No existing key
     mockGetDbRead.mockResolvedValue(mockDbRead as unknown as DbRead);
 
     const mockDbWrite = createMockDbWrite();
@@ -405,22 +409,23 @@ describe("POST /api/auth/code/verify", () => {
 
   it("should re-read api_key if another request set it concurrently", async () => {
     const mockDbRead = createMockDbRead();
-    mockDbRead.firstOrNull
-      .mockResolvedValueOnce({
-        code: "ABCD-1234",
-        user_id: "user-123",
-        expires_at: new Date(Date.now() + 300_000).toISOString(),
-        used_at: null,
-        failed_attempts: 0,
-      })
-      .mockResolvedValueOnce({
-        id: "user-123",
-        email: "test@example.com",
-        api_key: null, // No existing key on first read
-      })
-      .mockResolvedValueOnce({
-        api_key: "pk_set_by_other_request", // Another request already set it
-      });
+    mockDbRead.getAuthCode.mockResolvedValue({
+      code: "ABCD-1234",
+      user_id: "user-123",
+      expires_at: new Date(Date.now() + 300_000).toISOString(),
+      used_at: null,
+      failed_attempts: 0,
+    });
+    mockDbRead.getUserById.mockResolvedValue({
+      id: "user-123",
+      email: "test@example.com",
+      name: null,
+      image: null,
+      email_verified: null,
+    });
+    mockDbRead.getUserApiKey
+      .mockResolvedValueOnce(null) // No existing key on first read
+      .mockResolvedValueOnce("pk_set_by_other_request"); // Another request already set it
     mockGetDbRead.mockResolvedValue(mockDbRead as unknown as DbRead);
 
     // First UPDATE (api_key) returns 0 changes (lost race), second UPDATE (used_at) succeeds
@@ -446,19 +451,21 @@ describe("POST /api/auth/code/verify", () => {
 
   it("should normalize code format (accept without hyphen)", async () => {
     const mockDbRead = createMockDbRead();
-    mockDbRead.firstOrNull
-      .mockResolvedValueOnce({
-        code: "ABCD-1234",
-        user_id: "user-123",
-        expires_at: new Date(Date.now() + 300_000).toISOString(),
-        used_at: null,
-        failed_attempts: 0,
-      })
-      .mockResolvedValueOnce({
-        id: "user-123",
-        email: "test@example.com",
-        api_key: "pk_test",
-      });
+    mockDbRead.getAuthCode.mockResolvedValue({
+      code: "ABCD-1234",
+      user_id: "user-123",
+      expires_at: new Date(Date.now() + 300_000).toISOString(),
+      used_at: null,
+      failed_attempts: 0,
+    });
+    mockDbRead.getUserById.mockResolvedValue({
+      id: "user-123",
+      email: "test@example.com",
+      name: null,
+      image: null,
+      email_verified: null,
+    });
+    mockDbRead.getUserApiKey.mockResolvedValue("pk_test");
     mockGetDbRead.mockResolvedValue(mockDbRead as unknown as DbRead);
 
     const mockDbWrite = createMockDbWrite();
@@ -475,27 +482,26 @@ describe("POST /api/auth/code/verify", () => {
     expect(response.status).toBe(200);
 
     // Verify it queried with the hyphenated version
-    expect(mockDbRead.firstOrNull).toHaveBeenCalledWith(
-      expect.stringContaining("SELECT"),
-      ["ABCD-1234"]
-    );
+    expect(mockDbRead.getAuthCode).toHaveBeenCalledWith("ABCD-1234");
   });
 
   it("should handle race condition (concurrent use)", async () => {
     const mockDbRead = createMockDbRead();
-    mockDbRead.firstOrNull
-      .mockResolvedValueOnce({
-        code: "ABCD-1234",
-        user_id: "user-123",
-        expires_at: new Date(Date.now() + 300_000).toISOString(),
-        used_at: null,
-        failed_attempts: 0,
-      })
-      .mockResolvedValueOnce({
-        id: "user-123",
-        email: "test@example.com",
-        api_key: "pk_existing",
-      });
+    mockDbRead.getAuthCode.mockResolvedValue({
+      code: "ABCD-1234",
+      user_id: "user-123",
+      expires_at: new Date(Date.now() + 300_000).toISOString(),
+      used_at: null,
+      failed_attempts: 0,
+    });
+    mockDbRead.getUserById.mockResolvedValue({
+      id: "user-123",
+      email: "test@example.com",
+      name: null,
+      image: null,
+      email_verified: null,
+    });
+    mockDbRead.getUserApiKey.mockResolvedValue("pk_existing");
     mockGetDbRead.mockResolvedValue(mockDbRead as unknown as DbRead);
 
     // Simulate race: SET used_at returns 0 rows (someone else used it first)
@@ -546,15 +552,14 @@ describe("POST /api/auth/code/verify", () => {
 
   it("should return 500 when user not found and NOT consume code", async () => {
     const mockDbRead = createMockDbRead();
-    mockDbRead.firstOrNull
-      .mockResolvedValueOnce({
-        code: "ABCD-1234",
-        user_id: "user-deleted",
-        expires_at: new Date(Date.now() + 300_000).toISOString(),
-        used_at: null,
-        failed_attempts: 0,
-      })
-      .mockResolvedValueOnce(null); // User was deleted
+    mockDbRead.getAuthCode.mockResolvedValue({
+      code: "ABCD-1234",
+      user_id: "user-deleted",
+      expires_at: new Date(Date.now() + 300_000).toISOString(),
+      used_at: null,
+      failed_attempts: 0,
+    });
+    mockDbRead.getUserById.mockResolvedValue(null); // User was deleted
     mockGetDbRead.mockResolvedValue(mockDbRead as unknown as DbRead);
 
     const mockDbWrite = createMockDbWrite();
@@ -582,7 +587,7 @@ describe("POST /api/auth/code/verify", () => {
 
   it("should return 500 on database error", async () => {
     const mockDbRead = createMockDbRead();
-    mockDbRead.firstOrNull.mockRejectedValue(new Error("D1 is down"));
+    mockDbRead.getAuthCode.mockRejectedValue(new Error("D1 is down"));
     mockGetDbRead.mockResolvedValue(mockDbRead as unknown as DbRead);
 
     const request = new Request("http://localhost/api/auth/code/verify", {

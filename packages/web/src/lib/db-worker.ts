@@ -23,6 +23,8 @@ import type {
   SeasonRow,
   SeasonDetailRow,
   SeasonTeamRegistrationRow,
+  TeamAggRow,
+  MemberAggRow,
   ShowcaseRpcRow,
   ShowcaseOwnerRow,
   ShowcaseExistsResult,
@@ -418,6 +420,34 @@ export function createWorkerDbRead(): DbRead {
         method: "seasons.checkMemberConflict",
         seasonId,
         userIds,
+      });
+    },
+
+    async aggregateSeasonTeamTokens(
+      seasonId: string,
+      fromDate: string,
+      toDate: string,
+    ): Promise<TeamAggRow[]> {
+      return rpc<TeamAggRow[]>({
+        method: "seasons.aggregateTeamTokens",
+        seasonId,
+        fromDate,
+        toDate,
+      });
+    },
+
+    async aggregateSeasonMemberTokens(
+      seasonId: string,
+      fromDate: string,
+      toDate: string,
+      teamIds: string[],
+    ): Promise<MemberAggRow[]> {
+      return rpc<MemberAggRow[]>({
+        method: "seasons.aggregateMemberTokens",
+        seasonId,
+        fromDate,
+        toDate,
+        teamIds,
       });
     },
 

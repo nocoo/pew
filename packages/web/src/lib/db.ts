@@ -22,6 +22,8 @@ import type {
   SeasonRow,
   SeasonDetailRow,
   SeasonTeamRegistrationRow,
+  TeamAggRow,
+  MemberAggRow,
   ShowcaseRpcRow,
   ShowcaseOwnerRow,
   ShowcaseExistsResult,
@@ -232,6 +234,21 @@ export interface DbRead {
     seasonId: string,
     userIds: string[],
   ): Promise<{ user_id: string } | null>;
+
+  /** Aggregate team token usage for snapshot generation */
+  aggregateSeasonTeamTokens(
+    seasonId: string,
+    fromDate: string,
+    toDate: string,
+  ): Promise<TeamAggRow[]>;
+
+  /** Aggregate member token usage for snapshot generation */
+  aggregateSeasonMemberTokens(
+    seasonId: string,
+    fromDate: string,
+    toDate: string,
+    teamIds: string[],
+  ): Promise<MemberAggRow[]>;
 
   // ---------------------------------------------------------------------------
   // Showcases domain RPC methods
