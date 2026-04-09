@@ -218,7 +218,7 @@ export async function discoverVscodeCopilotFiles(
   const results: string[] = [];
 
   for (const baseDir of baseDirs) {
-    // 1. globalStorage/emptyWindowChatSessions/*.jsonl
+    // 1. globalStorage/emptyWindowChatSessions/*.jsonl + *.json
     const globalChatDir = join(baseDir, "globalStorage", "emptyWindowChatSessions");
     let globalEntries: import("node:fs").Dirent[];
     try {
@@ -227,7 +227,7 @@ export async function discoverVscodeCopilotFiles(
       globalEntries = [];
     }
     for (const entry of globalEntries) {
-      if (entry.isFile() && entry.name.endsWith(".jsonl")) {
+      if (entry.isFile() && (entry.name.endsWith(".jsonl") || entry.name.endsWith(".json"))) {
         results.push(join(globalChatDir, entry.name));
       }
     }
@@ -251,7 +251,7 @@ export async function discoverVscodeCopilotFiles(
         continue;
       }
       for (const chatEntry of chatEntries) {
-        if (chatEntry.isFile() && chatEntry.name.endsWith(".jsonl")) {
+        if (chatEntry.isFile() && (chatEntry.name.endsWith(".jsonl") || chatEntry.name.endsWith(".json"))) {
           results.push(join(chatSessionsDir, chatEntry.name));
         }
       }

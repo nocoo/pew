@@ -71,7 +71,7 @@ export interface VscodeCopilotFileResult {
 // ---------------------------------------------------------------------------
 
 /** Strip "copilot/" prefix from model IDs (e.g. "copilot/claude-opus-4.6" → "claude-opus-4.6") */
-function normalizeModelId(raw: string): string {
+export function normalizeModelId(raw: string): string {
   return raw.startsWith("copilot/") ? raw.slice(8) : raw;
 }
 

@@ -10,6 +10,7 @@
 import type { VscodeCopilotCursor } from "@pew/core";
 import { discoverVscodeCopilotFiles } from "../../discovery/sources.js";
 import { parseVscodeCopilotFile } from "../../parsers/vscode-copilot.js";
+import { parseVscodeCopilotV3File } from "../../parsers/vscode-copilot-v3.js";
 import { fileUnchanged } from "../../utils/file-changed.js";
 import type {
   FileTokenDriver,
@@ -56,6 +57,18 @@ export const vscodeCopilotTokenDriver: FileTokenDriver<VscodeCopilotCursor> = {
   },
 
   async parse(filePath: string, resume: ResumeState): Promise<VscodeCopilotParseResult> {
+    // v3 JSON files: full parse each time (no incremental offset)
+    if (filePath.endsWith(".json")) {
+      const result = await parseVscodeCopilotV3File({ filePath });
+      return {
+        deltas: result.deltas,
+        endOffset: 0,
+        requestMeta: {},
+        processedRequestIndices: [],
+      };
+    }
+
+    // CRDT JSONL files: incremental byte-offset parsing
     const r = resume as VscodeCopilotResumeState;
     const result = await parseVscodeCopilotFile({
       filePath,
