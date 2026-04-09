@@ -125,8 +125,8 @@ export async function GET(request: Request) {
     const sessionStatsByUser = new Map<string, { session_count: number; total_duration_seconds: number }>();
 
     if (userIds.length > 0) {
-      // Batch in chunks of 50 to avoid Worker CPU timeout
-      const BATCH_SIZE = 50;
+      // Batch in chunks of 20 to match frontend page size and avoid Worker CPU timeout
+      const BATCH_SIZE = 20;
       for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
         const batch = userIds.slice(i, i + BATCH_SIZE);
         const sessionRows = await db.getLeaderboardSessionStats(batch, fromDate);
