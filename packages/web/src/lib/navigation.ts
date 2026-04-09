@@ -57,7 +57,7 @@ export const BASE_NAV_GROUPS: NavGroupDef[] = [
       { href: "/teams", label: "Teams", icon: "Users" },
       { href: "/manage-projects", label: "Projects", icon: "FolderKanban" },
       { href: "/manage-devices", label: "Devices", icon: "MonitorSmartphone" },
-      { href: "/settings/organizations", label: "Organizations", icon: "Globe2" },
+      { href: "/settings/organizations", label: "Organizations", icon: "Building2" },
       { href: "/settings/showcases", label: "Showcases", icon: "Star" },
       { href: "/settings/general", label: "General", icon: "Settings" },
     ],

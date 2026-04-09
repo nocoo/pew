@@ -27,7 +27,6 @@ import {
   FolderGit2,
   Database,
   Star,
-  Globe2,
   Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -71,7 +70,6 @@ const ICON_MAP: Record<string, ElementType> = {
   FolderGit2,
   Database,
   Star,
-  Globe2,
   Building2,
 };
 
