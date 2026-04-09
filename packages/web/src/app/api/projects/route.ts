@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
 import { getDbRead, getDbWrite } from "@/lib/db";
+import type { ProjectAliasStatsRow } from "@/lib/rpc-types";
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -33,39 +34,6 @@ const RESERVED_NAMES = new Set(["unassigned"]);
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-
-interface ProjectRow {
-  id: string;
-  name: string;
-  created_at: string;
-}
-
-interface TagRow {
-  project_id: string;
-  tag: string;
-}
-
-interface AliasStatsRow {
-  project_id: string;
-  source: string;
-  project_ref: string;
-  session_count: number;
-  last_active: string | null;
-  total_messages: number;
-  total_duration: number;
-  models: string | null;
-  absolute_last_active: string | null;
-}
-
-interface UnassignedRow {
-  source: string;
-  project_ref: string;
-  session_count: number;
-  last_active: string | null;
-  total_messages: number;
-  total_duration: number;
-  models: string | null;
-}
 
 interface AliasInput {
   source: string;
@@ -95,132 +63,29 @@ export async function GET(request: Request) {
     : null;
 
   try {
-    // Query 1: Project metadata (unchanged — always returns all projects)
-    const projectsResult = await dbRead.query<ProjectRow>(
-      `SELECT id, name, created_at
-       FROM projects
-       WHERE user_id = ?
-       ORDER BY created_at DESC`,
-      [userId],
+    // Query 1: Project metadata (always returns all projects)
+    const projectRows = await dbRead.listProjects(userId);
+
+    // Query 2: Aliases with per-alias session stats (via RPC)
+    const aliasRows = await dbRead.listAliasesWithStats(
+      userId,
+      from ?? undefined,
+      to ?? undefined,
     );
 
-    // Query 2: Aliases with per-alias session stats
-    // When from/to provided: two LEFT JOINs — sr (period-scoped), sr_all (all-time)
-    // When absent: single LEFT JOIN (sr), no sr_all needed
-    let aliasesResult;
-    if (hasDateRange) {
-      aliasesResult = await dbRead.query<AliasStatsRow>(
-        `SELECT
-           pa.project_id,
-           pa.source,
-           pa.project_ref,
-           COUNT(sr.id) AS session_count,
-           MAX(sr.last_message_at) AS last_active,
-           COALESCE(SUM(sr.total_messages), 0) AS total_messages,
-           COALESCE(SUM(sr.duration_seconds), 0) AS total_duration,
-           GROUP_CONCAT(DISTINCT sr.model) AS models,
-           (SELECT MAX(sr2.last_message_at)
-            FROM session_records sr2
-            WHERE sr2.user_id = pa.user_id
-              AND sr2.source = pa.source
-              AND sr2.project_ref = pa.project_ref
-           ) AS absolute_last_active
-         FROM project_aliases pa
-         LEFT JOIN session_records sr
-           ON sr.user_id = pa.user_id
-           AND sr.source = pa.source
-           AND sr.project_ref = pa.project_ref
-           AND sr.started_at >= ?
-           AND sr.started_at < ?
-         WHERE pa.user_id = ?
-         GROUP BY pa.project_id, pa.source, pa.project_ref`,
-        [from, to, userId],
-      );
-    } else {
-      aliasesResult = await dbRead.query<AliasStatsRow>(
-        `SELECT
-           pa.project_id,
-           pa.source,
-           pa.project_ref,
-           COUNT(sr.id) AS session_count,
-           MAX(sr.last_message_at) AS last_active,
-           COALESCE(SUM(sr.total_messages), 0) AS total_messages,
-           COALESCE(SUM(sr.duration_seconds), 0) AS total_duration,
-           GROUP_CONCAT(DISTINCT sr.model) AS models,
-           MAX(sr.last_message_at) AS absolute_last_active
-         FROM project_aliases pa
-         LEFT JOIN session_records sr
-           ON sr.user_id = pa.user_id
-           AND sr.source = pa.source
-           AND sr.project_ref = pa.project_ref
-         WHERE pa.user_id = ?
-         GROUP BY pa.project_id, pa.source, pa.project_ref`,
-        [userId],
-      );
-    }
+    // Query 3: Unassigned refs (via RPC)
+    const unassignedRows = await dbRead.listUnassignedRefs(
+      userId,
+      from ?? undefined,
+      to ?? undefined,
+    );
 
-    // Query 3: Unassigned refs (date conditions in WHERE — no LEFT JOIN to protect)
-    let unassignedResult;
-    if (hasDateRange) {
-      unassignedResult = await dbRead.query<UnassignedRow>(
-        `SELECT
-           sr.source,
-           sr.project_ref,
-           COUNT(*) AS session_count,
-           MAX(sr.last_message_at) AS last_active,
-           COALESCE(SUM(sr.total_messages), 0) AS total_messages,
-           COALESCE(SUM(sr.duration_seconds), 0) AS total_duration,
-           GROUP_CONCAT(DISTINCT sr.model) AS models
-         FROM session_records sr
-         WHERE sr.user_id = ?
-           AND sr.project_ref IS NOT NULL
-           AND sr.started_at >= ?
-           AND sr.started_at < ?
-           AND NOT EXISTS (
-             SELECT 1 FROM project_aliases pa
-             WHERE pa.user_id = sr.user_id
-               AND pa.source = sr.source
-               AND pa.project_ref = sr.project_ref
-           )
-         GROUP BY sr.source, sr.project_ref
-         ORDER BY last_active DESC`,
-        [userId, from, to],
-      );
-    } else {
-      unassignedResult = await dbRead.query<UnassignedRow>(
-        `SELECT
-           sr.source,
-           sr.project_ref,
-           COUNT(*) AS session_count,
-           MAX(sr.last_message_at) AS last_active,
-           COALESCE(SUM(sr.total_messages), 0) AS total_messages,
-           COALESCE(SUM(sr.duration_seconds), 0) AS total_duration,
-           GROUP_CONCAT(DISTINCT sr.model) AS models
-         FROM session_records sr
-         WHERE sr.user_id = ?
-           AND sr.project_ref IS NOT NULL
-           AND NOT EXISTS (
-             SELECT 1 FROM project_aliases pa
-             WHERE pa.user_id = sr.user_id
-               AND pa.source = sr.source
-               AND pa.project_ref = sr.project_ref
-           )
-         GROUP BY sr.source, sr.project_ref
-         ORDER BY last_active DESC`,
-        [userId],
-      );
-    }
+    // Query 4: Tags
+    const tagRows = await dbRead.listProjectTags(userId);
 
     // Assemble: group tags by project_id
     const tagsByProject = new Map<string, string[]>();
-    const tagsResult = await dbRead.query<TagRow>(
-      `SELECT project_id, tag
-       FROM project_tags
-       WHERE user_id = ?
-       ORDER BY tag`,
-      [userId],
-    );
-    for (const row of tagsResult.results) {
+    for (const row of tagRows) {
       const arr = tagsByProject.get(row.project_id);
       if (arr) {
         arr.push(row.tag);
@@ -230,8 +95,9 @@ export async function GET(request: Request) {
     }
 
     // Assemble: group aliases by project_id
-    const aliasesByProject = new Map<string, AliasStatsRow[]>();
-    for (const row of aliasesResult.results) {
+    const aliasesByProject = new Map<string, ProjectAliasStatsRow[]>();
+    for (const row of aliasRows) {
+      if (!row.project_id) continue;
       const arr = aliasesByProject.get(row.project_id);
       if (arr) {
         arr.push(row);
@@ -240,7 +106,7 @@ export async function GET(request: Request) {
       }
     }
 
-    const projects = projectsResult.results.map((p) => {
+    const projects = projectRows.map((p) => {
       const aliases = aliasesByProject.get(p.id) ?? [];
       let sessionCount = 0;
       let lastActive: string | null = null;
@@ -251,7 +117,7 @@ export async function GET(request: Request) {
       for (const a of aliases) {
         sessionCount += a.session_count;
         totalMessages += a.total_messages;
-        totalDuration += a.total_duration;
+        totalDuration += a.total_duration_seconds;
         if (a.models) {
           for (const m of a.models.split(",")) {
             if (m) modelSet.add(m);
@@ -289,13 +155,13 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       projects,
-      unassigned: unassignedResult.results.map((r) => ({
+      unassigned: unassignedRows.map((r) => ({
         source: r.source,
         project_ref: r.project_ref,
         session_count: r.session_count,
         last_active: r.last_active,
         total_messages: r.total_messages,
-        total_duration: r.total_duration,
+        total_duration: r.total_duration_seconds,
         models: r.models ? r.models.split(",").filter(Boolean) : [],
       })),
     });
@@ -481,44 +347,25 @@ export async function POST(request: Request) {
       throw aliasErr;
     }
 
-    // Query real session stats for the newly-assigned aliases
+    // Query real session stats for the newly-assigned aliases via RPC
     let sessionCount = 0;
     let lastActive: string | null = null;
     let totalMessages = 0;
     let totalDuration = 0;
     const modelSet = new Set<string>();
     if (deduped.length > 0) {
-      const statsResult = await dbRead.query<{
-        session_count: number;
-        last_active: string | null;
-        total_messages: number;
-        total_duration: number;
-        models: string | null;
-      }>(
-        `SELECT
-           COUNT(sr.id) AS session_count,
-           MAX(sr.last_message_at) AS last_active,
-           COALESCE(SUM(sr.total_messages), 0) AS total_messages,
-           COALESCE(SUM(sr.duration_seconds), 0) AS total_duration,
-           GROUP_CONCAT(DISTINCT sr.model) AS models
-         FROM project_aliases pa
-         LEFT JOIN session_records sr
-           ON sr.user_id = pa.user_id
-           AND sr.source = pa.source
-           AND sr.project_ref = pa.project_ref
-         WHERE pa.project_id = ?`,
-        [projectId],
-      );
-      const firstRow = statsResult.results[0];
-      if (firstRow) {
-        sessionCount = firstRow.session_count;
-        lastActive = firstRow.last_active;
-        totalMessages = firstRow.total_messages;
-        totalDuration = firstRow.total_duration;
-        if (firstRow.models) {
-          for (const m of firstRow.models.split(",")) {
+      const statsRows = await dbRead.getProjectAliasStats(projectId);
+      for (const row of statsRows) {
+        sessionCount += row.session_count;
+        totalMessages += row.total_messages;
+        totalDuration += row.total_duration_seconds;
+        if (row.models) {
+          for (const m of row.models.split(",")) {
             if (m) modelSet.add(m);
           }
+        }
+        if (row.last_active && (!lastActive || row.last_active > lastActive)) {
+          lastActive = row.last_active;
         }
       }
     }

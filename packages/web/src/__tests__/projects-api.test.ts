@@ -855,10 +855,9 @@ describe("POST /api/projects", () => {
       mockDbRead.getAliasOwner.mockResolvedValueOnce(null); // not assigned
 
       mockDbWrite.execute.mockResolvedValue({ meta: {} });
-      mockDbRead.query.mockResolvedValueOnce({
-        results: [{ session_count: 3, last_active: "2026-03-10T00:00:00Z", total_messages: 15, total_duration: 300, models: null }],
-        meta: {},
-      });
+      mockDbRead.getProjectAliasStats.mockResolvedValueOnce([
+        { source: "claude-code", project_ref: "abc123", project_id: "new-proj", session_count: 3, last_active: "2026-03-10T00:00:00Z", total_messages: 15, total_duration_seconds: 300, models: null, absolute_last_active: "2026-03-10T00:00:00Z" },
+      ]);
       // Read back created_at
       mockDbRead.getProjectById.mockResolvedValueOnce({
         id: "new-proj",
@@ -962,12 +961,9 @@ describe("POST /api/projects", () => {
       mockDbWrite.execute.mockResolvedValue({ meta: {} });
 
       // Stats query returns real data
-      mockDbRead.query.mockResolvedValueOnce({
-        results: [
-          { session_count: 42, last_active: "2026-03-10T18:30:00Z", total_messages: 350, total_duration: 7200, models: "claude-4-opus,gemini-2.5-pro" },
-        ],
-        meta: {},
-      });
+      mockDbRead.getProjectAliasStats.mockResolvedValueOnce([
+        { source: "claude-code", project_ref: "abc123", project_id: "new-proj", session_count: 42, last_active: "2026-03-10T18:30:00Z", total_messages: 350, total_duration_seconds: 7200, models: "claude-4-opus,gemini-2.5-pro", absolute_last_active: "2026-03-10T18:30:00Z" },
+      ]);
 
       // Read back created_at
       mockDbRead.getProjectById.mockResolvedValueOnce({
@@ -1032,10 +1028,9 @@ describe("POST /api/projects", () => {
       }); // read back
 
       mockDbWrite.execute.mockResolvedValue({ meta: {} });
-      mockDbRead.query.mockResolvedValueOnce({
-        results: [{ session_count: 10, last_active: "2026-03-10T15:00:00Z", total_messages: 75, total_duration: 1500, models: "gemini-2.5-pro" }],
-        meta: {},
-      });
+      mockDbRead.getProjectAliasStats.mockResolvedValueOnce([
+        { source: "opencode", project_ref: "xyz789", project_id: "new-proj", session_count: 10, last_active: "2026-03-10T15:00:00Z", total_messages: 75, total_duration_seconds: 1500, models: "gemini-2.5-pro", absolute_last_active: "2026-03-10T15:00:00Z" },
+      ]);
 
       const res = await POST(
         makePostRequest({
@@ -1085,44 +1080,35 @@ describe("GET /api/projects", () => {
       email: "test@example.com",
     });
 
-    mockDbRead.query
-      .mockResolvedValueOnce({
-        results: [
-          { id: "p1", name: "Project A", created_at: "2026-03-10T00:00:00Z" },
-        ],
-        meta: {},
-      }) // Query 1: projects
-      .mockResolvedValueOnce({
-        results: [
-          {
-            project_id: "p1",
-            source: "claude-code",
-            project_ref: "abc",
-            session_count: 5,
-            last_active: "2026-03-10T12:00:00Z",
-            total_messages: 120,
-            total_duration: 3600,
-            models: "claude-4-opus,claude-4-sonnet",
-            absolute_last_active: "2026-03-10T12:00:00Z",
-          },
-        ],
-        meta: {},
-      }) // Query 2: aliases (no date range → absolute_last_active = last_active)
-      .mockResolvedValueOnce({
-        results: [
-          {
-            source: "opencode",
-            project_ref: "unassigned-ref",
-            session_count: 2,
-            last_active: "2026-03-09T00:00:00Z",
-            total_messages: 15,
-            total_duration: 600,
-            models: "gemini-2.5-pro",
-          },
-        ],
-        meta: {},
-      }) // Query 3: unassigned
-      .mockResolvedValueOnce({ results: [], meta: {} }); // Query 4: tags
+    // Mock RPC methods instead of raw query
+    mockDbRead.listProjects.mockResolvedValueOnce([
+      { id: "p1", name: "Project A", created_at: "2026-03-10T00:00:00Z" },
+    ]);
+    mockDbRead.listAliasesWithStats.mockResolvedValueOnce([
+      {
+        project_id: "p1",
+        source: "claude-code",
+        project_ref: "abc",
+        session_count: 5,
+        last_active: "2026-03-10T12:00:00Z",
+        total_messages: 120,
+        total_duration_seconds: 3600,
+        models: "claude-4-opus,claude-4-sonnet",
+        absolute_last_active: "2026-03-10T12:00:00Z",
+      },
+    ]);
+    mockDbRead.listUnassignedRefs.mockResolvedValueOnce([
+      {
+        source: "opencode",
+        project_ref: "unassigned-ref",
+        session_count: 2,
+        last_active: "2026-03-09T00:00:00Z",
+        total_messages: 15,
+        total_duration_seconds: 600,
+        models: "gemini-2.5-pro",
+      },
+    ]);
+    mockDbRead.listProjectTags.mockResolvedValueOnce([]);
 
     const res = await GET(new Request("http://localhost:7020/api/projects"));
 
@@ -1146,17 +1132,42 @@ describe("GET /api/projects", () => {
     expect(body.unassigned[0].models).toEqual(["gemini-2.5-pro"]);
   });
 
+  it("should return tags in stable alphabetical order", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({
+      userId: "u1",
+      email: "test@example.com",
+    });
+
+    mockDbRead.listProjects.mockResolvedValueOnce([
+      { id: "p1", name: "Project A", created_at: "2026-03-10T00:00:00Z" },
+    ]);
+    mockDbRead.listAliasesWithStats.mockResolvedValueOnce([]);
+    mockDbRead.listUnassignedRefs.mockResolvedValueOnce([]);
+    // Tags returned in alphabetical order by (project_id, tag) from RPC
+    mockDbRead.listProjectTags.mockResolvedValueOnce([
+      { project_id: "p1", tag: "backend" },
+      { project_id: "p1", tag: "frontend" },
+      { project_id: "p1", tag: "typescript" },
+    ]);
+
+    const res = await GET(new Request("http://localhost:7020/api/projects"));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    // Tags must be in stable alphabetical order for consistent UI display
+    expect(body.projects[0].tags).toEqual(["backend", "frontend", "typescript"]);
+  });
+
   it("should handle empty state", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({
       userId: "u1",
       email: "test@example.com",
     });
 
-    mockDbRead.query
-      .mockResolvedValueOnce({ results: [], meta: {} })
-      .mockResolvedValueOnce({ results: [], meta: {} })
-      .mockResolvedValueOnce({ results: [], meta: {} })
-      .mockResolvedValueOnce({ results: [], meta: {} }); // tags
+    mockDbRead.listProjects.mockResolvedValueOnce([]);
+    mockDbRead.listAliasesWithStats.mockResolvedValueOnce([]);
+    mockDbRead.listUnassignedRefs.mockResolvedValueOnce([]);
+    mockDbRead.listProjectTags.mockResolvedValueOnce([]);
 
     const res = await GET(new Request("http://localhost:7020/api/projects"));
 
@@ -1172,24 +1183,23 @@ describe("GET /api/projects", () => {
       email: "test@example.com",
     });
 
-    mockDbRead.query.mockRejectedValueOnce(new Error("D1 down"));
+    mockDbRead.listProjects.mockRejectedValueOnce(new Error("D1 down"));
 
     const res = await GET(new Request("http://localhost:7020/api/projects"));
 
     expect(res.status).toBe(500);
   });
 
-  it("should pass date range to query params when from/to provided", async () => {
+  it("should pass date range to RPC methods when from/to provided", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({
       userId: "u1",
       email: "test@example.com",
     });
 
-    mockDbRead.query
-      .mockResolvedValueOnce({ results: [], meta: {} }) // Query 1: projects
-      .mockResolvedValueOnce({ results: [], meta: {} }) // Query 2: aliases (date-scoped)
-      .mockResolvedValueOnce({ results: [], meta: {} }) // Query 3: unassigned (date-scoped)
-      .mockResolvedValueOnce({ results: [], meta: {} }); // Query 4: tags
+    mockDbRead.listProjects.mockResolvedValueOnce([]);
+    mockDbRead.listAliasesWithStats.mockResolvedValueOnce([]);
+    mockDbRead.listUnassignedRefs.mockResolvedValueOnce([]);
+    mockDbRead.listProjectTags.mockResolvedValueOnce([]);
 
     const res = await GET(
       new Request(
@@ -1199,39 +1209,43 @@ describe("GET /api/projects", () => {
 
     expect(res.status).toBe(200);
 
-    // Query 2 (aliases) should have date params: [from, to, userId]
-    const aliasCall = mockDbRead.query.mock.calls[1]!;
-    expect(aliasCall[1]).toEqual(["2026-03-01", "2026-03-14", "u1"]);
-    // SQL should use correlated subquery for absolute_last_active (not dual LEFT JOIN)
-    expect(aliasCall[0]).toContain("absolute_last_active");
-    expect(aliasCall[0]).not.toMatch(/LEFT JOIN session_records sr_all/);
-
-    // Query 3 (unassigned) should have date params: [userId, from, to]
-    const unassignedCall = mockDbRead.query.mock.calls[2]!;
-    expect(unassignedCall[1]).toEqual(["u1", "2026-03-01", "2026-03-14"]);
-    expect(unassignedCall[0]).toContain("started_at >=");
-    expect(unassignedCall[0]).toContain("started_at <");
+    // Verify RPC was called with date params
+    expect(mockDbRead.listAliasesWithStats).toHaveBeenCalledWith(
+      "u1",
+      "2026-03-01",
+      "2026-03-14",
+    );
+    expect(mockDbRead.listUnassignedRefs).toHaveBeenCalledWith(
+      "u1",
+      "2026-03-01",
+      "2026-03-14",
+    );
   });
 
-  it("should NOT use dual JOIN when from/to absent", async () => {
+  it("should call RPC without date params when from/to absent", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({
       userId: "u1",
       email: "test@example.com",
     });
 
-    mockDbRead.query
-      .mockResolvedValueOnce({ results: [], meta: {} })
-      .mockResolvedValueOnce({ results: [], meta: {} })
-      .mockResolvedValueOnce({ results: [], meta: {} })
-      .mockResolvedValueOnce({ results: [], meta: {} });
+    mockDbRead.listProjects.mockResolvedValueOnce([]);
+    mockDbRead.listAliasesWithStats.mockResolvedValueOnce([]);
+    mockDbRead.listUnassignedRefs.mockResolvedValueOnce([]);
+    mockDbRead.listProjectTags.mockResolvedValueOnce([]);
 
     await GET(new Request("http://localhost:7020/api/projects"));
 
-    // Query 2: single JOIN, params = [userId] only
-    const aliasCall = mockDbRead.query.mock.calls[1]!;
-    expect(aliasCall[1]).toEqual(["u1"]);
-    // Should NOT have sr_all as a separate join alias
-    expect(aliasCall[0]).not.toMatch(/LEFT JOIN session_records sr_all/);
+    // Verify RPC was called without date params
+    expect(mockDbRead.listAliasesWithStats).toHaveBeenCalledWith(
+      "u1",
+      undefined,
+      undefined,
+    );
+    expect(mockDbRead.listUnassignedRefs).toHaveBeenCalledWith(
+      "u1",
+      undefined,
+      undefined,
+    );
   });
 
   it("should default to tomorrow when only from param is provided", async () => {
@@ -1240,11 +1254,10 @@ describe("GET /api/projects", () => {
       email: "test@example.com",
     });
 
-    mockDbRead.query
-      .mockResolvedValueOnce({ results: [], meta: {} }) // Query 1: projects
-      .mockResolvedValueOnce({ results: [], meta: {} }) // Query 2: aliases (date-scoped)
-      .mockResolvedValueOnce({ results: [], meta: {} }) // Query 3: unassigned (date-scoped)
-      .mockResolvedValueOnce({ results: [], meta: {} }); // Query 4: tags
+    mockDbRead.listProjects.mockResolvedValueOnce([]);
+    mockDbRead.listAliasesWithStats.mockResolvedValueOnce([]);
+    mockDbRead.listUnassignedRefs.mockResolvedValueOnce([]);
+    mockDbRead.listProjectTags.mockResolvedValueOnce([]);
 
     const res = await GET(
       new Request("http://localhost:7020/api/projects?from=2026-03-01"),
@@ -1252,14 +1265,11 @@ describe("GET /api/projects", () => {
 
     expect(res.status).toBe(200);
 
-    // Query 2 (aliases) should have date params with defaulted `to`
-    const aliasCall = mockDbRead.query.mock.calls[1]!;
-    expect(aliasCall[1]![0]).toBe("2026-03-01"); // from
-    expect(aliasCall[1]![1]).toMatch(/^\d{4}-\d{2}-\d{2}$/); // defaulted to (tomorrow)
-    expect(aliasCall[1]![2]).toBe("u1"); // userId
-    // SQL should use correlated subquery for absolute_last_active (not dual LEFT JOIN)
-    expect(aliasCall[0]).toContain("absolute_last_active");
-    expect(aliasCall[0]).not.toMatch(/LEFT JOIN session_records sr_all/);
+    // Verify RPC was called with from and defaulted to (tomorrow)
+    const aliasCall = mockDbRead.listAliasesWithStats.mock.calls[0]!;
+    expect(aliasCall[0]).toBe("u1");
+    expect(aliasCall[1]).toBe("2026-03-01");
+    expect(aliasCall[2]).toMatch(/^\d{4}-\d{2}-\d{2}$/); // defaulted to (tomorrow)
   });
 
   it("should return period-scoped stats with absolute_last_active when date range active", async () => {
@@ -1268,31 +1278,24 @@ describe("GET /api/projects", () => {
       email: "test@example.com",
     });
 
-    mockDbRead.query
-      .mockResolvedValueOnce({
-        results: [
-          { id: "p1", name: "Project A", created_at: "2026-01-01T00:00:00Z" },
-        ],
-        meta: {},
-      }) // Query 1
-      .mockResolvedValueOnce({
-        results: [
-          {
-            project_id: "p1",
-            source: "claude-code",
-            project_ref: "abc",
-            session_count: 2, // period-scoped: only 2 of 5 sessions
-            last_active: "2026-03-10T12:00:00Z",
-            total_messages: 40,
-            total_duration: 1200,
-            models: "claude-4-opus",
-            absolute_last_active: "2026-03-14T08:00:00Z", // all-time: different
-          },
-        ],
-        meta: {},
-      }) // Query 2
-      .mockResolvedValueOnce({ results: [], meta: {} }) // Query 3
-      .mockResolvedValueOnce({ results: [], meta: {} }); // Query 4: tags
+    mockDbRead.listProjects.mockResolvedValueOnce([
+      { id: "p1", name: "Project A", created_at: "2026-01-01T00:00:00Z" },
+    ]);
+    mockDbRead.listAliasesWithStats.mockResolvedValueOnce([
+      {
+        project_id: "p1",
+        source: "claude-code",
+        project_ref: "abc",
+        session_count: 2, // period-scoped: only 2 of 5 sessions
+        last_active: "2026-03-10T12:00:00Z",
+        total_messages: 40,
+        total_duration_seconds: 1200,
+        models: "claude-4-opus",
+        absolute_last_active: "2026-03-14T08:00:00Z", // all-time: different
+      },
+    ]);
+    mockDbRead.listUnassignedRefs.mockResolvedValueOnce([]);
+    mockDbRead.listProjectTags.mockResolvedValueOnce([]);
 
     const res = await GET(
       new Request(
@@ -1319,31 +1322,24 @@ describe("GET /api/projects", () => {
       email: "test@example.com",
     });
 
-    mockDbRead.query
-      .mockResolvedValueOnce({
-        results: [
-          { id: "p1", name: "Project A", created_at: "2026-01-01T00:00:00Z" },
-        ],
-        meta: {},
-      }) // Query 1: project exists
-      .mockResolvedValueOnce({
-        results: [
-          {
-            project_id: "p1",
-            source: "claude-code",
-            project_ref: "abc",
-            session_count: 0, // zero in this period
-            last_active: null,
-            total_messages: 0,
-            total_duration: 0,
-            models: null,
-            absolute_last_active: "2026-02-15T10:00:00Z", // but had activity before
-          },
-        ],
-        meta: {},
-      }) // Query 2: alias with zero period stats
-      .mockResolvedValueOnce({ results: [], meta: {} }) // Query 3
-      .mockResolvedValueOnce({ results: [], meta: {} }); // Query 4: tags
+    mockDbRead.listProjects.mockResolvedValueOnce([
+      { id: "p1", name: "Project A", created_at: "2026-01-01T00:00:00Z" },
+    ]);
+    mockDbRead.listAliasesWithStats.mockResolvedValueOnce([
+      {
+        project_id: "p1",
+        source: "claude-code",
+        project_ref: "abc",
+        session_count: 0, // zero in this period
+        last_active: null,
+        total_messages: 0,
+        total_duration_seconds: 0,
+        models: null,
+        absolute_last_active: "2026-02-15T10:00:00Z", // but had activity before
+      },
+    ]);
+    mockDbRead.listUnassignedRefs.mockResolvedValueOnce([]);
+    mockDbRead.listProjectTags.mockResolvedValueOnce([]);
 
     const res = await GET(
       new Request(
