@@ -65,24 +65,28 @@ describe("GET /api/organizations", () => {
   it("should return all organizations with member counts", async () => {
     resolveUser.mockResolvedValueOnce(USER);
 
-    mockDbRead.query.mockResolvedValueOnce({
-      results: [
-        {
-          id: "org-1",
-          name: "Anthropic",
-          slug: "anthropic",
-          logo_url: "https://example.com/logo.png",
-          member_count: 5,
-        },
-        {
-          id: "org-2",
-          name: "OpenAI",
-          slug: "openai",
-          logo_url: null,
-          member_count: 10,
-        },
-      ],
-    });
+    mockDbRead.listOrganizationsWithCount.mockResolvedValueOnce([
+      {
+        id: "org-1",
+        name: "Anthropic",
+        slug: "anthropic",
+        logo_url: "https://example.com/logo.png",
+        created_by: "admin-1",
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+        member_count: 5,
+      },
+      {
+        id: "org-2",
+        name: "OpenAI",
+        slug: "openai",
+        logo_url: null,
+        created_by: "admin-2",
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+        member_count: 10,
+      },
+    ]);
 
     const res = await LIST_ALL(makeJsonRequest("GET", "/api/organizations"));
     expect(res.status).toBe(200);
@@ -108,7 +112,7 @@ describe("GET /api/organizations", () => {
 
   it("should return empty array if table not migrated", async () => {
     resolveUser.mockResolvedValueOnce(USER);
-    mockDbRead.query.mockRejectedValueOnce(new Error("no such table: organizations"));
+    mockDbRead.listOrganizationsWithCount.mockRejectedValueOnce(new Error("no such table: organizations"));
 
     const res = await LIST_ALL(makeJsonRequest("GET", "/api/organizations"));
     expect(res.status).toBe(200);
@@ -118,7 +122,7 @@ describe("GET /api/organizations", () => {
 
   it("should return 500 on unexpected error", async () => {
     resolveUser.mockResolvedValueOnce(USER);
-    mockDbRead.query.mockRejectedValueOnce(new Error("DB connection failed"));
+    mockDbRead.listOrganizationsWithCount.mockRejectedValueOnce(new Error("DB connection failed"));
 
     const res = await LIST_ALL(makeJsonRequest("GET", "/api/organizations"));
     expect(res.status).toBe(500);

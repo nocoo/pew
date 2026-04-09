@@ -12,10 +12,12 @@ import type {
   UserSettings,
   UserSearchResult,
   OrgRow,
+  OrgWithCountRow,
   OrgMemberRow,
   ShowcaseRpcRow,
   ShowcaseOwnerRow,
   ShowcaseExistsResult,
+  PricingRow,
 } from "./rpc-types";
 
 // ---------------------------------------------------------------------------
@@ -86,6 +88,9 @@ export interface DbRead {
 
   /** List all organizations */
   listOrganizations(): Promise<OrgRow[]>;
+
+  /** List all organizations with member counts */
+  listOrganizationsWithCount(): Promise<OrgWithCountRow[]>;
 
   /** List organizations for a user */
   listUserOrganizations(userId: string): Promise<OrgRow[]>;
@@ -158,6 +163,22 @@ export interface DbRead {
 
   /** Get user's role in a team (null if not a member) */
   getTeamMembership(teamId: string, userId: string): Promise<string | null>;
+
+  // ---------------------------------------------------------------------------
+  // Pricing domain RPC methods
+  // ---------------------------------------------------------------------------
+
+  /** List all model pricing rows */
+  listModelPricing(): Promise<PricingRow[]>;
+
+  /** Get model pricing by ID */
+  getModelPricingById(id: number): Promise<PricingRow | null>;
+
+  /** Get model pricing by model and source */
+  getModelPricingByModelSource(
+    model: string,
+    source: string | null,
+  ): Promise<PricingRow | null>;
 }
 
 // ---------------------------------------------------------------------------

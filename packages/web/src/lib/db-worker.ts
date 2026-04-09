@@ -13,10 +13,12 @@ import type {
   UserSettings,
   UserSearchResult,
   OrgRow,
+  OrgWithCountRow,
   OrgMemberRow,
   ShowcaseRpcRow,
   ShowcaseOwnerRow,
   ShowcaseExistsResult,
+  PricingRow,
 } from "./rpc-types";
 
 export function createWorkerDbRead(): DbRead {
@@ -163,6 +165,10 @@ export function createWorkerDbRead(): DbRead {
       return rpc<OrgRow[]>({ method: "organizations.list" });
     },
 
+    async listOrganizationsWithCount(): Promise<OrgWithCountRow[]> {
+      return rpc<OrgWithCountRow[]>({ method: "organizations.listWithCount" });
+    },
+
     async listUserOrganizations(userId: string): Promise<OrgRow[]> {
       return rpc<OrgRow[]>({ method: "organizations.listForUser", userId });
     },
@@ -301,6 +307,29 @@ export function createWorkerDbRead(): DbRead {
         userId,
       });
       return result?.role ?? null;
+    },
+
+    // -------------------------------------------------------------------------
+    // Pricing domain RPC methods
+    // -------------------------------------------------------------------------
+
+    async listModelPricing(): Promise<PricingRow[]> {
+      return rpc<PricingRow[]>({ method: "pricing.listModelPricing" });
+    },
+
+    async getModelPricingById(id: number): Promise<PricingRow | null> {
+      return rpc<PricingRow | null>({ method: "pricing.getModelPricingById", id });
+    },
+
+    async getModelPricingByModelSource(
+      model: string,
+      source: string | null,
+    ): Promise<PricingRow | null> {
+      return rpc<PricingRow | null>({
+        method: "pricing.getModelPricingByModelSource",
+        model,
+        source,
+      });
     },
   };
 

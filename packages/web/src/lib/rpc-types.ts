@@ -65,6 +65,18 @@ export interface OrgRow {
   updated_at: string;
 }
 
+/** Organization record with member count */
+export interface OrgWithCountRow {
+  id: string;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  member_count: number;
+}
+
 /** Organization member record */
 export interface OrgMemberRow {
   user_id: string;
@@ -115,4 +127,21 @@ export interface ShowcaseOwnerRow {
 export interface ShowcaseExistsResult {
   exists: boolean;
   id?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Pricing domain types
+// ---------------------------------------------------------------------------
+
+/** Model pricing record */
+export interface PricingRow {
+  id: number;
+  model: string;
+  input: number;
+  output: number;
+  cached: number | null;
+  source: string | null;
+  note: string | null;
+  updated_at: string;
+  created_at: string;
 }

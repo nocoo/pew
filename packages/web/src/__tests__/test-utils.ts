@@ -35,6 +35,7 @@ export function createMockDbRead() {
     searchUsers: vi.fn(),
     // Organizations RPC methods
     listOrganizations: vi.fn(),
+    listOrganizationsWithCount: vi.fn(),
     listUserOrganizations: vi.fn(),
     getOrganizationById: vi.fn(),
     getOrganizationBySlug: vi.fn(),
@@ -58,6 +59,7 @@ export function createMockDbRead() {
     getUserEmail: ReturnType<typeof vi.fn>;
     searchUsers: ReturnType<typeof vi.fn>;
     listOrganizations: ReturnType<typeof vi.fn>;
+    listOrganizationsWithCount: ReturnType<typeof vi.fn>;
     listUserOrganizations: ReturnType<typeof vi.fn>;
     getOrganizationById: ReturnType<typeof vi.fn>;
     getOrganizationBySlug: ReturnType<typeof vi.fn>;
