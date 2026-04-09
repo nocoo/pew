@@ -540,6 +540,7 @@ const notifyCommand = defineCommand({
       openCodeDbPath: paths.openCodeDbPath,
       openMessageDb: openMessageDb2,
       hermesDbPath: paths.hermesDbPath,
+      hermesProfileDbPaths: paths.hermesProfileDbPaths,
       openHermesDb: openHermesDb2,
       openSessionDb: openSessionDb2,
       openclawDir: paths.openclawDir,

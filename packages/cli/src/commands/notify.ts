@@ -45,6 +45,7 @@ export async function executeNotify(
           openCodeDbPath: opts.openCodeDbPath,
           openMessageDb: opts.openMessageDb,
           hermesDbPath: opts.hermesDbPath,
+          hermesProfileDbPaths: opts.hermesProfileDbPaths,
           openHermesDb: opts.openHermesDb,
           openclawDir: opts.openclawDir,
           piSessionsDir: opts.piSessionsDir,
