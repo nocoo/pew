@@ -63,11 +63,16 @@ export interface GetUserLiveStatsRequest {
   userId: string;
 }
 
+export interface PingRequest {
+  method: "live.ping";
+}
+
 export type LiveRpcRequest =
   | GetActiveSessionsRequest
   | GetRecentActivityRequest
   | GetLiveStatsRequest
-  | GetUserLiveStatsRequest;
+  | GetUserLiveStatsRequest
+  | PingRequest;
 
 // ---------------------------------------------------------------------------
 // Handlers
@@ -184,6 +189,11 @@ async function handleGetUserLiveStats(
   return Response.json({ result: result });
 }
 
+async function handlePing(db: D1Database): Promise<Response> {
+  await db.prepare("SELECT 1").first();
+  return Response.json({ result: { ok: true } });
+}
+
 // ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
@@ -201,6 +211,8 @@ export async function handleLiveRpc(
       return handleGetLiveStats(db);
     case "live.getUserStats":
       return handleGetUserLiveStats(request, db);
+    case "live.ping":
+      return handlePing(db);
     default:
       return Response.json(
         { error: `Unknown live method: ${(request as { method: string }).method}` },

@@ -415,6 +415,13 @@ export interface DbRead {
 
   /** Get all user settings */
   getAllUserSettings(userId: string): Promise<UserSettingRow[]>;
+
+  // ---------------------------------------------------------------------------
+  // Live domain RPC methods
+  // ---------------------------------------------------------------------------
+
+  /** Ping database (health check) */
+  ping(): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------

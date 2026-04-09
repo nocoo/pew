@@ -32,7 +32,7 @@ export async function GET() {
 
   try {
     const db = await getDbRead();
-    await db.query("SELECT 1");
+    await db.ping();
     dbStatus = {
       connected: true,
       latencyMs: Math.round(performance.now() - start),

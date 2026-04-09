@@ -110,6 +110,8 @@ export function createMockDbRead() {
     // Settings RPC methods
     getAllAppSettings: vi.fn(),
     getAllUserSettings: vi.fn(),
+    // Live RPC methods
+    ping: vi.fn(),
   } as unknown as DbRead & {
     query: ReturnType<typeof vi.fn>;
     firstOrNull: ReturnType<typeof vi.fn>;
@@ -191,6 +193,7 @@ export function createMockDbRead() {
     checkUserHasUnusedInvite: ReturnType<typeof vi.fn>;
     getAllAppSettings: ReturnType<typeof vi.fn>;
     getAllUserSettings: ReturnType<typeof vi.fn>;
+    ping: ReturnType<typeof vi.fn>;
   };
 }
 

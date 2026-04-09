@@ -754,6 +754,14 @@ export function createWorkerDbRead(): DbRead {
     async getAllUserSettings(userId: string): Promise<UserSettingRow[]> {
       return rpc<UserSettingRow[]>({ method: "settings.getAllUser", userId });
     },
+
+    // -------------------------------------------------------------------------
+    // Live domain RPC methods
+    // -------------------------------------------------------------------------
+
+    async ping(): Promise<void> {
+      await rpc<{ ok: boolean }>({ method: "live.ping" });
+    },
   };
 
   return reader;
