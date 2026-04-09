@@ -228,7 +228,7 @@ async function handleCheckUpvoteExists(
   const result = await db
     .prepare(
       `SELECT id FROM showcase_upvotes
-       WHERE showcase_id = ? AND visitor_id = ?`
+       WHERE showcase_id = ? AND user_id = ?`
     )
     .bind(req.showcaseId, req.visitorId)
     .first<{ id: number }>();
