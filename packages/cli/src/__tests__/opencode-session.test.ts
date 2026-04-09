@@ -233,6 +233,43 @@ describe("collectOpenCodeSessions", () => {
     expect(result[0].totalMessages).toBe(1);
   });
 
+  it("should fallback to msg.model when modelID is missing", async () => {
+    const dir = join(tmpDir, "ses_model_fallback");
+    await mkdir(dir);
+    await writeFile(
+      join(dir, "msg_001.json"),
+      JSON.stringify({
+        id: "msg_001",
+        sessionID: "ses_fb",
+        role: "assistant",
+        model: "gpt-4o",
+        time: { created: 1771120700.0, completed: 1771120800.0 },
+      }),
+    );
+
+    const result = await collectOpenCodeSessions(dir);
+    expect(result).toHaveLength(1);
+    expect(result[0].model).toBe("gpt-4o");
+  });
+
+  it("should handle unreadable message files gracefully", async () => {
+    const dir = join(tmpDir, "ses_unreadable");
+    await mkdir(dir);
+    // Create a directory with .json extension (will fail to read as file)
+    await mkdir(join(dir, "msg_bad.json"));
+    await writeFile(
+      join(dir, "msg_good.json"),
+      opencodeMsg({
+        id: "msg_good",
+        time: { created: 1771120700.0, completed: 1771120800.0 },
+      }),
+    );
+
+    const result = await collectOpenCodeSessions(dir);
+    expect(result).toHaveLength(1);
+    expect(result[0].totalMessages).toBe(1);
+  });
+
   it("should return empty when all messages lack timestamps", async () => {
     const dir = join(tmpDir, "ses_007");
     await mkdir(dir);
@@ -249,5 +286,60 @@ describe("collectOpenCodeSessions", () => {
 
     const result = await collectOpenCodeSessions(dir);
     expect(result).toEqual([]);
+  });
+
+  it("should handle message with only completed timestamp (no created)", async () => {
+    const dir = join(tmpDir, "ses_completed_only");
+    await mkdir(dir);
+    await writeFile(
+      join(dir, "msg_001.json"),
+      JSON.stringify({
+        id: "msg_001",
+        sessionID: "ses_co",
+        role: "assistant",
+        modelID: "claude-opus-4.6",
+        time: { completed: 1771120800000 },
+      }),
+    );
+
+    const result = await collectOpenCodeSessions(dir);
+    expect(result).toHaveLength(1);
+    // Should use completed as both start and end
+    expect(result[0].durationSeconds).toBe(0);
+  });
+
+  it("should skip messages without sessionID and use dir name as key", async () => {
+    const dir = join(tmpDir, "ses_no_sid");
+    await mkdir(dir);
+    await writeFile(
+      join(dir, "msg_001.json"),
+      JSON.stringify({
+        id: "msg_001",
+        role: "assistant",
+        modelID: "claude-opus-4.6",
+        time: { created: 1771120700000, completed: 1771120800000 },
+      }),
+    );
+
+    const result = await collectOpenCodeSessions(dir);
+    expect(result).toHaveLength(1);
+    expect(result[0].sessionKey).toBe("opencode:ses_no_sid");
+  });
+
+  it("should handle invalid JSON gracefully", async () => {
+    const dir = join(tmpDir, "ses_bad_json");
+    await mkdir(dir);
+    await writeFile(join(dir, "msg_bad.json"), "not valid json {{{");
+    await writeFile(
+      join(dir, "msg_good.json"),
+      opencodeMsg({
+        id: "msg_good",
+        time: { created: 1771120700000, completed: 1771120800000 },
+      }),
+    );
+
+    const result = await collectOpenCodeSessions(dir);
+    expect(result).toHaveLength(1);
+    expect(result[0].totalMessages).toBe(1);
   });
 });

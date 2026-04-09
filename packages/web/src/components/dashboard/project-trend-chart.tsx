@@ -12,6 +12,11 @@ import {
 import { cn } from "@/lib/utils";
 import { chartAxis, CHART_COLORS } from "@/lib/palette";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
+import {
+  ChartTooltip,
+  ChartTooltipRow,
+  ChartTooltipSummary,
+} from "./chart-tooltip";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -63,29 +68,19 @@ function ProjectTrendTooltip({
   const total = visible.reduce((sum, e) => sum + e.value, 0);
 
   return (
-    <div className="rounded-[var(--radius-widget)] bg-secondary p-2.5">
-      <p className="mb-1.5 text-xs font-medium text-foreground">
-        {label ? fmtDate(label) : ""}
-      </p>
+    <ChartTooltip title={label ? fmtDate(label) : undefined}>
       {visible.map((entry) => (
-        <div key={entry.dataKey} className="flex items-center gap-2 text-xs">
-          <div
-            className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: entry.color }}
-          />
-          <span className="text-muted-foreground">{entry.dataKey}</span>
-          <span className="ml-auto font-medium text-foreground">
-            {entry.value}
-          </span>
-        </div>
+        <ChartTooltipRow
+          key={entry.dataKey}
+          color={entry.color}
+          label={entry.dataKey}
+          value={String(entry.value)}
+        />
       ))}
       {visible.length > 1 && (
-        <div className="mt-1.5 border-t border-border pt-1.5 flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">Total</span>
-          <span className="font-medium text-foreground">{total}</span>
-        </div>
+        <ChartTooltipSummary label="Total" value={String(total)} />
       )}
-    </div>
+    </ChartTooltip>
   );
 }
 

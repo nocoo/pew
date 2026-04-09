@@ -16,6 +16,7 @@ import { shortModel } from "@/lib/model-helpers";
 import { sourceLabel } from "@/hooks/use-usage-data";
 import type { ModelCostEfficiency } from "@/lib/cost-helpers";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
+import { ChartTooltip, ChartTooltipSubtitle } from "./chart-tooltip";
 
 // Color scale: green (cheap) → amber (mid) → red (expensive)
 const colorCheap = chartPositive;
@@ -74,30 +75,29 @@ function CostPerTokenTooltip({
   if (!d) return null;
 
   return (
-    <div className="rounded-[var(--radius-widget)] bg-secondary p-2.5">
-      <p className="mb-0.5 text-xs font-medium text-foreground">{d.model}</p>
-      <p className="mb-1.5 text-xs text-muted-foreground">{d.sourceLabel}</p>
+    <ChartTooltip title={d.model}>
+      <ChartTooltipSubtitle>{d.sourceLabel}</ChartTooltipSubtitle>
       <div className="space-y-0.5 text-xs">
         <div className="flex items-center justify-between gap-4">
           <span className="text-muted-foreground">Cost/1K tokens</span>
-          <span className="font-medium text-foreground">
+          <span className="font-medium text-popover-foreground">
             {formatCost(d.costPer1K)}
           </span>
         </div>
         <div className="flex items-center justify-between gap-4">
           <span className="text-muted-foreground">Total cost</span>
-          <span className="font-medium text-foreground">
+          <span className="font-medium text-popover-foreground">
             {formatCost(d.totalCost)}
           </span>
         </div>
         <div className="flex items-center justify-between gap-4">
           <span className="text-muted-foreground">Total tokens</span>
-          <span className="font-medium text-foreground">
+          <span className="font-medium text-popover-foreground">
             {d.totalTokens.toLocaleString()}
           </span>
         </div>
       </div>
-    </div>
+    </ChartTooltip>
   );
 }
 

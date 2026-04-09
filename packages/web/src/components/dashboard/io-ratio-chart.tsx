@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { formatTokens } from "@/lib/utils";
 import { chart } from "@/lib/palette";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
+import { ChartTooltip, ChartTooltipRow } from "./chart-tooltip";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -28,7 +29,7 @@ const SLICE_COLORS = [chart.violet, chart.magenta] as const;
 // Custom tooltip
 // ---------------------------------------------------------------------------
 
-function IoTooltip({
+function IoRatioTooltip({
   active,
   payload,
 }: {
@@ -43,18 +44,13 @@ function IoTooltip({
   const item = payload[0] as (typeof payload)[number];
 
   return (
-    <div className="rounded-[var(--radius-widget)] bg-secondary p-2.5">
-      <div className="flex items-center gap-2">
-        <div
-          className="h-3 w-3 rounded-full"
-          style={{ backgroundColor: item.payload.fill }}
-        />
-        <span className="text-sm font-medium text-foreground">{item.name}</span>
-      </div>
-      <div className="text-sm text-muted-foreground">
-        {formatTokens(item.value)} ({(item.payload.percent * 100).toFixed(1)}%)
-      </div>
-    </div>
+    <ChartTooltip>
+      <ChartTooltipRow
+        color={item.payload.fill}
+        label={item.name}
+        value={`${formatTokens(item.value)} (${(item.payload.percent * 100).toFixed(1)}%)`}
+      />
+    </ChartTooltip>
   );
 }
 
@@ -133,7 +129,7 @@ export function IoRatioChart({
                   <Cell key={entry.name} fill={SLICE_COLORS[i] as string} />
                 ))}
               </Pie>
-              <Tooltip content={<IoTooltip />} isAnimationActive={false} />
+              <Tooltip content={<IoRatioTooltip />} isAnimationActive={false} />
             </PieChart>
           </DashboardResponsiveContainer>
           {/* Center label showing I/O ratio */}

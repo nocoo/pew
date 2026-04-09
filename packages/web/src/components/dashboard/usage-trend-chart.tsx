@@ -13,6 +13,11 @@ import { formatTokens } from "@/lib/utils";
 import { chart, chartAxis, CHART_COLORS, chartMuted } from "@/lib/palette";
 import type { DailyPoint } from "@/hooks/use-usage-data";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
+import {
+  ChartTooltip,
+  ChartTooltipRow,
+  ChartTooltipSummary,
+} from "./chart-tooltip";
 
 // Safe color references (CHART_COLORS is guaranteed 8 elements)
 const colorOutput = CHART_COLORS[1] as string;
@@ -44,7 +49,7 @@ function fmtDate(dateStr: string): string {
 // Custom tooltip
 // ---------------------------------------------------------------------------
 
-function ChartTooltip({
+function UsageTrendTooltip({
   active,
   payload,
   label,
@@ -65,35 +70,21 @@ function ChartTooltip({
   const orderedKeys = ["input", "output", "cached"] as const;
 
   return (
-    <div className="rounded-[var(--radius-widget)] bg-secondary p-2.5">
-      <p className="mb-1 text-xs font-medium text-foreground">
-        {label ? fmtDate(label) : ""}
-      </p>
-      <div className="mb-1 border-b border-border/50 pb-1 flex items-center gap-2 text-xs">
-        <span className="text-muted-foreground">Total</span>
-        <span className="ml-auto font-medium text-foreground">
-          {formatTokens(total)}
-        </span>
-      </div>
+    <ChartTooltip title={label ? fmtDate(label) : undefined}>
       {orderedKeys.map((key) => {
         const entry = payload.find((e) => e.dataKey === key);
         if (!entry) return null;
         return (
-          <div key={entry.dataKey} className="flex items-center gap-2 text-xs">
-            <div
-              className="h-2 w-2 rounded-full"
-              style={{ backgroundColor: entry.color }}
-            />
-            <span className="text-muted-foreground">
-              {labels[entry.dataKey] ?? entry.dataKey}
-            </span>
-            <span className="ml-auto font-medium text-foreground">
-              {formatTokens(entry.value)}
-            </span>
-          </div>
+          <ChartTooltipRow
+            key={entry.dataKey}
+            color={entry.color}
+            label={labels[entry.dataKey] ?? entry.dataKey}
+            value={formatTokens(entry.value)}
+          />
         );
       })}
-    </div>
+      <ChartTooltipSummary label="Total" value={formatTokens(total)} />
+    </ChartTooltip>
   );
 }
 
@@ -205,7 +196,7 @@ export function UsageTrendChart({ data, className }: UsageTrendChartProps) {
               tickLine={false}
               width={48}
             />
-            <Tooltip content={<ChartTooltip />} isAnimationActive={false} />
+            <Tooltip content={<UsageTrendTooltip />} isAnimationActive={false} />
             <Area
               type="monotone"
               dataKey="input"

@@ -13,6 +13,7 @@ import { Banknote, ExternalLink, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { chart, chartAxis, chartMuted } from "@/lib/palette";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
+import { ChartTooltip, ChartTooltipRow } from "./chart-tooltip";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -396,30 +397,21 @@ function SalaryTooltip({
   };
 
   return (
-    <div className="rounded-[var(--radius-widget)] bg-secondary p-2.5">
-      <p className="mb-1.5 text-xs font-medium text-foreground">
-        {label ? fmtDate(label) : ""}
-      </p>
+    <ChartTooltip title={label ? fmtDate(label) : undefined}>
       {["actual", "upper", "lower"].map((key) => {
         const entry = payload.find((e) => e.dataKey === key);
         if (!entry) return null;
         return (
-          <div key={key} className="flex items-center gap-2 text-xs">
-            <div
-              className="h-2 w-2 rounded-full"
-              style={{
-                backgroundColor: key === "actual" ? chart.violet : chartMuted,
-                opacity: key === "actual" ? 1 : 0.6,
-              }}
-            />
-            <span className="text-muted-foreground">{labels[key]}</span>
-            <span className="ml-auto font-medium text-foreground tabular-nums">
-              {formatSalary(entry.value)}/yr
-            </span>
-          </div>
+          <ChartTooltipRow
+            key={key}
+            color={key === "actual" ? chart.violet : chartMuted}
+            label={labels[key] ?? key}
+            value={`${formatSalary(entry.value)}/yr`}
+            tabularNums
+          />
         );
       })}
-    </div>
+    </ChartTooltip>
   );
 }
 

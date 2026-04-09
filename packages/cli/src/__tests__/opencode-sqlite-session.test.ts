@@ -207,6 +207,27 @@ describe("collectOpenCodeSqliteSessions", () => {
     expect(result[0].totalMessages).toBe(2);
   });
 
+  it("should fallback to data.model when data.modelID is missing", () => {
+    const sessions = [sessionRow("ses_fallback")];
+    const messages: SessionMessageRow[] = [
+      {
+        session_id: "ses_fallback",
+        role: "assistant",
+        time_created: 1771120749000,
+        data: JSON.stringify({
+          role: "assistant",
+          model: "gpt-4o",
+          time: { created: 1771120749000, completed: 1771120822000 },
+        }),
+      },
+    ];
+
+    const result = collectOpenCodeSqliteSessions(sessions, messages);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].model).toBe("gpt-4o");
+  });
+
   it("should fallback to session table timestamps when messages lack time", () => {
     const sessions = [sessionRow("ses_001", {
       time_created: 1771120700000,

@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { chartAxis, CHART_COLORS } from "@/lib/palette";
 import type { MessageDailyStat } from "@/lib/session-helpers";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
+import { ChartTooltip, ChartTooltipRow } from "./chart-tooltip";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -43,7 +44,7 @@ function fmtDate(dateStr: string): string {
 // Custom tooltip
 // ---------------------------------------------------------------------------
 
-function ChartTooltip({
+function MessageStatsTooltip({
   active,
   payload,
   label,
@@ -60,25 +61,16 @@ function ChartTooltip({
   };
 
   return (
-    <div className="rounded-[var(--radius-widget)] bg-secondary p-2.5">
-      <p className="mb-1.5 text-xs font-medium text-foreground">
-        {label ? fmtDate(label) : ""}
-      </p>
+    <ChartTooltip title={label ? fmtDate(label) : undefined}>
       {payload.map((entry) => (
-        <div key={entry.dataKey} className="flex items-center gap-2 text-xs">
-          <div
-            className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: entry.color }}
-          />
-          <span className="text-muted-foreground">
-            {labels[entry.dataKey] ?? entry.dataKey}
-          </span>
-          <span className="ml-auto font-medium text-foreground">
-            {entry.value.toLocaleString()}
-          </span>
-        </div>
+        <ChartTooltipRow
+          key={entry.dataKey}
+          color={entry.color}
+          label={labels[entry.dataKey] ?? entry.dataKey}
+          value={entry.value.toLocaleString()}
+        />
       ))}
-    </div>
+    </ChartTooltip>
   );
 }
 
@@ -155,7 +147,7 @@ export function MessageStatsChart({ data, className }: MessageStatsChartProps) {
               tickLine={false}
               width={36}
             />
-            <Tooltip content={<ChartTooltip />} isAnimationActive={false} />
+            <Tooltip content={<MessageStatsTooltip />} isAnimationActive={false} />
             <Bar
               dataKey="user"
               stackId="1"

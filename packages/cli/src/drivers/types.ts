@@ -66,6 +66,7 @@ export interface DiscoverOpts {
   claudeDir?: string;
   codexSessionsDir?: string;
   geminiDir?: string;
+  kosmosDataDirs?: string[];
   openCodeMessageDir?: string;
   openCodeDbPath?: string;
   openclawDir?: string;
@@ -142,6 +143,14 @@ export interface VscodeCopilotResumeState {
 }
 
 /**
+ * Resume state for Kosmos (message-ID-based dedup).
+ */
+export interface KosmosResumeState {
+  readonly kind: "kosmos";
+  knownMessageIds: Set<string> | null;
+}
+
+/**
  * Union of all resume state variants.
  * Discriminated by `kind` so drivers can narrow safely.
  */
@@ -150,7 +159,8 @@ export type ResumeState =
   | ArrayIndexResumeState
   | OpenCodeJsonResumeState
   | CodexResumeState
-  | VscodeCopilotResumeState;
+  | VscodeCopilotResumeState
+  | KosmosResumeState;
 
 // ---------------------------------------------------------------------------
 // Progress callback (passed through from orchestrator)

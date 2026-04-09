@@ -339,6 +339,71 @@ describe("collectCodexSessions", () => {
     expect(result[0].durationSeconds).toBe(3600); // 1 hour
   });
 
+  it("should handle empty lines in the file", async () => {
+    const f = join(tmpDir, "empty-lines.jsonl");
+    const lines = [
+      sessionMetaLine(),
+      "", // empty line triggers `if (!line) continue`
+      responseItemLine("user", "2026-03-07T10:01:00.000Z"),
+    ];
+    await writeFile(f, lines.join("\n") + "\n");
+
+    const result = await collectCodexSessions(f);
+    expect(result).toHaveLength(1);
+    expect(result[0].totalMessages).toBe(2);
+  });
+
+  it("should handle non-string type field", async () => {
+    const f = join(tmpDir, "non-string-type.jsonl");
+    const lines = [
+      // type is a number, not string → type becomes null
+      JSON.stringify({ type: 123, timestamp: "2026-03-07T10:00:00.000Z", payload: {} }),
+      responseItemLine("user", "2026-03-07T10:01:00.000Z"),
+    ];
+    await writeFile(f, lines.join("\n") + "\n");
+
+    const result = await collectCodexSessions(f);
+    expect(result).toHaveLength(1);
+    expect(result[0].totalMessages).toBe(2);
+  });
+
+  it("should handle response_item with non-string role", async () => {
+    const f = join(tmpDir, "non-string-role.jsonl");
+    const lines = [
+      sessionMetaLine(),
+      // response_item with role as number → role null, not counted
+      JSON.stringify({
+        type: "response_item",
+        timestamp: "2026-03-07T10:01:00.000Z",
+        payload: { role: 42 },
+      }),
+    ];
+    await writeFile(f, lines.join("\n") + "\n");
+
+    const result = await collectCodexSessions(f);
+    expect(result).toHaveLength(1);
+    expect(result[0].userMessages).toBe(0);
+    expect(result[0].assistantMessages).toBe(0);
+  });
+
+  it("should fallback to sha256 path when maxTimestamp equals minTimestamp", async () => {
+    const f = join(tmpDir, "single-ts.jsonl");
+    // Only one timestamp → maxTimestamp ?? minTimestamp is effectively minTimestamp
+    const lines = [
+      JSON.stringify({
+        type: "response_item",
+        timestamp: "2026-03-07T10:00:00.000Z",
+        payload: { role: "user" },
+      }),
+    ];
+    await writeFile(f, lines.join("\n") + "\n");
+
+    const result = await collectCodexSessions(f);
+    expect(result).toHaveLength(1);
+    expect(result[0].durationSeconds).toBe(0);
+    expect(result[0].sessionKey).toMatch(/^codex:[a-f0-9]{16}$/);
+  });
+
   it("should set model to null when no model info present", async () => {
     const f = join(tmpDir, "rollout-no-model.jsonl");
     // Event with timestamp but no model info

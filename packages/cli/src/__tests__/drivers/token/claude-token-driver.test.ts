@@ -132,6 +132,18 @@ describe("claudeTokenDriver", () => {
       const state = claudeTokenDriver.resumeState(cursor, fingerprint);
       expect(state).toEqual({ kind: "byte-offset", startOffset: 0 });
     });
+
+    it("defaults offset to 0 when cursor.offset is undefined (old cursor format)", () => {
+      const cursor: ByteOffsetCursor = {
+        inode: 100,
+        mtimeMs: 1709827200000,
+        size: 4096,
+        offset: undefined as unknown as number,
+        updatedAt: "2026-01-01T00:00:00Z",
+      };
+      const state = claudeTokenDriver.resumeState(cursor, fingerprint);
+      expect(state).toEqual({ kind: "byte-offset", startOffset: 0 });
+    });
   });
 
   describe("parse + buildCursor", () => {

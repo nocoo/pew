@@ -177,6 +177,21 @@ describe("collectGeminiSessions", () => {
     expect(result[0].model).toBe("gemini-2.5-pro");
   });
 
+  it("should return empty when messages is not an array", async () => {
+    const f = join(tmpDir, "session.json");
+    await writeFile(
+      f,
+      JSON.stringify({
+        sessionId: "ses-no-arr",
+        projectHash: "hash",
+        messages: "not-an-array",
+      }),
+    );
+
+    const result = await collectGeminiSessions(f);
+    expect(result).toEqual([]);
+  });
+
   it("should count gemini type as assistant messages", async () => {
     const f = join(tmpDir, "session.json");
     await writeFile(
@@ -197,5 +212,82 @@ describe("collectGeminiSessions", () => {
     expect(result[0].userMessages).toBe(1);
     expect(result[0].assistantMessages).toBe(2);
     expect(result[0].totalMessages).toBe(4);
+  });
+
+  it("should skip null/non-object messages in the array", async () => {
+    const f = join(tmpDir, "session.json");
+    await writeFile(
+      f,
+      JSON.stringify({
+        sessionId: "ses-null-msg",
+        messages: [
+          null,
+          "not-an-object",
+          42,
+          { type: "user", timestamp: "2026-03-07T10:00:00.000Z" },
+          { type: "gemini", timestamp: "2026-03-07T10:05:00.000Z", model: "gemini-2.5-pro" },
+        ],
+      }),
+    );
+
+    const result = await collectGeminiSessions(f);
+    expect(result).toHaveLength(1);
+    // Only the 2 valid messages should be counted
+    expect(result[0].totalMessages).toBe(2);
+    expect(result[0].userMessages).toBe(1);
+    expect(result[0].assistantMessages).toBe(1);
+  });
+
+  it("should return empty when all messages lack timestamps", async () => {
+    const f = join(tmpDir, "session.json");
+    await writeFile(
+      f,
+      JSON.stringify({
+        sessionId: "ses-no-ts",
+        messages: [
+          { type: "user" },
+          { type: "gemini", timestamp: 12345 }, // non-string timestamp
+        ],
+      }),
+    );
+
+    const result = await collectGeminiSessions(f);
+    expect(result).toEqual([]);
+  });
+
+  it("should handle messages without model field", async () => {
+    const f = join(tmpDir, "session.json");
+    await writeFile(
+      f,
+      JSON.stringify({
+        sessionId: "ses-no-model",
+        messages: [
+          { type: "user", timestamp: "2026-03-07T10:00:00.000Z" },
+          { type: "gemini", timestamp: "2026-03-07T10:05:00.000Z" },
+        ],
+      }),
+    );
+
+    const result = await collectGeminiSessions(f);
+    expect(result).toHaveLength(1);
+    expect(result[0].model).toBeNull();
+  });
+
+  it("should fall back to file-based sessionKey when sessionId is missing", async () => {
+    const f = join(tmpDir, "session.json");
+    await writeFile(
+      f,
+      JSON.stringify({
+        messages: [
+          { type: "user", timestamp: "2026-03-07T10:00:00.000Z" },
+          { type: "gemini", timestamp: "2026-03-07T10:05:00.000Z" },
+        ],
+      }),
+    );
+
+    const result = await collectGeminiSessions(f);
+    expect(result).toHaveLength(1);
+    // Should use hash-based key when sessionId is absent
+    expect(result[0].sessionKey).toMatch(/^gemini:[a-f0-9]{16}$/);
   });
 });

@@ -177,6 +177,83 @@ describe("collectOpenClawSessions", () => {
     expect(result[0].model).toBe("claude-opus-4");
   });
 
+  it("should handle empty lines in the middle of the file", async () => {
+    const f = join(tmpDir, "empty-lines.jsonl");
+    const lines = [
+      systemLine("2026-03-07T10:00:00.000Z"),
+      "", // empty line triggers `if (!line) continue`
+      messageLine({ timestamp: "2026-03-07T10:05:00.000Z" }),
+    ];
+    await writeFile(f, lines.join("\n") + "\n");
+
+    const result = await collectOpenClawSessions(f);
+    expect(result).toHaveLength(1);
+    expect(result[0].totalMessages).toBe(2);
+  });
+
+  it("should handle non-string type field", async () => {
+    const f = join(tmpDir, "non-string-type.jsonl");
+    const lines = [
+      JSON.stringify({ type: 123, timestamp: "2026-03-07T10:00:00.000Z" }),
+      messageLine({ timestamp: "2026-03-07T10:05:00.000Z" }),
+    ];
+    await writeFile(f, lines.join("\n") + "\n");
+
+    const result = await collectOpenClawSessions(f);
+    expect(result).toHaveLength(1);
+    // Both lines are valid JSON with timestamps, both counted in totalMessages
+    expect(result[0].totalMessages).toBe(2);
+    // Only the actual message type line counts as assistant
+    expect(result[0].assistantMessages).toBe(1);
+  });
+
+  it("should handle non-string model in message", async () => {
+    const f = join(tmpDir, "non-string-model.jsonl");
+    const lines = [
+      JSON.stringify({
+        type: "message",
+        timestamp: "2026-03-07T10:00:00.000Z",
+        message: { model: 42 },
+      }),
+    ];
+    await writeFile(f, lines.join("\n") + "\n");
+
+    const result = await collectOpenClawSessions(f);
+    expect(result).toHaveLength(1);
+    expect(result[0].model).toBeNull();
+  });
+
+  it("should handle whitespace-only model in message", async () => {
+    const f = join(tmpDir, "whitespace-model.jsonl");
+    const lines = [
+      JSON.stringify({
+        type: "message",
+        timestamp: "2026-03-07T10:00:00.000Z",
+        message: { model: "   " },
+      }),
+    ];
+    await writeFile(f, lines.join("\n") + "\n");
+
+    const result = await collectOpenClawSessions(f);
+    expect(result).toHaveLength(1);
+    // model.trim() === "" → falsy, so lastModel remains null
+    expect(result[0].model).toBeNull();
+  });
+
+  it("should handle agents dir with empty agent name", async () => {
+    const { mkdir } = await import("node:fs/promises");
+    // Path: agents//sessions/session.jsonl (empty agent name)
+    const dir = join(tmpDir, "agents", "", "sessions");
+    await mkdir(dir, { recursive: true });
+    const f = join(dir, "session.jsonl");
+    await writeFile(f, messageLine() + "\n");
+
+    const result = await collectOpenClawSessions(f);
+    expect(result).toHaveLength(1);
+    // Empty agent name → parts[agentsIdx + 1] is "" → || null → projectRef is null
+    expect(result[0].projectRef).toBeNull();
+  });
+
   it("should handle mixed valid and invalid lines", async () => {
     const f = join(tmpDir, "mixed.jsonl");
     const lines = [

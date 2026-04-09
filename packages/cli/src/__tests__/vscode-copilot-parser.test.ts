@@ -903,5 +903,110 @@ describe("parseVscodeCopilotFile", () => {
     expect(skips[0].reason).toContain("zero tokens");
     expect(skips[0].reason).toContain("deferred");
   });
+
+  it("should skip kind=1 result line when v is null", async () => {
+    const filePath = join(tempDir, "session.jsonl");
+    const lines = [
+      snapshotLine([
+        makeRequest("copilot/claude-sonnet-4.6", 1772780000000),
+      ]),
+      // kind=1 result with v: null
+      JSON.stringify({ kind: 1, k: ["requests", 0, "result"], v: null }),
+    ];
+    await writeFile(filePath, lines.join("\n") + "\n");
+
+    const result = await parseVscodeCopilotFile({
+      filePath,
+      startOffset: 0,
+      requestMeta: {},
+      processedRequestIndices: [],
+    });
+
+    expect(result.deltas).toHaveLength(0);
+  });
+
+  it("should skip deferred result already processed in-stream", async () => {
+    const filePath = join(tempDir, "session.jsonl");
+    // Result appears before metadata, but same index result also appears after metadata
+    const lines = [
+      snapshotLine(),
+      // First result at index 0 (no metadata yet → deferred)
+      setResultLine(0, resultWithTokens(500, 100)),
+      // Metadata appears
+      appendRequestLine(makeRequest("copilot/claude-sonnet-4.6", 1772780000000)),
+      // Second result at index 0 (metadata exists → processed immediately)
+      setResultLine(0, resultWithTokens(600, 200)),
+    ];
+    await writeFile(filePath, lines.join("\n") + "\n");
+
+    const result = await parseVscodeCopilotFile({
+      filePath,
+      startOffset: 0,
+      requestMeta: {},
+      processedRequestIndices: [],
+    });
+
+    // Only one delta should be emitted (the second one, processed inline)
+    // The deferred one should be skipped because index 0 is already processed
+    expect(result.deltas).toHaveLength(1);
+    expect(result.deltas[0].tokens.inputTokens).toBe(600);
+  });
+
+  it("should handle deferred result with non-array toolCallRounds", async () => {
+    const filePath = join(tempDir, "session.jsonl");
+    const lines = [
+      snapshotLine(),
+      // Result with toolCallRounds as string (non-array)
+      setResultLine(0, {
+        metadata: {
+          promptTokens: 500,
+          outputTokens: 100,
+          toolCallRounds: "not-an-array",
+        },
+      }),
+      appendRequestLine(makeRequest("copilot/claude-sonnet-4.6", 1772780000000)),
+    ];
+    await writeFile(filePath, lines.join("\n") + "\n");
+
+    const result = await parseVscodeCopilotFile({
+      filePath,
+      startOffset: 0,
+      requestMeta: {},
+      processedRequestIndices: [],
+    });
+
+    expect(result.deltas).toHaveLength(1);
+    expect(result.deltas[0].tokens.inputTokens).toBe(500);
+    expect(result.deltas[0].tokens.outputTokens).toBe(100);
+  });
+
+  it("should include modelState in deferred zero-token skip callback", async () => {
+    const filePath = join(tempDir, "session.jsonl");
+    const lines = [
+      snapshotLine(),
+      setResultLine(0, {
+        metadata: {
+          promptTokens: 0,
+          outputTokens: 0,
+          modelState: 3,
+        },
+      }),
+      appendRequestLine(makeRequest("copilot/claude-sonnet-4.6", 1772780000000)),
+    ];
+    await writeFile(filePath, lines.join("\n") + "\n");
+
+    const skips: SkipInfo[] = [];
+    const result = await parseVscodeCopilotFile({
+      filePath,
+      startOffset: 0,
+      requestMeta: {},
+      processedRequestIndices: [],
+      onSkip: (info) => skips.push(info),
+    });
+
+    expect(result.deltas).toHaveLength(0);
+    expect(skips).toHaveLength(1);
+    expect(skips[0].modelState).toBe(3);
+  });
 });
 

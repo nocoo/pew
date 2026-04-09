@@ -62,6 +62,19 @@ describe("parseOpenClawFile", () => {
     expect(result.deltas).toHaveLength(1);
   });
 
+  it("should skip empty lines and malformed JSON", async () => {
+    const filePath = join(tempDir, "session.jsonl");
+    const lines = [
+      "",
+      "not valid json but has \"usage\" and totalTokens",
+      openclawLine(),
+    ];
+    await writeFile(filePath, lines.join("\n") + "\n");
+
+    const result = await parseOpenClawFile({ filePath, startOffset: 0 });
+    expect(result.deltas).toHaveLength(1);
+  });
+
   it("should resume from byte offset", async () => {
     const filePath = join(tempDir, "session.jsonl");
     const line1 = openclawLine({ timestamp: "2026-03-07T10:00:00.000Z" });

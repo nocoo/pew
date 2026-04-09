@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { chartAxis, CHART_COLORS } from "@/lib/palette";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 import type { ProjectTimelinePoint } from "./project-trend-chart";
+import { ChartTooltip, ChartTooltipRow } from "./chart-tooltip";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -58,7 +59,7 @@ function toSharePoints(
 // Custom tooltip
 // ---------------------------------------------------------------------------
 
-function ShareTooltip({
+function ProjectShareTooltip({
   active,
   payload,
   label,
@@ -72,23 +73,16 @@ function ShareTooltip({
   const items = [...payload].reverse();
 
   return (
-    <div className="rounded-[var(--radius-widget)] bg-secondary p-2.5">
-      <p className="mb-1.5 text-xs font-medium text-foreground">
-        {label ? fmtDate(label) : ""}
-      </p>
+    <ChartTooltip title={label ? fmtDate(label) : undefined}>
       {items.map((entry) => (
-        <div key={entry.dataKey} className="flex items-center gap-2 text-xs">
-          <div
-            className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: entry.color }}
-          />
-          <span className="text-muted-foreground">{entry.dataKey}</span>
-          <span className="ml-auto font-medium text-foreground">
-            {entry.value.toFixed(1)}%
-          </span>
-        </div>
+        <ChartTooltipRow
+          key={entry.dataKey}
+          color={entry.color}
+          label={entry.dataKey}
+          value={`${entry.value.toFixed(1)}%`}
+        />
       ))}
-    </div>
+    </ChartTooltip>
   );
 }
 
@@ -206,7 +200,7 @@ export function ProjectShareChart({
               width={44}
               domain={[0, 100]}
             />
-            <Tooltip content={<ShareTooltip />} isAnimationActive={false} />
+            <Tooltip content={<ProjectShareTooltip />} isAnimationActive={false} />
             {projectKeys.map((name, i) => (
               <Area
                 key={name}

@@ -168,6 +168,25 @@ describe("vscodeCopilotTokenDriver", () => {
         processedRequestIndices: [],
       });
     });
+
+    it("defaults undefined fields when inode matches (old cursor format)", () => {
+      const cursor: VscodeCopilotCursor = {
+        inode: 100,
+        mtimeMs: 1709827200000,
+        size: 4096,
+        offset: undefined as unknown as number,
+        processedRequestIndices: undefined as unknown as number[],
+        requestMeta: undefined as unknown as Record<number, { modelId: string; timestamp: number }>,
+        updatedAt: "2026-01-01T00:00:00Z",
+      };
+      const state = vscodeCopilotTokenDriver.resumeState(cursor, fingerprint);
+      expect(state).toEqual({
+        kind: "vscode-copilot",
+        startOffset: 0,
+        requestMeta: {},
+        processedRequestIndices: [],
+      });
+    });
   });
 
   describe("parse + buildCursor", () => {

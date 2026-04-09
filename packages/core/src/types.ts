@@ -10,13 +10,14 @@
 // Source: Supported AI coding tools
 // ---------------------------------------------------------------------------
 
-/** The 9 supported AI coding tools */
+/** The 10 supported AI coding tools */
 export type Source =
   | "claude-code"
   | "codex"
   | "copilot-cli"
   | "gemini-cli"
   | "hermes"
+  | "kosmos"
   | "opencode"
   | "openclaw"
   | "pi"
@@ -113,6 +114,12 @@ export interface GeminiCursor extends FileCursorBase {
   lastModel: string | null;
 }
 
+/** Cursor for Kosmos (message-ID-based dedup for JSON session files) */
+export interface KosmosCursor extends FileCursorBase {
+  /** IDs of assistant messages already processed (JSON-serializable, not Set) */
+  processedMessageIds: string[];
+}
+
 /** Cursor for OpenCode (individual message files with change detection) */
 export interface OpenCodeCursor extends FileCursorBase {
   /** Last seen cumulative token totals (for diff computation) */
@@ -166,6 +173,7 @@ export type FileCursor =
   | ByteOffsetCursor
   | CodexCursor
   | GeminiCursor
+  | KosmosCursor
   | OpenCodeCursor
   | VscodeCopilotCursor;
 

@@ -16,8 +16,10 @@ const defaultDirs: SourceDirs = {
   claudeDir: "/home/.claude",
   codexSessionsDir: "/home/.codex/sessions",
   geminiDir: "/home/.gemini",
+  kosmosDataDirs: [],
   openCodeMessageDir: "/home/.local/share/opencode/storage/message",
   openclawDir: "/home/.openclaw",
+  piSessionsDir: "/home/.pi/agent/sessions",
   vscodeCopilotDirs: ["/home/.config/Code/User"],
   copilotCliLogsDir: "/home/.copilot/logs",
 };

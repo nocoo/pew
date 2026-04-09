@@ -399,4 +399,37 @@ describe("Codex notifier installer", () => {
     expect(result.changed).toBe(true);
     expect(backup.notify).toEqual(["bash", "-lc", 'echo "done"']);
   });
+
+  it("skips uninstall when config.toml is missing", async () => {
+    // configPath does not exist — uninstall should skip
+    const result = await uninstallCodexNotifier({
+      configPath,
+      notifyPath,
+      originalBackupPath,
+    });
+
+    expect(result.action).toBe("skip");
+    expect(result.detail).toContain("not found");
+  });
+
+  it("re-throws non-ENOENT errors from readOptional", async () => {
+    const fsMock = {
+      readFile: async () => {
+        const err = new Error("EACCES") as NodeJS.ErrnoException;
+        err.code = "EACCES";
+        throw err;
+      },
+      writeFile: async () => {},
+      mkdir: async () => {},
+    };
+
+    await expect(
+      installCodexNotifier({
+        configPath,
+        notifyPath,
+        originalBackupPath,
+        fs: fsMock,
+      }),
+    ).rejects.toThrow("EACCES");
+  });
 });

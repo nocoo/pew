@@ -13,6 +13,11 @@ import { chart, chartAxis, CHART_COLORS } from "@/lib/palette";
 import { deviceLabel } from "@/lib/device-helpers";
 import type { DeviceAggregate } from "@pew/core";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
+import {
+  ChartTooltip,
+  ChartTooltipRow,
+  ChartTooltipSummary,
+} from "./chart-tooltip";
 
 // Safe color references
 const colorOutput = CHART_COLORS[1] as string;
@@ -55,37 +60,24 @@ function DeviceBreakdownTooltip({
 
   const deviceData = payload[0]?.payload;
   const total = deviceData?.total_tokens ?? 0;
-
   const orderedKeys = ["input_tokens", "output_tokens", "cached_input_tokens"] as const;
 
   return (
-    <div className="rounded-[var(--radius-widget)] bg-secondary p-2.5">
-      <p className="mb-0.5 text-xs font-medium text-foreground">{label}</p>
-      <div className="mb-1 border-b border-border/50 pb-1 flex items-center gap-2 text-xs">
-        <span className="text-muted-foreground">Total</span>
-        <span className="ml-auto font-medium text-foreground">
-          {formatTokens(total)}
-        </span>
-      </div>
+    <ChartTooltip title={label}>
       {orderedKeys.map((key) => {
         const entry = payload.find((e) => e.dataKey === key);
         if (!entry) return null;
         return (
-          <div key={entry.dataKey} className="flex items-center gap-2 text-xs">
-            <div
-              className="h-2 w-2 rounded-full"
-              style={{ backgroundColor: entry.color }}
-            />
-            <span className="text-muted-foreground">
-              {labels[entry.dataKey] ?? entry.dataKey}
-            </span>
-            <span className="ml-auto font-medium text-foreground">
-              {formatTokens(entry.value)}
-            </span>
-          </div>
+          <ChartTooltipRow
+            key={entry.dataKey}
+            color={entry.color}
+            label={labels[entry.dataKey] ?? entry.dataKey}
+            value={formatTokens(entry.value)}
+          />
         );
       })}
-    </div>
+      <ChartTooltipSummary label="Total" value={formatTokens(total)} />
+    </ChartTooltip>
   );
 }
 

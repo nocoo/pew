@@ -325,4 +325,108 @@ describe("parsePiFile", () => {
     expect(result.deltas).toHaveLength(1);
     expect(result.deltas[0].model).toBe("claude-opus-4.6-1m");
   });
+
+  it("skips entries with non-string timestamp", async () => {
+    const filePath = join(testDir, "session.jsonl");
+    const line = JSON.stringify({
+      type: "message",
+      id: "msg1",
+      timestamp: 12345,
+      message: {
+        role: "assistant",
+        model: "claude-opus-4.6-1m",
+        content: [],
+        usage: { input: 3, output: 100, cacheRead: 0, cacheWrite: 1000 },
+      },
+    });
+    await writeFile(filePath, line + "\n");
+
+    const result = await parsePiFile({ filePath, startOffset: 0 });
+    expect(result.deltas).toHaveLength(0);
+  });
+
+  it("skips entries with non-object usage", async () => {
+    const filePath = join(testDir, "session.jsonl");
+    const line = JSON.stringify({
+      type: "message",
+      id: "msg1",
+      timestamp: "2026-04-07T04:42:45.000Z",
+      message: {
+        role: "assistant",
+        model: "claude-opus-4.6-1m",
+        content: [],
+        usage: "not an object",
+      },
+    });
+    await writeFile(filePath, line + "\n");
+
+    const result = await parsePiFile({ filePath, startOffset: 0 });
+    expect(result.deltas).toHaveLength(0);
+  });
+
+  it("skips entries with non-string model", async () => {
+    const filePath = join(testDir, "session.jsonl");
+    const line = JSON.stringify({
+      type: "message",
+      id: "msg1",
+      timestamp: "2026-04-07T04:42:45.000Z",
+      message: {
+        role: "assistant",
+        model: 123,
+        content: [],
+        usage: { input: 3, output: 100, cacheRead: 0, cacheWrite: 1000 },
+      },
+    });
+    await writeFile(filePath, line + "\n");
+
+    const result = await parsePiFile({ filePath, startOffset: 0 });
+    expect(result.deltas).toHaveLength(0);
+  });
+
+  it("skips entries with empty model string", async () => {
+    const filePath = join(testDir, "session.jsonl");
+    const line = JSON.stringify({
+      type: "message",
+      id: "msg1",
+      timestamp: "2026-04-07T04:42:45.000Z",
+      message: {
+        role: "assistant",
+        model: "  ",
+        content: [],
+        usage: { input: 3, output: 100, cacheRead: 0, cacheWrite: 1000 },
+      },
+    });
+    await writeFile(filePath, line + "\n");
+
+    const result = await parsePiFile({ filePath, startOffset: 0 });
+    expect(result.deltas).toHaveLength(0);
+  });
+
+  it("skips non-message type entries", async () => {
+    const filePath = join(testDir, "session.jsonl");
+    const line = JSON.stringify({
+      type: "session",
+      id: "sess1",
+      timestamp: "2026-04-07T04:42:45.000Z",
+      usage: { input: 3, output: 100 },
+    });
+    await writeFile(filePath, line + "\n");
+
+    const result = await parsePiFile({ filePath, startOffset: 0 });
+    expect(result.deltas).toHaveLength(0);
+  });
+
+  it("skips entries with no message field", async () => {
+    const filePath = join(testDir, "session.jsonl");
+    const line = JSON.stringify({
+      type: "message",
+      id: "msg1",
+      timestamp: "2026-04-07T04:42:45.000Z",
+      usage: { input: 3, output: 100 },
+    });
+    await writeFile(filePath, line + "\n");
+
+    const result = await parsePiFile({ filePath, startOffset: 0 });
+    expect(result.deltas).toHaveLength(0);
+  });
 });

@@ -260,4 +260,27 @@ describe("OpenClaw hook installer", () => {
     expect(result.action).toBe("skip");
     expect(result.detail).toContain("Invalid OpenClaw config");
   });
+
+  it("re-throws non-ENOENT errors when reading config during status check", async () => {
+    const fsMock = {
+      readFile: async () => {
+        const err = new Error("EACCES") as NodeJS.ErrnoException;
+        err.code = "EACCES";
+        throw err;
+      },
+      readdir: async () => [],
+      writeFile: async () => {},
+      mkdir: async () => {},
+      rm: async () => {},
+    };
+
+    await expect(
+      uninstallOpenClawHook({
+        pluginBaseDir,
+        notifyPath,
+        openclawConfigPath,
+        fs: fsMock,
+      }),
+    ).rejects.toThrow("EACCES");
+  });
 });

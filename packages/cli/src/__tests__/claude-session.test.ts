@@ -198,6 +198,26 @@ describe("collectClaudeSessions", () => {
     expect(result[0].assistantMessages).toBe(1);
   });
 
+  it("should extract model from obj.model when message.model is missing", async () => {
+    const f = join(tmpDir, "obj-model.jsonl");
+    const lines = [
+      userLine(),
+      // Line with model on obj directly, not in message
+      JSON.stringify({
+        type: "assistant",
+        timestamp: "2026-03-07T10:16:00.000Z",
+        sessionId: "ses-001",
+        model: "claude-opus-4",
+        message: { usage: { input_tokens: 100, output_tokens: 50 } },
+      }),
+    ];
+    await writeFile(f, lines.join("\n") + "\n");
+
+    const result = await collectClaudeSessions(f);
+    expect(result).toHaveLength(1);
+    expect(result[0].model).toBe("claude-opus-4");
+  });
+
   it("should count all message types in totalMessages", async () => {
     const f = join(tmpDir, "types.jsonl");
     const lines = [

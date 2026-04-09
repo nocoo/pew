@@ -15,6 +15,7 @@ import { modelColor } from "@/lib/palette";
 import { shortModel } from "@/lib/model-helpers";
 import type { ModelEra } from "@/lib/model-helpers";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
+import { ChartTooltip, ChartTooltipRow } from "./chart-tooltip";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -61,7 +62,7 @@ function fmtPct(value: number): string {
 // Custom tooltip
 // ---------------------------------------------------------------------------
 
-function EvolutionTooltip({
+function ModelEvolutionTooltip({
   active,
   payload,
   label,
@@ -76,25 +77,16 @@ function EvolutionTooltip({
   const items = [...payload].reverse();
 
   return (
-    <div className="rounded-[var(--radius-widget)] bg-secondary p-2.5">
-      <p className="mb-1.5 text-xs font-medium text-foreground">
-        {label ? fmtDate(label) : ""}
-      </p>
+    <ChartTooltip title={label ? fmtDate(label) : undefined}>
       {items.map((entry) => (
-        <div key={entry.dataKey} className="flex items-center gap-2 text-xs">
-          <div
-            className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: entry.color }}
-          />
-          <span className="text-muted-foreground">
-            {shortModel(entry.dataKey)}
-          </span>
-          <span className="ml-auto font-medium text-foreground">
-            {entry.value.toFixed(1)}%
-          </span>
-        </div>
+        <ChartTooltipRow
+          key={entry.dataKey}
+          color={entry.color}
+          label={shortModel(entry.dataKey)}
+          value={`${entry.value.toFixed(1)}%`}
+        />
       ))}
-    </div>
+    </ChartTooltip>
   );
 }
 
@@ -225,7 +217,7 @@ export function ModelEvolutionChart({
               domain={[0, 100]}
             />
             <Tooltip
-              content={<EvolutionTooltip />}
+              content={<ModelEvolutionTooltip />}
               isAnimationActive={false}
             />
             {modelKeys.map((model) => (

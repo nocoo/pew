@@ -48,6 +48,8 @@ export interface SyncOptions {
   hermesDbPath?: string;
   /** Factory for opening the Hermes SQLite DB (DI for testability) */
   openHermesDb?: (dbPath: string) => { querySessions: QuerySessionsFn; close: () => void } | null;
+  /** Override: Kosmos data directories (kosmos-app + pm-studio-app) */
+  kosmosDataDirs?: string[];
   /** Progress callback */
   onProgress?: (event: ProgressEvent) => void;
   /** Callback invoked when a corrupted JSONL line is found in the queue */
@@ -71,6 +73,7 @@ export interface SyncResult {
     claude: number;
     codex: number;
     gemini: number;
+    kosmos: number;
     opencode: number;
     openclaw: number;
     pi: number;
@@ -83,6 +86,7 @@ export interface SyncResult {
     claude: number;
     codex: number;
     gemini: number;
+    kosmos: number;
     opencode: number;
     openclaw: number;
     pi: number;
@@ -105,6 +109,7 @@ function sourceKey(source: Source): keyof SyncResult["sources"] {
   switch (source) {
     case "claude-code": return "claude";
     case "gemini-cli": return "gemini";
+    case "kosmos": return "kosmos";
     case "opencode": return "opencode";
     case "openclaw": return "openclaw";
     case "pi": return "pi";
@@ -203,8 +208,8 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   let replayDetected = false;
 
   const allDeltas: ParsedDelta[] = [];
-  const sourceCounts = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, hermes: 0, opencode: 0, openclaw: 0, pi: 0, vscodeCopilot: 0 };
-  const filesScanned = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, hermes: 0, opencode: 0, openclaw: 0, pi: 0, vscodeCopilot: 0 };
+  const sourceCounts = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, hermes: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, vscodeCopilot: 0 };
+  const filesScanned = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, hermes: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, vscodeCopilot: 0 };
 
   // Collect all discovered file paths (across all drivers) for knownFilePaths
   const discoveredFiles = new Set<string>();
@@ -220,6 +225,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     claudeDir: opts.claudeDir,
     codexSessionsDir: opts.codexSessionsDir,
     geminiDir: opts.geminiDir,
+    kosmosDataDirs: opts.kosmosDataDirs,
     openCodeMessageDir: opts.openCodeMessageDir,
     openCodeDbPath: opts.openCodeDbPath,
     openclawDir: opts.openclawDir,

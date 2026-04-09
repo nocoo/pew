@@ -195,4 +195,44 @@ describe("Claude hook installer", () => {
 
     expect(saved.hooks.SessionEnd[0].hooks[0].command).toContain(`"${spacedPath}"`);
   });
+
+  it("re-throws non-ENOENT errors when reading settings", async () => {
+    const fsMock = {
+      readFile: async () => {
+        const err = new Error("EACCES: permission denied") as NodeJS.ErrnoException;
+        err.code = "EACCES";
+        throw err;
+      },
+      writeFile: async () => {},
+      mkdir: async () => {},
+    };
+
+    await expect(
+      installClaudeHook({ settingsPath, notifyPath, fs: fsMock }),
+    ).rejects.toThrow("EACCES");
+  });
+
+  it("falls back to string-based mkdir when URL-based mkdir fails", async () => {
+    let mkdirCallCount = 0;
+    const fsMock = {
+      readFile: async () => {
+        const err = new Error("ENOENT") as NodeJS.ErrnoException;
+        err.code = "ENOENT";
+        throw err;
+      },
+      writeFile: async () => {},
+      mkdir: async (p: string) => {
+        mkdirCallCount++;
+        if (mkdirCallCount === 1) {
+          // First call (URL-based path) fails
+          throw new Error("Invalid URL");
+        }
+        // Second call (string-based fallback) succeeds
+      },
+    };
+
+    const result = await installClaudeHook({ settingsPath, notifyPath, fs: fsMock });
+    expect(result.changed).toBe(true);
+    expect(mkdirCallCount).toBe(2);
+  });
 });

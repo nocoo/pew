@@ -14,6 +14,7 @@ import { chart, chartAxis, chartMuted } from "@/lib/palette";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 import type { HourlyWeekdayWeekendPoint } from "@/lib/usage-helpers";
 import { Clock } from "lucide-react";
+import { ChartTooltip, ChartTooltipRow } from "./chart-tooltip";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -40,7 +41,7 @@ function fmtHour(hour: number): string {
 // Custom tooltip
 // ---------------------------------------------------------------------------
 
-function ChartTooltip({
+function HourlyTooltip({
   active,
   payload,
   label,
@@ -56,25 +57,17 @@ function ChartTooltip({
     : "";
 
   return (
-    <div className="rounded-[var(--radius-widget)] bg-secondary p-2.5">
-      <p className="mb-1.5 text-xs font-medium text-foreground">
-        {hourRange}
-      </p>
+    <ChartTooltip title={hourRange}>
       {payload.map((entry) => (
-        <div key={entry.dataKey} className="flex items-center gap-2 text-xs">
-          <div
-            className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: entry.color }}
-          />
-          <span className="text-muted-foreground">
-            {entry.dataKey === "weekday" ? "Weekday" : "Weekend"}
-          </span>
-          <span className="ml-auto font-medium text-foreground tabular-nums">
-            {formatTokens(entry.value)}
-          </span>
-        </div>
+        <ChartTooltipRow
+          key={entry.dataKey}
+          color={entry.color}
+          label={entry.dataKey === "weekday" ? "Weekday" : "Weekend"}
+          value={formatTokens(entry.value)}
+          tabularNums
+        />
       ))}
-    </div>
+    </ChartTooltip>
   );
 }
 
@@ -177,7 +170,7 @@ export function HourlyChart({ data, className }: HourlyChartProps) {
               tickLine={false}
               width={48}
             />
-            <Tooltip content={<ChartTooltip />} isAnimationActive={false} />
+            <Tooltip content={<HourlyTooltip />} isAnimationActive={false} />
             <Bar
               dataKey="weekday"
               fill={chart.violet}

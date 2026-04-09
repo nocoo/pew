@@ -137,6 +137,26 @@ describe("writeNotifyHandler", () => {
       "/tmp/pew/bin/notify.cjs.bak.2026-03-09T10-00-00-000Z",
     );
   });
+
+  it("re-throws non-ENOENT errors from readFile", async () => {
+    const fs = {
+      readFile: vi.fn(async () => {
+        const err = new Error("EPERM") as NodeJS.ErrnoException;
+        err.code = "EPERM";
+        throw err;
+      }),
+      writeFile: vi.fn(async () => {}),
+      mkdir: vi.fn(async () => {}),
+    };
+
+    await expect(
+      writeNotifyHandler({
+        binDir: "/tmp/pew/bin",
+        source: "// source",
+        fs,
+      }),
+    ).rejects.toThrow("EPERM");
+  });
 });
 
 describe("removeNotifyHandler", () => {
@@ -190,6 +210,24 @@ describe("removeNotifyHandler", () => {
     expect(fs.unlink).not.toHaveBeenCalled();
     expect(result.changed).toBe(false);
     expect(result.warnings).toContain("File does not contain pew marker");
+  });
+
+  it("re-throws non-ENOENT readFile errors", async () => {
+    const fs = {
+      readFile: vi.fn(async () => {
+        const err = new Error("permission denied") as NodeJS.ErrnoException;
+        err.code = "EACCES";
+        throw err;
+      }),
+      unlink: vi.fn(async () => {}),
+    };
+
+    await expect(
+      removeNotifyHandler({
+        notifyPath: "/tmp/pew/bin/notify.cjs",
+        fs,
+      }),
+    ).rejects.toThrow("permission denied");
   });
 });
 

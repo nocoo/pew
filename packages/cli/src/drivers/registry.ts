@@ -26,6 +26,7 @@ import { codexTokenDriver } from "./token/codex-token-driver.js";
 import { vscodeCopilotTokenDriver } from "./token/vscode-copilot-token-driver.js";
 import { copilotCliTokenDriver } from "./token/copilot-cli-token-driver.js";
 import { piTokenDriver } from "./token/pi-token-driver.js";
+import { kosmosTokenDriver } from "./token/kosmos-token-driver.js";
 import {
   createOpenCodeSqliteTokenDriver,
   type OpenCodeSqliteTokenDriverOpts,
@@ -42,6 +43,7 @@ import { openCodeJsonSessionDriver } from "./session/opencode-json-session-drive
 import { openClawSessionDriver } from "./session/openclaw-session-driver.js";
 import { codexSessionDriver } from "./session/codex-session-driver.js";
 import { piSessionDriver } from "./session/pi-session-driver.js";
+import { kosmosSessionDriver } from "./session/kosmos-session-driver.js";
 import {
   createOpenCodeSqliteSessionDriver,
   type OpenCodeSqliteSessionDriverOpts,
@@ -60,6 +62,7 @@ import {
 export interface TokenDriverRegistryOpts {
   claudeDir?: string;
   geminiDir?: string;
+  kosmosDataDirs?: string[];
   openCodeMessageDir?: string;
   openclawDir?: string;
   codexSessionsDir?: string;
@@ -100,6 +103,9 @@ export function createTokenDrivers(opts: TokenDriverRegistryOpts): TokenDriverSe
   }
   if (opts.geminiDir) {
     fileDrivers.push(geminiTokenDriver);
+  }
+  if (opts.kosmosDataDirs && opts.kosmosDataDirs.length > 0) {
+    fileDrivers.push(kosmosTokenDriver);
   }
   if (opts.openCodeMessageDir) {
     fileDrivers.push(openCodeJsonTokenDriver);
@@ -145,6 +151,7 @@ export function createTokenDrivers(opts: TokenDriverRegistryOpts): TokenDriverSe
 export interface SessionDriverRegistryOpts {
   claudeDir?: string;
   geminiDir?: string;
+  kosmosDataDirs?: string[];
   openCodeMessageDir?: string;
   openclawDir?: string;
   codexSessionsDir?: string;
@@ -175,6 +182,9 @@ export function createSessionDrivers(opts: SessionDriverRegistryOpts): SessionDr
   }
   if (opts.geminiDir) {
     fileDrivers.push(geminiSessionDriver);
+  }
+  if (opts.kosmosDataDirs && opts.kosmosDataDirs.length > 0) {
+    fileDrivers.push(kosmosSessionDriver);
   }
   if (opts.openCodeMessageDir) {
     fileDrivers.push(openCodeJsonSessionDriver);

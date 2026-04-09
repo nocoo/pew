@@ -116,6 +116,22 @@ export interface MoMComparison {
   sameDateCostGrowth: number;
 }
 
+/** Week-over-week comparison stats. */
+export interface WoWComparison {
+  currentWeek: { tokens: number; cost: number; days: number };
+  previousWeek: { tokens: number; cost: number; days: number };
+  /** Previous week data up to the same day-of-week as the reference date. */
+  previousWeekSameDay: { tokens: number; cost: number; days: number };
+  /** Percentage change in tokens: (current - previous) / previous * 100 */
+  tokenGrowth: number;
+  /** Percentage change in cost: (current - previous) / previous * 100 */
+  costGrowth: number;
+  /** Same-day token growth: current week vs previous week up to same day-of-week */
+  sameDayTokenGrowth: number;
+  /** Same-day cost growth: current week vs previous week up to same day-of-week */
+  sameDayCostGrowth: number;
+}
+
 /** Consecutive usage day streak info. */
 export interface StreakInfo {
   /** Consecutive days ending today (or yesterday) */
@@ -588,6 +604,127 @@ export function computeMoMGrowth(
     costGrowth,
     sameDateTokenGrowth,
     sameDateCostGrowth,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// computeWoWGrowth
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute week-over-week growth for tokens and cost.
+ *
+ * Weeks start on Sunday by default (US convention, matching periodToDateRange).
+ * Splits rows by local date into current week (Sunday → today) and previous
+ * week (Sun−7 → Sat), computes totals, and calculates percentage change.
+ *
+ * The "same-day" comparison only includes previous week data up to the same
+ * day-of-week as the reference date (e.g. if today is Wednesday, include
+ * previous week Sun–Wed).
+ *
+ * Returns 0 growth when previous week has no data (avoids Infinity).
+ *
+ * @param rows       — raw UsageRow[]
+ * @param pricingMap — pricing map for cost estimation
+ * @param now        — reference date (defaults to current date)
+ * @param tzOffset   — minutes from UTC (positive = west), default 0
+ */
+export function computeWoWGrowth(
+  rows: UsageRow[],
+  pricingMap: PricingMap,
+  now?: Date,
+  tzOffset: number = 0,
+): WoWComparison {
+  const ref = now ?? new Date();
+
+  // Convert ref to local date string via tzOffset (same logic as toLocalDateStr)
+  const refLocalMs = ref.getTime() - tzOffset * 60_000;
+  const localRef = new Date(refLocalMs);
+  const todayStr = localRef.toISOString().slice(0, 10);
+
+  // Day of week: getUTCDay() → 0=Sun, 1=Mon, …, 6=Sat
+  // Use Sunday-start week (US convention): Sun=0, Mon=1, …, Sat=6
+  const dow = localRef.getUTCDay();
+
+  // Current week Sunday (as YYYY-MM-DD)
+  const curWeekStartMs = new Date(todayStr + "T00:00:00Z").getTime() - dow * 86_400_000;
+  const curWeekStart = new Date(curWeekStartMs).toISOString().slice(0, 10);
+
+  // Previous week Sunday and Saturday
+  const prevWeekStartMs = curWeekStartMs - 7 * 86_400_000;
+  const prevWeekStart = new Date(prevWeekStartMs).toISOString().slice(0, 10);
+  const prevWeekEndMs = curWeekStartMs - 86_400_000;
+  const prevWeekEnd = new Date(prevWeekEndMs).toISOString().slice(0, 10);
+
+  // Previous week same-day cutoff: Sunday of prev week + dow days
+  const prevWeekSameDayEndMs = prevWeekStartMs + dow * 86_400_000;
+  const prevWeekSameDayEnd = new Date(prevWeekSameDayEndMs).toISOString().slice(0, 10);
+
+  let curTokens = 0;
+  let curCost = 0;
+  const curDays = new Set<string>();
+
+  let prevTokens = 0;
+  let prevCost = 0;
+  const prevDays = new Set<string>();
+
+  let prevSameDayTokens = 0;
+  let prevSameDayCost = 0;
+  const prevSameDayDays = new Set<string>();
+
+  for (const r of rows) {
+    const dateStr = toLocalDateStr(r.hour_start, tzOffset);
+    const pricing = lookupPricing(pricingMap, r.model, r.source);
+    const cost = estimateCost(
+      r.input_tokens,
+      r.output_tokens,
+      r.cached_input_tokens,
+      pricing,
+    );
+
+    // Current week: curWeekStart <= date <= todayStr
+    if (dateStr >= curWeekStart && dateStr <= todayStr) {
+      curTokens += r.total_tokens;
+      curCost += cost.totalCost;
+      curDays.add(dateStr);
+    }
+    // Previous week: prevWeekStart <= date <= prevWeekEnd
+    else if (dateStr >= prevWeekStart && dateStr <= prevWeekEnd) {
+      prevTokens += r.total_tokens;
+      prevCost += cost.totalCost;
+      prevDays.add(dateStr);
+
+      // Same-day subset: only include up to prevWeekSameDayEnd
+      if (dateStr <= prevWeekSameDayEnd) {
+        prevSameDayTokens += r.total_tokens;
+        prevSameDayCost += cost.totalCost;
+        prevSameDayDays.add(dateStr);
+      }
+    }
+  }
+
+  const tokenGrowth = prevTokens > 0
+    ? ((curTokens - prevTokens) / prevTokens) * 100
+    : 0;
+  const costGrowth = prevCost > 0
+    ? ((curCost - prevCost) / prevCost) * 100
+    : 0;
+
+  const sameDayTokenGrowth = prevSameDayTokens > 0
+    ? ((curTokens - prevSameDayTokens) / prevSameDayTokens) * 100
+    : 0;
+  const sameDayCostGrowth = prevSameDayCost > 0
+    ? ((curCost - prevSameDayCost) / prevSameDayCost) * 100
+    : 0;
+
+  return {
+    currentWeek: { tokens: curTokens, cost: curCost, days: curDays.size },
+    previousWeek: { tokens: prevTokens, cost: prevCost, days: prevDays.size },
+    previousWeekSameDay: { tokens: prevSameDayTokens, cost: prevSameDayCost, days: prevSameDayDays.size },
+    tokenGrowth,
+    costGrowth,
+    sameDayTokenGrowth,
+    sameDayCostGrowth,
   };
 }
 

@@ -2344,4 +2344,268 @@ describe("executeSync", () => {
       "claude-code|glm-5|2026-03-07T10:00:00.000Z|dev-dk",
     ]);
   });
+
+  // ===== Hermes SQLite integration =====
+
+  /**
+   * Helper: create a mock openHermesDb factory that returns rows from an in-memory array.
+   */
+  function mockOpenHermesDb(rows: Array<{ id: string; model: string | null; input_tokens: number; output_tokens: number; cache_read_tokens: number; cache_write_tokens: number; reasoning_tokens: number }>) {
+    return (_dbPath: string) => ({
+      querySessions: () => rows,
+      close: () => {},
+    });
+  }
+
+  it("should sync Hermes SQLite data to queue", async () => {
+    const rows = [
+      { id: "ses-h1", model: "claude-sonnet-4", input_tokens: 5000, output_tokens: 800, cache_read_tokens: 100, cache_write_tokens: 50, reasoning_tokens: 0 },
+    ];
+
+    const dbDir = join(dataDir, "hermes");
+    await mkdir(dbDir, { recursive: true });
+    const dbPath = join(dbDir, "state.db");
+    await writeFile(dbPath, "dummy");
+
+    const result = await executeSync({
+      stateDir,
+      hermesDbPath: dbPath,
+      openHermesDb: mockOpenHermesDb(rows),
+    });
+
+    expect(result.totalDeltas).toBe(1);
+    expect(result.sources.hermes).toBe(1);
+    expect(result.totalRecords).toBeGreaterThanOrEqual(1);
+  });
+
+  it("should be incremental for Hermes SQLite (second sync with same data)", async () => {
+    const rows = [
+      { id: "ses-h1", model: "claude-sonnet-4", input_tokens: 5000, output_tokens: 800, cache_read_tokens: 0, cache_write_tokens: 0, reasoning_tokens: 0 },
+    ];
+
+    const dbDir = join(dataDir, "hermes");
+    await mkdir(dbDir, { recursive: true });
+    const dbPath = join(dbDir, "state.db");
+    await writeFile(dbPath, "dummy");
+
+    const r1 = await executeSync({
+      stateDir,
+      hermesDbPath: dbPath,
+      openHermesDb: mockOpenHermesDb(rows),
+    });
+    expect(r1.totalDeltas).toBe(1);
+
+    // Second sync — same rows, no new deltas
+    const r2 = await executeSync({
+      stateDir,
+      hermesDbPath: dbPath,
+      openHermesDb: mockOpenHermesDb(rows),
+    });
+    expect(r2.totalDeltas).toBe(0);
+  });
+
+  it("should warn when Hermes DB exists but openHermesDb is not provided", async () => {
+    const dbDir = join(dataDir, "hermes");
+    await mkdir(dbDir, { recursive: true });
+    const dbPath = join(dbDir, "state.db");
+    await writeFile(dbPath, "dummy");
+
+    const events: Array<{ source: string; phase: string; message?: string }> = [];
+    const result = await executeSync({
+      stateDir,
+      hermesDbPath: dbPath,
+      // openHermesDb is NOT provided
+      onProgress: (e) => events.push(e),
+    });
+
+    expect(result.sources.hermes).toBe(0);
+    expect(events.some((e) => e.source === "hermes" && e.phase === "warn" && e.message?.includes("not available"))).toBe(true);
+  });
+
+  it("should warn when Hermes openHermesDb returns null (failed to open)", async () => {
+    const dbDir = join(dataDir, "hermes");
+    await mkdir(dbDir, { recursive: true });
+    const dbPath = join(dbDir, "state.db");
+    await writeFile(dbPath, "dummy");
+
+    const events: Array<{ source: string; phase: string; message?: string }> = [];
+    const result = await executeSync({
+      stateDir,
+      hermesDbPath: dbPath,
+      openHermesDb: () => null, // factory returns null
+      onProgress: (e) => events.push(e),
+    });
+
+    expect(result.sources.hermes).toBe(0);
+    expect(events.some((e) => e.source === "hermes" && e.phase === "warn" && e.message?.includes("Failed to open"))).toBe(true);
+  });
+
+  it("should handle Hermes DB driver error gracefully (catch branch)", async () => {
+    const dbDir = join(dataDir, "hermes");
+    await mkdir(dbDir, { recursive: true });
+    const dbPath = join(dbDir, "state.db");
+    await writeFile(dbPath, "dummy");
+
+    const events: Array<{ source: string; phase: string; message?: string }> = [];
+    const result = await executeSync({
+      stateDir,
+      hermesDbPath: dbPath,
+      openHermesDb: () => ({
+        querySessions: () => { throw new Error("DB corrupted"); },
+        close: () => {},
+      }),
+      onProgress: (e) => events.push(e),
+    });
+
+    expect(result.sources.hermes).toBe(0);
+    expect(events.some((e) => e.source === "hermes" && e.phase === "warn" && e.message?.includes("Skipping"))).toBe(true);
+  });
+
+  it("should detect Hermes DB cursor loss and restart full scan", async () => {
+    const rows = [
+      { id: "ses-h1", model: "claude-sonnet-4", input_tokens: 5000, output_tokens: 800, cache_read_tokens: 0, cache_write_tokens: 0, reasoning_tokens: 0 },
+    ];
+
+    // Need a file-based source to make initialCursorEmpty = false after cursor corruption
+    const claudeDir = join(dataDir, ".claude", "projects", "proj-loss");
+    await mkdir(claudeDir, { recursive: true });
+    await writeFile(
+      join(claudeDir, "session.jsonl"),
+      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+    );
+
+    const dbDir = join(dataDir, "hermes");
+    await mkdir(dbDir, { recursive: true });
+    const dbPath = join(dbDir, "state.db");
+    await writeFile(dbPath, "dummy");
+
+    // First sync to establish cursor with both sources
+    const r1 = await executeSync({
+      stateDir,
+      claudeDir: join(dataDir, ".claude"),
+      hermesDbPath: dbPath,
+      openHermesDb: mockOpenHermesDb(rows),
+    });
+    expect(r1.totalDeltas).toBe(2); // 1 claude + 1 hermes
+
+    // Corrupt cursor: remove hermesSqlite but keep knownDbSources
+    const { CursorStore } = await import("../storage/cursor-store.js");
+    const cursorStore = new CursorStore(stateDir);
+    const cursors = await cursorStore.load();
+    delete (cursors as Record<string, unknown>).hermesSqlite;
+    await cursorStore.save(cursors);
+
+    // Second sync should detect cursor loss and restart
+    const events: Array<{ source: string; phase: string; message?: string }> = [];
+    const r2 = await executeSync({
+      stateDir,
+      claudeDir: join(dataDir, ".claude"),
+      hermesDbPath: dbPath,
+      openHermesDb: mockOpenHermesDb(rows),
+      onProgress: (e) => events.push(e),
+    });
+
+    expect(events.some((e) => e.phase === "warn" && e.message?.includes("cursor entry lost"))).toBe(true);
+    // After restart, should rescan all
+    expect(r2.totalDeltas).toBeGreaterThanOrEqual(1);
+  });
+
+  it("should detect Hermes DB inode change and restart full scan", async () => {
+    const rows = [
+      { id: "ses-h1", model: "claude-sonnet-4", input_tokens: 5000, output_tokens: 800, cache_read_tokens: 0, cache_write_tokens: 0, reasoning_tokens: 0 },
+    ];
+
+    // Need a file-based source to make initialCursorEmpty = false
+    const claudeDir = join(dataDir, ".claude", "projects", "proj-inode");
+    await mkdir(claudeDir, { recursive: true });
+    await writeFile(
+      join(claudeDir, "session.jsonl"),
+      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+    );
+
+    const dbDir = join(dataDir, "hermes");
+    await mkdir(dbDir, { recursive: true });
+    const dbPath = join(dbDir, "state.db");
+    await writeFile(dbPath, "dummy");
+
+    // First sync
+    const r1 = await executeSync({
+      stateDir,
+      claudeDir: join(dataDir, ".claude"),
+      hermesDbPath: dbPath,
+      openHermesDb: mockOpenHermesDb(rows),
+    });
+    expect(r1.totalDeltas).toBe(2);
+
+    // Tamper cursor: change the hermesSqlite inode to force mismatch
+    const { CursorStore } = await import("../storage/cursor-store.js");
+    const cursorStore = new CursorStore(stateDir);
+    const cursors = await cursorStore.load();
+    const hermesCursor = (cursors as Record<string, unknown>).hermesSqlite as Record<string, unknown>;
+    hermesCursor.inode = 999999; // fake inode
+    await cursorStore.save(cursors);
+
+    const events: Array<{ source: string; phase: string; message?: string }> = [];
+    const r2 = await executeSync({
+      stateDir,
+      claudeDir: join(dataDir, ".claude"),
+      hermesDbPath: dbPath,
+      openHermesDb: mockOpenHermesDb(rows),
+      onProgress: (e) => events.push(e),
+    });
+
+    expect(events.some((e) => e.phase === "warn" && e.message?.includes("inode changed"))).toBe(true);
+    expect(r2.totalDeltas).toBeGreaterThanOrEqual(1);
+  });
+
+  it("should detect file cursor loss and trigger replay with progress events", async () => {
+    // Setup two sources
+    const claudeDir = join(dataDir, ".claude", "projects", "proj-file-loss");
+    await mkdir(claudeDir, { recursive: true });
+    await writeFile(
+      join(claudeDir, "session.jsonl"),
+      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+    );
+
+    const geminiDir = join(dataDir, ".gemini", "tmp", "proj-fl", "chats");
+    await mkdir(geminiDir, { recursive: true });
+    await writeFile(
+      join(geminiDir, "session-fl.json"),
+      geminiSession("2026-03-07T10:15:00.000Z", 2000, 200),
+    );
+
+    // First sync
+    const r1 = await executeSync({
+      stateDir,
+      claudeDir: join(dataDir, ".claude"),
+      geminiDir: join(dataDir, ".gemini"),
+    });
+    expect(r1.totalDeltas).toBe(2);
+
+    // Tamper: delete Claude file cursor but keep it in knownFilePaths
+    const cursorsPath = join(stateDir, "cursors.json");
+    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    const fileKeys = Object.keys(cursorsData.files);
+    for (const key of fileKeys) {
+      if (key.includes("proj-file-loss") && key.includes(".claude")) {
+        delete cursorsData.files[key];
+      }
+    }
+    await writeFile(cursorsPath, JSON.stringify(cursorsData));
+
+    // Second sync with onProgress — should capture cursor loss and replay events
+    const events: Array<{ source: string; phase: string; message?: string }> = [];
+    const r2 = await executeSync({
+      stateDir,
+      claudeDir: join(dataDir, ".claude"),
+      geminiDir: join(dataDir, ".gemini"),
+      onProgress: (e) => events.push(e),
+    });
+
+    // Should detect cursor loss and restart
+    expect(events.some((e) => e.phase === "warn" && e.message?.includes("Cursor entry lost"))).toBe(true);
+    expect(events.some((e) => e.phase === "warn" && e.message?.includes("Replay condition detected"))).toBe(true);
+    // After restart, values should be correct (not inflated)
+    expect(r2.totalDeltas).toBe(2);
+  });
 });

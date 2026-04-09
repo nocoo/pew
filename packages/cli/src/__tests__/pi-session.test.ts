@@ -155,4 +155,155 @@ describe("collectPiSessions", () => {
     expect(snapshots).toHaveLength(1);
     expect(snapshots[0].userMessages).toBe(1);
   });
+
+  it("handles message with no msg field (null message)", async () => {
+    const filePath = join(sessionDir, "no-msg.jsonl");
+    const lines = [
+      JSON.stringify({ type: "session", id: "no-msg-test", timestamp: "2026-04-07T10:00:00.000Z" }),
+      JSON.stringify({ type: "message", id: "msg1", timestamp: "2026-04-07T10:01:00.000Z" }),
+      JSON.stringify({
+        type: "message",
+        id: "msg2",
+        timestamp: "2026-04-07T10:02:00.000Z",
+        message: { role: "user", content: [] },
+      }),
+    ];
+    await writeFile(filePath, lines.join("\n") + "\n");
+
+    const snapshots = await collectPiSessions(filePath);
+    expect(snapshots).toHaveLength(1);
+    // Message without msg object is skipped but still counted before check
+    expect(snapshots[0].userMessages).toBe(1);
+  });
+
+  it("handles session header with non-string id", async () => {
+    const filePath = join(sessionDir, "bad-id.jsonl");
+    const lines = [
+      JSON.stringify({ type: "session", id: 123, timestamp: "2026-04-07T10:00:00.000Z" }),
+      JSON.stringify({
+        type: "message",
+        id: "msg1",
+        timestamp: "2026-04-07T10:01:00.000Z",
+        message: { role: "user", content: [] },
+      }),
+    ];
+    await writeFile(filePath, lines.join("\n") + "\n");
+
+    // No session ID → returns empty
+    const snapshots = await collectPiSessions(filePath);
+    expect(snapshots).toHaveLength(0);
+  });
+
+  it("handles entries without timestamps", async () => {
+    const filePath = join(sessionDir, "no-timestamp.jsonl");
+    const lines = [
+      JSON.stringify({ type: "session", id: "no-ts", timestamp: "2026-04-07T10:00:00.000Z" }),
+      JSON.stringify({ type: "message", id: "msg1", message: { role: "user", content: [] } }),
+      JSON.stringify({ type: "message", id: "msg2", timestamp: 12345, message: { role: "assistant", model: "test", content: [] } }),
+    ];
+    await writeFile(filePath, lines.join("\n") + "\n");
+
+    const snapshots = await collectPiSessions(filePath);
+    expect(snapshots).toHaveLength(1);
+    // Only the session header has a timestamp
+    expect(snapshots[0].startedAt).toBe("2026-04-07T10:00:00.000Z");
+  });
+
+  it("handles assistant message with non-string model", async () => {
+    const filePath = join(sessionDir, "bad-model.jsonl");
+    const lines = [
+      JSON.stringify({ type: "session", id: "bm-test", timestamp: "2026-04-07T10:00:00.000Z" }),
+      JSON.stringify({
+        type: "message",
+        id: "msg1",
+        timestamp: "2026-04-07T10:01:00.000Z",
+        message: { role: "assistant", model: 123, content: [] },
+      }),
+    ];
+    await writeFile(filePath, lines.join("\n") + "\n");
+
+    const snapshots = await collectPiSessions(filePath);
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0].model).toBeNull();
+  });
+
+  it("handles assistant message with empty model string", async () => {
+    const filePath = join(sessionDir, "empty-model.jsonl");
+    const lines = [
+      JSON.stringify({ type: "session", id: "em-test", timestamp: "2026-04-07T10:00:00.000Z" }),
+      JSON.stringify({
+        type: "message",
+        id: "msg1",
+        timestamp: "2026-04-07T10:01:00.000Z",
+        message: { role: "assistant", model: "  ", content: [] },
+      }),
+    ];
+    await writeFile(filePath, lines.join("\n") + "\n");
+
+    const snapshots = await collectPiSessions(filePath);
+    expect(snapshots).toHaveLength(1);
+    // Empty/whitespace model should not override null
+    // Actually "  ".trim() = "" which is falsy, so model stays null
+    expect(snapshots[0].model).toBeNull();
+  });
+
+  it("handles entries with non-string type", async () => {
+    const filePath = join(sessionDir, "bad-type.jsonl");
+    const lines = [
+      JSON.stringify({ type: "session", id: "bt-test", timestamp: "2026-04-07T10:00:00.000Z" }),
+      JSON.stringify({ type: 123, timestamp: "2026-04-07T10:01:00.000Z" }),
+      JSON.stringify({
+        type: "message",
+        id: "msg1",
+        timestamp: "2026-04-07T10:02:00.000Z",
+        message: { role: "user", content: [] },
+      }),
+    ];
+    await writeFile(filePath, lines.join("\n") + "\n");
+
+    const snapshots = await collectPiSessions(filePath);
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0].userMessages).toBe(1);
+  });
+
+  it("handles empty lines in file", async () => {
+    const filePath = join(sessionDir, "empty-lines.jsonl");
+    const lines = [
+      JSON.stringify({ type: "session", id: "el-test", timestamp: "2026-04-07T10:00:00.000Z" }),
+      "",
+      "",
+      JSON.stringify({
+        type: "message",
+        id: "msg1",
+        timestamp: "2026-04-07T10:01:00.000Z",
+        message: { role: "user", content: [] },
+      }),
+    ];
+    await writeFile(filePath, lines.join("\n") + "\n");
+
+    const snapshots = await collectPiSessions(filePath);
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0].userMessages).toBe(1);
+  });
+
+  it("handles message with non-string role", async () => {
+    const filePath = join(sessionDir, "bad-role.jsonl");
+    const lines = [
+      JSON.stringify({ type: "session", id: "br-test", timestamp: "2026-04-07T10:00:00.000Z" }),
+      JSON.stringify({
+        type: "message",
+        id: "msg1",
+        timestamp: "2026-04-07T10:01:00.000Z",
+        message: { role: 999, content: [] },
+      }),
+    ];
+    await writeFile(filePath, lines.join("\n") + "\n");
+
+    const snapshots = await collectPiSessions(filePath);
+    expect(snapshots).toHaveLength(1);
+    // Non-string role = null, counts toward total but not user/assistant
+    expect(snapshots[0].totalMessages).toBe(1);
+    expect(snapshots[0].userMessages).toBe(0);
+    expect(snapshots[0].assistantMessages).toBe(0);
+  });
 });

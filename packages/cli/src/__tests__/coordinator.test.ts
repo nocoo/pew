@@ -278,6 +278,71 @@ describe("coordinatedSync", () => {
     expect(result.cycles).toHaveLength(0);
   });
 
+  it("skips sync for a waiter when signal file is missing (ENOENT)", async () => {
+    // Same scenario as "skips sync for a waiter when a previous follow-up
+    // already consumed the signal", but the signal file was *deleted* rather
+    // than truncated to 0 bytes — readSignalSize must return 0 via ENOENT.
+    const fake = createFakeFs({
+      lockContent: JSON.stringify({ pid: 7777, startedAt: "2026-03-09T10:00:00Z" }),
+      signalSize: 0,
+    });
+
+    let wxCallCount = 0;
+    const overrideFs: FsOps = {
+      ...fake.fs,
+      stat: vi.fn(async (path: string) => {
+        if (path.endsWith("notify.signal")) {
+          // After lock holder's follow-up, signal file no longer exists
+          const err = new Error("ENOENT") as NodeJS.ErrnoException;
+          err.code = "ENOENT";
+          throw err;
+        }
+        return fake.fs.stat(path);
+      }),
+      writeFile: vi.fn(async (path: string, content: string, options?: { flag?: string }) => {
+        if (options?.flag === "wx") {
+          wxCallCount++;
+          if (wxCallCount <= 1) {
+            const err = new Error("EEXIST") as NodeJS.ErrnoException;
+            err.code = "EEXIST";
+            throw err;
+          }
+          fake.state.lockContent = content;
+          return;
+        }
+        return fake.fs.writeFile(path, content, options);
+      }),
+      readFile: vi.fn(async (path: string) => {
+        if (path.endsWith("sync.lock")) {
+          if (wxCallCount <= 1) {
+            return JSON.stringify({ pid: 7777, startedAt: "2026-03-09T10:00:00Z" });
+          }
+          if (fake.state.lockContent) return fake.state.lockContent;
+          const err = new Error("ENOENT") as NodeJS.ErrnoException;
+          err.code = "ENOENT";
+          throw err;
+        }
+        return fake.fs.readFile(path);
+      }),
+      unlink: vi.fn(async () => { fake.state.lockContent = null; }),
+    };
+
+    const executeSyncFn = vi.fn(async () => ({}));
+
+    const result = await coordinatedSync(createTrigger(), {
+      stateDir: "/tmp/pew",
+      executeSyncFn,
+      fs: overrideFs,
+      process: createFakeProcess(9999),
+      lockTimeoutMs: 10000,
+    });
+
+    // readSignalSize returns 0 for ENOENT → waiter skips sync
+    expect(executeSyncFn).not.toHaveBeenCalled();
+    expect(result.waitedForLock).toBe(true);
+    expect(result.skippedSync).toBe(true);
+  });
+
   it("runs a dirty follow-up when signal bytes appear during sync", async () => {
     const fake = createFakeFs({ lockContent: null, signalSize: 0 });
     const executeSyncFn = vi.fn(async () => {

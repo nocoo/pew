@@ -44,8 +44,10 @@ function isSource(value: string): value is Source {
     "claude-code",
     "codex",
     "gemini-cli",
+    "kosmos",
     "opencode",
     "openclaw",
+    "pi",
     "vscode-copilot",
     "copilot-cli",
     "hermes",
@@ -188,6 +190,7 @@ const syncCommand = defineCommand({
       claudeDir: paths.claudeDir,
       codexSessionsDir: paths.codexSessionsDir,
       geminiDir: paths.geminiDir,
+      kosmosDataDirs: paths.kosmosDataDirs,
       openCodeMessageDir: paths.openCodeMessageDir,
       openCodeDbPath: paths.openCodeDbPath,
       openMessageDb,
@@ -216,6 +219,7 @@ const syncCommand = defineCommand({
       if (result.sources.claude > 0) deltaParts.push(`Claude: ${result.sources.claude}`);
       if (result.sources.codex > 0) deltaParts.push(`Codex: ${result.sources.codex}`);
       if (result.sources.gemini > 0) deltaParts.push(`Gemini: ${result.sources.gemini}`);
+      if (result.sources.kosmos > 0) deltaParts.push(`Kosmos: ${result.sources.kosmos}`);
       if (result.sources.opencode > 0) deltaParts.push(`OpenCode: ${result.sources.opencode}`);
       if (result.sources.openclaw > 0) deltaParts.push(`OpenClaw: ${result.sources.openclaw}`);
       if (result.sources.pi > 0) deltaParts.push(`Pi: ${result.sources.pi}`);
@@ -233,6 +237,7 @@ const syncCommand = defineCommand({
     if (fs.claude > 0) scanParts.push(`Claude: ${fs.claude}`);
     if (fs.codex > 0) scanParts.push(`Codex: ${fs.codex}`);
     if (fs.gemini > 0) scanParts.push(`Gemini: ${fs.gemini}`);
+    if (fs.kosmos > 0) scanParts.push(`Kosmos: ${fs.kosmos}`);
     if (fs.opencode > 0) scanParts.push(`OpenCode: ${fs.opencode}`);
     if (fs.openclaw > 0) scanParts.push(`OpenClaw: ${fs.openclaw}`);
     if (fs.pi > 0) scanParts.push(`Pi: ${fs.pi}`);
@@ -253,6 +258,7 @@ const syncCommand = defineCommand({
       claudeDir: paths.claudeDir,
       codexSessionsDir: paths.codexSessionsDir,
       geminiDir: paths.geminiDir,
+      kosmosDataDirs: paths.kosmosDataDirs,
       openCodeMessageDir: paths.openCodeMessageDir,
       openCodeDbPath: paths.openCodeDbPath,
       openSessionDb,
@@ -276,6 +282,7 @@ const syncCommand = defineCommand({
       if (sessionResult.sources.claude > 0) sessParts.push(`Claude: ${sessionResult.sources.claude}`);
       if (sessionResult.sources.codex > 0) sessParts.push(`Codex: ${sessionResult.sources.codex}`);
       if (sessionResult.sources.gemini > 0) sessParts.push(`Gemini: ${sessionResult.sources.gemini}`);
+      if (sessionResult.sources.kosmos > 0) sessParts.push(`Kosmos: ${sessionResult.sources.kosmos}`);
       if (sessionResult.sources.opencode > 0) sessParts.push(`OpenCode: ${sessionResult.sources.opencode}`);
       if (sessionResult.sources.openclaw > 0) sessParts.push(`OpenClaw: ${sessionResult.sources.openclaw}`);
       if (sessionResult.sources.pi > 0) sessParts.push(`Pi: ${sessionResult.sources.pi}`);
@@ -290,6 +297,7 @@ const syncCommand = defineCommand({
     if (sfs.claude > 0) sessScanParts.push(`Claude: ${sfs.claude}`);
     if (sfs.codex > 0) sessScanParts.push(`Codex: ${sfs.codex}`);
     if (sfs.gemini > 0) sessScanParts.push(`Gemini: ${sfs.gemini}`);
+    if (sfs.kosmos > 0) sessScanParts.push(`Kosmos: ${sfs.kosmos}`);
     if (sfs.opencode > 0) sessScanParts.push(`OpenCode: ${sfs.opencode}`);
     if (sfs.openclaw > 0) sessScanParts.push(`OpenClaw: ${sfs.openclaw}`);
     if (sfs.pi > 0) sessScanParts.push(`Pi: ${sfs.pi}`);
@@ -322,6 +330,7 @@ const statusCommand = defineCommand({
         claudeDir: paths.claudeDir,
         codexSessionsDir: paths.codexSessionsDir,
         geminiDir: paths.geminiDir,
+        kosmosDataDirs: paths.kosmosDataDirs,
         openCodeMessageDir: paths.openCodeMessageDir,
         openclawDir: paths.openclawDir,
         piSessionsDir: paths.piSessionsDir,
@@ -490,6 +499,7 @@ const notifyCommand = defineCommand({
       claudeDir: paths.claudeDir,
       codexSessionsDir: paths.codexSessionsDir,
       geminiDir: paths.geminiDir,
+      kosmosDataDirs: paths.kosmosDataDirs,
       openCodeMessageDir: paths.openCodeMessageDir,
       openCodeDbPath: paths.openCodeDbPath,
       openMessageDb: openMessageDb2,

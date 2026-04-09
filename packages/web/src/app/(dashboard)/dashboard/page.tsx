@@ -15,7 +15,7 @@ import { useAchievements } from "@/hooks/use-achievements";
 import { formatTokens, cn } from "@/lib/utils";
 import { usePricingMap, formatCost } from "@/hooks/use-pricing";
 import { computeTotalCost, toDailyCostPoints, computeCacheSavings, forecastMonthlyCost, toDailyCacheRates } from "@/lib/cost-helpers";
-import { compareWeekdayWeekend, computeMoMGrowth, computeStreak, toLocalDailyBuckets, toHourlyWeekdayWeekend } from "@/lib/usage-helpers";
+import { compareWeekdayWeekend, computeMoMGrowth, computeWoWGrowth, computeStreak, toLocalDailyBuckets, toHourlyWeekdayWeekend } from "@/lib/usage-helpers";
 import { StatCard, StatGrid } from "@/components/dashboard/stat-card";
 import { UsageTrendChart } from "@/components/dashboard/usage-trend-chart";
 import { CostTrendChart } from "@/components/dashboard/cost-trend-chart";
@@ -53,12 +53,18 @@ export default function DashboardPage() {
   });
   const yearData = useUsageData({ days: 365 });
 
-  // Half-hour granularity fetch for weekday/weekend + streak analysis
+  // Half-hour granularity fetch for weekday/weekend analysis (period-bounded)
   const halfHourData = useUsageData({
     from,
     ...(to ? { to } : {}),
     granularity: "half-hour",
   });
+
+  // Fixed 14-day window for WoW comparison (ensures both weeks are present)
+  const wowData = useUsageData({ days: 14, granularity: "half-hour" });
+
+  // Fixed 62-day window for MoM comparison (ensures both months are present)
+  const momData = useUsageData({ days: 62, granularity: "half-hour" });
   // Half-hour granularity for streak (needs 365 days of data)
   const yearHalfHourData = useUsageData({ days: 365, granularity: "half-hour" });
 
@@ -116,11 +122,16 @@ export default function DashboardPage() {
     [data, tzOffset, today],
   );
 
-  // MoM growth (needs 2 months of data — use half-hour records)
-
+  // MoM growth (fixed 62-day window ensures both months are present)
   const mom = useMemo(
-    () => (halfHourData.data ? computeMoMGrowth(halfHourData.data.records, pricingMap, undefined, tzOffset) : null),
-    [halfHourData.data, pricingMap, tzOffset],
+    () => (momData.data ? computeMoMGrowth(momData.data.records, pricingMap, undefined, tzOffset) : null),
+    [momData.data, pricingMap, tzOffset],
+  );
+
+  // WoW growth (fixed 14-day window ensures both weeks are present)
+  const wow = useMemo(
+    () => (wowData.data ? computeWoWGrowth(wowData.data.records, pricingMap, undefined, tzOffset) : null),
+    [wowData.data, pricingMap, tzOffset],
   );
 
   // Weekday vs weekend comparison
@@ -221,14 +232,20 @@ export default function DashboardPage() {
                 iconColor="text-primary"
                 variant="primary"
                 accentColor="bg-gradient-to-r from-primary to-chart-8"
-                trends={mom ? [
-                  ...(mom.previousMonthSameDate.tokens > 0 && mom.previousMonthSameDate.tokens !== mom.previousMonth.tokens
-                    ? [{ value: Math.round(mom.sameDateTokenGrowth), label: "vs same period" }]
+                trends={[
+                  ...(wow && wow.previousWeekSameDay.tokens > 0 && wow.previousWeekSameDay.tokens !== wow.previousWeek.tokens
+                    ? [{ value: Math.round(wow.sameDayTokenGrowth), label: "vs last week to-date" }]
                     : []),
-                  ...(mom.previousMonth.tokens > 0
+                  ...(wow && wow.previousWeek.tokens > 0
+                    ? [{ value: Math.round(wow.tokenGrowth), label: "vs last week" }]
+                    : []),
+                  ...(mom && mom.previousMonthSameDate.tokens > 0 && mom.previousMonthSameDate.tokens !== mom.previousMonth.tokens
+                    ? [{ value: Math.round(mom.sameDateTokenGrowth), label: "vs last month to-date" }]
+                    : []),
+                  ...(mom && mom.previousMonth.tokens > 0
                     ? [{ value: Math.round(mom.tokenGrowth), label: "vs last month" }]
                     : []),
-                ] : undefined}
+                ]}
               />
               <StatCard
                 title="Input Tokens"
@@ -252,14 +269,20 @@ export default function DashboardPage() {
                 iconColor="text-chart-6"
                 variant="primary"
                 accentColor="bg-chart-6"
-                trends={mom ? [
-                  ...(mom.previousMonthSameDate.cost > 0 && mom.previousMonthSameDate.cost !== mom.previousMonth.cost
-                    ? [{ value: -Math.round(mom.sameDateCostGrowth), label: "vs same period" }]
+                trends={[
+                  ...(wow && wow.previousWeekSameDay.cost > 0 && wow.previousWeekSameDay.cost !== wow.previousWeek.cost
+                    ? [{ value: -Math.round(wow.sameDayCostGrowth), label: "vs last week to-date" }]
                     : []),
-                  ...(mom.previousMonth.cost > 0
+                  ...(wow && wow.previousWeek.cost > 0
+                    ? [{ value: -Math.round(wow.costGrowth), label: "vs last week" }]
+                    : []),
+                  ...(mom && mom.previousMonthSameDate.cost > 0 && mom.previousMonthSameDate.cost !== mom.previousMonth.cost
+                    ? [{ value: -Math.round(mom.sameDateCostGrowth), label: "vs last month to-date" }]
+                    : []),
+                  ...(mom && mom.previousMonth.cost > 0
                     ? [{ value: -Math.round(mom.costGrowth), label: "vs last month" }]
                     : []),
-                ] : undefined}
+                ]}
               />
             </StatGrid>
 

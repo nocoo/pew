@@ -14,6 +14,7 @@ import { formatTokens } from "@/lib/utils";
 import { chart, chartAxis } from "@/lib/palette";
 import type { DailyCacheRate } from "@/lib/cost-helpers";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
+import { ChartTooltip, ChartTooltipSubtitle } from "./chart-tooltip";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -63,17 +64,14 @@ function CacheRateTooltip({
   const point = (payload[0] as (typeof payload)[number]).payload;
 
   return (
-    <div className="rounded-[var(--radius-widget)] bg-secondary p-2.5">
-      <p className="mb-1 text-xs font-medium text-foreground">
-        {label ? fmtDate(label) : ""}
-      </p>
-      <p className="text-sm font-semibold text-foreground">
+    <ChartTooltip title={label ? fmtDate(label) : undefined}>
+      <p className="text-sm font-semibold text-popover-foreground">
         {point.cacheRate.toFixed(1)}%
       </p>
-      <p className="text-xs text-muted-foreground">
+      <ChartTooltipSubtitle>
         {formatTokens(point.cachedTokens)} cached / {formatTokens(point.inputTokens)} input
-      </p>
-    </div>
+      </ChartTooltipSubtitle>
+    </ChartTooltip>
   );
 }
 

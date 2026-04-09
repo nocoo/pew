@@ -11,6 +11,7 @@ import { formatTokens } from "@/lib/utils";
 import { agentColor } from "@/lib/palette";
 import type { SourceAggregate } from "@/hooks/use-usage-data";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
+import { ChartTooltip, ChartTooltipRow } from "./chart-tooltip";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -25,7 +26,7 @@ interface SourceDonutChartProps {
 // Custom tooltip
 // ---------------------------------------------------------------------------
 
-function DonutTooltip({
+function SourceDonutTooltip({
   active,
   payload,
 }: {
@@ -40,18 +41,13 @@ function DonutTooltip({
   const item = payload[0] as (typeof payload)[number];
 
   return (
-    <div className="rounded-[var(--radius-widget)] bg-secondary p-2.5">
-      <div className="flex items-center gap-2">
-        <div
-          className="h-3 w-3 rounded-full"
-          style={{ backgroundColor: item.payload.fill }}
-        />
-        <span className="text-sm font-medium text-foreground">{item.name}</span>
-      </div>
-      <div className="text-sm text-muted-foreground">
-        {formatTokens(item.value)} ({(item.payload.percent * 100).toFixed(1)}%)
-      </div>
-    </div>
+    <ChartTooltip>
+      <ChartTooltipRow
+        color={item.payload.fill}
+        label={item.name}
+        value={`${formatTokens(item.value)} (${(item.payload.percent * 100).toFixed(1)}%)`}
+      />
+    </ChartTooltip>
   );
 }
 
@@ -111,7 +107,7 @@ export function SourceDonutChart({ data, className }: SourceDonutChartProps) {
                   <Cell key={entry.name} fill={entry.fill} />
                 ))}
               </Pie>
-              <Tooltip content={<DonutTooltip />} isAnimationActive={false} />
+              <Tooltip content={<SourceDonutTooltip />} isAnimationActive={false} />
             </PieChart>
           </DashboardResponsiveContainer>
         </div>

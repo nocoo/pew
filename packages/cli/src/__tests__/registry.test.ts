@@ -162,4 +162,41 @@ describe("notifier registry", () => {
       spy.mockRestore();
     }
   });
+
+  it("installAll uses String(error) for non-Error throws", { timeout: 15_000 }, async () => {
+    const claudeHook = await import("../notifier/claude-hook.js");
+    const spy = vi
+      .spyOn(claudeHook, "installClaudeHook")
+      .mockRejectedValue("string error");
+
+    try {
+      const results = await installAll(paths);
+      const claudeResult = results.find((r) => r.source === "claude-code");
+      expect(claudeResult!.detail).toBe("string error");
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("uninstallAll uses String(error) for non-Error throws", async () => {
+    const spawn = vi.fn(() => {
+      const err = new Error("missing") as NodeJS.ErrnoException;
+      err.code = "ENOENT";
+      throw err;
+    });
+    await installAll(paths, { spawn });
+
+    const geminiHook = await import("../notifier/gemini-hook.js");
+    const spy = vi
+      .spyOn(geminiHook, "uninstallGeminiHook")
+      .mockRejectedValue(42);
+
+    try {
+      const results = await uninstallAll(paths, { spawn });
+      const geminiResult = results.find((r) => r.source === "gemini-cli");
+      expect(geminiResult!.detail).toBe("42");
+    } finally {
+      spy.mockRestore();
+    }
+  });
 });

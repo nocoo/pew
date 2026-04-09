@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { chart, chartAxis, CHART_COLORS } from "@/lib/palette";
 import type { ProjectBreakdownItem } from "@/lib/session-helpers";
+import { ChartTooltip, ChartTooltipRow } from "./chart-tooltip";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -26,7 +27,7 @@ function formatHours(h: number): string {
 // Custom tooltip
 // ---------------------------------------------------------------------------
 
-function ProjectTooltip({
+function ProjectBreakdownTooltip({
   active,
   payload,
 }: {
@@ -45,43 +46,23 @@ function ProjectTooltip({
   if (!d) return null;
 
   return (
-    <div className="rounded-[var(--radius-widget)] bg-secondary p-2.5">
-      <p className="mb-1 text-xs font-medium text-foreground">
-        {d.projectName}
-      </p>
-      <div className="space-y-0.5">
-        <div className="flex items-center gap-2 text-xs">
-          <div
-            className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: chart.violet }}
-          />
-          <span className="text-muted-foreground">Sessions</span>
-          <span className="ml-auto font-medium text-foreground">
-            {d.sessions}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          <div
-            className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: CHART_COLORS[1] }}
-          />
-          <span className="text-muted-foreground">Hours</span>
-          <span className="ml-auto font-medium text-foreground">
-            {formatHours(d.totalHours)}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 text-xs">
-          <div
-            className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: CHART_COLORS[2] }}
-          />
-          <span className="text-muted-foreground">Messages</span>
-          <span className="ml-auto font-medium text-foreground">
-            {d.totalMessages.toLocaleString()}
-          </span>
-        </div>
-      </div>
-    </div>
+    <ChartTooltip title={d.projectName}>
+      <ChartTooltipRow
+        color={chart.violet}
+        label="Sessions"
+        value={String(d.sessions)}
+      />
+      <ChartTooltipRow
+        color={CHART_COLORS[1] as string}
+        label="Hours"
+        value={formatHours(d.totalHours)}
+      />
+      <ChartTooltipRow
+        color={CHART_COLORS[2] as string}
+        label="Messages"
+        value={d.totalMessages.toLocaleString()}
+      />
+    </ChartTooltip>
   );
 }
 
@@ -161,7 +142,7 @@ export function ProjectBreakdownChart({
               tickLine={false}
               width={140}
             />
-            <Tooltip content={<ProjectTooltip />} isAnimationActive={false} />
+            <Tooltip content={<ProjectBreakdownTooltip />} isAnimationActive={false} />
             <Bar
               dataKey="sessions"
               fill={chart.violet}

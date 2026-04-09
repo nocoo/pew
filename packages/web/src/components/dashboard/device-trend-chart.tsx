@@ -17,6 +17,11 @@ import {
 } from "@/lib/device-helpers";
 import type { DeviceAggregate, DeviceTimelinePoint } from "@pew/core";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
+import {
+  ChartTooltip,
+  ChartTooltipRow,
+  ChartTooltipSummary,
+} from "./chart-tooltip";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -73,33 +78,19 @@ function DeviceTrendTooltip({
   const total = visible.reduce((sum, e) => sum + e.value, 0);
 
   return (
-    <div className="rounded-[var(--radius-widget)] bg-secondary p-2.5">
-      <p className="mb-1.5 text-xs font-medium text-foreground">
-        {label ? fmtDate(label) : ""}
-      </p>
+    <ChartTooltip title={label ? fmtDate(label) : undefined}>
       {visible.map((entry) => (
-        <div key={entry.dataKey} className="flex items-center gap-2 text-xs">
-          <div
-            className="h-2 w-2 rounded-full"
-            style={{ backgroundColor: entry.color }}
-          />
-          <span className="text-muted-foreground">
-            {labelMap.get(entry.dataKey) ?? entry.dataKey}
-          </span>
-          <span className="ml-auto font-medium text-foreground">
-            {formatTokens(entry.value)}
-          </span>
-        </div>
+        <ChartTooltipRow
+          key={entry.dataKey}
+          color={entry.color}
+          label={labelMap.get(entry.dataKey) ?? entry.dataKey}
+          value={formatTokens(entry.value)}
+        />
       ))}
       {visible.length > 1 && (
-        <div className="mt-1.5 border-t border-border pt-1.5 flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">Total</span>
-          <span className="font-medium text-foreground">
-            {formatTokens(total)}
-          </span>
-        </div>
+        <ChartTooltipSummary label="Total" value={formatTokens(total)} />
       )}
-    </div>
+    </ChartTooltip>
   );
 }
 
