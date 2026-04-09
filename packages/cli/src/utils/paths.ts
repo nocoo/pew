@@ -2,6 +2,43 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 /**
+ * Resolve the platform-specific Kosmos data directories.
+ *
+ * Returns an array of base dirs for both kosmos-app and pm-studio-app:
+ *   macOS:   ~/Library/Application Support/kosmos-app
+ *            ~/Library/Application Support/pm-studio-app
+ *   Linux:   ~/.config/kosmos-app
+ *            ~/.config/pm-studio-app
+ *   Windows: %APPDATA%/kosmos-app
+ *            %APPDATA%/pm-studio-app
+ */
+function resolveKosmosDataDirs(home: string): string[] {
+  const platform = process.platform;
+
+  if (platform === "darwin") {
+    const base = join(home, "Library", "Application Support");
+    return [
+      join(base, "kosmos-app"),
+      join(base, "pm-studio-app"),
+    ];
+  }
+
+  if (platform === "win32") {
+    const appdata = process.env.APPDATA || join(home, "AppData", "Roaming");
+    return [
+      join(appdata, "kosmos-app"),
+      join(appdata, "pm-studio-app"),
+    ];
+  }
+
+  // Linux and other Unix
+  return [
+    join(home, ".config", "kosmos-app"),
+    join(home, ".config", "pm-studio-app"),
+  ];
+}
+
+/**
  * Resolve the platform-specific VSCode Copilot base directories.
  *
  * Returns an array of base dirs for both stable and Insiders builds:
@@ -79,5 +116,7 @@ export function resolveDefaultPaths(home = homedir()) {
     copilotCliLogsDir: join(home, ".copilot", "logs"),
     /** Hermes Agent database: ~/.hermes/state.db (or $HERMES_HOME/state.db) */
     hermesDbPath: join(hermesHome, "state.db"),
+    /** Kosmos data directories (kosmos-app + pm-studio-app, platform-aware) */
+    kosmosDataDirs: resolveKosmosDataDirs(home),
   };
 }

@@ -155,6 +155,7 @@ const SOURCE_LABELS: Record<string, string> = {
   "copilot-cli": "GitHub Copilot CLI",
   "gemini-cli": "Gemini CLI",
   hermes: "Hermes Agent",
+  kosmos: "Kosmos",
   opencode: "OpenCode",
   openclaw: "OpenClaw",
   pi: "Pi",

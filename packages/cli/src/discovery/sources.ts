@@ -179,6 +179,29 @@ export async function discoverCopilotCliFiles(
 }
 
 /**
+ * Discover Kosmos chat session JSON files.
+ *
+ * Scans multiple data directories (kosmos-app + pm-studio-app) for
+ * files matching the pattern `chatSession_*.json`.
+ *
+ * @param dataDirs Array of Kosmos data directories (platform-specific)
+ */
+export async function discoverKosmosFiles(
+  dataDirs: string[],
+): Promise<string[]> {
+  const results: string[] = [];
+
+  for (const dataDir of dataDirs) {
+    const found = await collectFiles(dataDir, (name) =>
+      name.startsWith("chatSession_") && name.endsWith(".json"),
+    );
+    results.push(...found);
+  }
+
+  return results.sort();
+}
+
+/**
  * Discover VSCode Copilot Chat session JSONL files.
  *
  * Scans multiple base directories (stable + insiders), each containing:

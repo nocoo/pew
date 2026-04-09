@@ -15,14 +15,14 @@ import {
 } from "../lib/palette";
 
 describe("palette", () => {
-  it("should have 9 chart colors", () => {
-    expect(CHART_COLORS).toHaveLength(9);
+  it("should have 10 chart colors", () => {
+    expect(CHART_COLORS).toHaveLength(10);
   });
 
-  it("should have 9 chart tokens matching chart-1 through chart-9", () => {
-    expect(CHART_TOKENS).toHaveLength(9);
+  it("should have 10 chart tokens matching chart-1 through chart-10", () => {
+    expect(CHART_TOKENS).toHaveLength(10);
     expect(CHART_TOKENS[0]).toBe("chart-1");
-    expect(CHART_TOKENS[8]).toBe("chart-9");
+    expect(CHART_TOKENS[9]).toBe("chart-10");
   });
 
   it("should produce hsl(var(--...)) format for chart colors", () => {
@@ -55,16 +55,17 @@ describe("palette", () => {
   });
 
   describe("agentColor()", () => {
-    it("should return correct color for all 9 known agents (alphabetical)", () => {
+    it("should return correct color for all 10 known agents (alphabetical)", () => {
       expect(agentColor("claude-code")).toEqual({ color: chart.violet, token: "chart-1" });
       expect(agentColor("codex")).toEqual({ color: chart.magenta, token: "chart-2" });
       expect(agentColor("copilot-cli")).toEqual({ color: chart.pink, token: "chart-3" });
       expect(agentColor("gemini-cli")).toEqual({ color: chart.coral, token: "chart-4" });
       expect(agentColor("hermes")).toEqual({ color: chart.orange, token: "chart-5" });
-      expect(agentColor("opencode")).toEqual({ color: chart.gold, token: "chart-6" });
-      expect(agentColor("openclaw")).toEqual({ color: chart.lime, token: "chart-7" });
-      expect(agentColor("pi")).toEqual({ color: chart.acid, token: "chart-8" });
-      expect(agentColor("vscode-copilot")).toEqual({ color: chart.teal, token: "chart-9" });
+      expect(agentColor("kosmos")).toEqual({ color: chart.gold, token: "chart-6" });
+      expect(agentColor("opencode")).toEqual({ color: chart.lime, token: "chart-7" });
+      expect(agentColor("openclaw")).toEqual({ color: chart.acid, token: "chart-8" });
+      expect(agentColor("pi")).toEqual({ color: chart.teal, token: "chart-9" });
+      expect(agentColor("vscode-copilot")).toEqual({ color: chart.sky, token: "chart-10" });
     });
 
     it("should return fallback color for unknown agents", () => {
@@ -90,8 +91,8 @@ describe("palette", () => {
 
     it("should return valid chart color format", () => {
       const result = modelColor("gpt-4o");
-      expect(result.color).toMatch(/^hsl\(var\(--chart-\d\)\)$/);
-      expect(result.token).toMatch(/^chart-\d$/);
+      expect(result.color).toMatch(/^hsl\(var\(--chart-\d+\)\)$/);
+      expect(result.token).toMatch(/^chart-\d+$/);
     });
   });
 
@@ -105,14 +106,14 @@ describe("palette", () => {
     it("should handle Unicode characters (CJK, emoji)", () => {
       const cjk = teamColor("工程团队");
       const emoji = teamColor("🚀 Rocket");
-      expect(cjk.color).toMatch(/^hsl\(var\(--chart-\d\)\)$/);
-      expect(emoji.color).toMatch(/^hsl\(var\(--chart-\d\)\)$/);
+      expect(cjk.color).toMatch(/^hsl\(var\(--chart-\d+\)\)$/);
+      expect(emoji.color).toMatch(/^hsl\(var\(--chart-\d+\)\)$/);
     });
 
     it("should return valid chart color format", () => {
       const result = teamColor("Alpha Team");
-      expect(result.color).toMatch(/^hsl\(var\(--chart-\d\)\)$/);
-      expect(result.token).toMatch(/^chart-\d$/);
+      expect(result.color).toMatch(/^hsl\(var\(--chart-\d+\)\)$/);
+      expect(result.token).toMatch(/^chart-\d+$/);
     });
   });
 });
