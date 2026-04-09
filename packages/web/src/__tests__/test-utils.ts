@@ -45,6 +45,8 @@ export function createMockDbRead() {
     getTeamLogoUrl: vi.fn(),
     countTeamMembers: vi.fn(),
     getTeamMembership: vi.fn(),
+    // Pricing RPC methods
+    listModelPricing: vi.fn(),
   } as unknown as DbRead & {
     query: ReturnType<typeof vi.fn>;
     firstOrNull: ReturnType<typeof vi.fn>;
@@ -68,6 +70,7 @@ export function createMockDbRead() {
     getTeamLogoUrl: ReturnType<typeof vi.fn>;
     countTeamMembers: ReturnType<typeof vi.fn>;
     getTeamMembership: ReturnType<typeof vi.fn>;
+    listModelPricing: ReturnType<typeof vi.fn>;
   };
 }
 

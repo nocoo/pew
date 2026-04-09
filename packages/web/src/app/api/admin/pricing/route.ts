@@ -25,9 +25,7 @@ export async function GET(request: Request) {
   const dbRead = await getDbRead();
 
   try {
-    const { results } = await dbRead.query<DbPricingRow>(
-      "SELECT * FROM model_pricing ORDER BY model ASC, source ASC"
-    );
+    const results = await dbRead.listModelPricing();
     return NextResponse.json({ rows: results });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
