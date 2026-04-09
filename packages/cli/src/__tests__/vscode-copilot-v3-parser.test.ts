@@ -311,4 +311,84 @@ describe("parseVscodeCopilotV3File", () => {
     expect(result.deltas[0].model).toBe("claude-opus-4.6");
     expect(result.processedRequestIds).toEqual(["request_1775652793236"]);
   });
+
+  it("should NOT mark incomplete request as processed (allows retry on next sync)", async () => {
+    const filePath = join(tempDir, "session.json");
+
+    // First sync: request exists but has no result yet (incomplete)
+    await writeFile(filePath, makeV3Session([
+      {
+        requestId: "req_incomplete",
+        timestamp: 1775652693236,
+        modelId: "copilot/gpt-4o",
+        // No result field - request is still in progress
+      },
+    ]));
+    const result1 = await parseVscodeCopilotV3File({ filePath });
+    expect(result1.deltas).toHaveLength(0);
+    // Incomplete request should NOT be in processedRequestIds
+    expect(result1.processedRequestIds).toEqual([]);
+
+    // Second sync: same request now has complete result
+    await writeFile(filePath, makeV3Session([
+      {
+        requestId: "req_incomplete",
+        timestamp: 1775652693236,
+        modelId: "copilot/gpt-4o",
+        result: {
+          metadata: { promptTokens: 5000, outputTokens: 300 },
+        },
+      },
+    ]));
+    const result2 = await parseVscodeCopilotV3File({
+      filePath,
+      processedRequestIds: new Set(result1.processedRequestIds),
+    });
+
+    // Now the request should be processed
+    expect(result2.deltas).toHaveLength(1);
+    expect(result2.deltas[0].tokens.inputTokens).toBe(5000);
+    expect(result2.processedRequestIds).toEqual(["req_incomplete"]);
+  });
+
+  it("should NOT mark zero-token request as processed (allows retry on next sync)", async () => {
+    const filePath = join(tempDir, "session.json");
+
+    // First sync: request has result but with zero tokens
+    await writeFile(filePath, makeV3Session([
+      {
+        requestId: "req_zero",
+        timestamp: 1775652693236,
+        modelId: "copilot/gpt-4o",
+        result: {
+          metadata: { promptTokens: 0, outputTokens: 0 },
+        },
+      },
+    ]));
+    const result1 = await parseVscodeCopilotV3File({ filePath });
+    expect(result1.deltas).toHaveLength(0);
+    // Zero-token request should NOT be in processedRequestIds
+    expect(result1.processedRequestIds).toEqual([]);
+
+    // Second sync: same request now has real tokens
+    await writeFile(filePath, makeV3Session([
+      {
+        requestId: "req_zero",
+        timestamp: 1775652693236,
+        modelId: "copilot/gpt-4o",
+        result: {
+          metadata: { promptTokens: 8000, outputTokens: 500 },
+        },
+      },
+    ]));
+    const result2 = await parseVscodeCopilotV3File({
+      filePath,
+      processedRequestIds: new Set(result1.processedRequestIds),
+    });
+
+    // Now the request should be processed
+    expect(result2.deltas).toHaveLength(1);
+    expect(result2.deltas[0].tokens.inputTokens).toBe(8000);
+    expect(result2.processedRequestIds).toEqual(["req_zero"]);
+  });
 });

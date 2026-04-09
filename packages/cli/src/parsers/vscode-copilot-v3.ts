@@ -90,11 +90,12 @@ export async function parseVscodeCopilotV3File(
     const requestId = r.requestId;
     if (typeof requestId !== "string" || !requestId) continue;
 
-    // Track all valid request IDs for cursor persistence
-    allRequestIds.push(requestId);
-
     // Skip already-processed requests (incremental sync)
-    if (processedRequestIds.has(requestId)) continue;
+    if (processedRequestIds.has(requestId)) {
+      // Already processed AND emitted — keep in the list
+      allRequestIds.push(requestId);
+      continue;
+    }
 
     // Extract model and timestamp
     const rawModelId = r.modelId;
@@ -118,10 +119,13 @@ export async function parseVscodeCopilotV3File(
     const toolCallRounds = Array.isArray(metadata.toolCallRounds) ? metadata.toolCallRounds : [];
     const { toolArgsTokens, thinkingTokens } = estimateToolRoundTokens(toolCallRounds);
 
-    // Skip zero-token results
+    // Skip zero-token results (incomplete request, will retry next sync)
     if (promptTokens === 0 && outputTokens === 0 && toolArgsTokens === 0 && thinkingTokens === 0) {
       continue;
     }
+
+    // Successfully extracted tokens — record this request as processed
+    allRequestIds.push(requestId);
 
     deltas.push({
       source: "vscode-copilot" as Source,
