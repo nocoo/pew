@@ -129,6 +129,10 @@ export function createMockDbRead() {
     getAchievementCostByModelSource: vi.fn(),
     getAchievementEarners: vi.fn(),
     getAchievementEarnersCount: vi.fn(),
+    // Leaderboard RPC methods
+    getGlobalLeaderboard: vi.fn(),
+    getLeaderboardUserTeams: vi.fn(),
+    getLeaderboardSessionStats: vi.fn(),
     // Live RPC methods
     ping: vi.fn(),
   } as unknown as DbRead & {
@@ -227,6 +231,9 @@ export function createMockDbRead() {
     getAchievementCostByModelSource: ReturnType<typeof vi.fn>;
     getAchievementEarners: ReturnType<typeof vi.fn>;
     getAchievementEarnersCount: ReturnType<typeof vi.fn>;
+    getGlobalLeaderboard: ReturnType<typeof vi.fn>;
+    getLeaderboardUserTeams: ReturnType<typeof vi.fn>;
+    getLeaderboardSessionStats: ReturnType<typeof vi.fn>;
     ping: ReturnType<typeof vi.fn>;
   };
 }
@@ -280,6 +287,10 @@ export function createMockClient() {
     getAchievementCostByModelSource: vi.fn(),
     getAchievementEarners: vi.fn(),
     getAchievementEarnersCount: vi.fn(),
+    // Leaderboard RPC methods
+    getGlobalLeaderboard: vi.fn(),
+    getLeaderboardUserTeams: vi.fn(),
+    getLeaderboardSessionStats: vi.fn(),
   };
 }
 

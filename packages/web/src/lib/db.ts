@@ -47,6 +47,9 @@ import type {
   InviteCodeById,
   AppSettingRow,
   UserSettingRow,
+  LeaderboardEntryRow,
+  LeaderboardUserTeamRow,
+  LeaderboardSessionStatsRow,
   AchievementUsageAggregates,
   AchievementDailyUsageRow,
   AchievementDailyCostRow,
@@ -528,6 +531,27 @@ export interface DbRead {
     sql: string,
     threshold: number,
   ): Promise<number>;
+
+  // ---------------------------------------------------------------------------
+  // Leaderboard domain RPC methods
+  // ---------------------------------------------------------------------------
+
+  /** Get global leaderboard entries */
+  getGlobalLeaderboard(options: {
+    fromDate?: string;
+    teamId?: string;
+    orgId?: string;
+    limit: number;
+  }): Promise<LeaderboardEntryRow[]>;
+
+  /** Get user team memberships for leaderboard display */
+  getLeaderboardUserTeams(userIds: string[]): Promise<LeaderboardUserTeamRow[]>;
+
+  /** Get user session stats for leaderboard display */
+  getLeaderboardSessionStats(
+    userIds: string[],
+    fromDate?: string,
+  ): Promise<LeaderboardSessionStatsRow[]>;
 
   // ---------------------------------------------------------------------------
   // Live domain RPC methods

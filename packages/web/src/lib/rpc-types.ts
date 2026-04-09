@@ -465,6 +465,38 @@ export interface InviteCodeById {
 }
 
 // ---------------------------------------------------------------------------
+// Leaderboard domain types
+// ---------------------------------------------------------------------------
+
+/** Global leaderboard entry row */
+export interface LeaderboardEntryRow {
+  user_id: string;
+  name: string | null;
+  nickname: string | null;
+  image: string | null;
+  slug: string | null;
+  total_tokens: number;
+  input_tokens: number;
+  output_tokens: number;
+  cached_input_tokens: number;
+}
+
+/** User team membership row for leaderboard */
+export interface LeaderboardUserTeamRow {
+  user_id: string;
+  team_id: string;
+  team_name: string;
+  logo_url: string | null;
+}
+
+/** User session stats row for leaderboard */
+export interface LeaderboardSessionStatsRow {
+  user_id: string;
+  session_count: number;
+  total_duration_seconds: number;
+}
+
+// ---------------------------------------------------------------------------
 // Achievements domain types
 // ---------------------------------------------------------------------------
 

@@ -26,6 +26,34 @@ export interface TeamLeaderboardEntryRow {
   rank: number;
 }
 
+/** Global leaderboard entry row */
+export interface GlobalLeaderboardRow {
+  user_id: string;
+  name: string | null;
+  nickname: string | null;
+  image: string | null;
+  slug: string | null;
+  total_tokens: number;
+  input_tokens: number;
+  output_tokens: number;
+  cached_input_tokens: number;
+}
+
+/** User team membership row */
+export interface UserTeamMembershipRow {
+  user_id: string;
+  team_id: string;
+  team_name: string;
+  logo_url: string | null;
+}
+
+/** User session stats row */
+export interface UserSessionStatsRow {
+  user_id: string;
+  session_count: number;
+  total_duration_seconds: number;
+}
+
 // ---------------------------------------------------------------------------
 // RPC Request Types
 // ---------------------------------------------------------------------------
@@ -56,11 +84,36 @@ export interface GetTeamRankRequest {
   teamId: string;
 }
 
+/** Global leaderboard query request */
+export interface GetGlobalLeaderboardRequest {
+  method: "leaderboard.getGlobal";
+  fromDate?: string;
+  teamId?: string;
+  orgId?: string;
+  limit: number;
+}
+
+/** Get user teams request */
+export interface GetUserTeamsRequest {
+  method: "leaderboard.getUserTeams";
+  userIds: string[];
+}
+
+/** Get user session stats request */
+export interface GetUserSessionStatsRequest {
+  method: "leaderboard.getUserSessionStats";
+  userIds: string[];
+  fromDate?: string;
+}
+
 export type LeaderboardRpcRequest =
   | GetUserLeaderboardRequest
   | GetTeamLeaderboardRequest
   | GetUserRankRequest
-  | GetTeamRankRequest;
+  | GetTeamRankRequest
+  | GetGlobalLeaderboardRequest
+  | GetUserTeamsRequest
+  | GetUserSessionStatsRequest;
 
 // ---------------------------------------------------------------------------
 // Handlers
@@ -203,6 +256,148 @@ async function handleGetTeamRank(
 }
 
 // ---------------------------------------------------------------------------
+// Global leaderboard handlers
+// ---------------------------------------------------------------------------
+
+async function handleGetGlobalLeaderboard(
+  req: GetGlobalLeaderboardRequest,
+  db: D1Database
+): Promise<Response> {
+  const conditions: string[] = ["u.is_public = 1"];
+  const params: unknown[] = [];
+
+  if (req.fromDate) {
+    conditions.push("ur.hour_start >= ?");
+    params.push(req.fromDate);
+  }
+
+  if (req.teamId) {
+    conditions.push(
+      "EXISTS (SELECT 1 FROM team_members tm WHERE tm.user_id = ur.user_id AND tm.team_id = ?)"
+    );
+    params.push(req.teamId);
+  }
+
+  if (req.orgId) {
+    conditions.push(
+      "EXISTS (SELECT 1 FROM organization_members om WHERE om.user_id = ur.user_id AND om.org_id = ?)"
+    );
+    params.push(req.orgId);
+  }
+
+  params.push(req.limit);
+
+  // Try with nickname column first
+  const buildSql = (withNickname: boolean) => `
+    SELECT
+      ur.user_id,
+      u.name,
+      ${withNickname ? "u.nickname," : "NULL AS nickname,"}
+      u.image,
+      u.slug,
+      SUM(ur.total_tokens) AS total_tokens,
+      SUM(ur.input_tokens) AS input_tokens,
+      SUM(ur.output_tokens) AS output_tokens,
+      SUM(ur.cached_input_tokens) AS cached_input_tokens
+    FROM usage_records ur
+    JOIN users u ON u.id = ur.user_id
+    WHERE ${conditions.join(" AND ")}
+    GROUP BY ur.user_id
+    HAVING total_tokens > 0
+    ORDER BY total_tokens DESC
+    LIMIT ?
+  `;
+
+  try {
+    const results = await db
+      .prepare(buildSql(true))
+      .bind(...params)
+      .all<GlobalLeaderboardRow>();
+    return Response.json({ result: results.results });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "";
+    if (!msg.includes("no such column") && !msg.includes("no such table")) {
+      throw err;
+    }
+    // Retry without nickname
+    const results = await db
+      .prepare(buildSql(false))
+      .bind(...params)
+      .all<GlobalLeaderboardRow>();
+    return Response.json({ result: results.results });
+  }
+}
+
+async function handleGetUserTeams(
+  req: GetUserTeamsRequest,
+  db: D1Database
+): Promise<Response> {
+  if (!req.userIds || req.userIds.length === 0) {
+    return Response.json({ result: [] });
+  }
+
+  const placeholders = req.userIds.map(() => "?").join(",");
+  const sql = `
+    SELECT tm.user_id, t.id AS team_id, t.name AS team_name, t.logo_url
+    FROM team_members tm
+    JOIN teams t ON t.id = tm.team_id
+    WHERE tm.user_id IN (${placeholders})
+  `;
+
+  try {
+    const results = await db
+      .prepare(sql)
+      .bind(...req.userIds)
+      .all<UserTeamMembershipRow>();
+    return Response.json({ result: results.results });
+  } catch {
+    // Silently return empty if tables don't exist
+    return Response.json({ result: [] });
+  }
+}
+
+async function handleGetUserSessionStats(
+  req: GetUserSessionStatsRequest,
+  db: D1Database
+): Promise<Response> {
+  if (!req.userIds || req.userIds.length === 0) {
+    return Response.json({ result: [] });
+  }
+
+  const placeholders = req.userIds.map(() => "?").join(",");
+  const conditions = [`sr.user_id IN (${placeholders})`];
+  const params: unknown[] = [...req.userIds];
+
+  if (req.fromDate) {
+    conditions.push("sr.started_at >= ?");
+    params.push(req.fromDate);
+  }
+
+  const sql = `
+    SELECT sr.user_id,
+           COUNT(*) AS session_count,
+           COALESCE(SUM(sr.duration_seconds), 0) AS total_duration_seconds
+    FROM session_records sr
+    WHERE ${conditions.join(" AND ")}
+    GROUP BY sr.user_id
+  `;
+
+  try {
+    const results = await db
+      .prepare(sql)
+      .bind(...params)
+      .all<UserSessionStatsRow>();
+    return Response.json({ result: results.results });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "";
+    if (msg.includes("no such table")) {
+      return Response.json({ result: [] });
+    }
+    throw err;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
 
@@ -219,6 +414,12 @@ export async function handleLeaderboardRpc(
       return handleGetUserRank(request, db);
     case "leaderboard.getTeamRank":
       return handleGetTeamRank(request, db);
+    case "leaderboard.getGlobal":
+      return handleGetGlobalLeaderboard(request, db);
+    case "leaderboard.getUserTeams":
+      return handleGetUserTeams(request, db);
+    case "leaderboard.getUserSessionStats":
+      return handleGetUserSessionStats(request, db);
     default:
       return Response.json(
         { error: `Unknown leaderboard method: ${(request as { method: string }).method}` },

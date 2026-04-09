@@ -48,6 +48,9 @@ import type {
   InviteCodeById,
   AppSettingRow,
   UserSettingRow,
+  LeaderboardEntryRow,
+  LeaderboardUserTeamRow,
+  LeaderboardSessionStatsRow,
   AchievementUsageAggregates,
   AchievementDailyUsageRow,
   AchievementDailyCostRow,
@@ -956,6 +959,45 @@ export function createWorkerDbRead(): DbRead {
         achievementId,
         sql,
         threshold,
+      });
+    },
+
+    // -------------------------------------------------------------------------
+    // Leaderboard domain RPC methods
+    // -------------------------------------------------------------------------
+
+    async getGlobalLeaderboard(options: {
+      fromDate?: string;
+      teamId?: string;
+      orgId?: string;
+      limit: number;
+    }): Promise<LeaderboardEntryRow[]> {
+      return rpc<LeaderboardEntryRow[]>({
+        method: "leaderboard.getGlobal",
+        fromDate: options.fromDate,
+        teamId: options.teamId,
+        orgId: options.orgId,
+        limit: options.limit,
+      });
+    },
+
+    async getLeaderboardUserTeams(
+      userIds: string[],
+    ): Promise<LeaderboardUserTeamRow[]> {
+      return rpc<LeaderboardUserTeamRow[]>({
+        method: "leaderboard.getUserTeams",
+        userIds,
+      });
+    },
+
+    async getLeaderboardSessionStats(
+      userIds: string[],
+      fromDate?: string,
+    ): Promise<LeaderboardSessionStatsRow[]> {
+      return rpc<LeaderboardSessionStatsRow[]>({
+        method: "leaderboard.getUserSessionStats",
+        userIds,
+        fromDate,
       });
     },
 
