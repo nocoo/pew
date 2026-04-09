@@ -531,6 +531,8 @@ export interface InviteCodeSimple {
 
 /** Invite code by ID for delete check */
 export interface InviteCodeById {
+  id: number;
+  code: string;
   used_by: string | null;
 }
 

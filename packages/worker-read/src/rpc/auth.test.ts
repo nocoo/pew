@@ -2,10 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   handleAuthRpc,
   type GetInviteCodeRequest,
-  type CheckInviteCodeExistsRequest,
+  type CheckInviteCodeRequest,
+  type GetInviteCodeByIdRequest,
   type ListInviteCodesRequest,
-  type GetAuthCodeRequest,
-  type CheckUserHasUnusedInviteRequest,
+  type GetCodeRequest,
+  type UserHasUnusedInviteRequest,
 } from "./auth";
 import type { D1Database } from "@cloudflare/workers-types";
 
@@ -86,46 +87,95 @@ describe("auth RPC handlers", () => {
   });
 
   // -------------------------------------------------------------------------
-  // auth.checkInviteCodeExists
+  // auth.checkInviteCode
   // -------------------------------------------------------------------------
 
-  describe("auth.checkInviteCodeExists", () => {
-    it("should return exists: true when code exists", async () => {
-      db.first.mockResolvedValue({ id: "i1" });
+  describe("auth.checkInviteCode", () => {
+    it("should return id and used_by when code exists and unused", async () => {
+      db.first.mockResolvedValue({ id: 1, used_by: null });
 
-      const request: CheckInviteCodeExistsRequest = {
-        method: "auth.checkInviteCodeExists",
+      const request: CheckInviteCodeRequest = {
+        method: "auth.checkInviteCode",
         code: "ABC123",
       };
       const response = await handleAuthRpc(request, db);
       const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body).toEqual({ result: { exists: true } });
+      expect(body).toEqual({ result: { id: 1, used_by: null } });
     });
 
-    it("should return exists: false when code not found", async () => {
+    it("should return id and used_by when code exists and used", async () => {
+      db.first.mockResolvedValue({ id: 1, used_by: "u1" });
+
+      const request: CheckInviteCodeRequest = {
+        method: "auth.checkInviteCode",
+        code: "ABC123",
+      };
+      const response = await handleAuthRpc(request, db);
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body).toEqual({ result: { id: 1, used_by: "u1" } });
+    });
+
+    it("should return null when code not found", async () => {
       db.first.mockResolvedValue(null);
 
-      const request: CheckInviteCodeExistsRequest = {
-        method: "auth.checkInviteCodeExists",
+      const request: CheckInviteCodeRequest = {
+        method: "auth.checkInviteCode",
         code: "INVALID",
       };
       const response = await handleAuthRpc(request, db);
       const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body).toEqual({ result: { exists: false } });
+      expect(body).toEqual({ result: null });
     });
 
     it("should return 400 when code missing", async () => {
       const request = {
-        method: "auth.checkInviteCodeExists",
+        method: "auth.checkInviteCode",
         code: "",
-      } as CheckInviteCodeExistsRequest;
+      } as CheckInviteCodeRequest;
       const response = await handleAuthRpc(request, db);
 
       expect(response.status).toBe(400);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // auth.getInviteCodeById
+  // -------------------------------------------------------------------------
+
+  describe("auth.getInviteCodeById", () => {
+    it("should return invite code when found", async () => {
+      const mockCode = { id: 1, code: "ABC123", used_by: null };
+      db.first.mockResolvedValue(mockCode);
+
+      const request: GetInviteCodeByIdRequest = {
+        method: "auth.getInviteCodeById",
+        id: 1,
+      };
+      const response = await handleAuthRpc(request, db);
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body).toEqual({ result: mockCode });
+    });
+
+    it("should return null when not found", async () => {
+      db.first.mockResolvedValue(null);
+
+      const request: GetInviteCodeByIdRequest = {
+        method: "auth.getInviteCodeById",
+        id: 999,
+      };
+      const response = await handleAuthRpc(request, db);
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body).toEqual({ result: null });
     });
   });
 
@@ -165,22 +215,22 @@ describe("auth RPC handlers", () => {
   });
 
   // -------------------------------------------------------------------------
-  // auth.getAuthCode
+  // auth.getCode
   // -------------------------------------------------------------------------
 
-  describe("auth.getAuthCode", () => {
+  describe("auth.getCode", () => {
     it("should return auth code when found", async () => {
       const mockCode = {
-        id: "a1",
         code: "XYZ789",
         user_id: "u1",
         expires_at: "2026-01-01T01:00:00Z",
-        created_at: "2026-01-01T00:00:00Z",
+        used_at: null,
+        failed_attempts: 0,
       };
       db.first.mockResolvedValue(mockCode);
 
-      const request: GetAuthCodeRequest = {
-        method: "auth.getAuthCode",
+      const request: GetCodeRequest = {
+        method: "auth.getCode",
         code: "XYZ789",
       };
       const response = await handleAuthRpc(request, db);
@@ -193,8 +243,8 @@ describe("auth RPC handlers", () => {
     it("should return null when not found", async () => {
       db.first.mockResolvedValue(null);
 
-      const request: GetAuthCodeRequest = {
-        method: "auth.getAuthCode",
+      const request: GetCodeRequest = {
+        method: "auth.getCode",
         code: "INVALID",
       };
       const response = await handleAuthRpc(request, db);
@@ -206,9 +256,9 @@ describe("auth RPC handlers", () => {
 
     it("should return 400 when code missing", async () => {
       const request = {
-        method: "auth.getAuthCode",
+        method: "auth.getCode",
         code: "",
-      } as GetAuthCodeRequest;
+      } as GetCodeRequest;
       const response = await handleAuthRpc(request, db);
 
       expect(response.status).toBe(400);
@@ -216,15 +266,15 @@ describe("auth RPC handlers", () => {
   });
 
   // -------------------------------------------------------------------------
-  // auth.checkUserHasUnusedInvite
+  // auth.userHasUnusedInvite
   // -------------------------------------------------------------------------
 
-  describe("auth.checkUserHasUnusedInvite", () => {
+  describe("auth.userHasUnusedInvite", () => {
     it("should return hasUnused: true when user has unused invite", async () => {
-      db.first.mockResolvedValue({ id: "i1" });
+      db.first.mockResolvedValue({ id: 1 });
 
-      const request: CheckUserHasUnusedInviteRequest = {
-        method: "auth.checkUserHasUnusedInvite",
+      const request: UserHasUnusedInviteRequest = {
+        method: "auth.userHasUnusedInvite",
         userId: "u1",
       };
       const response = await handleAuthRpc(request, db);
@@ -237,8 +287,8 @@ describe("auth RPC handlers", () => {
     it("should return hasUnused: false when no unused invites", async () => {
       db.first.mockResolvedValue(null);
 
-      const request: CheckUserHasUnusedInviteRequest = {
-        method: "auth.checkUserHasUnusedInvite",
+      const request: UserHasUnusedInviteRequest = {
+        method: "auth.userHasUnusedInvite",
         userId: "u1",
       };
       const response = await handleAuthRpc(request, db);
@@ -250,9 +300,9 @@ describe("auth RPC handlers", () => {
 
     it("should return 400 when userId missing", async () => {
       const request = {
-        method: "auth.checkUserHasUnusedInvite",
+        method: "auth.userHasUnusedInvite",
         userId: "",
-      } as CheckUserHasUnusedInviteRequest;
+      } as UserHasUnusedInviteRequest;
       const response = await handleAuthRpc(request, db);
 
       expect(response.status).toBe(400);
