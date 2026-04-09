@@ -228,7 +228,7 @@ async function handleGetTeamById(
         .first<Omit<TeamDetailRow, "auto_register_season">>();
 
       return Response.json({
-        data: result ? { ...result, auto_register_season: null } : null,
+        result: result ? { ...result, auto_register_season: null } : null,
       });
     }
     throw err;
@@ -272,7 +272,7 @@ async function handleGetTeamMembers(
         .all<Omit<TeamMemberRow, "nickname" | "slug">>();
 
       return Response.json({
-        data: results.results.map((m) => ({
+        result: results.results.map((m) => ({
           ...m,
           nickname: null,
           slug: null,

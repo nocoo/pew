@@ -505,7 +505,7 @@ async function handleGetPublicUserBySlugOrId(
   // Try by slug first, then by id
   let row = await db
     .prepare(
-      "SELECT id, name, image, slug, created_at, is_public FROM users WHERE slug = ?",
+      "SELECT id, name, nickname, image, slug, created_at, is_public FROM users WHERE slug = ?",
     )
     .bind(req.slugOrId)
     .first<UserProfile>();
@@ -513,7 +513,7 @@ async function handleGetPublicUserBySlugOrId(
   if (!row) {
     row = await db
       .prepare(
-        "SELECT id, name, image, slug, created_at, is_public FROM users WHERE id = ?",
+        "SELECT id, name, nickname, image, slug, created_at, is_public FROM users WHERE id = ?",
       )
       .bind(req.slugOrId)
       .first<UserProfile>();

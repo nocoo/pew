@@ -101,7 +101,7 @@ async function handleListSessions(
     return Response.json({ error: "userId is required" }, { status: 400 });
   }
 
-  const limit = req.limit ?? 50;
+  const limit = Math.min(req.limit ?? 50, 250);
   const offset = req.offset ?? 0;
 
   const conditions = ["user_id = ?"];

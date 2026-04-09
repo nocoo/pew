@@ -82,7 +82,7 @@ async function handleGetActiveSessions(
   req: GetActiveSessionsRequest,
   db: D1Database
 ): Promise<Response> {
-  const limit = req.limit ?? 50;
+  const limit = Math.min(req.limit ?? 50, 250);
 
   // session_records has last_message_at instead of ended_at
   // "Active" sessions are those with recent activity (within 30 min)
@@ -111,7 +111,7 @@ async function handleGetRecentActivity(
   req: GetRecentActivityRequest,
   db: D1Database
 ): Promise<Response> {
-  const limit = req.limit ?? 50;
+  const limit = Math.min(req.limit ?? 50, 250);
   const conditions = ["ur.hour_start >= datetime('now', '-1 hour')"];
   const params: unknown[] = [];
 

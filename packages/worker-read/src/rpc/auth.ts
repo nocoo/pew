@@ -149,7 +149,7 @@ async function handleListInviteCodes(
   req: ListInviteCodesRequest,
   db: D1Database
 ): Promise<Response> {
-  const limit = req.limit ?? 50;
+  const limit = Math.min(req.limit ?? 50, 250);
   const offset = req.offset ?? 0;
 
   // Join with users table to get creator and consumer emails

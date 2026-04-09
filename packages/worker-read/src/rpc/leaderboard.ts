@@ -128,7 +128,7 @@ async function handleGetUserLeaderboard(
     return Response.json({ error: "seasonId is required" }, { status: 400 });
   }
 
-  const limit = req.limit ?? 50;
+  const limit = Math.min(req.limit ?? 50, 250);
   const offset = req.offset ?? 0;
 
   const sql = `
@@ -161,7 +161,7 @@ async function handleGetTeamLeaderboard(
     return Response.json({ error: "seasonId is required" }, { status: 400 });
   }
 
-  const limit = req.limit ?? 50;
+  const limit = Math.min(req.limit ?? 50, 250);
   const offset = req.offset ?? 0;
 
   const sql = `
