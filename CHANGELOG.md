@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.15.0
+
+### Added
+- Split kosmos into kosmos + pmstudio as separate sources (#48)
+- Split kosmos into kosmos + pmstudio as separate sources
+- Support v3 JSON session format (#42)
+- Add admin compare users page
+- Add admin usage compare API endpoint
+
+### Fixed
+- Only mark request as processed after successful delta
+- Pass hermesProfileDbPaths through notify command
+- Prevent token inflation on v3 incremental sync
+- Add missing db source counts and clean up sync output (#47)
+- Support hermes multi-profile token syncing (#45)
+- Avoid non-null assertion in compare route
+
 ## v2.14.1
 
 ## v2.14.0
