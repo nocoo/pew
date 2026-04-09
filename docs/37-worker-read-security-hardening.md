@@ -78,9 +78,172 @@ Replace generic SQL proxy with typed query functions.
 
 ## Phase 3: Web-Side Migration
 
-Each raw SQL call is migrated as an atomic commit. Total: **139 commits**.
+### Migration Strategy (Revised)
 
-### Migration Checklist by File
+Instead of 139 atomic commits, we use a **batch migration approach** by domain:
+
+1. **Step A**: Add all needed RPC methods to worker-read (per domain)
+2. **Step B**: Add corresponding methods to DbRead interface + db-worker.ts
+3. **Step C**: Batch migrate all web routes in that domain
+4. **Step D**: Update test mocks (createMockDbRead)
+
+This reduces commits from 139 to ~20-25 domain-based batches.
+
+### Domain Progress Summary
+
+| Domain | Worker Methods | DbRead Methods | Web Routes | Status |
+|--------|---------------|----------------|------------|--------|
+| users | 10 | 10 | ✅ migrated | ✅ DONE |
+| organizations | 9 | 7 | 8 files | ⏳ Partial |
+| showcases | 9 | 8 | 6 files | ⏳ Needs migration |
+| teams | 14 | 3 | 7 files | ⏳ Needs methods |
+| projects | 15 | 0 | 2 files | 🔴 Needs methods |
+| seasons | 12 | 0 | 5 files | 🔴 Needs methods |
+| devices | 5 | 0 | 1 file | 🔴 Needs methods |
+| auth | 5 | 0 | 2 files | 🔴 Needs methods |
+| settings | 4 | 0 | 3 files | 🔴 Needs methods |
+| pricing | 6 | 3 | 1 file | ⏳ Partial |
+| admin | 6 | 0 | 1 file | 🔴 Needs methods |
+
+### Batch Migration Plan
+
+#### Batch 1: Teams Domain (11 methods to add, 7 files)
+**Worker methods to add to DbRead:**
+- `getTeamById(teamId)` → teams.getById
+- `getTeamMembers(teamId)` → teams.getMembers
+- `getTeamSeasonRegistrations(teamId)` → teams.getSeasonRegistrations
+- `findTeamByInviteCode(inviteCode)` → teams.findByInviteCode
+- `checkTeamMembershipExists(teamId, userId)` → teams.membershipExists
+- `listTeamsForUser(userId)` → teams.listForUser
+- `checkTeamSlugExists(slug)` → teams.checkSlugExists
+- `getTeamMemberUserIds(teamId)` → teams.getMemberUserIds
+
+**Files to migrate:**
+- teams/route.ts (2 calls)
+- teams/join/route.ts (3 calls)
+- teams/[teamId]/route.ts (10 calls) - 5 already migrated
+- teams/[teamId]/logo/route.ts (4 calls)
+- teams/[teamId]/members/[userId]/route.ts (2 calls)
+
+#### Batch 2: Projects Domain (15 methods to add, 2 files)
+**Worker methods to add to DbRead:**
+- `listProjects(userId)` → projects.list
+- `listProjectAliasesWithStats(userId/projectId)` → projects.listAliasesWithStats
+- `listUnassignedRefs(userId)` → projects.listUnassignedRefs
+- `listProjectTags(projectId)` → projects.listTags
+- `getProjectById(projectId)` → projects.getById
+- `getProjectByName(userId, name)` → projects.getByName
+- `getProjectByNameExcluding(userId, name, excludeId)` → projects.getByNameExcluding
+- `checkProjectExistsForUser(userId, name)` → projects.existsForUser
+- `checkSessionRecordExists(projectId)` → projects.sessionRecordExists
+- `getAliasOwner(alias)` → projects.getAliasOwner
+- `getAliasStats(alias)` → projects.getAliasStats
+- `checkAliasAttachedToProject(alias, projectId)` → projects.aliasAttachedToProject
+- `checkTagExists(projectId, tag)` → projects.tagExists
+- `getProjectTagList(projectId)` → projects.getTagList
+
+**Files to migrate:**
+- projects/route.ts (11 calls)
+- projects/[id]/route.ts (11 calls)
+
+#### Batch 3: Seasons Domain (12 methods to add, 5+ files)
+**Worker methods to add to DbRead:**
+- `listSeasons(filter?)` → seasons.list
+- `getSeasonById(seasonId)` → seasons.getById
+- `getSeasonBySlug(slug)` → seasons.getBySlug
+- `getSeasonRegistration(seasonId, teamId)` → seasons.getRegistration
+- `checkSeasonMemberConflict(seasonId, userIds)` → seasons.checkMemberConflict
+- `getSeasonTeamTokens(seasonId)` → seasons.getTeamTokens
+- `getSeasonMemberTokens(seasonId)` → seasons.getMemberTokens
+- `getSeasonTeamSessionStats(seasonId)` → seasons.getTeamSessionStats
+- `getSeasonMemberSessionStats(seasonId)` → seasons.getMemberSessionStats
+- `getSeasonSnapshots(seasonId)` → seasons.getSnapshots
+- `getSeasonMemberSnapshots(seasonId)` → seasons.getMemberSnapshots
+- `getSeasonTeamMembers(seasonId, teamId)` → seasons.getTeamMembers
+
+**Files to migrate:**
+- seasons/[seasonId]/register/route.ts (8 calls)
+- admin/seasons/route.ts (2 calls)
+- admin/seasons/[seasonId]/route.ts (2 calls)
+- admin/seasons/[seasonId]/snapshot/route.ts (3 calls)
+- admin/seasons/[seasonId]/sync-rosters/route.ts (1 call)
+- lib/auto-register.ts (5 calls)
+- lib/season-roster.ts (6 calls)
+
+#### Batch 4: Showcases Domain (already have methods, 6 files)
+**DbRead methods already exist.** Just need to migrate web routes.
+
+**Files to migrate:**
+- showcases/route.ts (6 calls)
+- showcases/[id]/route.ts (4 calls)
+- showcases/[id]/upvote/route.ts (3 calls)
+- showcases/[id]/refresh/route.ts (2 calls)
+- showcases/preview/route.ts (1 call)
+- admin/showcases/route.ts (3 calls)
+
+#### Batch 5: Devices Domain (5 methods to add, 1 file)
+**Worker methods to add to DbRead:**
+- `listDeviceAliases(userId)` → devices.list
+- `getDeviceAlias(userId, deviceId)` → devices.getAlias
+- `checkDuplicateDeviceAlias(userId, alias, excludeDeviceId?)` → devices.checkDuplicateAlias
+- `checkDeviceHasRecords(userId, deviceId)` → devices.hasRecords
+- `checkDeviceExists(userId, deviceId)` → devices.exists
+
+**Files to migrate:**
+- devices/route.ts (4 calls)
+
+#### Batch 6: Auth Domain (5 methods to add, 2 files)
+**Worker methods to add to DbRead:**
+- `getAuthCode(code)` → auth.getAuthCode
+- `listInviteCodes()` → auth.listInviteCodes
+- `checkInviteCodeExists(code)` → auth.checkInviteCodeExists
+- `getInviteCode(code)` → auth.getInviteCode
+- `checkUserHasUnusedInvite(userId)` → auth.checkUserHasUnusedInvite
+
+**Files to migrate:**
+- auth/code/verify/route.ts (3 calls)
+- admin/invites/route.ts (3 calls)
+
+#### Batch 7: Settings Domain (4 methods to add, 3 files)
+**Worker methods to add to DbRead:**
+- `getAppSetting(key)` → settings.getApp
+- `getAllAppSettings()` → settings.getAllApp
+- `getUserSetting(userId, key)` → settings.getUser
+- `getAllUserSettings(userId)` → settings.getAllUser
+
+**Files to migrate:**
+- auth/invite-required/route.ts (1 call)
+- settings/route.ts (2 calls)
+- admin/settings/route.ts (1 call)
+- lib/invite.ts (1 call)
+
+#### Batch 8: Organizations Domain (partial, 8 files)
+**DbRead methods mostly exist.** Need to add:
+- `countOrgMembers(orgId)` → organizations.countMembers
+- `listOrgMembersAdmin(orgId)` → organizations.listMembersAdmin
+
+**Files to migrate:**
+- organizations/[orgId]/members/route.ts (2 calls)
+- organizations/route.ts (1 call) - ✅ already done
+- organizations/mine/route.ts (1 call) - ✅ already done
+- organizations/[orgId]/join/route.ts (2 calls) - ✅ already done
+- organizations/[orgId]/leave/route.ts (2 calls) - ✅ already done
+- admin/organizations/route.ts (2 calls)
+- admin/organizations/[orgId]/route.ts (7 calls)
+- admin/organizations/[orgId]/members/route.ts (5 calls)
+- admin/organizations/[orgId]/logo/route.ts (3 calls)
+
+#### Batch 9: Pricing Domain (partial, 1 file)
+**DbRead methods exist.** Just need to use them in POST/PUT handlers.
+
+**Files to migrate:**
+- admin/pricing/route.ts (2 calls remaining in POST/PUT)
+
+#### Batch 10: Misc (lib files, rate-limit)
+**Files to migrate:**
+- lib/rate-limit.ts (1 call) - uses showcases.count
+
+### Legacy Atomic Checklist (Reference Only)
 
 #### projects domain (22 calls, 2 files)
 
@@ -332,7 +495,13 @@ Each raw SQL call is migrated as an atomic commit. Total: **139 commits**.
 |-------|--------|---------|
 | Phase 1: SQL Tokenizer | ✅ COMPLETED | Deployed v2.12.0 |
 | Phase 2: RPC Handlers | ✅ COMPLETED | 16 domains, 115 methods, 302 tests |
-| Phase 3: Web Migration | 🔄 IN PROGRESS | 0/139 calls migrated |
+| Phase 3: Web Migration | 🔄 IN PROGRESS | 10 batches, ~108 calls remaining |
+
+### Completed Migrations
+- M129-M132: users domain (getUserApiKey, getUserEmail, searchUsers)
+- M135-M136: organizations list (listOrganizationsWithCount, listUserOrganizations)
+- M138-M140: organizations CRUD (join, leave, account/delete)
+- M023, M027, M029-M031: teams partial (getMembership, getLogoUrl, countMembers)
 
 ## Execution Notes
 
