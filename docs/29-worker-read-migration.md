@@ -19,9 +19,36 @@
 | 9 | `d114bb9` | Fix: resolve worker-read typecheck errors + add to root lint | ✅ done |
 | 10 | `fd1176b` | Fix: sanitize 'ok' from read worker /live error messages | ✅ done |
 | 11 | `764796e` | Refactor: change worker routes to /api/live and /api/query | ✅ done |
-| 12 | | Phase 3: E2E validation against dev Worker | ⏳ pending deploy |
+| 12 | | Phase 3: E2E validation against dev Worker | ✅ done |
 | 13 | | Phase 4: delete `RestDbRead` + REST-only env vars | ✅ done |
-| 14 | | docs: retrospective | |
+| 14 | | Phase 5: migrate raw SQL to typed RPC | 🔄 in progress |
+| 15 | | docs: retrospective | |
+
+### Phase 5 Progress — Raw SQL → Typed RPC
+
+> Goal: Replace all `db.query<T>()` and `db.firstOrNull<T>()` calls with
+> typed RPC methods to eliminate raw SQL from the Next.js layer.
+
+| Priority | File | query | firstOrNull | Status |
+|----------|------|-------|-------------|--------|
+| P1 | `/api/leaderboard` | 3 | 0 | ✅ `66eee88` |
+| P2 | `/api/achievements` (compute) | 7 | 0 | ✅ (pre-existing) |
+| P3 | `/api/achievements/[id]/members` | 1 | 0 | ✅ `b5844f4` |
+| P4 | `/api/seasons/[seasonId]/leaderboard` | 8 | 0 | ✅ `750df4f` |
+| P5 | `projects/route.ts` | 6 | 0 | ⏳ pending |
+| P6 | `season-roster.ts` (lib) | 6 | 0 | ⏳ pending |
+| P7 | `auto-register.ts` (lib) | 2 | 3 | ⏳ pending |
+| P8 | `admin/organizations/[orgId]/route.ts` | 0 | 8 | ⏳ pending |
+| P9 | `admin/organizations/[orgId]/members/route.ts` | 1 | 4 | ⏳ pending |
+| P10 | `admin/showcases/route.ts` | 1 | 2 | ⏳ pending |
+| P11 | `admin/organizations/[orgId]/logo/route.ts` | 0 | 3 | ⏳ pending |
+| P12 | `organizations/[orgId]/members/route.ts` | 1 | 1 | ⏳ pending |
+| P13 | `invite.ts` (lib) | 0 | 2 | ⏳ pending |
+| P14 | `rate-limit.ts` (lib) | 0 | 1 | ⏳ pending |
+| P15 | `showcases/[id]/refresh/route.ts` | 0 | 1 | ⏳ pending |
+| P16 | `projects/[id]/route.ts` | 1 | 0 | ⏳ pending |
+
+**Summary**: 18 `query` + 25 `firstOrNull` = **43 call sites** remaining (excl. tests)
 
 ## Problem
 
