@@ -42,15 +42,13 @@ export async function POST(request: Request, context: RouteContext) {
   } | null;
 
   try {
-    showcase = await dbRead.firstOrNull<{
-      id: string;
-      user_id: string;
-      repo_key: string;
-      github_url: string;
-    }>(
-      "SELECT id, user_id, repo_key, github_url FROM showcases WHERE id = ?",
-      [id]
-    );
+    const row = await dbRead.getShowcaseById(id);
+    showcase = row ? {
+      id: row.id,
+      user_id: row.user_id,
+      repo_key: row.repo_key,
+      github_url: row.github_url,
+    } : null;
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("no such table")) {

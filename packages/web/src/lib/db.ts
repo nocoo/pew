@@ -141,18 +141,18 @@ export interface DbRead {
 
   /** List showcases */
   listShowcases(options: {
-    userId?: string;
-    publicOnly?: boolean;
-    currentUserId?: string;
-    orderBy?: "created_at" | "upvote_count";
+    userId?: string | undefined;
+    publicOnly?: boolean | undefined;
+    currentUserId?: string | undefined;
+    orderBy?: "created_at" | "upvote_count" | undefined;
     limit: number;
     offset: number;
   }): Promise<ShowcaseRpcRow[]>;
 
   /** Count showcases */
   countShowcases(options?: {
-    userId?: string;
-    publicOnly?: boolean;
+    userId?: string | undefined;
+    publicOnly?: boolean | undefined;
   }): Promise<number>;
 
   // ---------------------------------------------------------------------------

@@ -72,6 +72,77 @@ function createPostRequest(body: unknown): Request {
   });
 }
 
+/** Create a mock showcase row for RPC responses */
+function createMockShowcase(overrides: Partial<{
+  id: string;
+  user_id: string;
+  repo_key: string;
+  github_url: string;
+  title: string;
+  description: string | null;
+  tagline: string | null;
+  og_image_url: string | null;
+  is_public: number;
+  created_at: string;
+  refreshed_at: string;
+  stars: number;
+  forks: number;
+  language: string | null;
+  license: string | null;
+  topics: string | null;
+  homepage: string | null;
+  upvote_count: number;
+  user_name: string | null;
+  user_nickname: string | null;
+  user_image: string | null;
+  user_slug: string | null;
+  has_upvoted?: number;
+}> = {}) {
+  return {
+    id: "s1",
+    user_id: "u1",
+    repo_key: "owner/repo",
+    github_url: "https://github.com/owner/repo",
+    title: "My Repo",
+    description: "A cool project",
+    tagline: null,
+    og_image_url: "https://og.test/1/owner/repo",
+    is_public: 1,
+    created_at: "2026-01-01T00:00:00Z",
+    refreshed_at: "2026-01-01T00:00:00Z",
+    stars: 0,
+    forks: 0,
+    language: null,
+    license: null,
+    topics: null,
+    homepage: null,
+    upvote_count: 5,
+    user_name: "Test User",
+    user_nickname: null,
+    user_image: null,
+    user_slug: "testuser",
+    ...overrides,
+  };
+}
+
+/** Create a mock DbRead with RPC methods */
+function createMockDbRead(overrides: {
+  countShowcases?: number;
+  listShowcases?: ReturnType<typeof createMockShowcase>[];
+  checkShowcaseExistsByRepoKey?: { exists: boolean; id?: string };
+  firstOrNull?: unknown;
+} = {}) {
+  return {
+    countShowcases: vi.fn().mockResolvedValue(overrides.countShowcases ?? 0),
+    listShowcases: vi.fn().mockResolvedValue(overrides.listShowcases ?? []),
+    checkShowcaseExistsByRepoKey: vi.fn().mockResolvedValue(
+      overrides.checkShowcaseExistsByRepoKey ?? { exists: false }
+    ),
+    // Legacy method for rate-limit.ts (still uses firstOrNull)
+    firstOrNull: vi.fn().mockResolvedValue(overrides.firstOrNull ?? null),
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -88,31 +159,10 @@ describe("GET /api/showcases", () => {
   describe("public list (no mine param)", () => {
     it("returns public showcases without auth", async () => {
       mockResolveUser.mockResolvedValue(null);
-      const mockDb = {
-        firstOrNull: vi.fn().mockResolvedValue({ count: 1 }),
-        query: vi.fn().mockResolvedValue({
-          results: [
-            {
-              id: "s1",
-              user_id: "u1",
-              repo_key: "owner/repo",
-              github_url: "https://github.com/owner/repo",
-              title: "My Repo",
-              description: "A cool project",
-              tagline: null,
-              og_image_url: "https://og.test/1/owner/repo",
-              is_public: 1,
-              created_at: "2026-01-01T00:00:00Z",
-              refreshed_at: "2026-01-01T00:00:00Z",
-              user_name: "Test User",
-              user_nickname: null,
-              user_image: null,
-              user_slug: "testuser",
-              upvote_count: 5,
-            },
-          ],
-        }),
-      };
+      const mockDb = createMockDbRead({
+        countShowcases: 1,
+        listShowcases: [createMockShowcase()],
+      });
       mockGetDbRead.mockResolvedValue(mockDb as never);
 
       const res = await GET(createGetRequest());
@@ -127,32 +177,10 @@ describe("GET /api/showcases", () => {
 
     it("includes has_upvoted when authenticated", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u2", email: "test@example.com" });
-      const mockDb = {
-        firstOrNull: vi.fn().mockResolvedValue({ count: 1 }),
-        query: vi.fn().mockResolvedValue({
-          results: [
-            {
-              id: "s1",
-              user_id: "u1",
-              repo_key: "owner/repo",
-              github_url: "https://github.com/owner/repo",
-              title: "My Repo",
-              description: null,
-              tagline: null,
-              og_image_url: null,
-              is_public: 1,
-              created_at: "2026-01-01T00:00:00Z",
-              refreshed_at: "2026-01-01T00:00:00Z",
-              user_name: "Test User",
-              user_nickname: null,
-              user_image: null,
-              user_slug: null,
-              upvote_count: 3,
-              has_upvoted: 1,
-            },
-          ],
-        }),
-      };
+      const mockDb = createMockDbRead({
+        countShowcases: 1,
+        listShowcases: [createMockShowcase({ has_upvoted: 1 })],
+      });
       mockGetDbRead.mockResolvedValue(mockDb as never);
 
       const res = await GET(createGetRequest());
@@ -164,10 +192,10 @@ describe("GET /api/showcases", () => {
 
     it("respects limit and offset params", async () => {
       mockResolveUser.mockResolvedValue(null);
-      const mockDb = {
-        firstOrNull: vi.fn().mockResolvedValue({ count: 50 }),
-        query: vi.fn().mockResolvedValue({ results: [] }),
-      };
+      const mockDb = createMockDbRead({
+        countShowcases: 50,
+        listShowcases: [],
+      });
       mockGetDbRead.mockResolvedValue(mockDb as never);
 
       const res = await GET(createGetRequest({ limit: "10", offset: "20" }));
@@ -181,10 +209,10 @@ describe("GET /api/showcases", () => {
 
     it("caps limit at 100", async () => {
       mockResolveUser.mockResolvedValue(null);
-      const mockDb = {
-        firstOrNull: vi.fn().mockResolvedValue({ count: 0 }),
-        query: vi.fn().mockResolvedValue({ results: [] }),
-      };
+      const mockDb = createMockDbRead({
+        countShowcases: 0,
+        listShowcases: [],
+      });
       mockGetDbRead.mockResolvedValue(mockDb as never);
 
       const res = await GET(createGetRequest({ limit: "200" }));
@@ -197,7 +225,8 @@ describe("GET /api/showcases", () => {
     it("handles missing table gracefully", async () => {
       mockResolveUser.mockResolvedValue(null);
       const mockDb = {
-        firstOrNull: vi.fn().mockRejectedValue(new Error("no such table: showcases")),
+        countShowcases: vi.fn().mockRejectedValue(new Error("no such table: showcases")),
+        listShowcases: vi.fn(),
       };
       mockGetDbRead.mockResolvedValue(mockDb as never);
 
@@ -212,7 +241,8 @@ describe("GET /api/showcases", () => {
     it("returns 500 on unexpected DB error", async () => {
       mockResolveUser.mockResolvedValue(null);
       const mockDb = {
-        firstOrNull: vi.fn().mockRejectedValue(new Error("Connection refused")),
+        countShowcases: vi.fn().mockRejectedValue(new Error("Connection refused")),
+        listShowcases: vi.fn(),
       };
       mockGetDbRead.mockResolvedValue(mockDb as never);
 
@@ -235,51 +265,27 @@ describe("GET /api/showcases", () => {
 
     it("returns user's showcases including hidden", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "test@example.com" });
-      const mockDb = {
-        firstOrNull: vi.fn().mockResolvedValue({ count: 2 }),
-        query: vi.fn().mockResolvedValue({
-          results: [
-            {
-              id: "s1",
-              user_id: "u1",
-              repo_key: "owner/repo1",
-              github_url: "https://github.com/owner/repo1",
-              title: "Repo 1",
-              description: null,
-              tagline: null,
-              og_image_url: null,
-              is_public: 1,
-              created_at: "2026-01-01T00:00:00Z",
-              refreshed_at: "2026-01-01T00:00:00Z",
-              user_name: "Test",
-              user_nickname: null,
-              user_image: null,
-              user_slug: null,
-              upvote_count: 5,
-              has_upvoted: 0,
-            },
-            {
-              id: "s2",
-              user_id: "u1",
-              repo_key: "owner/repo2",
-              github_url: "https://github.com/owner/repo2",
-              title: "Repo 2",
-              description: null,
-              tagline: null,
-              og_image_url: null,
-              is_public: 0, // hidden
-              created_at: "2026-01-02T00:00:00Z",
-              refreshed_at: "2026-01-02T00:00:00Z",
-              user_name: "Test",
-              user_nickname: null,
-              user_image: null,
-              user_slug: null,
-              upvote_count: 0,
-              has_upvoted: 0,
-            },
-          ],
-        }),
-      };
+      const mockDb = createMockDbRead({
+        countShowcases: 2,
+        listShowcases: [
+          createMockShowcase({
+            id: "s1",
+            repo_key: "owner/repo1",
+            github_url: "https://github.com/owner/repo1",
+            title: "Repo 1",
+            is_public: 1,
+            has_upvoted: 0,
+          }),
+          createMockShowcase({
+            id: "s2",
+            repo_key: "owner/repo2",
+            github_url: "https://github.com/owner/repo2",
+            title: "Repo 2",
+            is_public: 0,
+            has_upvoted: 0,
+          }),
+        ],
+      });
       mockGetDbRead.mockResolvedValue(mockDb as never);
 
       const res = await GET(createGetRequest({ mine: "1" }));
@@ -396,9 +402,9 @@ describe("POST /api/showcases", () => {
     });
 
     it("creates showcase successfully", async () => {
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockResolvedValue(null),
-      };
+      const mockDbRead = createMockDbRead({
+        checkShowcaseExistsByRepoKey: { exists: false },
+      });
       const mockDbWrite = {
         execute: vi.fn().mockResolvedValue({ meta: { changes: 1 } }),
       };
@@ -420,9 +426,9 @@ describe("POST /api/showcases", () => {
     });
 
     it("returns 409 when repo already showcased", async () => {
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockResolvedValue({ id: "existing" }),
-      };
+      const mockDbRead = createMockDbRead({
+        checkShowcaseExistsByRepoKey: { exists: true, id: "existing" },
+      });
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
 
       const res = await POST(createPostRequest({ github_url: "https://github.com/owner/repo" }));
@@ -433,9 +439,9 @@ describe("POST /api/showcases", () => {
     });
 
     it("returns 409 on unique constraint violation", async () => {
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockResolvedValue(null),
-      };
+      const mockDbRead = createMockDbRead({
+        checkShowcaseExistsByRepoKey: { exists: false },
+      });
       const mockDbWrite = {
         execute: vi.fn().mockRejectedValue(new Error("UNIQUE constraint failed: showcases.repo_key")),
       };
@@ -448,9 +454,8 @@ describe("POST /api/showcases", () => {
     });
 
     it("returns 500 on unexpected DB error during existence check", async () => {
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockRejectedValue(new Error("Connection refused")),
-      };
+      const mockDbRead = createMockDbRead();
+      mockDbRead.checkShowcaseExistsByRepoKey.mockRejectedValue(new Error("Connection refused"));
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
 
       const res = await POST(createPostRequest({ github_url: "https://github.com/owner/repo" }));
@@ -461,9 +466,9 @@ describe("POST /api/showcases", () => {
     });
 
     it("returns 500 on unexpected DB error during insert", async () => {
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockResolvedValue(null),
-      };
+      const mockDbRead = createMockDbRead({
+        checkShowcaseExistsByRepoKey: { exists: false },
+      });
       const mockDbWrite = {
         execute: vi.fn().mockRejectedValue(new Error("Disk full")),
       };
@@ -554,7 +559,9 @@ describe("POST /api/showcases", () => {
         fullName: "owner/repo", stars: 0, forks: 0, language: null, license: null, topics: [], homepage: null,
       });
       mockBuildOgImageUrl.mockReturnValue("https://og.example.com/image");
-      const mockDbRead = { firstOrNull: vi.fn().mockResolvedValue(null) };
+      const mockDbRead = createMockDbRead({
+        checkShowcaseExistsByRepoKey: { exists: false },
+      });
       const mockDbWrite = { execute: vi.fn().mockResolvedValue({}) };
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
       mockGetDbWrite.mockResolvedValue(mockDbWrite as never);
@@ -581,7 +588,9 @@ describe("POST /api/showcases", () => {
         fullName: "owner/repo", stars: 0, forks: 0, language: null, license: null, topics: [], homepage: null,
       });
       mockBuildOgImageUrl.mockReturnValue("https://og.example.com/image");
-      const mockDbRead = { firstOrNull: vi.fn().mockResolvedValue(null) };
+      const mockDbRead = createMockDbRead({
+        checkShowcaseExistsByRepoKey: { exists: false },
+      });
       const mockDbWrite = { execute: vi.fn().mockResolvedValue({}) };
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
       mockGetDbWrite.mockResolvedValue(mockDbWrite as never);

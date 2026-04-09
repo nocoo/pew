@@ -42,6 +42,18 @@ const mockBuildOgImageUrl = vi.mocked(buildOgImageUrl);
 const mockGitHubErrorToStatus = vi.mocked(gitHubErrorToStatus);
 const mockGitHubErrorMessage = vi.mocked(gitHubErrorMessage);
 
+/** Create a mock DbRead with typed RPC methods for refresh route */
+function createMockDbRead(overrides: {
+  getShowcaseById?: typeof mockShowcase | null;
+  firstOrNull?: unknown;
+} = {}) {
+  return {
+    getShowcaseById: vi.fn().mockResolvedValue(overrides.getShowcaseById ?? null),
+    // firstOrNull is still used for conflict check in refresh route
+    firstOrNull: vi.fn().mockResolvedValue(overrides.firstOrNull ?? null),
+  };
+}
+
 function createRequest(): Request {
   return new Request("http://localhost/api/showcases/s1/refresh", {
     method: "POST",
@@ -85,9 +97,9 @@ describe("POST /api/showcases/[id]/refresh", () => {
   describe("authorization", () => {
     it("returns 403 for non-owner", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u2", email: "other@example.com" });
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockResolvedValue(mockShowcase),
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseById: mockShowcase,
+      });
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
 
       const res = await POST(createRequest(), createContext());
@@ -97,9 +109,9 @@ describe("POST /api/showcases/[id]/refresh", () => {
 
     it("returns 404 when showcase not found", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockResolvedValue(null),
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseById: null,
+      });
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
 
       const res = await POST(createRequest(), createContext());
@@ -114,9 +126,9 @@ describe("POST /api/showcases/[id]/refresh", () => {
     });
 
     it("updates metadata from GitHub", async () => {
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockResolvedValue(mockShowcase),
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseById: mockShowcase,
+      });
       const mockDbWrite = {
         execute: vi.fn().mockResolvedValue({ changes: 1 }),
       };
@@ -142,12 +154,10 @@ describe("POST /api/showcases/[id]/refresh", () => {
     });
 
     it("handles repo rename without conflict", async () => {
-      const mockDbRead = {
-        firstOrNull: vi
-          .fn()
-          .mockResolvedValueOnce(mockShowcase) // First call: find showcase
-          .mockResolvedValueOnce(null), // Second call: check conflict
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseById: mockShowcase,
+        firstOrNull: null, // No conflict
+      });
       const mockDbWrite = {
         execute: vi.fn().mockResolvedValue({ changes: 1 }),
       };
@@ -171,12 +181,10 @@ describe("POST /api/showcases/[id]/refresh", () => {
     });
 
     it("returns 409 when renamed repo conflicts with existing showcase", async () => {
-      const mockDbRead = {
-        firstOrNull: vi
-          .fn()
-          .mockResolvedValueOnce(mockShowcase) // First call: find showcase
-          .mockResolvedValueOnce({ id: "s2" }), // Second call: conflict exists
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseById: mockShowcase,
+        firstOrNull: { id: "s2" }, // Conflict exists
+      });
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
       mockFetchGitHubMetadata.mockResolvedValue({
         owner: "existing",
@@ -198,9 +206,9 @@ describe("POST /api/showcases/[id]/refresh", () => {
   describe("GitHub API errors", () => {
     beforeEach(() => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockResolvedValue(mockShowcase),
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseById: mockShowcase,
+      });
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
     });
 
@@ -243,9 +251,8 @@ describe("POST /api/showcases/[id]/refresh", () => {
     });
 
     it("handles missing table gracefully", async () => {
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockRejectedValue(new Error("no such table: showcases")),
-      };
+      const mockDbRead = createMockDbRead();
+      mockDbRead.getShowcaseById.mockRejectedValue(new Error("no such table: showcases"));
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
 
       const res = await POST(createRequest(), createContext());
@@ -254,9 +261,8 @@ describe("POST /api/showcases/[id]/refresh", () => {
     });
 
     it("returns 500 on DB read error", async () => {
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockRejectedValue(new Error("Connection refused")),
-      };
+      const mockDbRead = createMockDbRead();
+      mockDbRead.getShowcaseById.mockRejectedValue(new Error("Connection refused"));
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
 
       const res = await POST(createRequest(), createContext());
@@ -267,9 +273,9 @@ describe("POST /api/showcases/[id]/refresh", () => {
     });
 
     it("returns 500 on DB write error", async () => {
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockResolvedValue(mockShowcase),
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseById: mockShowcase,
+      });
       const mockDbWrite = {
         execute: vi.fn().mockRejectedValue(new Error("Disk full")),
       };
@@ -292,12 +298,10 @@ describe("POST /api/showcases/[id]/refresh", () => {
     });
 
     it("returns 500 on conflict check error", async () => {
-      const mockDbRead = {
-        firstOrNull: vi
-          .fn()
-          .mockResolvedValueOnce(mockShowcase)
-          .mockRejectedValueOnce(new Error("DB error")),
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseById: mockShowcase,
+      });
+      mockDbRead.firstOrNull.mockRejectedValue(new Error("DB error"));
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
       mockFetchGitHubMetadata.mockResolvedValue({
         owner: "newowner",
@@ -315,12 +319,12 @@ describe("POST /api/showcases/[id]/refresh", () => {
     });
 
     it("returns 500 for invalid stored GitHub URL", async () => {
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockResolvedValue({
+      const mockDbRead = createMockDbRead({
+        getShowcaseById: {
           ...mockShowcase,
           github_url: "invalid-url",
-        }),
-      };
+        },
+      });
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
 
       const res = await POST(createRequest(), createContext());

@@ -24,6 +24,17 @@ const mockGetDbRead = vi.mocked(getDbRead);
 const mockGetDbWrite = vi.mocked(getDbWrite);
 const mockIsAdminUser = vi.mocked(isAdminUser);
 
+/** Create a mock DbRead with typed RPC methods */
+function createMockDbRead(overrides: {
+  getShowcaseById?: Partial<typeof mockShowcase> | null;
+  getShowcaseOwner?: { id: string; user_id: string } | null;
+} = {}) {
+  return {
+    getShowcaseById: vi.fn().mockResolvedValue(overrides.getShowcaseById ?? null),
+    getShowcaseOwner: vi.fn().mockResolvedValue(overrides.getShowcaseOwner ?? null),
+  };
+}
+
 function createRequest(method: string, body?: unknown): Request {
   const init: RequestInit = { method };
   if (body !== undefined) {
@@ -78,9 +89,11 @@ afterEach(() => {
 describe("GET /api/showcases/[id]", () => {
   it("returns public showcase without auth", async () => {
     mockResolveUser.mockResolvedValue(null);
-    const mockDb = {
-      firstOrNull: vi.fn().mockResolvedValue({ ...mockShowcase, has_upvoted: undefined }),
-    };
+    // Create showcase without has_upvoted to simulate unauthenticated request
+    const { has_upvoted: _, ...showcaseWithoutUpvote } = mockShowcase;
+    const mockDb = createMockDbRead({
+      getShowcaseById: showcaseWithoutUpvote as typeof mockShowcase,
+    });
     mockGetDbRead.mockResolvedValue(mockDb as never);
 
     const res = await GET(createRequest("GET"), createContext());
@@ -94,9 +107,9 @@ describe("GET /api/showcases/[id]", () => {
   it("includes has_upvoted when authenticated", async () => {
     mockResolveUser.mockResolvedValue({ userId: "u2", email: "test@example.com" });
     mockIsAdminUser.mockResolvedValue(false);
-    const mockDb = {
-      firstOrNull: vi.fn().mockResolvedValue(mockShowcase),
-    };
+    const mockDb = createMockDbRead({
+      getShowcaseById: mockShowcase,
+    });
     mockGetDbRead.mockResolvedValue(mockDb as never);
 
     const res = await GET(createRequest("GET"), createContext());
@@ -108,9 +121,9 @@ describe("GET /api/showcases/[id]", () => {
 
   it("returns 404 for non-existent showcase", async () => {
     mockResolveUser.mockResolvedValue(null);
-    const mockDb = {
-      firstOrNull: vi.fn().mockResolvedValue(null),
-    };
+    const mockDb = createMockDbRead({
+      getShowcaseById: null,
+    });
     mockGetDbRead.mockResolvedValue(mockDb as never);
 
     const res = await GET(createRequest("GET"), createContext());
@@ -121,9 +134,9 @@ describe("GET /api/showcases/[id]", () => {
   it("returns 404 for hidden showcase to non-owner", async () => {
     mockResolveUser.mockResolvedValue({ userId: "u2", email: "test@example.com" });
     mockIsAdminUser.mockResolvedValue(false);
-    const mockDb = {
-      firstOrNull: vi.fn().mockResolvedValue({ ...mockShowcase, is_public: 0 }),
-    };
+    const mockDb = createMockDbRead({
+      getShowcaseById: { ...mockShowcase, is_public: 0 },
+    });
     mockGetDbRead.mockResolvedValue(mockDb as never);
 
     const res = await GET(createRequest("GET"), createContext());
@@ -134,9 +147,9 @@ describe("GET /api/showcases/[id]", () => {
   it("returns hidden showcase to owner", async () => {
     mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
     mockIsAdminUser.mockResolvedValue(false);
-    const mockDb = {
-      firstOrNull: vi.fn().mockResolvedValue({ ...mockShowcase, is_public: 0 }),
-    };
+    const mockDb = createMockDbRead({
+      getShowcaseById: { ...mockShowcase, is_public: 0 },
+    });
     mockGetDbRead.mockResolvedValue(mockDb as never);
 
     const res = await GET(createRequest("GET"), createContext());
@@ -149,9 +162,9 @@ describe("GET /api/showcases/[id]", () => {
   it("returns hidden showcase to admin", async () => {
     mockResolveUser.mockResolvedValue({ userId: "admin", email: "admin@example.com" });
     mockIsAdminUser.mockResolvedValue(true);
-    const mockDb = {
-      firstOrNull: vi.fn().mockResolvedValue({ ...mockShowcase, is_public: 0 }),
-    };
+    const mockDb = createMockDbRead({
+      getShowcaseById: { ...mockShowcase, is_public: 0 },
+    });
     mockGetDbRead.mockResolvedValue(mockDb as never);
 
     const res = await GET(createRequest("GET"), createContext());
@@ -161,9 +174,8 @@ describe("GET /api/showcases/[id]", () => {
 
   it("handles missing table gracefully", async () => {
     mockResolveUser.mockResolvedValue(null);
-    const mockDb = {
-      firstOrNull: vi.fn().mockRejectedValue(new Error("no such table: showcases")),
-    };
+    const mockDb = createMockDbRead();
+    mockDb.getShowcaseById.mockRejectedValue(new Error("no such table: showcases"));
     mockGetDbRead.mockResolvedValue(mockDb as never);
 
     const res = await GET(createRequest("GET"), createContext());
@@ -173,9 +185,8 @@ describe("GET /api/showcases/[id]", () => {
 
   it("returns 500 on unexpected DB error", async () => {
     mockResolveUser.mockResolvedValue(null);
-    const mockDb = {
-      firstOrNull: vi.fn().mockRejectedValue(new Error("Connection refused")),
-    };
+    const mockDb = createMockDbRead();
+    mockDb.getShowcaseById.mockRejectedValue(new Error("Connection refused"));
     mockGetDbRead.mockResolvedValue(mockDb as never);
 
     const res = await GET(createRequest("GET"), createContext());
@@ -205,9 +216,9 @@ describe("PATCH /api/showcases/[id]", () => {
     it("allows owner to update", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
       mockIsAdminUser.mockResolvedValue(false);
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockResolvedValue({ id: "s1", user_id: "u1" }),
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseOwner: { id: "s1", user_id: "u1" },
+      });
       const mockDbWrite = {
         execute: vi.fn().mockResolvedValue({ changes: 1 }),
       };
@@ -222,9 +233,9 @@ describe("PATCH /api/showcases/[id]", () => {
     it("allows admin to update any showcase", async () => {
       mockResolveUser.mockResolvedValue({ userId: "admin", email: "admin@example.com" });
       mockIsAdminUser.mockResolvedValue(true);
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockResolvedValue({ id: "s1", user_id: "u1" }),
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseOwner: { id: "s1", user_id: "u1" },
+      });
       const mockDbWrite = {
         execute: vi.fn().mockResolvedValue({ changes: 1 }),
       };
@@ -239,9 +250,9 @@ describe("PATCH /api/showcases/[id]", () => {
     it("returns 403 for non-owner non-admin", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u2", email: "other@example.com" });
       mockIsAdminUser.mockResolvedValue(false);
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockResolvedValue({ id: "s1", user_id: "u1" }),
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseOwner: { id: "s1", user_id: "u1" },
+      });
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
 
       const res = await PATCH(createRequest("PATCH", { tagline: "Hacked" }), createContext());
@@ -252,9 +263,9 @@ describe("PATCH /api/showcases/[id]", () => {
     it("returns 404 when showcase not found", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
       mockIsAdminUser.mockResolvedValue(false);
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockResolvedValue(null),
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseOwner: null,
+      });
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
 
       const res = await PATCH(createRequest("PATCH", { tagline: "Updated" }), createContext());
@@ -267,9 +278,9 @@ describe("PATCH /api/showcases/[id]", () => {
     beforeEach(() => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
       mockIsAdminUser.mockResolvedValue(false);
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockResolvedValue({ id: "s1", user_id: "u1" }),
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseOwner: { id: "s1", user_id: "u1" },
+      });
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
     });
 
@@ -335,9 +346,8 @@ describe("PATCH /api/showcases/[id]", () => {
     it("handles missing table gracefully", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
       mockIsAdminUser.mockResolvedValue(false);
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockRejectedValue(new Error("no such table: showcases")),
-      };
+      const mockDbRead = createMockDbRead();
+      mockDbRead.getShowcaseOwner.mockRejectedValue(new Error("no such table: showcases"));
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
 
       const res = await PATCH(createRequest("PATCH", { tagline: "New" }), createContext());
@@ -348,9 +358,8 @@ describe("PATCH /api/showcases/[id]", () => {
     it("returns 500 on DB read error", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
       mockIsAdminUser.mockResolvedValue(false);
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockRejectedValue(new Error("Connection refused")),
-      };
+      const mockDbRead = createMockDbRead();
+      mockDbRead.getShowcaseOwner.mockRejectedValue(new Error("Connection refused"));
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
 
       const res = await PATCH(createRequest("PATCH", { tagline: "New" }), createContext());
@@ -363,9 +372,9 @@ describe("PATCH /api/showcases/[id]", () => {
     it("returns 500 on DB write error", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
       mockIsAdminUser.mockResolvedValue(false);
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockResolvedValue({ id: "s1", user_id: "u1" }),
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseOwner: { id: "s1", user_id: "u1" },
+      });
       const mockDbWrite = {
         execute: vi.fn().mockRejectedValue(new Error("Disk full")),
       };
@@ -400,9 +409,9 @@ describe("DELETE /api/showcases/[id]", () => {
     it("allows owner to delete", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
       mockIsAdminUser.mockResolvedValue(false);
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockResolvedValue({ id: "s1", user_id: "u1" }),
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseOwner: { id: "s1", user_id: "u1" },
+      });
       const mockDbWrite = {
         execute: vi.fn().mockResolvedValue({ changes: 1 }),
       };
@@ -419,9 +428,9 @@ describe("DELETE /api/showcases/[id]", () => {
     it("allows admin to delete any showcase", async () => {
       mockResolveUser.mockResolvedValue({ userId: "admin", email: "admin@example.com" });
       mockIsAdminUser.mockResolvedValue(true);
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockResolvedValue({ id: "s1", user_id: "u1" }),
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseOwner: { id: "s1", user_id: "u1" },
+      });
       const mockDbWrite = {
         execute: vi.fn().mockResolvedValue({ changes: 1 }),
       };
@@ -436,9 +445,9 @@ describe("DELETE /api/showcases/[id]", () => {
     it("returns 403 for non-owner non-admin", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u2", email: "other@example.com" });
       mockIsAdminUser.mockResolvedValue(false);
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockResolvedValue({ id: "s1", user_id: "u1" }),
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseOwner: { id: "s1", user_id: "u1" },
+      });
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
 
       const res = await DELETE(createRequest("DELETE"), createContext());
@@ -449,9 +458,9 @@ describe("DELETE /api/showcases/[id]", () => {
     it("returns 404 when showcase not found", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
       mockIsAdminUser.mockResolvedValue(false);
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockResolvedValue(null),
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseOwner: null,
+      });
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
 
       const res = await DELETE(createRequest("DELETE"), createContext());
@@ -464,9 +473,8 @@ describe("DELETE /api/showcases/[id]", () => {
     it("handles missing table gracefully", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
       mockIsAdminUser.mockResolvedValue(false);
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockRejectedValue(new Error("no such table: showcases")),
-      };
+      const mockDbRead = createMockDbRead();
+      mockDbRead.getShowcaseOwner.mockRejectedValue(new Error("no such table: showcases"));
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
 
       const res = await DELETE(createRequest("DELETE"), createContext());
@@ -477,9 +485,8 @@ describe("DELETE /api/showcases/[id]", () => {
     it("returns 500 on DB read error", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
       mockIsAdminUser.mockResolvedValue(false);
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockRejectedValue(new Error("Connection refused")),
-      };
+      const mockDbRead = createMockDbRead();
+      mockDbRead.getShowcaseOwner.mockRejectedValue(new Error("Connection refused"));
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
 
       const res = await DELETE(createRequest("DELETE"), createContext());
@@ -492,9 +499,9 @@ describe("DELETE /api/showcases/[id]", () => {
     it("returns 500 on DB write error", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "owner@example.com" });
       mockIsAdminUser.mockResolvedValue(false);
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockResolvedValue({ id: "s1", user_id: "u1" }),
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseOwner: { id: "s1", user_id: "u1" },
+      });
       const mockDbWrite = {
         execute: vi.fn().mockRejectedValue(new Error("Disk full")),
       };

@@ -27,10 +27,8 @@ export async function POST(request: Request, context: RouteContext) {
   // Check showcase exists and is public
   let showcase: { id: string; is_public: number } | null;
   try {
-    showcase = await dbRead.firstOrNull<{ id: string; is_public: number }>(
-      "SELECT id, is_public FROM showcases WHERE id = ?",
-      [id]
-    );
+    const row = await dbRead.getShowcaseById(id);
+    showcase = row ? { id: row.id, is_public: row.is_public } : null;
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("no such table")) {
@@ -56,12 +54,9 @@ export async function POST(request: Request, context: RouteContext) {
   }
 
   // Check current upvote state
-  let existing: { id: number } | null;
+  let hasUpvoted: boolean;
   try {
-    existing = await dbRead.firstOrNull<{ id: number }>(
-      "SELECT id FROM showcase_upvotes WHERE showcase_id = ? AND user_id = ?",
-      [id, user.userId]
-    );
+    hasUpvoted = await dbRead.checkShowcaseUpvote(id, user.userId);
   } catch (err) {
     console.error("Failed to check upvote:", err);
     return NextResponse.json(
@@ -72,7 +67,7 @@ export async function POST(request: Request, context: RouteContext) {
 
   // Toggle upvote
   try {
-    if (existing) {
+    if (hasUpvoted) {
       // Remove upvote
       await dbWrite.execute(
         "DELETE FROM showcase_upvotes WHERE showcase_id = ? AND user_id = ?",
@@ -96,18 +91,14 @@ export async function POST(request: Request, context: RouteContext) {
   // Get fresh count
   let upvoteCount = 0;
   try {
-    const countResult = await dbRead.firstOrNull<{ count: number }>(
-      "SELECT COUNT(*) as count FROM showcase_upvotes WHERE showcase_id = ?",
-      [id]
-    );
-    upvoteCount = countResult?.count ?? 0;
+    upvoteCount = await dbRead.getShowcaseUpvoteCount(id);
   } catch (err) {
     console.error("Failed to get upvote count:", err);
     // Non-fatal — return the toggle result with count 0
   }
 
   return NextResponse.json({
-    upvoted: !existing,
+    upvoted: !hasUpvoted,
     upvote_count: upvoteCount,
   });
 }

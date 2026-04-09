@@ -43,6 +43,17 @@ const mockBuildOgImageUrl = vi.mocked(buildOgImageUrl);
 const mockGitHubErrorToStatus = vi.mocked(gitHubErrorToStatus);
 const mockGitHubErrorMessage = vi.mocked(gitHubErrorMessage);
 
+/** Create a mock DbRead with typed RPC methods */
+function createMockDbRead(overrides: {
+  checkShowcaseExistsByRepoKey?: { exists: boolean; id?: string };
+} = {}) {
+  return {
+    checkShowcaseExistsByRepoKey: vi.fn().mockResolvedValue(
+      overrides.checkShowcaseExistsByRepoKey ?? { exists: false }
+    ),
+  };
+}
+
 function createRequest(body: unknown): Request {
   return new Request("http://localhost/api/showcases/preview", {
     method: "POST",
@@ -182,9 +193,9 @@ describe("POST /api/showcases/preview", () => {
     });
 
     it("returns preview data for new repo", async () => {
-      const mockDb = {
-        firstOrNull: vi.fn().mockResolvedValue(null),
-      };
+      const mockDb = createMockDbRead({
+        checkShowcaseExistsByRepoKey: { exists: false },
+      });
       mockGetDbRead.mockResolvedValue(mockDb as never);
 
       const res = await POST(createRequest({ github_url: "https://github.com/owner/repo" }));
@@ -208,9 +219,9 @@ describe("POST /api/showcases/preview", () => {
     });
 
     it("returns already_exists=true for existing repo", async () => {
-      const mockDb = {
-        firstOrNull: vi.fn().mockResolvedValue({ id: "existing-id" }),
-      };
+      const mockDb = createMockDbRead({
+        checkShowcaseExistsByRepoKey: { exists: true, id: "existing-id" },
+      });
       mockGetDbRead.mockResolvedValue(mockDb as never);
 
       const res = await POST(createRequest({ github_url: "https://github.com/owner/repo" }));
@@ -221,9 +232,8 @@ describe("POST /api/showcases/preview", () => {
     });
 
     it("handles missing table gracefully", async () => {
-      const mockDb = {
-        firstOrNull: vi.fn().mockRejectedValue(new Error("no such table: showcases")),
-      };
+      const mockDb = createMockDbRead();
+      mockDb.checkShowcaseExistsByRepoKey.mockRejectedValue(new Error("no such table: showcases"));
       mockGetDbRead.mockResolvedValue(mockDb as never);
 
       const res = await POST(createRequest({ github_url: "https://github.com/owner/repo" }));
@@ -234,9 +244,8 @@ describe("POST /api/showcases/preview", () => {
     });
 
     it("returns 500 on unexpected DB error", async () => {
-      const mockDb = {
-        firstOrNull: vi.fn().mockRejectedValue(new Error("Connection refused")),
-      };
+      const mockDb = createMockDbRead();
+      mockDb.checkShowcaseExistsByRepoKey.mockRejectedValue(new Error("Connection refused"));
       mockGetDbRead.mockResolvedValue(mockDb as never);
 
       const res = await POST(createRequest({ github_url: "https://github.com/owner/repo" }));

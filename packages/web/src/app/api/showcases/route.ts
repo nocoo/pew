@@ -16,7 +16,6 @@ import {
   gitHubErrorMessage,
 } from "@/lib/github";
 import {
-  type ShowcaseRow,
   MAX_TAGLINE_LENGTH,
   DEFAULT_SHOWCASE_LIMIT,
   MAX_SHOWCASE_LIMIT,
@@ -45,82 +44,31 @@ export async function GET(request: Request) {
   const dbRead = await getDbRead();
 
   try {
-    let showcases: ShowcaseRow[];
+    let showcases: Awaited<ReturnType<typeof dbRead.listShowcases>>;
     let total: number;
 
     if (mine && user) {
       // Get current user's showcases (all, including hidden)
-      const countResult = await dbRead.firstOrNull<{ count: number }>(
-        "SELECT COUNT(*) as count FROM showcases WHERE user_id = ?",
-        [user.userId]
-      );
-      total = countResult?.count ?? 0;
+      total = await dbRead.countShowcases({ userId: user.userId });
 
-      const query = `
-        SELECT
-          s.id, s.user_id, s.repo_key, s.github_url, s.title, s.description,
-          s.tagline, s.og_image_url, s.is_public, s.created_at, s.refreshed_at,
-          s.stars, s.forks, s.language, s.license, s.topics, s.homepage,
-          u.name as user_name, u.nickname as user_nickname, u.image as user_image, u.slug as user_slug,
-          (SELECT COUNT(*) FROM showcase_upvotes WHERE showcase_id = s.id) as upvote_count,
-          EXISTS(SELECT 1 FROM showcase_upvotes WHERE showcase_id = s.id AND user_id = ?) as has_upvoted
-        FROM showcases s
-        JOIN users u ON u.id = s.user_id
-        WHERE s.user_id = ?
-        ORDER BY s.created_at DESC, s.id DESC
-        LIMIT ? OFFSET ?
-      `;
-      const { results } = await dbRead.query<ShowcaseRow>(query, [
-        user.userId,
-        user.userId,
+      showcases = await dbRead.listShowcases({
+        userId: user.userId,
+        currentUserId: user.userId,
+        orderBy: "created_at",
         limit,
         offset,
-      ]);
-      showcases = results;
+      });
     } else {
       // Get public showcases
-      const countResult = await dbRead.firstOrNull<{ count: number }>(
-        "SELECT COUNT(*) as count FROM showcases WHERE is_public = 1",
-        []
-      );
-      total = countResult?.count ?? 0;
+      total = await dbRead.countShowcases({ publicOnly: true });
 
-      if (user) {
-        // Authenticated: include has_upvoted
-        const query = `
-          SELECT
-            s.id, s.user_id, s.repo_key, s.github_url, s.title, s.description,
-            s.tagline, s.og_image_url, s.is_public, s.created_at, s.refreshed_at,
-            s.stars, s.forks, s.language, s.license, s.topics, s.homepage,
-            u.name as user_name, u.nickname as user_nickname, u.image as user_image, u.slug as user_slug,
-            (SELECT COUNT(*) FROM showcase_upvotes WHERE showcase_id = s.id) as upvote_count,
-            EXISTS(SELECT 1 FROM showcase_upvotes WHERE showcase_id = s.id AND user_id = ?) as has_upvoted
-          FROM showcases s
-          JOIN users u ON u.id = s.user_id
-          WHERE s.is_public = 1
-          ORDER BY upvote_count DESC, s.created_at DESC, s.id DESC
-          LIMIT ? OFFSET ?
-        `;
-        const { results } = await dbRead.query<ShowcaseRow>(query, [user.userId, limit, offset]);
-        showcases = results;
-      } else {
-        // Unauthenticated: no has_upvoted
-        const query = `
-          SELECT
-            s.id, s.user_id, s.repo_key, s.github_url, s.title, s.description,
-            s.tagline, s.og_image_url, s.is_public, s.created_at, s.refreshed_at,
-            s.stars, s.forks, s.language, s.license, s.topics, s.homepage,
-            u.name as user_name, u.nickname as user_nickname, u.image as user_image, u.slug as user_slug,
-            (SELECT COUNT(*) FROM showcase_upvotes WHERE showcase_id = s.id) as upvote_count
-          FROM showcases s
-          JOIN users u ON u.id = s.user_id
-          WHERE s.is_public = 1
-          ORDER BY upvote_count DESC, s.created_at DESC, s.id DESC
-          LIMIT ? OFFSET ?
-        `;
-        const { results } = await dbRead.query<ShowcaseRow>(query, [limit, offset]);
-        showcases = results;
-      }
+      showcases = await dbRead.listShowcases({
+        publicOnly: true,
+        currentUserId: user?.userId,
+        orderBy: "upvote_count",
+        limit,
+        offset,
+      });
     }
 
     return NextResponse.json({
@@ -286,11 +234,8 @@ export async function POST(request: Request) {
 
   // Check if already exists
   try {
-    const existing = await dbRead.firstOrNull<{ id: string }>(
-      "SELECT id FROM showcases WHERE repo_key = ?",
-      [repoKey]
-    );
-    if (existing) {
+    const result = await dbRead.checkShowcaseExistsByRepoKey(repoKey);
+    if (result.exists) {
       return NextResponse.json(
         { error: "This repository has already been showcased" },
         { status: 409 }

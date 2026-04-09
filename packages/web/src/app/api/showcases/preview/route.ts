@@ -92,11 +92,8 @@ export async function POST(request: Request) {
   const dbRead = await getDbRead();
   let alreadyExists = false;
   try {
-    const existing = await dbRead.firstOrNull<{ id: string }>(
-      "SELECT id FROM showcases WHERE repo_key = ?",
-      [repoKey]
-    );
-    alreadyExists = existing !== null;
+    const result = await dbRead.checkShowcaseExistsByRepoKey(repoKey);
+    alreadyExists = result.exists;
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (!msg.includes("no such table")) {

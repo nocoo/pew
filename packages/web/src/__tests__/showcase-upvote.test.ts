@@ -18,6 +18,19 @@ const mockResolveUser = vi.mocked(resolveUser);
 const mockGetDbRead = vi.mocked(getDbRead);
 const mockGetDbWrite = vi.mocked(getDbWrite);
 
+/** Create a mock DbRead with typed RPC methods for upvote route */
+function createMockDbRead(overrides: {
+  getShowcaseById?: { id: string; is_public: number } | null;
+  checkShowcaseUpvote?: boolean;
+  getShowcaseUpvoteCount?: number;
+} = {}) {
+  return {
+    getShowcaseById: vi.fn().mockResolvedValue(overrides.getShowcaseById ?? null),
+    checkShowcaseUpvote: vi.fn().mockResolvedValue(overrides.checkShowcaseUpvote ?? false),
+    getShowcaseUpvoteCount: vi.fn().mockResolvedValue(overrides.getShowcaseUpvoteCount ?? 0),
+  };
+}
+
 function createRequest(): Request {
   return new Request("http://localhost/api/showcases/s1/upvote", {
     method: "POST",
@@ -54,9 +67,9 @@ describe("POST /api/showcases/[id]/upvote", () => {
   describe("showcase validation", () => {
     it("returns 404 when showcase not found", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "test@example.com" });
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockResolvedValue(null),
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseById: null,
+      });
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
 
       const res = await POST(createRequest(), createContext());
@@ -66,9 +79,9 @@ describe("POST /api/showcases/[id]/upvote", () => {
 
     it("returns 403 when showcase is hidden", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "test@example.com" });
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockResolvedValue({ id: "s1", is_public: 0 }),
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseById: { id: "s1", is_public: 0 },
+      });
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
 
       const res = await POST(createRequest(), createContext());
@@ -82,13 +95,11 @@ describe("POST /api/showcases/[id]/upvote", () => {
   describe("upvote toggle", () => {
     it("adds upvote when not upvoted", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "test@example.com" });
-      const mockDbRead = {
-        firstOrNull: vi
-          .fn()
-          .mockResolvedValueOnce({ id: "s1", is_public: 1 }) // Check showcase
-          .mockResolvedValueOnce(null) // Check existing upvote
-          .mockResolvedValueOnce({ count: 5 }), // Get count
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseById: { id: "s1", is_public: 1 },
+        checkShowcaseUpvote: false,
+        getShowcaseUpvoteCount: 5,
+      });
       const mockDbWrite = {
         execute: vi.fn().mockResolvedValue({ changes: 1 }),
       };
@@ -109,13 +120,11 @@ describe("POST /api/showcases/[id]/upvote", () => {
 
     it("removes upvote when already upvoted", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "test@example.com" });
-      const mockDbRead = {
-        firstOrNull: vi
-          .fn()
-          .mockResolvedValueOnce({ id: "s1", is_public: 1 }) // Check showcase
-          .mockResolvedValueOnce({ id: 123 }) // Check existing upvote
-          .mockResolvedValueOnce({ count: 4 }), // Get count
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseById: { id: "s1", is_public: 1 },
+        checkShowcaseUpvote: true,
+        getShowcaseUpvoteCount: 4,
+      });
       const mockDbWrite = {
         execute: vi.fn().mockResolvedValue({ changes: 1 }),
       };
@@ -136,13 +145,11 @@ describe("POST /api/showcases/[id]/upvote", () => {
 
     it("handles count query failure gracefully", async () => {
       mockResolveUser.mockResolvedValue({ userId: "u1", email: "test@example.com" });
-      const mockDbRead = {
-        firstOrNull: vi
-          .fn()
-          .mockResolvedValueOnce({ id: "s1", is_public: 1 }) // Check showcase
-          .mockResolvedValueOnce(null) // Check existing upvote
-          .mockRejectedValueOnce(new Error("DB error")), // Get count fails
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseById: { id: "s1", is_public: 1 },
+        checkShowcaseUpvote: false,
+      });
+      mockDbRead.getShowcaseUpvoteCount.mockRejectedValue(new Error("DB error"));
       const mockDbWrite = {
         execute: vi.fn().mockResolvedValue({ changes: 1 }),
       };
@@ -165,9 +172,8 @@ describe("POST /api/showcases/[id]/upvote", () => {
     });
 
     it("handles missing table gracefully", async () => {
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockRejectedValue(new Error("no such table: showcases")),
-      };
+      const mockDbRead = createMockDbRead();
+      mockDbRead.getShowcaseById.mockRejectedValue(new Error("no such table: showcases"));
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
 
       const res = await POST(createRequest(), createContext());
@@ -176,9 +182,8 @@ describe("POST /api/showcases/[id]/upvote", () => {
     });
 
     it("returns 500 on showcase lookup error", async () => {
-      const mockDbRead = {
-        firstOrNull: vi.fn().mockRejectedValue(new Error("Connection refused")),
-      };
+      const mockDbRead = createMockDbRead();
+      mockDbRead.getShowcaseById.mockRejectedValue(new Error("Connection refused"));
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
 
       const res = await POST(createRequest(), createContext());
@@ -189,12 +194,10 @@ describe("POST /api/showcases/[id]/upvote", () => {
     });
 
     it("returns 500 on upvote check error", async () => {
-      const mockDbRead = {
-        firstOrNull: vi
-          .fn()
-          .mockResolvedValueOnce({ id: "s1", is_public: 1 })
-          .mockRejectedValueOnce(new Error("DB error")),
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseById: { id: "s1", is_public: 1 },
+      });
+      mockDbRead.checkShowcaseUpvote.mockRejectedValue(new Error("DB error"));
       mockGetDbRead.mockResolvedValue(mockDbRead as never);
 
       const res = await POST(createRequest(), createContext());
@@ -205,12 +208,10 @@ describe("POST /api/showcases/[id]/upvote", () => {
     });
 
     it("returns 500 on upvote toggle error", async () => {
-      const mockDbRead = {
-        firstOrNull: vi
-          .fn()
-          .mockResolvedValueOnce({ id: "s1", is_public: 1 })
-          .mockResolvedValueOnce(null),
-      };
+      const mockDbRead = createMockDbRead({
+        getShowcaseById: { id: "s1", is_public: 1 },
+        checkShowcaseUpvote: false,
+      });
       const mockDbWrite = {
         execute: vi.fn().mockRejectedValue(new Error("Disk full")),
       };

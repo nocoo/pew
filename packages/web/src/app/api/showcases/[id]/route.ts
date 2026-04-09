@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
 import { getDbRead, getDbWrite } from "@/lib/db";
 import { isAdminUser } from "@/lib/admin";
-import { type ShowcaseRow, MAX_TAGLINE_LENGTH } from "@/lib/showcase-types";
+import { MAX_TAGLINE_LENGTH } from "@/lib/showcase-types";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -24,36 +24,7 @@ export async function GET(request: Request, context: RouteContext) {
   const dbRead = await getDbRead();
 
   try {
-    let showcase: ShowcaseRow | null;
-
-    if (user) {
-      // Authenticated: include has_upvoted
-      showcase = await dbRead.firstOrNull<ShowcaseRow>(
-        `SELECT
-          s.id, s.user_id, s.repo_key, s.github_url, s.title, s.description,
-          s.tagline, s.og_image_url, s.is_public, s.created_at, s.refreshed_at,
-          u.name as user_name, u.nickname as user_nickname, u.image as user_image, u.slug as user_slug,
-          (SELECT COUNT(*) FROM showcase_upvotes WHERE showcase_id = s.id) as upvote_count,
-          EXISTS(SELECT 1 FROM showcase_upvotes WHERE showcase_id = s.id AND user_id = ?) as has_upvoted
-        FROM showcases s
-        JOIN users u ON u.id = s.user_id
-        WHERE s.id = ?`,
-        [user.userId, id]
-      );
-    } else {
-      // Unauthenticated: no has_upvoted
-      showcase = await dbRead.firstOrNull<ShowcaseRow>(
-        `SELECT
-          s.id, s.user_id, s.repo_key, s.github_url, s.title, s.description,
-          s.tagline, s.og_image_url, s.is_public, s.created_at, s.refreshed_at,
-          u.name as user_name, u.nickname as user_nickname, u.image as user_image, u.slug as user_slug,
-          (SELECT COUNT(*) FROM showcase_upvotes WHERE showcase_id = s.id) as upvote_count
-        FROM showcases s
-        JOIN users u ON u.id = s.user_id
-        WHERE s.id = ?`,
-        [id]
-      );
-    }
+    const showcase = await dbRead.getShowcaseById(id, user?.userId);
 
     if (!showcase) {
       return NextResponse.json({ error: "Showcase not found" }, { status: 404 });
@@ -126,10 +97,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   // Find showcase
   let showcase: { id: string; user_id: string } | null;
   try {
-    showcase = await dbRead.firstOrNull<{ id: string; user_id: string }>(
-      "SELECT id, user_id FROM showcases WHERE id = ?",
-      [id]
-    );
+    showcase = await dbRead.getShowcaseOwner(id);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("no such table")) {
@@ -236,10 +204,7 @@ export async function DELETE(request: Request, context: RouteContext) {
   // Find showcase
   let showcase: { id: string; user_id: string } | null;
   try {
-    showcase = await dbRead.firstOrNull<{ id: string; user_id: string }>(
-      "SELECT id, user_id FROM showcases WHERE id = ?",
-      [id]
-    );
+    showcase = await dbRead.getShowcaseOwner(id);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("no such table")) {
