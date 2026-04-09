@@ -31,6 +31,7 @@ import type {
   ShowcaseOwnerRow,
   ShowcaseExistsResult,
   PricingRow,
+  UsageRecordRow,
   UsageDeviceSummaryRow,
   UsageCostDetailRow,
   UsageDeviceTimelineRow,
@@ -681,6 +682,25 @@ export function createWorkerDbRead(): DbRead {
     // -------------------------------------------------------------------------
     // Usage domain RPC methods
     // -------------------------------------------------------------------------
+
+    async getUsageRecords(
+      userId: string,
+      fromDate: string,
+      toDate: string,
+      options?: {
+        source?: string;
+        granularity?: "half-hour" | "day";
+      },
+    ): Promise<UsageRecordRow[]> {
+      return rpc<UsageRecordRow[]>({
+        method: "usage.get",
+        userId,
+        fromDate,
+        toDate,
+        source: options?.source,
+        granularity: options?.granularity,
+      });
+    },
 
     async getDeviceSummary(
       userId: string,

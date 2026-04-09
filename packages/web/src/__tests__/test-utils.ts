@@ -97,6 +97,7 @@ export function createMockDbRead() {
     getModelPricingById: vi.fn(),
     getModelPricingByModelSource: vi.fn(),
     // Usage RPC methods
+    getUsageRecords: vi.fn(),
     getDeviceSummary: vi.fn(),
     getDeviceCostDetails: vi.fn(),
     getDeviceTimeline: vi.fn(),
@@ -186,6 +187,7 @@ export function createMockDbRead() {
     listModelPricing: ReturnType<typeof vi.fn>;
     getModelPricingById: ReturnType<typeof vi.fn>;
     getModelPricingByModelSource: ReturnType<typeof vi.fn>;
+    getUsageRecords: ReturnType<typeof vi.fn>;
     getDeviceSummary: ReturnType<typeof vi.fn>;
     getDeviceCostDetails: ReturnType<typeof vi.fn>;
     getDeviceTimeline: ReturnType<typeof vi.fn>;

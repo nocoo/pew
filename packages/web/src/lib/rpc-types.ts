@@ -311,6 +311,18 @@ export interface PricingRow {
 // Usage domain types
 // ---------------------------------------------------------------------------
 
+/** Usage record row (aggregated by time/source/model) */
+export interface UsageRecordRow {
+  source: string;
+  model: string;
+  hour_start: string;
+  input_tokens: number;
+  cached_input_tokens: number;
+  output_tokens: number;
+  reasoning_output_tokens: number;
+  total_tokens: number;
+}
+
 /** Device summary row for by-device usage */
 export interface UsageDeviceSummaryRow {
   device_id: string;

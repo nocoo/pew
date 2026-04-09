@@ -30,6 +30,7 @@ import type {
   ShowcaseOwnerRow,
   ShowcaseExistsResult,
   PricingRow,
+  UsageRecordRow,
   UsageDeviceSummaryRow,
   UsageCostDetailRow,
   UsageDeviceTimelineRow,
@@ -373,6 +374,17 @@ export interface DbRead {
   // ---------------------------------------------------------------------------
   // Usage domain RPC methods
   // ---------------------------------------------------------------------------
+
+  /** Get usage records aggregated by time/source/model */
+  getUsageRecords(
+    userId: string,
+    fromDate: string,
+    toDate: string,
+    options?: {
+      source?: string;
+      granularity?: "half-hour" | "day";
+    },
+  ): Promise<UsageRecordRow[]>;
 
   /** Get device summary for by-device usage */
   getDeviceSummary(
