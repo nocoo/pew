@@ -113,15 +113,15 @@ Each raw SQL call is migrated as an atomic commit. Total: **139 commits**.
 #### teams domain (25 calls, 7 files)
 
 **packages/web/src/app/api/teams/[teamId]/route.ts** (10 calls)
-- [ ] M023: `dbRead.firstOrNull<{ role: string }>` (1st) → `teams.getMembership`
+- [x] M023: `dbRead.firstOrNull<{ role: string }>` (1st) → `teams.getMembership`
 - [ ] M024: `dbRead.firstOrNull<{ ... }>` (team info) → `teams.getById`
 - [ ] M025: `dbRead.query<{ ... }>` (members) → `teams.getMembers`
 - [ ] M026: `dbRead.query<{ season_id: string }>` → `teams.getSeasonRegistrations`
-- [ ] M027: `dbRead.firstOrNull<{ role: string }>` (2nd) → `teams.getMembership`
+- [x] M027: `dbRead.firstOrNull<{ role: string }>` (2nd) → `teams.getMembership`
 - [ ] M028: `dbRead.firstOrNull<{ ... }>` (edit check) → `teams.getById`
 - [ ] M029: `dbRead.firstOrNull<{ logo_url: string | null }>` → `teams.getLogoUrl`
-- [ ] M030: `dbRead.firstOrNull<{ cnt: number }>` → `teams.countMembers`
-- [ ] M031: `dbRead.firstOrNull<{ role: string }>` (3rd) → `teams.getMembership`
+- [x] M030: `dbRead.firstOrNull<{ cnt: number }>` → `teams.countMembers`
+- [x] M031: `dbRead.firstOrNull<{ role: string }>` (3rd) → `teams.getMembership`
 - [ ] M032: `dbRead.query<{ ... }>` (members 2nd) → `teams.getMembers`
 
 **packages/web/src/app/api/teams/[teamId]/logo/route.ts** (4 calls)
@@ -206,8 +206,8 @@ Each raw SQL call is migrated as an atomic commit. Total: **139 commits**.
 - [ ] M083: `dbRead.firstOrNull<{ ... }>` (user full) → `users.getById`
 
 **packages/web/src/app/api/admin/organizations/[orgId]/members/[userId]/route.ts** (2 calls)
-- [ ] M084: `dbRead.firstOrNull<{ id: string }>` (org) → `organizations.getById`
-- [ ] M085: `dbRead.firstOrNull<{ id: string }>` (member) → `organizations.checkMembership`
+- [x] M084: `dbRead.firstOrNull<{ id: string }>` (org) → `organizations.getById`
+- [x] M085: `dbRead.firstOrNull<{ id: string }>` (member) → `organizations.checkMembership`
 
 **packages/web/src/app/api/admin/organizations/[orgId]/logo/route.ts** (3 calls)
 - [ ] M086: `dbRead.firstOrNull<{ id: string }>` → `organizations.getById`
