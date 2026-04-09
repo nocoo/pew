@@ -71,9 +71,12 @@ describe("DELETE /api/account/delete", () => {
 
     it("should return 400 when confirm_email does not match", async () => {
       vi.mocked(authModule.resolveUser).mockResolvedValueOnce({ userId: "u1" });
-      mockReadClient.firstOrNull.mockResolvedValueOnce({
+      mockReadClient.getUserById.mockResolvedValueOnce({
         id: "u1",
         email: "user@example.com",
+        name: null,
+        image: null,
+        email_verified: null,
       });
 
       const res = await DELETE(makeDeleteRequest({ confirm_email: "wrong@example.com" }));
@@ -85,9 +88,12 @@ describe("DELETE /api/account/delete", () => {
 
     it("should match email case-insensitively", async () => {
       vi.mocked(authModule.resolveUser).mockResolvedValueOnce({ userId: "u1" });
-      mockReadClient.firstOrNull.mockResolvedValueOnce({
+      mockReadClient.getUserById.mockResolvedValueOnce({
         id: "u1",
         email: "User@Example.com",
+        name: null,
+        image: null,
+        email_verified: null,
       });
       mockWriteClient.execute.mockResolvedValue({ results: [] });
 
@@ -100,7 +106,7 @@ describe("DELETE /api/account/delete", () => {
   describe("user not found", () => {
     it("should return 404 when user does not exist", async () => {
       vi.mocked(authModule.resolveUser).mockResolvedValueOnce({ userId: "u1" });
-      mockReadClient.firstOrNull.mockResolvedValueOnce(null);
+      mockReadClient.getUserById.mockResolvedValueOnce(null);
 
       const res = await DELETE(makeDeleteRequest({ confirm_email: "test@example.com" }));
 
@@ -113,9 +119,12 @@ describe("DELETE /api/account/delete", () => {
   describe("successful deletion", () => {
     it("should delete all user data and return success", async () => {
       vi.mocked(authModule.resolveUser).mockResolvedValueOnce({ userId: "u1" });
-      mockReadClient.firstOrNull.mockResolvedValueOnce({
+      mockReadClient.getUserById.mockResolvedValueOnce({
         id: "u1",
         email: "user@example.com",
+        name: null,
+        image: null,
+        email_verified: null,
       });
       mockWriteClient.execute.mockResolvedValue({ results: [] });
 
@@ -149,9 +158,12 @@ describe("DELETE /api/account/delete", () => {
   describe("error handling", () => {
     it("should return 500 on database error", async () => {
       vi.mocked(authModule.resolveUser).mockResolvedValueOnce({ userId: "u1" });
-      mockReadClient.firstOrNull.mockResolvedValueOnce({
+      mockReadClient.getUserById.mockResolvedValueOnce({
         id: "u1",
         email: "user@example.com",
+        name: null,
+        image: null,
+        email_verified: null,
       });
       mockWriteClient.execute.mockRejectedValueOnce(new Error("DB error"));
 
@@ -164,9 +176,12 @@ describe("DELETE /api/account/delete", () => {
 
     it("should handle missing optional tables gracefully", async () => {
       vi.mocked(authModule.resolveUser).mockResolvedValueOnce({ userId: "u1" });
-      mockReadClient.firstOrNull.mockResolvedValueOnce({
+      mockReadClient.getUserById.mockResolvedValueOnce({
         id: "u1",
         email: "user@example.com",
+        name: null,
+        image: null,
+        email_verified: null,
       });
 
       // First few succeed, then season tables fail (they may not exist)

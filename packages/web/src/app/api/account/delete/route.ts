@@ -16,15 +16,6 @@ import { resolveUser } from "@/lib/auth-helpers";
 import { getDbRead, getDbWrite } from "@/lib/db";
 
 // ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-interface UserRow {
-  id: string;
-  email: string;
-}
-
-// ---------------------------------------------------------------------------
 // DELETE — permanently delete account
 // ---------------------------------------------------------------------------
 
@@ -53,10 +44,7 @@ export async function DELETE(request: Request) {
   const dbWrite = await getDbWrite();
 
   // Fetch user record to verify email matches
-  const user = await dbRead.firstOrNull<UserRow>(
-    "SELECT id, email FROM users WHERE id = ?",
-    [authResult.userId],
-  );
+  const user = await dbRead.getUserById(authResult.userId);
 
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
