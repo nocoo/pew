@@ -463,9 +463,12 @@ export default function LeaderboardPage() {
   });
 
   // Accumulate entries as pages are loaded
+  // Track last processed data to avoid duplicate appends when offset changes
+  const lastProcessedDataRef = useRef<typeof data>(null);
   /* eslint-disable react-hooks/set-state-in-effect -- accumulate pages */
   useEffect(() => {
-    if (data?.entries) {
+    if (data?.entries && data !== lastProcessedDataRef.current) {
+      lastProcessedDataRef.current = data;
       if (offset === 0) {
         // First page - replace all entries
         setAllEntries(data.entries);
