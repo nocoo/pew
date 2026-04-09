@@ -73,9 +73,8 @@ describe("GET /api/settings", () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
     // Full query fails (nickname missing), level 1 also fails (nickname missing), level 2 succeeds
     mockDbRead.getUserSettings.mockRejectedValueOnce(new Error("no such column: nickname"));
-    mockDbRead.firstOrNull
-      .mockRejectedValueOnce(new Error("no such column: nickname"))
-      .mockResolvedValueOnce({ slug: "alice" });
+    mockDbRead.getUserNicknameSlug.mockRejectedValueOnce(new Error("no such column: nickname"));
+    mockDbRead.getUserSlugOnly.mockResolvedValueOnce({ slug: "alice" });
 
     const res = await GET(makeJsonRequest("GET", "/api/settings"));
     const body = await res.json();
@@ -88,9 +87,8 @@ describe("GET /api/settings", () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
     // Full query fails, level 1 also fails (nickname missing), level 2 returns null
     mockDbRead.getUserSettings.mockRejectedValueOnce(new Error("no such column: nickname"));
-    mockDbRead.firstOrNull
-      .mockRejectedValueOnce(new Error("no such column: nickname"))
-      .mockResolvedValueOnce(null);
+    mockDbRead.getUserNicknameSlug.mockRejectedValueOnce(new Error("no such column: nickname"));
+    mockDbRead.getUserSlugOnly.mockResolvedValueOnce(null);
 
     const res = await GET(makeJsonRequest("GET", "/api/settings"));
 
@@ -115,7 +113,7 @@ describe("GET /api/settings", () => {
   it("should return is_public: false in fallback when column missing", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
     mockDbRead.getUserSettings.mockRejectedValueOnce(new Error("no such column: is_public"));
-    mockDbRead.firstOrNull.mockResolvedValueOnce({ slug: "alice" });
+    mockDbRead.getUserNicknameSlug.mockResolvedValueOnce({ nickname: null, slug: "alice" });
 
     const res = await GET(makeJsonRequest("GET", "/api/settings"));
     const body = await res.json();
@@ -128,7 +126,7 @@ describe("GET /api/settings", () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
     // First query fails (is_public missing), level 1 fallback succeeds (nickname exists)
     mockDbRead.getUserSettings.mockRejectedValueOnce(new Error("no such column: is_public"));
-    mockDbRead.firstOrNull.mockResolvedValueOnce({ nickname: "Alice", slug: "alice" });
+    mockDbRead.getUserNicknameSlug.mockResolvedValueOnce({ nickname: "Alice", slug: "alice" });
 
     const res = await GET(makeJsonRequest("GET", "/api/settings"));
     const body = await res.json();
@@ -141,9 +139,8 @@ describe("GET /api/settings", () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
     // First query fails (is_public), level 1 fails (nickname), level 2 succeeds
     mockDbRead.getUserSettings.mockRejectedValueOnce(new Error("no such column: is_public"));
-    mockDbRead.firstOrNull
-      .mockRejectedValueOnce(new Error("no such column: nickname"))
-      .mockResolvedValueOnce({ slug: "alice" });
+    mockDbRead.getUserNicknameSlug.mockRejectedValueOnce(new Error("no such column: nickname"));
+    mockDbRead.getUserSlugOnly.mockResolvedValueOnce({ slug: "alice" });
 
     const res = await GET(makeJsonRequest("GET", "/api/settings"));
     const body = await res.json();

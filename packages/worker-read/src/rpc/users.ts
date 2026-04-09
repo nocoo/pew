@@ -106,6 +106,38 @@ export interface SearchUsersResult {
   image: string | null;
 }
 
+export interface GetUserSlugOnlyRequest {
+  method: "users.getSlugOnly";
+  userId: string;
+}
+
+export interface GetUserNicknameSlugRequest {
+  method: "users.getNicknameSlug";
+  userId: string;
+}
+
+export interface CheckSharedTeamRequest {
+  method: "users.checkSharedTeam";
+  userId1: string;
+  userId2: string;
+}
+
+export interface CheckSharedSeasonRequest {
+  method: "users.checkSharedSeason";
+  userId1: string;
+  userId2: string;
+}
+
+export interface GetUserFirstSeenRequest {
+  method: "users.getFirstSeen";
+  userId: string;
+}
+
+export interface GetPublicUserBySlugOrIdRequest {
+  method: "users.getPublicBySlugOrId";
+  slugOrId: string;
+}
+
 /** Union of all users RPC requests */
 export type UsersRpcRequest =
   | GetUserByIdRequest
@@ -117,7 +149,13 @@ export type UsersRpcRequest =
   | GetUserSettingsRequest
   | GetUserApiKeyRequest
   | GetUserEmailRequest
-  | SearchUsersRequest;
+  | SearchUsersRequest
+  | GetUserSlugOnlyRequest
+  | GetUserNicknameSlugRequest
+  | CheckSharedTeamRequest
+  | CheckSharedSeasonRequest
+  | GetUserFirstSeenRequest
+  | GetPublicUserBySlugOrIdRequest;
 
 // ---------------------------------------------------------------------------
 // Handler
@@ -148,6 +186,18 @@ export async function handleUsersRpc(
       return handleGetUserEmail(request, db);
     case "users.search":
       return handleSearchUsers(request, db);
+    case "users.getSlugOnly":
+      return handleGetUserSlugOnly(request, db);
+    case "users.getNicknameSlug":
+      return handleGetUserNicknameSlug(request, db);
+    case "users.checkSharedTeam":
+      return handleCheckSharedTeam(request, db);
+    case "users.checkSharedSeason":
+      return handleCheckSharedSeason(request, db);
+    case "users.getFirstSeen":
+      return handleGetUserFirstSeen(request, db);
+    case "users.getPublicBySlugOrId":
+      return handleGetPublicUserBySlugOrId(request, db);
     default:
       return Response.json(
         { error: `Unknown users method: ${(request as { method: string }).method}` },
@@ -348,4 +398,126 @@ async function handleSearchUsers(
     .all<SearchUsersResult>();
 
   return Response.json({ result: results ?? [] });
+}
+
+async function handleGetUserSlugOnly(
+  req: GetUserSlugOnlyRequest,
+  db: D1Database,
+): Promise<Response> {
+  if (!req.userId) {
+    return Response.json({ error: "Missing userId" }, { status: 400 });
+  }
+
+  const row = await db
+    .prepare("SELECT slug FROM users WHERE id = ?")
+    .bind(req.userId)
+    .first<{ slug: string | null }>();
+
+  return Response.json({ result: row ?? null });
+}
+
+async function handleGetUserNicknameSlug(
+  req: GetUserNicknameSlugRequest,
+  db: D1Database,
+): Promise<Response> {
+  if (!req.userId) {
+    return Response.json({ error: "Missing userId" }, { status: 400 });
+  }
+
+  const row = await db
+    .prepare("SELECT nickname, slug FROM users WHERE id = ?")
+    .bind(req.userId)
+    .first<{ nickname: string | null; slug: string | null }>();
+
+  return Response.json({ result: row ?? null });
+}
+
+async function handleCheckSharedTeam(
+  req: CheckSharedTeamRequest,
+  db: D1Database,
+): Promise<Response> {
+  if (!req.userId1 || !req.userId2) {
+    return Response.json({ error: "Missing userId1 or userId2" }, { status: 400 });
+  }
+
+  const row = await db
+    .prepare(
+      `SELECT a.team_id
+       FROM team_members a
+       JOIN team_members b ON a.team_id = b.team_id
+       WHERE a.user_id = ? AND b.user_id = ?
+       LIMIT 1`,
+    )
+    .bind(req.userId1, req.userId2)
+    .first<{ team_id: string }>();
+
+  return Response.json({ result: { shared: row !== null } });
+}
+
+async function handleCheckSharedSeason(
+  req: CheckSharedSeasonRequest,
+  db: D1Database,
+): Promise<Response> {
+  if (!req.userId1 || !req.userId2) {
+    return Response.json({ error: "Missing userId1 or userId2" }, { status: 400 });
+  }
+
+  const row = await db
+    .prepare(
+      `SELECT st1.season_id
+       FROM season_teams st1
+       JOIN team_members tm1 ON st1.team_id = tm1.team_id
+       JOIN season_teams st2 ON st1.season_id = st2.season_id
+       JOIN team_members tm2 ON st2.team_id = tm2.team_id
+       WHERE tm1.user_id = ? AND tm2.user_id = ?
+       LIMIT 1`,
+    )
+    .bind(req.userId1, req.userId2)
+    .first<{ season_id: string }>();
+
+  return Response.json({ result: { shared: row !== null } });
+}
+
+async function handleGetUserFirstSeen(
+  req: GetUserFirstSeenRequest,
+  db: D1Database,
+): Promise<Response> {
+  if (!req.userId) {
+    return Response.json({ error: "Missing userId" }, { status: 400 });
+  }
+
+  const row = await db
+    .prepare("SELECT MIN(hour_start) AS first_seen FROM usage_records WHERE user_id = ?")
+    .bind(req.userId)
+    .first<{ first_seen: string | null }>();
+
+  return Response.json({ result: row?.first_seen ?? null });
+}
+
+async function handleGetPublicUserBySlugOrId(
+  req: GetPublicUserBySlugOrIdRequest,
+  db: D1Database,
+): Promise<Response> {
+  if (!req.slugOrId) {
+    return Response.json({ error: "Missing slugOrId" }, { status: 400 });
+  }
+
+  // Try by slug first, then by id
+  let row = await db
+    .prepare(
+      "SELECT id, name, image, slug, created_at, is_public FROM users WHERE slug = ?",
+    )
+    .bind(req.slugOrId)
+    .first<UserProfile>();
+
+  if (!row) {
+    row = await db
+      .prepare(
+        "SELECT id, name, image, slug, created_at, is_public FROM users WHERE id = ?",
+      )
+      .bind(req.slugOrId)
+      .first<UserProfile>();
+  }
+
+  return Response.json({ result: row ?? null });
 }

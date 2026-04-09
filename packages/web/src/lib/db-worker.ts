@@ -12,6 +12,8 @@ import type {
   UserApiKeyAuth,
   UserSettings,
   UserSearchResult,
+  UserSlugOnly,
+  UserNicknameSlug,
   OrgRow,
   OrgWithCountRow,
   OrgMemberRow,
@@ -176,6 +178,40 @@ export function createWorkerDbRead(): DbRead {
         query,
         limit,
       });
+    },
+
+    async getUserSlugOnly(userId: string): Promise<UserSlugOnly | null> {
+      return rpc<UserSlugOnly | null>({ method: "users.getSlugOnly", userId });
+    },
+
+    async getUserNicknameSlug(userId: string): Promise<UserNicknameSlug | null> {
+      return rpc<UserNicknameSlug | null>({ method: "users.getNicknameSlug", userId });
+    },
+
+    async checkSharedTeam(userId1: string, userId2: string): Promise<boolean> {
+      const result = await rpc<{ shared: boolean }>({
+        method: "users.checkSharedTeam",
+        userId1,
+        userId2,
+      });
+      return result.shared;
+    },
+
+    async checkSharedSeason(userId1: string, userId2: string): Promise<boolean> {
+      const result = await rpc<{ shared: boolean }>({
+        method: "users.checkSharedSeason",
+        userId1,
+        userId2,
+      });
+      return result.shared;
+    },
+
+    async getUserFirstSeen(userId: string): Promise<string | null> {
+      return rpc<string | null>({ method: "users.getFirstSeen", userId });
+    },
+
+    async getPublicUserBySlugOrId(slugOrId: string): Promise<UserProfile | null> {
+      return rpc<UserProfile | null>({ method: "users.getPublicBySlugOrId", slugOrId });
     },
 
     // -------------------------------------------------------------------------

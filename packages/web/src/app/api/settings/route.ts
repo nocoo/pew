@@ -52,10 +52,7 @@ export async function GET(request: Request) {
 
     // Level 1: is_public missing but nickname exists
     try {
-      const row = await dbRead.firstOrNull<{ nickname: string | null; slug: string | null }>(
-        "SELECT nickname, slug FROM users WHERE id = ?",
-        [authResult.userId],
-      );
+      const row = await dbRead.getUserNicknameSlug(authResult.userId);
       if (!row) {
         return NextResponse.json({ error: "User not found" }, { status: 404 });
       }
@@ -69,10 +66,7 @@ export async function GET(request: Request) {
     }
 
     // Level 2: both nickname and is_public missing
-    const row = await dbRead.firstOrNull<{ slug: string | null }>(
-      "SELECT slug FROM users WHERE id = ?",
-      [authResult.userId],
-    );
+    const row = await dbRead.getUserSlugOnly(authResult.userId);
     if (!row) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }

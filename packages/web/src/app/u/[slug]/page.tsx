@@ -6,20 +6,10 @@ import { PublicProfileView } from "./profile-view";
 // Dynamic metadata for SEO / social sharing
 // ---------------------------------------------------------------------------
 
-interface UserMeta {
-  name: string | null;
-  slug: string | null;
-  id: string;
-  is_public?: number | null;
-}
-
 const GENERIC_METADATA: Metadata = {
   title: "Profile — pew",
   description: "Public profile on pew",
 };
-
-// UUID regex for user ID detection
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function generateMetadata({
   params,
@@ -30,37 +20,11 @@ export async function generateMetadata({
 
   const db = await getDbRead();
 
-  let user: UserMeta | null;
-  let hasIsPublicColumn = true;
-
-  // Check if slug looks like a UUID (user ID) or a custom slug
-  const isUUID = UUID_RE.test(slug);
-  const queryColumn = isUUID ? "id" : "slug";
-
-  try {
-    user = await db.firstOrNull<UserMeta>(
-      `SELECT id, name, slug, is_public FROM users WHERE ${queryColumn} = ?`,
-      [slug],
-    );
-  } catch (err: unknown) {
-    // Fallback: is_public column doesn't exist yet (pre-migration)
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.includes("no such column")) {
-      hasIsPublicColumn = false;
-      user = await db
-        .firstOrNull<UserMeta>(
-          `SELECT id, name, slug FROM users WHERE ${queryColumn} = ?`,
-          [slug],
-        )
-        .catch(() => null);
-    } else {
-      // Unexpected error — return generic metadata (don't leak name)
-      return GENERIC_METADATA;
-    }
-  }
+  // Look up user by slug or id
+  const user = await db.getPublicUserBySlugOrId(slug);
 
   // If user not found or not public, return generic metadata (don't leak name)
-  if (!user || (hasIsPublicColumn && !user.is_public)) {
+  if (!user || !user.is_public) {
     return GENERIC_METADATA;
   }
 

@@ -69,7 +69,7 @@ describe("GET /api/users/[slug]", () => {
     });
 
     it("should accept valid alphanumeric slug", async () => {
-      mockClient.firstOrNull.mockResolvedValueOnce(null);
+      mockClient.getPublicUserBySlugOrId.mockResolvedValueOnce(null);
       const [req, ctx] = makeRequest("nocoo");
       const res = await GET(req, ctx);
 
@@ -78,7 +78,7 @@ describe("GET /api/users/[slug]", () => {
     });
 
     it("should accept slug with hyphens", async () => {
-      mockClient.firstOrNull.mockResolvedValueOnce(null);
+      mockClient.getPublicUserBySlugOrId.mockResolvedValueOnce(null);
       const [req, ctx] = makeRequest("some-user-123");
       const res = await GET(req, ctx);
 
@@ -88,7 +88,7 @@ describe("GET /api/users/[slug]", () => {
 
   describe("user lookup", () => {
     it("should return 404 for non-existent user", async () => {
-      mockClient.firstOrNull.mockResolvedValueOnce(null);
+      mockClient.getPublicUserBySlugOrId.mockResolvedValueOnce(null);
       const [req, ctx] = makeRequest("nobody");
       const res = await GET(req, ctx);
 
@@ -100,7 +100,7 @@ describe("GET /api/users/[slug]", () => {
 
   describe("query params", () => {
     it("should reject invalid days param", async () => {
-      mockClient.firstOrNull.mockResolvedValueOnce({
+      mockClient.getPublicUserBySlugOrId.mockResolvedValueOnce({
         id: "u1",
         name: "Test",
         image: null,
@@ -117,7 +117,7 @@ describe("GET /api/users/[slug]", () => {
     });
 
     it("should reject days > 365", async () => {
-      mockClient.firstOrNull.mockResolvedValueOnce({
+      mockClient.getPublicUserBySlugOrId.mockResolvedValueOnce({
         id: "u1",
         name: "Test",
         image: null,
@@ -132,7 +132,7 @@ describe("GET /api/users/[slug]", () => {
     });
 
     it("should reject invalid source", async () => {
-      mockClient.firstOrNull.mockResolvedValueOnce({
+      mockClient.getPublicUserBySlugOrId.mockResolvedValueOnce({
         id: "u1",
         name: "Test",
         image: null,
@@ -160,7 +160,8 @@ describe("GET /api/users/[slug]", () => {
     };
 
     it("should return user info and usage data", async () => {
-      mockClient.firstOrNull.mockResolvedValueOnce(testUser);
+      mockClient.getPublicUserBySlugOrId.mockResolvedValueOnce(testUser);
+      mockClient.getUserFirstSeen.mockResolvedValueOnce(null);
       mockClient.query.mockResolvedValueOnce({
         results: [
           {
@@ -196,7 +197,7 @@ describe("GET /api/users/[slug]", () => {
     });
 
     it("should compute correct summary from multiple records", async () => {
-      mockClient.firstOrNull.mockResolvedValueOnce(testUser);
+      mockClient.getPublicUserBySlugOrId.mockResolvedValueOnce(testUser);
       mockClient.query.mockResolvedValueOnce({
         results: [
           { source: "claude-code", model: "a", hour_start: "2026-03-07", input_tokens: 100, cached_input_tokens: 10, output_tokens: 50, reasoning_output_tokens: 0, total_tokens: 160 },
@@ -216,7 +217,7 @@ describe("GET /api/users/[slug]", () => {
     });
 
     it("should filter by source when provided", async () => {
-      mockClient.firstOrNull.mockResolvedValueOnce(testUser);
+      mockClient.getPublicUserBySlugOrId.mockResolvedValueOnce(testUser);
       mockClient.query.mockResolvedValueOnce({ results: [] });
 
       const [req, ctx] = makeRequest("testuser", { source: "opencode" });
@@ -228,7 +229,7 @@ describe("GET /api/users/[slug]", () => {
     });
 
     it("should filter by 'from' and 'to' date when provided", async () => {
-      mockClient.firstOrNull.mockResolvedValueOnce(testUser);
+      mockClient.getPublicUserBySlugOrId.mockResolvedValueOnce(testUser);
       mockClient.query.mockResolvedValueOnce({ results: [] });
 
       const [req, ctx] = makeRequest("testuser", {
@@ -247,7 +248,7 @@ describe("GET /api/users/[slug]", () => {
 
   describe("error handling", () => {
     it("should return 500 on D1 query failure", async () => {
-      mockClient.firstOrNull.mockResolvedValueOnce({
+      mockClient.getPublicUserBySlugOrId.mockResolvedValueOnce({
         id: "u1",
         name: "Test",
         image: null,
@@ -268,7 +269,7 @@ describe("GET /api/users/[slug]", () => {
 
   describe("is_public gate", () => {
     it("should return profile when user is_public = 1", async () => {
-      mockClient.firstOrNull.mockResolvedValueOnce({
+      mockClient.getPublicUserBySlugOrId.mockResolvedValueOnce({
         id: "u1",
         name: "Public User",
         image: null,
@@ -287,7 +288,7 @@ describe("GET /api/users/[slug]", () => {
     });
 
     it("should return 404 when user is_public = 0", async () => {
-      mockClient.firstOrNull.mockResolvedValueOnce({
+      mockClient.getPublicUserBySlugOrId.mockResolvedValueOnce({
         id: "u1",
         name: "Private User",
         image: null,
@@ -305,33 +306,12 @@ describe("GET /api/users/[slug]", () => {
     });
 
     it("should return 404 when user not found", async () => {
-      mockClient.firstOrNull.mockResolvedValueOnce(null);
+      mockClient.getPublicUserBySlugOrId.mockResolvedValueOnce(null);
 
       const [req, ctx] = makeRequest("ghost");
       const res = await GET(req, ctx);
 
       expect(res.status).toBe(404);
-    });
-
-    it("should fall back to showing profile when is_public column missing", async () => {
-      // First call throws "no such column", fallback returns user without is_public
-      mockClient.firstOrNull
-        .mockRejectedValueOnce(new Error("no such column: is_public"))
-        .mockResolvedValueOnce({
-          id: "u1",
-          name: "Legacy User",
-          image: null,
-          slug: "legacy",
-          created_at: "2026-01-01",
-        });
-      mockClient.query.mockResolvedValueOnce({ results: [] });
-
-      const [req, ctx] = makeRequest("legacy");
-      const res = await GET(req, ctx);
-
-      expect(res.status).toBe(200);
-      const body = await res.json();
-      expect(body.user.name).toBe("Legacy User");
     });
   });
 });
@@ -354,7 +334,7 @@ describe("generateMetadata for /u/[slug]", () => {
   });
 
   it("should include user name in title when is_public = 1", async () => {
-    mockClient.firstOrNull.mockResolvedValueOnce({
+    mockClient.getPublicUserBySlugOrId.mockResolvedValueOnce({
       name: "Alice",
       slug: "alice",
       is_public: 1,
@@ -369,7 +349,7 @@ describe("generateMetadata for /u/[slug]", () => {
   });
 
   it("should return generic title when is_public = 0 (no name leak)", async () => {
-    mockClient.firstOrNull.mockResolvedValueOnce({
+    mockClient.getPublicUserBySlugOrId.mockResolvedValueOnce({
       name: "Secret Person",
       slug: "secret",
       is_public: 0,
@@ -384,29 +364,12 @@ describe("generateMetadata for /u/[slug]", () => {
   });
 
   it("should return generic title when user not found", async () => {
-    mockClient.firstOrNull.mockResolvedValueOnce(null);
+    mockClient.getPublicUserBySlugOrId.mockResolvedValueOnce(null);
 
     const meta = await generateMetadata({
       params: Promise.resolve({ slug: "nobody" }),
     });
 
     expect(meta.title).toBe("Profile — pew");
-  });
-
-  it("should fall back to showing name when is_public column missing (legacy)", async () => {
-    // First call throws "no such column", fallback returns user without is_public
-    mockClient.firstOrNull
-      .mockRejectedValueOnce(new Error("no such column: is_public"))
-      .mockResolvedValueOnce({
-        name: "Legacy User",
-        slug: "legacy",
-      });
-
-    const meta = await generateMetadata({
-      params: Promise.resolve({ slug: "legacy" }),
-    });
-
-    // Legacy behavior: show name (no is_public column means pre-migration)
-    expect(meta.title).toBe("Legacy User — pew");
   });
 });

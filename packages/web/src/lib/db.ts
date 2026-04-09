@@ -11,6 +11,8 @@ import type {
   UserApiKeyAuth,
   UserSettings,
   UserSearchResult,
+  UserSlugOnly,
+  UserNicknameSlug,
   OrgRow,
   OrgWithCountRow,
   OrgMemberRow,
@@ -102,6 +104,24 @@ export interface DbRead {
 
   /** Search users by name/email (admin) */
   searchUsers(query: string, limit?: number): Promise<UserSearchResult[]>;
+
+  /** Get user slug only (for settings fallback) */
+  getUserSlugOnly(userId: string): Promise<UserSlugOnly | null>;
+
+  /** Get user nickname and slug (for settings fallback) */
+  getUserNicknameSlug(userId: string): Promise<UserNicknameSlug | null>;
+
+  /** Check if two users share a team */
+  checkSharedTeam(userId1: string, userId2: string): Promise<boolean>;
+
+  /** Check if two users share a season */
+  checkSharedSeason(userId1: string, userId2: string): Promise<boolean>;
+
+  /** Get user's first usage record timestamp */
+  getUserFirstSeen(userId: string): Promise<string | null>;
+
+  /** Get public user profile by slug or id */
+  getPublicUserBySlugOrId(slugOrId: string): Promise<UserProfile | null>;
 
   // ---------------------------------------------------------------------------
   // Organizations domain RPC methods

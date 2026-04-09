@@ -50,6 +50,17 @@ export interface UserSearchResult {
   image: string | null;
 }
 
+/** User slug only (for settings fallback) */
+export interface UserSlugOnly {
+  slug: string | null;
+}
+
+/** User nickname and slug (for settings fallback) */
+export interface UserNicknameSlug {
+  nickname: string | null;
+  slug: string | null;
+}
+
 // ---------------------------------------------------------------------------
 // Organizations domain types
 // ---------------------------------------------------------------------------

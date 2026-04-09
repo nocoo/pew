@@ -33,6 +33,12 @@ export function createMockDbRead() {
     getUserApiKey: vi.fn(),
     getUserEmail: vi.fn(),
     searchUsers: vi.fn(),
+    getUserSlugOnly: vi.fn(),
+    getUserNicknameSlug: vi.fn(),
+    checkSharedTeam: vi.fn(),
+    checkSharedSeason: vi.fn(),
+    getUserFirstSeen: vi.fn(),
+    getPublicUserBySlugOrId: vi.fn(),
     // Organizations RPC methods
     listOrganizations: vi.fn(),
     listOrganizationsWithCount: vi.fn(),
@@ -117,6 +123,12 @@ export function createMockDbRead() {
     getUserApiKey: ReturnType<typeof vi.fn>;
     getUserEmail: ReturnType<typeof vi.fn>;
     searchUsers: ReturnType<typeof vi.fn>;
+    getUserSlugOnly: ReturnType<typeof vi.fn>;
+    getUserNicknameSlug: ReturnType<typeof vi.fn>;
+    checkSharedTeam: ReturnType<typeof vi.fn>;
+    checkSharedSeason: ReturnType<typeof vi.fn>;
+    getUserFirstSeen: ReturnType<typeof vi.fn>;
+    getPublicUserBySlugOrId: ReturnType<typeof vi.fn>;
     listOrganizations: ReturnType<typeof vi.fn>;
     listOrganizationsWithCount: ReturnType<typeof vi.fn>;
     listUserOrganizations: ReturnType<typeof vi.fn>;
@@ -215,6 +227,12 @@ export function createMockClient() {
     getUserApiKey: vi.fn(),
     getUserEmail: vi.fn(),
     searchUsers: vi.fn(),
+    getUserSlugOnly: vi.fn(),
+    getUserNicknameSlug: vi.fn(),
+    checkSharedTeam: vi.fn(),
+    checkSharedSeason: vi.fn(),
+    getUserFirstSeen: vi.fn(),
+    getPublicUserBySlugOrId: vi.fn(),
   };
 }
 
