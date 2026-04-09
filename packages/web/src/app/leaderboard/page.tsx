@@ -434,7 +434,6 @@ function LeaderboardRow({
 // ---------------------------------------------------------------------------
 
 const PAGE_SIZE = 20;
-const MAX_ENTRIES = 100;
 
 // ---------------------------------------------------------------------------
 // Page
@@ -449,7 +448,8 @@ export default function LeaderboardPage() {
   const [scopeInitialized, setScopeInitialized] = useState(false);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [offset, setOffset] = useState(0);
+  const [allEntries, setAllEntries] = useState<LeaderboardEntry[]>([]);
 
   const teamId = scope.type === "team" ? scope.id ?? null : null;
   const orgId = scope.type === "org" ? scope.id ?? null : null;
@@ -458,13 +458,30 @@ export default function LeaderboardPage() {
     period,
     teamId,
     orgId,
-    limit: MAX_ENTRIES,
+    limit: PAGE_SIZE,
+    offset,
   });
 
-  // Reset visible count when period or scope changes
+  // Accumulate entries as pages are loaded
+  /* eslint-disable react-hooks/set-state-in-effect -- accumulate pages */
+  useEffect(() => {
+    if (data?.entries) {
+      if (offset === 0) {
+        // First page - replace all entries
+        setAllEntries(data.entries);
+      } else {
+        // Subsequent pages - append entries
+        setAllEntries((prev) => [...prev, ...data.entries]);
+      }
+    }
+  }, [data, offset]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+
+  // Reset pagination when period or scope changes
   /* eslint-disable react-hooks/set-state-in-effect -- reset pagination on filter change is intentional */
   useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
+    setOffset(0);
+    setAllEntries([]);
   }, [period, scope]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
@@ -602,40 +619,40 @@ export default function LeaderboardPage() {
         <TableHeader />
 
         {/* Loading — skeleton only on initial load */}
-        {loading && !data && <LeaderboardSkeleton />}
+        {loading && allEntries.length === 0 && <LeaderboardSkeleton />}
 
         {/* Content — stays visible during refreshing with opacity transition */}
-        {data && (
+        {allEntries.length > 0 && (
           <div
             className={cn(
               "space-y-2 transition-opacity duration-200",
               refreshing && "opacity-60",
             )}
           >
-            {data.entries.length === 0 ? (
-              <div className="rounded-[var(--radius-card)] bg-secondary p-8 text-center text-sm text-muted-foreground">
-                No usage data for this period yet.
-              </div>
-            ) : (
-              <>
-                {data.entries.slice(0, visibleCount).map((entry, i) => (
-                  <LeaderboardRow
-                    key={entry.rank}
-                    entry={entry}
-                    index={i}
-                  />
-                ))}
-                {/* Load more button */}
-                {visibleCount < data.entries.length && visibleCount < MAX_ENTRIES && (
-                  <button
-                    onClick={() => setVisibleCount((prev) => Math.min(prev + PAGE_SIZE, MAX_ENTRIES))}
-                    className="w-full rounded-[var(--radius-card)] bg-secondary py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                  >
-                    Show more
-                  </button>
-                )}
-              </>
+            {allEntries.map((entry, i) => (
+              <LeaderboardRow
+                key={entry.rank}
+                entry={entry}
+                index={i}
+              />
+            ))}
+            {/* Load more button */}
+            {data?.hasMore && (
+              <button
+                onClick={() => setOffset((prev) => prev + PAGE_SIZE)}
+                disabled={loading}
+                className="w-full rounded-[var(--radius-card)] bg-secondary py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+              >
+                {loading ? "Loading..." : "Show more"}
+              </button>
             )}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!loading && allEntries.length === 0 && !error && (
+          <div className="rounded-[var(--radius-card)] bg-secondary p-8 text-center text-sm text-muted-foreground">
+            No usage data for this period yet.
           </div>
         )}
       </main>

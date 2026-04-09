@@ -1051,13 +1051,15 @@ export function createWorkerDbRead(): DbRead {
       teamId?: string;
       orgId?: string;
       limit: number;
+      offset?: number;
     }): Promise<LeaderboardEntryRow[]> {
       return rpc<LeaderboardEntryRow[]>({
         method: "leaderboard.getGlobal",
-        fromDate: options.fromDate,
-        teamId: options.teamId,
-        orgId: options.orgId,
+        ...(options.fromDate !== undefined && { fromDate: options.fromDate }),
+        ...(options.teamId !== undefined && { teamId: options.teamId }),
+        ...(options.orgId !== undefined && { orgId: options.orgId }),
         limit: options.limit,
+        ...(options.offset !== undefined && { offset: options.offset }),
       });
     },
 

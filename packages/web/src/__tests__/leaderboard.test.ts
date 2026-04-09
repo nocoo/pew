@@ -71,10 +71,38 @@ describe("GET /api/leaderboard", () => {
 
       expect(res.status).toBe(400);
     });
+
+    it("should reject negative offset", async () => {
+      const res = await GET(makeGetRequest("/api/leaderboard", { offset: "-1" }));
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("offset must be");
+    });
+
+    it("should reject non-numeric offset", async () => {
+      const res = await GET(makeGetRequest("/api/leaderboard", { offset: "abc" }));
+
+      expect(res.status).toBe(400);
+    });
+
+    it("should accept valid offset", async () => {
+      mockDb.getGlobalLeaderboard.mockResolvedValueOnce([]);
+      mockDb.getLeaderboardSessionStats.mockResolvedValueOnce([]);
+
+      const res = await GET(makeGetRequest("/api/leaderboard", { offset: "20" }));
+
+      expect(res.status).toBe(200);
+      expect(mockDb.getGlobalLeaderboard).toHaveBeenCalledWith(
+        expect.objectContaining({
+          offset: 20,
+        }),
+      );
+    });
   });
 
   describe("default behavior", () => {
-    it("should default to period=week and limit=100", async () => {
+    it("should default to period=week and limit=20", async () => {
       mockDb.getGlobalLeaderboard.mockResolvedValueOnce([]);
       mockDb.getLeaderboardSessionStats.mockResolvedValueOnce([]);
 
@@ -84,12 +112,14 @@ describe("GET /api/leaderboard", () => {
       expect(res.status).toBe(200);
       expect(body.period).toBe("week");
       expect(body.entries).toEqual([]);
+      expect(body.hasMore).toBe(false);
 
       // Check RPC call includes fromDate (week has a date condition)
+      // limit is requested as limit+1 to detect hasMore
       expect(mockDb.getGlobalLeaderboard).toHaveBeenCalledWith(
         expect.objectContaining({
           fromDate: expect.any(String),
-          limit: 100,
+          limit: 21, // DEFAULT_LIMIT (20) + 1
         }),
       );
     });
@@ -171,7 +201,7 @@ describe("GET /api/leaderboard", () => {
       expect(callArg).not.toHaveProperty("fromDate");
     });
 
-    it("should pass limit to RPC", async () => {
+    it("should pass limit to RPC (with +1 for hasMore detection)", async () => {
       mockDb.getGlobalLeaderboard.mockResolvedValueOnce([]);
       mockDb.getLeaderboardSessionStats.mockResolvedValueOnce([]);
 
@@ -179,7 +209,7 @@ describe("GET /api/leaderboard", () => {
 
       expect(mockDb.getGlobalLeaderboard).toHaveBeenCalledWith(
         expect.objectContaining({
-          limit: 10,
+          limit: 11, // requested limit + 1
         }),
       );
     });

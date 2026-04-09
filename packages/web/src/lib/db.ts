@@ -587,6 +587,7 @@ export interface DbRead {
     teamId?: string;
     orgId?: string;
     limit: number;
+    offset?: number;
   }): Promise<LeaderboardEntryRow[]>;
 
   /** Get user team memberships for leaderboard display */

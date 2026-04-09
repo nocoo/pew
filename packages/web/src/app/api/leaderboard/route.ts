@@ -3,11 +3,12 @@
  *
  * Query params:
  *   period — "week" | "month" | "all" (default: "week")
- *   limit  — max entries to return (default: 100, max: 100)
+ *   limit  — max entries to return (default: 20, max: 100)
+ *   offset — number of entries to skip for pagination (default: 0)
  *   team   — team ID for team-scoped leaderboard (optional, mutually exclusive with org)
  *   org    — organization ID for org-scoped leaderboard (optional, mutually exclusive with team)
  *
- * Returns { period, scope, scopeId?, entries[] } where each entry has user info + total tokens.
+ * Returns { period, scope, scopeId?, entries[], hasMore } where each entry has user info + total tokens.
  * Only users with is_public = 1 are included.
  *
  * Scoped requests use Cache-Control: private, no-store.
@@ -24,7 +25,7 @@ import { resolveUser } from "@/lib/auth-helpers";
 
 const VALID_PERIODS = new Set(["week", "month", "all"]);
 const MAX_LIMIT = 100;
-const DEFAULT_LIMIT = 100;
+const DEFAULT_LIMIT = 20;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -51,6 +52,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const period = url.searchParams.get("period") ?? "week";
   const limitParam = url.searchParams.get("limit");
+  const offsetParam = url.searchParams.get("offset");
   const teamIdParam = url.searchParams.get("team");
   const orgIdParam = url.searchParams.get("org");
 
@@ -83,6 +85,19 @@ export async function GET(request: Request) {
     limit = parsed;
   }
 
+  // Validate offset
+  let offset = 0;
+  if (offsetParam) {
+    const parsed = parseInt(offsetParam, 10);
+    if (isNaN(parsed) || parsed < 0) {
+      return NextResponse.json(
+        { error: "offset must be a non-negative integer" },
+        { status: 400 },
+      );
+    }
+    offset = parsed;
+  }
+
   // Check auth for scoped requests — anonymous users silently degrade to global
   let teamId: string | undefined;
   let orgId: string | undefined;
@@ -100,16 +115,21 @@ export async function GET(request: Request) {
   const fromDate = periodStartDate(period);
 
   try {
-    // Get main leaderboard entries via RPC
+    // Request one extra to detect if there are more pages
     const leaderboardRows = await db.getGlobalLeaderboard({
       ...(fromDate !== undefined && { fromDate }),
       ...(teamId !== undefined && { teamId }),
       ...(orgId !== undefined && { orgId }),
-      limit,
+      limit: limit + 1,
+      ...(offset > 0 && { offset }),
     });
 
+    // Check if there are more results
+    const hasMore = leaderboardRows.length > limit;
+    const actualRows = hasMore ? leaderboardRows.slice(0, limit) : leaderboardRows;
+
     // Fetch teams for all users in the leaderboard
-    const userIds = leaderboardRows.map((r) => r.user_id);
+    const userIds = actualRows.map((r) => r.user_id);
     const teamsByUser = new Map<string, { id: string; name: string; logo_url: string | null }[]>();
 
     if (userIds.length > 0) {
@@ -121,28 +141,23 @@ export async function GET(request: Request) {
       }
     }
 
-    // Fetch session stats for all users (batch to avoid Worker timeout)
+    // Fetch session stats for all users
     const sessionStatsByUser = new Map<string, { session_count: number; total_duration_seconds: number }>();
 
     if (userIds.length > 0) {
-      // Batch in chunks of 20 to match frontend page size and avoid Worker CPU timeout
-      const BATCH_SIZE = 20;
-      for (let i = 0; i < userIds.length; i += BATCH_SIZE) {
-        const batch = userIds.slice(i, i + BATCH_SIZE);
-        const sessionRows = await db.getLeaderboardSessionStats(batch, fromDate);
-        for (const row of sessionRows) {
-          sessionStatsByUser.set(row.user_id, {
-            session_count: row.session_count,
-            total_duration_seconds: row.total_duration_seconds,
-          });
-        }
+      const sessionRows = await db.getLeaderboardSessionStats(userIds, fromDate);
+      for (const row of sessionRows) {
+        sessionStatsByUser.set(row.user_id, {
+          session_count: row.session_count,
+          total_duration_seconds: row.total_duration_seconds,
+        });
       }
     }
 
-    const entries = leaderboardRows.map((row, index) => {
+    const entries = actualRows.map((row, index) => {
       const sessionStats = sessionStatsByUser.get(row.user_id);
       return {
-        rank: index + 1,
+        rank: offset + index + 1,
         user: {
           id: row.user_id,
           name: row.nickname ?? row.name,
@@ -172,7 +187,7 @@ export async function GET(request: Request) {
       : { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120" };
 
     return NextResponse.json(
-      { period, scope, ...(scopeId && { scopeId }), entries },
+      { period, scope, ...(scopeId && { scopeId }), entries, hasMore },
       { headers },
     );
   } catch (err) {

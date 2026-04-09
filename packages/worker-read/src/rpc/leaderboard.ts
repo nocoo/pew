@@ -91,6 +91,7 @@ export interface GetGlobalLeaderboardRequest {
   teamId?: string;
   orgId?: string;
   limit: number;
+  offset?: number;
 }
 
 /** Get user teams request */
@@ -286,6 +287,8 @@ async function handleGetGlobalLeaderboard(
   }
 
   params.push(req.limit);
+  const offset = req.offset ?? 0;
+  params.push(offset);
 
   // Try with nickname column first
   const buildSql = (withNickname: boolean) => `
@@ -305,7 +308,7 @@ async function handleGetGlobalLeaderboard(
     GROUP BY ur.user_id
     HAVING total_tokens > 0
     ORDER BY total_tokens DESC
-    LIMIT ?
+    LIMIT ? OFFSET ?
   `;
 
   try {

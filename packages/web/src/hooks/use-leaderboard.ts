@@ -31,6 +31,7 @@ export interface LeaderboardData {
   scope: LeaderboardScope;
   scopeId?: string;
   entries: LeaderboardEntry[];
+  hasMore: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -40,6 +41,7 @@ export interface LeaderboardData {
 interface UseLeaderboardOptions {
   period?: LeaderboardPeriod;
   limit?: number;
+  offset?: number;
   teamId?: string | null;
   orgId?: string | null;
 }
@@ -56,7 +58,7 @@ interface UseLeaderboardResult {
 export function useLeaderboard(
   options: UseLeaderboardOptions = {},
 ): UseLeaderboardResult {
-  const { period = "week", limit, teamId, orgId } = options;
+  const { period = "week", limit, offset, teamId, orgId } = options;
   const [data, setData] = useState<LeaderboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -75,6 +77,9 @@ export function useLeaderboard(
       const params = new URLSearchParams({ period });
       if (limit !== undefined) {
         params.set("limit", String(limit));
+      }
+      if (offset !== undefined && offset > 0) {
+        params.set("offset", String(offset));
       }
       if (teamId) {
         params.set("team", teamId);
@@ -100,7 +105,7 @@ export function useLeaderboard(
       setRefreshing(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [period, limit, teamId, orgId]);
+  }, [period, limit, offset, teamId, orgId]);
 
   useEffect(() => {
     fetchData();
