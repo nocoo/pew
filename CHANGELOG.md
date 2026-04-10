@@ -1,5 +1,28 @@
 # Changelog
 
+## v2.16.1
+
+### Added
+- Add Goal Tracker heatmap card
+- Add longestStreak and activeDays to achievements summary
+- Upgrade projects RPC with full session stats
+
+### Changed
+- Update supported tools list to 11 sources (add PM Studio)
+- Split Activity and Achievements into two cards
+- Undo 3-row Overview split, keep card style changes
+- Undo Overview card layout changes
+- Split Overview into 3 rows with hero metrics
+- Adjust Overview card layout
+- Add limit mode and parallelize RPC queries
+- Reorganize Overview card layout
+- Update worker-read migration progress
+- Migrate api/projects from raw SQL to RPC
+- Sync ProjectAliasStatsRow with worker-read
+
+### Fixed
+- Remove default accent bar, fix divider position
+
 ## v2.16.0
 
 ### Added
