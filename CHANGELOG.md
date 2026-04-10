@@ -1,5 +1,24 @@
 # Changelog
 
+## v2.18.1
+
+### Added
+- Support Multica Codex extra session dirs in discovery
+- Add view mode selector to 30-min usage chart
+- Add hourly pattern charts to Hourly Usage page
+- Add hourly chart components for device, model, and agent breakdowns
+- Add hourly aggregation helpers for device, model, and agent breakdowns
+
+### Changed
+- Extract fmtHour to shared date-helpers
+- Add tests for hourly aggregation helpers
+
+### Fixed
+- Upgrade Next.js to 16.2.3 for security fix
+- Limit Hourly By Device chart to 50% width
+- Add spacing between dropdown menu options
+- Reduce dropdown menu gap in agent/model selectors
+
 ## v2.18.0
 
 ### Added
