@@ -90,6 +90,8 @@ export interface GetGlobalLeaderboardRequest {
   fromDate?: string;
   teamId?: string;
   orgId?: string;
+  source?: string;
+  model?: string;
   limit: number;
   offset?: number;
 }
@@ -105,6 +107,7 @@ export interface GetUserSessionStatsRequest {
   method: "leaderboard.getUserSessionStats";
   userIds: string[];
   fromDate?: string;
+  source?: string;
 }
 
 export type LeaderboardRpcRequest =
@@ -286,6 +289,16 @@ async function handleGetGlobalLeaderboard(
     params.push(req.orgId);
   }
 
+  if (req.source) {
+    conditions.push("ur.source = ?");
+    params.push(req.source);
+  }
+
+  if (req.model) {
+    conditions.push("ur.model = ?");
+    params.push(req.model);
+  }
+
   params.push(req.limit);
   const offset = req.offset ?? 0;
   params.push(offset);
@@ -374,6 +387,11 @@ async function handleGetUserSessionStats(
   if (req.fromDate) {
     conditions.push("sr.started_at >= ?");
     params.push(req.fromDate);
+  }
+
+  if (req.source) {
+    conditions.push("sr.source = ?");
+    params.push(req.source);
   }
 
   const sql = `
