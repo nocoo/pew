@@ -47,5 +47,8 @@
     "fast-xml-parser": "^5.5.8",
     "picomatch": "^4.0.4",
     "yaml": "^2.8.3"
+  },
+  "dependencies": {
+    "next": "^16.2.3"
   }
 }
