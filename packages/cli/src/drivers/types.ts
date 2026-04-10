@@ -65,6 +65,7 @@ export interface SyncContext {
 export interface DiscoverOpts {
   claudeDir?: string;
   codexSessionsDir?: string;
+  multicaCodexDirs?: string[];
   geminiDir?: string;
   kosmosDataDir?: string;
   pmstudioDataDir?: string;

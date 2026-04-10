@@ -83,6 +83,58 @@ describe("codexTokenDriver", () => {
       expect(files).toHaveLength(1);
       expect(files[0]).toContain("rollout-abc123.jsonl");
     });
+
+    it("discovers files from both codexSessionsDir and multicaCodexDirs", async () => {
+      // Primary dir
+      const primaryDir = join(tempDir, "primary", "2026", "03", "07");
+      await mkdir(primaryDir, { recursive: true });
+      await writeFile(
+        join(primaryDir, "rollout-primary.jsonl"),
+        codexSessionMeta() + "\n" + codexTokenLine() + "\n",
+      );
+
+      // Multica extra dirs
+      const multicaDir1 = join(tempDir, "multica", "ws1", "task1", "sessions");
+      const multicaDir2 = join(tempDir, "multica", "ws2", "task2", "sessions");
+      await mkdir(multicaDir1, { recursive: true });
+      await mkdir(multicaDir2, { recursive: true });
+      await writeFile(
+        join(multicaDir1, "rollout-multica1.jsonl"),
+        codexSessionMeta() + "\n" + codexTokenLine() + "\n",
+      );
+      await writeFile(
+        join(multicaDir2, "rollout-multica2.jsonl"),
+        codexSessionMeta() + "\n" + codexTokenLine() + "\n",
+      );
+
+      const files = await codexTokenDriver.discover(
+        {
+          codexSessionsDir: join(tempDir, "primary"),
+          multicaCodexDirs: [multicaDir1, multicaDir2],
+        },
+        ctx,
+      );
+      expect(files).toHaveLength(3);
+      expect(files.some((f) => f.includes("rollout-primary.jsonl"))).toBe(true);
+      expect(files.some((f) => f.includes("rollout-multica1.jsonl"))).toBe(true);
+      expect(files.some((f) => f.includes("rollout-multica2.jsonl"))).toBe(true);
+    });
+
+    it("works with empty multicaCodexDirs array", async () => {
+      const dayDir = join(tempDir, "2026", "03", "07");
+      await mkdir(dayDir, { recursive: true });
+      await writeFile(
+        join(dayDir, "rollout-abc123.jsonl"),
+        codexSessionMeta() + "\n" + codexTokenLine() + "\n",
+      );
+
+      const files = await codexTokenDriver.discover(
+        { codexSessionsDir: tempDir, multicaCodexDirs: [] },
+        ctx,
+      );
+      expect(files).toHaveLength(1);
+      expect(files[0]).toContain("rollout-abc123.jsonl");
+    });
   });
 
   describe("shouldSkip", () => {

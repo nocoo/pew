@@ -29,6 +29,8 @@ export interface SyncOptions {
   claudeDir?: string;
   /** Override: Codex CLI sessions directory (~/.codex/sessions) */
   codexSessionsDir?: string;
+  /** Override: Multica Codex extra session directories */
+  multicaCodexDirs?: string[];
   /** Override: Gemini data directory (~/.gemini) */
   geminiDir?: string;
   /** Override: OpenCode message directory (~/.local/share/opencode/storage/message) */
@@ -263,6 +265,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   const discoverOpts = {
     claudeDir: opts.claudeDir,
     codexSessionsDir: opts.codexSessionsDir,
+    multicaCodexDirs: opts.multicaCodexDirs,
     geminiDir: opts.geminiDir,
     kosmosDataDir: opts.kosmosDataDir,
     pmstudioDataDir: opts.pmstudioDataDir,

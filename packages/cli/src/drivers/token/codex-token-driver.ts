@@ -33,7 +33,7 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
 
   async discover(opts: DiscoverOpts, _ctx: SyncContext): Promise<string[]> {
     if (!opts.codexSessionsDir) return [];
-    return discoverCodexFiles(opts.codexSessionsDir);
+    return discoverCodexFiles(opts.codexSessionsDir, opts.multicaCodexDirs);
   },
 
   shouldSkip(cursor: CodexCursor | undefined, fingerprint: FileFingerprint): boolean {

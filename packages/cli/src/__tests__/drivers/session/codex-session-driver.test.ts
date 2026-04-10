@@ -48,6 +48,52 @@ describe("codexSessionDriver", () => {
       expect(files).toHaveLength(1);
       expect(files[0]).toContain("rollout-uuid.jsonl");
     });
+
+    it("discovers files from both codexSessionsDir and multicaCodexDirs", async () => {
+      // Primary dir
+      const primaryDir = join(tempDir, "primary", "2026", "03", "07");
+      await mkdir(primaryDir, { recursive: true });
+      await writeFile(
+        join(primaryDir, "rollout-primary.jsonl"),
+        codexLine() + "\n",
+      );
+
+      // Multica extra dirs
+      const multicaDir1 = join(tempDir, "multica", "ws1", "task1", "sessions");
+      const multicaDir2 = join(tempDir, "multica", "ws2", "task2", "sessions");
+      await mkdir(multicaDir1, { recursive: true });
+      await mkdir(multicaDir2, { recursive: true });
+      await writeFile(
+        join(multicaDir1, "rollout-multica1.jsonl"),
+        codexLine() + "\n",
+      );
+      await writeFile(
+        join(multicaDir2, "rollout-multica2.jsonl"),
+        codexLine() + "\n",
+      );
+
+      const files = await codexSessionDriver.discover({
+        codexSessionsDir: join(tempDir, "primary"),
+        multicaCodexDirs: [multicaDir1, multicaDir2],
+      });
+      expect(files).toHaveLength(3);
+      expect(files.some((f) => f.includes("rollout-primary.jsonl"))).toBe(true);
+      expect(files.some((f) => f.includes("rollout-multica1.jsonl"))).toBe(true);
+      expect(files.some((f) => f.includes("rollout-multica2.jsonl"))).toBe(true);
+    });
+
+    it("works with empty multicaCodexDirs array", async () => {
+      const dateDir = join(tempDir, "2026", "03", "07");
+      await mkdir(dateDir, { recursive: true });
+      await writeFile(join(dateDir, "rollout-uuid.jsonl"), codexLine() + "\n");
+
+      const files = await codexSessionDriver.discover({
+        codexSessionsDir: tempDir,
+        multicaCodexDirs: [],
+      });
+      expect(files).toHaveLength(1);
+      expect(files[0]).toContain("rollout-uuid.jsonl");
+    });
   });
 
   describe("shouldSkip", () => {

@@ -157,13 +157,32 @@ export async function discoverPiFiles(
 /**
  * Discover Codex CLI rollout files.
  * Path pattern: ~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl
+ *
+ * @param codexSessionsDir Primary Codex sessions directory (~/.codex/sessions)
+ * @param extraDirs Additional directories to scan (e.g. Multica codex-home/sessions/)
  */
 export async function discoverCodexFiles(
   codexSessionsDir: string,
+  extraDirs?: string[],
 ): Promise<string[]> {
-  return collectFiles(codexSessionsDir, (name) =>
-    name.startsWith("rollout-") && name.endsWith(".jsonl"),
-  );
+  const predicate = (name: string) =>
+    name.startsWith("rollout-") && name.endsWith(".jsonl");
+
+  const results: string[] = [];
+
+  // Primary directory
+  const primaryFiles = await collectFiles(codexSessionsDir, predicate);
+  results.push(...primaryFiles);
+
+  // Extra directories (e.g. Multica Codex sessions)
+  if (extraDirs && extraDirs.length > 0) {
+    for (const extraDir of extraDirs) {
+      const extraFiles = await collectFiles(extraDir, predicate);
+      results.push(...extraFiles);
+    }
+  }
+
+  return results.sort();
 }
 
 /**

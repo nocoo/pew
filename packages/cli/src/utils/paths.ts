@@ -3,6 +3,71 @@ import { readdirSync, existsSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 /**
+ * Discover Multica Codex session directories.
+ *
+ * Multica spawns Codex CLI with a per-task CODEX_HOME env var pointing to
+ * ~/multica_workspaces/<workspace-id>/<task-id>/codex-home/. Codex writes
+ * its standard rollout JSONL files to codex-home/sessions/.
+ *
+ * This function discovers all such session directories under the Multica
+ * workspaces root (default: ~/multica_workspaces, override via $MULTICA_WORKSPACES).
+ *
+ * Returns an array of absolute paths to existing sessions/ directories.
+ */
+function discoverMulticaCodexDirs(home: string): string[] {
+  const multicaRoot = process.env.MULTICA_WORKSPACES || join(home, "multica_workspaces");
+
+  if (!existsSync(multicaRoot)) {
+    return [];
+  }
+
+  try {
+    const st = statSync(multicaRoot);
+    if (!st.isDirectory()) {
+      return [];
+    }
+  } catch {
+    return [];
+  }
+
+  const results: string[] = [];
+
+  try {
+    // ~/multica_workspaces/<workspace-id>/
+    const workspaces = readdirSync(multicaRoot);
+    for (const workspace of workspaces) {
+      const workspacePath = join(multicaRoot, workspace);
+      try {
+        if (!statSync(workspacePath).isDirectory()) continue;
+
+        // ~/multica_workspaces/<workspace-id>/<task-id>/
+        const tasks = readdirSync(workspacePath);
+        for (const task of tasks) {
+          const taskPath = join(workspacePath, task);
+          try {
+            if (!statSync(taskPath).isDirectory()) continue;
+
+            // ~/multica_workspaces/<workspace-id>/<task-id>/codex-home/sessions/
+            const sessionsPath = join(taskPath, "codex-home", "sessions");
+            if (existsSync(sessionsPath) && statSync(sessionsPath).isDirectory()) {
+              results.push(sessionsPath);
+            }
+          } catch {
+            // Skip inaccessible task directories
+          }
+        }
+      } catch {
+        // Skip inaccessible workspace directories
+      }
+    }
+  } catch {
+    // Root unreadable
+  }
+
+  return results;
+}
+
+/**
  * Discover Hermes profile databases at ~/.hermes/profiles/<name>/state.db.
  *
  * Returns an array of { dbPath, dbKey } objects:
@@ -144,5 +209,7 @@ export function resolveDefaultPaths(home = homedir()) {
       if (platform === "win32") return join(process.env.APPDATA || join(home, "AppData", "Roaming"), "pm-studio-app");
       return join(home, ".config", "pm-studio-app");
     })(),
+    /** Multica Codex session directories: ~/multica_workspaces/<ws>/<task>/codex-home/sessions/ */
+    multicaCodexDirs: discoverMulticaCodexDirs(home),
   };
 }

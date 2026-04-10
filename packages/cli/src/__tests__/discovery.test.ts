@@ -9,6 +9,7 @@ import {
   discoverOpenClawFiles,
   discoverVscodeCopilotFiles,
   discoverCopilotCliFiles,
+  discoverCodexFiles,
 } from "../discovery/sources.js";
 
 describe("discoverClaudeFiles", () => {
@@ -284,5 +285,95 @@ describe("discoverCopilotCliFiles", () => {
 
     const files = await discoverCopilotCliFiles(logsDir);
     expect(files).toEqual([]);
+  });
+});
+
+describe("discoverCodexFiles", () => {
+  let tempDir: string;
+
+  beforeEach(async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "pew-discover-"));
+  });
+
+  afterEach(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it("should find rollout-*.jsonl files in sessions directory", async () => {
+    const dateDir = join(tempDir, "sessions", "2026", "03", "07");
+    await mkdir(dateDir, { recursive: true });
+    await writeFile(join(dateDir, "rollout-abc123.jsonl"), "{}");
+    await writeFile(join(dateDir, "rollout-def456.jsonl"), "{}");
+    await writeFile(join(dateDir, "other.txt"), "not a rollout");
+
+    const files = await discoverCodexFiles(join(tempDir, "sessions"));
+    expect(files).toHaveLength(2);
+    expect(files.every((f) => f.includes("rollout-"))).toBe(true);
+    expect(files.every((f) => f.endsWith(".jsonl"))).toBe(true);
+  });
+
+  it("should return empty array if directory does not exist", async () => {
+    const files = await discoverCodexFiles(join(tempDir, "nonexistent"));
+    expect(files).toEqual([]);
+  });
+
+  it("should combine files from primary dir and extra dirs", async () => {
+    // Primary dir
+    const primaryDir = join(tempDir, "primary", "2026", "03", "07");
+    await mkdir(primaryDir, { recursive: true });
+    await writeFile(join(primaryDir, "rollout-primary.jsonl"), "{}");
+
+    // Extra dirs (simulating Multica)
+    const extraDir1 = join(tempDir, "multica", "ws1", "sessions");
+    const extraDir2 = join(tempDir, "multica", "ws2", "sessions");
+    await mkdir(extraDir1, { recursive: true });
+    await mkdir(extraDir2, { recursive: true });
+    await writeFile(join(extraDir1, "rollout-extra1.jsonl"), "{}");
+    await writeFile(join(extraDir2, "rollout-extra2.jsonl"), "{}");
+
+    const files = await discoverCodexFiles(
+      join(tempDir, "primary"),
+      [extraDir1, extraDir2],
+    );
+    expect(files).toHaveLength(3);
+    expect(files.some((f) => f.includes("rollout-primary.jsonl"))).toBe(true);
+    expect(files.some((f) => f.includes("rollout-extra1.jsonl"))).toBe(true);
+    expect(files.some((f) => f.includes("rollout-extra2.jsonl"))).toBe(true);
+    // Verify sorted
+    expect(files).toEqual([...files].sort());
+  });
+
+  it("should work with empty extraDirs array", async () => {
+    const dateDir = join(tempDir, "sessions", "2026", "03", "07");
+    await mkdir(dateDir, { recursive: true });
+    await writeFile(join(dateDir, "rollout-abc.jsonl"), "{}");
+
+    const files = await discoverCodexFiles(join(tempDir, "sessions"), []);
+    expect(files).toHaveLength(1);
+    expect(files[0]).toContain("rollout-abc.jsonl");
+  });
+
+  it("should work with undefined extraDirs", async () => {
+    const dateDir = join(tempDir, "sessions", "2026", "03", "07");
+    await mkdir(dateDir, { recursive: true });
+    await writeFile(join(dateDir, "rollout-abc.jsonl"), "{}");
+
+    const files = await discoverCodexFiles(join(tempDir, "sessions"), undefined);
+    expect(files).toHaveLength(1);
+    expect(files[0]).toContain("rollout-abc.jsonl");
+  });
+
+  it("should handle nonexistent extra dirs gracefully", async () => {
+    const primaryDir = join(tempDir, "primary", "2026", "03", "07");
+    await mkdir(primaryDir, { recursive: true });
+    await writeFile(join(primaryDir, "rollout-primary.jsonl"), "{}");
+
+    const files = await discoverCodexFiles(
+      join(tempDir, "primary"),
+      [join(tempDir, "nonexistent1"), join(tempDir, "nonexistent2")],
+    );
+    // Only primary dir files found
+    expect(files).toHaveLength(1);
+    expect(files[0]).toContain("rollout-primary.jsonl");
   });
 });

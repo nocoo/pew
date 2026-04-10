@@ -14,6 +14,8 @@ import {
 export interface NotifyOptions extends SyncOptions {
   source: Source;
   fileHint?: string | null;
+  /** Override: Multica Codex extra session directories */
+  multicaCodexDirs?: string[];
   /** Factory for opening the OpenCode SQLite DB for sessions (DI for testability) */
   openSessionDb?: SessionSyncOptions["openSessionDb"];
   /** CLI version string for run log */
@@ -38,6 +40,7 @@ export async function executeNotify(
           deviceId: opts.deviceId,
           claudeDir: opts.claudeDir,
           codexSessionsDir: opts.codexSessionsDir,
+          multicaCodexDirs: opts.multicaCodexDirs,
           geminiDir: opts.geminiDir,
           kosmosDataDir: opts.kosmosDataDir,
           pmstudioDataDir: opts.pmstudioDataDir,
@@ -69,6 +72,7 @@ export async function executeNotify(
           stateDir: opts.stateDir,
           claudeDir: opts.claudeDir,
           codexSessionsDir: opts.codexSessionsDir,
+          multicaCodexDirs: opts.multicaCodexDirs,
           geminiDir: opts.geminiDir,
           kosmosDataDir: opts.kosmosDataDir,
           pmstudioDataDir: opts.pmstudioDataDir,
