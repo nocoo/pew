@@ -5,6 +5,8 @@ import {
   type GetTeamLeaderboardRequest,
   type GetUserRankRequest,
   type GetTeamRankRequest,
+  type GetGlobalLeaderboardRequest,
+  type GetUserSessionStatsRequest,
 } from "./leaderboard";
 import type { D1Database } from "@cloudflare/workers-types";
 
@@ -220,6 +222,205 @@ describe("leaderboard RPC handlers", () => {
       const response = await handleLeaderboardRpc(request, db);
 
       expect(response.status).toBe(400);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // leaderboard.getGlobal
+  // -------------------------------------------------------------------------
+
+  describe("leaderboard.getGlobal", () => {
+    const mockRows = [
+      { user_id: "u1", name: "alice", nickname: null, image: null, slug: "alice", total_tokens: 1000000, input_tokens: 600000, output_tokens: 400000, cached_input_tokens: 50000 },
+    ];
+
+    it("should return global leaderboard without filters", async () => {
+      db.all.mockResolvedValue({ results: mockRows });
+
+      const request: GetGlobalLeaderboardRequest = {
+        method: "leaderboard.getGlobal",
+        limit: 20,
+      };
+      const response = await handleLeaderboardRpc(request, db);
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body).toEqual({ result: mockRows });
+      // Should bind limit and offset
+      expect(db.bind).toHaveBeenCalledWith(20, 0);
+    });
+
+    it("should include source filter in SQL when provided", async () => {
+      db.all.mockResolvedValue({ results: mockRows });
+
+      const request: GetGlobalLeaderboardRequest = {
+        method: "leaderboard.getGlobal",
+        source: "claude-code",
+        limit: 20,
+      };
+      await handleLeaderboardRpc(request, db);
+
+      // source param should be bound before limit and offset
+      expect(db.bind).toHaveBeenCalledWith("claude-code", 20, 0);
+      // SQL should contain source filter
+      const sql = db.prepare.mock.calls[0][0] as string;
+      expect(sql).toContain("ur.source = ?");
+    });
+
+    it("should include model filter in SQL when provided", async () => {
+      db.all.mockResolvedValue({ results: mockRows });
+
+      const request: GetGlobalLeaderboardRequest = {
+        method: "leaderboard.getGlobal",
+        model: "claude-sonnet-4-20250514",
+        limit: 20,
+      };
+      await handleLeaderboardRpc(request, db);
+
+      expect(db.bind).toHaveBeenCalledWith("claude-sonnet-4-20250514", 20, 0);
+      const sql = db.prepare.mock.calls[0][0] as string;
+      expect(sql).toContain("ur.model = ?");
+    });
+
+    it("should combine source, model, and fromDate filters", async () => {
+      db.all.mockResolvedValue({ results: [] });
+
+      const request: GetGlobalLeaderboardRequest = {
+        method: "leaderboard.getGlobal",
+        fromDate: "2026-01-01T00:00:00.000Z",
+        source: "codex",
+        model: "o3",
+        limit: 10,
+        offset: 5,
+      };
+      await handleLeaderboardRpc(request, db);
+
+      // Params order: fromDate, source, model, limit, offset
+      expect(db.bind).toHaveBeenCalledWith(
+        "2026-01-01T00:00:00.000Z", "codex", "o3", 10, 5
+      );
+      const sql = db.prepare.mock.calls[0][0] as string;
+      expect(sql).toContain("ur.hour_start >= ?");
+      expect(sql).toContain("ur.source = ?");
+      expect(sql).toContain("ur.model = ?");
+    });
+
+    it("should fall back to query without nickname on column error", async () => {
+      db.all
+        .mockRejectedValueOnce(new Error("no such column: u.nickname"))
+        .mockResolvedValueOnce({ results: mockRows });
+
+      const request: GetGlobalLeaderboardRequest = {
+        method: "leaderboard.getGlobal",
+        limit: 20,
+      };
+      const response = await handleLeaderboardRpc(request, db);
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body).toEqual({ result: mockRows });
+      // Should have been called twice (first with nickname, then without)
+      expect(db.prepare).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // leaderboard.getUserSessionStats
+  // -------------------------------------------------------------------------
+
+  describe("leaderboard.getUserSessionStats", () => {
+    it("should return session stats for user IDs", async () => {
+      const mockStats = [
+        { user_id: "u1", session_count: 42, total_duration_seconds: 3600 },
+      ];
+      db.all.mockResolvedValue({ results: mockStats });
+
+      const request: GetUserSessionStatsRequest = {
+        method: "leaderboard.getUserSessionStats",
+        userIds: ["u1"],
+      };
+      const response = await handleLeaderboardRpc(request, db);
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body).toEqual({ result: mockStats });
+      expect(db.bind).toHaveBeenCalledWith("u1");
+    });
+
+    it("should return empty array for empty userIds", async () => {
+      const request: GetUserSessionStatsRequest = {
+        method: "leaderboard.getUserSessionStats",
+        userIds: [],
+      };
+      const response = await handleLeaderboardRpc(request, db);
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body).toEqual({ result: [] });
+      // Should not call prepare — early return
+      expect(db.prepare).not.toHaveBeenCalled();
+    });
+
+    it("should include fromDate filter when provided", async () => {
+      db.all.mockResolvedValue({ results: [] });
+
+      const request: GetUserSessionStatsRequest = {
+        method: "leaderboard.getUserSessionStats",
+        userIds: ["u1", "u2"],
+        fromDate: "2026-03-01T00:00:00.000Z",
+      };
+      await handleLeaderboardRpc(request, db);
+
+      expect(db.bind).toHaveBeenCalledWith("u1", "u2", "2026-03-01T00:00:00.000Z");
+      const sql = db.prepare.mock.calls[0][0] as string;
+      expect(sql).toContain("sr.started_at >= ?");
+    });
+
+    it("should include source filter when provided", async () => {
+      db.all.mockResolvedValue({ results: [] });
+
+      const request: GetUserSessionStatsRequest = {
+        method: "leaderboard.getUserSessionStats",
+        userIds: ["u1"],
+        source: "claude-code",
+      };
+      await handleLeaderboardRpc(request, db);
+
+      expect(db.bind).toHaveBeenCalledWith("u1", "claude-code");
+      const sql = db.prepare.mock.calls[0][0] as string;
+      expect(sql).toContain("sr.source = ?");
+    });
+
+    it("should combine fromDate and source filters", async () => {
+      db.all.mockResolvedValue({ results: [] });
+
+      const request: GetUserSessionStatsRequest = {
+        method: "leaderboard.getUserSessionStats",
+        userIds: ["u1"],
+        fromDate: "2026-01-01T00:00:00.000Z",
+        source: "gemini-cli",
+      };
+      await handleLeaderboardRpc(request, db);
+
+      // Params order: userIds, fromDate, source
+      expect(db.bind).toHaveBeenCalledWith("u1", "2026-01-01T00:00:00.000Z", "gemini-cli");
+      const sql = db.prepare.mock.calls[0][0] as string;
+      expect(sql).toContain("sr.started_at >= ?");
+      expect(sql).toContain("sr.source = ?");
+    });
+
+    it("should return empty on table-not-found error", async () => {
+      db.all.mockRejectedValue(new Error("no such table: session_records"));
+
+      const request: GetUserSessionStatsRequest = {
+        method: "leaderboard.getUserSessionStats",
+        userIds: ["u1"],
+      };
+      const response = await handleLeaderboardRpc(request, db);
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body).toEqual({ result: [] });
     });
   });
 
