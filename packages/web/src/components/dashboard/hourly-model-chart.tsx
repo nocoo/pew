@@ -9,6 +9,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import { cn, formatTokens } from "@/lib/utils";
+import { fmtHour } from "@/lib/date-helpers";
 import { chartAxis, modelColor } from "@/lib/palette";
 import { shortModel } from "@/lib/model-helpers";
 import type { HourlyByModelPoint } from "@/lib/usage-helpers";
@@ -18,18 +19,6 @@ import {
   ChartTooltipRow,
   ChartTooltipSummary,
 } from "./chart-tooltip";
-
-// ---------------------------------------------------------------------------
-// Hour formatting
-// ---------------------------------------------------------------------------
-
-/** Format hour (0-23) as "12a", "1p", etc. */
-function fmtHour(hour: number): string {
-  if (hour === 0) return "12a";
-  if (hour === 12) return "12p";
-  if (hour < 12) return `${hour}a`;
-  return `${hour - 12}p`;
-}
 
 // ---------------------------------------------------------------------------
 // Types

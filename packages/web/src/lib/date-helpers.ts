@@ -413,3 +413,19 @@ export function localDatetimeValueToUtc(localValue: string): string {
   const d = new Date(localValue);
   return d.toISOString().replace(".000Z", "Z");
 }
+
+// ---------------------------------------------------------------------------
+// Hour formatting for charts
+// ---------------------------------------------------------------------------
+
+/**
+ * Format hour (0-23) as compact 12-hour string for chart axes.
+ *
+ * Examples: 0 → "12a", 12 → "12p", 9 → "9a", 14 → "2p"
+ */
+export function fmtHour(hour: number): string {
+  if (hour === 0) return "12a";
+  if (hour === 12) return "12p";
+  if (hour < 12) return `${hour}a`;
+  return `${hour - 12}p`;
+}
