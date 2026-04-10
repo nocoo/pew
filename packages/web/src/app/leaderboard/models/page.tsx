@@ -31,10 +31,11 @@ import { UserProfileDialog } from "@/components/user-profile-dialog";
 
 // ---------------------------------------------------------------------------
 // Model list (from DEFAULT_MODEL_PRICES, vendor-grouped)
+// The dropdown shows this static list; URL params are NOT validated against it
+// so deep-links to DB-extended models work even if not in the dropdown.
 // ---------------------------------------------------------------------------
 
 const MODEL_LIST = Object.keys(DEFAULT_MODEL_PRICES);
-const MODEL_SET = new Set(MODEL_LIST);
 const DEFAULT_MODEL = "claude-sonnet-4-20250514";
 
 // ---------------------------------------------------------------------------
@@ -144,11 +145,12 @@ function ModelsLeaderboardContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // Read initial model from URL, validate, fall back to default
+  // Derive selected model from URL (single source of truth)
+  // Accept any non-empty model param — backend will return empty if no match,
+  // allowing deep-links to DB-extended models not in the static dropdown
   const urlModel = searchParams.get("model");
-  const initialModel = urlModel && MODEL_SET.has(urlModel) ? urlModel : DEFAULT_MODEL;
+  const selectedModel = urlModel && urlModel.trim() ? urlModel : DEFAULT_MODEL;
 
-  const [selectedModel, setSelectedModel] = useState(initialModel);
   const [period, setPeriod] = useState<LeaderboardPeriod>("week");
   const [scope, setScope] = useState<ScopeSelection>({ type: "global" });
   const [scopeInitialized, setScopeInitialized] = useState(false);
@@ -164,10 +166,9 @@ function ModelsLeaderboardContent() {
     setDialogOpen(true);
   }, []);
 
-  // Update URL when model changes
+  // Update URL when model changes (URL is source of truth, not local state)
   const handleModelChange = useCallback(
     (model: string) => {
-      setSelectedModel(model);
       const params = new URLSearchParams(searchParams.toString());
       if (model === DEFAULT_MODEL) {
         params.delete("model");

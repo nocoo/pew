@@ -156,11 +156,10 @@ function AgentsLeaderboardContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // Read initial agent from URL, validate, fall back to default
+  // Derive selected agent from URL (single source of truth)
   const urlSource = searchParams.get("source");
-  const initialAgent = urlSource && AGENT_SET.has(urlSource) ? urlSource : DEFAULT_AGENT;
+  const selectedAgent = urlSource && AGENT_SET.has(urlSource) ? urlSource : DEFAULT_AGENT;
 
-  const [selectedAgent, setSelectedAgent] = useState(initialAgent);
   const [period, setPeriod] = useState<LeaderboardPeriod>("week");
   const [scope, setScope] = useState<ScopeSelection>({ type: "global" });
   const [scopeInitialized, setScopeInitialized] = useState(false);
@@ -176,10 +175,9 @@ function AgentsLeaderboardContent() {
     setDialogOpen(true);
   }, []);
 
-  // Update URL when agent changes
+  // Update URL when agent changes (URL is source of truth, not local state)
   const handleAgentChange = useCallback(
     (agent: string) => {
-      setSelectedAgent(agent);
       const params = new URLSearchParams(searchParams.toString());
       if (agent === DEFAULT_AGENT) {
         params.delete("source");
