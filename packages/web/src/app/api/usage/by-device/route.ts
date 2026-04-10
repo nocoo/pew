@@ -4,10 +4,11 @@
  * Query params:
  *   from — ISO date string (default: 30 days ago)
  *   to   — ISO date string (default: now)
+ *   granularity — "half-hour" | "day" (default: "day") for timeline
  *
  * Returns { devices, timeline } where:
  *   - devices: aggregated stats per device with estimated_cost
- *   - timeline: daily token counts per device for charting
+ *   - timeline: token counts per device for charting (day or half-hour granularity)
  */
 
 import { NextResponse } from "next/server";
@@ -70,6 +71,11 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const fromParam = url.searchParams.get("from");
   const toParam = url.searchParams.get("to");
+  const granularityParam = url.searchParams.get("granularity");
+
+  // Validate granularity
+  const granularity: "half-hour" | "day" =
+    granularityParam === "half-hour" ? "half-hour" : "day";
 
   const dateRange = parseDateRange(fromParam, toParam);
   if (!dateRange) {
@@ -90,8 +96,10 @@ export async function GET(request: Request) {
     // Cost detail query — per (device, source, model) for accurate pricing
     const costRows = await db.getDeviceCostDetails(userId, fromDate, toDate);
 
-    // Timeline query — daily totals per device
-    const timelineRows = await db.getDeviceTimeline(userId, fromDate, toDate);
+    // Timeline query — totals per device (day or half-hour granularity)
+    const timelineRows = await db.getDeviceTimeline(userId, fromDate, toDate, {
+      granularity,
+    });
 
     // 4. Build pricing map (merge static defaults + DB overrides)
     let pricingMap;

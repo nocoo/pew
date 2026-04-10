@@ -94,6 +94,7 @@ export interface GetDeviceTimelineRequest {
   userId: string;
   fromDate: string;
   toDate: string;
+  granularity?: "half-hour" | "day";
 }
 
 export interface GetModelPricingRequest {
@@ -248,22 +249,34 @@ async function handleGetDeviceTimeline(
     );
   }
 
+  const granularity = req.granularity ?? "day";
+  const timeColumn =
+    granularity === "day"
+      ? "date(ur.hour_start) AS date"
+      : "ur.hour_start AS date";
+  const groupBy =
+    granularity === "day"
+      ? "date(ur.hour_start), ur.device_id"
+      : "ur.hour_start, ur.device_id";
+
+  const sql = `
+    SELECT
+      ${timeColumn},
+      ur.device_id,
+      SUM(ur.total_tokens) AS total_tokens,
+      SUM(ur.input_tokens) AS input_tokens,
+      SUM(ur.output_tokens) AS output_tokens,
+      SUM(ur.cached_input_tokens) AS cached_input_tokens
+    FROM usage_records ur
+    WHERE ur.user_id = ?
+      AND ur.hour_start >= ?
+      AND ur.hour_start < ?
+    GROUP BY ${groupBy}
+    ORDER BY date ASC
+  `;
+
   const results = await db
-    .prepare(
-      `SELECT
-        date(ur.hour_start) AS date,
-        ur.device_id,
-        SUM(ur.total_tokens) AS total_tokens,
-        SUM(ur.input_tokens) AS input_tokens,
-        SUM(ur.output_tokens) AS output_tokens,
-        SUM(ur.cached_input_tokens) AS cached_input_tokens
-      FROM usage_records ur
-      WHERE ur.user_id = ?
-        AND ur.hour_start >= ?
-        AND ur.hour_start < ?
-      GROUP BY date(ur.hour_start), ur.device_id
-      ORDER BY date ASC`
-    )
+    .prepare(sql)
     .bind(req.userId, req.fromDate, req.toDate)
     .all<TimelineRow>();
 

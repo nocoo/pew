@@ -8,7 +8,7 @@ import {
 } from "@/hooks/use-usage-data";
 import type { UsageRow } from "@/hooks/use-usage-data";
 import { useDeviceData } from "@/hooks/use-device-data";
-import { RecentBarChart } from "@/components/dashboard/recent-bar-chart";
+import { RecentBarChart, type ViewMode } from "@/components/dashboard/recent-bar-chart";
 import type { HalfHourPoint } from "@/components/dashboard/recent-bar-chart";
 import { HourlyAgentChart } from "@/components/dashboard/hourly-agent-chart";
 import { HourlyModelChart } from "@/components/dashboard/hourly-model-chart";
@@ -299,6 +299,9 @@ function RecentSkeleton() {
 // ---------------------------------------------------------------------------
 
 export default function RecentPage() {
+  // View mode state for the main chart
+  const [viewMode, setViewMode] = useState<ViewMode>("devices");
+
   // Recent: last 72 hours — use full ISO timestamps so the API applies
   // exact millisecond boundaries instead of bare-date expansion (+1 day
   // on `to`) which would widen the window to ~96 hours.
@@ -314,6 +317,13 @@ export default function RecentPage() {
   const { data, loading, error } = useUsageData({
     from: recentFrom,
     to: recentTo,
+    granularity: "half-hour",
+  });
+
+  // Fetch device timeline with half-hour granularity for the main chart
+  const { data: recentDeviceData } = useDeviceData({
+    from: recentFrom.slice(0, 10), // API expects date string
+    to: recentTo.slice(0, 10),
     granularity: "half-hour",
   });
 
@@ -335,7 +345,7 @@ export default function RecentPage() {
     granularity: "half-hour",
   });
 
-  // Fetch device data for the same period
+  // Fetch device data for the same period (day granularity for pattern charts)
   const { data: deviceData } = useDeviceData({
     from: patternFrom,
     to: patternTo,
@@ -420,7 +430,13 @@ export default function RecentPage() {
           {data.summary.total_tokens > 0 ? (
             <>
               {/* Half-hour bar chart */}
-              <RecentBarChart data={halfHourPoints} />
+              <RecentBarChart
+                data={halfHourPoints}
+                deviceTimeline={recentDeviceData?.timeline}
+                devices={recentDeviceData?.devices}
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+              />
 
               {/* Per-day detail table */}
               {dailyGroups.length > 0 && (

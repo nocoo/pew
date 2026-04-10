@@ -862,12 +862,14 @@ export function createWorkerDbRead(): DbRead {
       userId: string,
       fromDate: string,
       toDate: string,
+      options?: { granularity?: "half-hour" | "day" },
     ): Promise<UsageDeviceTimelineRow[]> {
       return rpc<UsageDeviceTimelineRow[]>({
         method: "usage.getDeviceTimeline",
         userId,
         fromDate,
         toDate,
+        ...(options?.granularity && { granularity: options.granularity }),
       });
     },
 

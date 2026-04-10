@@ -12,6 +12,8 @@ interface UseDeviceDataOptions {
   from?: string;
   /** Explicit end date (ISO date string). Defaults to today. */
   to?: string;
+  /** Timeline granularity: "half-hour" or "day" (default: "day") */
+  granularity?: "half-hour" | "day";
 }
 
 interface UseDeviceDataResult {
@@ -28,7 +30,7 @@ interface UseDeviceDataResult {
 export function useDeviceData(
   options: UseDeviceDataOptions = {}
 ): UseDeviceDataResult {
-  const { from: fromDate, to: toDate } = options;
+  const { from: fromDate, to: toDate, granularity } = options;
   const [data, setData] = useState<ByDeviceResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +43,7 @@ export function useDeviceData(
       const params = new URLSearchParams();
       if (fromDate) params.set("from", fromDate);
       if (toDate) params.set("to", toDate);
+      if (granularity) params.set("granularity", granularity);
 
       const qs = params.toString();
       const url = `/api/usage/by-device${qs ? `?${qs}` : ""}`;
@@ -60,7 +63,7 @@ export function useDeviceData(
     } finally {
       setLoading(false);
     }
-  }, [fromDate, toDate]);
+  }, [fromDate, toDate, granularity]);
 
   useEffect(() => {
     fetchData();
