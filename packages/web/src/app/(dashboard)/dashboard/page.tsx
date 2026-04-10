@@ -225,8 +225,8 @@ export default function DashboardPage() {
 
           {/* ── Overview ────────────────────────────────────── */}
           <DashboardSegment title="Overview" action={<PeriodSelector value={period} onChange={setPeriod} />}>
-            {/* Row 1 — Hero metrics: Total Tokens + Est. Cost (50/50) */}
-            <StatGrid columns={2}>
+            {/* Row 1 — Token metrics: Total, Input, Output, Cache */}
+            <StatGrid columns={4}>
               <StatCard
                 title="Total Tokens"
                 value={formatTokens(data.summary.total_tokens)}
@@ -251,33 +251,6 @@ export default function DashboardPage() {
                     : []),
                 ]}
               />
-              <StatCard
-                title="Est. Cost"
-                value={formatCost(estimatedCost)}
-                subtitle="Based on public pricing"
-                icon={DollarSign}
-                iconColor="text-chart-6"
-                variant="primary"
-                trendsLayout="side"
-                trends={[
-                  ...(wow && wow.previousWeekSameDay.cost > 0 && wow.previousWeekSameDay.cost !== wow.previousWeek.cost
-                    ? [{ value: -Math.round(wow.sameDayCostGrowth), label: "vs last week to-date" }]
-                    : []),
-                  ...(wow && wow.previousWeek.cost > 0
-                    ? [{ value: -Math.round(wow.costGrowth), label: "vs last week" }]
-                    : []),
-                  ...(mom && mom.previousMonthSameDate.cost > 0 && mom.previousMonthSameDate.cost !== mom.previousMonth.cost
-                    ? [{ value: -Math.round(mom.sameDateCostGrowth), label: "vs last month to-date" }]
-                    : []),
-                  ...(mom && mom.previousMonth.cost > 0
-                    ? [{ value: -Math.round(mom.costGrowth), label: "vs last month" }]
-                    : []),
-                ]}
-              />
-            </StatGrid>
-
-            {/* Row 2 — Token breakdown: Input, Output, Cached */}
-            <StatGrid columns={3}>
               <StatCard
                 title="Input Tokens"
                 value={formatTokens(data.summary.input_tokens)}
@@ -305,8 +278,32 @@ export default function DashboardPage() {
               />
             </StatGrid>
 
-            {/* Row 3 — Cost details: Cache Savings, Monthly Forecast, Daily Average */}
-            <StatGrid columns={showForecast ? 3 : 2}>
+            {/* Row 2 — Cost metrics: Est. Cost, Cache Savings, Monthly, Daily */}
+            <StatGrid columns={showForecast ? 4 : 2}>
+              <StatCard
+                title="Est. Cost"
+                value={formatCost(estimatedCost)}
+                subtitle="Based on public pricing"
+                icon={DollarSign}
+                iconColor="text-chart-6"
+                variant="primary"
+                accentColor="bg-chart-6"
+                trendsLayout="side"
+                trends={[
+                  ...(wow && wow.previousWeekSameDay.cost > 0 && wow.previousWeekSameDay.cost !== wow.previousWeek.cost
+                    ? [{ value: -Math.round(wow.sameDayCostGrowth), label: "vs last week to-date" }]
+                    : []),
+                  ...(wow && wow.previousWeek.cost > 0
+                    ? [{ value: -Math.round(wow.costGrowth), label: "vs last week" }]
+                    : []),
+                  ...(mom && mom.previousMonthSameDate.cost > 0 && mom.previousMonthSameDate.cost !== mom.previousMonth.cost
+                    ? [{ value: -Math.round(mom.sameDateCostGrowth), label: "vs last month to-date" }]
+                    : []),
+                  ...(mom && mom.previousMonth.cost > 0
+                    ? [{ value: -Math.round(mom.costGrowth), label: "vs last month" }]
+                    : []),
+                ]}
+              />
               <StatCard
                 title="Cache Savings"
                 value={formatCost(cacheSavings.netSavings)}
