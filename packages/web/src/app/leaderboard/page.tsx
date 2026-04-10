@@ -418,14 +418,14 @@ function LeaderboardRow({
       {/* Session count (hidden on mobile) */}
       <div className="hidden sm:block w-24 shrink-0 text-right">
         <span className="text-xs tabular-nums text-chart-2" title="Sessions">
-          {session_count.toLocaleString("en-US")}
+          {session_count != null ? session_count.toLocaleString("en-US") : "—"}
         </span>
       </div>
 
       {/* Duration (hidden on mobile) */}
       <div className="hidden sm:block w-24 shrink-0 text-right">
         <span className="text-xs tabular-nums text-chart-7" title="Total duration">
-          {formatDuration(total_duration_seconds)}
+          {total_duration_seconds != null ? formatDuration(total_duration_seconds) : "—"}
         </span>
       </div>
 

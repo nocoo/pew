@@ -22,8 +22,8 @@ export interface LeaderboardEntry {
   input_tokens: number;
   output_tokens: number;
   cached_input_tokens: number;
-  session_count: number;
-  total_duration_seconds: number;
+  session_count: number | null;
+  total_duration_seconds: number | null;
 }
 
 export interface LeaderboardData {
@@ -43,6 +43,8 @@ interface UseLeaderboardOptions {
   limit?: number;
   teamId?: string | null;
   orgId?: string | null;
+  source?: string | null;
+  model?: string | null;
   /** Delay initial fetch until true (for scope initialization) */
   enabled?: boolean;
 }
@@ -67,14 +69,20 @@ interface UseLeaderboardResult {
 }
 
 /** Generate a stable key for filter params */
-function makeFilterKey(period: string, teamId: string | null | undefined, orgId: string | null | undefined): string {
-  return `${period}|${teamId ?? ""}|${orgId ?? ""}`;
+function makeFilterKey(
+  period: string,
+  teamId: string | null | undefined,
+  orgId: string | null | undefined,
+  source: string | null | undefined,
+  model: string | null | undefined,
+): string {
+  return `${period}|${teamId ?? ""}|${orgId ?? ""}|${source ?? ""}|${model ?? ""}`;
 }
 
 export function useLeaderboard(
   options: UseLeaderboardOptions = {},
 ): UseLeaderboardResult {
-  const { period = "week", limit = 20, teamId, orgId, enabled = true } = options;
+  const { period = "week", limit = 20, teamId, orgId, source, model, enabled = true } = options;
 
   // All accumulated entries
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
@@ -97,7 +105,7 @@ export function useLeaderboard(
   const lastFilterKeyRef = useRef<string | null>(null);
 
   // Current filter key
-  const filterKey = makeFilterKey(period, teamId, orgId);
+  const filterKey = makeFilterKey(period, teamId, orgId, source, model);
 
   // Fetch a single page
   const fetchPage = useCallback(
@@ -124,6 +132,12 @@ export function useLeaderboard(
         }
         if (orgId) {
           params.set("org", orgId);
+        }
+        if (source) {
+          params.set("source", source);
+        }
+        if (model) {
+          params.set("model", model);
         }
 
         const res = await fetch(`/api/leaderboard?${params.toString()}`);
@@ -172,7 +186,7 @@ export function useLeaderboard(
         }
       }
     },
-    [period, limit, teamId, orgId],
+    [period, limit, teamId, orgId, source, model],
   );
 
   // Fetch when filters change or on initial mount (when enabled)
