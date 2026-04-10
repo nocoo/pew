@@ -110,41 +110,47 @@ export function StatCard({
       {useSideLayout ? (
         <div className="flex flex-col md:flex-row md:gap-6">
           {/* Left: main content */}
-          <div className="flex items-start justify-between flex-1 min-w-0">
-            <div className="space-y-1">
-              <p
-                className={cn(
-                  "text-muted-foreground",
-                  isPrimary ? "text-xs md:text-sm font-medium" : "text-xs md:text-sm"
-                )}
-              >
-                {title}
-              </p>
-              <p
-                className={cn(
-                  "font-semibold text-foreground font-display tracking-tight",
-                  isPrimary ? "text-3xl md:text-4xl" : "text-2xl md:text-3xl"
-                )}
-              >
-                {typeof value === "number" ? value.toLocaleString() : value}
-              </p>
-              {subtitle && (
-                <p className="text-xs text-muted-foreground">{subtitle}</p>
+          <div className="flex-1 min-w-0 space-y-1">
+            <p
+              className={cn(
+                "text-muted-foreground",
+                isPrimary ? "text-xs md:text-sm font-medium" : "text-xs md:text-sm"
               )}
-            </div>
-            {Icon && (
-              <div className={cn("rounded-md bg-card p-2", iconColor)}>
-                <Icon className={cn(isPrimary ? "h-6 w-6" : "h-5 w-5")} strokeWidth={1.5} />
-              </div>
+            >
+              {title}
+            </p>
+            <p
+              className={cn(
+                "font-semibold text-foreground font-display tracking-tight",
+                isPrimary ? "text-3xl md:text-4xl" : "text-2xl md:text-3xl"
+              )}
+            >
+              {typeof value === "number" ? value.toLocaleString() : value}
+            </p>
+            {subtitle && (
+              <p className="text-xs text-muted-foreground">{subtitle}</p>
             )}
           </div>
-          {/* Right: trends (hidden on mobile, shown below instead) */}
+          {/* Middle: trends (hidden on mobile, shown below instead) */}
           <div className="hidden md:flex md:items-center md:border-l md:border-border/50 md:pl-6">
             {TrendsContent}
           </div>
-          {/* Mobile: trends below */}
-          <div className="md:hidden mt-3">
-            {TrendsContent}
+          {/* Right: icon */}
+          {Icon && (
+            <div className="hidden md:flex md:items-start md:shrink-0">
+              <div className={cn("rounded-md bg-card p-2", iconColor)}>
+                <Icon className={cn(isPrimary ? "h-6 w-6" : "h-5 w-5")} strokeWidth={1.5} />
+              </div>
+            </div>
+          )}
+          {/* Mobile: trends below + icon */}
+          <div className="md:hidden mt-3 flex items-start justify-between">
+            <div className="flex-1">{TrendsContent}</div>
+            {Icon && (
+              <div className={cn("rounded-md bg-card p-2 shrink-0", iconColor)}>
+                <Icon className={cn(isPrimary ? "h-6 w-6" : "h-5 w-5")} strokeWidth={1.5} />
+              </div>
+            )}
           </div>
         </div>
       ) : (

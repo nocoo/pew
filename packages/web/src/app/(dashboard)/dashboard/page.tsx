@@ -287,7 +287,6 @@ export default function DashboardPage() {
                 icon={DollarSign}
                 iconColor="text-chart-6"
                 variant="primary"
-                accentColor="bg-chart-6"
                 trendsLayout="side"
                 trends={[
                   ...(wow && wow.previousWeekSameDay.cost > 0 && wow.previousWeekSameDay.cost !== wow.previousWeek.cost
