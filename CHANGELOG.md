@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.16.4
+
+### Added
+- Use in-page dialog for leaderboard user profiles
+
+### Changed
+- Unify profile content into shared ProfileContent component
+
+### Fixed
+- Widen profile dialog to match leaderboard and pass active tab
+
 ## v2.16.3
 
 ### Added
