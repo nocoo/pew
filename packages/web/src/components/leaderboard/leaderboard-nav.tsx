@@ -12,6 +12,8 @@ const TABS = [
   { href: "/leaderboard", label: "Individual" },
   { href: "/leaderboard/seasons", label: "Seasons" },
   { href: "/leaderboard/achievements", label: "Achievements" },
+  { href: "/leaderboard/agents", label: "Agents" },
+  { href: "/leaderboard/models", label: "Models" },
   { href: "/leaderboard/showcases", label: "Showcases" },
 ] as const;
 
