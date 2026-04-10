@@ -7,7 +7,6 @@ import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { modelColor } from "@/lib/palette";
 import { shortModel } from "@/lib/model-helpers";
-import { DEFAULT_MODEL_PRICES } from "@/lib/pricing";
 import {
   useLeaderboard,
   type LeaderboardPeriod,
@@ -30,13 +29,36 @@ import {
 import { UserProfileDialog } from "@/components/user-profile-dialog";
 
 // ---------------------------------------------------------------------------
-// Model list (from DEFAULT_MODEL_PRICES, vendor-grouped)
-// The dropdown shows this static list; URL params are NOT validated against it
-// so deep-links to DB-extended models work even if not in the dropdown.
+// Model list — Top 20 by token usage from D1 (2026-04-10 snapshot)
+// URL params are NOT validated against this list, so deep-links to any model work.
 // ---------------------------------------------------------------------------
 
-const MODEL_LIST = Object.keys(DEFAULT_MODEL_PRICES);
-const DEFAULT_MODEL = "claude-sonnet-4-20250514";
+const MODEL_LIST = [
+  // OpenAI GPT-5.x
+  "gpt-5.4",
+  "gpt-5.2",
+  "gpt-5.3-codex",
+  "gpt-5-codex",
+  "gpt-5.2-codex",
+  "gpt-5.1-codex-max",
+  "gpt-5.1",
+  "gpt-5.1-codex",
+  // Anthropic Claude 4.x
+  "claude-opus-4.6-1m",
+  "claude-opus-4.6",
+  "claude-opus-4.5",
+  "claude-sonnet-4.6",
+  "claude-sonnet-4",
+  "claude-sonnet-4.5",
+  "claude-haiku-4.5",
+  // Google Gemini 3.x
+  "gemini-3-pro-preview",
+  // Zhipu GLM-5.x
+  "glm-5.1",
+  "glm-5",
+  "glm-4.7",
+];
+const DEFAULT_MODEL = "claude-opus-4.6-1m";
 
 // ---------------------------------------------------------------------------
 // ModelSelector dropdown
