@@ -1,5 +1,7 @@
 # Changelog
 
+## v2.18.2
+
 ## v2.18.1
 
 ### Added
