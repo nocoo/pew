@@ -5,12 +5,16 @@ import { useDeviceData } from "@/hooks/use-device-data";
 import { formatTokens } from "@/lib/utils";
 import { formatCost } from "@/hooks/use-pricing";
 import { sourceLabel } from "@/hooks/use-usage-data";
-import { deviceLabel, shortDeviceId } from "@/lib/device-helpers";
+import { deviceLabel, shortDeviceId, toDeviceAgentBreakdown, toDeviceModelBreakdown } from "@/lib/device-helpers";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CHART_COLORS } from "@/lib/palette";
 import { DeviceTrendChart } from "@/components/dashboard/device-trend-chart";
 import { DeviceShareChart } from "@/components/dashboard/device-share-chart";
 import { DeviceBreakdownChart } from "@/components/dashboard/device-breakdown-chart";
+import { DeviceAgentChart } from "@/components/dashboard/device-agent-chart";
+import { DeviceModelChart } from "@/components/dashboard/device-model-chart";
+import { DashboardSegment } from "@/components/dashboard/dashboard-segment";
+import { FilterDropdown } from "@/components/dashboard/filter-dropdown";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
 import { periodToDateRange, periodLabel, getLocalToday, fillTimelineGaps } from "@/lib/date-helpers";
 import type { Period } from "@/lib/date-helpers";
@@ -82,6 +86,23 @@ function DevicesSkeleton() {
           </tbody>
         </table>
       </div>
+
+      {/* Deep Dive skeleton */}
+      <div className="space-y-3 md:space-y-4">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-3 w-20" />
+          <div className="h-px flex-1 bg-border/60" />
+          <Skeleton className="h-8 w-40" />
+        </div>
+        <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+              <Skeleton className="h-3 w-20 mb-4" />
+              <Skeleton className="h-[200px] w-full" />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -129,6 +150,7 @@ function StatGrid({ devices }: { devices: DeviceAggregate[] }) {
 
 export default function ByDevicePage() {
   const [period, setPeriod] = useState<Period>("all");
+  const [selectedDevice, setSelectedDevice] = useState("");
   const { from, to } = periodToDateRange(period, new Date().getTimezoneOffset());
 
   const { data, loading, error } = useDeviceData({
@@ -162,6 +184,45 @@ export default function ByDevicePage() {
   const grandTotal = useMemo(
     () => devices.reduce((sum, d) => sum + d.total_tokens, 0),
     [devices],
+  );
+
+  // Deep Dive: device dropdown options
+  const deviceOptions = useMemo(
+    () =>
+      devices.map((d) => ({
+        value: d.device_id,
+        label: deviceLabel(d),
+      })),
+    [devices],
+  );
+
+  // Auto-select first device when data loads (and clear stale selection)
+  const effectiveDevice = useMemo(() => {
+    if (selectedDevice && devices.some((d) => d.device_id === selectedDevice)) {
+      return selectedDevice;
+    }
+    return devices.length > 0 ? (devices[0] as DeviceAggregate).device_id : "";
+  }, [selectedDevice, devices]);
+
+  // Deep Dive: filter + aggregate detail rows for selected device
+  const deviceDetails = useMemo(() => data?.deviceDetails ?? [], [data]);
+
+  const filteredDetails = useMemo(
+    () =>
+      effectiveDevice
+        ? deviceDetails.filter((d) => d.device_id === effectiveDevice)
+        : [],
+    [deviceDetails, effectiveDevice],
+  );
+
+  const agentBreakdown = useMemo(
+    () => toDeviceAgentBreakdown(filteredDetails),
+    [filteredDetails],
+  );
+
+  const modelBreakdown = useMemo(
+    () => toDeviceModelBreakdown(filteredDetails),
+    [filteredDetails],
   );
 
   const subtitle = periodLabel(period);
@@ -352,6 +413,25 @@ export default function ByDevicePage() {
                   </tfoot>
                 </table>
               </div>
+
+              {/* Deep Dive — agent × model drill-down */}
+              <DashboardSegment
+                title="Deep Dive"
+                action={
+                  <FilterDropdown
+                    label="Device"
+                    value={effectiveDevice}
+                    onChange={setSelectedDevice}
+                    options={deviceOptions}
+                    allLabel="All Devices"
+                  />
+                }
+              >
+                <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
+                  <DeviceAgentChart data={agentBreakdown} />
+                  <DeviceModelChart data={modelBreakdown} />
+                </div>
+              </DashboardSegment>
             </>
           )}
         </>

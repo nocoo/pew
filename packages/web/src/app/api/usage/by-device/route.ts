@@ -145,7 +145,19 @@ export async function GET(request: Request) {
       cached_input_tokens: row.cached_input_tokens,
     }));
 
-    return NextResponse.json({ devices, timeline });
+    // 7. Map cost detail rows for client-side drill-down charts
+    const deviceDetails = costRows.map((row) => ({
+      device_id: row.device_id,
+      source: row.source,
+      model: row.model,
+      total_tokens:
+        row.input_tokens + row.output_tokens + row.cached_input_tokens,
+      input_tokens: row.input_tokens,
+      output_tokens: row.output_tokens,
+      cached_input_tokens: row.cached_input_tokens,
+    }));
+
+    return NextResponse.json({ devices, timeline, deviceDetails });
   } catch (err) {
     console.error("Failed to query by-device usage:", err);
     return NextResponse.json(

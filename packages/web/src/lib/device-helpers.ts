@@ -6,7 +6,7 @@
  * side effects.
  */
 
-import type { DeviceTimelinePoint } from "@pew/core";
+import type { DeviceTimelinePoint, DeviceCostDetail } from "@pew/core";
 
 // ---------------------------------------------------------------------------
 // Display helpers
@@ -183,4 +183,94 @@ export function toDeviceSharePoints(
 
       return point;
     });
+}
+
+// ---------------------------------------------------------------------------
+// Device drill-down breakdowns (agent × model)
+// ---------------------------------------------------------------------------
+
+/** Aggregated row for a single agent (source) within a device */
+export interface DeviceAgentBreakdownRow {
+  source: string;
+  input_tokens: number;
+  output_tokens: number;
+  cached_input_tokens: number;
+  total_tokens: number;
+}
+
+/** Aggregated row for a single model within a device */
+export interface DeviceModelBreakdownRow {
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+  cached_input_tokens: number;
+  total_tokens: number;
+}
+
+/**
+ * Aggregate cost-detail rows by source (agent) for a single device.
+ * Returns sorted descending by total_tokens.
+ */
+export function toDeviceAgentBreakdown(
+  details: DeviceCostDetail[],
+): DeviceAgentBreakdownRow[] {
+  const map = new Map<
+    string,
+    { source: string; input_tokens: number; output_tokens: number; cached_input_tokens: number; total_tokens: number }
+  >();
+
+  for (const d of details) {
+    const existing = map.get(d.source);
+    if (existing) {
+      existing.input_tokens += d.input_tokens;
+      existing.output_tokens += d.output_tokens;
+      existing.cached_input_tokens += d.cached_input_tokens;
+      existing.total_tokens += d.total_tokens;
+    } else {
+      map.set(d.source, {
+        source: d.source,
+        input_tokens: d.input_tokens,
+        output_tokens: d.output_tokens,
+        cached_input_tokens: d.cached_input_tokens,
+        total_tokens: d.total_tokens,
+      });
+    }
+  }
+
+  return Array.from(map.values()).sort((a, b) => b.total_tokens - a.total_tokens);
+}
+
+/**
+ * Aggregate cost-detail rows by model for a single device.
+ * Returns top 10 sorted descending by total_tokens.
+ */
+export function toDeviceModelBreakdown(
+  details: DeviceCostDetail[],
+): DeviceModelBreakdownRow[] {
+  const map = new Map<
+    string,
+    { model: string; input_tokens: number; output_tokens: number; cached_input_tokens: number; total_tokens: number }
+  >();
+
+  for (const d of details) {
+    const existing = map.get(d.model);
+    if (existing) {
+      existing.input_tokens += d.input_tokens;
+      existing.output_tokens += d.output_tokens;
+      existing.cached_input_tokens += d.cached_input_tokens;
+      existing.total_tokens += d.total_tokens;
+    } else {
+      map.set(d.model, {
+        model: d.model,
+        input_tokens: d.input_tokens,
+        output_tokens: d.output_tokens,
+        cached_input_tokens: d.cached_input_tokens,
+        total_tokens: d.total_tokens,
+      });
+    }
+  }
+
+  return Array.from(map.values())
+    .sort((a, b) => b.total_tokens - a.total_tokens)
+    .slice(0, 10);
 }

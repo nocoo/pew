@@ -369,10 +369,23 @@ export interface DeviceTimelinePoint {
   cached_input_tokens: number;
 }
 
+/** Per-(device, source, model) cost detail row for drill-down charts */
+export interface DeviceCostDetail {
+  device_id: string;
+  source: string;
+  model: string;
+  total_tokens: number;
+  input_tokens: number;
+  output_tokens: number;
+  cached_input_tokens: number;
+}
+
 /** Response from GET /api/usage/by-device */
 export interface ByDeviceResponse {
   devices: DeviceAggregate[];
   timeline: DeviceTimelinePoint[];
+  /** Raw cost-detail rows for agent × model drill-down charts */
+  deviceDetails: DeviceCostDetail[];
 }
 
 /** Device summary returned by GET /api/devices (management endpoint) */
