@@ -99,7 +99,7 @@ function AgentSelector({
         />
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 min-w-[200px] max-h-[320px] overflow-y-auto rounded-lg border border-border bg-background p-1 shadow-lg">
+        <div className="absolute left-0 top-full z-50 mt-0.5 min-w-[200px] max-h-[320px] overflow-y-auto rounded-lg border border-border bg-background p-1 shadow-lg">
           {AGENTS.map((agent) => {
             const c = agentColor(agent);
             return (
