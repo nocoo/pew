@@ -79,7 +79,7 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
     return (
       <div className="relative flex min-h-screen flex-col bg-background">
         <TopRightIcons />
-        <div className="mx-auto w-full max-w-4xl flex-1 flex flex-col px-6">
+        <div className="mx-auto w-full max-w-6xl flex-1 flex flex-col px-6">
           <PewPageHeader />
           <main className="flex-1 py-8">
             <div className="text-center space-y-4">
@@ -109,7 +109,7 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
     return (
       <div className="relative flex min-h-screen flex-col bg-background">
         <TopRightIcons />
-        <div className="mx-auto w-full max-w-4xl flex-1 flex flex-col px-6">
+        <div className="mx-auto w-full max-w-6xl flex-1 flex flex-col px-6">
           <PewPageHeader />
           <main className="flex-1 py-8">
             <div className="text-center space-y-4">
@@ -135,7 +135,7 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
     <div className="relative flex min-h-screen flex-col bg-background">
       <TopRightIcons />
 
-      <div className="mx-auto w-full max-w-4xl flex-1 flex flex-col px-6">
+      <div className="mx-auto w-full max-w-6xl flex-1 flex flex-col px-6">
         <PewPageHeader />
 
         <main className="flex-1 py-4 space-y-4 md:space-y-6">

@@ -23,7 +23,7 @@ import { LeaderboardSkeleton } from "@/components/leaderboard/leaderboard-skelet
 import { LeaderboardNav } from "@/components/leaderboard/leaderboard-nav";
 import { PageHeader } from "@/components/leaderboard/page-header";
 import { TokenTierBadge } from "@/components/leaderboard/token-tier-badge";
-import { UserProfileDialog } from "@/components/user-profile-dialog";
+import { UserProfileDialog, type ProfileDialogTab } from "@/components/user-profile-dialog";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -86,6 +86,13 @@ const PERIODS: { value: LeaderboardPeriod; label: string }[] = [
   { value: "month", label: "Last 30 Days" },
   { value: "all", label: "All Time" },
 ];
+
+/** Map leaderboard period to profile dialog tab */
+const PERIOD_TO_TAB: Record<LeaderboardPeriod, ProfileDialogTab> = {
+  week: "7d",
+  month: "30d",
+  all: "total",
+};
 
 // ---------------------------------------------------------------------------
 // Team logo inline icon (with fallback)
@@ -674,6 +681,7 @@ export default function LeaderboardPage() {
         slug={dialogEntry?.user.slug ?? dialogEntry?.user.id ?? null}
         name={dialogEntry?.user.name ?? null}
         image={dialogEntry?.user.image ?? null}
+        defaultTab={PERIOD_TO_TAB[period]}
       />
     </>
   );
