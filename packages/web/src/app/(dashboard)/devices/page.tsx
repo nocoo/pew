@@ -2,10 +2,13 @@
 
 import { useMemo, useState } from "react";
 import { useDeviceData } from "@/hooks/use-device-data";
+import { useUsageData } from "@/hooks/use-usage-data";
 import { formatTokens } from "@/lib/utils";
 import { formatCost } from "@/hooks/use-pricing";
 import { sourceLabel } from "@/hooks/use-usage-data";
 import { deviceLabel, shortDeviceId, toDeviceAgentBreakdown, toDeviceModelBreakdown } from "@/lib/device-helpers";
+import { toSourceTrendPoints } from "@/lib/usage-helpers";
+import { toModelEvolutionPoints } from "@/lib/model-helpers";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CHART_COLORS } from "@/lib/palette";
 import { DeviceTrendChart } from "@/components/dashboard/device-trend-chart";
@@ -13,6 +16,8 @@ import { DeviceShareChart } from "@/components/dashboard/device-share-chart";
 import { DeviceBreakdownChart } from "@/components/dashboard/device-breakdown-chart";
 import { DeviceAgentChart } from "@/components/dashboard/device-agent-chart";
 import { DeviceModelChart } from "@/components/dashboard/device-model-chart";
+import { DeviceAgentTrendChart } from "@/components/dashboard/device-agent-trend-chart";
+import { DeviceModelTrendChart } from "@/components/dashboard/device-model-trend-chart";
 import { DashboardSegment } from "@/components/dashboard/dashboard-segment";
 import { FilterDropdown } from "@/components/dashboard/filter-dropdown";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
@@ -99,6 +104,15 @@ function DevicesSkeleton() {
             <div key={i} className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
               <Skeleton className="h-3 w-20 mb-4" />
               <Skeleton className="h-[200px] w-full" />
+            </div>
+          ))}
+        </div>
+        {/* Trend charts skeleton row */}
+        <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+              <Skeleton className="h-3 w-24 mb-4" />
+              <Skeleton className="h-[240px] md:h-[280px] w-full" />
             </div>
           ))}
         </div>
@@ -225,6 +239,24 @@ export default function ByDevicePage() {
     [filteredDetails],
   );
 
+  // Deep Dive: time-series data for selected device (reuse usage.get with deviceId filter)
+  const { data: deviceUsage } = useUsageData({
+    from,
+    ...(to ? { to } : {}),
+    ...(effectiveDevice ? { deviceId: effectiveDevice } : {}),
+    granularity: "day",
+  });
+
+  const agentTrend = useMemo(
+    () => (deviceUsage ? toSourceTrendPoints(deviceUsage.records, tzOffset) : []),
+    [deviceUsage, tzOffset],
+  );
+
+  const modelTrend = useMemo(
+    () => (deviceUsage ? toModelEvolutionPoints(deviceUsage.records, 5, tzOffset) : []),
+    [deviceUsage, tzOffset],
+  );
+
   const subtitle = periodLabel(period);
 
   return (
@@ -259,17 +291,23 @@ export default function ByDevicePage() {
             </div>
           ) : (
             <>
-              {/* Stat grid */}
-              <StatGrid devices={devices} />
+              {/* Overview */}
+              <DashboardSegment title="Overview">
+                <StatGrid devices={devices} />
+              </DashboardSegment>
 
-              {/* Charts row */}
-              <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
-                <DeviceTrendChart timeline={timeline} devices={devices} />
-                <DeviceShareChart timeline={timeline} devices={devices} />
-              </div>
+              {/* Trend & Share */}
+              <DashboardSegment title="Trend & Share">
+                <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
+                  <DeviceTrendChart timeline={timeline} devices={devices} />
+                  <DeviceShareChart timeline={timeline} devices={devices} />
+                </div>
+              </DashboardSegment>
 
-              {/* Breakdown chart */}
-              <DeviceBreakdownChart devices={devices} />
+              {/* Breakdown */}
+              <DashboardSegment title="Breakdown">
+                <DeviceBreakdownChart devices={devices} />
+              </DashboardSegment>
 
               {/* Summary table */}
               <div className="rounded-xl bg-secondary p-1 overflow-x-auto">
@@ -430,6 +468,10 @@ export default function ByDevicePage() {
                 <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
                   <DeviceAgentChart data={agentBreakdown} />
                   <DeviceModelChart data={modelBreakdown} />
+                </div>
+                <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
+                  <DeviceAgentTrendChart data={agentTrend} />
+                  <DeviceModelTrendChart data={modelTrend} />
                 </div>
               </DashboardSegment>
             </>
