@@ -1,5 +1,33 @@
 # Changelog
 
+## v2.18.5
+
+### Changed
+- Trigger workflow to test 6DQ secrets configuration
+- Add full 6DQ quality gate coverage
+- Add members route error handling coverage
+- Add join route error handling coverage
+- Add leave route error handling coverage
+- Add mine route error handling coverage
+- Cover private profile bypass paths
+- Extend profile route coverage
+- Add logo route coverage
+- Add preview route coverage
+- Add route coverage
+- Restore unrelated hook changes
+- Add route edge-case coverage
+
+### Fixed
+- Fix Hermes profile discovery and Multica Codex status classification (#53)
+- Hide scope dropdown on small screens in leaderboard pages
+- Make leaderboard nav tabs horizontally scrollable on mobile
+- Prevent double chart animation on hourly-usage page
+- Correct gitleaks-action SHA
+
+### Removed
+- Remove L3 Playwright job (tests need fixing)
+- Drop unrelated hook-generated tests
+
 ## v2.18.4
 
 ### Changed
