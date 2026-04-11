@@ -38,10 +38,11 @@ import {
 
 // -- Session driver singletons --
 import { claudeSessionDriver } from "./session/claude-session-driver.js";
+import { codexSessionDriver } from "./session/codex-session-driver.js";
+import { copilotCliSessionDriver } from "./session/copilot-cli-session-driver.js";
 import { geminiSessionDriver } from "./session/gemini-session-driver.js";
 import { openCodeJsonSessionDriver } from "./session/opencode-json-session-driver.js";
 import { openClawSessionDriver } from "./session/openclaw-session-driver.js";
-import { codexSessionDriver } from "./session/codex-session-driver.js";
 import { piSessionDriver } from "./session/pi-session-driver.js";
 import { kosmosSessionDriver, pmstudioSessionDriver } from "./session/kosmos-session-driver.js";
 import {
@@ -180,6 +181,7 @@ export interface SessionDriverRegistryOpts {
   openCodeMessageDir?: string;
   openclawDir?: string;
   codexSessionsDir?: string;
+  copilotCliLogsDir?: string;
   piSessionsDir?: string;
   openCodeDbPath?: string;
   openSessionDb?: OpenCodeSqliteSessionDriverOpts["openSessionDb"];
@@ -204,6 +206,9 @@ export function createSessionDrivers(opts: SessionDriverRegistryOpts): SessionDr
   }
   if (opts.codexSessionsDir) {
     fileDrivers.push(codexSessionDriver);
+  }
+  if (opts.copilotCliLogsDir) {
+    fileDrivers.push(copilotCliSessionDriver);
   }
   if (opts.geminiDir) {
     fileDrivers.push(geminiSessionDriver);
