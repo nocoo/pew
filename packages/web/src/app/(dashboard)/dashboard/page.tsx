@@ -238,13 +238,13 @@ export default function DashboardPage() {
                 trendsLayout="side"
                 trends={[
                   ...(wow && wow.previousWeekSameDay.tokens > 0 && wow.previousWeekSameDay.tokens !== wow.previousWeek.tokens
-                    ? [{ value: Math.round(wow.sameDayTokenGrowth), label: "vs last week to-date" }]
+                    ? [{ value: Math.round(wow.sameDayTokenGrowth), label: "vs week TD" }]
                     : []),
                   ...(wow && wow.previousWeek.tokens > 0
                     ? [{ value: Math.round(wow.tokenGrowth), label: "vs last week" }]
                     : []),
                   ...(mom && mom.previousMonthSameDate.tokens > 0 && mom.previousMonthSameDate.tokens !== mom.previousMonth.tokens
-                    ? [{ value: Math.round(mom.sameDateTokenGrowth), label: "vs last month to-date" }]
+                    ? [{ value: Math.round(mom.sameDateTokenGrowth), label: "vs month TD" }]
                     : []),
                   ...(mom && mom.previousMonth.tokens > 0
                     ? [{ value: Math.round(mom.tokenGrowth), label: "vs last month" }]
@@ -290,13 +290,13 @@ export default function DashboardPage() {
                 trendsLayout="side"
                 trends={[
                   ...(wow && wow.previousWeekSameDay.cost > 0 && wow.previousWeekSameDay.cost !== wow.previousWeek.cost
-                    ? [{ value: -Math.round(wow.sameDayCostGrowth), label: "vs last week to-date" }]
+                    ? [{ value: -Math.round(wow.sameDayCostGrowth), label: "vs week TD" }]
                     : []),
                   ...(wow && wow.previousWeek.cost > 0
                     ? [{ value: -Math.round(wow.costGrowth), label: "vs last week" }]
                     : []),
                   ...(mom && mom.previousMonthSameDate.cost > 0 && mom.previousMonthSameDate.cost !== mom.previousMonth.cost
-                    ? [{ value: -Math.round(mom.sameDateCostGrowth), label: "vs last month to-date" }]
+                    ? [{ value: -Math.round(mom.sameDateCostGrowth), label: "vs month TD" }]
                     : []),
                   ...(mom && mom.previousMonth.cost > 0
                     ? [{ value: -Math.round(mom.costGrowth), label: "vs last month" }]

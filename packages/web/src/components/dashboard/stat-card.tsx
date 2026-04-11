@@ -108,9 +108,9 @@ export function StatCard({
 
       {/* Side layout: two columns on md+, stacked on mobile */}
       {useSideLayout ? (
-        <div className="flex flex-col md:flex-row md:gap-6">
+        <div className="flex flex-col md:flex-row md:gap-4">
           {/* Left: main content */}
-          <div className="flex-1 min-w-0 space-y-1">
+          <div className="shrink-0 space-y-1">
             <p
               className={cn(
                 "text-muted-foreground",
@@ -132,7 +132,7 @@ export function StatCard({
             )}
           </div>
           {/* Middle: trends (hidden on mobile, shown below instead) */}
-          <div className="hidden md:flex md:items-center md:border-r md:border-border/50 md:pr-6">
+          <div className="hidden md:flex md:flex-1 md:items-center md:justify-end md:border-r md:border-border/50 md:pr-4">
             {TrendsContent}
           </div>
           {/* Right: icon */}
