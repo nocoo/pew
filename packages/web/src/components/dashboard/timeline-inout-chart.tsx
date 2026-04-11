@@ -197,14 +197,12 @@ export function TimelineInOutChart({
               stackId="1"
               fill={colorInput}
               radius={[0, 0, 0, 0]}
-              isAnimationActive={false}
             />
             <Bar
               dataKey="output"
               stackId="1"
               fill={colorOutput}
               radius={[2, 2, 0, 0]}
-              isAnimationActive={false}
             />
           </BarChart>
         </DashboardResponsiveContainer>
