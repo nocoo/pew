@@ -44,6 +44,8 @@ export interface SessionSyncOptions {
   codexSessionsDir?: string;
   /** Override: Multica Codex extra session directories */
   multicaCodexDirs?: string[];
+  /** Override: Copilot CLI logs directory (~/.copilot/logs) */
+  copilotCliLogsDir?: string;
   /** Override: Gemini data directory (~/.gemini) */
   geminiDir?: string;
   /** Override: OpenCode message directory (~/.local/share/opencode/storage/message) */
@@ -86,6 +88,7 @@ export interface SessionSyncResult {
   sources: {
     claude: number;
     codex: number;
+    copilotCli: number;
     gemini: number;
     kosmos: number;
     opencode: number;
@@ -97,6 +100,7 @@ export interface SessionSyncResult {
   filesScanned: {
     claude: number;
     codex: number;
+    copilotCli: number;
     gemini: number;
     kosmos: number;
     opencode: number;
@@ -148,15 +152,15 @@ function toQueueRecord(snap: SessionSnapshot): SessionQueueRecord {
 function sourceKey(source: Source): keyof SessionSyncResult["sources"] | null {
   switch (source) {
     case "claude-code": return "claude";
+    case "codex": return "codex";
+    case "copilot-cli": return "copilotCli";
     case "gemini-cli": return "gemini";
     case "kosmos": return "kosmos";
     case "opencode": return "opencode";
     case "openclaw": return "openclaw";
-    case "codex": return "codex";
     case "pi": return "pi";
     case "pmstudio": return "pmstudio";
     case "vscode-copilot": return null;
-    case "copilot-cli": return null;
     case "hermes": return null;
     default: {
       // Exhaustiveness check — if Source adds a new value, this will fail to compile
@@ -184,8 +188,8 @@ export async function executeSessionSync(
   const cursors = await cursorStore.load();
 
   const allSnapshots: SessionSnapshot[] = [];
-  const sourceCounts = { claude: 0, codex: 0, gemini: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0 };
-  const filesScanned = { claude: 0, codex: 0, gemini: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0 };
+  const sourceCounts = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0 };
+  const filesScanned = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0 };
   const dbsScanned = { opencode: 0 };
 
   // Build driver sets from options
@@ -196,6 +200,7 @@ export async function executeSessionSync(
     claudeDir: opts.claudeDir,
     codexSessionsDir: opts.codexSessionsDir,
     multicaCodexDirs: opts.multicaCodexDirs,
+    copilotCliLogsDir: opts.copilotCliLogsDir,
     geminiDir: opts.geminiDir,
     kosmosDataDir: opts.kosmosDataDir,
     pmstudioDataDir: opts.pmstudioDataDir,

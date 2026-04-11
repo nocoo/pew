@@ -171,18 +171,25 @@ describe("createSessionDrivers", () => {
     expect(fileDrivers[0].source).toBe("pi");
   });
 
-  it("returns all 6 file drivers when all dirs are set", () => {
+  it("includes copilot-cli session driver when copilotCliLogsDir is set", () => {
+    const { fileDrivers } = createSessionDrivers({ copilotCliLogsDir: "/tmp/copilot/logs" });
+    expect(fileDrivers).toHaveLength(1);
+    expect(fileDrivers[0].source).toBe("copilot-cli");
+  });
+
+  it("returns all 7 file drivers when all dirs are set", () => {
     const { fileDrivers, dbDrivers } = createSessionDrivers({
       claudeDir: "/tmp/claude",
+      codexSessionsDir: "/tmp/codex",
+      copilotCliLogsDir: "/tmp/copilot/logs",
       geminiDir: "/tmp/gemini",
       openCodeMessageDir: "/tmp/oc",
       openclawDir: "/tmp/openclaw",
       piSessionsDir: "/tmp/pi/sessions",
-      codexSessionsDir: "/tmp/codex",
     });
-    expect(fileDrivers).toHaveLength(6);
+    expect(fileDrivers).toHaveLength(7);
     const sources = fileDrivers.map((d) => d.source);
-    expect(sources).toEqual(["claude-code", "codex", "gemini-cli", "opencode", "openclaw", "pi"]);
+    expect(sources).toEqual(["claude-code", "codex", "copilot-cli", "gemini-cli", "opencode", "openclaw", "pi"]);
     expect(dbDrivers).toHaveLength(0);
   });
 

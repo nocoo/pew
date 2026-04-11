@@ -302,6 +302,7 @@ const syncCommand = defineCommand({
       claudeDir: paths.claudeDir,
       codexSessionsDir: paths.codexSessionsDir,
       multicaCodexDirs: paths.multicaCodexDirs,
+      copilotCliLogsDir: paths.copilotCliLogsDir,
       geminiDir: paths.geminiDir,
       kosmosDataDir: paths.kosmosDataDir,
       pmstudioDataDir: paths.pmstudioDataDir,
@@ -327,6 +328,7 @@ const syncCommand = defineCommand({
       const sessParts: string[] = [];
       if (sessionResult.sources.claude > 0) sessParts.push(`Claude: ${sessionResult.sources.claude}`);
       if (sessionResult.sources.codex > 0) sessParts.push(`Codex: ${sessionResult.sources.codex}`);
+      if (sessionResult.sources.copilotCli > 0) sessParts.push(`Copilot CLI: ${sessionResult.sources.copilotCli}`);
       if (sessionResult.sources.gemini > 0) sessParts.push(`Gemini: ${sessionResult.sources.gemini}`);
       if (sessionResult.sources.kosmos > 0) sessParts.push(`Kosmos: ${sessionResult.sources.kosmos}`);
       if (sessionResult.sources.opencode > 0) sessParts.push(`OpenCode: ${sessionResult.sources.opencode}`);

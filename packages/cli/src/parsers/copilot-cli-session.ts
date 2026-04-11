@@ -10,13 +10,13 @@
  * Project ref is NOT available in logs (no cwd/repo hashing possible).
  *
  * Timing:
- * - startedAt: timestamp of "Workspace initialized" line
+ * - startedAt: timestamp of the first log line in the file
  * - lastMessageAt: timestamp of last "Sending request to the AI model" line
  *
  * Message counting:
  * - "Sending request to the AI model" lines → userMessages (each is a user prompt)
- * - assistantMessages set equal to userMessages (1:1 request/response pattern)
- * - totalMessages = userMessages (only counting user-initiated turns)
+ * - assistantMessages = userMessages (1:1 request/response pattern assumed)
+ * - totalMessages = userMessages + assistantMessages (per @pew/core SessionSnapshot spec)
  */
 
 import { createReadStream } from "node:fs";
@@ -114,8 +114,8 @@ export async function collectCopilotCliSessions(
       lastMessageAt,
       durationSeconds: Math.max(0, Math.floor(durationMs / 1000)),
       userMessages,
-      assistantMessages: userMessages, // 1:1 request/response
-      totalMessages: userMessages,
+      assistantMessages: userMessages, // 1:1 request/response assumed
+      totalMessages: userMessages * 2, // user + assistant per @pew/core spec
       projectRef: null, // Not available in Copilot CLI logs
       model,
       snapshotAt: new Date().toISOString(),

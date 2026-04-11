@@ -80,7 +80,7 @@ describe("collectCopilotCliSessions", () => {
     expect(session.model).toBe("claude-sonnet-4.6");
     expect(session.userMessages).toBe(3);
     expect(session.assistantMessages).toBe(3);
-    expect(session.totalMessages).toBe(3);
+    expect(session.totalMessages).toBe(6); // user + assistant per spec
     expect(session.startedAt).toBe("2026-04-11T11:12:04.598Z");
     expect(session.lastMessageAt).toBe("2026-04-11T11:12:41.064Z");
     // Duration: from 11:12:04.598 to 11:12:41.064 = ~36 seconds
@@ -125,5 +125,6 @@ describe("collectCopilotCliSessions", () => {
     expect(result).toHaveLength(1);
     expect(result[0].userMessages).toBe(10);
     expect(result[0].assistantMessages).toBe(10);
+    expect(result[0].totalMessages).toBe(20); // user + assistant per spec
   });
 });

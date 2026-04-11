@@ -176,6 +176,37 @@ function codexTokenCount(ts: string, input: number, output: number): string {
 }
 
 // ---------------------------------------------------------------------------
+// Helpers: Copilot CLI log lines
+// ---------------------------------------------------------------------------
+
+/**
+ * Generate a minimal Copilot CLI process log with the given session UUID and request count.
+ */
+function copilotCliLog(opts: {
+  sessionId: string;
+  model?: string;
+  requestCount?: number;
+  startTs?: string;
+}): string {
+  const { sessionId, model = "claude-sonnet-4.6", requestCount = 1, startTs = "2026-03-07T10:00:00.000Z" } = opts;
+  const lines: string[] = [];
+
+  // Start timestamp
+  lines.push(`${startTs} [INFO] Session indexing debug: SESSION_INDEXING=false`);
+  lines.push(`${startTs} [INFO] Workspace initialized: ${sessionId} (checkpoints: 0)`);
+  lines.push(`${startTs} [INFO] Using default model: ${model}`);
+
+  // AI requests
+  for (let i = 0; i < requestCount; i++) {
+    const ts = startTs.replace(":00.000Z", `:${String(i + 1).padStart(2, "0")}.000Z`);
+    lines.push(`${ts} [INFO] --- Start of group: Sending request to the AI model ---`);
+    lines.push(`${ts} [INFO] --- End of group ---`);
+  }
+
+  return lines.join("\n") + "\n";
+}
+
+// ---------------------------------------------------------------------------
 // Helpers: parse queue file
 // ---------------------------------------------------------------------------
 
@@ -403,7 +434,7 @@ describe("executeSessionSync", () => {
     expect(result.totalSnapshots).toBe(0);
     expect(result.totalRecords).toBe(0);
     expect(result.filesScanned).toEqual({
-      claude: 0, codex: 0, gemini: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0,
+      claude: 0, codex: 0, copilotCli: 0, gemini: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0,
     });
   });
 
@@ -1105,15 +1136,29 @@ describe("executeSessionSync", () => {
       ].join("\n") + "\n",
     );
 
+    // --- Copilot CLI ---
+    const copilotDir = join(dataDir, ".copilot-prog", "logs");
+    await mkdir(copilotDir, { recursive: true });
+    await writeFile(
+      join(copilotDir, "process-123456-789.log"),
+      copilotCliLog({
+        sessionId: "11111111-2222-3333-4444-555555555555",
+        model: "claude-sonnet-4.6",
+        requestCount: 2,
+        startTs: "2026-03-07T14:00:00.000Z",
+      }),
+    );
+
     const events: Array<{ source: string; phase: string; current?: number; total?: number; message?: string }> = [];
 
     const result = await executeSessionSync({
       stateDir,
       claudeDir: join(dataDir, ".claude"),
+      codexSessionsDir: join(dataDir, ".codex-prog", "sessions"),
+      copilotCliLogsDir: join(dataDir, ".copilot-prog", "logs"),
       geminiDir: join(dataDir, ".gemini"),
       openCodeMessageDir: join(dataDir, "opencode-prog", "message"),
       openclawDir: join(dataDir, ".openclaw-prog"),
-      codexSessionsDir: join(dataDir, ".codex-prog", "sessions"),
       onProgress: (e) => events.push({
         source: e.source,
         phase: e.phase,
@@ -1125,13 +1170,14 @@ describe("executeSessionSync", () => {
 
     // Verify all sources produced snapshots
     expect(result.sources.claude).toBeGreaterThanOrEqual(1);
+    expect(result.sources.codex).toBe(1);
+    expect(result.sources.copilotCli).toBe(1);
     expect(result.sources.gemini).toBe(1);
     expect(result.sources.opencode).toBe(1);
     expect(result.sources.openclaw).toBe(1);
-    expect(result.sources.codex).toBe(1);
 
     // Verify progress events were emitted for each source
-    for (const source of ["claude-code", "codex", "gemini-cli", "opencode", "openclaw"]) {
+    for (const source of ["claude-code", "codex", "copilot-cli", "gemini-cli", "opencode", "openclaw"]) {
       const sourceEvents = events.filter((e) => e.source === source);
       expect(sourceEvents.some((e) => e.phase === "discover"), `${source} should have discover`).toBe(true);
       expect(sourceEvents.some((e) => e.phase === "parse"), `${source} should have parse`).toBe(true);
@@ -1207,14 +1253,27 @@ describe("executeSessionSync", () => {
       ].join("\n") + "\n",
     );
 
+    // --- Copilot CLI ---
+    const copilotDir = join(dataDir, ".copilot-skip", "logs");
+    await mkdir(copilotDir, { recursive: true });
+    await writeFile(
+      join(copilotDir, "process-skip-123.log"),
+      copilotCliLog({
+        sessionId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        requestCount: 1,
+        startTs: "2026-03-07T14:00:00.000Z",
+      }),
+    );
+
     // First sync (no onProgress) — establishes cursors
     await executeSessionSync({
       stateDir,
       claudeDir: join(dataDir, ".claude"),
+      codexSessionsDir: join(dataDir, ".codex-skip", "sessions"),
+      copilotCliLogsDir: join(dataDir, ".copilot-skip", "logs"),
       geminiDir: join(dataDir, ".gemini"),
       openCodeMessageDir: join(dataDir, "opencode-skip", "message"),
       openclawDir: join(dataDir, ".openclaw-skip"),
-      codexSessionsDir: join(dataDir, ".codex-skip", "sessions"),
     });
 
     // Second sync WITH onProgress — files unchanged → skip branches fire
@@ -1222,10 +1281,11 @@ describe("executeSessionSync", () => {
     const r2 = await executeSessionSync({
       stateDir,
       claudeDir: join(dataDir, ".claude"),
+      codexSessionsDir: join(dataDir, ".codex-skip", "sessions"),
+      copilotCliLogsDir: join(dataDir, ".copilot-skip", "logs"),
       geminiDir: join(dataDir, ".gemini"),
       openCodeMessageDir: join(dataDir, "opencode-skip", "message"),
       openclawDir: join(dataDir, ".openclaw-skip"),
-      codexSessionsDir: join(dataDir, ".codex-skip", "sessions"),
       onProgress: (e) => events.push({
         source: e.source,
         phase: e.phase,
@@ -1238,7 +1298,7 @@ describe("executeSessionSync", () => {
     expect(r2.totalSnapshots).toBe(0);
 
     // Verify skip-path parse progress was emitted for each file-based source
-    for (const source of ["claude-code", "codex", "gemini-cli", "openclaw"]) {
+    for (const source of ["claude-code", "codex", "copilot-cli", "gemini-cli", "openclaw"]) {
       const skipParseEvents = events.filter(
         (e) => e.source === source && e.phase === "parse" && e.current !== undefined,
       );
