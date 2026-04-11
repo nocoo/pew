@@ -314,18 +314,21 @@ export default function RecentPage() {
     return new Date().toISOString();
   }, []);
 
-  const { data, loading, error } = useUsageData({
+  const { data, loading: usageLoading, error } = useUsageData({
     from: recentFrom,
     to: recentTo,
     granularity: "half-hour",
   });
 
   // Fetch device timeline with half-hour granularity for the main chart
-  const { data: recentDeviceData } = useDeviceData({
+  const { data: recentDeviceData, loading: deviceLoading } = useDeviceData({
     from: recentFrom.slice(0, 10), // API expects date string
     to: recentTo.slice(0, 10),
     granularity: "half-hour",
   });
+
+  // Wait for both data sources before showing content to avoid double animation
+  const loading = usageLoading || deviceLoading;
 
   // For hourly pattern charts, fetch last 30 days of half-hour data
   const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []);
@@ -339,17 +342,20 @@ export default function RecentPage() {
     };
   }, [tzOffset]);
 
-  const { data: patternData } = useUsageData({
+  const { data: patternData, loading: patternLoading } = useUsageData({
     from: patternFrom,
     to: patternTo,
     granularity: "half-hour",
   });
 
   // Fetch device data for the same period (day granularity for pattern charts)
-  const { data: deviceData } = useDeviceData({
+  const { data: deviceData, loading: patternDeviceLoading } = useDeviceData({
     from: patternFrom,
     to: patternTo,
   });
+
+  // Pattern charts wait for both data sources to avoid double animation
+  const patternChartsLoading = patternLoading || patternDeviceLoading;
 
   const { pricingMap } = usePricingMap();
 
@@ -479,14 +485,23 @@ export default function RecentPage() {
 
               {/* Hourly pattern analysis (30-day averages) */}
               <DashboardSegment title="Hourly Patterns (30-Day Avg)">
-                <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
-                  <HourlyAgentChart data={hourlyByAgent} />
-                  <HourlyModelChart data={hourlyByModel} />
-                </div>
-                {devices.length > 0 && (
+                {patternChartsLoading ? (
                   <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
-                    <HourlyDeviceChart data={hourlyByDevice} deviceDetails={devices} />
+                    <Skeleton className="h-[280px] w-full rounded-xl" />
+                    <Skeleton className="h-[280px] w-full rounded-xl" />
                   </div>
+                ) : (
+                  <>
+                    <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
+                      <HourlyAgentChart data={hourlyByAgent} />
+                      <HourlyModelChart data={hourlyByModel} />
+                    </div>
+                    {devices.length > 0 && (
+                      <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
+                        <HourlyDeviceChart data={hourlyByDevice} deviceDetails={devices} />
+                      </div>
+                    )}
+                  </>
                 )}
               </DashboardSegment>
             </>
