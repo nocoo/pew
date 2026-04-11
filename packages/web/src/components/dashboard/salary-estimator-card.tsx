@@ -301,14 +301,14 @@ function SalaryTrendChart({ data, className }: SalaryTrendChartProps) {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
             <div className="h-0.5 w-3 rounded-full" style={{ background: chart.violet }} />
-            <span className="text-[10px] text-muted-foreground">Actual</span>
+            <span className="text-xs text-muted-foreground">Actual</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div
               className="h-0.5 w-3 rounded-full"
               style={{ background: chartMuted, opacity: 0.6 }}
             />
-            <span className="text-[10px] text-muted-foreground">Range</span>
+            <span className="text-xs text-muted-foreground">Range</span>
           </div>
         </div>
       </div>

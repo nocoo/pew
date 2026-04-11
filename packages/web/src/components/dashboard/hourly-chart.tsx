@@ -129,14 +129,14 @@ export function HourlyChart({ data, className }: HourlyChartProps) {
               className="h-2 w-2 rounded-full"
               style={{ background: chart.violet }}
             />
-            <span className="text-[10px] text-muted-foreground">Weekday</span>
+            <span className="text-xs text-muted-foreground">Weekday</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div
               className="h-2 w-2 rounded-full"
               style={{ background: chartMuted, opacity: 0.6 }}
             />
-            <span className="text-[10px] text-muted-foreground">Weekend</span>
+            <span className="text-xs text-muted-foreground">Weekend</span>
           </div>
         </div>
       </div>
