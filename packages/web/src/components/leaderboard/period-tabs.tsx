@@ -8,10 +8,10 @@ import type { ProfileDialogTab } from "@/components/user-profile-dialog";
 // Constants (re-exported for consumers)
 // ---------------------------------------------------------------------------
 
-export const PERIODS: { value: LeaderboardPeriod; label: string }[] = [
-  { value: "week", label: "Last 7 Days" },
-  { value: "month", label: "Last 30 Days" },
-  { value: "all", label: "All Time" },
+export const PERIODS: { value: LeaderboardPeriod; label: string; shortLabel: string }[] = [
+  { value: "week", label: "Last 7 Days", shortLabel: "7D" },
+  { value: "month", label: "Last 30 Days", shortLabel: "30D" },
+  { value: "all", label: "All Time", shortLabel: "All" },
 ];
 
 /** Map leaderboard period to profile dialog tab */
@@ -39,13 +39,14 @@ export function PeriodTabs({
           key={p.value}
           onClick={() => onChange(p.value)}
           className={cn(
-            "flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+            "flex-1 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
             value === p.value
               ? "bg-card text-foreground shadow-sm"
               : "text-muted-foreground hover:text-foreground",
           )}
         >
-          {p.label}
+          <span className="sm:hidden">{p.shortLabel}</span>
+          <span className="hidden sm:inline">{p.label}</span>
         </button>
       ))}
     </div>

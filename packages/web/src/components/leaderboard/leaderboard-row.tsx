@@ -67,7 +67,7 @@ export function LeaderboardRow({
             <TokenTierBadge totalTokens={total_tokens} />
           </div>
           {teams.length > 0 && (
-            <div className="flex gap-1 flex-wrap">
+            <div className="hidden sm:flex gap-1 flex-wrap">
               {teams.map((team) => (
                 <span
                   key={team.id}
@@ -97,8 +97,8 @@ export function LeaderboardRow({
       </div>
 
       {/* Total — check-style handwriting font, full number */}
-      <div className="relative z-10 w-[160px] sm:w-[280px] shrink-0 text-right flex items-center justify-end">
-        <span className="font-handwriting text-[32px] sm:text-[39px] leading-none tracking-tight text-foreground whitespace-nowrap">
+      <div className="relative z-10 w-[120px] sm:w-[280px] shrink-0 text-right flex items-center justify-end">
+        <span className="font-handwriting text-[28px] sm:text-[39px] leading-none tracking-tight text-foreground whitespace-nowrap">
           {formatTokensFull(total_tokens)}
         </span>
       </div>

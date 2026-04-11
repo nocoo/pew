@@ -29,13 +29,13 @@ export function ShowcaseCard({ showcase, isLoggedIn, onLoginRequired, onUpvoteCh
   const githubOwner = showcase.repo_key.split("/")[0];
 
   return (
-    <article className="group relative flex gap-4 rounded-[var(--radius-card)] bg-secondary p-4 transition-all hover:bg-secondary/80">
+    <article className="group relative flex flex-col sm:flex-row gap-4 rounded-[var(--radius-card)] bg-secondary p-4 transition-all hover:bg-secondary/80">
       {/* OG Image */}
       <Link
         href={showcase.github_url}
         target="_blank"
         rel="noopener noreferrer"
-        className="relative shrink-0 w-[180px] aspect-[1.91/1] rounded-lg overflow-hidden bg-accent/50"
+        className="relative shrink-0 w-full sm:w-[180px] aspect-[1.91/1] rounded-lg overflow-hidden bg-accent/50"
       >
         <ShowcaseImage
           url={showcase.og_image_url}
@@ -144,7 +144,7 @@ export function ShowcaseCard({ showcase, isLoggedIn, onLoginRequired, onUpvoteCh
       </div>
 
       {/* Upvote Button */}
-      <div className="shrink-0 self-center">
+      <div className="shrink-0 self-start sm:self-center">
         <UpvoteButton
           showcaseId={showcase.id}
           initialCount={showcase.upvote_count}

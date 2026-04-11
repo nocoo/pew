@@ -182,12 +182,14 @@ export default function LeaderboardPage() {
 
           {/* Scope dropdown (org/team filter) — only show for authenticated users */}
           {isAuthenticated && (
-            <ScopeDropdown
-              value={scope}
-              onChange={handleScopeChange}
-              organizations={organizations}
-              teams={teams}
-            />
+            <div className="hidden sm:block">
+              <ScopeDropdown
+                value={scope}
+                onChange={handleScopeChange}
+                organizations={organizations}
+                teams={teams}
+              />
+            </div>
           )}
         </div>
 
