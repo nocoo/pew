@@ -41,7 +41,7 @@ jobs:
           /tmp/osv-scanner --lockfile=bun.lock
 
       - name: G2b Secret Leak Scan
-        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907e6e0f797021 # v2
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
