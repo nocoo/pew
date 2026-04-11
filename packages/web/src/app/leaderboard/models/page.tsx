@@ -323,12 +323,14 @@ function ModelsLeaderboardContent() {
 
           {/* Scope dropdown */}
           {isAuthenticated && (
-            <ScopeDropdown
-              value={scope}
-              onChange={handleScopeChange}
-              organizations={organizations}
-              teams={teams}
-            />
+            <div className="hidden sm:block">
+              <ScopeDropdown
+                value={scope}
+                onChange={handleScopeChange}
+                organizations={organizations}
+                teams={teams}
+              />
+            </div>
           )}
         </div>
 
