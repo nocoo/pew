@@ -195,7 +195,10 @@ export function TopAchievement({
         <div className="h-7 w-7 shrink-0" aria-hidden="true" />
       </div>
 
-      <div className="mt-3 flex-1">
+      {/* Header placeholder — matches Activity/Goal Tracker header height */}
+      <div className="mb-3 h-14" />
+
+      <div className="flex-1">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
         {unlocked.map((ach) => {
           const styles = TIER_STYLES[ach.tier];

@@ -77,8 +77,8 @@ export function GoalHeatmap({ data, year, className }: GoalHeatmapProps) {
         </button>
       </div>
 
-      {/* Header: achievement rate + days on target */}
-      <div className="mb-3">
+      {/* Header: achievement rate + days on target — fixed height for alignment */}
+      <div className="mb-3 h-14">
         <div className="flex items-baseline gap-1.5">
           <span className="text-2xl md:text-3xl font-bold font-display tracking-tight text-foreground">
             {achievementRate}%

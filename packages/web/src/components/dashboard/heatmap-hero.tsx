@@ -217,8 +217,8 @@ export function HeatmapHero({
           <div className="h-7 w-7 shrink-0" aria-hidden="true" />
         </div>
 
-        {/* Header row: Year total + Streak badge */}
-        <div className="flex items-start justify-between gap-2 mb-3">
+        {/* Header row: Year total + Streak badge — fixed height for alignment */}
+        <div className="flex items-start justify-between gap-2 mb-3 h-14">
           <div>
             <div className="flex items-baseline gap-1.5">
               <span className="text-2xl md:text-3xl font-bold font-display tracking-tight text-foreground">
@@ -256,14 +256,14 @@ export function HeatmapHero({
       </div>
 
       {/* Center: Goal Tracker card */}
-      <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5 min-w-0">
-        <GoalHeatmap data={data} year={year} />
+      <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5 min-w-0 flex flex-col">
+        <GoalHeatmap data={data} year={year} className="flex-1" />
       </div>
 
       {/* Right: Top Achievements card */}
       {hasAchievements && (
-        <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
-          <TopAchievement achievements={achievements} />
+        <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5 flex flex-col">
+          <TopAchievement achievements={achievements} className="flex-1" />
         </div>
       )}
     </div>
