@@ -27,7 +27,7 @@ export function TableHeader() {
         {/* Duration — matches row's duration column */}
         <span className="hidden sm:block w-24 shrink-0 text-right">Duration</span>
         {/* Tokens — matches row's total column */}
-        <span className="w-[160px] sm:w-[280px] shrink-0 text-right">Tokens</span>
+        <span className="w-[120px] sm:w-[280px] shrink-0 text-right">Tokens</span>
       </div>
       {/* Thin divider — Armory's Divider--thin--silver */}
       <div className="h-px bg-border/50" />
