@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.18.8
+
+### Added
+- Add copilot-cli session driver for session counting
+
 ## v2.18.7
 
 ### Fixed
