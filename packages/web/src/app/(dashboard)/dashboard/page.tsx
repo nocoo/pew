@@ -172,7 +172,7 @@ export default function DashboardPage() {
   // Year total tokens for HeatmapHero
   const yearTotalTokens = yearData.data?.summary.total_tokens ?? 0;
 
-  const showForecast = (period === "month" || period === "all") && costForecast !== null;
+  const showForecast = costForecast !== null;
 
   const subtitle = periodLabel(period);
 
