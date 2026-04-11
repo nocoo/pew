@@ -36,13 +36,14 @@ export interface ModelEra {
  * Produce daily model evolution data points.
  *
  * Identifies the top N models by total tokens across the entire period,
- * groups the rest as "Other", and returns one entry per date with per-model
- * token counts (zero-filled for missing models on a given day).
+ * optionally groups the rest as "Other", and returns one entry per date
+ * with per-model token counts (zero-filled for missing models on a given day).
  */
 export function toModelEvolutionPoints(
   rows: UsageRow[],
   topN = 5,
   tzOffset: number = 0,
+  includeOther = true,
 ): ModelEra[] {
   if (rows.length === 0) return [];
 
@@ -56,14 +57,15 @@ export function toModelEvolutionPoints(
   const ranked = Array.from(globalTotals.entries())
     .sort((a, b) => b[1] - a[1]);
   const topModels = new Set(ranked.slice(0, topN).map(([m]) => m));
-  const hasOther = ranked.length > topN;
+  const hasOther = includeOther && ranked.length > topN;
 
   // 2. Accumulate by (date, model), grouping non-top as "Other"
   const byDate = new Map<string, Map<string, number>>();
 
   for (const r of rows) {
     const date = toLocalDateStr(r.hour_start, tzOffset);
-    const model = topModels.has(r.model) ? r.model : "Other";
+    const model = topModels.has(r.model) ? r.model : (includeOther ? "Other" : null);
+    if (model === null) continue; // Skip if not including Other and not top N
 
     let dateMap = byDate.get(date);
     if (!dateMap) {

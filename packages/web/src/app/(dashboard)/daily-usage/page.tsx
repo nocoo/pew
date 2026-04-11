@@ -12,9 +12,14 @@ import { formatTokens, cn } from "@/lib/utils";
 import { usePricingMap, lookupPricing, estimateCost, formatCost } from "@/hooks/use-pricing";
 import type { PricingMap } from "@/hooks/use-pricing";
 import { UsageTrendChart } from "@/components/dashboard/usage-trend-chart";
-import { DeviceTrendChart } from "@/components/dashboard/device-trend-chart";
-import { SourceTrendChart } from "@/components/dashboard/source-trend-chart";
-import { ModelEvolutionChart } from "@/components/dashboard/model-evolution-chart";
+import { DeviceAreaChart } from "@/components/dashboard/device-area-chart";
+import { SourceAreaChart } from "@/components/dashboard/source-area-chart";
+import { ModelAreaChart } from "@/components/dashboard/model-area-chart";
+import {
+  DeviceDonutChart,
+  AgentDonutChart,
+  ModelDonutChart,
+} from "@/components/dashboard/compact-donut-charts";
 import { DashboardSegment } from "@/components/dashboard/dashboard-segment";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -170,17 +175,23 @@ function ChartSkeleton() {
   );
 }
 
-function BreakdownSkeleton() {
+function DonutSkeleton() {
   return (
-    <div className="rounded-[var(--radius-card)] bg-background/50 p-3">
+    <div className="rounded-[var(--radius-card)] bg-secondary p-3">
       <Skeleton className="h-3 w-16 mb-2" />
-      <div className="space-y-2">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="flex items-center justify-between">
-            <Skeleton className="h-3 w-20" />
-            <Skeleton className="h-3 w-12" />
-          </div>
-        ))}
+      <div className="flex items-center gap-3">
+        {/* Donut placeholder */}
+        <Skeleton className="w-[80px] h-[80px] rounded-full shrink-0" />
+        {/* Legend */}
+        <div className="flex-1 space-y-1">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-1.5">
+              <Skeleton className="h-2 w-2 rounded-full shrink-0" />
+              <Skeleton className="h-3 flex-1" />
+              <Skeleton className="h-3 w-8 shrink-0" />
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -231,16 +242,16 @@ function DailySkeleton() {
         </div>
       </div>
 
-      {/* Right column skeleton: 3 breakdown lists */}
+      {/* Right column skeleton: 3 donut charts */}
       <div className="xl:col-span-1 space-y-4 md:space-y-6">
         <div className="rounded-[var(--radius-card)] border border-secondary bg-background p-4 md:p-5">
           <div className="flex items-center gap-2 mb-4">
             <Skeleton className="h-4 w-32" />
           </div>
           <div className="space-y-4">
-            <BreakdownSkeleton />
-            <BreakdownSkeleton />
-            <BreakdownSkeleton />
+            <DonutSkeleton />
+            <DonutSkeleton />
+            <DonutSkeleton />
           </div>
         </div>
       </div>
@@ -294,15 +305,21 @@ export default function DailyUsagePage() {
     return padded;
   }, [data, year, month, tzOffset]);
 
+  // Last day of month for chart padding
+  const lastDayOfMonth = useMemo(() => {
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    return `${year}-${String(month + 1).padStart(2, "0")}-${String(daysInMonth).padStart(2, "0")}`;
+  }, [year, month]);
+
   // Source trend data
   const sourceTrend = useMemo(
     () => (data ? toSourceTrendPoints(data.records, tzOffset) : []),
     [data, tzOffset]
   );
 
-  // Model evolution data
+  // Model evolution data (without "Other" category)
   const modelEvolution = useMemo(
-    () => (data ? toModelEvolutionPoints(data.records, tzOffset, 5) : []),
+    () => (data ? toModelEvolutionPoints(data.records, 5, tzOffset, false) : []),
     [data, tzOffset]
   );
 
@@ -398,17 +415,18 @@ export default function DailyUsagePage() {
 
                     {/* By Device */}
                     {deviceData?.timeline && deviceData?.devices && (
-                      <DeviceTrendChart
+                      <DeviceAreaChart
                         timeline={deviceData.timeline}
                         devices={deviceData.devices}
+                        padToDate={lastDayOfMonth}
                       />
                     )}
 
                     {/* By Agent */}
-                    <SourceTrendChart data={sourceTrend} />
+                    <SourceAreaChart data={sourceTrend} padToDate={lastDayOfMonth} />
 
                     {/* By Model */}
-                    <ModelEvolutionChart data={modelEvolution} />
+                    <ModelAreaChart data={modelEvolution} padToDate={lastDayOfMonth} />
                   </div>
 
                   {/* Per-day detail table */}
@@ -452,79 +470,23 @@ export default function DailyUsagePage() {
                 </DashboardSegment>
               </div>
 
-              {/* Right column: Monthly breakdown charts (1/4) */}
+              {/* Right column: Monthly breakdown donut charts (1/4) */}
               <div className="xl:col-span-1 space-y-4 md:space-y-6">
                 <DashboardSegment title="Monthly Breakdown">
                   <div className="space-y-4">
-                    {/* Device breakdown - use device share or simple summary */}
+                    {/* Device donut chart */}
                     {deviceData?.devices && deviceData.devices.length > 0 && (
-                      <div className="rounded-[var(--radius-card)] bg-background/50 p-3">
-                        <p className="text-xs text-muted-foreground mb-2">By Device</p>
-                        <div className="space-y-2">
-                          {deviceData.devices.slice(0, 5).map((d) => (
-                            <div key={d.device_id} className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground truncate max-w-[120px]">
-                                {d.alias || d.device_id.slice(0, 8)}
-                              </span>
-                              <span className="tabular-nums">{formatTokens(d.total_tokens)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+                      <DeviceDonutChart devices={deviceData.devices} />
                     )}
 
-                    {/* Agent breakdown */}
+                    {/* Agent donut chart */}
                     {sourceTrend.length > 0 && (
-                      <div className="rounded-[var(--radius-card)] bg-background/50 p-3">
-                        <p className="text-xs text-muted-foreground mb-2">By Agent</p>
-                        <div className="space-y-2">
-                          {(() => {
-                            // Aggregate sources from trend data
-                            const totals = new Map<string, number>();
-                            for (const pt of sourceTrend) {
-                              for (const [src, val] of Object.entries(pt.sources)) {
-                                totals.set(src, (totals.get(src) ?? 0) + val);
-                              }
-                            }
-                            return Array.from(totals.entries())
-                              .sort((a, b) => b[1] - a[1])
-                              .slice(0, 5)
-                              .map(([src, total]) => (
-                                <div key={src} className="flex items-center justify-between text-xs">
-                                  <span className="text-muted-foreground">{sourceLabel(src)}</span>
-                                  <span className="tabular-nums">{formatTokens(total)}</span>
-                                </div>
-                              ));
-                          })()}
-                        </div>
-                      </div>
+                      <AgentDonutChart sourceTrend={sourceTrend} />
                     )}
 
-                    {/* Model breakdown */}
+                    {/* Model donut chart */}
                     {modelEvolution.length > 0 && (
-                      <div className="rounded-[var(--radius-card)] bg-background/50 p-3">
-                        <p className="text-xs text-muted-foreground mb-2">By Model</p>
-                        <div className="space-y-2">
-                          {(() => {
-                            // Aggregate models from evolution data
-                            const totals = new Map<string, number>();
-                            for (const pt of modelEvolution) {
-                              for (const [model, val] of Object.entries(pt.models)) {
-                                totals.set(model, (totals.get(model) ?? 0) + val);
-                              }
-                            }
-                            return Array.from(totals.entries())
-                              .sort((a, b) => b[1] - a[1])
-                              .slice(0, 5)
-                              .map(([model, total]) => (
-                                <div key={model} className="flex items-center justify-between text-xs">
-                                  <span className="text-muted-foreground truncate max-w-[100px]">{model}</span>
-                                  <span className="tabular-nums">{formatTokens(total)}</span>
-                                </div>
-                              ));
-                          })()}
-                        </div>
-                      </div>
+                      <ModelDonutChart modelEvolution={modelEvolution} />
                     )}
                   </div>
                 </DashboardSegment>
