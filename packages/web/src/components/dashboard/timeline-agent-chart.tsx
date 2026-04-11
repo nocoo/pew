@@ -256,6 +256,7 @@ export function TimelineAgentChart({
                 radius={
                   i === sourceKeys.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0]
                 }
+                isAnimationActive={false}
               />
             ))}
           </BarChart>

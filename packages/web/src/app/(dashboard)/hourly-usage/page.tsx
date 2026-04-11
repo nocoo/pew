@@ -357,6 +357,9 @@ export default function RecentPage() {
   // Pattern charts wait for both data sources to avoid double animation
   const patternChartsLoading = patternLoading || patternDeviceLoading;
 
+  // Wait for ALL data before showing content to avoid staggered animations
+  const allLoading = loading || patternChartsLoading;
+
   const { pricingMap } = usePricingMap();
 
   const halfHourPoints = useMemo(() => {
@@ -428,10 +431,10 @@ export default function RecentPage() {
       )}
 
       {/* Loading */}
-      {loading && <RecentSkeleton />}
+      {allLoading && <RecentSkeleton />}
 
       {/* Content */}
-      {!loading && data && (
+      {!allLoading && data && (
         <>
           {data.summary.total_tokens > 0 ? (
             <div className="grid gap-4 md:gap-6 xl:grid-cols-4">
@@ -512,21 +515,13 @@ export default function RecentPage() {
               {/* Right column: Hourly pattern charts (1/4) */}
               <div className="xl:col-span-1 space-y-4 md:space-y-6">
                 <DashboardSegment title="Hourly Patterns">
-                  {patternChartsLoading ? (
-                    <div className="space-y-4">
-                      <Skeleton className="h-[200px] w-full rounded-xl" />
-                      <Skeleton className="h-[200px] w-full rounded-xl" />
-                      <Skeleton className="h-[200px] w-full rounded-xl" />
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <HourlyAgentChart data={hourlyByAgent} compact />
-                      <HourlyModelChart data={hourlyByModel} compact />
-                      {devices.length > 0 && (
-                        <HourlyDeviceChart data={hourlyByDevice} deviceDetails={devices} compact />
-                      )}
-                    </div>
-                  )}
+                  <div className="space-y-4">
+                    <HourlyAgentChart data={hourlyByAgent} compact />
+                    <HourlyModelChart data={hourlyByModel} compact />
+                    {devices.length > 0 && (
+                      <HourlyDeviceChart data={hourlyByDevice} deviceDetails={devices} compact />
+                    )}
+                  </div>
                 </DashboardSegment>
               </div>
             </div>

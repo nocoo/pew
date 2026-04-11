@@ -269,6 +269,7 @@ export function TimelineModelChart({
                 radius={
                   i === modelKeys.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0]
                 }
+                isAnimationActive={false}
               />
             ))}
           </BarChart>

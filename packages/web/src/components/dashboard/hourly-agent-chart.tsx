@@ -175,6 +175,7 @@ export function HourlyAgentChart({
                 stackId="1"
                 fill={agentColor(source).color}
                 radius={i === sourceKeys.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0]}
+                isAnimationActive={false}
               />
             ))}
           </BarChart>
