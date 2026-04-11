@@ -92,6 +92,28 @@ describe("resolveDefaultPaths", () => {
     expect(paths.hermesDbPath).toBe(join("/fakehome", ".hermes", "state.db"));
   });
 
+  it("should ignore HERMES_HOME env var for hermesDbPath", () => {
+    process.env.HERMES_HOME = "/custom/hermes/profiles/tomato";
+    const paths = resolveDefaultPaths("/fakehome");
+    // Should always use home-based path, not HERMES_HOME
+    expect(paths.hermesDbPath).toBe(join("/fakehome", ".hermes", "state.db"));
+  });
+
+  it("should discover hermes profiles from home dir even when HERMES_HOME is set", () => {
+    tempDir = mkdtempSync(join(tmpdir(), "pew-paths-test-"));
+    const hermesDir = join(tempDir, ".hermes");
+    const profilesDir = join(hermesDir, "profiles");
+    const tomatoDir = join(profilesDir, "tomato");
+    mkdirSync(tomatoDir, { recursive: true });
+    writeFileSync(join(tomatoDir, "state.db"), "fake-db");
+    // Point HERMES_HOME to a profile-specific dir (simulating Hermes agent)
+    process.env.HERMES_HOME = join(profilesDir, "tomato");
+    const paths = resolveDefaultPaths(tempDir);
+    // Should still discover profiles from ~/.hermes/profiles/
+    expect(paths.hermesProfileDbPaths).toHaveLength(1);
+    expect(paths.hermesProfileDbPaths[0].dbKey).toBe("profiles/tomato");
+  });
+
   it("should return exactly 17 path properties", () => {
     const keys = [
       "stateDir",

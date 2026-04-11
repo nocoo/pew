@@ -373,6 +373,7 @@ const statusCommand = defineCommand({
         piSessionsDir: paths.piSessionsDir,
         vscodeCopilotDirs: paths.vscodeCopilotDirs,
         copilotCliLogsDir: paths.copilotCliLogsDir,
+        multicaCodexDirs: paths.multicaCodexDirs,
       },
       notifierStatuses,
       onCorruptLine: handleCorruptLine,
