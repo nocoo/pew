@@ -23,6 +23,7 @@ const defaultDirs: SourceDirs = {
   piSessionsDir: "/home/.pi/agent/sessions",
   vscodeCopilotDirs: ["/home/.config/Code/User"],
   copilotCliLogsDir: "/home/.copilot/logs",
+  multicaCodexDirs: [],
 };
 
 describe("executeStatus", () => {
@@ -245,6 +246,42 @@ describe("executeStatus", () => {
     });
     expect(result.trackedFiles).toBe(1);
     expect(result.sources["vscode-copilot"]).toBe(1);
+    expect(result.sources["unknown"]).toBeUndefined();
+  });
+
+  it("should classify Multica Codex files as codex", async () => {
+    const multicaDirs = ["/home/multica_workspaces/ws-1/task-a/codex-home/sessions"];
+    const cursorStore = new CursorStore(stateDir);
+    await cursorStore.save({
+      files: {
+        "/home/multica_workspaces/ws-1/task-a/codex-home/sessions/2026/04/10/rollout-abc.jsonl": {
+          type: "codex",
+          offset: 100,
+          inode: 50,
+          size: 100,
+          mtimeMs: 9000,
+          lastTotals: null,
+          lastModel: null,
+        },
+        "/home/.codex/sessions/2026/04/10/rollout-xyz.jsonl": {
+          type: "codex",
+          offset: 200,
+          inode: 51,
+          size: 200,
+          mtimeMs: 9001,
+          lastTotals: null,
+          lastModel: null,
+        },
+      },
+      updatedAt: "2026-04-10T10:00:00.000Z",
+    });
+
+    const result = await executeStatus({
+      stateDir,
+      sourceDirs: { ...defaultDirs, multicaCodexDirs: multicaDirs },
+    });
+    expect(result.trackedFiles).toBe(2);
+    expect(result.sources["codex"]).toBe(2);
     expect(result.sources["unknown"]).toBeUndefined();
   });
 
