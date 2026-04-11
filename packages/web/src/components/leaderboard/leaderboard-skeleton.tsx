@@ -14,17 +14,19 @@ export function LeaderboardSkeleton({ count = 10 }: { count?: number }) {
           className="flex items-center gap-3 rounded-[var(--radius-card)] bg-secondary px-4 py-3"
         >
           {/* Rank */}
-          <Skeleton className="h-5 w-8" />
+          <Skeleton className="h-5 w-8 shrink-0" />
           {/* Avatar */}
-          <Skeleton className="h-8 w-8 rounded-full" />
-          {/* Name */}
-          <Skeleton className="h-4 w-32" />
-          <div className="flex-1" />
-          {/* In/Out (hidden on mobile) */}
-          <Skeleton className="hidden sm:block h-3 w-12 shrink-0" />
-          <Skeleton className="hidden sm:block h-3 w-12 shrink-0" />
-          {/* Total */}
-          <Skeleton className="h-6 w-28 sm:w-36 shrink-0" />
+          <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+          {/* Name + badge */}
+          <div className="flex-1 min-w-0">
+            <Skeleton className="h-4 w-32" />
+          </div>
+          {/* Session count (hidden on mobile) */}
+          <Skeleton className="hidden sm:block h-3 w-24 shrink-0" />
+          {/* Duration (hidden on mobile) */}
+          <Skeleton className="hidden sm:block h-3 w-24 shrink-0" />
+          {/* Total tokens */}
+          <Skeleton className="h-7 w-[120px] sm:w-[280px] shrink-0" />
         </div>
       ))}
     </div>
