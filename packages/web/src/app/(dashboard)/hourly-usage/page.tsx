@@ -8,8 +8,11 @@ import {
 } from "@/hooks/use-usage-data";
 import type { UsageRow } from "@/hooks/use-usage-data";
 import { useDeviceData } from "@/hooks/use-device-data";
-import { RecentBarChart, type ViewMode } from "@/components/dashboard/recent-bar-chart";
-import type { HalfHourPoint } from "@/components/dashboard/recent-bar-chart";
+import { TimelineInOutChart } from "@/components/dashboard/timeline-inout-chart";
+import { TimelineDeviceChart } from "@/components/dashboard/timeline-device-chart";
+import { TimelineAgentChart } from "@/components/dashboard/timeline-agent-chart";
+import { TimelineModelChart } from "@/components/dashboard/timeline-model-chart";
+import type { HalfHourPoint } from "@/components/dashboard/timeline-inout-chart";
 import { HourlyAgentChart } from "@/components/dashboard/hourly-agent-chart";
 import { HourlyModelChart } from "@/components/dashboard/hourly-model-chart";
 import { HourlyDeviceChart } from "@/components/dashboard/hourly-device-chart";
@@ -299,9 +302,6 @@ function RecentSkeleton() {
 // ---------------------------------------------------------------------------
 
 export default function RecentPage() {
-  // View mode state for the main chart
-  const [viewMode, setViewMode] = useState<ViewMode>("devices");
-
   // Recent: last 72 hours — use full ISO timestamps so the API applies
   // exact millisecond boundaries instead of bare-date expansion (+1 day
   // on `to`) which would widen the window to ~96 hours.
@@ -435,55 +435,78 @@ export default function RecentPage() {
         <>
           {data.summary.total_tokens > 0 ? (
             <div className="grid gap-4 md:gap-6 xl:grid-cols-4">
-              {/* Left column: Timeline + Detail table (3/4) */}
+              {/* Left column: Timeline charts + Detail table (3/4) */}
               <div className="xl:col-span-3 space-y-4 md:space-y-6">
-                {/* Half-hour bar chart */}
-                <RecentBarChart
-                  data={halfHourPoints}
-                  deviceTimeline={recentDeviceData?.timeline}
-                  devices={recentDeviceData?.devices}
-                  viewMode={viewMode}
-                  onViewModeChange={setViewMode}
-                />
+                <DashboardSegment title="72-Hour Timeline">
+                  <div className="space-y-4">
+                    {/* Input / Output */}
+                    <TimelineInOutChart data={halfHourPoints} />
 
-                {/* Per-day detail table */}
-                {dailyGroups.length > 0 && (
-                  <div className="rounded-xl bg-secondary p-1 overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-border">
-                          <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
-                            Date
-                          </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">
-                            Input
-                          </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">
-                            Output
-                          </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground hidden md:table-cell">
-                            Cached
-                          </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">
-                            Total
-                          </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground hidden sm:table-cell">
-                            Est. Cost
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {dailyGroups.map((group) => (
-                          <DayRow
-                            key={group.date}
-                            group={group}
-                            pricingMap={pricingMap}
-                          />
-                        ))}
-                      </tbody>
-                    </table>
+                    {/* By Device */}
+                    {recentDeviceData?.timeline && recentDeviceData?.devices && (
+                      <TimelineDeviceChart
+                        deviceTimeline={recentDeviceData.timeline}
+                        devices={recentDeviceData.devices}
+                      />
+                    )}
+
+                    {/* By Agent */}
+                    <TimelineAgentChart
+                      records={data.records}
+                      tzOffset={tzOffset}
+                      fromISO={recentFrom}
+                      toISO={recentTo}
+                    />
+
+                    {/* By Model */}
+                    <TimelineModelChart
+                      records={data.records}
+                      tzOffset={tzOffset}
+                      fromISO={recentFrom}
+                      toISO={recentTo}
+                      topN={5}
+                    />
                   </div>
-                )}
+
+                  {/* Per-day detail table */}
+                  {dailyGroups.length > 0 && (
+                    <div className="mt-6 rounded-xl bg-background/50 p-1 overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-border">
+                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+                              Date
+                            </th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">
+                              Input
+                            </th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">
+                              Output
+                            </th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground hidden md:table-cell">
+                              Cached
+                            </th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">
+                              Total
+                            </th>
+                            <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground hidden sm:table-cell">
+                              Est. Cost
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {dailyGroups.map((group) => (
+                            <DayRow
+                              key={group.date}
+                              group={group}
+                              pricingMap={pricingMap}
+                            />
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </DashboardSegment>
               </div>
 
               {/* Right column: Hourly pattern charts (1/4) */}
