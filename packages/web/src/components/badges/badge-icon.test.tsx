@@ -22,7 +22,7 @@ describe("BadgeIcon", () => {
       // This is a compile-time check - if types are wrong, TypeScript will fail
       const props: BadgeIconProps = {
         text: "MVP",
-        shape: "shield",
+        icon: "shield",
         colorBg: "#3B82F6",
         colorText: "#FFFFFF",
         size: "md",
@@ -30,25 +30,30 @@ describe("BadgeIcon", () => {
       };
 
       expect(props.text).toBe("MVP");
-      expect(props.shape).toBe("shield");
+      expect(props.icon).toBe("shield");
       expect(props.colorBg).toBe("#3B82F6");
       expect(props.colorText).toBe("#FFFFFF");
       expect(props.size).toBe("md");
       expect(props.className).toBe("test-class");
     });
 
-    it("should accept all shape variants", () => {
-      const shapes: Array<BadgeIconProps["shape"]> = [
+    it("should accept all icon variants", () => {
+      const icons: Array<BadgeIconProps["icon"]> = [
         "shield",
         "star",
         "hexagon",
         "circle",
         "diamond",
+        "crown",
+        "flame",
+        "zap",
+        "heart",
+        "sparkles",
       ];
 
-      expect(shapes).toHaveLength(5);
-      shapes.forEach((shape) => {
-        expect(typeof shape).toBe("string");
+      expect(icons).toHaveLength(10);
+      icons.forEach((icon) => {
+        expect(typeof icon).toBe("string");
       });
     });
 
@@ -69,7 +74,7 @@ describe("BadgeIcon", () => {
       // Minimal required props only
       const props: BadgeIconProps = {
         text: "X",
-        shape: "circle",
+        icon: "circle",
         colorBg: "#000000",
         colorText: "#FFFFFF",
       };
