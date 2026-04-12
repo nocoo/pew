@@ -354,7 +354,7 @@ async function handleRpc(body: unknown, env: Env): Promise<Response> {
       case "leaderboard":
         return handleLeaderboardRpc(body as LeaderboardRpcRequest, env.DB);
       case "pricing":
-        return handlePricingRpc(body as PricingRpcRequest, env.DB);
+        return handlePricingRpc(body as PricingRpcRequest, env.DB, env.CACHE);
       case "admin":
         return handleAdminRpc(body as AdminRpcRequest, env.DB);
       case "live":

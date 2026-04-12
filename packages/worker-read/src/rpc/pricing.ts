@@ -4,7 +4,14 @@
  * Handles pricing-related read queries for model_pricing table.
  */
 
-import type { D1Database } from "@cloudflare/workers-types";
+import type { D1Database, KVNamespace } from "@cloudflare/workers-types";
+import { withCache, TTL_24H } from "../cache";
+
+// ---------------------------------------------------------------------------
+// Cache Keys
+// ---------------------------------------------------------------------------
+
+const CACHE_KEY_PRICING_ALL = "pricing:all";
 
 // ---------------------------------------------------------------------------
 // Response Types
@@ -52,13 +59,22 @@ export type PricingRpcRequest =
 
 async function handleListModelPricing(
   _req: ListModelPricingRequest,
-  db: D1Database
+  db: D1Database,
+  kv: KVNamespace
 ): Promise<Response> {
-  const results = await db
-    .prepare("SELECT * FROM model_pricing ORDER BY model ASC, source ASC")
-    .all<ModelPricingRow>();
+  const { data, cached } = await withCache(
+    kv,
+    CACHE_KEY_PRICING_ALL,
+    async () => {
+      const results = await db
+        .prepare("SELECT * FROM model_pricing ORDER BY model ASC, source ASC")
+        .all<ModelPricingRow>();
+      return results.results;
+    },
+    { ttlSeconds: TTL_24H }
+  );
 
-  return Response.json({ result: results.results });
+  return Response.json({ result: data, _cached: cached });
 }
 
 async function handleGetModelPricingById(
@@ -101,11 +117,12 @@ async function handleGetModelPricingByModelSource(
 
 export async function handlePricingRpc(
   request: PricingRpcRequest,
-  db: D1Database
+  db: D1Database,
+  kv: KVNamespace
 ): Promise<Response> {
   switch (request.method) {
     case "pricing.listModelPricing":
-      return handleListModelPricing(request, db);
+      return handleListModelPricing(request, db, kv);
     case "pricing.getModelPricingById":
       return handleGetModelPricingById(request, db);
     case "pricing.getModelPricingByModelSource":

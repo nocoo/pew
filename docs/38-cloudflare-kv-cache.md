@@ -10,7 +10,7 @@
 | 1 | This document | ✅ done |
 | 2 | Add test environment KV binding | ✅ done |
 | 3 | Implement cache helper (`withCache`) | ✅ done |
-| 4 | Cache `pricing.listModelPricing` (24h TTL) | |
+| 4 | Cache `pricing.listModelPricing` (24h TTL) | ✅ done |
 | 5 | Cache `seasons.getSnapshots` for frozen seasons (24h TTL) | |
 | 6 | Cache `seasons.list` (5min TTL) | |
 | 7 | Cache `leaderboard.getGlobal` — **public only** (5min TTL) | |

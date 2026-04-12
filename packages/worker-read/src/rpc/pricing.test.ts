@@ -5,7 +5,7 @@ import {
   type GetModelPricingByIdRequest,
   type GetModelPricingByModelSourceRequest,
 } from "./pricing";
-import type { D1Database } from "@cloudflare/workers-types";
+import type { D1Database, KVNamespace } from "@cloudflare/workers-types";
 
 // ---------------------------------------------------------------------------
 // Mock D1Database
@@ -25,11 +25,30 @@ function createMockDb() {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Mock KVNamespace
+// ---------------------------------------------------------------------------
+
+function createMockKv() {
+  return {
+    get: vi.fn().mockResolvedValue(null),
+    put: vi.fn().mockResolvedValue(undefined),
+    delete: vi.fn().mockResolvedValue(undefined),
+    list: vi.fn().mockResolvedValue({ keys: [], list_complete: true }),
+    getWithMetadata: vi.fn().mockResolvedValue({ value: null, metadata: null }),
+  } as unknown as KVNamespace & {
+    get: ReturnType<typeof vi.fn>;
+    put: ReturnType<typeof vi.fn>;
+  };
+}
+
 describe("pricing RPC handlers", () => {
   let db: ReturnType<typeof createMockDb>;
+  let kv: ReturnType<typeof createMockKv>;
 
   beforeEach(() => {
     db = createMockDb();
+    kv = createMockKv();
   });
 
   // -------------------------------------------------------------------------
@@ -37,7 +56,7 @@ describe("pricing RPC handlers", () => {
   // -------------------------------------------------------------------------
 
   describe("pricing.listModelPricing", () => {
-    it("should return all model pricing rows", async () => {
+    it("should return all model pricing rows on cache miss", async () => {
       const mockPricing = [
         {
           id: 1,
@@ -67,11 +86,45 @@ describe("pricing RPC handlers", () => {
       const request: ListModelPricingRequest = {
         method: "pricing.listModelPricing",
       };
-      const response = await handlePricingRpc(request, db);
+      const response = await handlePricingRpc(request, db, kv);
       const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body).toEqual({ result: mockPricing });
+      expect(body).toEqual({ result: mockPricing, _cached: false });
+      expect(kv.get).toHaveBeenCalledWith("pricing:all", "json");
+      expect(kv.put).toHaveBeenCalledWith(
+        "pricing:all",
+        JSON.stringify(mockPricing),
+        { expirationTtl: 86400 }
+      );
+    });
+
+    it("should return cached data on cache hit", async () => {
+      const cachedPricing = [
+        {
+          id: 1,
+          model: "gpt-4o",
+          input: 2.5,
+          output: 10.0,
+          cached: 1.25,
+          source: "openai",
+          note: "Standard pricing",
+          updated_at: "2026-01-01T00:00:00Z",
+          created_at: "2026-01-01T00:00:00Z",
+        },
+      ];
+      kv.get.mockResolvedValue(cachedPricing);
+
+      const request: ListModelPricingRequest = {
+        method: "pricing.listModelPricing",
+      };
+      const response = await handlePricingRpc(request, db, kv);
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body).toEqual({ result: cachedPricing, _cached: true });
+      expect(db.all).not.toHaveBeenCalled();
+      expect(kv.put).not.toHaveBeenCalled();
     });
 
     it("should return empty array when no pricing exists", async () => {
@@ -80,11 +133,11 @@ describe("pricing RPC handlers", () => {
       const request: ListModelPricingRequest = {
         method: "pricing.listModelPricing",
       };
-      const response = await handlePricingRpc(request, db);
+      const response = await handlePricingRpc(request, db, kv);
       const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body).toEqual({ result: [] });
+      expect(body).toEqual({ result: [], _cached: false });
     });
   });
 
@@ -111,7 +164,7 @@ describe("pricing RPC handlers", () => {
         method: "pricing.getModelPricingById",
         id: 1,
       };
-      const response = await handlePricingRpc(request, db);
+      const response = await handlePricingRpc(request, db, kv);
       const body = await response.json();
 
       expect(response.status).toBe(200);
@@ -126,7 +179,7 @@ describe("pricing RPC handlers", () => {
         method: "pricing.getModelPricingById",
         id: 999,
       };
-      const response = await handlePricingRpc(request, db);
+      const response = await handlePricingRpc(request, db, kv);
       const body = await response.json();
 
       expect(response.status).toBe(200);
@@ -138,7 +191,7 @@ describe("pricing RPC handlers", () => {
         method: "pricing.getModelPricingById",
         id: "not-a-number",
       } as unknown as GetModelPricingByIdRequest;
-      const response = await handlePricingRpc(request, db);
+      const response = await handlePricingRpc(request, db, kv);
 
       expect(response.status).toBe(400);
       const body = (await response.json()) as { error: string };
@@ -170,7 +223,7 @@ describe("pricing RPC handlers", () => {
         model: "gpt-4o",
         source: "openai",
       };
-      const response = await handlePricingRpc(request, db);
+      const response = await handlePricingRpc(request, db, kv);
       const body = await response.json();
 
       expect(response.status).toBe(200);
@@ -197,7 +250,7 @@ describe("pricing RPC handlers", () => {
         model: "gpt-4o",
         source: null,
       };
-      const response = await handlePricingRpc(request, db);
+      const response = await handlePricingRpc(request, db, kv);
       const body = await response.json();
 
       expect(response.status).toBe(200);
@@ -213,7 +266,7 @@ describe("pricing RPC handlers", () => {
         model: "nonexistent-model",
         source: null,
       };
-      const response = await handlePricingRpc(request, db);
+      const response = await handlePricingRpc(request, db, kv);
       const body = await response.json();
 
       expect(response.status).toBe(200);
@@ -226,7 +279,7 @@ describe("pricing RPC handlers", () => {
         model: "",
         source: null,
       } as GetModelPricingByModelSourceRequest;
-      const response = await handlePricingRpc(request, db);
+      const response = await handlePricingRpc(request, db, kv);
 
       expect(response.status).toBe(400);
       const body = (await response.json()) as { error: string };
@@ -241,7 +294,7 @@ describe("pricing RPC handlers", () => {
   describe("unknown method", () => {
     it("should return 400 for unknown method", async () => {
       const request = { method: "pricing.unknown" } as unknown as ListModelPricingRequest;
-      const response = await handlePricingRpc(request, db);
+      const response = await handlePricingRpc(request, db, kv);
 
       expect(response.status).toBe(400);
       const body = (await response.json()) as { error: string };
