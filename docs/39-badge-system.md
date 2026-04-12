@@ -394,25 +394,27 @@ Add new RPC handlers in `packages/worker-read`:
 
 ## Implementation Phases
 
-### Phase 1: Core Infrastructure
+### Phase 1: Core Infrastructure ✅
 
-1. Database migration (`0XX-badges.sql`)
-2. Worker-read RPC handlers
-3. Badge icon component (`badge-icon.tsx`)
-4. Type definitions in `@pew/core`
+1. ✅ Database migration (`007-badges.sql`)
+2. ✅ Worker-read RPC handlers (`packages/worker-read/src/rpc/badges.ts`)
+3. ✅ Badge icon component (`packages/web/src/components/badges/badge-icon.tsx`)
+4. ✅ Type definitions in `@pew/core`
 
-### Phase 2: Admin Interface
+### Phase 2: Admin Interface ✅
 
-1. `/admin/badges` page with tabs (Definitions / Assignments)
-2. Create badge dialog (no edit — badges are immutable)
-3. Assign badge dialog with user search + duplicate check
-4. Assignment list with revoke action + status filters
+1. ✅ `/admin/badges` page with tabs (Definitions / Assignments)
+2. ✅ Create badge dialog (no edit — badges are immutable)
+3. ✅ Assign badge dialog with user search + duplicate check
+4. ✅ Assignment list with revoke action + status filters
+5. ✅ Admin API routes (`/api/admin/badges/*`)
 
-### Phase 3: Public Display
+### Phase 3: Public Display ✅
 
-1. Leaderboard integration (replace rank with badge)
-2. Profile popup badge display
-3. Profile page badge display (if applicable)
+1. ✅ Leaderboard integration (badge shown in rank position)
+2. ✅ Profile popup badge display (next to user name)
+3. ✅ Profile page badge display (`/u/[slug]`)
+4. ✅ User profile API includes badges (`/api/users/[slug]`)
 
 ### Phase 4: Polish
 
