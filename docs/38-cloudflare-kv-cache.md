@@ -16,8 +16,8 @@
 | 7 | Cache `leaderboard.getGlobal` — **public only** (5min TTL) | ✅ done |
 | 8 | ~~Cache `achievements.getEarners`~~ — **deferred** (see Decision 3) | ⏭️ skipped |
 | 9 | Add `cache.*` RPC domain + DbRead interface methods | ✅ done |
-| 10 | Add KV management card to Admin Storage page | |
-| 11 | Tests (unit + integration) | |
+| 10 | Add KV management card to Admin Storage page | ✅ done |
+| 11 | Tests (unit + integration) | ✅ done |
 | 12 | Deploy + verify | |
 | 13 | Retrospective | |
 
