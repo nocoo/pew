@@ -776,6 +776,7 @@ export function createWorkerDbRead(): DbRead {
       options?: {
         source?: string;
         kind?: string;
+        limit?: number;
       },
     ): Promise<SessionRecordRow[]> {
       return rpc<SessionRecordRow[]>({
@@ -785,6 +786,7 @@ export function createWorkerDbRead(): DbRead {
         toDate,
         source: options?.source,
         kind: options?.kind,
+        ...(options?.limit !== undefined && { limit: options.limit }),
       });
     },
 

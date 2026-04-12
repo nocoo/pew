@@ -438,6 +438,7 @@ export interface DbRead {
     options?: {
       source?: string;
       kind?: string;
+      limit?: number;
     },
   ): Promise<SessionRecordRow[]>;
 

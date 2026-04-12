@@ -110,9 +110,11 @@ export async function GET(request: Request) {
   const db = await getDbRead();
 
   try {
+    // Use limit=1000 to get all sessions within the date range
     const records = await db.getSessionRecords(userId, fromDate, toDate, {
       ...(sourceFilter && { source: sourceFilter }),
       ...(kindFilter && { kind: kindFilter }),
+      limit: 1000,
     });
 
     // Compute summary
