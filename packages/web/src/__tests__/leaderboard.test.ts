@@ -249,7 +249,7 @@ describe("GET /api/leaderboard", () => {
           {
             id: "ba1",
             text: "MVP",
-            shape: "shield",
+            icon: "shield",
             color_bg: "#3B82F6",
             color_text: "#FFFFFF",
             assigned_at: "2026-04-10T00:00:00Z",
@@ -266,7 +266,7 @@ describe("GET /api/leaderboard", () => {
       expect(body.entries[0].badges).toEqual([
         {
           text: "MVP",
-          shape: "shield",
+          icon: "shield",
           colorBg: "#3B82F6",
           colorText: "#FFFFFF",
         },

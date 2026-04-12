@@ -6,8 +6,8 @@
 -- Badge Definitions (admin-created templates, immutable once created)
 CREATE TABLE IF NOT EXISTS badges (
   id              TEXT PRIMARY KEY,                         -- nanoid
-  text            TEXT NOT NULL,                            -- 1-3 characters (e.g., "MVP", "神", "S1")
-  shape           TEXT NOT NULL,                            -- shape key: "shield", "star", "hexagon", "circle", "diamond"
+  text            TEXT NOT NULL,                            -- 1-4 characters (e.g., "MVP", "神", "S1")
+  icon            TEXT NOT NULL,                            -- icon key: "shield", "star", "hexagon", etc.
   color_bg        TEXT NOT NULL,                            -- background hex: "#3B82F6"
   color_text      TEXT NOT NULL,                            -- text hex: "#FFFFFF"
   description     TEXT,                                     -- admin notes (not shown to users)
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS badge_assignments (
 
   -- Snapshot of badge appearance at assignment time (immutable audit trail)
   snapshot_text   TEXT NOT NULL,                            -- badge text at assignment
-  snapshot_shape  TEXT NOT NULL,                            -- badge shape at assignment
+  snapshot_icon   TEXT NOT NULL,                            -- badge icon at assignment
   snapshot_bg     TEXT NOT NULL,                            -- background color at assignment
   snapshot_fg     TEXT NOT NULL,                            -- text color at assignment
 

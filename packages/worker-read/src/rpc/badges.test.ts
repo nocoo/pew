@@ -80,8 +80,8 @@ describe("badges RPC handlers", () => {
   describe("badges.list", () => {
     it("should return active badges by default", async () => {
       const mockBadges = [
-        { id: "b1", text: "MVP", shape: "shield", is_archived: 0 },
-        { id: "b2", text: "S1", shape: "star", is_archived: 0 },
+        { id: "b1", text: "MVP", icon: "shield", is_archived: 0 },
+        { id: "b2", text: "S1", icon: "star", is_archived: 0 },
       ];
       db.all.mockResolvedValue({ results: mockBadges });
 
@@ -92,7 +92,7 @@ describe("badges RPC handlers", () => {
       const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body).toEqual({ badges: mockBadges });
+      expect(body).toEqual({ result: { badges: mockBadges } });
       expect(db.prepare).toHaveBeenCalledWith(
         expect.stringContaining("WHERE is_archived = 0"),
       );
@@ -113,7 +113,7 @@ describe("badges RPC handlers", () => {
       const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body).toEqual({ badges: mockBadges });
+      expect(body).toEqual({ result: { badges: mockBadges } });
       expect(db.prepare).toHaveBeenCalledWith(
         expect.not.stringContaining("WHERE"),
       );
@@ -129,7 +129,7 @@ describe("badges RPC handlers", () => {
       const mockBadge = {
         id: "b1",
         text: "MVP",
-        shape: "shield",
+        icon: "shield",
         color_bg: "#3B82F6",
         color_text: "#FFFFFF",
       };
@@ -143,7 +143,7 @@ describe("badges RPC handlers", () => {
       const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body).toEqual({ badge: mockBadge });
+      expect(body).toEqual({ result: { badge: mockBadge } });
     });
 
     it("should return 404 when badge not found", async () => {
@@ -169,7 +169,7 @@ describe("badges RPC handlers", () => {
         {
           id: "a1",
           text: "MVP",
-          shape: "shield",
+          icon: "shield",
           color_bg: "#3B82F6",
           color_text: "#FFFFFF",
           assigned_at: "2026-04-10T00:00:00Z",
@@ -186,7 +186,7 @@ describe("badges RPC handlers", () => {
       const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body).toEqual({ badges: mockBadges });
+      expect(body).toEqual({ result: { badges: mockBadges } });
     });
 
     it("should return empty array when no active badges", async () => {
@@ -200,7 +200,7 @@ describe("badges RPC handlers", () => {
       const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body).toEqual({ badges: [] });
+      expect(body).toEqual({ result: { badges: [] } });
     });
   });
 
@@ -215,7 +215,7 @@ describe("badges RPC handlers", () => {
           user_id: "u1",
           id: "a1",
           text: "MVP",
-          shape: "shield",
+          icon: "shield",
           color_bg: "#3B82F6",
           color_text: "#FFFFFF",
           assigned_at: "2026-04-10T00:00:00Z",
@@ -225,7 +225,7 @@ describe("badges RPC handlers", () => {
           user_id: "u2",
           id: "a2",
           text: "S1",
-          shape: "star",
+          icon: "star",
           color_bg: "#EAB308",
           color_text: "#1F2937",
           assigned_at: "2026-04-08T00:00:00Z",
@@ -239,13 +239,13 @@ describe("badges RPC handlers", () => {
         userIds: ["u1", "u2"],
       };
       const response = await handleBadgesRpc(request, db);
-      const body = (await response.json()) as { badges: Record<string, unknown[]> };
+      const body = (await response.json()) as { result: { badges: Record<string, unknown[]> } };
 
       expect(response.status).toBe(200);
-      expect(body.badges).toHaveProperty("u1");
-      expect(body.badges).toHaveProperty("u2");
-      expect(body.badges.u1).toHaveLength(1);
-      expect(body.badges.u2).toHaveLength(1);
+      expect(body.result.badges).toHaveProperty("u1");
+      expect(body.result.badges).toHaveProperty("u2");
+      expect(body.result.badges.u1).toHaveLength(1);
+      expect(body.result.badges.u2).toHaveLength(1);
     });
 
     it("should return empty object for empty userIds", async () => {
@@ -257,7 +257,7 @@ describe("badges RPC handlers", () => {
       const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body).toEqual({ badges: {} });
+      expect(body).toEqual({ result: { badges: {} } });
     });
   });
 
@@ -286,11 +286,11 @@ describe("badges RPC handlers", () => {
         offset: 0,
       };
       const response = await handleBadgesRpc(request, db);
-      const body = (await response.json()) as { assignments: Array<{ status: string }> };
+      const body = (await response.json()) as { result: { assignments: Array<{ status: string }> } };
 
       expect(response.status).toBe(200);
-      expect(body.assignments).toHaveLength(1);
-      expect(body.assignments[0].status).toBe("active");
+      expect(body.result.assignments).toHaveLength(1);
+      expect(body.result.assignments[0].status).toBe("active");
     });
 
     it("should filter by status", async () => {
@@ -364,10 +364,10 @@ describe("badges RPC handlers", () => {
         assignmentId: "a1",
       };
       const response = await handleBadgesRpc(request, db);
-      const body = (await response.json()) as { assignment: { status: string } };
+      const body = (await response.json()) as { result: { assignment: { status: string } } };
 
       expect(response.status).toBe(200);
-      expect(body.assignment.status).toBe("active");
+      expect(body.result.assignment.status).toBe("active");
     });
 
     it("should return 404 when assignment not found", async () => {
@@ -400,7 +400,7 @@ describe("badges RPC handlers", () => {
       const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body).toEqual({ exists: false });
+      expect(body).toEqual({ result: { exists: false } });
     });
 
     it("should return exists=true with isActive=true for active assignment", async () => {
@@ -416,12 +416,12 @@ describe("badges RPC handlers", () => {
         userId: "u1",
       };
       const response = await handleBadgesRpc(request, db);
-      const body = (await response.json()) as { exists: boolean; isActive: boolean; assignmentId: string };
+      const body = (await response.json()) as { result: { exists: boolean; isActive: boolean; assignmentId: string } };
 
       expect(response.status).toBe(200);
-      expect(body.exists).toBe(true);
-      expect(body.isActive).toBe(true);
-      expect(body.assignmentId).toBe("a1");
+      expect(body.result.exists).toBe(true);
+      expect(body.result.isActive).toBe(true);
+      expect(body.result.assignmentId).toBe("a1");
     });
 
     it("should return exists=true with isActive=false for expired assignment", async () => {
@@ -437,11 +437,11 @@ describe("badges RPC handlers", () => {
         userId: "u1",
       };
       const response = await handleBadgesRpc(request, db);
-      const body = (await response.json()) as { exists: boolean; isActive: boolean };
+      const body = (await response.json()) as { result: { exists: boolean; isActive: boolean } };
 
       expect(response.status).toBe(200);
-      expect(body.exists).toBe(true);
-      expect(body.isActive).toBe(false);
+      expect(body.result.exists).toBe(true);
+      expect(body.result.isActive).toBe(false);
     });
   });
 

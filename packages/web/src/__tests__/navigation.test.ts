@@ -228,6 +228,7 @@ describe("route labels", () => {
       organizations: "Organizations",
       admin: "Admin",
       seasons: "Seasons",
+      badges: "Badges",
       storage: "Storage",
       pricing: "Token Pricing",
       invites: "Invite Codes",

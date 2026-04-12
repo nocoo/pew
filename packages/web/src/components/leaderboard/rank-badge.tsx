@@ -18,7 +18,7 @@ export function RankBadge({ rank, badge }: RankBadgeProps) {
     return (
       <BadgeIcon
         text={badge.text}
-        shape={badge.shape}
+        icon={badge.icon}
         colorBg={badge.colorBg}
         colorText={badge.colorText}
         size="sm"

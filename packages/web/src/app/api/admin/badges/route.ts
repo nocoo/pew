@@ -9,18 +9,23 @@ import { NextResponse } from "next/server";
 import { nanoid } from "nanoid";
 import { resolveAdmin } from "@/lib/admin";
 import { getDbRead, getDbWrite } from "@/lib/db";
-import type { BadgeShape, BadgeColorPalette } from "@pew/core";
+import type { BadgeIconType, BadgeColorPalette } from "@pew/core";
 
 // ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
 
-const VALID_SHAPES: BadgeShape[] = [
+const VALID_ICONS: BadgeIconType[] = [
   "shield",
   "star",
   "hexagon",
   "circle",
   "diamond",
+  "crown",
+  "flame",
+  "zap",
+  "heart",
+  "sparkles",
 ];
 
 const COLOR_PALETTES: Record<BadgeColorPalette, { bg: string; text: string }> =
@@ -37,7 +42,7 @@ function validateBadgeText(text: unknown): string | null {
   if (typeof text !== "string") return "text must be a string";
   const trimmed = text.trim();
   if (trimmed.length === 0) return "text is required";
-  if (trimmed.length > 3) return "text must be 1-3 characters";
+  if (trimmed.length > 4) return "text must be 1-4 characters";
   // Allow alphanumeric + common unicode (Chinese, Japanese, Korean, emoji)
   // Block HTML/script injection
   if (/<|>|&|script/i.test(trimmed)) {
@@ -46,10 +51,10 @@ function validateBadgeText(text: unknown): string | null {
   return null;
 }
 
-function validateShape(shape: unknown): BadgeShape | null {
-  if (typeof shape !== "string") return null;
-  if (!VALID_SHAPES.includes(shape as BadgeShape)) return null;
-  return shape as BadgeShape;
+function validateIcon(icon: unknown): BadgeIconType | null {
+  if (typeof icon !== "string") return null;
+  if (!VALID_ICONS.includes(icon as BadgeIconType)) return null;
+  return icon as BadgeIconType;
 }
 
 function validateColors(
@@ -121,11 +126,11 @@ export async function POST(request: Request) {
   }
   const text = (body.text as string).trim();
 
-  // Validate shape
-  const shape = validateShape(body.shape);
-  if (!shape) {
+  // Validate icon
+  const icon = validateIcon(body.icon);
+  if (!icon) {
     return NextResponse.json(
-      { error: `Invalid shape. Must be one of: ${VALID_SHAPES.join(", ")}` },
+      { error: `Invalid icon. Must be one of: ${VALID_ICONS.join(", ")}` },
       { status: 400 },
     );
   }
@@ -169,16 +174,16 @@ export async function POST(request: Request) {
 
   try {
     await dbWrite.execute(
-      `INSERT INTO badges (id, text, shape, color_bg, color_text, description)
+      `INSERT INTO badges (id, text, icon, color_bg, color_text, description)
        VALUES (?, ?, ?, ?, ?, ?)`,
-      [id, text, shape, colors.bg, colors.text, description],
+      [id, text, icon, colors.bg, colors.text, description],
     );
 
     return NextResponse.json({
       badge: {
         id,
         text,
-        shape,
+        icon,
         color_bg: colors.bg,
         color_text: colors.text,
         description,

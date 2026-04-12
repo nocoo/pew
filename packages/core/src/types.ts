@@ -670,8 +670,18 @@ export interface OrganizationSummary {
 // Badge system (admin-assigned awards)
 // ---------------------------------------------------------------------------
 
-/** Badge shape options */
-export type BadgeShape = "shield" | "star" | "hexagon" | "circle" | "diamond";
+/** Badge icon options (Lucide icon names) */
+export type BadgeIconType =
+  | "shield"
+  | "star"
+  | "hexagon"
+  | "circle"
+  | "diamond"
+  | "crown"
+  | "flame"
+  | "zap"
+  | "heart"
+  | "sparkles";
 
 /** Badge color palette names */
 export type BadgeColorPalette =
@@ -685,9 +695,10 @@ export type BadgeColorPalette =
 /** Badge definition (admin-created template) */
 export interface Badge {
   id: string;
-  /** 1-3 characters displayed on the badge */
+  /** 1-4 characters displayed on the badge */
   text: string;
-  shape: BadgeShape;
+  /** Icon type (Lucide icon name) */
+  icon: BadgeIconType;
   /** Background color hex (e.g. "#3B82F6") */
   colorBg: string;
   /** Text color hex (e.g. "#FFFFFF") */
@@ -721,7 +732,7 @@ export interface BadgeAssignment {
   userId: string;
   /** Snapshot of badge appearance at assignment time */
   snapshotText: string;
-  snapshotShape: BadgeShape;
+  snapshotIcon: BadgeIconType;
   snapshotBg: string;
   snapshotFg: string;
   /** ISO 8601 timestamp */
@@ -746,7 +757,7 @@ export interface BadgeAssignment {
 export interface ActiveBadge {
   id: string;
   text: string;
-  shape: BadgeShape;
+  icon: BadgeIconType;
   colorBg: string;
   colorText: string;
   assignedAt: string;

@@ -171,7 +171,7 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
                           <BadgeIcon
                             key={idx}
                             text={badge.text}
-                            shape={badge.shape}
+                            icon={badge.icon}
                             colorBg={badge.colorBg}
                             colorText={badge.colorText}
                             size="sm"

@@ -16,7 +16,7 @@ import {
   toHeatmapData,
   sourceLabel,
 } from "@/hooks/use-usage-data";
-import type { BadgeShape } from "@pew/core";
+import type { BadgeIconType } from "@pew/core";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -24,7 +24,7 @@ import type { BadgeShape } from "@pew/core";
 
 export interface UserProfileBadge {
   text: string;
-  shape: BadgeShape;
+  icon: BadgeIconType;
   colorBg: string;
   colorText: string;
 }

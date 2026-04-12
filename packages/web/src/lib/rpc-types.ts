@@ -668,7 +668,7 @@ export interface UserSettingRow {
 export interface BadgeRow {
   id: string;
   text: string;
-  shape: string;
+  icon: string;
   color_bg: string;
   color_text: string;
   description: string | null;
@@ -683,7 +683,7 @@ export interface BadgeAssignmentRow {
   badge_id: string;
   user_id: string;
   snapshot_text: string;
-  snapshot_shape: string;
+  snapshot_icon: string;
   snapshot_bg: string;
   snapshot_fg: string;
   assigned_at: string;
@@ -709,7 +709,7 @@ export interface BadgeAssignmentRow {
 export interface ActiveBadgeRow {
   id: string;
   text: string;
-  shape: string;
+  icon: string;
   color_bg: string;
   color_text: string;
   assigned_at: string;

@@ -1,94 +1,124 @@
-import type { BadgeShape } from "@pew/core";
+import { cn } from "@/lib/utils";
+import {
+  Shield,
+  Star,
+  Hexagon,
+  Circle,
+  Diamond,
+  Crown,
+  Flame,
+  Zap,
+  Heart,
+  Sparkles,
+  type LucideIcon,
+} from "lucide-react";
 
 // ---------------------------------------------------------------------------
-// Badge Icon Component
+// Types
 // ---------------------------------------------------------------------------
+
+/** Available badge icons */
+export type BadgeIconType =
+  | "shield"
+  | "star"
+  | "hexagon"
+  | "circle"
+  | "diamond"
+  | "crown"
+  | "flame"
+  | "zap"
+  | "heart"
+  | "sparkles";
 
 interface BadgeIconProps {
-  text: string; // 1-3 chars
-  shape: BadgeShape;
-  colorBg: string; // hex
-  colorText: string; // hex
+  text: string; // 1-4 chars
+  icon: BadgeIconType;
+  colorBg: string; // hex for pill background
+  colorText: string; // hex for pill text
   size?: "sm" | "md" | "lg";
   className?: string;
 }
 
+// ---------------------------------------------------------------------------
+// Icon mapping
+// ---------------------------------------------------------------------------
+
+const ICON_MAP: Record<BadgeIconType, LucideIcon> = {
+  shield: Shield,
+  star: Star,
+  hexagon: Hexagon,
+  circle: Circle,
+  diamond: Diamond,
+  crown: Crown,
+  flame: Flame,
+  zap: Zap,
+  heart: Heart,
+  sparkles: Sparkles,
+};
+
 /**
  * Size configuration for badge dimensions.
  *
- * sm: Compact size for inline use (profile popup, lists)
- * md: Standard size for leaderboard rank position
+ * sm: Compact size for inline use (leaderboard, lists)
+ * md: Standard size for profile popup
  * lg: Large size for admin previews
  */
 const SIZE_CONFIG = {
-  sm: { container: 20, font: 8 },
-  md: { container: 24, font: 10 },
-  lg: { container: 32, font: 14 },
+  sm: { icon: 16, pill: "text-[8px] px-1 py-0", offset: "-bottom-0.5" },
+  md: { icon: 20, pill: "text-[9px] px-1.5 py-0", offset: "-bottom-1" },
+  lg: { icon: 28, pill: "text-[10px] px-2 py-0.5", offset: "-bottom-1.5" },
 } as const;
 
-/**
- * SVG path definitions for each badge shape.
- * All paths are designed for a 24x24 viewBox and scaled proportionally.
- */
-const SHAPE_PATHS: Record<BadgeShape, string> = {
-  // Shield: classic badge shape with pointed bottom
-  shield:
-    "M12 2 L22 6 L22 12 C22 17 17 21 12 23 C7 21 2 17 2 12 L2 6 Z",
-  // Star: 5-pointed star
-  star: "M12 2 L14.5 9 L22 9 L16 14 L18.5 22 L12 17 L5.5 22 L8 14 L2 9 L9.5 9 Z",
-  // Hexagon: 6-sided polygon
-  hexagon:
-    "M12 2 L21 7 L21 17 L12 22 L3 17 L3 7 Z",
-  // Circle: simple round badge
-  circle: "M12 2 A10 10 0 1 0 12 22 A10 10 0 1 0 12 2",
-  // Diamond: rotated square
-  diamond: "M12 2 L22 12 L12 22 L2 12 Z",
-};
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 /**
  * Badge icon component for displaying admin-assigned badges.
  *
+ * Design: Lucide icon with a colored pill overlay at the bottom.
+ *
  * Used in:
- * - Leaderboard rank column (replaces position number when user has active badge)
- * - Profile popup (next to avatar, shows all active badges)
- * - Admin badge management (preview in create/list views)
+ * - Leaderboard rank column
+ * - Profile popup (next to avatar)
+ * - Admin badge management (preview)
  */
 export function BadgeIcon({
   text,
-  shape,
+  icon,
   colorBg,
   colorText,
   size = "md",
   className = "",
 }: BadgeIconProps) {
-  const { container, font } = SIZE_CONFIG[size];
+  const config = SIZE_CONFIG[size];
+  const IconComponent = ICON_MAP[icon] ?? Star;
 
   return (
-    <svg
-      width={container}
-      height={container}
-      viewBox="0 0 24 24"
-      className={className}
+    <div
+      className={cn("relative inline-flex items-center justify-center", className)}
       role="img"
       aria-label={`Badge: ${text}`}
     >
-      {/* Background shape */}
-      <path d={SHAPE_PATHS[shape]} fill={colorBg} />
+      {/* Lucide icon */}
+      <IconComponent
+        size={config.icon}
+        className="text-muted-foreground"
+        strokeWidth={1.5}
+      />
 
-      {/* Text overlay - centered */}
-      <text
-        x="12"
-        y="12"
-        textAnchor="middle"
-        dominantBaseline="central"
-        fill={colorText}
-        fontSize={font}
-        fontWeight="600"
-        fontFamily="system-ui, -apple-system, sans-serif"
+      {/* Text pill overlay */}
+      <span
+        className={cn(
+          "absolute rounded-full font-semibold whitespace-nowrap",
+          config.pill,
+          config.offset,
+        )}
+        style={{ backgroundColor: colorBg, color: colorText }}
       >
         {text}
-      </text>
-    </svg>
+      </span>
+    </div>
   );
 }
 

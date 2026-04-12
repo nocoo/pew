@@ -217,7 +217,7 @@ export async function GET(request: Request) {
         teams: teamsByUser.get(row.user_id) ?? [],
         badges: userBadges.map((b) => ({
           text: b.text,
-          shape: b.shape,
+          icon: b.icon,
           colorBg: b.color_bg,
           colorText: b.color_text,
         })),

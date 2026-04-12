@@ -14,7 +14,7 @@ import type { BadgeAssignmentStatus } from "@pew/core";
 export interface BadgeRow {
   id: string;
   text: string;
-  shape: string;
+  icon: string;
   color_bg: string;
   color_text: string;
   description: string | null;
@@ -28,7 +28,7 @@ export interface BadgeAssignmentRow {
   badge_id: string;
   user_id: string;
   snapshot_text: string;
-  snapshot_shape: string;
+  snapshot_icon: string;
   snapshot_bg: string;
   snapshot_fg: string;
   assigned_at: string;
@@ -46,7 +46,7 @@ export interface BadgeAssignmentRow {
 export interface ActiveBadgeRow {
   id: string;
   text: string;
-  shape: string;
+  icon: string;
   color_bg: string;
   color_text: string;
   assigned_at: string;
@@ -181,7 +181,7 @@ async function handleListBadges(
 
   const result = await db.prepare(sql).all<BadgeRow>();
 
-  return Response.json({ badges: result.results ?? [] });
+  return Response.json({ result: { badges: result.results ?? [] } });
 }
 
 async function handleGetBadge(
@@ -197,7 +197,7 @@ async function handleGetBadge(
     return Response.json({ error: "Badge not found" }, { status: 404 });
   }
 
-  return Response.json({ badge: row });
+  return Response.json({ result: { badge: row } });
 }
 
 async function handleGetActiveForUser(
@@ -211,7 +211,7 @@ async function handleGetActiveForUser(
       `SELECT
         id,
         snapshot_text AS text,
-        snapshot_shape AS shape,
+        snapshot_icon AS icon,
         snapshot_bg AS color_bg,
         snapshot_fg AS color_text,
         assigned_at,
@@ -225,7 +225,7 @@ async function handleGetActiveForUser(
     .bind(request.userId, now)
     .all<ActiveBadgeRow>();
 
-  return Response.json({ badges: result.results ?? [] });
+  return Response.json({ result: { badges: result.results ?? [] } });
 }
 
 async function handleGetActiveForUsers(
@@ -235,7 +235,7 @@ async function handleGetActiveForUsers(
   const { userIds } = request;
 
   if (userIds.length === 0) {
-    return Response.json({ badges: {} });
+    return Response.json({ result: { badges: {} } });
   }
 
   const now = new Date().toISOString();
@@ -247,7 +247,7 @@ async function handleGetActiveForUsers(
         user_id,
         id,
         snapshot_text AS text,
-        snapshot_shape AS shape,
+        snapshot_icon AS icon,
         snapshot_bg AS color_bg,
         snapshot_fg AS color_text,
         assigned_at,
@@ -271,7 +271,7 @@ async function handleGetActiveForUsers(
     badgesByUser[userId].push({
       id: row.id,
       text: row.text,
-      shape: row.shape,
+      icon: row.icon,
       color_bg: row.color_bg,
       color_text: row.color_text,
       assigned_at: row.assigned_at,
@@ -279,7 +279,7 @@ async function handleGetActiveForUsers(
     });
   }
 
-  return Response.json({ badges: badgesByUser });
+  return Response.json({ result: { badges: badgesByUser } });
 }
 
 async function handleListAssignments(
@@ -355,7 +355,7 @@ async function handleListAssignments(
     status: deriveAssignmentStatus(row.revoked_at, row.expires_at),
   }));
 
-  return Response.json({ assignments });
+  return Response.json({ result: { assignments } });
 }
 
 async function handleGetAssignment(
@@ -385,9 +385,11 @@ async function handleGetAssignment(
   }
 
   return Response.json({
-    assignment: {
-      ...row,
-      status: deriveAssignmentStatus(row.revoked_at, row.expires_at),
+    result: {
+      assignment: {
+        ...row,
+        status: deriveAssignmentStatus(row.revoked_at, row.expires_at),
+      },
     },
   });
 }
@@ -409,15 +411,17 @@ async function handleCheckNonRevokedAssignment(
     .first<{ id: string; expires_at: string; revoked_at: string | null }>();
 
   if (!row) {
-    return Response.json({ exists: false });
+    return Response.json({ result: { exists: false } });
   }
 
   const isActive = new Date(row.expires_at) > new Date(now);
 
   return Response.json({
-    exists: true,
-    assignmentId: row.id,
-    isActive,
-    expiresAt: row.expires_at,
+    result: {
+      exists: true,
+      assignmentId: row.id,
+      isActive,
+      expiresAt: row.expires_at,
+    },
   });
 }

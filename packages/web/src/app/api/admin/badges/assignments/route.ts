@@ -145,7 +145,7 @@ export async function POST(request: Request) {
     await dbWrite.execute(
       `INSERT INTO badge_assignments (
         id, badge_id, user_id,
-        snapshot_text, snapshot_shape, snapshot_bg, snapshot_fg,
+        snapshot_text, snapshot_icon, snapshot_bg, snapshot_fg,
         assigned_at, expires_at, assigned_by, note
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
@@ -153,7 +153,7 @@ export async function POST(request: Request) {
         badgeId,
         userId,
         badge.text,
-        badge.shape,
+        badge.icon,
         badge.color_bg,
         badge.color_text,
         now.toISOString(),
@@ -169,7 +169,7 @@ export async function POST(request: Request) {
         badge_id: badgeId,
         user_id: userId,
         snapshot_text: badge.text,
-        snapshot_shape: badge.shape,
+        snapshot_icon: badge.icon,
         snapshot_bg: badge.color_bg,
         snapshot_fg: badge.color_text,
         assigned_at: now.toISOString(),

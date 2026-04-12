@@ -185,7 +185,7 @@ function DialogHeader({ slug, name, image, badges: badgesProp, isAdmin }: Dialog
                   <BadgeIcon
                     key={idx}
                     text={badge.text}
-                    shape={badge.shape}
+                    icon={badge.icon}
                     colorBg={badge.colorBg}
                     colorText={badge.colorText}
                     size="sm"

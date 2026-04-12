@@ -207,12 +207,12 @@ export async function GET(
     }
 
     // Fetch active badges for this user
-    let badges: { text: string; shape: string; colorBg: string; colorText: string }[] = [];
+    let badges: { text: string; icon: string; colorBg: string; colorText: string }[] = [];
     try {
       const activeBadges = await db.getActiveBadgesForUser(user.id);
       badges = activeBadges.map((b) => ({
         text: b.text,
-        shape: b.shape,
+        icon: b.icon,
         colorBg: b.color_bg,
         colorText: b.color_text,
       }));

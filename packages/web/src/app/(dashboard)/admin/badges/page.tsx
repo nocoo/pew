@@ -10,19 +10,25 @@ import {
   Hexagon,
   Circle,
   Diamond,
+  Crown,
+  Flame,
+  Zap,
+  Heart,
+  Sparkles,
   Archive,
   ArchiveRestore,
   UserPlus,
   Ban,
   Loader2,
   Shuffle,
+  type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
-import { BadgeIcon } from "@/components/badges/badge-icon";
-import type { BadgeShape, BadgeColorPalette } from "@pew/core";
+import { BadgeIcon, type BadgeIconType } from "@/components/badges/badge-icon";
+import type { BadgeColorPalette } from "@pew/core";
 import type { BadgeRow, BadgeAssignmentRow, UserSearchResult } from "@/lib/rpc-types";
 
 // ---------------------------------------------------------------------------
@@ -36,9 +42,14 @@ type AssignmentStatusFilter = "all" | "active" | "expired" | "revoked" | "cleare
 // Constants
 // ---------------------------------------------------------------------------
 
-const SHAPES: { value: BadgeShape; label: string; icon: typeof Shield }[] = [
+const ICONS: { value: BadgeIconType; label: string; icon: LucideIcon }[] = [
   { value: "shield", label: "Shield", icon: Shield },
   { value: "star", label: "Star", icon: Star },
+  { value: "crown", label: "Crown", icon: Crown },
+  { value: "flame", label: "Flame", icon: Flame },
+  { value: "zap", label: "Zap", icon: Zap },
+  { value: "heart", label: "Heart", icon: Heart },
+  { value: "sparkles", label: "Sparkles", icon: Sparkles },
   { value: "hexagon", label: "Hexagon", icon: Hexagon },
   { value: "circle", label: "Circle", icon: Circle },
   { value: "diamond", label: "Diamond", icon: Diamond },
@@ -149,7 +160,7 @@ interface CreateBadgeDialogProps {
 
 function CreateBadgeDialog({ open, onClose, onCreated }: CreateBadgeDialogProps) {
   const [text, setText] = useState("");
-  const [shape, setShape] = useState<BadgeShape>("shield");
+  const [icon, setIcon] = useState<BadgeIconType>("star");
   const [palette, setPalette] = useState<BadgeColorPalette>("ocean");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
@@ -160,9 +171,9 @@ function CreateBadgeDialog({ open, onClose, onCreated }: CreateBadgeDialogProps)
   const selectedPalette = PALETTES.find((p) => p.value === palette) ?? defaultPalette;
 
   const randomize = () => {
-    const randomShape = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+    const randomIcon = ICONS[Math.floor(Math.random() * ICONS.length)];
     const randomPalette = PALETTES[Math.floor(Math.random() * PALETTES.length)];
-    if (randomShape) setShape(randomShape.value);
+    if (randomIcon) setIcon(randomIcon.value);
     if (randomPalette) setPalette(randomPalette.value);
   };
 
@@ -175,7 +186,7 @@ function CreateBadgeDialog({ open, onClose, onCreated }: CreateBadgeDialogProps)
       const res = await fetch("/api/admin/badges", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, shape, palette, description }),
+        body: JSON.stringify({ text, icon, palette, description }),
       });
 
       if (!res.ok) {
@@ -188,7 +199,7 @@ function CreateBadgeDialog({ open, onClose, onCreated }: CreateBadgeDialogProps)
       onCreated();
       onClose();
       setText("");
-      setShape("shield");
+      setIcon("star");
       setPalette("ocean");
       setDescription("");
     } catch {
@@ -208,23 +219,23 @@ function CreateBadgeDialog({ open, onClose, onCreated }: CreateBadgeDialogProps)
           {/* Text */}
           <div>
             <label className="mb-1 block text-sm font-medium">
-              Text (1-3 characters)
+              Text (1-4 characters)
             </label>
             <input
               type="text"
               value={text}
               onChange={(e) => setText(e.target.value)}
-              maxLength={3}
+              maxLength={4}
               className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
               placeholder="MVP"
               required
             />
           </div>
 
-          {/* Shape */}
+          {/* Icon */}
           <div>
             <div className="mb-1 flex items-center justify-between">
-              <label className="text-sm font-medium">Shape</label>
+              <label className="text-sm font-medium">Icon</label>
               <button
                 type="button"
                 onClick={randomize}
@@ -234,23 +245,23 @@ function CreateBadgeDialog({ open, onClose, onCreated }: CreateBadgeDialogProps)
                 Randomize
               </button>
             </div>
-            <div className="flex gap-2">
-              {SHAPES.map((s) => {
-                const Icon = s.icon;
+            <div className="flex flex-wrap gap-2">
+              {ICONS.map((i) => {
+                const IconComp = i.icon;
                 return (
                   <button
-                    key={s.value}
+                    key={i.value}
                     type="button"
-                    onClick={() => setShape(s.value)}
+                    onClick={() => setIcon(i.value)}
                     className={cn(
                       "flex h-10 w-10 items-center justify-center rounded-lg border transition-colors",
-                      shape === s.value
+                      icon === i.value
                         ? "border-primary bg-primary/10"
                         : "border-border hover:border-primary/50",
                     )}
-                    title={s.label}
+                    title={i.label}
                   >
-                    <Icon className="h-5 w-5" strokeWidth={1.5} />
+                    <IconComp className="h-5 w-5" strokeWidth={1.5} />
                   </button>
                 );
               })}
@@ -285,21 +296,21 @@ function CreateBadgeDialog({ open, onClose, onCreated }: CreateBadgeDialogProps)
             <div className="flex items-center gap-4 rounded-lg bg-secondary p-4">
               <BadgeIcon
                 text={text || "?"}
-                shape={shape}
+                icon={icon}
                 colorBg={selectedPalette.bg}
                 colorText={selectedPalette.text}
                 size="lg"
               />
               <BadgeIcon
                 text={text || "?"}
-                shape={shape}
+                icon={icon}
                 colorBg={selectedPalette.bg}
                 colorText={selectedPalette.text}
                 size="md"
               />
               <BadgeIcon
                 text={text || "?"}
-                shape={shape}
+                icon={icon}
                 colorBg={selectedPalette.bg}
                 colorText={selectedPalette.text}
                 size="sm"
@@ -463,7 +474,7 @@ function AssignBadgeDialog({
               <option value="">Select a badge...</option>
               {activeBadges.map((badge) => (
                 <option key={badge.id} value={badge.id}>
-                  {badge.text} ({badge.shape})
+                  {badge.text} ({badge.icon})
                 </option>
               ))}
             </select>
@@ -471,7 +482,7 @@ function AssignBadgeDialog({
               <div className="mt-2 flex items-center gap-2">
                 <BadgeIcon
                   text={selectedBadge.text}
-                  shape={selectedBadge.shape as BadgeShape}
+                  icon={selectedBadge.icon as BadgeIconType}
                   colorBg={selectedBadge.color_bg}
                   colorText={selectedBadge.color_text}
                   size="md"
@@ -709,7 +720,7 @@ function BadgeDefinitionRow({ badge, onArchive, onUnarchive }: BadgeRowProps) {
     <div className="flex items-center gap-4 rounded-xl bg-secondary p-4">
       <BadgeIcon
         text={badge.text}
-        shape={badge.shape as BadgeShape}
+        icon={badge.icon as BadgeIconType}
         colorBg={badge.color_bg}
         colorText={badge.color_text}
         size="lg"
@@ -718,7 +729,7 @@ function BadgeDefinitionRow({ badge, onArchive, onUnarchive }: BadgeRowProps) {
         <div className="flex items-center gap-2">
           <span className="font-medium">{badge.text}</span>
           <span className="text-sm text-muted-foreground">
-            {badge.shape}
+            {badge.icon}
           </span>
           <ArchiveStatusBadge isArchived={badge.is_archived === 1} />
         </div>
@@ -765,7 +776,7 @@ function AssignmentRow({ assignment, onRevoke }: AssignmentRowProps) {
     <div className="flex items-center gap-4 rounded-xl bg-secondary p-4">
       <BadgeIcon
         text={assignment.snapshot_text}
-        shape={assignment.snapshot_shape as BadgeShape}
+        icon={assignment.snapshot_icon as BadgeIconType}
         colorBg={assignment.snapshot_bg}
         colorText={assignment.snapshot_fg}
         size="md"
@@ -959,10 +970,15 @@ export default function AdminBadgesPage() {
   }
 
   return (
-    <div className="container max-w-4xl py-8">
+    <div className="space-y-4 md:space-y-6">
       {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Badges</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">Badges</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Create and assign badges to recognize users on the leaderboard.
+          </p>
+        </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowAssignDialog(true)}
@@ -982,7 +998,7 @@ export default function AdminBadgesPage() {
       </div>
 
       {/* Tabs */}
-      <div className="mb-6 flex gap-1 rounded-lg bg-secondary/50 p-1">
+      <div className="flex gap-1 rounded-lg bg-secondary/50 p-1">
         <button
           onClick={() => setActiveTab("definitions")}
           className={cn(

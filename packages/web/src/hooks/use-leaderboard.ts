@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { BadgeShape } from "@pew/core";
+import type { BadgeIconType } from "@pew/core";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -12,7 +12,7 @@ export type LeaderboardScope = "global" | "org" | "team";
 
 export interface LeaderboardBadge {
   text: string;
-  shape: BadgeShape;
+  icon: BadgeIconType;
   colorBg: string;
   colorText: string;
 }
