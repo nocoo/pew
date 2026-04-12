@@ -177,6 +177,12 @@ export async function GET(request: Request) {
       }
     }
 
+    // Fetch active badges for all users
+    const badgesByUser =
+      userIds.length > 0
+        ? await db.getActiveBadgesForUsers(userIds)
+        : {};
+
     // Fetch session stats for all users
     // When model filter is active, session stats are not meaningful (session_records
     // has no reliable model column) — return null to signal "not applicable".
@@ -199,6 +205,7 @@ export async function GET(request: Request) {
 
     const entries = actualRows.map((row, index) => {
       const sessionStats = skipSessionStats ? null : sessionStatsByUser.get(row.user_id);
+      const userBadges = badgesByUser[row.user_id] ?? [];
       return {
         rank: offset + index + 1,
         user: {
@@ -208,6 +215,12 @@ export async function GET(request: Request) {
           slug: row.slug,
         },
         teams: teamsByUser.get(row.user_id) ?? [],
+        badges: userBadges.map((b) => ({
+          text: b.text,
+          shape: b.shape,
+          colorBg: b.color_bg,
+          colorText: b.color_text,
+        })),
         total_tokens: row.total_tokens,
         input_tokens: row.input_tokens,
         output_tokens: row.output_tokens,

@@ -30,6 +30,8 @@ describe("GET /api/leaderboard", () => {
     vi.clearAllMocks();
     mockDb = createMockDbRead();
     vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDb as any);
+    // Default: no badges assigned
+    mockDb.getActiveBadgesForUsers.mockResolvedValue({});
     // Default to authenticated user for scope tests
     resolveUser.mockResolvedValue({ userId: "test-user" });
   });
@@ -174,6 +176,7 @@ describe("GET /api/leaderboard", () => {
           slug: "alice",
         },
         teams: [{ id: "t1", name: "Team Alpha", logo_url: "https://s.zhe.to/apps/pew/teams-logo/t1/abc.jpg" }],
+        badges: [],
         total_tokens: 5000000,
         input_tokens: 3000000,
         output_tokens: 1500000,
@@ -212,6 +215,63 @@ describe("GET /api/leaderboard", () => {
           limit: 11, // requested limit + 1
         }),
       );
+    });
+
+    it("should include active badges for users", async () => {
+      mockDb.getGlobalLeaderboard.mockResolvedValueOnce([
+        {
+          user_id: "u1",
+          name: "Alice",
+          nickname: null,
+          image: null,
+          slug: "alice",
+          total_tokens: 5000000,
+          input_tokens: 3000000,
+          output_tokens: 1500000,
+          cached_input_tokens: 500000,
+        },
+        {
+          user_id: "u2",
+          name: "Bob",
+          nickname: null,
+          image: null,
+          slug: "bob",
+          total_tokens: 3000000,
+          input_tokens: 2000000,
+          output_tokens: 800000,
+          cached_input_tokens: 200000,
+        },
+      ]);
+      mockDb.getLeaderboardUserTeams.mockResolvedValueOnce([]);
+      mockDb.getLeaderboardSessionStats.mockResolvedValueOnce([]);
+      mockDb.getActiveBadgesForUsers.mockResolvedValueOnce({
+        u1: [
+          {
+            id: "ba1",
+            text: "MVP",
+            shape: "shield",
+            color_bg: "#3B82F6",
+            color_text: "#FFFFFF",
+            assigned_at: "2026-04-10T00:00:00Z",
+            expires_at: "2026-04-17T00:00:00Z",
+          },
+        ],
+        // u2 has no badges
+      });
+
+      const res = await GET(makeGetRequest("/api/leaderboard"));
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.entries[0].badges).toEqual([
+        {
+          text: "MVP",
+          shape: "shield",
+          colorBg: "#3B82F6",
+          colorText: "#FFFFFF",
+        },
+      ]);
+      expect(body.entries[1].badges).toEqual([]);
     });
   });
 

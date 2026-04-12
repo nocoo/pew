@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import type { BadgeShape } from "@pew/core";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -8,6 +9,13 @@ import { useState, useEffect, useCallback, useRef } from "react";
 
 export type LeaderboardPeriod = "week" | "month" | "all";
 export type LeaderboardScope = "global" | "org" | "team";
+
+export interface LeaderboardBadge {
+  text: string;
+  shape: BadgeShape;
+  colorBg: string;
+  colorText: string;
+}
 
 export interface LeaderboardEntry {
   rank: number;
@@ -18,6 +26,7 @@ export interface LeaderboardEntry {
     slug: string | null;
   };
   teams: { id: string; name: string; logo_url: string | null }[];
+  badges: LeaderboardBadge[];
   total_tokens: number;
   input_tokens: number;
   output_tokens: number;

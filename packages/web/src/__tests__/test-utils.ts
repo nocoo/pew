@@ -139,6 +139,14 @@ export function createMockDbRead() {
     getGlobalLeaderboard: vi.fn(),
     getLeaderboardUserTeams: vi.fn(),
     getLeaderboardSessionStats: vi.fn(),
+    // Badges RPC methods
+    listBadges: vi.fn(),
+    getBadge: vi.fn(),
+    getActiveBadgesForUser: vi.fn(),
+    getActiveBadgesForUsers: vi.fn(),
+    listBadgeAssignments: vi.fn(),
+    getBadgeAssignment: vi.fn(),
+    checkNonRevokedAssignment: vi.fn(),
     // Live RPC methods
     ping: vi.fn(),
   } as unknown as DbRead & {
@@ -246,6 +254,13 @@ export function createMockDbRead() {
     getGlobalLeaderboard: ReturnType<typeof vi.fn>;
     getLeaderboardUserTeams: ReturnType<typeof vi.fn>;
     getLeaderboardSessionStats: ReturnType<typeof vi.fn>;
+    listBadges: ReturnType<typeof vi.fn>;
+    getBadge: ReturnType<typeof vi.fn>;
+    getActiveBadgesForUser: ReturnType<typeof vi.fn>;
+    getActiveBadgesForUsers: ReturnType<typeof vi.fn>;
+    listBadgeAssignments: ReturnType<typeof vi.fn>;
+    getBadgeAssignment: ReturnType<typeof vi.fn>;
+    checkNonRevokedAssignment: ReturnType<typeof vi.fn>;
     ping: ReturnType<typeof vi.fn>;
   };
 }
