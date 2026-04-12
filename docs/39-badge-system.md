@@ -11,21 +11,22 @@ Badges are admin-created awards assigned to users. Unlike achievements (computed
 | Aspect | Design |
 |--------|--------|
 | Creation | Admin-only, via `/admin/badges` |
-| Assignment | Admin assigns badge to user, effective immediately |
+| Assignment | Admin assigns badge to user, effective within cache TTL (~60s) |
 | Duration | 7 days from assignment, auto-expires |
-| Visibility | Leaderboard rank column, profile avatar area |
-| Stacking | User can have multiple active badges |
-| Re-assignment | Admin can re-assign same badge after expiry |
-| History | All assignments preserved for audit |
+| Visibility | Leaderboard rank column, profile avatar area (respects user `is_public`) |
+| Stacking | User can have multiple active badges (one per badge definition) |
+| Re-assignment | Admin can re-assign same badge after current assignment expires or is revoked |
+| History | All assignments preserved with full snapshot for audit |
 
 ### User Stories
 
 1. **Admin creates badge**: "I want to create a badge with 1-3 characters that represents a specific honor"
 2. **Admin assigns badge**: "I want to award this badge to a user for their contribution"
 3. **User sees badge**: "I see my badge on the leaderboard instead of my rank number"
-4. **Viewer sees badge**: "I see other users' badges in their profile popup"
+4. **Viewer sees badge**: "I see other users' badges in their profile popup (if user is public)"
 5. **Auto-expiry**: "Badge disappears after 7 days without manual intervention"
-6. **Admin re-assigns**: "I want to give the same badge again after it expired"
+6. **Admin re-assigns**: "I want to give the same badge again after it expired or was revoked"
+7. **Admin revokes badge**: "I want to immediately remove a badge with audit trail"
 
 ## Database Schema
 
@@ -35,7 +36,7 @@ Badges are admin-created awards assigned to users. Unlike achievements (computed
 -- scripts/migrations/0XX-badges.sql
 
 -- ============================================================
--- Badge Definitions (admin-created templates)
+-- Badge Definitions (admin-created templates, immutable once used)
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS badges (
@@ -45,24 +46,39 @@ CREATE TABLE IF NOT EXISTS badges (
   color_bg        TEXT NOT NULL,                            -- background hex: "#3B82F6"
   color_text      TEXT NOT NULL,                            -- text hex: "#FFFFFF"
   description     TEXT,                                     -- admin notes (not shown to users)
+  is_archived     INTEGER NOT NULL DEFAULT 0,               -- 1=archived (hidden from assignment UI, still renderable)
   created_at      TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_badges_created ON badges(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_badges_active ON badges(is_archived, created_at DESC);
 
 -- ============================================================
--- Badge Assignments (user-badge links with expiry)
+-- Badge Assignments (user-badge links with snapshot + audit)
 -- ============================================================
 
 CREATE TABLE IF NOT EXISTS badge_assignments (
   id              TEXT PRIMARY KEY,                         -- nanoid
   badge_id        TEXT NOT NULL REFERENCES badges(id),
   user_id         TEXT NOT NULL REFERENCES users(id),
+  
+  -- Snapshot of badge appearance at assignment time (immutable audit trail)
+  snapshot_text   TEXT NOT NULL,                            -- badge text at assignment
+  snapshot_shape  TEXT NOT NULL,                            -- badge shape at assignment
+  snapshot_bg     TEXT NOT NULL,                            -- background color at assignment
+  snapshot_fg     TEXT NOT NULL,                            -- text color at assignment
+  
   assigned_at     TEXT NOT NULL DEFAULT (datetime('now')),  -- assignment timestamp
   expires_at      TEXT NOT NULL,                            -- assigned_at + 7 days
   assigned_by     TEXT NOT NULL REFERENCES users(id),       -- admin who assigned
   note            TEXT,                                     -- admin note for this assignment
+  
+  -- Revocation tracking (null = not revoked)
+  revoked_at      TEXT,                                     -- when revoked (null if active or naturally expired)
+  revoked_by      TEXT REFERENCES users(id),                -- admin who revoked (null if not revoked)
+  revoke_reason   TEXT,                                     -- reason for revocation
+  
   created_at      TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -70,27 +86,50 @@ CREATE TABLE IF NOT EXISTS badge_assignments (
 CREATE INDEX IF NOT EXISTS idx_badge_assignments_user ON badge_assignments(user_id);
 CREATE INDEX IF NOT EXISTS idx_badge_assignments_badge ON badge_assignments(badge_id);
 CREATE INDEX IF NOT EXISTS idx_badge_assignments_expires ON badge_assignments(expires_at);
-CREATE INDEX IF NOT EXISTS idx_badge_assignments_active ON badge_assignments(user_id, expires_at);
+-- Active = not revoked AND not expired
+CREATE INDEX IF NOT EXISTS idx_badge_assignments_active ON badge_assignments(user_id, revoked_at, expires_at);
 ```
 
 ### Schema Notes
 
-- **No unique constraint on (badge_id, user_id)** — same badge can be assigned multiple times (history preserved)
+- **Badge definitions are immutable once assigned** — no PATCH endpoint; admin can only archive unused badges
+- **`is_archived`** hides badge from assignment UI but preserves renderability for historical assignments
+- **Snapshot fields** (`snapshot_*`) capture badge appearance at assignment time for audit fidelity
+- **`revoked_at/by/reason`** distinguish manual revocation from natural expiry
+- **Duplicate prevention** enforced at API layer (check for active assignment before INSERT), not via partial index (SQLite partial indexes with `datetime('now')` don't work as expected)
 - **`expires_at`** computed at assignment time: `datetime(assigned_at, '+7 days')`
-- **`assigned_by`** tracks which admin made the assignment
-- **`note`** allows admin to document why this assignment was made
-- **Soft expiry** — no deletion, just filter by `expires_at > datetime('now')`
+- **Active badge** = `revoked_at IS NULL AND expires_at > datetime('now')`
 
 ### Active Badge Query
 
 ```sql
 -- Get user's active badges (for leaderboard/profile)
-SELECT b.*, ba.assigned_at, ba.expires_at
+-- Uses snapshot fields for rendering (audit-safe)
+SELECT 
+  ba.id,
+  ba.snapshot_text AS text,
+  ba.snapshot_shape AS shape,
+  ba.snapshot_bg AS color_bg,
+  ba.snapshot_fg AS color_text,
+  ba.assigned_at,
+  ba.expires_at
 FROM badge_assignments ba
-JOIN badges b ON b.id = ba.badge_id
 WHERE ba.user_id = ?
+  AND ba.revoked_at IS NULL
   AND ba.expires_at > datetime('now')
 ORDER BY ba.assigned_at DESC;
+```
+
+### Assignment Status Derivation
+
+```typescript
+type AssignmentStatus = 'active' | 'expired' | 'revoked';
+
+function deriveStatus(assignment: BadgeAssignment): AssignmentStatus {
+  if (assignment.revoked_at) return 'revoked';
+  if (new Date(assignment.expires_at) <= new Date()) return 'expired';
+  return 'active';
+}
 ```
 
 ## Badge Visual Design
@@ -193,114 +232,84 @@ If dedicated profile pages exist (e.g., `/u/[slug]`), badges appear in same avat
 
 ### Badge Management Page (`/admin/badges`)
 
-Two sections:
+Two tabs:
 
-#### Section 1: Badge Definitions
+#### Tab 1: Badge Definitions
 
-```
-┌───────────────────────────────────────────────────────────┐
-│ Badge Definitions                              [+ Create] │
-├───────────────────────────────────────────────────────────┤
-│ Preview │ Text │ Shape   │ Colors         │ Actions       │
-│ ────────┼──────┼─────────┼────────────────┼───────────────│
-│  🛡️MVP  │ MVP  │ Shield  │ Ocean          │ [Edit] [Del]  │
-│  ⭐神   │ 神   │ Star    │ Gold           │ [Edit] [Del]  │
-│  ⬡S1    │ S1   │ Hexagon │ Royal          │ [Edit] [Del]  │
-└───────────────────────────────────────────────────────────┘
-```
+| Preview | Text | Shape | Colors | Status | Actions |
+|---------|------|-------|--------|--------|---------|
+| 🛡️MVP | MVP | Shield | Ocean | Active | [Archive] |
+| ⭐神 | 神 | Star | Gold | Active | [Archive] |
+| ⬡S1 | S1 | Hexagon | Royal | Archived | [Unarchive] |
 
-#### Section 2: Active Assignments
+**Note**: Badges are immutable once created — no edit/delete. Use Archive to hide from assignment UI (historical assignments remain visible).
 
-```
-┌───────────────────────────────────────────────────────────┐
-│ Active Assignments                            [+ Assign]  │
-├───────────────────────────────────────────────────────────┤
-│ Badge │ User       │ Assigned    │ Expires     │ Actions  │
-│ ──────┼────────────┼─────────────┼─────────────┼──────────│
-│ 🛡️MVP │ Bob Chen   │ 2026-04-10  │ 2026-04-17  │ [Revoke] │
-│ ⭐神  │ Alice Wong │ 2026-04-08  │ 2026-04-15  │ [Revoke] │
-└───────────────────────────────────────────────────────────┘
-```
+#### Tab 2: Assignments
+
+| Badge | User | Status | Assigned | Expires/Ended | By | Actions |
+|-------|------|--------|----------|---------------|-----|---------|
+| 🛡️MVP | Bob Chen | Active | 2026-04-10 | 2026-04-17 | admin | [Revoke] |
+| ⭐神 | Alice Wong | Revoked | 2026-04-08 | 2026-04-09 | admin | — |
+| ⬡S1 | Carol Lee | Expired | 2026-04-01 | 2026-04-08 | admin | — |
+
+Filter options: All / Active only / Revoked / Expired
 
 ### Create Badge Dialog
 
-```
-┌─────────────────────────────────────┐
-│ Create Badge                    [X] │
-├─────────────────────────────────────┤
-│                                     │
-│ Text (1-3 chars):  [MVP____]        │
-│                                     │
-│ Shape:  ○ Shield  ○ Star  ○ Hex    │
-│         ○ Circle  ○ Diamond         │
-│         [Randomize]                 │
-│                                     │
-│ Color:  ○ Ocean   ○ Forest          │
-│         ○ Sunset  ○ Royal           │
-│         ○ Crimson ○ Gold            │
-│         [Randomize]                 │
-│                                     │
-│ Preview:   ┌─────┐                  │
-│            │ 🛡️  │                  │
-│            │ MVP │                  │
-│            └─────┘                  │
-│                                     │
-│ Description (optional):             │
-│ [Season 1 MVP award_________]       │
-│                                     │
-│              [Cancel] [Create]      │
-└─────────────────────────────────────┘
-```
+Fields:
+- **Text** (1-3 chars, required)
+- **Shape** (radio: Shield / Star / Hexagon / Circle / Diamond) + [Randomize]
+- **Color** (radio: Ocean / Forest / Sunset / Royal / Crimson / Gold) + [Randomize]
+- **Description** (optional admin notes)
+- **Preview** (live render of badge)
 
 ### Assign Badge Dialog
 
-```
-┌─────────────────────────────────────┐
-│ Assign Badge                    [X] │
-├─────────────────────────────────────┤
-│                                     │
-│ Badge:  [MVP 🛡️ ▼]                  │
-│                                     │
-│ User:   [Search user...___]         │
-│         ┌─────────────────┐         │
-│         │ Bob Chen        │         │
-│         │ Alice Wong      │         │
-│         └─────────────────┘         │
-│                                     │
-│ Note (optional):                    │
-│ [Top contributor for Season 1__]    │
-│                                     │
-│ Duration: 7 days (fixed)            │
-│ Expires:  2026-04-19                │
-│                                     │
-│              [Cancel] [Assign]      │
-└─────────────────────────────────────┘
-```
+Fields:
+- **Badge** (dropdown of active badges only)
+- **User** (search with autocomplete)
+- **Note** (optional reason for assignment)
+- **Duration**: 7 days (fixed, shown as info)
+- **Expires**: computed date shown
+
+**Validation**: API rejects if user already has an active assignment of this badge.
+
+### Revoke Badge Dialog
+
+Fields:
+- **Reason** (required text explaining revocation)
+- **Confirmation** checkbox
+
+Records `revoked_at`, `revoked_by`, `revoke_reason` for audit.
 
 ## API Routes
 
-### Badge Definition CRUD
+### Badge Definition
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/admin/badges` | List all badge definitions |
+| GET | `/api/admin/badges` | List all badge definitions (include archived) |
 | POST | `/api/admin/badges` | Create badge definition |
-| PATCH | `/api/admin/badges/[id]` | Update badge definition |
-| DELETE | `/api/admin/badges/[id]` | Delete badge definition |
+| POST | `/api/admin/badges/[id]/archive` | Archive badge (hide from assignment UI) |
+| POST | `/api/admin/badges/[id]/unarchive` | Unarchive badge |
+
+**No PATCH/DELETE** — badges are immutable once created to preserve assignment history integrity.
 
 ### Badge Assignment
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/admin/badges/assignments` | List all assignments (active + history) |
-| POST | `/api/admin/badges/assignments` | Assign badge to user |
-| DELETE | `/api/admin/badges/assignments/[id]` | Revoke assignment (soft: set expires_at = now) |
+| GET | `/api/admin/badges/assignments` | List all assignments (filterable: active/revoked/expired/all) |
+| POST | `/api/admin/badges/assignments` | Assign badge to user (rejects if active assignment exists) |
+| POST | `/api/admin/badges/assignments/[id]/revoke` | Revoke assignment (sets revoked_at/by/reason) |
 
 ### Public Badge Query
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/users/[slug]/badges` | Get user's active badges |
+| GET | `/api/users/[slug]/badges` | Get user's active badges (respects `is_public`) |
+
+**Privacy**: Returns 404 if user has `is_public=0`, consistent with existing `/api/users/[slug]` and `/api/users/[slug]/achievements` behavior.
 
 ### Leaderboard Integration
 
@@ -318,6 +327,8 @@ interface LeaderboardEntry {
   }>;
 }
 ```
+
+**Cache behavior**: Leaderboard uses `s-maxage=60, stale-while-revalidate=120`. Badge changes (assign/revoke/expire) will be visible within ~60s on the main leaderboard. This is acceptable — badges are not time-critical like real-time notifications. The admin UI and profile popup (no cache) show immediate state.
 
 ## Worker-Read RPC
 
@@ -341,9 +352,9 @@ Add new RPC handlers in `packages/worker-read`:
 ### Phase 2: Admin Interface
 
 1. `/admin/badges` page with tabs (Definitions / Assignments)
-2. Create/Edit badge dialog
-3. Assign badge dialog with user search
-4. Assignment list with revoke action
+2. Create badge dialog (no edit — badges are immutable)
+3. Assign badge dialog with user search + duplicate check
+4. Assignment list with revoke action + status filters
 
 ### Phase 3: Public Display
 
@@ -363,6 +374,7 @@ Add new RPC handlers in `packages/worker-read`:
 - Badge text sanitized (1-3 chars, alphanumeric + limited unicode)
 - No HTML/script injection in badge text or description
 - Rate limiting on assignment API to prevent spam
+- Public badge query respects user `is_public` flag (404 for private users)
 
 ## Future Considerations
 
@@ -382,5 +394,58 @@ Add new RPC handlers in `packages/worker-read`:
 | 2 | Replace rank (not overlay) | Clean visual, rank can be inferred from position |
 | 3 | First badge wins on leaderboard | Avoid visual clutter, most recent assignment shown |
 | 4 | All badges shown in profile | Profile has more space, users want to show off |
-| 5 | Preserve assignment history | Audit trail, re-assignment detection, future features |
-| 6 | No cascading delete on badge | Prevent accidental loss of assignment history |
+| 5 | Snapshot badge appearance in assignment | Audit fidelity — historical assignments show exact appearance at assignment time |
+| 6 | Badges immutable once created | Prevents "rewriting history"; use archive to hide from UI |
+| 7 | Explicit revoke tracking (revoked_at/by/reason) | Distinguish manual revocation from natural expiry for audit |
+| 8 | Unique active assignment per (badge, user) | Prevent duplicate stacking; re-assign only after revoke/expire |
+| 9 | Respect user is_public for badge API | Consistent with existing profile privacy model |
+| 10 | Accept ~60s cache delay on leaderboard | Badges aren't time-critical; admin UI shows immediate state |
+
+---
+
+## Test Matrix
+
+### Privacy Tests
+
+| Scenario | Expected |
+|----------|----------|
+| GET `/api/users/[slug]/badges` for public user | 200 + badge array |
+| GET `/api/users/[slug]/badges` for private user | 404 |
+| Leaderboard includes badges for public users only | badges array present for public, empty/missing for private |
+
+### Assignment Uniqueness Tests
+
+| Scenario | Expected |
+|----------|----------|
+| Assign badge A to user X (no existing) | 200, assignment created |
+| Assign badge A to user X (active exists) | 409 Conflict |
+| Assign badge A to user X (previous revoked) | 200, new assignment created |
+| Assign badge A to user X (previous expired) | 200, new assignment created |
+
+### Revocation vs Expiry Tests
+
+| Scenario | Status | revoked_at | revoked_by |
+|----------|--------|------------|------------|
+| Active, not expired | active | NULL | NULL |
+| Past expires_at, not revoked | expired | NULL | NULL |
+| Admin clicked revoke | revoked | timestamp | admin_id |
+| Query history for user | All three states distinguishable | | |
+
+### Badge Immutability Tests
+
+| Scenario | Expected |
+|----------|----------|
+| POST `/api/admin/badges` | 201, badge created |
+| PATCH `/api/admin/badges/[id]` | 404 or 405 (no such route) |
+| DELETE `/api/admin/badges/[id]` | 404 or 405 (no such route) |
+| POST `/api/admin/badges/[id]/archive` | 200, is_archived=1 |
+| Archived badge still renders in historical assignments | snapshot_* fields used, renders correctly |
+
+### Leaderboard Cache Tests
+
+| Scenario | Expected |
+|----------|----------|
+| Assign badge, check admin UI | Immediate visibility |
+| Assign badge, check leaderboard | Visible within 60-180s (cache TTL + stale) |
+| Revoke badge, check admin UI | Immediate removal |
+| Badge expires naturally, leaderboard refresh | Removed within cache TTL |
