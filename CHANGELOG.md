@@ -1,5 +1,37 @@
 # Changelog
 
+## v2.20.1
+
+### Added
+- Display badges on user profiles
+- Integrate badges into leaderboard
+- Add admin badges management page
+- Add admin badges API routes
+- Add badge icon component
+- Add badges domain RPC handlers
+- Add badge system type definitions
+- Add badges and badge_assignments tables
+
+### Changed
+- Update badge-icon tests for shape→icon rename
+- Refine badge icon design and limit text to 3 chars
+- Rename shape to icon, upgrade to CSS-based design
+- Mark badge system phases 1-3 as complete
+- Sync all privacy references to canBypassPublic model
+- Badge API uses canBypassPublic() like profile route
+- Four-state assignment model for clean audit semantics
+- Clean up assignment states and privacy semantics
+- Clarify immutability and unique constraint semantics
+- Fix badge system design issues
+- Add badge system design (doc 39)
+
+### Fixed
+- Restore full session listing in sessions page
+- Restore full invite code listing in admin page
+- Sync cleared status type across db abstraction layer
+- Add cleared status filter for badge assignments
+- Profile popup shows fresh badges, revoke dialog collects reason
+
 ## v2.20.0
 
 ### Added
