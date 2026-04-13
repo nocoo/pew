@@ -24,7 +24,7 @@
     },
     "packages/cli": {
       "name": "@nocoo/pew",
-      "version": "2.20.1",
+      "version": "2.20.4",
       "bin": {
         "pew": "dist/bin.js",
       },
@@ -38,14 +38,14 @@
     },
     "packages/core": {
       "name": "@pew/core",
-      "version": "2.20.1",
+      "version": "2.20.4",
       "devDependencies": {
         "@types/node": "^22.0.0",
       },
     },
     "packages/web": {
       "name": "@pew/web",
-      "version": "2.20.1",
+      "version": "2.20.4",
       "dependencies": {
         "@auth/core": "^0.34.3",
         "@aws-sdk/client-s3": "^3.1007.0",
@@ -76,7 +76,7 @@
     },
     "packages/worker": {
       "name": "@pew/worker",
-      "version": "2.20.1",
+      "version": "2.20.4",
       "devDependencies": {
         "@cloudflare/workers-types": "^4.20250307.0",
         "@pew/core": "workspace:*",
@@ -86,7 +86,7 @@
     },
     "packages/worker-read": {
       "name": "@pew/worker-read",
-      "version": "2.20.1",
+      "version": "2.20.4",
       "devDependencies": {
         "@cloudflare/workers-types": "^4.20250307.0",
         "@pew/core": "workspace:*",

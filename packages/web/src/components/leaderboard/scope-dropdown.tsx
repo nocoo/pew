@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import {
   Globe,
   Users,
@@ -8,6 +8,11 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
 
 // ---------------------------------------------------------------------------
 // Types (re-exported for consumers)
@@ -197,18 +202,6 @@ export function ScopeDropdown({
   teams: Team[];
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
 
   const iconClass = "h-3.5 w-3.5 shrink-0 text-muted-foreground";
 
@@ -232,83 +225,85 @@ export function ScopeDropdown({
   if (organizations.length === 0 && teams.length === 0) return null;
 
   return (
-    <div ref={ref} className="relative shrink-0">
-      <button
-        onClick={() => setOpen(!open)}
-        className={cn(
-          "flex items-center gap-2 rounded-lg bg-secondary px-3 py-[10px] text-sm font-medium transition-colors",
-          "text-foreground hover:bg-accent",
-        )}
-      >
-        {labelIcon}
-        {label}
-        <ChevronDown
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
           className={cn(
-            "h-3.5 w-3.5 text-muted-foreground transition-transform duration-200",
-            open && "rotate-180",
+            "flex items-center gap-2 rounded-lg bg-secondary px-3 py-2.5 text-sm font-medium transition-colors",
+            "text-foreground hover:bg-accent",
           )}
-          strokeWidth={1.5}
-        />
-      </button>
-      {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 min-w-[180px] max-h-[320px] overflow-y-auto rounded-lg border border-border bg-background p-1 shadow-lg">
-          {/* Global option */}
-          <DropdownItem
-            active={value.type === "global"}
-            onClick={() => {
-              onChange({ type: "global" });
-              setOpen(false);
-            }}
-          >
-            <Globe className={iconClass} strokeWidth={1.5} />
-            Global
-          </DropdownItem>
+        >
+          {labelIcon}
+          {label}
+          <ChevronDown
+            className={cn(
+              "h-3.5 w-3.5 text-muted-foreground transition-transform duration-200",
+              open && "rotate-180",
+            )}
+            strokeWidth={1.5}
+          />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="min-w-[180px] max-h-[320px] overflow-y-auto p-1"
+      >
+        {/* Global option */}
+        <DropdownItem
+          active={value.type === "global"}
+          onClick={() => {
+            onChange({ type: "global" });
+            setOpen(false);
+          }}
+        >
+          <Globe className={iconClass} strokeWidth={1.5} />
+          Global
+        </DropdownItem>
 
-          {/* Organizations group */}
-          {organizations.length > 0 && (
-            <>
-              <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-1">
-                Organizations
-              </div>
-              {organizations.map((org) => (
-                <DropdownItem
-                  key={org.id}
-                  active={value.type === "org" && value.id === org.id}
-                  onClick={() => {
-                    onChange({ type: "org", id: org.id });
-                    setOpen(false);
-                  }}
-                >
-                  <OrgLogoIcon logoUrl={org.logoUrl} name={org.name} />
-                  {org.name}
-                </DropdownItem>
-              ))}
-            </>
-          )}
+        {/* Organizations group */}
+        {organizations.length > 0 && (
+          <>
+            <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-1">
+              Organizations
+            </div>
+            {organizations.map((org) => (
+              <DropdownItem
+                key={org.id}
+                active={value.type === "org" && value.id === org.id}
+                onClick={() => {
+                  onChange({ type: "org", id: org.id });
+                  setOpen(false);
+                }}
+              >
+                <OrgLogoIcon logoUrl={org.logoUrl} name={org.name} />
+                {org.name}
+              </DropdownItem>
+            ))}
+          </>
+        )}
 
-          {/* Teams group */}
-          {teams.length > 0 && (
-            <>
-              <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-1">
-                Teams
-              </div>
-              {teams.map((team) => (
-                <DropdownItem
-                  key={team.id}
-                  active={value.type === "team" && value.id === team.id}
-                  onClick={() => {
-                    onChange({ type: "team", id: team.id });
-                    setOpen(false);
-                  }}
-                >
-                  <TeamLogoIcon logoUrl={team.logo_url} name={team.name} />
-                  {team.name}
-                </DropdownItem>
-              ))}
-            </>
-          )}
-        </div>
-      )}
-    </div>
+        {/* Teams group */}
+        {teams.length > 0 && (
+          <>
+            <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-1">
+              Teams
+            </div>
+            {teams.map((team) => (
+              <DropdownItem
+                key={team.id}
+                active={value.type === "team" && value.id === team.id}
+                onClick={() => {
+                  onChange({ type: "team", id: team.id });
+                  setOpen(false);
+                }}
+              >
+                <TeamLogoIcon logoUrl={team.logo_url} name={team.name} />
+                {team.name}
+              </DropdownItem>
+            ))}
+          </>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }
