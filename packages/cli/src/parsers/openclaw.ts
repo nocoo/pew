@@ -18,10 +18,14 @@ export interface OpenClawFileResult {
  * lines with `message.usage` containing absolute token counts (no diffing needed).
  *
  * OpenClaw normalization:
- *   input                        → inputTokens
- *   cacheRead + cacheWrite       → cachedInputTokens
- *   output                       → outputTokens
- *   (hardcoded 0)                → reasoningOutputTokens
+ *   input + cacheRead + cacheWrite → inputTokens  (full input cost incl. cache)
+ *   cacheRead                      → cachedInputTokens
+ *   output                         → outputTokens
+ *   (hardcoded 0)                  → reasoningOutputTokens
+ *
+ * NOTE: `usage.input` is only the uncached token delta (typically 1–3 per turn).
+ * The bulk of input cost lives in cacheRead (cache hits) and cacheWrite (cache fills).
+ * All three must be summed to produce the true inputTokens count.
  */
 export async function parseOpenClawFile(opts: {
   filePath: string;
@@ -71,8 +75,11 @@ export async function parseOpenClawFile(opts: {
         typeof msg.model === "string" ? msg.model.trim() : "unknown";
 
       const tokens: TokenDelta = {
-        inputTokens: toNonNegInt(usage.input),
-        cachedInputTokens: toNonNegInt(usage.cacheRead) + toNonNegInt(usage.cacheWrite),
+        inputTokens:
+          toNonNegInt(usage.input) +
+          toNonNegInt(usage.cacheRead) +
+          toNonNegInt(usage.cacheWrite),
+        cachedInputTokens: toNonNegInt(usage.cacheRead),
         outputTokens: toNonNegInt(usage.output),
         reasoningOutputTokens: 0,
       };
