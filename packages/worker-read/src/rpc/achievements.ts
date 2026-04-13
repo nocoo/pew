@@ -6,7 +6,7 @@
  */
 
 import type { D1Database, KVNamespace } from "@cloudflare/workers-types";
-import { withCache, TTL_5M } from "../cache";
+import { withCache, TTL_15M } from "../cache";
 
 // ---------------------------------------------------------------------------
 // Cache Keys
@@ -349,7 +349,7 @@ async function handleGetAchievementEarners(
         .all<AchievementEarnerRow>();
       return results.results;
     },
-    { ttlSeconds: TTL_5M }
+    { ttlSeconds: TTL_15M }
   );
 
   return Response.json({ result: data, _cached: cached });
@@ -379,7 +379,7 @@ async function handleGetAchievementEarnersCount(
         .first<{ count: number }>();
       return result?.count ?? 0;
     },
-    { ttlSeconds: TTL_5M }
+    { ttlSeconds: TTL_15M }
   );
 
   return Response.json({ result: data, _cached: cached });

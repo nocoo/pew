@@ -468,7 +468,7 @@ describe("achievements RPC handlers", () => {
       expect(kv.put).toHaveBeenCalledWith(
         "ach:power-user:earners:5:0",
         JSON.stringify(mockEarners),
-        { expirationTtl: 300 }
+        { expirationTtl: 900 }
       );
     });
   });

@@ -14,6 +14,9 @@ import type { KVNamespace } from "@cloudflare/workers-types";
 /** 24 hours — for rarely-changing data (pricing, frozen snapshots) */
 export const TTL_24H = 86400;
 
+/** 15 minutes — for slowly-changing global aggregates (achievement earners) */
+export const TTL_15M = 900;
+
 /** 5 minutes — for moderately-changing data (seasons list, public leaderboard) */
 export const TTL_5M = 300;
 
