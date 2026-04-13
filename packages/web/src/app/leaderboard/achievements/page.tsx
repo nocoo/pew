@@ -633,13 +633,13 @@ export default function AchievementsPage() {
       />
 
       {/* Main content */}
-      <main className="flex-1 py-4 space-y-6">
+      <main className="flex-1 py-4 space-y-4">
         {/* Tab nav */}
         <LeaderboardNav />
 
         {/* Error */}
         {error && (
-          <div className="rounded-xl bg-destructive/10 p-4 text-sm text-destructive">
+          <div className="rounded-[var(--radius-card)] bg-destructive/10 p-4 text-sm text-destructive">
             Failed to load achievements: {error}
           </div>
         )}
@@ -689,14 +689,16 @@ export default function AchievementsPage() {
         )}
       </main>
 
-      {/* User profile dialog */}
-      <UserProfileDialog
-        open={profileDialogOpen}
-        onOpenChange={setProfileDialogOpen}
-        slug={profileTarget?.slug ?? profileTarget?.id ?? null}
-        name={profileTarget?.name ?? null}
-        image={profileTarget?.image ?? null}
-      />
+      {/* User profile dialog - lazy mounted to avoid useAdmin/useSeasons firing while closed */}
+      {profileDialogOpen && (
+        <UserProfileDialog
+          open={profileDialogOpen}
+          onOpenChange={setProfileDialogOpen}
+          slug={profileTarget?.slug ?? profileTarget?.id ?? null}
+          name={profileTarget?.name ?? null}
+          image={profileTarget?.image ?? null}
+        />
+      )}
     </>
   );
 }
