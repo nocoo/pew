@@ -190,7 +190,7 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
           )}
 
           {/* Profile content — tabs + all data sections */}
-          <ProfileContent slug={slug} defaultTab="30d" />
+          <ProfileContent slug={slug} defaultTab="7d" />
         </main>
       </div>
 

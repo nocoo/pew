@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { type BadgeIconType } from "@pew/core";
 import {
   Shield,
   Star,
@@ -16,19 +17,6 @@ import {
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-
-/** Available badge icons */
-export type BadgeIconType =
-  | "shield"
-  | "star"
-  | "hexagon"
-  | "circle"
-  | "diamond"
-  | "crown"
-  | "flame"
-  | "zap"
-  | "heart"
-  | "sparkles";
 
 interface BadgeIconProps {
   text: string; // 1-4 chars
@@ -144,4 +132,4 @@ export function BadgeIcon({
 // Exports
 // ---------------------------------------------------------------------------
 
-export type { BadgeIconProps };
+export type { BadgeIconProps, BadgeIconType };

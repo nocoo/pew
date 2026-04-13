@@ -31,6 +31,7 @@ export interface UserProfileBadge {
 
 export interface UserProfileUser {
   name: string | null;
+  nickname: string | null;
   image: string | null;
   slug: string;
   created_at: string;

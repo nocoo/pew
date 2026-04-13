@@ -13,6 +13,7 @@ import {
 import { cn, formatTokensFull } from "@/lib/utils";
 import { formatDuration } from "@/lib/date-helpers";
 import { getSeasonEndExclusiveISO } from "@/lib/season-helpers";
+import { LIVE_PILL_STYLE, FINAL_PILL_STYLE } from "@/lib/season-status-config";
 import { teamColor, withAlpha } from "@/lib/palette";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -332,12 +333,18 @@ export default function SeasonLeaderboardPage() {
             <div className="mt-2 flex items-center gap-2 flex-wrap">
               <StatusBadge status={data.season.status} />
               {data.season.is_snapshot ? (
-                <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                <span className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
+                  FINAL_PILL_STYLE,
+                )}>
                   <Camera className="h-3 w-3" />
                   Final Results
                 </span>
               ) : data.season.status === "active" ? (
-                <span className="inline-flex items-center gap-1 rounded-full border border-green-500/25 bg-green-500/15 px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-400">
+                <span className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
+                  LIVE_PILL_STYLE,
+                )}>
                   <Zap className="h-3 w-3" />
                   Live
                 </span>
