@@ -5,36 +5,17 @@
  * (by model, by agent/source, by date) for the dashboard views.
  */
 
-import type { UsageRow } from "@/hooks/use-usage-data";
-import { sourceLabel } from "@/hooks/use-usage-data";
+import type { UsageRow } from "@/lib/usage-transforms";
+import { sourceLabel, toLocalDateStr } from "@/lib/usage-transforms";
 import { lookupPricing, estimateCost } from "@/lib/pricing";
 import type { PricingMap } from "@/lib/pricing";
 import { getLocalToday } from "@/lib/date-helpers";
 
 // ---------------------------------------------------------------------------
-// Shared UTC→local date conversion
+// Re-export toLocalDateStr for backward compatibility
 // ---------------------------------------------------------------------------
 
-/**
- * Convert a UTC `hour_start` timestamp to a local date string "YYYY-MM-DD".
- *
- * Applies `tzOffset` (minutes, from `new Date().getTimezoneOffset()`) to shift
- * the timestamp from UTC to local time. When `tzOffset` is 0, this is
- * equivalent to `hourStart.slice(0, 10)`.
- *
- * When the input is already a bare date ("YYYY-MM-DD", length 10), it was
- * produced by `date(hour_start)` in a day-granularity query and is already
- * a UTC-aggregated bucket. Applying a timezone shift would move it to the
- * wrong day, so we return it as-is.
- */
-export function toLocalDateStr(hourStart: string, tzOffset: number): string {
-  // Bare date from day-granularity query — already aggregated, don't shift
-  if (hourStart.length === 10) return hourStart;
-  if (tzOffset === 0) return hourStart.slice(0, 10);
-  const utcMs = new Date(hourStart).getTime();
-  const localMs = utcMs - tzOffset * 60_000;
-  return new Date(localMs).toISOString().slice(0, 10);
-}
+export { toLocalDateStr } from "@/lib/usage-transforms";
 
 // ---------------------------------------------------------------------------
 // Types

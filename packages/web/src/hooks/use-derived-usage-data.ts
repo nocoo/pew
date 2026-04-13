@@ -1,11 +1,11 @@
 import { useMemo } from "react";
-import type { UsageRow, DailyPoint, SourceAggregate, ModelAggregate } from "@/hooks/use-usage-data";
+import type { UsageRow, DailyPoint, SourceAggregate, ModelAggregate } from "@/lib/usage-transforms";
 import {
   toDailyPoints,
   toSourceAggregates,
   toModelAggregates,
   sourceLabel,
-} from "@/hooks/use-usage-data";
+} from "@/lib/usage-transforms";
 
 interface UseDerivedUsageDataResult {
   daily: DailyPoint[];
