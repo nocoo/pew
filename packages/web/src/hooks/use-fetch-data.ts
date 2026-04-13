@@ -70,6 +70,7 @@ export function useFetchData<T>(
         setData(json);
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") return;
+        setData(null);
         setError(err instanceof Error ? err.message : "Unknown error");
       } finally {
         if (!signal?.aborted) {
