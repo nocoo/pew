@@ -1,5 +1,14 @@
 # Changelog
 
+## v2.20.4
+
+### Added
+- Add Achievement cache type to Admin Storage page
+- Add KV cache for achievement earners queries
+
+### Changed
+- Increase achievement cache TTL to 15 minutes
+
 ## v2.20.3
 
 ### Added
