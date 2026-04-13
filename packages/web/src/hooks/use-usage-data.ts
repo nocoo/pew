@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 
 import { toLocalDateStr } from "@/lib/usage-helpers";
 
@@ -266,14 +266,26 @@ export function useUsageData(
     };
   }, [fetchData]);
 
-  const daily = data ? toDailyPoints(data.records, new Date().getTimezoneOffset()) : [];
-  const sources = data
-    ? toSourceAggregates(data.records).map((s) => ({
-        ...s,
-        label: sourceLabel(s.label),
-      }))
-    : [];
-  const models = data ? toModelAggregates(data.records) : [];
+  // Memoize derived data to avoid recalculation on every render
+  const tzOffset = new Date().getTimezoneOffset();
+  const daily = useMemo(
+    () => (data ? toDailyPoints(data.records, tzOffset) : []),
+    [data, tzOffset],
+  );
+  const sources = useMemo(
+    () =>
+      data
+        ? toSourceAggregates(data.records).map((s) => ({
+            ...s,
+            label: sourceLabel(s.label),
+          }))
+        : [],
+    [data],
+  );
+  const models = useMemo(
+    () => (data ? toModelAggregates(data.records) : []),
+    [data],
+  );
 
   return { data, daily, sources, models, loading, error, refetch: () => fetchData() };
 }

@@ -60,6 +60,10 @@ interface UseSeasonLeaderboardResult {
   refreshing: boolean;
   error: string | null;
   refetch: () => void;
+  /** Load members for a specific team (lazy, on-demand) */
+  loadTeamMembers: (teamId: string) => Promise<void>;
+  /** Set of team IDs currently loading members */
+  loadingTeamIds: Set<string>;
 }
 
 export function useSeasonLeaderboard(
@@ -69,11 +73,16 @@ export function useSeasonLeaderboard(
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadingTeamIds, setLoadingTeamIds] = useState<Set<string>>(new Set());
 
   // Track if initial load has completed to avoid stale closure issues
   const hasLoadedRef = useRef(false);
 
-  const fetchData = useCallback(async () => {
+  // Track which teams have already been fetched to avoid duplicate requests
+  const fetchedTeamsRef = useRef<Set<string>>(new Set());
+
+  // Initial fetch without expand=members for faster load
+  const fetchData = useCallback(async (signal?: AbortSignal) => {
     if (!seasonIdOrSlug) return;
 
     if (!hasLoadedRef.current) {
@@ -82,11 +91,16 @@ export function useSeasonLeaderboard(
       setRefreshing(true);
     }
     setError(null);
+    // Reset fetched teams on full refetch
+    fetchedTeamsRef.current = new Set();
 
     try {
       const res = await fetch(
-        `/api/seasons/${seasonIdOrSlug}/leaderboard?expand=members`,
+        `/api/seasons/${seasonIdOrSlug}/leaderboard`,
+        signal ? { signal } : undefined,
       );
+
+      if (signal?.aborted) return;
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -96,19 +110,93 @@ export function useSeasonLeaderboard(
       }
 
       const json = (await res.json()) as SeasonLeaderboardData;
+
+      if (signal?.aborted) return;
+
       setData(json);
       hasLoadedRef.current = true;
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [seasonIdOrSlug]);
 
+  // Load members for a specific team on-demand
+  const loadTeamMembers = useCallback(
+    async (teamId: string) => {
+      if (!seasonIdOrSlug || !data) return;
+      // Skip if already fetched or currently loading
+      if (fetchedTeamsRef.current.has(teamId) || loadingTeamIds.has(teamId)) {
+        return;
+      }
+
+      setLoadingTeamIds((prev) => new Set(prev).add(teamId));
+
+      try {
+        const res = await fetch(
+          `/api/seasons/${seasonIdOrSlug}/leaderboard?expand=members&team=${teamId}`,
+        );
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        const json = (await res.json()) as SeasonLeaderboardData;
+        // Find the team entry with members
+        const teamWithMembers = json.entries.find(
+          (e) => e.team.id === teamId,
+        );
+
+        if (teamWithMembers?.members) {
+          const members = teamWithMembers.members;
+          fetchedTeamsRef.current.add(teamId);
+          setData((prev) => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              entries: prev.entries.map((entry): SeasonTeamEntry =>
+                entry.team.id === teamId
+                  ? { ...entry, members }
+                  : entry,
+              ),
+            };
+          });
+        }
+      } catch {
+        // Silently fail — user can retry by collapsing/expanding again
+      } finally {
+        setLoadingTeamIds((prev) => {
+          const next = new Set(prev);
+          next.delete(teamId);
+          return next;
+        });
+      }
+    },
+    [seasonIdOrSlug, data, loadingTeamIds],
+  );
+
   useEffect(() => {
-    fetchData();
+    const controller = new AbortController();
+
+    fetchData(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
   }, [fetchData]);
 
-  return { data, loading, refreshing, error, refetch: fetchData };
+  return {
+    data,
+    loading,
+    refreshing,
+    error,
+    refetch: () => fetchData(),
+    loadTeamMembers,
+    loadingTeamIds,
+  };
 }
