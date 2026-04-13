@@ -32,10 +32,11 @@ describe("CLI main command", () => {
     expect(names).toContain("uninstall");
     expect(names).toContain("reset");
     expect(names).toContain("update");
+    expect(names).toContain("logout");
   });
 
-  it("should have exactly 8 subcommands", () => {
+  it("should have exactly 9 subcommands", () => {
     const names = Object.keys(main.subCommands!);
-    expect(names).toHaveLength(8);
+    expect(names).toHaveLength(9);
   });
 });
