@@ -199,6 +199,7 @@ function CompareResultContent() {
         userIds: userIds.join(","),
         from: dateFrom,
         to: dateTo,
+        tzOffset: String(new Date().getTimezoneOffset()),
       });
       if (sourceFilter) params.set("source", sourceFilter);
       if (modelFilter) params.set("model", modelFilter);

@@ -51,7 +51,7 @@ export function useSessionData(
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (signal?: AbortSignal) => {
     if (!enabled) return;
     setLoading(true);
     setError(null);
@@ -64,7 +64,9 @@ export function useSessionData(
 
       const qs = params.toString();
       const url = qs ? `/api/sessions?${qs}` : "/api/sessions";
-      const res = await fetch(url);
+      const res = await fetch(url, signal ? { signal } : undefined);
+
+      if (signal?.aborted) return;
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -74,17 +76,33 @@ export function useSessionData(
       }
 
       const json = (await res.json()) as { records: SessionRow[] };
+
+      if (signal?.aborted) return;
+
       setRecords(json.records);
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
-    }, [fromDate, toDate, source, enabled]);
+  }, [fromDate, toDate, source, enabled]);
 
   useEffect(() => {
     if (!enabled) return;
-    fetchData();
+
+    const controller = new AbortController();
+
+    // Clear records on filter change to avoid stale data
+    setRecords([]);
+
+    fetchData(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
   }, [fetchData, enabled]);
 
   // Reset state when disabled to avoid stale data
@@ -110,6 +128,6 @@ export function useSessionData(
     projectBreakdown,
     loading,
     error,
-    refetch: fetchData,
+    refetch: () => fetchData(),
   };
 }

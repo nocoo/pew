@@ -38,8 +38,17 @@ describe("deriveSeasonStatus", () => {
     ).toBe("active");
   });
 
-  it("should return 'ended' one second after endDate", () => {
-    const now = new Date("2026-04-15T23:59:01Z");
+  it("should return 'active' at exactly endDate + 59 seconds (within the final minute)", () => {
+    // end_date is inclusive at minute precision, so end_date + 59s is still active
+    const now = new Date("2026-04-15T23:59:59Z");
+    expect(
+      deriveSeasonStatus("2026-03-15T00:00:00Z", "2026-04-15T23:59:00Z", now)
+    ).toBe("active");
+  });
+
+  it("should return 'ended' at exactly endDate + 60 seconds (exclusive boundary)", () => {
+    // Season ends at endDate + 60s (exclusive), so endDate + 60s is the first "ended" moment
+    const now = new Date("2026-04-16T00:00:00Z");
     expect(
       deriveSeasonStatus("2026-03-15T00:00:00Z", "2026-04-15T23:59:00Z", now)
     ).toBe("ended");

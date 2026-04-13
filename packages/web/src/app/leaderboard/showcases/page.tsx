@@ -4,7 +4,6 @@
  * Public listing of community-submitted GitHub repositories.
  */
 
-import { Suspense } from "react";
 import { auth } from "@/auth";
 import { LeaderboardNav } from "@/components/leaderboard/leaderboard-nav";
 import { PageHeader } from "@/components/leaderboard/page-header";
@@ -35,21 +34,7 @@ export default async function ShowcasesPage() {
 
       <main className="flex-1 py-4 space-y-4">
         <LeaderboardNav />
-
-        <Suspense
-          fallback={
-            <div className="space-y-3 animate-pulse pt-4">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="h-[120px] rounded-xl bg-secondary"
-                />
-              ))}
-            </div>
-          }
-        >
-          <ShowcasesContent isLoggedIn={isLoggedIn} />
-        </Suspense>
+        <ShowcasesContent isLoggedIn={isLoggedIn} />
       </main>
     </>
   );

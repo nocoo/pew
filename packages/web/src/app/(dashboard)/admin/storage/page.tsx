@@ -92,6 +92,25 @@ function describeCacheKey(key: string): { type: string; description: string } {
       description: `Public leaderboard (${filterStr}, limit=${limit}, offset=${offset}) (5min TTL)`,
     };
   }
+  // Achievement earners: ach:{id}:earners:{limit}:{offset}
+  if (key.startsWith("ach:") && key.includes(":earners:")) {
+    const parts = key.split(":");
+    const achievementId = parts[1] ?? "?";
+    const limit = parts[3] ?? "5";
+    const offset = parts[4] ?? "0";
+    return {
+      type: "Achievement",
+      description: `Earners for "${achievementId}" (limit=${limit}, offset=${offset}) (15min TTL)`,
+    };
+  }
+  // Achievement earners count: ach:{id}:count
+  if (key.startsWith("ach:") && key.endsWith(":count")) {
+    const achievementId = key.slice(4, -6); // Extract achievement ID
+    return {
+      type: "Achievement",
+      description: `Earners count for "${achievementId}" (15min TTL)`,
+    };
+  }
   return {
     type: "Unknown",
     description: key,
@@ -767,6 +786,8 @@ export default function AdminStoragePage() {
                                   "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400",
                                 type === "Leaderboard" &&
                                   "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+                                type === "Achievement" &&
+                                  "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
                                 type === "Unknown" &&
                                   "bg-card text-muted-foreground"
                               )}

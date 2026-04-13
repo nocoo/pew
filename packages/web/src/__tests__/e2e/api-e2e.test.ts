@@ -59,11 +59,32 @@ async function seedTestUser(d1: D1Client): Promise<void> {
 }
 
 async function cleanupTestData(d1: D1Client): Promise<void> {
-  await d1.execute("DELETE FROM usage_records WHERE user_id = ?", [
-    TEST_USER_ID,
-  ]);
-  await d1.execute("DELETE FROM accounts WHERE user_id = ?", [TEST_USER_ID]);
-  await d1.execute("DELETE FROM users WHERE id = ?", [TEST_USER_ID]);
+  // Delete in reverse FK order — child tables first, then users
+  // Tables without ON DELETE CASCADE must be cleaned manually
+  // Use try/catch per table to handle missing tables in test DB (schema drift)
+  const tables = [
+    { sql: "DELETE FROM badge_assignments WHERE user_id = ? OR assigned_by = ? OR revoked_by = ?", params: [TEST_USER_ID, TEST_USER_ID, TEST_USER_ID] },
+    { sql: "DELETE FROM showcase_votes WHERE user_id = ?", params: [TEST_USER_ID] },
+    { sql: "DELETE FROM showcases WHERE user_id = ?", params: [TEST_USER_ID] },
+    { sql: "DELETE FROM season_team_members WHERE user_id = ?", params: [TEST_USER_ID] },
+    { sql: "DELETE FROM season_leaderboard WHERE user_id = ?", params: [TEST_USER_ID] },
+    { sql: "DELETE FROM device_aliases WHERE user_id = ?", params: [TEST_USER_ID] },
+    { sql: "DELETE FROM session_records WHERE user_id = ?", params: [TEST_USER_ID] },
+    { sql: "DELETE FROM usage_records WHERE user_id = ?", params: [TEST_USER_ID] },
+    { sql: "DELETE FROM accounts WHERE user_id = ?", params: [TEST_USER_ID] },
+    { sql: "DELETE FROM users WHERE id = ?", params: [TEST_USER_ID] },
+  ];
+
+  for (const { sql, params } of tables) {
+    try {
+      await d1.execute(sql, params);
+    } catch (err) {
+      // Ignore "no such table" errors — test DB may not have all tables
+      if (!(err instanceof Error && err.message.includes("no such table"))) {
+        throw err;
+      }
+    }
+  }
 }
 
 function makeRecord(overrides: Partial<Record<string, unknown>> = {}) {

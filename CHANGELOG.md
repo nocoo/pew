@@ -1,5 +1,49 @@
 # Changelog
 
+## v2.20.4
+
+### Added
+- Add Achievement cache type to Admin Storage page
+- Add KV cache for achievement earners queries
+
+### Changed
+- Increase achievement cache TTL to 15 minutes
+
+## v2.20.3
+
+### Added
+- Add logout command
+- Add season-helpers module for time boundary consistency
+
+### Changed
+- Extract shared status config
+- Rename to .ts and fix hydration flash
+- Eliminate redundant fetches and eager mounts
+- Extract shared page shell and scope hook
+- Update subcommand count for logout command
+
+### Fixed
+- Improve pew login UX for SSH/headless sessions
+- Inline tzOffset in compare route GROUP BY clause
+- Inline tzOffset in GROUP BY clause
+- Pass tzOffset to admin compare API
+- Expand E2E cleanup to cover all FK-dependent tables
+- Apply tzOffset to admin usage compare route
+- Apply tzOffset to day-granularity SQL for correct local date bucketing
+- Assorted consistency cleanups
+- Add AbortController to 8 data-fetching hooks
+- Count cacheRead+cacheWrite in inputTokens
+- Restore keyboard accessibility for achievement avatars
+- Check response.ok before marking orgs as loaded
+- Eliminate render-time setState in logo components
+- Use consistent end-time boundary across season surfaces
+- Reset scope on sign-out and prevent API failure from wiping saved scope
+- Achievements page bugs - profile key, nested interactive, empty states
+- Resolve stale closure in useSeasons and useSeasonLeaderboard
+
+### Removed
+- Remove unused season-helper exports
+
 ## v2.20.2
 
 ### Added

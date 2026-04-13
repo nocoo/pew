@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Calendar, Clock } from "lucide-react";
 import { formatSeasonDate } from "@/lib/seasons";
+import { getSeasonEndExclusive } from "@/lib/season-helpers";
 import type { SeasonStatus } from "@pew/core";
 import {
   Tooltip,
@@ -72,9 +73,11 @@ export function SeasonCountdown({
   }
 
   // Active or upcoming — show countdown with tooltip for full range
+  // Use exclusive end boundary (end_date + 60s) for active seasons
+  // to align with when data actually stops changing
   const targetMs =
     status === "active"
-      ? new Date(endDate).getTime()
+      ? getSeasonEndExclusive(endDate)
       : new Date(startDate).getTime();
   const remaining = Math.max(0, targetMs - now);
   const label = status === "active" ? "Ends in" : "Starts in";

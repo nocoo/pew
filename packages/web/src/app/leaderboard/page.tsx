@@ -1,66 +1,42 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useSession } from "next-auth/react";
+import { useState } from "react";
 import {
   useLeaderboard,
   type LeaderboardPeriod,
-  type LeaderboardEntry,
 } from "@/hooks/use-leaderboard";
+import { useLeaderboardScope } from "@/hooks/use-leaderboard-scope";
 import { LeaderboardNav } from "@/components/leaderboard/leaderboard-nav";
 import { PageHeader } from "@/components/leaderboard/page-header";
-import { TableHeader } from "@/components/leaderboard/table-header";
-import { LeaderboardSkeleton } from "@/components/leaderboard/leaderboard-skeleton";
-import { LeaderboardRow } from "@/components/leaderboard/leaderboard-row";
-import { PeriodTabs, PERIOD_TO_TAB } from "@/components/leaderboard/period-tabs";
-import {
-  ScopeDropdown,
-  loadScopeFromStorage,
-  saveScopeToStorage,
-  type ScopeSelection,
-  type Organization,
-  type Team,
-} from "@/components/leaderboard/scope-dropdown";
-import { UserProfileDialog } from "@/components/user-profile-dialog";
+import { PeriodTabs } from "@/components/leaderboard/period-tabs";
+import { ScopeDropdown } from "@/components/leaderboard/scope-dropdown";
+import { LeaderboardPageShell } from "@/components/leaderboard/leaderboard-page-shell";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
 const PAGE_SIZE = 20;
-const MAX_ENTRIES = 100;
 
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
 export default function LeaderboardPage() {
-  const { status } = useSession();
-  const isAuthenticated = status === "authenticated";
-  const isSessionLoading = status === "loading";
-
   const [period, setPeriod] = useState<LeaderboardPeriod>("week");
-  const [scope, setScope] = useState<ScopeSelection>({ type: "global" });
-  const [scopeInitialized, setScopeInitialized] = useState(false);
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [teams, setTeams] = useState<Team[]>([]);
 
-  // Dialog state for user profile popup
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogEntry, setDialogEntry] = useState<LeaderboardEntry | null>(null);
+  const {
+    scope,
+    setScope,
+    organizations,
+    teams,
+    scopeInitialized,
+    isSessionLoading,
+    isAuthenticated,
+    teamId,
+    orgId,
+  } = useLeaderboardScope();
 
-  const handleRowSelect = useCallback((entry: LeaderboardEntry) => {
-    setDialogEntry(entry);
-    setDialogOpen(true);
-  }, []);
-
-  const teamId = scope.type === "team" ? scope.id ?? null : null;
-  const orgId = scope.type === "org" ? scope.id ?? null : null;
-
-  // Delay fetch until scope is initialized:
-  // - Session loading: wait (don't know if user is authenticated yet)
-  // - Authenticated: wait for orgs/teams + localStorage scope restore
-  // - Unauthenticated: fetch immediately with global scope
   const {
     entries,
     loading,
@@ -76,81 +52,6 @@ export default function LeaderboardPage() {
     limit: PAGE_SIZE,
     enabled: scopeInitialized && !isSessionLoading,
   });
-
-  // Fetch user's organizations and teams
-  const fetchOrgsAndTeams = useCallback(async () => {
-    try {
-      const [orgsRes, teamsRes] = await Promise.all([
-        fetch("/api/organizations/mine"),
-        fetch("/api/teams"),
-      ]);
-
-      if (orgsRes.ok) {
-        const orgsJson = await orgsRes.json();
-        setOrganizations(orgsJson.organizations ?? []);
-      }
-      if (teamsRes.ok) {
-        const teamsJson = await teamsRes.json();
-        setTeams(teamsJson.teams ?? []);
-      }
-    } catch {
-      // Silently fail — scope dropdown optional
-    }
-  }, []);
-
-  // Initialize scope from localStorage and fetch orgs/teams
-  // Wait for session to resolve before deciding auth state
-  /* eslint-disable react-hooks/set-state-in-effect -- async fetch and localStorage read */
-  useEffect(() => {
-    // Still loading session - wait
-    if (isSessionLoading) {
-      return;
-    }
-
-    // Unauthenticated - use global scope immediately
-    if (!isAuthenticated) {
-      setScopeInitialized(true);
-      return;
-    }
-
-    // Authenticated - fetch orgs/teams and restore scope
-    fetchOrgsAndTeams().then(() => {
-      const stored = loadScopeFromStorage();
-      if (stored) {
-        setScope(stored);
-      }
-      setScopeInitialized(true);
-    });
-  }, [isSessionLoading, isAuthenticated, fetchOrgsAndTeams]);
-  /* eslint-enable react-hooks/set-state-in-effect */
-
-  // Validate stored scope against available orgs/teams
-  // (intentionally calling setState in effect to correct invalid state after async load)
-  /* eslint-disable react-hooks/set-state-in-effect */
-  useEffect(() => {
-    if (!scopeInitialized) return;
-
-    if (scope.type === "org" && scope.id) {
-      const valid = organizations.some((o) => o.id === scope.id);
-      if (!valid) {
-        setScope({ type: "global" });
-        saveScopeToStorage({ type: "global" });
-      }
-    } else if (scope.type === "team" && scope.id) {
-      const valid = teams.some((t) => t.id === scope.id);
-      if (!valid) {
-        setScope({ type: "global" });
-        saveScopeToStorage({ type: "global" });
-      }
-    }
-  }, [scopeInitialized, scope, organizations, teams]);
-  /* eslint-enable react-hooks/set-state-in-effect */
-
-  // Handle scope change
-  const handleScopeChange = (newScope: ScopeSelection) => {
-    setScope(newScope);
-    saveScopeToStorage(newScope);
-  };
 
   return (
     <>
@@ -185,7 +86,7 @@ export default function LeaderboardPage() {
             <div className="hidden sm:block">
               <ScopeDropdown
                 value={scope}
-                onChange={handleScopeChange}
+                onChange={setScope}
                 organizations={organizations}
                 teams={teams}
               />
@@ -193,62 +94,18 @@ export default function LeaderboardPage() {
           )}
         </div>
 
-        {/* Error */}
-        {error && (
-          <div className="rounded-[var(--radius-card)] bg-destructive/10 p-4 text-sm text-destructive">
-            Failed to load leaderboard: {error}
-          </div>
-        )}
-
-        {/* Table header row */}
-        <TableHeader />
-
-        {/* Loading — skeleton on initial load */}
-        {loading && <LeaderboardSkeleton />}
-
-        {/* Content — no opacity change during pagination */}
-        {entries.length > 0 && (
-          <div className="space-y-2">
-            {entries.map((entry, i) => (
-              <LeaderboardRow
-                key={entry.user.id}
-                entry={entry}
-                index={i}
-                animationStartIndex={animationStartIndex}
-                onSelect={handleRowSelect}
-              />
-            ))}
-            {/* Load more button — hide when reached max or no more data */}
-            {hasMore && entries.length < MAX_ENTRIES && (
-              <button
-                onClick={loadMore}
-                disabled={loadingMore}
-                className="w-full rounded-[var(--radius-card)] bg-secondary py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
-              >
-                {loadingMore ? "Loading..." : "Show more"}
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Empty state — only show after loading completes with no results */}
-        {!loading && entries.length === 0 && !error && (
-          <div className="rounded-[var(--radius-card)] bg-secondary p-8 text-center text-sm text-muted-foreground">
-            No usage data for this period yet.
-          </div>
-        )}
+        {/* Shared page shell: error, table, loading, empty, dialog */}
+        <LeaderboardPageShell
+          entries={entries}
+          loading={loading}
+          loadingMore={loadingMore}
+          error={error}
+          hasMore={hasMore}
+          loadMore={loadMore}
+          animationStartIndex={animationStartIndex}
+          period={period}
+        />
       </main>
-
-      {/* User profile dialog — stays in-page, preserves scroll & pagination */}
-      <UserProfileDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        slug={dialogEntry?.user.slug ?? dialogEntry?.user.id ?? null}
-        name={dialogEntry?.user.name ?? null}
-        image={dialogEntry?.user.image ?? null}
-        badges={dialogEntry?.badges ?? []}
-        defaultTab={PERIOD_TO_TAB[period]}
-      />
     </>
   );
 }

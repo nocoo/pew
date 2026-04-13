@@ -825,6 +825,7 @@ export function createWorkerDbRead(): DbRead {
         source?: string;
         deviceId?: string;
         granularity?: "half-hour" | "day";
+        tzOffset?: number;
       },
     ): Promise<UsageRecordRow[]> {
       return rpc<UsageRecordRow[]>({
@@ -835,6 +836,7 @@ export function createWorkerDbRead(): DbRead {
         source: options?.source,
         deviceId: options?.deviceId,
         granularity: options?.granularity,
+        tzOffset: options?.tzOffset,
       });
     },
 
@@ -868,7 +870,7 @@ export function createWorkerDbRead(): DbRead {
       userId: string,
       fromDate: string,
       toDate: string,
-      options?: { granularity?: "half-hour" | "day" },
+      options?: { granularity?: "half-hour" | "day"; tzOffset?: number },
     ): Promise<UsageDeviceTimelineRow[]> {
       return rpc<UsageDeviceTimelineRow[]>({
         method: "usage.getDeviceTimeline",
@@ -876,6 +878,7 @@ export function createWorkerDbRead(): DbRead {
         fromDate,
         toDate,
         ...(options?.granularity && { granularity: options.granularity }),
+        tzOffset: options?.tzOffset,
       });
     },
 

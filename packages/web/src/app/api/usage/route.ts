@@ -56,6 +56,8 @@ export async function GET(request: Request) {
   const granularity = url.searchParams.get("granularity") ?? "half-hour";
   const fromParam = url.searchParams.get("from");
   const toParam = url.searchParams.get("to");
+  const tzOffsetParam = url.searchParams.get("tzOffset");
+  const tzOffset = tzOffsetParam !== null ? parseInt(tzOffsetParam, 10) : 0;
 
   // Validate source filter
   if (sourceFilter && !VALID_SOURCES.has(sourceFilter)) {
@@ -69,6 +71,14 @@ export async function GET(request: Request) {
   if (!VALID_GRANULARITIES.has(granularity)) {
     return NextResponse.json(
       { error: `Invalid granularity: "${granularity}"` },
+      { status: 400 }
+    );
+  }
+
+  // Validate tzOffset
+  if (!Number.isFinite(tzOffset) || Math.abs(tzOffset) > 840) {
+    return NextResponse.json(
+      { error: "Invalid tzOffset value" },
       { status: 400 }
     );
   }
@@ -117,6 +127,7 @@ export async function GET(request: Request) {
       ...(sourceFilter && { source: sourceFilter }),
       ...(deviceIdFilter && { deviceId: deviceIdFilter }),
       granularity: granularity as "half-hour" | "day",
+      tzOffset,
     });
 
     // Compute summary

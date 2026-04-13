@@ -39,7 +39,7 @@ import { handleBadgesRpc, type BadgesRpcRequest } from "./rpc/badges";
 // Version
 // ---------------------------------------------------------------------------
 
-export const WORKER_VERSION = "2.20.2";
+export const WORKER_VERSION = "2.20.4";
 
 // ---------------------------------------------------------------------------
 // Boot timestamp (for uptime calculation)
@@ -342,7 +342,7 @@ async function handleRpc(body: unknown, env: Env): Promise<Response> {
       case "usage":
         return handleUsageRpc(body as UsageRpcRequest, env.DB);
       case "achievements":
-        return handleAchievementsRpc(body as AchievementsRpcRequest, env.DB);
+        return handleAchievementsRpc(body as AchievementsRpcRequest, env.DB, env.CACHE);
       case "devices":
         return handleDevicesRpc(body as DevicesRpcRequest, env.DB);
       case "organizations":

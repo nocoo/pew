@@ -72,6 +72,8 @@ export async function GET(request: Request) {
   const fromParam = url.searchParams.get("from");
   const toParam = url.searchParams.get("to");
   const granularityParam = url.searchParams.get("granularity");
+  const tzOffsetParam = url.searchParams.get("tzOffset");
+  const tzOffset = tzOffsetParam !== null ? parseInt(tzOffsetParam, 10) : 0;
 
   // Validate granularity
   const granularity: "half-hour" | "day" =
@@ -81,6 +83,13 @@ export async function GET(request: Request) {
   if (!dateRange) {
     return NextResponse.json(
       { error: "Invalid date format" },
+      { status: 400 }
+    );
+  }
+
+  if (!Number.isFinite(tzOffset) || Math.abs(tzOffset) > 840) {
+    return NextResponse.json(
+      { error: "Invalid tzOffset value" },
       { status: 400 }
     );
   }
@@ -99,6 +108,7 @@ export async function GET(request: Request) {
     // Timeline query — totals per device (day or half-hour granularity)
     const timelineRows = await db.getDeviceTimeline(userId, fromDate, toDate, {
       granularity,
+      tzOffset,
     });
 
     // 4. Build pricing map (merge static defaults + DB overrides)

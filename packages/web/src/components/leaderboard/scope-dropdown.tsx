@@ -65,6 +65,28 @@ export function saveScopeToStorage(scope: ScopeSelection): void {
 // Logo helpers
 // ---------------------------------------------------------------------------
 
+/** Internal img component that tracks its own error state */
+function LogoImg({
+  src,
+  alt,
+  className,
+  fallback,
+}: {
+  src: string;
+  alt: string;
+  className: string;
+  fallback: React.ReactNode;
+}) {
+  const [error, setError] = useState(false);
+
+  if (error) return <>{fallback}</>;
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- external logos, can't use next/image
+    <img src={src} alt={alt} className={className} onError={() => setError(true)} />
+  );
+}
+
 export function TeamLogoIcon({
   logoUrl,
   name,
@@ -74,46 +96,34 @@ export function TeamLogoIcon({
   name: string;
   className?: string;
 }) {
-  const [error, setError] = useState(false);
-  const [prevUrl, setPrevUrl] = useState(logoUrl);
+  const fallback = <Users className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground", className)} strokeWidth={1.5} />;
 
-  if (logoUrl !== prevUrl) {
-    setPrevUrl(logoUrl);
-    setError(false);
-  }
+  if (!logoUrl) return fallback;
 
-  if (!logoUrl || error) {
-    return <Users className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground", className)} strokeWidth={1.5} />;
-  }
+  // key={logoUrl} forces remount when URL changes, resetting error state
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- external team logos, can't use next/image
-    <img
+    <LogoImg
+      key={logoUrl}
       src={logoUrl}
       alt={name}
       className={cn("h-3.5 w-3.5 shrink-0 rounded-sm object-cover", className)}
-      onError={() => setError(true)}
+      fallback={fallback}
     />
   );
 }
 
 /** Tiny inline logo for team badges in leaderboard rows */
 export function TeamLogoBadge({ logoUrl, name }: { logoUrl: string | null; name: string }) {
-  const [error, setError] = useState(false);
-  const [prevUrl, setPrevUrl] = useState(logoUrl);
+  if (!logoUrl) return null;
 
-  if (logoUrl !== prevUrl) {
-    setPrevUrl(logoUrl);
-    setError(false);
-  }
-
-  if (!logoUrl || error) return null;
+  // key={logoUrl} forces remount when URL changes, resetting error state
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- external team logos, can't use next/image
-    <img
+    <LogoImg
+      key={logoUrl}
       src={logoUrl}
       alt={name}
       className="h-2.5 w-2.5 shrink-0 rounded-[2px] object-cover"
-      onError={() => setError(true)}
+      fallback={null}
     />
   );
 }
@@ -127,24 +137,18 @@ export function OrgLogoIcon({
   name: string;
   className?: string;
 }) {
-  const [error, setError] = useState(false);
-  const [prevUrl, setPrevUrl] = useState(logoUrl);
+  const fallback = <Building2 className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground", className)} strokeWidth={1.5} />;
 
-  if (logoUrl !== prevUrl) {
-    setPrevUrl(logoUrl);
-    setError(false);
-  }
+  if (!logoUrl) return fallback;
 
-  if (!logoUrl || error) {
-    return <Building2 className={cn("h-3.5 w-3.5 shrink-0 text-muted-foreground", className)} strokeWidth={1.5} />;
-  }
+  // key={logoUrl} forces remount when URL changes, resetting error state
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- external org logos, can't use next/image
-    <img
+    <LogoImg
+      key={logoUrl}
       src={logoUrl}
       alt={name}
       className={cn("h-3.5 w-3.5 shrink-0 rounded-sm object-cover", className)}
-      onError={() => setError(true)}
+      fallback={fallback}
     />
   );
 }

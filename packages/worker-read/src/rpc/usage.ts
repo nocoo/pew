@@ -73,6 +73,7 @@ export interface GetUsageRequest {
   source?: string;
   deviceId?: string;
   granularity?: "half-hour" | "day";
+  tzOffset?: number;
 }
 
 export interface GetDeviceSummaryRequest {
@@ -95,6 +96,7 @@ export interface GetDeviceTimelineRequest {
   fromDate: string;
   toDate: string;
   granularity?: "half-hour" | "day";
+  tzOffset?: number;
 }
 
 export interface GetModelPricingRequest {
@@ -124,12 +126,32 @@ async function handleGetUsage(
   }
 
   const granularity = req.granularity ?? "half-hour";
-  const timeColumn =
-    granularity === "day" ? "date(hour_start) AS hour_start" : "hour_start";
-  const groupBy =
-    granularity === "day"
-      ? "date(hour_start), source, model"
-      : "hour_start, source, model";
+  const rawTz = req.tzOffset ?? 0;
+  const tzOffset =
+    Number.isFinite(rawTz) && Math.abs(rawTz) <= 840 ? rawTz : 0;
+
+  let timeColumn: string;
+  let groupBy: string;
+  const prependParams: unknown[] = [];
+
+  if (granularity === "day") {
+    if (tzOffset !== 0) {
+      const offsetStr = String(-tzOffset);
+      // Note: GROUP BY doesn't support parameterized ?, so we inline the offset
+      // The offset is validated (integer, abs <= 840) so this is safe
+      timeColumn =
+        "date(datetime(hour_start, ? || ' minutes')) AS hour_start";
+      groupBy =
+        `date(datetime(hour_start, '${offsetStr} minutes')), source, model`;
+      prependParams.push(offsetStr);
+    } else {
+      timeColumn = "date(hour_start) AS hour_start";
+      groupBy = "date(hour_start), source, model";
+    }
+  } else {
+    timeColumn = "hour_start";
+    groupBy = "hour_start, source, model";
+  }
 
   const conditions = ["user_id = ?", "hour_start >= ?", "hour_start < ?"];
   const params: unknown[] = [req.userId, req.fromDate, req.toDate];
@@ -161,7 +183,9 @@ async function handleGetUsage(
   `;
 
   const stmt = db.prepare(sql);
-  const results = await stmt.bind(...params).all<UsageRow>();
+  const results = await stmt
+    .bind(...prependParams, ...params)
+    .all<UsageRow>();
 
   return Response.json({ result: results.results });
 }
@@ -250,18 +274,34 @@ async function handleGetDeviceTimeline(
   }
 
   const granularity = req.granularity ?? "day";
-  const timeColumn =
-    granularity === "day"
-      ? "date(ur.hour_start) AS date"
-      : "ur.hour_start AS date";
-  const groupBy =
-    granularity === "day"
-      ? "date(ur.hour_start), ur.device_id"
-      : "ur.hour_start, ur.device_id";
+  const rawTz = req.tzOffset ?? 0;
+  const tzOffset =
+    Number.isFinite(rawTz) && Math.abs(rawTz) <= 840 ? rawTz : 0;
+
+  let dateExpr: string;
+  let groupBy: string;
+  const tzParams: unknown[] = [];
+
+  if (granularity === "day") {
+    if (tzOffset !== 0) {
+      const offsetStr = String(-tzOffset);
+      // Note: GROUP BY doesn't support parameterized ?, so we inline the offset
+      // The offset is validated (integer, abs <= 840) so this is safe
+      dateExpr = "date(datetime(ur.hour_start, ? || ' minutes'))";
+      groupBy = `date(datetime(ur.hour_start, '${offsetStr} minutes')), ur.device_id`;
+      tzParams.push(offsetStr);
+    } else {
+      dateExpr = "date(ur.hour_start)";
+      groupBy = "date(ur.hour_start), ur.device_id";
+    }
+  } else {
+    dateExpr = "ur.hour_start";
+    groupBy = "ur.hour_start, ur.device_id";
+  }
 
   const sql = `
     SELECT
-      ${timeColumn},
+      ${dateExpr} AS date,
       ur.device_id,
       SUM(ur.total_tokens) AS total_tokens,
       SUM(ur.input_tokens) AS input_tokens,
@@ -277,7 +317,7 @@ async function handleGetDeviceTimeline(
 
   const results = await db
     .prepare(sql)
-    .bind(req.userId, req.fromDate, req.toDate)
+    .bind(...tzParams, req.userId, req.fromDate, req.toDate)
     .all<TimelineRow>();
 
   return Response.json({ result: results.results });

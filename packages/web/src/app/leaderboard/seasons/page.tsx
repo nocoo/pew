@@ -10,6 +10,7 @@ import {
   Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TIMELINE_DOT_COLORS } from "@/lib/season-status-config";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSeasons, type SeasonListItem } from "@/hooks/use-seasons";
 import { formatSeasonDate } from "@/lib/seasons";
@@ -29,17 +30,12 @@ function TimelineDot({ status }: { status: "active" | "upcoming" | "ended" }) {
     return (
       <span className="relative flex h-3 w-3 shrink-0">
         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />
-        <span className={cn(baseClass, "relative bg-green-500")} />
+        <span className={cn(baseClass, "relative", TIMELINE_DOT_COLORS[status])} />
       </span>
     );
   }
 
-  if (status === "upcoming") {
-    return <span className={cn(baseClass, "bg-blue-500")} />;
-  }
-
-  // ended
-  return <span className={cn(baseClass, "bg-muted-foreground")} />;
+  return <span className={cn(baseClass, TIMELINE_DOT_COLORS[status])} />;
 }
 
 // ---------------------------------------------------------------------------

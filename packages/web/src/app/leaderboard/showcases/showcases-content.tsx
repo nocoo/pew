@@ -179,14 +179,16 @@ export function ShowcasesContent({ isLoggedIn }: ShowcasesContentProps) {
         onSuccess={handleAddSuccess}
       />
 
-      {/* User profile dialog */}
-      <UserProfileDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        slug={dialogUser?.slug ?? dialogUser?.id ?? null}
-        name={dialogUser?.nickname ?? dialogUser?.name ?? null}
-        image={dialogUser?.image ?? null}
-      />
+      {/* User profile dialog - lazy mounted to avoid useAdmin/useSeasons firing while closed */}
+      {dialogOpen && (
+        <UserProfileDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          slug={dialogUser?.slug ?? dialogUser?.id ?? null}
+          name={dialogUser?.nickname ?? dialogUser?.name ?? null}
+          image={dialogUser?.image ?? null}
+        />
+      )}
     </div>
   );
 }

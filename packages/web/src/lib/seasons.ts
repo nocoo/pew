@@ -6,13 +6,18 @@
  */
 
 import type { SeasonStatus } from "@pew/core";
+import { isSeasonEnded } from "@/lib/season-helpers";
 
 /**
  * Derive season status from start/end ISO datetime strings compared to now.
  *
  * - now < start_date  → "upcoming"
- * - start_date <= now <= end_date  → "active"
- * - now > end_date  → "ended"
+ * - start_date <= now < end_date + 60s → "active"
+ * - now >= end_date + 60s  → "ended"
+ *
+ * Uses exclusive end boundary (end_date + 60_000ms) to ensure consistency
+ * with API queries. end_date is inclusive at minute precision, so we add
+ * 60 seconds to get the actual boundary when data stops changing.
  *
  * Uses epoch ms comparison to avoid ISO format mismatches
  * (toISOString() includes .000Z but stored dates may omit ms).
@@ -24,7 +29,7 @@ export function deriveSeasonStatus(
 ): SeasonStatus {
   const nowMs = (now ?? new Date()).getTime();
   if (nowMs < new Date(startDate).getTime()) return "upcoming";
-  if (nowMs > new Date(endDate).getTime()) return "ended";
+  if (isSeasonEnded(endDate, now)) return "ended";
   return "active";
 }
 

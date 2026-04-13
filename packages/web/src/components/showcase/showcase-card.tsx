@@ -6,6 +6,7 @@
 
 import Link from "next/link";
 import { ExternalLink, Github, Star, GitFork, Code, Scale } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ShowcaseImage } from "./showcase-image";
 import { UpvoteButton } from "./upvote-button";
 import type { Showcase } from "@/hooks/use-showcases";
@@ -115,20 +116,14 @@ export function ShowcaseCard({ showcase, isLoggedIn, onLoginRequired, onUpvoteCh
             onClick={() => onUserClick?.(showcase.user)}
             className="flex items-center gap-1.5 hover:opacity-80 transition-opacity cursor-pointer"
           >
-            {showcase.user.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={showcase.user.image}
-                alt={displayName}
-                className="h-5 w-5 rounded-full"
-              />
-            ) : (
-              <div className="h-5 w-5 rounded-full bg-accent flex items-center justify-center">
-                <span className="text-[10px] font-medium text-muted-foreground">
-                  {displayName.charAt(0).toUpperCase()}
-                </span>
-              </div>
-            )}
+            <Avatar className="h-5 w-5" size="sm">
+              {showcase.user.image && (
+                <AvatarImage src={showcase.user.image} alt={displayName} />
+              )}
+              <AvatarFallback className="text-[10px]">
+                {displayName.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
             <span className="text-xs text-muted-foreground truncate hover:text-foreground transition-colors">
               {displayName}
             </span>

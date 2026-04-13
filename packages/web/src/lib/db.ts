@@ -471,6 +471,7 @@ export interface DbRead {
       source?: string;
       deviceId?: string;
       granularity?: "half-hour" | "day";
+      tzOffset?: number;
     },
   ): Promise<UsageRecordRow[]>;
 
@@ -493,7 +494,7 @@ export interface DbRead {
     userId: string,
     fromDate: string,
     toDate: string,
-    options?: { granularity?: "half-hour" | "day" },
+    options?: { granularity?: "half-hour" | "day"; tzOffset?: number },
   ): Promise<UsageDeviceTimelineRow[]>;
 
   // ---------------------------------------------------------------------------

@@ -9,12 +9,14 @@ import { executeSync } from "./commands/sync.js";
 import { executeSessionSync } from "./commands/session-sync.js";
 import { executeStatus } from "./commands/status.js";
 import { executeLogin, resolveHost } from "./commands/login.js";
+import { executeLogout } from "./commands/logout.js";
 import { executeUpload } from "./commands/upload.js";
 import { executeSessionUpload } from "./commands/session-upload.js";
 import { executeNotify } from "./commands/notify.js";
 import { executeInit } from "./commands/init.js";
 import { executeUninstall } from "./commands/uninstall.js";
 import { executeReset } from "./commands/reset.js";
+import { isSSHSession } from "./utils/ssh.js";
 import { executeUpdate } from "./commands/update.js";
 import { resolveNotifierPaths } from "./notifier/paths.js";
 import { statusAll } from "./notifier/registry.js";
@@ -419,6 +421,75 @@ const statusCommand = defineCommand({
   },
 });
 
+// ---------------------------------------------------------------------------
+// SSH/headless detection helpers for login
+// ---------------------------------------------------------------------------
+
+/**
+ * Build a headless-aware openBrowser wrapper.
+ *
+ * - SSH session: skip the browser attempt entirely, print the login URL and
+ *   `--code` instructions, then throw so cli-base still waits for the timeout
+ *   (port-forwarding power users can still use the URL).
+ * - Non-SSH browser failure: add a `--code` hint beneath the URL that
+ *   cli-base already printed.
+ */
+function buildOpenBrowserFn(
+  host: string,
+  env: NodeJS.ProcessEnv = process.env,
+): (url: string) => Promise<void> {
+  const ssh = isSSHSession(env);
+
+  return async (url: string) => {
+    if (ssh) {
+      // Print the URL (in lieu of opening a browser)
+      log.text(`  ${pc.dim(url)}`);
+      log.blank();
+      // Print actionable SSH guidance
+      log.text(pc.bold("SSH session detected — browser login is unavailable."));
+      log.blank();
+      log.text(pc.bold("Recommended: use the one-time code flow"));
+      log.text(`  1. Open ${pc.cyan(host + "/manage-devices")} in your local browser`);
+      log.text(`  2. Click ${pc.bold("CLI Login Code")} to generate a code`);
+      log.text(`  3. Run: ${pc.cyan("pew login --code XXXX-XXXX")}`);
+      log.blank();
+      log.text(pc.dim("Alternative — SSH port forwarding:"));
+      // Extract port from the callback URL so we can show the exact command
+      try {
+        const cb = new URL(new URL(url).searchParams.get("callback") ?? "");
+        const port = cb.port;
+        log.text(pc.dim(`  ssh -L ${port}:localhost:${port} user@host`));
+        log.text(pc.dim("  Then open the URL above in your local browser."));
+      } catch {
+        log.text(pc.dim("  Forward the callback port with: ssh -L PORT:localhost:PORT user@host"));
+      }
+      log.blank();
+      // Throw so cli-base does NOT additionally try to open a browser and shows
+      // "Could not open browser" — we already displayed everything useful.
+      throw new Error("SSH session — browser unavailable");
+    }
+
+    // Non-SSH: attempt real browser open
+    try {
+      await openBrowser(url);
+    } catch (err) {
+      // cli-base will print "Could not open browser. Open this URL manually: ..."
+      // We append the --code hint after it resolves
+      // Note: cli-base's log callback runs synchronously before the timeout, so
+      // printing here may appear before cli-base's message. We add a small guard.
+      setTimeout(() => {
+        log.blank();
+        log.text(pc.bold("Tip: On a headless server? Use the code flow instead:"));
+        log.text(`  1. Open ${pc.cyan(host + "/manage-devices")} in your browser`);
+        log.text(`  2. Click ${pc.bold("CLI Login Code")} to generate a code`);
+        log.text(`  3. Run: ${pc.cyan("pew login --code XXXX-XXXX")}`);
+        log.blank();
+      }, 50);
+      throw err;
+    }
+  };
+}
+
 const loginCommand = defineCommand({
   meta: {
     name: "login",
@@ -448,17 +519,26 @@ const loginCommand = defineCommand({
 
     if (args.code) {
       log.start("Verifying authentication code...");
+    } else if (isSSHSession()) {
+      log.start("SSH session detected — preparing headless login...");
     } else {
       log.start("Opening browser for authentication...");
     }
+
+    // In SSH mode, suppress cli-base's "Could not open browser" fallback message
+    // since buildOpenBrowserFn already printed more helpful SSH guidance.
+    const loginLog = isSSHSession()
+      ? (msg: string) => { if (!msg.startsWith("Could not open browser")) console.log(msg); }
+      : undefined;
 
     const result = await executeLogin({
       configDir: paths.stateDir,
       apiUrl: host,
       dev,
       force: args.force,
-      openBrowser,
+      openBrowser: buildOpenBrowserFn(host),
       code: args.code,
+      log: loginLog,
     });
 
     if (result.alreadyLoggedIn) {
@@ -477,6 +557,41 @@ const loginCommand = defineCommand({
       );
     } else {
       log.error(`Login failed: ${result.error}`);
+      process.exitCode = 1;
+    }
+  },
+});
+
+const logoutCommand = defineCommand({
+  meta: {
+    name: "logout",
+    description: "Disconnect your CLI from the pew dashboard",
+  },
+  args: {
+    dev: {
+      type: "boolean",
+      description: "Use the dev host (pew.dev.hexly.ai)",
+      default: false,
+    },
+  },
+  async run() {
+    const paths = resolveDefaultPaths();
+    const dev = isDevMode();
+
+    const result = await executeLogout({
+      configDir: paths.stateDir,
+      dev,
+    });
+
+    if (result.alreadyLoggedOut) {
+      log.info("Not logged in.");
+      return;
+    }
+
+    if (result.success) {
+      log.success("Logged out successfully.");
+    } else {
+      log.error(`Logout failed: ${result.error}`);
       process.exitCode = 1;
     }
   },
@@ -825,6 +940,7 @@ export const main = defineCommand({
     sync: syncCommand,
     status: statusCommand,
     login: loginCommand,
+    logout: logoutCommand,
     notify: notifyCommand,
     init: initCommand,
     uninstall: uninstallCommand,

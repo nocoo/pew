@@ -212,6 +212,7 @@ function AchievementRing({ progress, tier, icon, size = RING_SIZE }: Achievement
 // ---------------------------------------------------------------------------
 
 interface UserTarget {
+  id: string;
   slug: string | null;
   name: string;
   image: string | null;
@@ -238,22 +239,15 @@ function EarnedByAvatars({ earnedBy, totalEarned, onUserClick }: EarnedByAvatars
       <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Earned by</span>
       <div className="flex -space-x-1.5">
         {earnedBy.slice(0, displayCount).map((user) => (
-          <span
+          <button
             key={user.id}
-            role="button"
-            tabIndex={0}
+            type="button"
+            aria-label={`View ${user.name}'s profile`}
             onClick={(e) => {
               e.stopPropagation();
-              onUserClick({ slug: user.slug, name: user.name, image: user.image });
+              onUserClick({ id: user.id, slug: user.slug, name: user.name, image: user.image });
             }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.stopPropagation();
-                e.preventDefault();
-                onUserClick({ slug: user.slug, name: user.name, image: user.image });
-              }
-            }}
-            className="cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background rounded-full"
+            className="cursor-pointer rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <Avatar className="h-5 w-5 ring-2 ring-background hover:ring-primary transition-all">
               {user.image && <AvatarImage src={user.image} alt={user.name} />}
@@ -261,7 +255,7 @@ function EarnedByAvatars({ earnedBy, totalEarned, onUserClick }: EarnedByAvatars
                 {user.name[0]?.toUpperCase() ?? "?"}
               </AvatarFallback>
             </Avatar>
-          </span>
+          </button>
         ))}
       </div>
       {remainingCount > 0 && (
@@ -280,13 +274,22 @@ function EarnedByAvatars({ earnedBy, totalEarned, onUserClick }: EarnedByAvatars
 interface MemberListProps {
   members: AchievementMember[];
   loading: boolean;
+  error: string | null;
   hasMore: boolean;
   onLoadMore: () => void;
   unit: string;
   onUserClick: (user: UserTarget) => void;
 }
 
-function MemberList({ members, loading, hasMore, onLoadMore, unit, onUserClick }: MemberListProps) {
+function MemberList({ members, loading, error, hasMore, onLoadMore, unit, onUserClick }: MemberListProps) {
+  if (error) {
+    return (
+      <div className="text-xs text-destructive text-center py-4">
+        Failed to load members: {error}
+      </div>
+    );
+  }
+
   if (members.length === 0 && !loading) {
     return (
       <div className="text-xs text-muted-foreground text-center py-4">
@@ -304,7 +307,7 @@ function MemberList({ members, loading, hasMore, onLoadMore, unit, onUserClick }
           <button
             key={member.id}
             type="button"
-            onClick={() => onUserClick({ slug: member.slug, name: member.name, image: member.image })}
+            onClick={() => onUserClick({ id: member.id, slug: member.slug, name: member.name, image: member.image })}
             className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors text-left"
           >
             <span className="text-xs text-muted-foreground w-5 text-right tabular-nums">
@@ -373,7 +376,7 @@ function AchievementCard({ achievement, index, isExpanded, onToggle, onUserClick
   const pct = Math.round(achievement.progress * 100);
 
   // Fetch members when expanded
-  const { data: membersData, loading: membersLoading, hasMore, loadMore } = useAchievementMembers(
+  const { data: membersData, loading: membersLoading, error: membersError, hasMore, loadMore } = useAchievementMembers(
     isExpanded ? achievement.id : null
   );
 
@@ -387,10 +390,17 @@ function AchievementCard({ achievement, index, isExpanded, onToggle, onUserClick
       style={{ animationDelay: `${Math.min(index * 30, 400)}ms` }}
     >
       {/* Clickable header */}
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onToggle}
-        className="w-full text-left"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggle();
+          }
+        }}
+        className="w-full text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
       >
         {/* Top row: ring + name/tier */}
         <div className="flex items-start gap-3">
@@ -461,7 +471,7 @@ function AchievementCard({ achievement, index, isExpanded, onToggle, onUserClick
             onUserClick={onUserClick}
           />
         )}
-      </button>
+      </div>
 
       {/* Expanded content */}
       {isExpanded && (
@@ -499,6 +509,7 @@ function AchievementCard({ achievement, index, isExpanded, onToggle, onUserClick
             <MemberList
               members={membersData?.members ?? []}
               loading={membersLoading}
+              error={membersError}
               hasMore={hasMore}
               onLoadMore={loadMore}
               unit={achievement.unit}
@@ -689,7 +700,7 @@ export default function AchievementsPage() {
       <UserProfileDialog
         open={profileDialogOpen}
         onOpenChange={setProfileDialogOpen}
-        slug={profileTarget?.slug ?? profileTarget?.name ?? null}
+        slug={profileTarget?.slug ?? profileTarget?.id ?? null}
         name={profileTarget?.name ?? null}
         image={profileTarget?.image ?? null}
       />

@@ -83,7 +83,7 @@ export function useAchievements(options?: UseAchievementsOptions): UseAchievemen
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setError(null);
 
@@ -91,7 +91,9 @@ export function useAchievements(options?: UseAchievementsOptions): UseAchievemen
       const tzOffset = new Date().getTimezoneOffset();
       const params = new URLSearchParams({ tzOffset: String(tzOffset) });
       if (limit) params.set("limit", String(limit));
-      const res = await fetch(`/api/achievements?${params}`);
+      const res = await fetch(`/api/achievements?${params}`, signal ? { signal } : undefined);
+
+      if (signal?.aborted) return;
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -99,19 +101,31 @@ export function useAchievements(options?: UseAchievementsOptions): UseAchievemen
       }
 
       const json = await res.json();
+
+      if (signal?.aborted) return;
+
       setData(json);
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, [limit]);
 
   useEffect(() => {
-    fetchData();
+    const controller = new AbortController();
+
+    fetchData(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
   }, [fetchData]);
 
-  return { data, loading, error, refetch: fetchData };
+  return { data, loading, error, refetch: () => fetchData() };
 }
 
 // ---------------------------------------------------------------------------
@@ -135,7 +149,7 @@ export function useAchievementMembers(
   const [error, setError] = useState<string | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
 
-  const fetchData = useCallback(async (nextCursor?: string) => {
+  const fetchData = useCallback(async (nextCursor?: string, signal?: AbortSignal) => {
     if (!achievementId) return;
 
     setLoading(true);
@@ -145,7 +159,9 @@ export function useAchievementMembers(
       const params = new URLSearchParams({ limit: String(limit) });
       if (nextCursor) params.set("cursor", nextCursor);
 
-      const res = await fetch(`/api/achievements/${achievementId}/members?${params}`);
+      const res = await fetch(`/api/achievements/${achievementId}/members?${params}`, signal ? { signal } : undefined);
+
+      if (signal?.aborted) return;
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -153,6 +169,8 @@ export function useAchievementMembers(
       }
 
       const json: AchievementMembersData = await res.json();
+
+      if (signal?.aborted) return;
 
       if (nextCursor) {
         // Append to existing data
@@ -165,17 +183,28 @@ export function useAchievementMembers(
       }
       setCursor(json.cursor);
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, [achievementId, limit]);
 
   useEffect(() => {
     if (achievementId) {
+      const controller = new AbortController();
+
+      // Reset data when achievementId changes to avoid stale data
       setData(null);
       setCursor(null);
-      fetchData();
+
+      fetchData(undefined, controller.signal);
+
+      return () => {
+        controller.abort();
+      };
     }
   }, [achievementId, fetchData]);
 

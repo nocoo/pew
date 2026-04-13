@@ -1,7 +1,6 @@
 "use client";
 
 import { Suspense, useState, useEffect, useCallback, useRef } from "react";
-import { useSession } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -10,23 +9,13 @@ import { sourceLabel } from "@/hooks/use-usage-data";
 import {
   useLeaderboard,
   type LeaderboardPeriod,
-  type LeaderboardEntry,
 } from "@/hooks/use-leaderboard";
+import { useLeaderboardScope } from "@/hooks/use-leaderboard-scope";
 import { LeaderboardNav } from "@/components/leaderboard/leaderboard-nav";
 import { PageHeader } from "@/components/leaderboard/page-header";
-import { TableHeader } from "@/components/leaderboard/table-header";
-import { LeaderboardSkeleton } from "@/components/leaderboard/leaderboard-skeleton";
-import { LeaderboardRow } from "@/components/leaderboard/leaderboard-row";
-import { PeriodTabs, PERIOD_TO_TAB } from "@/components/leaderboard/period-tabs";
-import {
-  ScopeDropdown,
-  loadScopeFromStorage,
-  saveScopeToStorage,
-  type ScopeSelection,
-  type Organization,
-  type Team,
-} from "@/components/leaderboard/scope-dropdown";
-import { UserProfileDialog } from "@/components/user-profile-dialog";
+import { PeriodTabs } from "@/components/leaderboard/period-tabs";
+import { ScopeDropdown } from "@/components/leaderboard/scope-dropdown";
+import { LeaderboardPageShell } from "@/components/leaderboard/leaderboard-page-shell";
 
 // ---------------------------------------------------------------------------
 // Agent list (matches VALID_SOURCES in API route)
@@ -135,7 +124,6 @@ function AgentSelector({
 // ---------------------------------------------------------------------------
 
 const PAGE_SIZE = 20;
-const MAX_ENTRIES = 100;
 
 // ---------------------------------------------------------------------------
 // Page
@@ -150,9 +138,6 @@ export default function AgentsLeaderboardPage() {
 }
 
 function AgentsLeaderboardContent() {
-  const { status } = useSession();
-  const isAuthenticated = status === "authenticated";
-  const isSessionLoading = status === "loading";
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -161,19 +146,18 @@ function AgentsLeaderboardContent() {
   const selectedAgent = urlSource && AGENT_SET.has(urlSource) ? urlSource : DEFAULT_AGENT;
 
   const [period, setPeriod] = useState<LeaderboardPeriod>("week");
-  const [scope, setScope] = useState<ScopeSelection>({ type: "global" });
-  const [scopeInitialized, setScopeInitialized] = useState(false);
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [teams, setTeams] = useState<Team[]>([]);
 
-  // Dialog state for user profile popup
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [dialogEntry, setDialogEntry] = useState<LeaderboardEntry | null>(null);
-
-  const handleRowSelect = useCallback((entry: LeaderboardEntry) => {
-    setDialogEntry(entry);
-    setDialogOpen(true);
-  }, []);
+  const {
+    scope,
+    setScope,
+    organizations,
+    teams,
+    scopeInitialized,
+    isSessionLoading,
+    isAuthenticated,
+    teamId,
+    orgId,
+  } = useLeaderboardScope();
 
   // Update URL when agent changes (URL is source of truth, not local state)
   const handleAgentChange = useCallback(
@@ -189,9 +173,6 @@ function AgentsLeaderboardContent() {
     },
     [searchParams, router],
   );
-
-  const teamId = scope.type === "team" ? scope.id ?? null : null;
-  const orgId = scope.type === "org" ? scope.id ?? null : null;
 
   const {
     entries,
@@ -209,73 +190,6 @@ function AgentsLeaderboardContent() {
     limit: PAGE_SIZE,
     enabled: scopeInitialized && !isSessionLoading,
   });
-
-  // Fetch user's organizations and teams
-  const fetchOrgsAndTeams = useCallback(async () => {
-    try {
-      const [orgsRes, teamsRes] = await Promise.all([
-        fetch("/api/organizations/mine"),
-        fetch("/api/teams"),
-      ]);
-
-      if (orgsRes.ok) {
-        const orgsJson = await orgsRes.json();
-        setOrganizations(orgsJson.organizations ?? []);
-      }
-      if (teamsRes.ok) {
-        const teamsJson = await teamsRes.json();
-        setTeams(teamsJson.teams ?? []);
-      }
-    } catch {
-      // Silently fail — scope dropdown optional
-    }
-  }, []);
-
-  // Initialize scope from localStorage and fetch orgs/teams
-  /* eslint-disable react-hooks/set-state-in-effect -- async fetch and localStorage read */
-  useEffect(() => {
-    if (isSessionLoading) return;
-
-    if (!isAuthenticated) {
-      setScopeInitialized(true);
-      return;
-    }
-
-    fetchOrgsAndTeams().then(() => {
-      const stored = loadScopeFromStorage();
-      if (stored) {
-        setScope(stored);
-      }
-      setScopeInitialized(true);
-    });
-  }, [isSessionLoading, isAuthenticated, fetchOrgsAndTeams]);
-  /* eslint-enable react-hooks/set-state-in-effect */
-
-  // Validate stored scope against available orgs/teams
-  /* eslint-disable react-hooks/set-state-in-effect */
-  useEffect(() => {
-    if (!scopeInitialized) return;
-
-    if (scope.type === "org" && scope.id) {
-      const valid = organizations.some((o) => o.id === scope.id);
-      if (!valid) {
-        setScope({ type: "global" });
-        saveScopeToStorage({ type: "global" });
-      }
-    } else if (scope.type === "team" && scope.id) {
-      const valid = teams.some((t) => t.id === scope.id);
-      if (!valid) {
-        setScope({ type: "global" });
-        saveScopeToStorage({ type: "global" });
-      }
-    }
-  }, [scopeInitialized, scope, organizations, teams]);
-  /* eslint-enable react-hooks/set-state-in-effect */
-
-  const handleScopeChange = (newScope: ScopeSelection) => {
-    setScope(newScope);
-    saveScopeToStorage(newScope);
-  };
 
   return (
     <>
@@ -313,7 +227,7 @@ function AgentsLeaderboardContent() {
             <div className="hidden sm:block">
               <ScopeDropdown
                 value={scope}
-                onChange={handleScopeChange}
+                onChange={setScope}
                 organizations={organizations}
                 teams={teams}
               />
@@ -321,61 +235,19 @@ function AgentsLeaderboardContent() {
           )}
         </div>
 
-        {/* Error */}
-        {error && (
-          <div className="rounded-[var(--radius-card)] bg-destructive/10 p-4 text-sm text-destructive">
-            Failed to load leaderboard: {error}
-          </div>
-        )}
-
-        {/* Table header row */}
-        <TableHeader />
-
-        {/* Loading — skeleton on initial load */}
-        {loading && <LeaderboardSkeleton />}
-
-        {/* Content */}
-        {entries.length > 0 && (
-          <div className="space-y-2">
-            {entries.map((entry, i) => (
-              <LeaderboardRow
-                key={entry.user.id}
-                entry={entry}
-                index={i}
-                animationStartIndex={animationStartIndex}
-                onSelect={handleRowSelect}
-              />
-            ))}
-            {hasMore && entries.length < MAX_ENTRIES && (
-              <button
-                onClick={loadMore}
-                disabled={loadingMore}
-                className="w-full rounded-[var(--radius-card)] bg-secondary py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
-              >
-                {loadingMore ? "Loading..." : "Show more"}
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Empty state */}
-        {!loading && entries.length === 0 && !error && (
-          <div className="rounded-[var(--radius-card)] bg-secondary p-8 text-center text-sm text-muted-foreground">
-            No usage data for {sourceLabel(selectedAgent)} in this period.
-          </div>
-        )}
+        {/* Shared page shell: error, table, loading, empty, dialog */}
+        <LeaderboardPageShell
+          entries={entries}
+          loading={loading}
+          loadingMore={loadingMore}
+          error={error}
+          hasMore={hasMore}
+          loadMore={loadMore}
+          animationStartIndex={animationStartIndex}
+          period={period}
+          emptyMessage={`No usage data for ${sourceLabel(selectedAgent)} in this period.`}
+        />
       </main>
-
-      {/* User profile dialog */}
-      <UserProfileDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        slug={dialogEntry?.user.slug ?? dialogEntry?.user.id ?? null}
-        name={dialogEntry?.user.name ?? null}
-        image={dialogEntry?.user.image ?? null}
-        badges={dialogEntry?.badges ?? []}
-        defaultTab={PERIOD_TO_TAB[period]}
-      />
     </>
   );
 }

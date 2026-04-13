@@ -90,7 +90,7 @@ export function useProjects(options?: UseProjectsOptions): UseProjectsResult {
   // Fetch
   // ---------------------------------------------------------------------------
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setError(null);
 
@@ -102,7 +102,10 @@ export function useProjects(options?: UseProjectsOptions): UseProjectsResult {
       }
       const qs = params.toString();
       const url = qs ? `/api/projects?${qs}` : "/api/projects";
-      const res = await fetch(url);
+      const res = await fetch(url, signal ? { signal } : undefined);
+
+      if (signal?.aborted) return;
+
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(
@@ -111,16 +114,31 @@ export function useProjects(options?: UseProjectsOptions): UseProjectsResult {
       }
 
       const json = (await res.json()) as ProjectsData;
+
+      if (signal?.aborted) return;
+
       setData(json);
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, [from, to]);
 
   useEffect(() => {
-    fetchData();
+    const controller = new AbortController();
+
+    // Clear data on filter change to avoid stale data
+    setData(null);
+
+    fetchData(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
   }, [fetchData]);
 
   // ---------------------------------------------------------------------------
@@ -235,7 +253,7 @@ export function useProjects(options?: UseProjectsOptions): UseProjectsResult {
     allTags,
     loading,
     error,
-    refetch: fetchData,
+    refetch: () => fetchData(),
     createProject,
     updateProject,
     deleteProject,
