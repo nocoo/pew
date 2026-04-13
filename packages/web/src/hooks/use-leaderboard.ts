@@ -201,7 +201,8 @@ export function useLeaderboard(
   // Fetch when filters change or on initial mount (when enabled)
   useEffect(() => {
     if (!enabled) {
-      // Not enabled yet - stay in loading state, don't fetch
+      // Reset so re-enabling with the same filter key will refetch
+      lastFilterKeyRef.current = null;
       return;
     }
 
