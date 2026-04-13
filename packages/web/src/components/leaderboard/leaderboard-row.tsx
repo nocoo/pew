@@ -36,9 +36,8 @@ export const LeaderboardRow = memo(function LeaderboardRow({
   const shouldAnimate = index >= animationStartIndex;
   const animationIndex = index - animationStartIndex;
 
-  // Stabilize click handler — entry is captured by the closure but
-  // the memo comparator below ensures this component only re-renders
-  // when the entry actually changes.
+  // Stabilize click handler so the button reference stays the same
+  // across re-renders when props haven't changed.
   const handleClick = useCallback(() => {
     onSelect(entry);
   }, [onSelect, entry]);
@@ -118,17 +117,4 @@ export const LeaderboardRow = memo(function LeaderboardRow({
       {content}
     </button>
   );
-}, /* arePropsEqual */ (prev, next) =>
-  prev.index === next.index &&
-  prev.animationStartIndex === next.animationStartIndex &&
-  prev.onSelect === next.onSelect &&
-  prev.entry.rank === next.entry.rank &&
-  prev.entry.user.id === next.entry.user.id &&
-  prev.entry.user.name === next.entry.user.name &&
-  prev.entry.user.image === next.entry.user.image &&
-  prev.entry.total_tokens === next.entry.total_tokens &&
-  prev.entry.session_count === next.entry.session_count &&
-  prev.entry.total_duration_seconds === next.entry.total_duration_seconds &&
-  prev.entry.teams.length === next.entry.teams.length &&
-  prev.entry.badges.length === next.entry.badges.length,
-);
+});
