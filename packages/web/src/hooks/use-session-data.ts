@@ -114,11 +114,11 @@ export function useSessionData(
     }
   }, [enabled]);
 
-  const overview = toSessionOverview(records);
   const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []); // frozen per mount — acceptable; page refresh handles DST changes
-  const hoursGrid = toWorkingHoursGrid(records, tzOffset);
-  const dailyMessages = toMessageDailyStats(records, tzOffset);
-  const projectBreakdown = toProjectBreakdown(records);
+  const overview = useMemo(() => toSessionOverview(records), [records]);
+  const hoursGrid = useMemo(() => toWorkingHoursGrid(records, tzOffset), [records, tzOffset]);
+  const dailyMessages = useMemo(() => toMessageDailyStats(records, tzOffset), [records, tzOffset]);
+  const projectBreakdown = useMemo(() => toProjectBreakdown(records), [records]);
 
   return {
     records,
