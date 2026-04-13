@@ -2,9 +2,30 @@
  * Achievements domain RPC handlers for worker-read.
  *
  * Handles all achievement-related read queries with typed interfaces.
+ * Earners/count queries are cached in KV for 5 minutes (global data, changes slowly).
  */
 
-import type { D1Database } from "@cloudflare/workers-types";
+import type { D1Database, KVNamespace } from "@cloudflare/workers-types";
+import { withCache, TTL_5M } from "../cache";
+
+// ---------------------------------------------------------------------------
+// Cache Keys
+// ---------------------------------------------------------------------------
+
+/**
+ * Cache key for achievement earners (top N users who earned an achievement).
+ * These are global aggregates — same result for all viewers.
+ */
+function cacheKeyEarners(achievementId: string, limit: number, offset: number): string {
+  return `ach:${achievementId}:earners:${limit}:${offset}`;
+}
+
+/**
+ * Cache key for achievement earners count.
+ */
+function cacheKeyEarnersCount(achievementId: string): string {
+  return `ach:${achievementId}:count`;
+}
 
 // ---------------------------------------------------------------------------
 // Response Types
@@ -302,7 +323,8 @@ async function handleGetCostByModelSource(
 
 async function handleGetAchievementEarners(
   req: GetAchievementEarnersRequest,
-  db: D1Database
+  db: D1Database,
+  kv: KVNamespace
 ): Promise<Response> {
   if (!req.achievementId || !req.sql || !req.params) {
     return Response.json(
@@ -311,17 +333,32 @@ async function handleGetAchievementEarners(
     );
   }
 
-  const results = await db
-    .prepare(req.sql)
-    .bind(...req.params)
-    .all<AchievementEarnerRow>();
+  // Extract limit and offset from params for cache key
+  // Convention: params = [threshold, limit, offset]
+  const limit = typeof req.params[1] === "number" ? req.params[1] : 5;
+  const offset = typeof req.params[2] === "number" ? req.params[2] : 0;
+  const cacheKey = cacheKeyEarners(req.achievementId, limit, offset);
 
-  return Response.json({ result: results.results });
+  const { data, cached } = await withCache(
+    kv,
+    cacheKey,
+    async () => {
+      const results = await db
+        .prepare(req.sql)
+        .bind(...req.params)
+        .all<AchievementEarnerRow>();
+      return results.results;
+    },
+    { ttlSeconds: TTL_5M }
+  );
+
+  return Response.json({ result: data, _cached: cached });
 }
 
 async function handleGetAchievementEarnersCount(
   req: GetAchievementEarnersCountRequest,
-  db: D1Database
+  db: D1Database,
+  kv: KVNamespace
 ): Promise<Response> {
   if (!req.achievementId || !req.sql || !req.params) {
     return Response.json(
@@ -330,12 +367,22 @@ async function handleGetAchievementEarnersCount(
     );
   }
 
-  const result = await db
-    .prepare(req.sql)
-    .bind(...req.params)
-    .first<{ count: number }>();
+  const cacheKey = cacheKeyEarnersCount(req.achievementId);
 
-  return Response.json({ result: result?.count ?? 0 });
+  const { data, cached } = await withCache(
+    kv,
+    cacheKey,
+    async () => {
+      const result = await db
+        .prepare(req.sql)
+        .bind(...req.params)
+        .first<{ count: number }>();
+      return result?.count ?? 0;
+    },
+    { ttlSeconds: TTL_5M }
+  );
+
+  return Response.json({ result: data, _cached: cached });
 }
 
 // ---------------------------------------------------------------------------
@@ -344,7 +391,8 @@ async function handleGetAchievementEarnersCount(
 
 export async function handleAchievementsRpc(
   request: AchievementsRpcRequest,
-  db: D1Database
+  db: D1Database,
+  kv: KVNamespace
 ): Promise<Response> {
   switch (request.method) {
     case "achievements.getUsageAggregates":
@@ -362,9 +410,9 @@ export async function handleAchievementsRpc(
     case "achievements.getCostByModelSource":
       return handleGetCostByModelSource(request, db);
     case "achievements.getEarners":
-      return handleGetAchievementEarners(request, db);
+      return handleGetAchievementEarners(request, db, kv);
     case "achievements.getEarnersCount":
-      return handleGetAchievementEarnersCount(request, db);
+      return handleGetAchievementEarnersCount(request, db, kv);
     default:
       return Response.json(
         { error: `Unknown achievements method: ${(request as { method: string }).method}` },

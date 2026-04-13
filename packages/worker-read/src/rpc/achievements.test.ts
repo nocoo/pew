@@ -11,7 +11,7 @@ import {
   type GetAchievementEarnersRequest,
   type GetAchievementEarnersCountRequest,
 } from "./achievements";
-import type { D1Database } from "@cloudflare/workers-types";
+import type { D1Database, KVNamespace } from "@cloudflare/workers-types";
 
 // ---------------------------------------------------------------------------
 // Mock D1Database
@@ -31,11 +31,31 @@ function createMockDb() {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Mock KVNamespace
+// ---------------------------------------------------------------------------
+
+function createMockKV() {
+  return {
+    get: vi.fn().mockResolvedValue(null), // Cache miss by default
+    put: vi.fn().mockResolvedValue(undefined),
+    delete: vi.fn().mockResolvedValue(undefined),
+    list: vi.fn().mockResolvedValue({ keys: [], list_complete: true }),
+  } as unknown as KVNamespace & {
+    get: ReturnType<typeof vi.fn>;
+    put: ReturnType<typeof vi.fn>;
+    delete: ReturnType<typeof vi.fn>;
+    list: ReturnType<typeof vi.fn>;
+  };
+}
+
 describe("achievements RPC handlers", () => {
   let db: ReturnType<typeof createMockDb>;
+  let kv: ReturnType<typeof createMockKV>;
 
   beforeEach(() => {
     db = createMockDb();
+    kv = createMockKV();
   });
 
   // -------------------------------------------------------------------------
@@ -57,7 +77,7 @@ describe("achievements RPC handlers", () => {
         method: "achievements.getUsageAggregates",
         userId: "u1",
       };
-      const response = await handleAchievementsRpc(request, db);
+      const response = await handleAchievementsRpc(request, db, kv);
       const body = await response.json();
 
       expect(response.status).toBe(200);
@@ -69,7 +89,7 @@ describe("achievements RPC handlers", () => {
         method: "achievements.getUsageAggregates",
         userId: "",
       } as GetUsageAggregatesRequest;
-      const response = await handleAchievementsRpc(request, db);
+      const response = await handleAchievementsRpc(request, db, kv);
 
       expect(response.status).toBe(400);
     });
@@ -91,7 +111,7 @@ describe("achievements RPC handlers", () => {
         method: "achievements.getDailyUsage",
         userId: "u1",
       };
-      const response = await handleAchievementsRpc(request, db);
+      const response = await handleAchievementsRpc(request, db, kv);
       const body = await response.json();
 
       expect(response.status).toBe(200);
@@ -103,7 +123,7 @@ describe("achievements RPC handlers", () => {
         method: "achievements.getDailyUsage",
         userId: "",
       } as GetDailyUsageRequest;
-      const response = await handleAchievementsRpc(request, db);
+      const response = await handleAchievementsRpc(request, db, kv);
 
       expect(response.status).toBe(400);
     });
@@ -131,7 +151,7 @@ describe("achievements RPC handlers", () => {
         method: "achievements.getDailyCostBreakdown",
         userId: "u1",
       };
-      const response = await handleAchievementsRpc(request, db);
+      const response = await handleAchievementsRpc(request, db, kv);
       const body = await response.json();
 
       expect(response.status).toBe(200);
@@ -143,7 +163,7 @@ describe("achievements RPC handlers", () => {
         method: "achievements.getDailyCostBreakdown",
         userId: "",
       } as GetDailyCostBreakdownRequest;
-      const response = await handleAchievementsRpc(request, db);
+      const response = await handleAchievementsRpc(request, db, kv);
 
       expect(response.status).toBe(400);
     });
@@ -166,7 +186,7 @@ describe("achievements RPC handlers", () => {
         method: "achievements.getDiversityCounts",
         userId: "u1",
       };
-      const response = await handleAchievementsRpc(request, db);
+      const response = await handleAchievementsRpc(request, db, kv);
       const body = await response.json();
 
       expect(response.status).toBe(200);
@@ -178,7 +198,7 @@ describe("achievements RPC handlers", () => {
         method: "achievements.getDiversityCounts",
         userId: "",
       } as GetDiversityCountsRequest;
-      const response = await handleAchievementsRpc(request, db);
+      const response = await handleAchievementsRpc(request, db, kv);
 
       expect(response.status).toBe(400);
     });
@@ -203,7 +223,7 @@ describe("achievements RPC handlers", () => {
         method: "achievements.getSessionAggregates",
         userId: "u1",
       };
-      const response = await handleAchievementsRpc(request, db);
+      const response = await handleAchievementsRpc(request, db, kv);
       const body = await response.json();
 
       expect(response.status).toBe(200);
@@ -215,7 +235,7 @@ describe("achievements RPC handlers", () => {
         method: "achievements.getSessionAggregates",
         userId: "",
       } as GetSessionAggregatesRequest;
-      const response = await handleAchievementsRpc(request, db);
+      const response = await handleAchievementsRpc(request, db, kv);
 
       expect(response.status).toBe(400);
     });
@@ -237,7 +257,7 @@ describe("achievements RPC handlers", () => {
         method: "achievements.getHourlyUsage",
         userId: "u1",
       };
-      const response = await handleAchievementsRpc(request, db);
+      const response = await handleAchievementsRpc(request, db, kv);
       const body = await response.json();
 
       expect(response.status).toBe(200);
@@ -249,7 +269,7 @@ describe("achievements RPC handlers", () => {
         method: "achievements.getHourlyUsage",
         userId: "",
       } as GetHourlyUsageRequest;
-      const response = await handleAchievementsRpc(request, db);
+      const response = await handleAchievementsRpc(request, db, kv);
 
       expect(response.status).toBe(400);
     });
@@ -276,7 +296,7 @@ describe("achievements RPC handlers", () => {
         method: "achievements.getCostByModelSource",
         userId: "u1",
       };
-      const response = await handleAchievementsRpc(request, db);
+      const response = await handleAchievementsRpc(request, db, kv);
       const body = await response.json();
 
       expect(response.status).toBe(200);
@@ -288,7 +308,7 @@ describe("achievements RPC handlers", () => {
         method: "achievements.getCostByModelSource",
         userId: "",
       } as GetCostByModelSourceRequest;
-      const response = await handleAchievementsRpc(request, db);
+      const response = await handleAchievementsRpc(request, db, kv);
 
       expect(response.status).toBe(400);
     });
@@ -312,11 +332,11 @@ describe("achievements RPC handlers", () => {
         sql: "SELECT id, name, image, slug, value, earned_at FROM users WHERE value >= ? LIMIT ? OFFSET ?",
         params: [100000, 5, 0],
       };
-      const response = await handleAchievementsRpc(request, db);
+      const response = await handleAchievementsRpc(request, db, kv);
       const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body).toEqual({ result: mockEarners });
+      expect(body).toEqual({ result: mockEarners, _cached: false });
     });
 
     it("should return 400 when params missing", async () => {
@@ -326,7 +346,7 @@ describe("achievements RPC handlers", () => {
         sql: "SELECT ...",
         params: [100000, 5, 0],
       } as GetAchievementEarnersRequest;
-      const response = await handleAchievementsRpc(request, db);
+      const response = await handleAchievementsRpc(request, db, kv);
 
       expect(response.status).toBe(400);
     });
@@ -346,11 +366,11 @@ describe("achievements RPC handlers", () => {
         sql: "SELECT COUNT(*) AS count FROM users WHERE value >= ?",
         params: [100000],
       };
-      const response = await handleAchievementsRpc(request, db);
+      const response = await handleAchievementsRpc(request, db, kv);
       const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body).toEqual({ result: 42 });
+      expect(body).toEqual({ result: 42, _cached: false });
     });
 
     it("should return 0 when no result", async () => {
@@ -362,11 +382,11 @@ describe("achievements RPC handlers", () => {
         sql: "SELECT COUNT(*) AS count FROM users WHERE value >= ?",
         params: [100000],
       };
-      const response = await handleAchievementsRpc(request, db);
+      const response = await handleAchievementsRpc(request, db, kv);
       const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body).toEqual({ result: 0 });
+      expect(body).toEqual({ result: 0, _cached: false });
     });
 
     it("should return 400 when params missing", async () => {
@@ -376,9 +396,80 @@ describe("achievements RPC handlers", () => {
         sql: "",
         params: [100000],
       } as GetAchievementEarnersCountRequest;
-      const response = await handleAchievementsRpc(request, db);
+      const response = await handleAchievementsRpc(request, db, kv);
 
       expect(response.status).toBe(400);
+    });
+
+    it("should return cached count on cache hit", async () => {
+      kv.get.mockResolvedValue(42); // Cache hit
+
+      const request: GetAchievementEarnersCountRequest = {
+        method: "achievements.getEarnersCount",
+        achievementId: "power-user",
+        sql: "SELECT COUNT(*) AS count FROM users WHERE value >= ?",
+        params: [100000],
+      };
+      const response = await handleAchievementsRpc(request, db, kv);
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body).toEqual({ result: 42, _cached: true });
+      // Should NOT call DB on cache hit
+      expect(db.prepare).not.toHaveBeenCalled();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Cache behavior for getEarners
+  // -------------------------------------------------------------------------
+
+  describe("achievements.getEarners cache", () => {
+    it("should return cached earners on cache hit", async () => {
+      const cachedEarners = [
+        { id: "u1", name: "Cached User", image: null, slug: "cached", value: 999, earned_at: null },
+      ];
+      kv.get.mockResolvedValue(cachedEarners); // Cache hit
+
+      const request: GetAchievementEarnersRequest = {
+        method: "achievements.getEarners",
+        achievementId: "power-user",
+        sql: "SELECT id, name, image, slug, value, earned_at FROM users WHERE value >= ? LIMIT ? OFFSET ?",
+        params: [100000, 5, 0],
+      };
+      const response = await handleAchievementsRpc(request, db, kv);
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body).toEqual({ result: cachedEarners, _cached: true });
+      // Should NOT call DB on cache hit
+      expect(db.prepare).not.toHaveBeenCalled();
+    });
+
+    it("should write to cache on cache miss", async () => {
+      const mockEarners = [
+        { id: "u1", name: "User 1", image: null, slug: "user-1", value: 1000000, earned_at: null },
+      ];
+      kv.get.mockResolvedValue(null); // Cache miss
+      db.all.mockResolvedValue({ results: mockEarners });
+
+      const request: GetAchievementEarnersRequest = {
+        method: "achievements.getEarners",
+        achievementId: "power-user",
+        sql: "SELECT id, name, image, slug, value, earned_at FROM users WHERE value >= ? LIMIT ? OFFSET ?",
+        params: [100000, 5, 0],
+      };
+      const response = await handleAchievementsRpc(request, db, kv);
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body).toEqual({ result: mockEarners, _cached: false });
+      // Should write to cache
+      expect(kv.put).toHaveBeenCalledWith(
+        "ach:power-user:earners:5:0",
+        JSON.stringify(mockEarners),
+        { expirationTtl: 300 }
+      );
     });
   });
 
@@ -389,7 +480,7 @@ describe("achievements RPC handlers", () => {
   describe("unknown method", () => {
     it("should return 400 for unknown method", async () => {
       const request = { method: "achievements.unknown" } as unknown as GetUsageAggregatesRequest;
-      const response = await handleAchievementsRpc(request, db);
+      const response = await handleAchievementsRpc(request, db, kv);
 
       expect(response.status).toBe(400);
       const body = (await response.json()) as { error: string };
