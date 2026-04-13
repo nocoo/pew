@@ -96,15 +96,29 @@ function TeamRow({
   entry,
   index,
   onMemberClick,
+  onExpand,
+  membersLoading,
 }: {
   entry: SeasonTeamEntry;
   index: number;
   onMemberClick: (member: SeasonMember) => void;
+  onExpand?: () => void;
+  membersLoading?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const members = entry.members ?? [];
   const hasMembers = members.length > 0;
+  const canExpand = hasMembers || membersLoading !== undefined;
   const tc = teamColor(entry.team.name);
+
+  const handleToggle = () => {
+    const newExpanded = !expanded;
+    setExpanded(newExpanded);
+    // Trigger lazy load when expanding for the first time
+    if (newExpanded && !hasMembers && onExpand) {
+      onExpand();
+    }
+  };
 
   return (
     <div
@@ -112,10 +126,10 @@ function TeamRow({
       style={{ animationDelay: `${index * 40}ms` }}
     >
       <button
-        onClick={() => hasMembers && setExpanded(!expanded)}
+        onClick={() => canExpand && handleToggle()}
         className={cn(
           "relative flex w-full items-center gap-3 overflow-hidden rounded-[var(--radius-card)] bg-secondary px-4 py-3 text-left transition-colors",
-          hasMembers && "hover:bg-accent cursor-pointer",
+          canExpand && "hover:bg-accent cursor-pointer",
           entry.rank <= 3 && "ring-1 ring-border/50",
           expanded && "rounded-b-none",
         )}
@@ -182,7 +196,7 @@ function TeamRow({
         </div>
 
         {/* Expand indicator */}
-        {hasMembers && (
+        {canExpand && (
           <ChevronDown
             className={cn(
               "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
@@ -193,9 +207,17 @@ function TeamRow({
       </button>
 
       {/* Expanded member list */}
-      {expanded && hasMembers && (
+      {expanded && (
         <div className="rounded-b-[var(--radius-card)] border-t border-border bg-secondary/50 px-4 py-2 space-y-1">
-          {members.map((member) => {
+          {membersLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+              <span className="ml-2 text-sm text-muted-foreground">
+                Loading members...
+              </span>
+            </div>
+          ) : hasMembers ? (
+            members.map((member) => {
             const displayName = member.name ?? "Anonymous";
             const initial = displayName[0]?.toUpperCase() ?? "?";
             return (
@@ -257,7 +279,12 @@ function TeamRow({
                 <div className="w-4 shrink-0" />
               </div>
             );
-          })}
+          })
+          ) : (
+            <div className="py-2 text-center text-sm text-muted-foreground">
+              No members to display
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -272,7 +299,8 @@ export default function SeasonLeaderboardPage() {
   const { slug } = useParams<{ slug: string }>();
 
   // Pass slug directly to the API (supports both UUID and slug since Phase 3)
-  const { data, loading, refreshing, error } = useSeasonLeaderboard(slug);
+  const { data, loading, refreshing, error, loadTeamMembers, loadingTeamIds } =
+    useSeasonLeaderboard(slug);
 
   const isLoading = loading && !data;
 
@@ -365,7 +393,14 @@ export default function SeasonLeaderboardPage() {
               </div>
             ) : (
               data.entries.map((entry, i) => (
-                <TeamRow key={entry.team.id} entry={entry} index={i} onMemberClick={handleMemberClick} />
+                <TeamRow
+                  key={entry.team.id}
+                  entry={entry}
+                  index={i}
+                  onMemberClick={handleMemberClick}
+                  onExpand={() => loadTeamMembers(entry.team.id)}
+                  membersLoading={loadingTeamIds.has(entry.team.id)}
+                />
               ))
             )}
           </div>

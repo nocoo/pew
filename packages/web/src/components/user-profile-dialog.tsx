@@ -14,6 +14,7 @@ import {
   ProfileContent,
   type ProfileTab,
 } from "@/components/profile/profile-content";
+import type { BadgeIconType } from "@pew/core";
 import type { LeaderboardBadge } from "@/hooks/use-leaderboard";
 
 // ---------------------------------------------------------------------------
@@ -28,6 +29,15 @@ interface ResolvedSeason {
   name: string;
   start: string;
   end: string;
+}
+
+/** User data passed to DialogHeader */
+interface DialogUserData {
+  name: string | null;
+  image: string | null;
+  created_at: string;
+  first_seen: string | null;
+  badges?: { text: string; icon: BadgeIconType; colorBg: string; colorText: string }[];
 }
 
 export interface UserProfileDialogProps {
@@ -140,23 +150,29 @@ function ConfigLoadingSkeleton({
 // ---------------------------------------------------------------------------
 
 interface DialogHeaderProps {
-  slug: string | null;
   name?: string | null | undefined;
   image?: string | null | undefined;
   badges?: LeaderboardBadge[];
   isAdmin: boolean;
+  /** Pre-fetched user data from dialog level (avoids duplicate fetch) */
+  user?: DialogUserData | null;
+  loading?: boolean;
 }
 
-function DialogHeader({ slug, name, image, badges: badgesProp, isAdmin }: DialogHeaderProps) {
-  // Light fetch just for user info (name, avatar, member since, badges)
-  const { user, loading } = useUserProfile({ slug: slug ?? "", days: 7 });
-
+function DialogHeader({
+  name,
+  image,
+  badges: badgesProp,
+  isAdmin,
+  user,
+  loading = false,
+}: DialogHeaderProps) {
   const displayName = user?.name ?? name ?? "User";
   const displayImage = user?.image ?? image;
   const initial = displayName[0]?.toUpperCase() ?? "?";
   const isFirstLoad = loading && !user;
 
-  // Prefer fresh badges from uncached profile fetch, fall back to cached prop
+  // Prefer fresh badges from fetched profile, fall back to prop
   const displayBadges = user?.badges ?? badgesProp ?? [];
 
   return (
@@ -173,7 +189,7 @@ function DialogHeader({ slug, name, image, badges: badgesProp, isAdmin }: Dialog
         <div>
           <div className="flex items-center gap-2">
             <Dialog.Title className="text-xl font-semibold text-foreground">
-              {isFirstLoad && !user ? (
+              {isFirstLoad ? (
                 <Skeleton className="h-6 w-40" />
               ) : (
                 displayName
@@ -243,6 +259,13 @@ export function UserProfileDialog({
     status: "active",
   });
 
+  // Fetch user profile once at dialog level, share with header
+  // This avoids duplicate fetches in DialogHeader and ProfileContent
+  const { user: profileUser, loading: profileLoading } = useUserProfile({
+    slug: slug ?? "",
+    days: 7,
+  });
+
   // Season from props (season leaderboard entry point)
   const seasonFromProps = useMemo<ResolvedSeason | null>(() => {
     if (seasonName && seasonStart && seasonEnd) {
@@ -279,11 +302,12 @@ export function UserProfileDialog({
             <>
               <DialogHeader
                 key={`header-${slug}`}
-                slug={slug}
                 name={name}
                 image={image}
                 {...(badges && badges.length > 0 && { badges })}
                 isAdmin={isAdmin}
+                user={profileUser}
+                loading={profileLoading}
               />
               <ProfileContent
                 key={`content-${slug}-${defaultTab}`}

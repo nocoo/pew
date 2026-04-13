@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import type {
   UsageRow,
   UsageSummary,
@@ -151,15 +151,27 @@ export function useUserProfile(
     };
   }, [fetchData]);
 
-  const daily = data ? toDailyPoints(data.records, new Date().getTimezoneOffset()) : [];
-  const sources = data
-    ? toSourceAggregates(data.records).map((s) => ({
-        ...s,
-        label: sourceLabel(s.label),
-      }))
-    : [];
-  const models = data ? toModelAggregates(data.records) : [];
-  const heatmap = toHeatmapData(daily);
+  // Memoize derived data to avoid recalculation on every render
+  const tzOffset = new Date().getTimezoneOffset();
+  const daily = useMemo(
+    () => (data ? toDailyPoints(data.records, tzOffset) : []),
+    [data, tzOffset],
+  );
+  const sources = useMemo(
+    () =>
+      data
+        ? toSourceAggregates(data.records).map((s) => ({
+            ...s,
+            label: sourceLabel(s.label),
+          }))
+        : [],
+    [data],
+  );
+  const models = useMemo(
+    () => (data ? toModelAggregates(data.records) : []),
+    [data],
+  );
+  const heatmap = useMemo(() => toHeatmapData(daily), [daily]);
 
   return {
     user: data?.user ?? null,
