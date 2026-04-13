@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { SeasonStatus } from "@pew/core";
 
 // ---------------------------------------------------------------------------
@@ -70,10 +70,13 @@ export function useSeasonLeaderboard(
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Track if initial load has completed to avoid stale closure issues
+  const hasLoadedRef = useRef(false);
+
   const fetchData = useCallback(async () => {
     if (!seasonIdOrSlug) return;
 
-    if (data === null) {
+    if (!hasLoadedRef.current) {
       setLoading(true);
     } else {
       setRefreshing(true);
@@ -94,13 +97,13 @@ export function useSeasonLeaderboard(
 
       const json = (await res.json()) as SeasonLeaderboardData;
       setData(json);
+      hasLoadedRef.current = true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seasonIdOrSlug]);
 
   useEffect(() => {
