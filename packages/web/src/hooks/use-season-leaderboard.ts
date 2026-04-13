@@ -81,6 +81,9 @@ export function useSeasonLeaderboard(
   // Track which teams have already been fetched to avoid duplicate requests
   const fetchedTeamsRef = useRef<Set<string>>(new Set());
 
+  // Track team IDs currently being loaded (ref for stable closure)
+  const loadingTeamIdsRef = useRef<Set<string>>(new Set());
+
   // Initial fetch without expand=members for faster load
   const fetchData = useCallback(async (signal?: AbortSignal) => {
     if (!seasonIdOrSlug) return;
@@ -130,11 +133,12 @@ export function useSeasonLeaderboard(
   const loadTeamMembers = useCallback(
     async (teamId: string) => {
       if (!seasonIdOrSlug || !data) return;
-      // Skip if already fetched or currently loading
-      if (fetchedTeamsRef.current.has(teamId) || loadingTeamIds.has(teamId)) {
+      // Skip if already fetched or currently loading (use ref for stable identity)
+      if (fetchedTeamsRef.current.has(teamId) || loadingTeamIdsRef.current.has(teamId)) {
         return;
       }
 
+      loadingTeamIdsRef.current.add(teamId);
       setLoadingTeamIds((prev) => new Set(prev).add(teamId));
 
       try {
@@ -170,6 +174,7 @@ export function useSeasonLeaderboard(
       } catch {
         // Silently fail — user can retry by collapsing/expanding again
       } finally {
+        loadingTeamIdsRef.current.delete(teamId);
         setLoadingTeamIds((prev) => {
           const next = new Set(prev);
           next.delete(teamId);
@@ -177,7 +182,7 @@ export function useSeasonLeaderboard(
         });
       }
     },
-    [seasonIdOrSlug, data, loadingTeamIds],
+    [seasonIdOrSlug, data],
   );
 
   useEffect(() => {

@@ -9,13 +9,8 @@ import type {
   ModelAggregate,
   HeatmapPoint,
 } from "@/hooks/use-usage-data";
-import {
-  toDailyPoints,
-  toSourceAggregates,
-  toModelAggregates,
-  toHeatmapData,
-  sourceLabel,
-} from "@/hooks/use-usage-data";
+import { toHeatmapData } from "@/hooks/use-usage-data";
+import { useDerivedUsageData } from "@/hooks/use-derived-usage-data";
 import type { BadgeIconType } from "@pew/core";
 
 // ---------------------------------------------------------------------------
@@ -154,24 +149,7 @@ export function useUserProfile(
 
   // Memoize derived data to avoid recalculation on every render
   const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []); // frozen per mount — acceptable; page refresh handles DST changes
-  const daily = useMemo(
-    () => (data ? toDailyPoints(data.records, tzOffset) : []),
-    [data, tzOffset],
-  );
-  const sources = useMemo(
-    () =>
-      data
-        ? toSourceAggregates(data.records).map((s) => ({
-            ...s,
-            label: sourceLabel(s.label),
-          }))
-        : [],
-    [data],
-  );
-  const models = useMemo(
-    () => (data ? toModelAggregates(data.records) : []),
-    [data],
-  );
+  const { daily, sources, models } = useDerivedUsageData(data?.records ?? null, tzOffset);
   const heatmap = useMemo(() => toHeatmapData(daily), [daily]);
 
   return {

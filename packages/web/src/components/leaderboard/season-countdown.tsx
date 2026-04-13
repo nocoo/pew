@@ -51,12 +51,46 @@ export function SeasonCountdown({
 }: SeasonCountdownProps) {
   const [now, setNow] = useState(() => Date.now());
 
-  // Tick every second for active/upcoming seasons
+  // Tick every second for active/upcoming seasons, pause when tab is hidden
   useEffect(() => {
     if (status === "ended") return;
 
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
+    let id: ReturnType<typeof setInterval> | null = null;
+
+    const start = () => {
+      if (id === null) {
+        // Sync immediately on resume so the display isn't stale
+        setNow(Date.now());
+        id = setInterval(() => setNow(Date.now()), 1000);
+      }
+    };
+
+    const stop = () => {
+      if (id !== null) {
+        clearInterval(id);
+        id = null;
+      }
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        start();
+      } else {
+        stop();
+      }
+    };
+
+    // Only start if currently visible
+    if (document.visibilityState === "visible") {
+      start();
+    }
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      stop();
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [status]);
 
   const fullRange = `${formatSeasonDate(startDate)} — ${formatSeasonDate(endDate)}`;
