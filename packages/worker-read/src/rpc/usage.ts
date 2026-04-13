@@ -137,11 +137,13 @@ async function handleGetUsage(
   if (granularity === "day") {
     if (tzOffset !== 0) {
       const offsetStr = String(-tzOffset);
+      // Note: GROUP BY doesn't support parameterized ?, so we inline the offset
+      // The offset is validated (integer, abs <= 840) so this is safe
       timeColumn =
         "date(datetime(hour_start, ? || ' minutes')) AS hour_start";
       groupBy =
-        "date(datetime(hour_start, ? || ' minutes')), source, model";
-      prependParams.push(offsetStr, offsetStr);
+        `date(datetime(hour_start, '${offsetStr} minutes')), source, model`;
+      prependParams.push(offsetStr);
     } else {
       timeColumn = "date(hour_start) AS hour_start";
       groupBy = "date(hour_start), source, model";
@@ -283,9 +285,11 @@ async function handleGetDeviceTimeline(
   if (granularity === "day") {
     if (tzOffset !== 0) {
       const offsetStr = String(-tzOffset);
+      // Note: GROUP BY doesn't support parameterized ?, so we inline the offset
+      // The offset is validated (integer, abs <= 840) so this is safe
       dateExpr = "date(datetime(ur.hour_start, ? || ' minutes'))";
-      groupBy = `date(datetime(ur.hour_start, ? || ' minutes')), ur.device_id`;
-      tzParams.push(offsetStr, offsetStr);
+      groupBy = `date(datetime(ur.hour_start, '${offsetStr} minutes')), ur.device_id`;
+      tzParams.push(offsetStr);
     } else {
       dateExpr = "date(ur.hour_start)";
       groupBy = "date(ur.hour_start), ur.device_id";
