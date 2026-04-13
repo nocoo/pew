@@ -48,6 +48,8 @@ export interface LoginOptions {
   code?: string;
   /** Injected fetch function (for testing) */
   fetch?: typeof globalThis.fetch;
+  /** Log function for browser flow messages (default: console.log) */
+  log?: (msg: string) => void;
 }
 
 export interface LoginResult {
@@ -73,6 +75,7 @@ export async function executeLogin(options: LoginOptions): Promise<LoginResult> 
     code,
     fetch: fetchFn = globalThis.fetch,
   } = options;
+  // log is accessed via options.log below (not destructured to avoid shadowing)
 
   const configManager = new ConfigManager(configDir, dev);
 
@@ -90,6 +93,7 @@ export async function executeLogin(options: LoginOptions): Promise<LoginResult> 
   }
 
   // 3. Browser-based OAuth login flow
+  const logFn = options.log ?? ((msg: string) => console.log(msg));
   const result = await performLogin({
     openBrowser: openBrowserFn,
     onSaveToken: (token) => {
@@ -99,7 +103,7 @@ export async function executeLogin(options: LoginOptions): Promise<LoginResult> 
     timeoutMs,
     generateNonce,
     accentColor: PEW_ACCENT_COLOR,
-    log: (msg: string) => console.log(msg),
+    log: logFn,
   });
 
   return {

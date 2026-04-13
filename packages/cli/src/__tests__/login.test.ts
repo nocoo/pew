@@ -561,4 +561,59 @@ describe("executeLogin", () => {
       expect(result.error).toContain("No API key");
     });
   });
+
+  // ---- Custom log callback ----
+
+  describe("custom log callback", () => {
+    it("should use custom log function instead of console.log", async () => {
+      const logMessages: string[] = [];
+
+      // Use a short timeout so the test doesn't hang waiting for browser callback
+      const loginPromise = executeLogin({
+        configDir: tempDir,
+        apiUrl: "http://localhost:7020",
+        timeoutMs: 300,
+        generateNonce: () => FIXED_NONCE,
+        log: (msg) => logMessages.push(msg),
+        openBrowser: async (_url) => {
+          // Simulate browser failure to trigger the log callback
+          throw new Error("Browser not available");
+        },
+      });
+
+      // Wait for timeout or result
+      const result = await loginPromise;
+
+      // The log function should have been called with the "Could not open browser" message
+      const browserMsg = logMessages.find((m) => m.includes("Could not open browser"));
+      expect(browserMsg).toBeDefined();
+      expect(result.success).toBe(false);
+    }, 2000);
+
+    it("should not call log function for code-based login (browser flow is skipped)", async () => {
+      const logMessages: string[] = [];
+
+      const mockFetch = async () => {
+        return new Response(JSON.stringify({
+          api_key: "pk_log_test",
+          email: "log@example.com",
+        }), { status: 200 });
+      };
+
+      const result = await executeLogin({
+        configDir: tempDir,
+        apiUrl: "http://localhost:7020",
+        code: "ABCD-9999",
+        fetch: mockFetch as typeof globalThis.fetch,
+        log: (msg) => logMessages.push(msg),
+        openBrowser: async () => {
+          throw new Error("Should not open browser");
+        },
+      });
+
+      // log callback should NOT be called for code-based login (no browser flow)
+      expect(logMessages).toHaveLength(0);
+      expect(result.success).toBe(true);
+    });
+  });
 });
