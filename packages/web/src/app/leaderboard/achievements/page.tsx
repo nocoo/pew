@@ -239,13 +239,15 @@ function EarnedByAvatars({ earnedBy, totalEarned, onUserClick }: EarnedByAvatars
       <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Earned by</span>
       <div className="flex -space-x-1.5">
         {earnedBy.slice(0, displayCount).map((user) => (
-          <span
+          <button
             key={user.id}
+            type="button"
+            aria-label={`View ${user.name}'s profile`}
             onClick={(e) => {
               e.stopPropagation();
               onUserClick({ id: user.id, slug: user.slug, name: user.name, image: user.image });
             }}
-            className="cursor-pointer"
+            className="cursor-pointer rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <Avatar className="h-5 w-5 ring-2 ring-background hover:ring-primary transition-all">
               {user.image && <AvatarImage src={user.image} alt={user.name} />}
@@ -253,7 +255,7 @@ function EarnedByAvatars({ earnedBy, totalEarned, onUserClick }: EarnedByAvatars
                 {user.name[0]?.toUpperCase() ?? "?"}
               </AvatarFallback>
             </Avatar>
-          </span>
+          </button>
         ))}
       </div>
       {remainingCount > 0 && (
@@ -388,10 +390,17 @@ function AchievementCard({ achievement, index, isExpanded, onToggle, onUserClick
       style={{ animationDelay: `${Math.min(index * 30, 400)}ms` }}
     >
       {/* Clickable header */}
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onToggle}
-        className="w-full text-left"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onToggle();
+          }
+        }}
+        className="w-full text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
       >
         {/* Top row: ring + name/tier */}
         <div className="flex items-start gap-3">
@@ -462,7 +471,7 @@ function AchievementCard({ achievement, index, isExpanded, onToggle, onUserClick
             onUserClick={onUserClick}
           />
         )}
-      </button>
+      </div>
 
       {/* Expanded content */}
       {isExpanded && (
