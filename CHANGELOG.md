@@ -1,5 +1,36 @@
 # Changelog
 
+## v2.20.5
+
+### Changed
+- Break circular dependency between usage hooks
+- Move PAGE_SIZE to shared leaderboard-constants module
+- Extract LeaderboardPageTitle component
+- Extract FilterDropdown component from agent/model selectors
+- Add retrospective for TooltipProvider lift missing consumer path
+- Migrate 14 hooks to shared useFetchData / throwApiError
+- Add shared useFetchData hook
+- Add shared parseApiError helper
+- Pause season countdown interval when tab is hidden
+- Extract shared useDerivedUsageData hook
+- Memoize derived data in useSessionData
+- Lift TooltipProvider to leaderboard shell level
+- Wrap LeaderboardRow with React.memo
+
+### Fixed
+- Clear stale data on fetch error in useFetchData
+- Keep stale data during URL-change refetch in useFetchData
+- Add TooltipProvider to season leaderboard page
+- Wrap records derivation in useMemo to satisfy exhaustive-deps
+- Use memoized tzOffset in fetchData callback
+- Reset lastFilterKeyRef when leaderboard is disabled
+- Use ref for loadingTeamIds guard in loadTeamMembers
+- Drop incomplete React.memo comparator on LeaderboardRow
+- Preserve table header during pagination errors and add DST comment
+- Hide skeleton and table header on leaderboard error
+- Use setUTCDate for date range calculation
+- Memoize tzOffset to prevent unnecessary re-renders
+
 ## v2.20.4
 
 ### Added

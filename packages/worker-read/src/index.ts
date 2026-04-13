@@ -39,7 +39,7 @@ import { handleBadgesRpc, type BadgesRpcRequest } from "./rpc/badges";
 // Version
 // ---------------------------------------------------------------------------
 
-export const WORKER_VERSION = "2.20.4";
+export const WORKER_VERSION = "2.20.5";
 
 // ---------------------------------------------------------------------------
 // Boot timestamp (for uptime calculation)

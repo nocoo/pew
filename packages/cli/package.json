@@ -1,6 +1,6 @@
 {
   "name": "@nocoo/pew",
-  "version": "2.20.4",
+  "version": "2.20.5",
   "description": "The contribution graph for AI-native developers",
   "type": "module",
   "bin": {
