@@ -2,11 +2,12 @@
  * GET /api/admin/usage/compare — compare token usage across multiple users.
  *
  * Query params:
- *   userIds — comma-separated user IDs (required, max 10)
- *   from    — ISO date (default: 30 days ago)
- *   to      — ISO date (default: now)
- *   source  — optional agent filter (e.g. "claude-code")
- *   model   — optional model filter
+ *   userIds  — comma-separated user IDs (required, max 10)
+ *   from     — ISO date (default: 30 days ago)
+ *   to       — ISO date (default: now)
+ *   source   — optional agent filter (e.g. "claude-code")
+ *   model    — optional model filter
+ *   tzOffset — timezone offset in minutes (default: 0)
  */
 
 import { NextResponse } from "next/server";
@@ -103,6 +104,16 @@ export async function GET(request: Request) {
   // Optional filters
   const source = url.searchParams.get("source");
   const model = url.searchParams.get("model");
+  const tzOffsetParam = url.searchParams.get("tzOffset");
+  const tzOffset = tzOffsetParam !== null ? parseInt(tzOffsetParam, 10) : 0;
+
+  // Validate tzOffset
+  if (!Number.isFinite(tzOffset) || Math.abs(tzOffset) > 840) {
+    return NextResponse.json(
+      { error: "Invalid tzOffset value" },
+      { status: 400 }
+    );
+  }
 
   const db = await getDbRead();
 
@@ -130,10 +141,25 @@ export async function GET(request: Request) {
       );
     }
 
+    // Build date expression for grouping (apply tzOffset for local date)
+    let dateExpr: string;
+    let groupByExpr: string;
+    const tzParams: unknown[] = [];
+
+    if (tzOffset !== 0) {
+      const offsetStr = String(-tzOffset);
+      dateExpr = "date(datetime(hour_start, ? || ' minutes'))";
+      groupByExpr = "date(datetime(hour_start, ? || ' minutes')), user_id, source, model";
+      tzParams.push(offsetStr, offsetStr);
+    } else {
+      dateExpr = "date(hour_start)";
+      groupByExpr = "date(hour_start), user_id, source, model";
+    }
+
     // Build usage query with optional filters
     let usageQuery = `
       SELECT
-        date(hour_start) as date,
+        ${dateExpr} as date,
         user_id,
         SUM(total_tokens) as total_tokens,
         source,
@@ -144,6 +170,7 @@ export async function GET(request: Request) {
         AND hour_start < ?
     `;
     const usageParams: unknown[] = [
+      ...tzParams,
       ...userIds,
       fromDate.toISOString(),
       toDate.toISOString(),
@@ -159,7 +186,7 @@ export async function GET(request: Request) {
       usageParams.push(model);
     }
 
-    usageQuery += " GROUP BY date(hour_start), user_id, source, model";
+    usageQuery += ` GROUP BY ${groupByExpr}`;
 
     const { results: usageRows } = await db.query<{
       date: string;
