@@ -178,6 +178,7 @@ function ModelsLeaderboardContent() {
   const [scopeInitialized, setScopeInitialized] = useState(false);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [orgsLoaded, setOrgsLoaded] = useState(false);
 
   // Dialog state for user profile popup
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -239,8 +240,13 @@ function ModelsLeaderboardContent() {
         const teamsJson = await teamsRes.json();
         setTeams(teamsJson.teams ?? []);
       }
+      // Mark as loaded only when BOTH fetches succeeded
+      if (orgsRes.ok && teamsRes.ok) {
+        setOrgsLoaded(true);
+      }
     } catch {
       // Silently fail — scope dropdown optional
+      // Do NOT set orgsLoaded = true so validation effect won't run
     }
   }, []);
 
@@ -250,6 +256,7 @@ function ModelsLeaderboardContent() {
     if (isSessionLoading) return;
 
     if (!isAuthenticated) {
+      setScope({ type: "global" });
       setScopeInitialized(true);
       return;
     }
@@ -267,7 +274,8 @@ function ModelsLeaderboardContent() {
   // Validate stored scope against available orgs/teams
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    if (!scopeInitialized) return;
+    // Only validate when orgs have been successfully loaded
+    if (!scopeInitialized || !orgsLoaded) return;
 
     if (scope.type === "org" && scope.id) {
       const valid = organizations.some((o) => o.id === scope.id);
@@ -282,7 +290,7 @@ function ModelsLeaderboardContent() {
         saveScopeToStorage({ type: "global" });
       }
     }
-  }, [scopeInitialized, scope, organizations, teams]);
+  }, [scopeInitialized, orgsLoaded, scope, organizations, teams]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleScopeChange = (newScope: ScopeSelection) => {
