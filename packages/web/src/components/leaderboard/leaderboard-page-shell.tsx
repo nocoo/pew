@@ -81,11 +81,11 @@ export function LeaderboardPageShell({
         </div>
       )}
 
-      {/* Table header row */}
-      <TableHeader />
+      {/* Table header row — hide when error */}
+      {!error && <TableHeader />}
 
-      {/* Loading — skeleton on initial load */}
-      {loading && <LeaderboardSkeleton />}
+      {/* Loading — skeleton on initial load, hide when error */}
+      {loading && !error && <LeaderboardSkeleton />}
 
       {/* Content — no opacity change during pagination */}
       {entries.length > 0 && (
