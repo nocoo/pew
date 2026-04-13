@@ -8,7 +8,6 @@ import type { SeasonStatus } from "@pew/core";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
@@ -83,18 +82,16 @@ export function SeasonCountdown({
   const label = status === "active" ? "Ends in" : "Starts in";
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span className="text-sm text-muted-foreground inline-flex items-center gap-1 cursor-default">
-            <Clock className="h-3.5 w-3.5" />
-            {label} {formatCountdown(remaining)}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          <span>{fullRange}</span>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="text-sm text-muted-foreground inline-flex items-center gap-1 cursor-default">
+          <Clock className="h-3.5 w-3.5" />
+          {label} {formatCountdown(remaining)}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>
+        <span>{fullRange}</span>
+      </TooltipContent>
+    </Tooltip>
   );
 }

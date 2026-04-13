@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useCallback } from "react";
 import { cn, formatTokensFull } from "@/lib/utils";
 import { formatDuration } from "@/lib/date-helpers";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -10,10 +11,10 @@ import { TeamLogoBadge } from "@/components/leaderboard/scope-dropdown";
 import type { LeaderboardEntry } from "@/hooks/use-leaderboard";
 
 // ---------------------------------------------------------------------------
-// LeaderboardRow — check-style design
+// LeaderboardRow — check-style design (memoized)
 // ---------------------------------------------------------------------------
 
-export function LeaderboardRow({
+export const LeaderboardRow = memo(function LeaderboardRow({
   entry,
   index,
   animationStartIndex,
@@ -34,6 +35,12 @@ export function LeaderboardRow({
   // Only animate newly loaded entries (index >= animationStartIndex)
   const shouldAnimate = index >= animationStartIndex;
   const animationIndex = index - animationStartIndex;
+
+  // Stabilize click handler so the button reference stays the same
+  // across re-renders when props haven't changed.
+  const handleClick = useCallback(() => {
+    onSelect(entry);
+  }, [onSelect, entry]);
 
   const content = (
     <div
@@ -106,8 +113,8 @@ export function LeaderboardRow({
   );
 
   return (
-    <button type="button" className="block w-full text-left" onClick={() => onSelect(entry)}>
+    <button type="button" className="block w-full text-left" onClick={handleClick}>
       {content}
     </button>
   );
-}
+});

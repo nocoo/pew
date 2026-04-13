@@ -1,7 +1,6 @@
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
@@ -78,18 +77,16 @@ export function TokenTierBadge({ totalTokens }: { totalTokens: number }) {
   const { bg, fg } = tierColor(tier.digits);
 
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span
-            className="inline-flex items-center justify-center rounded-full px-1.5 py-px text-[10px] font-bold leading-tight tracking-wide cursor-default"
-            style={{ backgroundColor: bg, color: fg }}
-          >
-            {tier.label}
-          </span>
-        </TooltipTrigger>
-        <TooltipContent side="top">{tier.tooltip}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className="inline-flex items-center justify-center rounded-full px-1.5 py-px text-[10px] font-bold leading-tight tracking-wide cursor-default"
+          style={{ backgroundColor: bg, color: fg }}
+        >
+          {tier.label}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top">{tier.tooltip}</TooltipContent>
+    </Tooltip>
   );
 }

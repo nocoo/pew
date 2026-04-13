@@ -6,6 +6,7 @@ import { TableHeader } from "@/components/leaderboard/table-header";
 import { LeaderboardSkeleton } from "@/components/leaderboard/leaderboard-skeleton";
 import { LeaderboardRow } from "@/components/leaderboard/leaderboard-row";
 import { UserProfileDialog } from "@/components/user-profile-dialog";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { PERIOD_TO_TAB } from "@/components/leaderboard/period-tabs";
 
 // ---------------------------------------------------------------------------
@@ -73,7 +74,7 @@ export function LeaderboardPageShell({
   }, []);
 
   return (
-    <>
+    <TooltipProvider>
       {/* Error */}
       {error && (
         <div className="rounded-[var(--radius-card)] bg-destructive/10 p-4 text-sm text-destructive">
@@ -129,6 +130,6 @@ export function LeaderboardPageShell({
         badges={dialogEntry?.badges ?? []}
         defaultTab={PERIOD_TO_TAB[period]}
       />
-    </>
+    </TooltipProvider>
   );
 }
