@@ -20,12 +20,11 @@ export function PageHeader({ children }: { children: React.ReactNode }) {
         aria-hidden="true"
         style={{
           background:
-            "radial-gradient(ellipse 80% 60% at 50% 0%, hsl(186 60% 35% / 0.08) 0%, transparent 70%)",
+            "radial-gradient(ellipse 80% 60% at 50% 0%, hsl(var(--primary) / 0.08) 0%, transparent 70%)",
         }}
       />
       <div
         className="relative flex items-center gap-5 animate-fade-up"
-        style={{ animationDelay: "0ms" }}
       >
         <Link
           href="/"
