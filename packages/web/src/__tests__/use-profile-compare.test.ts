@@ -9,8 +9,8 @@ vi.mock("react", async (importOriginal) => {
   };
 });
 
-vi.mock("@/hooks/use-public-profile", () => ({
-  usePublicProfile: vi.fn(),
+vi.mock("@/hooks/use-user-profile", () => ({
+  useUserProfile: vi.fn(),
 }));
 
 vi.mock("@/hooks/use-usage-data", async (importOriginal) => {
@@ -27,11 +27,11 @@ vi.mock("@/hooks/use-pricing", () => ({
 }));
 
 import { useProfileCompare } from "@/hooks/use-profile-compare";
-import { usePublicProfile } from "@/hooks/use-public-profile";
+import { useUserProfile } from "@/hooks/use-user-profile";
 import { useUsageData } from "@/hooks/use-usage-data";
 import { usePricingMap } from "@/hooks/use-pricing";
 
-const mockedUsePublicProfile = vi.mocked(usePublicProfile);
+const mockedUseUserProfile = vi.mocked(useUserProfile);
 const mockedUseUsageData = vi.mocked(useUsageData);
 const mockedUsePricingMap = vi.mocked(usePricingMap);
 
@@ -56,19 +56,23 @@ describe("useProfileCompare", () => {
   });
 
   it("normalizes shared window and computes summary/breakdowns/active-days", () => {
-    mockedUsePublicProfile.mockReturnValue({
+    mockedUseUserProfile.mockReturnValue({
       user: {
         name: "Viewed",
+        nickname: null,
         image: null,
         slug: "viewed-user",
         created_at: "2026-01-01T00:00:00Z",
+        first_seen: null,
       },
       data: {
         user: {
           name: "Viewed",
+          nickname: null,
           image: null,
           slug: "viewed-user",
           created_at: "2026-01-01T00:00:00Z",
+          first_seen: null,
         },
         viewed_user_id: "viewed-id",
         records: [
@@ -177,7 +181,7 @@ describe("useProfileCompare", () => {
       to: "2026-03-05",
     });
 
-    expect(mockedUsePublicProfile).toHaveBeenCalledWith({
+    expect(mockedUseUserProfile).toHaveBeenCalledWith({
       slug: "viewed-user",
       from: "2026-03-01",
       to: "2026-03-05",
@@ -221,7 +225,7 @@ describe("useProfileCompare", () => {
   });
 
   it("surfaces loading/error/notFound and no-data states", () => {
-    mockedUsePublicProfile.mockReturnValue({
+    mockedUseUserProfile.mockReturnValue({
       user: null,
       data: null,
       daily: [],
@@ -246,7 +250,7 @@ describe("useProfileCompare", () => {
 
     const result = useProfileCompare({ slug: "viewed-user", days: 30 });
 
-    const viewedCall = mockedUsePublicProfile.mock.calls[0]?.[0] as
+    const viewedCall = mockedUseUserProfile.mock.calls[0]?.[0] as
       | { slug: string; from?: string; to?: string; days?: number }
       | undefined;
     expect(viewedCall?.slug).toBe("viewed-user");

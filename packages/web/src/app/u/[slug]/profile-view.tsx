@@ -79,7 +79,7 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
   const { data: session } = useSession();
 
   const viewerUserId = session?.user?.id ?? null;
-  const viewedUserId = (data as any)?.viewed_user_id ?? null;
+  const viewedUserId = data?.viewed_user_id ?? null;
   const showCompareButton = Boolean(
     viewerUserId && viewedUserId && viewerUserId !== viewedUserId,
   );

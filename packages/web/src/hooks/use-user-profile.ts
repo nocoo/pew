@@ -41,6 +41,8 @@ export interface UserProfileUser {
 
 export interface UserProfileData {
   user: UserProfileUser;
+  /** The DB user ID of the viewed profile (returned by the API). */
+  viewed_user_id?: string;
   records: UsageRow[];
   summary: UsageSummary;
 }

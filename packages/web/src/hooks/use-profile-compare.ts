@@ -2,7 +2,7 @@
 
 import { useMemo, useCallback } from "react";
 
-import { usePublicProfile } from "@/hooks/use-public-profile";
+import { useUserProfile } from "@/hooks/use-user-profile";
 import {
   useUsageData,
   type UsageRow,
@@ -190,7 +190,7 @@ export function useProfileCompare(
 ): UseProfileCompareResult {
   const window = buildCompareWindow(options);
 
-  const viewed = usePublicProfile({
+  const viewed = useUserProfile({
     slug: options.slug,
     from: window.from,
     to: window.to,
@@ -230,7 +230,7 @@ export function useProfileCompare(
     const bActiveDays = activeDays(bRecords, tzOffset);
 
     return {
-      viewedUserId: viewed.data.viewed_user_id,
+      viewedUserId: viewed.data.viewed_user_id ?? "",
       a: {
         summary: aSummary,
         estimatedCost: aCost,
