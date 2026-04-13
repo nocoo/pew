@@ -50,14 +50,16 @@ export function useUserAchievements(slug: string | null): UseUserAchievementsRes
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (signal?: AbortSignal) => {
     if (!slug) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const res = await fetch(`/api/users/${encodeURIComponent(slug)}/achievements`);
+      const res = await fetch(`/api/users/${encodeURIComponent(slug)}/achievements`, signal ? { signal } : undefined);
+
+      if (signal?.aborted) return;
 
       if (!res.ok) {
         if (res.status === 404) {
@@ -70,21 +72,36 @@ export function useUserAchievements(slug: string | null): UseUserAchievementsRes
       }
 
       const json = await res.json();
+
+      if (signal?.aborted) return;
+
       setData(json);
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, [slug]);
 
   useEffect(() => {
     if (slug) {
-      fetchData();
+      const controller = new AbortController();
+
+      // Reset data when slug changes to avoid showing stale user's data
+      setData(null);
+
+      fetchData(controller.signal);
+
+      return () => {
+        controller.abort();
+      };
     } else {
       setData(null);
     }
   }, [slug, fetchData]);
 
-  return { data, loading, error, refetch: fetchData };
+  return { data, loading, error, refetch: () => fetchData() };
 }

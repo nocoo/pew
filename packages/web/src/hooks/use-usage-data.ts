@@ -204,7 +204,7 @@ export function useUsageData(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setError(null);
 
@@ -227,7 +227,10 @@ export function useUsageData(
       if (source) params.set("source", source);
       if (deviceId) params.set("deviceId", deviceId);
 
-      const res = await fetch(`/api/usage?${params.toString()}`);
+      const res = await fetch(`/api/usage?${params.toString()}`, signal ? { signal } : undefined);
+
+      if (signal?.aborted) return;
+
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(
@@ -236,16 +239,31 @@ export function useUsageData(
       }
 
       const json = (await res.json()) as UsageData;
+
+      if (signal?.aborted) return;
+
       setData(json);
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, [days, fromDate, toDate, source, deviceId, granularity]);
 
   useEffect(() => {
-    fetchData();
+    const controller = new AbortController();
+
+    // Clear data on filter change to avoid stale data
+    setData(null);
+
+    fetchData(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
   }, [fetchData]);
 
   const daily = data ? toDailyPoints(data.records, new Date().getTimezoneOffset()) : [];
@@ -257,5 +275,5 @@ export function useUsageData(
     : [];
   const models = data ? toModelAggregates(data.records) : [];
 
-  return { data, daily, sources, models, loading, error, refetch: fetchData };
+  return { data, daily, sources, models, loading, error, refetch: () => fetchData() };
 }

@@ -78,7 +78,7 @@ export function useShowcases(options: UseShowcasesOptions = {}): UseShowcasesRes
   // Track whether we have data to determine loading vs refreshing
   const hasDataRef = useRef(false);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (signal?: AbortSignal) => {
     // Use ref to check if we have data (avoids data in deps)
     if (!hasDataRef.current) {
       setLoading(true);
@@ -93,7 +93,10 @@ export function useShowcases(options: UseShowcasesOptions = {}): UseShowcasesRes
       params.set("limit", String(limit));
       params.set("offset", String(offset));
 
-      const res = await fetch(`/api/showcases?${params.toString()}`);
+      const res = await fetch(`/api/showcases?${params.toString()}`, signal ? { signal } : undefined);
+
+      if (signal?.aborted) return;
+
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(
@@ -102,23 +105,38 @@ export function useShowcases(options: UseShowcasesOptions = {}): UseShowcasesRes
       }
 
       const json = (await res.json()) as ShowcasesResponse;
+
+      if (signal?.aborted) return;
+
       setData(json);
       hasDataRef.current = true;
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [mine, limit, offset]);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     // Reset hasDataRef when params change to show loading state
     hasDataRef.current = false;
-    fetchData();
+    // Clear data on param change to avoid stale data
+    setData(null);
+
+    fetchData(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
   }, [fetchData]);
 
-  return { data, loading, refreshing, error, refetch: fetchData };
+  return { data, loading, refreshing, error, refetch: () => fetchData() };
 }
 
 // ---------------------------------------------------------------------------

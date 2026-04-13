@@ -83,7 +83,7 @@ export function useUserProfile(
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (signal?: AbortSignal) => {
     if (!slug) {
       setLoading(false);
       return;
@@ -106,7 +106,9 @@ export function useUserProfile(
 
       if (source) params.set("source", source);
 
-      const res = await fetch(`/api/users/${slug}?${params.toString()}`);
+      const res = await fetch(`/api/users/${slug}?${params.toString()}`, signal ? { signal } : undefined);
+
+      if (signal?.aborted) return;
 
       if (res.status === 404) {
         setNotFound(true);
@@ -121,16 +123,32 @@ export function useUserProfile(
       }
 
       const json = (await res.json()) as UserProfileData;
+
+      if (signal?.aborted) return;
+
       setData(json);
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, [slug, days, from, to, source]);
 
   useEffect(() => {
-    fetchData();
+    const controller = new AbortController();
+
+    // Reset data when slug changes to avoid showing stale user's data
+    setData(null);
+    setNotFound(false);
+
+    fetchData(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
   }, [fetchData]);
 
   const daily = data ? toDailyPoints(data.records, new Date().getTimezoneOffset()) : [];
@@ -153,6 +171,6 @@ export function useUserProfile(
     loading,
     error,
     notFound,
-    refetch: fetchData,
+    refetch: () => fetchData(),
   };
 }
