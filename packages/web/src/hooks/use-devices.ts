@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { DevicesResponse } from "@pew/core";
+import { throwApiError } from "@/lib/api-error";
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -38,10 +39,7 @@ export function useDevices(): UseDevicesResult {
       const res = await fetch("/api/devices");
 
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(
-          (body as { error?: string }).error ?? `HTTP ${res.status}`
-        );
+        await throwApiError(res);
       }
 
       const json = (await res.json()) as DevicesResponse;
@@ -70,10 +68,7 @@ export function useDevices(): UseDevicesResult {
         });
 
         if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          const errorMsg =
-            (body as { error?: string }).error ?? `HTTP ${res.status}`;
-          return { success: false, error: errorMsg };
+          await throwApiError(res);
         }
 
         // Refetch full list after mutation
@@ -100,10 +95,7 @@ export function useDevices(): UseDevicesResult {
         });
 
         if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          const errorMsg =
-            (body as { error?: string }).error ?? `HTTP ${res.status}`;
-          return { success: false, error: errorMsg };
+          await throwApiError(res);
         }
 
         // Refetch full list after deletion

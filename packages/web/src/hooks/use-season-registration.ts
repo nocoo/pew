@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { SeasonStatus } from "@pew/core";
+import { throwApiError } from "@/lib/api-error";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -65,10 +66,7 @@ export function useSeasonRegistration(
       ]);
 
       if (!seasonsRes.ok) {
-        const body = await seasonsRes.json().catch(() => ({}));
-        throw new Error(
-          (body as { error?: string }).error ?? `HTTP ${seasonsRes.status}`,
-        );
+        await throwApiError(seasonsRes);
       }
 
       const seasonsData = (await seasonsRes.json()) as {
@@ -129,10 +127,7 @@ export function useSeasonRegistration(
         });
 
         if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(
-            (body as { error?: string }).error ?? `HTTP ${res.status}`,
-          );
+          await throwApiError(res);
         }
 
         // Optimistic update
@@ -166,10 +161,7 @@ export function useSeasonRegistration(
         });
 
         if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(
-            (body as { error?: string }).error ?? `HTTP ${res.status}`,
-          );
+          await throwApiError(res);
         }
 
         // Optimistic update

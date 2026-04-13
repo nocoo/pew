@@ -5,6 +5,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { throwApiError } from "@/lib/api-error";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -98,10 +99,7 @@ export function useShowcases(options: UseShowcasesOptions = {}): UseShowcasesRes
       if (signal?.aborted) return;
 
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(
-          (body as { error?: string }).error ?? `HTTP ${res.status}`
-        );
+        await throwApiError(res);
       }
 
       const json = (await res.json()) as ShowcasesResponse;
@@ -184,10 +182,7 @@ export function useShowcasePreview(): UseShowcasePreviewResult {
       });
 
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(
-          (body as { error?: string }).error ?? `HTTP ${res.status}`
-        );
+        await throwApiError(res);
       }
 
       const json = (await res.json()) as ShowcasePreview;

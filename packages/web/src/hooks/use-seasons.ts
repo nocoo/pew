@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { SeasonStatus } from "@pew/core";
+import { throwApiError } from "@/lib/api-error";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -68,10 +69,7 @@ export function useSeasons(
       const res = await fetch(url);
 
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(
-          (body as { error?: string }).error ?? `HTTP ${res.status}`,
-        );
+        await throwApiError(res);
       }
 
       const json = (await res.json()) as SeasonsData;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { throwApiError } from "@/lib/api-error";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -107,10 +108,7 @@ export function useProjects(options?: UseProjectsOptions): UseProjectsResult {
       if (signal?.aborted) return;
 
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(
-          (body as { error?: string }).error ?? `HTTP ${res.status}`,
-        );
+        await throwApiError(res);
       }
 
       const json = (await res.json()) as ProjectsData;
@@ -170,10 +168,7 @@ export function useProjects(options?: UseProjectsOptions): UseProjectsResult {
         });
 
         if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(
-            (body as { error?: string }).error ?? `HTTP ${res.status}`,
-          );
+          await throwApiError(res);
         }
 
         const project = (await res.json()) as Project;
@@ -207,10 +202,7 @@ export function useProjects(options?: UseProjectsOptions): UseProjectsResult {
         });
 
         if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(
-            (body as { error?: string }).error ?? `HTTP ${res.status}`,
-          );
+          await throwApiError(res);
         }
 
         const project = (await res.json()) as Project;
@@ -232,10 +224,7 @@ export function useProjects(options?: UseProjectsOptions): UseProjectsResult {
         });
 
         if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(
-            (body as { error?: string }).error ?? `HTTP ${res.status}`,
-          );
+          await throwApiError(res);
         }
 
         await fetchData();

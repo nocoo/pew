@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
 import type { AchievementTier, AchievementCategory } from "@/lib/achievement-helpers";
+import { useState, useEffect, useCallback } from "react";
+import { throwApiError } from "@/lib/api-error";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -57,7 +58,10 @@ export function useUserAchievements(slug: string | null): UseUserAchievementsRes
     setError(null);
 
     try {
-      const res = await fetch(`/api/users/${encodeURIComponent(slug)}/achievements`, signal ? { signal } : undefined);
+      const res = await fetch(
+        `/api/users/${encodeURIComponent(slug)}/achievements`,
+        signal ? { signal } : undefined,
+      );
 
       if (signal?.aborted) return;
 
@@ -67,8 +71,7 @@ export function useUserAchievements(slug: string | null): UseUserAchievementsRes
           setData(null);
           return;
         }
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `HTTP ${res.status}`);
+        await throwApiError(res);
       }
 
       const json = await res.json();

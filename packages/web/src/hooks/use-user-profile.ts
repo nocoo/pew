@@ -12,6 +12,7 @@ import type {
 import { toHeatmapData } from "@/hooks/use-usage-data";
 import { useDerivedUsageData } from "@/hooks/use-derived-usage-data";
 import type { BadgeIconType } from "@pew/core";
+import { throwApiError } from "@/lib/api-error";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -112,10 +113,7 @@ export function useUserProfile(
       }
 
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(
-          (body as { error?: string }).error ?? `HTTP ${res.status}`,
-        );
+        await throwApiError(res);
       }
 
       const json = (await res.json()) as UserProfileData;

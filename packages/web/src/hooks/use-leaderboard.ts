@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { BadgeIconType } from "@pew/core";
+import { throwApiError } from "@/lib/api-error";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -157,10 +158,7 @@ export function useLeaderboard(
         }
 
         if (!res.ok) {
-          const body = await res.json().catch(() => ({}));
-          throw new Error(
-            (body as { error?: string }).error ?? `HTTP ${res.status}`,
-          );
+          await throwApiError(res);
         }
 
         const json = (await res.json()) as LeaderboardData;

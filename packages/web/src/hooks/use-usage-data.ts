@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { useDerivedUsageData } from "@/hooks/use-derived-usage-data";
 
 import { toLocalDateStr } from "@/lib/usage-helpers";
+import { useFetchData } from "@/hooks/use-fetch-data";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -201,80 +202,39 @@ export function useUsageData(
   options: UseUsageDataOptions = {}
 ): UseUsageDataResult {
   const { days = 30, from: fromDate, to: toDate, source, deviceId, granularity = "day" } = options;
-  const [data, setData] = useState<UsageData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Frozen per mount — acceptable; page refresh handles DST changes
   const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []);
 
-  const fetchData = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      // When explicit `from` is provided, use it directly; otherwise compute from `days`
-      let fromStr: string;
-      if (fromDate) {
-        fromStr = fromDate;
-      } else {
-        const d = new Date();
-        d.setUTCDate(d.getUTCDate() - days);
-        fromStr = d.toISOString().slice(0, 10);
-      }
-
-      const params = new URLSearchParams({
-        from: fromStr,
-        granularity,
-      });
-      if (toDate) params.set("to", toDate);
-      if (source) params.set("source", source);
-      if (deviceId) params.set("deviceId", deviceId);
-      if (granularity === "day") {
-        params.set("tzOffset", String(tzOffset));
-      }
-
-      const res = await fetch(`/api/usage?${params.toString()}`, signal ? { signal } : undefined);
-
-      if (signal?.aborted) return;
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(
-          (body as { error?: string }).error ?? `HTTP ${res.status}`
-        );
-      }
-
-      const json = (await res.json()) as UsageData;
-
-      if (signal?.aborted) return;
-
-      setData(json);
-    } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") return;
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      if (!signal?.aborted) {
-        setLoading(false);
-      }
+  const url = useMemo(() => {
+    // When explicit `from` is provided, use it directly; otherwise compute from `days`
+    let fromStr: string;
+    if (fromDate) {
+      fromStr = fromDate;
+    } else {
+      const d = new Date();
+      d.setUTCDate(d.getUTCDate() - days);
+      fromStr = d.toISOString().slice(0, 10);
     }
+
+    const params = new URLSearchParams({
+      from: fromStr,
+      granularity,
+    });
+    if (toDate) params.set("to", toDate);
+    if (source) params.set("source", source);
+    if (deviceId) params.set("deviceId", deviceId);
+    if (granularity === "day") {
+      params.set("tzOffset", String(tzOffset));
+    }
+
+    return `/api/usage?${params.toString()}`;
   }, [days, fromDate, toDate, source, deviceId, granularity, tzOffset]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    // Clear data on filter change to avoid stale data
-    setData(null);
-
-    fetchData(controller.signal);
-
-    return () => {
-      controller.abort();
-    };
-  }, [fetchData]);
+  const { data, loading, error, refetch } = useFetchData<UsageData>(url);
 
   // Memoize derived data to avoid recalculation on every render
   const { daily, sources, models } = useDerivedUsageData(data?.records ?? null, tzOffset);
 
-  return { data, daily, sources, models, loading, error, refetch: () => fetchData() };
+  return { data, daily, sources, models, loading, error, refetch };
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { SeasonStatus } from "@pew/core";
+import { throwApiError } from "@/lib/api-error";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -106,10 +107,7 @@ export function useSeasonLeaderboard(
       if (signal?.aborted) return;
 
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(
-          (body as { error?: string }).error ?? `HTTP ${res.status}`,
-        );
+        await throwApiError(res);
       }
 
       const json = (await res.json()) as SeasonLeaderboardData;

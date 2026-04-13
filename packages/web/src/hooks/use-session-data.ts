@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import {
   toSessionOverview,
   toWorkingHoursGrid,
@@ -12,6 +12,7 @@ import {
   type MessageDailyStat,
   type ProjectBreakdownItem,
 } from "@/lib/session-helpers";
+import { useFetchData } from "@/hooks/use-fetch-data";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -47,72 +48,22 @@ export function useSessionData(
   options: UseSessionDataOptions = {}
 ): UseSessionDataResult {
   const { from: fromDate, to: toDate, source, enabled = true } = options;
-  const [records, setRecords] = useState<SessionRow[]>([]);
-  const [loading, setLoading] = useState(enabled);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchData = useCallback(async (signal?: AbortSignal) => {
-    if (!enabled) return;
-    setLoading(true);
-    setError(null);
+  const url = useMemo(() => {
+    const params = new URLSearchParams();
+    if (fromDate) params.set("from", fromDate);
+    if (toDate) params.set("to", toDate);
+    if (source) params.set("source", source);
+    const qs = params.toString();
+    return qs ? `/api/sessions?${qs}` : "/api/sessions";
+  }, [fromDate, toDate, source]);
 
-    try {
-      const params = new URLSearchParams();
-      if (fromDate) params.set("from", fromDate);
-      if (toDate) params.set("to", toDate);
-      if (source) params.set("source", source);
+  const { data, loading, error, refetch } = useFetchData<{ records: SessionRow[] }>(
+    enabled ? url : null,
+    { enabled, initialLoading: enabled },
+  );
 
-      const qs = params.toString();
-      const url = qs ? `/api/sessions?${qs}` : "/api/sessions";
-      const res = await fetch(url, signal ? { signal } : undefined);
-
-      if (signal?.aborted) return;
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(
-          (body as { error?: string }).error ?? `HTTP ${res.status}`
-        );
-      }
-
-      const json = (await res.json()) as { records: SessionRow[] };
-
-      if (signal?.aborted) return;
-
-      setRecords(json.records);
-    } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") return;
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      if (!signal?.aborted) {
-        setLoading(false);
-      }
-    }
-  }, [fromDate, toDate, source, enabled]);
-
-  useEffect(() => {
-    if (!enabled) return;
-
-    const controller = new AbortController();
-
-    // Clear records on filter change to avoid stale data
-    setRecords([]);
-
-    fetchData(controller.signal);
-
-    return () => {
-      controller.abort();
-    };
-  }, [fetchData, enabled]);
-
-  // Reset state when disabled to avoid stale data
-  useEffect(() => {
-    if (!enabled) {
-      setRecords([]);
-      setLoading(false);
-      setError(null);
-    }
-  }, [enabled]);
+  const records = useMemo(() => data?.records ?? [], [data]);
 
   const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []); // frozen per mount — acceptable; page refresh handles DST changes
   const overview = useMemo(() => toSessionOverview(records), [records]);
@@ -128,6 +79,6 @@ export function useSessionData(
     projectBreakdown,
     loading,
     error,
-    refetch: () => fetchData(),
+    refetch,
   };
 }

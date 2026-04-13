@@ -1,6 +1,5 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
 import {
   type PricingMap,
   getDefaultPricingMap,
@@ -8,6 +7,7 @@ import {
   estimateCost,
   formatCost,
 } from "@/lib/pricing";
+import { useFetchData } from "@/hooks/use-fetch-data";
 
 interface UsePricingMapResult {
   /** Merged pricing map (DB overrides + static defaults). Falls back to static defaults while loading. */
@@ -22,39 +22,14 @@ interface UsePricingMapResult {
  * Returns static defaults immediately while loading so cost calculations never block.
  */
 export function usePricingMap(): UsePricingMapResult {
-  const [pricingMap, setPricingMap] = useState<PricingMap>(
-    getDefaultPricingMap
-  );
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, loading, error, refetch } = useFetchData<PricingMap>("/api/pricing");
 
-  const fetchMap = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/pricing");
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(
-          (body as { error?: string }).error ?? `HTTP ${res.status}`
-        );
-      }
-      const json = (await res.json()) as PricingMap;
-      setPricingMap(json);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-      // Keep using static defaults on error
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchMap();
-  }, [fetchMap]);
-
-  return { pricingMap, loading, error, refetch: fetchMap };
+  return {
+    pricingMap: data ?? getDefaultPricingMap(),
+    loading,
+    error,
+    refetch,
+  };
 }
 
 // Re-export helpers so pages can import everything from one place

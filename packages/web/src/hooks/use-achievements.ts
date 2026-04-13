@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
 import type { AchievementTier, AchievementCategory } from "@/lib/achievement-helpers";
+import { useFetchData } from "@/hooks/use-fetch-data";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { throwApiError } from "@/lib/api-error";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -79,53 +81,15 @@ interface UseAchievementsOptions {
 
 export function useAchievements(options?: UseAchievementsOptions): UseAchievementsResult {
   const limit = options?.limit;
-  const [data, setData] = useState<AchievementData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchData = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const tzOffset = new Date().getTimezoneOffset();
-      const params = new URLSearchParams({ tzOffset: String(tzOffset) });
-      if (limit) params.set("limit", String(limit));
-      const res = await fetch(`/api/achievements?${params}`, signal ? { signal } : undefined);
-
-      if (signal?.aborted) return;
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `HTTP ${res.status}`);
-      }
-
-      const json = await res.json();
-
-      if (signal?.aborted) return;
-
-      setData(json);
-    } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") return;
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      if (!signal?.aborted) {
-        setLoading(false);
-      }
-    }
+  const url = useMemo(() => {
+    const tzOffset = new Date().getTimezoneOffset();
+    const params = new URLSearchParams({ tzOffset: String(tzOffset) });
+    if (limit) params.set("limit", String(limit));
+    return `/api/achievements?${params}`;
   }, [limit]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    fetchData(controller.signal);
-
-    return () => {
-      controller.abort();
-    };
-  }, [fetchData]);
-
-  return { data, loading, error, refetch: () => fetchData() };
+  return useFetchData<AchievementData>(url);
 }
 
 // ---------------------------------------------------------------------------
@@ -164,8 +128,7 @@ export function useAchievementMembers(
       if (signal?.aborted) return;
 
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || `HTTP ${res.status}`);
+        await throwApiError(res);
       }
 
       const json: AchievementMembersData = await res.json();
