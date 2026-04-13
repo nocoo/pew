@@ -8,6 +8,7 @@ import { CheckRuling } from "@/components/leaderboard/check-ruling";
 import { RankBadge } from "@/components/leaderboard/rank-badge";
 import { TokenTierBadge } from "@/components/leaderboard/token-tier-badge";
 import { TeamLogoBadge } from "@/components/leaderboard/scope-dropdown";
+import { ROW_CLASSES, COL_RANK, COL_SESSIONS, COL_DURATION, COL_TOKENS } from "@/components/leaderboard/leaderboard-layout";
 import type { LeaderboardEntry } from "@/hooks/use-leaderboard";
 
 // ---------------------------------------------------------------------------
@@ -45,7 +46,7 @@ export const LeaderboardRow = memo(function LeaderboardRow({
   const content = (
     <div
       className={cn(
-        "relative flex items-center gap-3 overflow-hidden rounded-[var(--radius-card)] bg-secondary px-4 py-3 transition-colors hover:bg-accent cursor-pointer",
+        `relative flex items-center gap-3 overflow-hidden ${ROW_CLASSES} transition-colors hover:bg-accent cursor-pointer`,
         shouldAnimate && "animate-fade-up",
         rank <= 3 && "ring-1 ring-border/50",
       )}
@@ -54,7 +55,7 @@ export const LeaderboardRow = memo(function LeaderboardRow({
       <CheckRuling />
 
       {/* Rank — fixed w-8, tabular-nums for alignment */}
-      <div className="flex w-8 shrink-0 items-center justify-center tabular-nums">
+      <div className={cn(COL_RANK, "flex items-center justify-center tabular-nums")}>
         <RankBadge rank={rank} {...(badges[0] && { badge: badges[0] })} />
       </div>
 
@@ -90,21 +91,21 @@ export const LeaderboardRow = memo(function LeaderboardRow({
       </div>
 
       {/* Session count (hidden on mobile) */}
-      <div className="hidden sm:block w-24 shrink-0 text-right">
+      <div className={cn(COL_SESSIONS, "text-right")}>
         <span className="text-xs tabular-nums text-chart-2" title="Sessions">
           {session_count != null ? session_count.toLocaleString("en-US") : "\u2014"}
         </span>
       </div>
 
       {/* Duration (hidden on mobile) */}
-      <div className="hidden sm:block w-24 shrink-0 text-right">
+      <div className={cn(COL_DURATION, "text-right")}>
         <span className="text-xs tabular-nums text-chart-7" title="Total duration">
           {total_duration_seconds != null ? formatDuration(total_duration_seconds) : "\u2014"}
         </span>
       </div>
 
       {/* Total — check-style handwriting font, full number */}
-      <div className="relative z-10 w-[120px] sm:w-[280px] shrink-0 text-right flex items-center justify-end">
+      <div className={cn(COL_TOKENS, "relative z-10 text-right flex items-center justify-end")}>
         <span className="font-handwriting text-[28px] sm:text-[39px] leading-none tracking-tight text-foreground whitespace-nowrap">
           {formatTokensFull(total_tokens)}
         </span>
