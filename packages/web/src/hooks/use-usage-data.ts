@@ -215,7 +215,7 @@ export function useUsageData(
         fromStr = fromDate;
       } else {
         const d = new Date();
-        d.setDate(d.getDate() - days);
+        d.setUTCDate(d.getUTCDate() - days);
         fromStr = d.toISOString().slice(0, 10);
       }
 
