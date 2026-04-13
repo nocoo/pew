@@ -50,7 +50,7 @@ interface TeamDetail {
   role: string;
   members: TeamMember[];
   auto_register_season: boolean;
-  logo_url: string | null;
+  logoUrl: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -691,10 +691,10 @@ export default function TeamDetailPage() {
           {/* Team Logo */}
           <div className="relative shrink-0 group">
             <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-accent text-muted-foreground overflow-hidden">
-              {team.logo_url ? (
+              {team.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- external team logos
                 <img
-                  src={team.logo_url}
+                  src={team.logoUrl}
                   alt={`${team.name} logo`}
                   className="h-14 w-14 object-cover"
                 />
@@ -717,7 +717,7 @@ export default function TeamDetailPage() {
                     <Camera className="h-4 w-4 text-white" strokeWidth={1.5} />
                   )}
                 </button>
-                {team.logo_url && (
+                {team.logoUrl && (
                   <button
                     onClick={handleRemoveLogo}
                     className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-white opacity-0 group-hover:opacity-100 transition-opacity"

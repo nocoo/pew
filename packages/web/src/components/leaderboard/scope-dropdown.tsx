@@ -148,7 +148,7 @@ export function ScopeDropdown({
     ) : selectedOrg ? (
       <OrgLogoIcon logoUrl={selectedOrg.logoUrl} name={selectedOrg.name} />
     ) : selectedTeam ? (
-      <TeamLogoIcon logoUrl={selectedTeam.logo_url} name={selectedTeam.name} />
+      <TeamLogoIcon logoUrl={selectedTeam.logoUrl} name={selectedTeam.name} />
     ) : (
       <Globe className={iconClass} strokeWidth={1.5} />
     );
@@ -247,7 +247,7 @@ export function ScopeDropdown({
                   active={value.type === "team" && value.id === team.id}
                   onClick={() => select({ type: "team", id: team.id })}
                 >
-                  <TeamLogoIcon logoUrl={team.logo_url} name={team.name} />
+                  <TeamLogoIcon logoUrl={team.logoUrl} name={team.name} />
                   {team.name}
                 </DropdownItem>
               ))}

@@ -6,7 +6,7 @@ export interface Team {
   id: string;
   name: string;
   slug: string;
-  logo_url: string | null;
+  logoUrl: string | null;
 }
 
 export interface Organization {

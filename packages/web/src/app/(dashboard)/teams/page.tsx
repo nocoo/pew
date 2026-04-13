@@ -27,7 +27,7 @@ interface Team {
   invite_code: string;
   created_by: string;
   member_count: number;
-  logo_url: string | null;
+  logoUrl: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -35,14 +35,14 @@ interface Team {
 // ---------------------------------------------------------------------------
 
 function TeamLogo({ team }: { team: Team }) {
-  const hasLogo = !!team.logo_url;
+  const hasLogo = !!team.logoUrl;
 
   return (
     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent text-muted-foreground overflow-hidden">
       {hasLogo ? (
         // eslint-disable-next-line @next/next/no-img-element -- external team logos
         <img
-          src={team.logo_url as string}
+          src={team.logoUrl as string}
           alt={`${team.name} logo`}
           className="h-9 w-9 object-cover"
         />

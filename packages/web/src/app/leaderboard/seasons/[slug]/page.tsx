@@ -145,10 +145,10 @@ function TeamRow({
 
         {/* Team icon / logo */}
         <div className="flex flex-1 items-center gap-3 min-w-0">
-          {entry.team.logo_url ? (
+          {entry.team.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- external team logos
             <img
-              src={entry.team.logo_url}
+              src={entry.team.logoUrl}
               alt={entry.team.name}
               className="h-8 w-8 shrink-0 rounded-full object-cover"
             />

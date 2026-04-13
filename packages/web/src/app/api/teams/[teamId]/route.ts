@@ -57,9 +57,10 @@ export async function GET(
       // Gracefully degrade — season tables may not exist yet
     }
 
+    const { logo_url, ...teamRest } = team;
     return NextResponse.json({
-      ...team,
-      logo_url: team.logo_url ?? null,
+      ...teamRest,
+      logoUrl: logo_url ?? null,
       auto_register_season: !!team.auto_register_season,
       role,
       members: members.map((m) => ({

@@ -118,7 +118,7 @@ describe("POST /api/teams/[teamId]/logo route edge cases", () => {
     const res = await POST(makeUploadRequest("t1"), makeParams());
 
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ logo_url: newLogoUrl });
+    expect(await res.json()).toEqual({ logoUrl: newLogoUrl });
     expect(mockDbWrite.execute).toHaveBeenCalledWith(
       "UPDATE teams SET logo_url = ? WHERE id = ?",
       [newLogoUrl, "t1"],

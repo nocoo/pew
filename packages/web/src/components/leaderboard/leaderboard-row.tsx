@@ -81,7 +81,7 @@ export const LeaderboardRow = memo(function LeaderboardRow({
                   key={team.id}
                   className="inline-flex items-center gap-1 text-xs leading-tight text-muted-foreground bg-muted px-1.5 py-0.5 rounded"
                 >
-                  <TeamLogoBadge logoUrl={team.logo_url} name={team.name} />
+                  <TeamLogoBadge logoUrl={team.logoUrl} name={team.name} />
                   {team.name}
                 </span>
               ))}

@@ -22,9 +22,9 @@ export async function GET(request: Request) {
     const teams = await dbRead.listTeamsForUser(authResult.userId);
 
     return NextResponse.json({
-      teams: teams.map((t) => ({
-        ...t,
-        logo_url: t.logo_url ?? null,
+      teams: teams.map(({ logo_url, ...rest }) => ({
+        ...rest,
+        logoUrl: logo_url ?? null,
       })),
     });
   } catch (err) {
@@ -107,7 +107,7 @@ export async function POST(request: Request) {
       slug: finalSlug,
       invite_code: inviteCode,
       member_count: 1,
-      logo_url: null,
+      logoUrl: null,
     }, { status: 201 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
