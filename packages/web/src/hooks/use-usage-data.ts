@@ -215,7 +215,7 @@ export function useUsageData(
         fromStr = fromDate;
       } else {
         const d = new Date();
-        d.setDate(d.getDate() - days);
+        d.setUTCDate(d.getUTCDate() - days);
         fromStr = d.toISOString().slice(0, 10);
       }
 
@@ -270,7 +270,7 @@ export function useUsageData(
   }, [fetchData]);
 
   // Memoize derived data to avoid recalculation on every render
-  const tzOffset = new Date().getTimezoneOffset();
+  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []); // frozen per mount — acceptable; page refresh handles DST changes
   const daily = useMemo(
     () => (data ? toDailyPoints(data.records, tzOffset) : []),
     [data, tzOffset],

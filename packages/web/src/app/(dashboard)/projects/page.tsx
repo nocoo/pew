@@ -476,7 +476,7 @@ function SummaryTable({
 export default function ProjectsPage() {
   const [period, setPeriod] = useState<Period>("all");
   const [tagFilter, setTagFilter] = useState("");
-  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []);
+  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []); // frozen per mount — acceptable; page refresh handles DST changes
   const today = useMemo(() => getLocalToday(tzOffset), [tzOffset]);
   const { from, to } = periodToDateRange(
     period,

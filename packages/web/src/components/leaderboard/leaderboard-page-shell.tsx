@@ -81,11 +81,11 @@ export function LeaderboardPageShell({
         </div>
       )}
 
-      {/* Table header row */}
-      <TableHeader />
+      {/* Table header row — show when there are entries or during initial load */}
+      {(entries.length > 0 || loading) && <TableHeader />}
 
-      {/* Loading — skeleton on initial load */}
-      {loading && <LeaderboardSkeleton />}
+      {/* Loading — skeleton on initial load only (no entries yet, no error) */}
+      {loading && !error && entries.length === 0 && <LeaderboardSkeleton />}
 
       {/* Content — no opacity change during pagination */}
       {entries.length > 0 && (

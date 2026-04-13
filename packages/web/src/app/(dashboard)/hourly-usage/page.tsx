@@ -365,7 +365,7 @@ export default function RecentPage() {
   const loading = usageLoading || deviceLoading;
 
   // For hourly pattern charts, fetch last 30 days of half-hour data
-  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []);
+  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []); // frozen per mount — acceptable; page refresh handles DST changes
   const { patternFrom, patternTo } = useMemo(() => {
     const today = getLocalToday(tzOffset);
     const fromDate = new Date(today + "T00:00:00Z");

@@ -280,7 +280,7 @@ export default function DailyUsagePage() {
 
   const { pricingMap } = usePricingMap();
 
-  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []);
+  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []); // frozen per mount — acceptable; page refresh handles DST changes
 
   // Daily points for the main chart (padded to full month)
   const daily = useMemo(() => {

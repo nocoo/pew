@@ -93,7 +93,7 @@ export default function DashboardPage() {
   const { pricingMap } = usePricingMap();
 
   // Timezone offset for UTC→local date conversion (used by multiple helpers)
-  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []);
+  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []); // frozen per mount — acceptable; page refresh handles DST changes
   const today = useMemo(() => getLocalToday(tzOffset), [tzOffset]);
 
   // Fill date gaps + extend to today so charts always show up to the current day
