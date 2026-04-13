@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useDerivedUsageData } from "@/hooks/use-derived-usage-data";
 
 import { toLocalDateStr } from "@/lib/usage-helpers";
 
@@ -271,24 +272,7 @@ export function useUsageData(
 
   // Memoize derived data to avoid recalculation on every render
   const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []); // frozen per mount — acceptable; page refresh handles DST changes
-  const daily = useMemo(
-    () => (data ? toDailyPoints(data.records, tzOffset) : []),
-    [data, tzOffset],
-  );
-  const sources = useMemo(
-    () =>
-      data
-        ? toSourceAggregates(data.records).map((s) => ({
-            ...s,
-            label: sourceLabel(s.label),
-          }))
-        : [],
-    [data],
-  );
-  const models = useMemo(
-    () => (data ? toModelAggregates(data.records) : []),
-    [data],
-  );
+  const { daily, sources, models } = useDerivedUsageData(data?.records ?? null, tzOffset);
 
   return { data, daily, sources, models, loading, error, refetch: () => fetchData() };
 }
