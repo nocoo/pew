@@ -101,6 +101,10 @@ export async function POST(request: Request) {
       : slug;
 
     // Generate invite code — 128 bits of entropy (32 hex chars)
+    // TODO(migration): Teams created before this change still have weak 8-char
+    // hex invite codes. Use the regenerateInviteCode action via
+    // PATCH /api/teams/[teamId] to rotate individual codes, or run a bulk
+    // migration against D1 when deployment coordination is available.
     const inviteCode = randomBytes(16).toString("hex");
 
     const teamId = crypto.randomUUID();

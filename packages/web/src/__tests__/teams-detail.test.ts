@@ -509,4 +509,62 @@ describe("PATCH /api/teams/[teamId]", () => {
     expect(res.status).toBe(500);
     expect((await res.json()).error).toContain("Failed to rename");
   });
+
+  it("should regenerate invite code", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    mockDbRead.getTeamMembership.mockResolvedValueOnce("owner");
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
+
+    const res = await PATCH(
+      makeRequest("PATCH", { regenerate_invite_code: true }),
+      makeParams(),
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    // New invite code should be a 32-char hex string
+    expect(body.invite_code).toMatch(/^[0-9a-f]{32}$/);
+    // Should not include unrelated fields
+    expect(body.name).toBeUndefined();
+    expect(body.auto_register_season).toBeUndefined();
+    // SQL should update invite_code
+    const sql = mockDbWrite.execute.mock.calls[0]![0] as string;
+    expect(sql).toContain("invite_code = ?");
+  });
+
+  it("should regenerate invite code together with name update", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    mockDbRead.getTeamMembership.mockResolvedValueOnce("owner");
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
+
+    const res = await PATCH(
+      makeRequest("PATCH", { name: "Renamed", regenerate_invite_code: true }),
+      makeParams(),
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.ok).toBe(true);
+    expect(body.name).toBe("Renamed");
+    expect(body.invite_code).toMatch(/^[0-9a-f]{32}$/);
+    // Single execute with both fields
+    expect(mockDbWrite.execute).toHaveBeenCalledTimes(1);
+    const sql = mockDbWrite.execute.mock.calls[0]![0] as string;
+    expect(sql).toContain("name = ?");
+    expect(sql).toContain("invite_code = ?");
+  });
+
+  it("should reject non-owner from regenerating invite code", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u2" });
+    mockDbRead.getTeamMembership.mockResolvedValueOnce("member"); // not owner
+
+    const res = await PATCH(
+      makeRequest("PATCH", { regenerate_invite_code: true }),
+      makeParams(),
+    );
+
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toContain("Only the team owner");
+  });
 });
