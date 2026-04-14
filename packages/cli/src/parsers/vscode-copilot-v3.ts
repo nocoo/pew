@@ -15,7 +15,7 @@
 import { readFile } from "node:fs/promises";
 import type { Source } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
-import { normalizeModelId, estimateToolRoundTokens } from "./vscode-copilot.js";
+import { normalizeModelId, estimateToolRoundTokens, estimateV3InputTokens } from "./vscode-copilot.js";
 import { toNonNegInt } from "../utils/token-delta.js";
 
 // ---------------------------------------------------------------------------
@@ -117,10 +117,20 @@ export async function parseVscodeCopilotV3File(
     const promptTokens = toNonNegInt(metadata.promptTokens);
     const outputTokens = toNonNegInt(metadata.outputTokens);
     const toolCallRounds = Array.isArray(metadata.toolCallRounds) ? metadata.toolCallRounds : [];
-    const { toolArgsTokens, thinkingTokens } = estimateToolRoundTokens(toolCallRounds);
+    const { toolArgsTokens, thinkingTokens, responseTokens } = estimateToolRoundTokens(toolCallRounds);
+
+    // When API-reported tokens are absent (v3 format in newer VS Code builds),
+    // fall back to estimation from available metadata fields.
+    const hasApiTokens = metadata.promptTokens != null || metadata.outputTokens != null;
+    const effectiveInputTokens = hasApiTokens ? promptTokens : estimateV3InputTokens(metadata);
+    // When outputTokens is API-reported, responseTokens is already included in it;
+    // only add responseTokens when falling back to estimation.
+    const effectiveOutputTokens = hasApiTokens
+      ? outputTokens + toolArgsTokens
+      : responseTokens + toolArgsTokens;
 
     // Skip zero-token results (incomplete request, will retry next sync)
-    if (promptTokens === 0 && outputTokens === 0 && toolArgsTokens === 0 && thinkingTokens === 0) {
+    if (effectiveInputTokens === 0 && effectiveOutputTokens === 0 && thinkingTokens === 0) {
       continue;
     }
 
@@ -132,8 +142,8 @@ export async function parseVscodeCopilotV3File(
       model: modelId,
       timestamp,
       tokens: {
-        inputTokens: promptTokens,
-        outputTokens: outputTokens + toolArgsTokens,
+        inputTokens: effectiveInputTokens,
+        outputTokens: effectiveOutputTokens,
         cachedInputTokens: 0,
         reasoningOutputTokens: thinkingTokens,
       },

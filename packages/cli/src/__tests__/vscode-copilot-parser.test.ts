@@ -5,6 +5,7 @@ import { join } from "node:path";
 import {
   parseVscodeCopilotFile,
   estimateToolRoundTokens,
+  estimateV3InputTokens,
   type VscodeCopilotParseOpts,
   type VscodeCopilotFileResult,
   type SkipInfo,
@@ -691,10 +692,11 @@ describe("parseVscodeCopilotFile", () => {
       { toolCalls: [{ arguments: "a".repeat(400) }] },
       { toolCalls: [{ arguments: "b".repeat(200) }, { arguments: "c".repeat(200) }] },
     ];
-    const { toolArgsTokens, thinkingTokens } = estimateToolRoundTokens(rounds);
+    const { toolArgsTokens, thinkingTokens, responseTokens } = estimateToolRoundTokens(rounds);
     // 800 chars / 4 = 200 tokens
     expect(toolArgsTokens).toBe(200);
     expect(thinkingTokens).toBe(0);
+    expect(responseTokens).toBe(0);
   });
 
   it("estimateToolRoundTokens: sums thinking text chars across rounds", () => {
@@ -702,13 +704,14 @@ describe("parseVscodeCopilotFile", () => {
       { thinking: { text: "x".repeat(800), tokens: 0 } },
       { thinking: { text: "y".repeat(400), tokens: 0 } },
     ];
-    const { toolArgsTokens, thinkingTokens } = estimateToolRoundTokens(rounds);
+    const { toolArgsTokens, thinkingTokens, responseTokens } = estimateToolRoundTokens(rounds);
     // 1200 chars / 4 = 300 tokens
     expect(toolArgsTokens).toBe(0);
     expect(thinkingTokens).toBe(300);
+    expect(responseTokens).toBe(0);
   });
 
-  it("estimateToolRoundTokens: ignores rounds with no tool calls or thinking", () => {
+  it("estimateToolRoundTokens: counts response text and ignores non-object rounds", () => {
     const rounds = [
       { response: "some text", id: "abc" },
       {},
@@ -718,6 +721,19 @@ describe("parseVscodeCopilotFile", () => {
     const result = estimateToolRoundTokens(rounds as unknown[]);
     expect(result.toolArgsTokens).toBe(0);
     expect(result.thinkingTokens).toBe(0);
+    // "some text" = 9 chars / 4 = 2 tokens
+    expect(result.responseTokens).toBe(2);
+  });
+
+  it("estimateToolRoundTokens: sums response text chars across rounds", () => {
+    const rounds = [
+      { response: "a".repeat(400), toolCalls: [] },
+      { response: "b".repeat(200) },
+    ];
+    const { responseTokens, toolArgsTokens } = estimateToolRoundTokens(rounds);
+    // 600 chars / 4 = 150 tokens
+    expect(responseTokens).toBe(150);
+    expect(toolArgsTokens).toBe(0);
   });
 
   it("estimateToolRoundTokens: uses floor division", () => {
@@ -725,6 +741,27 @@ describe("parseVscodeCopilotFile", () => {
     const rounds = [{ toolCalls: [{ arguments: "abcdefg" }] }];
     const { toolArgsTokens } = estimateToolRoundTokens(rounds);
     expect(toolArgsTokens).toBe(1);
+  });
+
+  // -----------------------------------------------------------------------
+  // estimateV3InputTokens
+  // -----------------------------------------------------------------------
+
+  it("estimateV3InputTokens: estimates from string renderedUserMessage", () => {
+    const tokens = estimateV3InputTokens({ renderedUserMessage: "a".repeat(400) });
+    expect(tokens).toBe(100); // 400 / 4
+  });
+
+  it("estimateV3InputTokens: estimates from object renderedUserMessage", () => {
+    const msg = [{ type: "text", value: "hello world" }];
+    const tokens = estimateV3InputTokens({ renderedUserMessage: msg });
+    expect(tokens).toBe(Math.floor(JSON.stringify(msg).length / 4));
+  });
+
+  it("estimateV3InputTokens: returns 0 when no renderedUserMessage", () => {
+    expect(estimateV3InputTokens({})).toBe(0);
+    expect(estimateV3InputTokens({ renderedUserMessage: null })).toBe(0);
+    expect(estimateV3InputTokens({ renderedUserMessage: 42 })).toBe(0);
   });
 
   it("should add tool args estimate to outputTokens", async () => {

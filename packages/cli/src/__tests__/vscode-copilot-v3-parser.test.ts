@@ -391,4 +391,161 @@ describe("parseVscodeCopilotV3File", () => {
     expect(result2.deltas[0].tokens.inputTokens).toBe(8000);
     expect(result2.processedRequestIds).toEqual(["req_zero"]);
   });
+
+  // -----------------------------------------------------------------------
+  // Estimation fallback (v3 without API-reported tokens)
+  // -----------------------------------------------------------------------
+
+  it("should estimate output tokens from response text when outputTokens is absent", async () => {
+    const filePath = join(tempDir, "session.json");
+    const toolCallRounds = [
+      { response: "a".repeat(400), toolCalls: [{ name: "read_file", arguments: "x".repeat(200) }] },
+      { response: "b".repeat(200), toolCalls: [] },
+    ];
+    await writeFile(filePath, makeV3Session([
+      {
+        requestId: "req_1",
+        timestamp: 1775652693236,
+        modelId: "copilot/claude-sonnet-4",
+        result: {
+          metadata: {
+            // No promptTokens or outputTokens — newer VS Code format
+            toolCallRounds,
+            renderedUserMessage: "Fix the bug",
+          },
+        },
+      },
+    ]));
+
+    const result = await parseVscodeCopilotV3File({ filePath });
+    expect(result.deltas).toHaveLength(1);
+    // outputTokens = responseTokens + toolArgsTokens = floor(600/4) + floor(200/4) = 150 + 50 = 200
+    expect(result.deltas[0].tokens.outputTokens).toBe(200);
+  });
+
+  it("should estimate input tokens from renderedUserMessage when promptTokens is absent", async () => {
+    const filePath = join(tempDir, "session.json");
+    const userMessage = "x".repeat(800);
+    await writeFile(filePath, makeV3Session([
+      {
+        requestId: "req_1",
+        timestamp: 1775652693236,
+        modelId: "copilot/claude-sonnet-4",
+        result: {
+          metadata: {
+            toolCallRounds: [
+              { response: "ok", toolCalls: [{ name: "grep", arguments: "q".repeat(40) }] },
+            ],
+            renderedUserMessage: userMessage,
+          },
+        },
+      },
+    ]));
+
+    const result = await parseVscodeCopilotV3File({ filePath });
+    expect(result.deltas).toHaveLength(1);
+    // inputTokens = floor(800/4) = 200
+    expect(result.deltas[0].tokens.inputTokens).toBe(200);
+  });
+
+  it("should estimate input tokens from renderedUserMessage object (array/structured)", async () => {
+    const filePath = join(tempDir, "session.json");
+    const userMessageObj = [{ type: "text", value: "a".repeat(100) }];
+    await writeFile(filePath, makeV3Session([
+      {
+        requestId: "req_1",
+        timestamp: 1775652693236,
+        modelId: "copilot/claude-sonnet-4",
+        result: {
+          metadata: {
+            toolCallRounds: [
+              { response: "result text here", toolCalls: [] },
+            ],
+            renderedUserMessage: userMessageObj,
+          },
+        },
+      },
+    ]));
+
+    const result = await parseVscodeCopilotV3File({ filePath });
+    expect(result.deltas).toHaveLength(1);
+    // JSON.stringify of the object → estimation
+    const expectedChars = JSON.stringify(userMessageObj).length;
+    expect(result.deltas[0].tokens.inputTokens).toBe(Math.floor(expectedChars / 4));
+  });
+
+  it("should prefer API-reported tokens over estimation when present", async () => {
+    const filePath = join(tempDir, "session.json");
+    await writeFile(filePath, makeV3Session([
+      {
+        requestId: "req_1",
+        timestamp: 1775652693236,
+        modelId: "copilot/claude-sonnet-4",
+        result: {
+          metadata: {
+            promptTokens: 50000,
+            outputTokens: 1000,
+            toolCallRounds: [
+              { response: "long response text ".repeat(100), toolCalls: [{ name: "read_file", arguments: "z".repeat(400) }] },
+            ],
+            renderedUserMessage: "Fix the bug in main.ts",
+          },
+        },
+      },
+    ]));
+
+    const result = await parseVscodeCopilotV3File({ filePath });
+    expect(result.deltas).toHaveLength(1);
+    // Should use API-reported promptTokens, not estimation
+    expect(result.deltas[0].tokens.inputTokens).toBe(50000);
+    // outputTokens = API outputTokens + toolArgsTokens (responseTokens NOT added since API tokens present)
+    expect(result.deltas[0].tokens.outputTokens).toBe(1000 + Math.floor(400 / 4));
+  });
+
+  it("should emit event with only response text (no tool args, no API tokens)", async () => {
+    const filePath = join(tempDir, "session.json");
+    await writeFile(filePath, makeV3Session([
+      {
+        requestId: "req_1",
+        timestamp: 1775652693236,
+        modelId: "copilot/gpt-4.1",
+        result: {
+          metadata: {
+            toolCallRounds: [
+              { response: "a".repeat(120), toolCalls: [] },
+            ],
+            renderedUserMessage: "Hello",
+          },
+        },
+      },
+    ]));
+
+    const result = await parseVscodeCopilotV3File({ filePath });
+    expect(result.deltas).toHaveLength(1);
+    // outputTokens = responseTokens = floor(120/4) = 30
+    expect(result.deltas[0].tokens.outputTokens).toBe(30);
+    // inputTokens = floor(5/4) = 1
+    expect(result.deltas[0].tokens.inputTokens).toBe(1);
+  });
+
+  it("should skip request when no API tokens and no estimable content", async () => {
+    const filePath = join(tempDir, "session.json");
+    await writeFile(filePath, makeV3Session([
+      {
+        requestId: "req_1",
+        timestamp: 1775652693236,
+        modelId: "copilot/gpt-4.1",
+        result: {
+          metadata: {
+            toolCallRounds: [],
+          },
+        },
+      },
+    ]));
+
+    const result = await parseVscodeCopilotV3File({ filePath });
+    expect(result.deltas).toHaveLength(0);
+    // Should not mark as processed — allows retry
+    expect(result.processedRequestIds).toEqual([]);
+  });
 });
