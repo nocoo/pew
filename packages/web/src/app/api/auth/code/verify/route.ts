@@ -2,14 +2,14 @@
  * POST /api/auth/code/verify — Verify a one-time code and return API key.
  *
  * Called by CLI with `pew login --code XXXX-XXXX`.
- * Returns the user's api_key (generating one if needed) and email.
+ * Returns the user's api_key (always generating a fresh one) and email.
  *
  * Security:
  * - Any failed verification attempt on an existing code immediately invalidates it
  *   (failed_attempts > 0). Error messages are intentionally generic to avoid
  *   leaking information about code existence.
- * - API keys are stored as SHA-256 hashes — the raw key is returned only once
- *   at creation time. Existing hashed keys cannot be retrieved.
+ * - API keys are stored as SHA-256 hashes — the raw key is returned only once.
+ * - Each successful verification rotates the key, replacing any old one.
  *
  * No session required — the code itself is the authentication.
  */
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: AUTH_ERROR }, { status: 401 });
     }
 
-    // 4. Get user info and api_key BEFORE consuming the code
+    // 4. Get user info BEFORE consuming the code
     // This ensures that if user lookup or api_key generation fails, the code remains usable
     const user = await dbRead.getUserById(authCode.user_id);
 
@@ -83,49 +83,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 500 });
     }
 
-    const existingKey = await dbRead.getUserApiKey(user.id);
-
-    // 5. Generate api_key if not exists using atomic conditional update
-    // Uses "WHERE api_key IS NULL" to ensure only one concurrent request succeeds in writing.
-    // If another request already set a key, this UPDATE affects 0 rows and we re-read.
-    //
-    // The raw key is returned to the user ONLY here — we store the SHA-256 hash.
-    // For existing (legacy plaintext) keys, the user must re-login to rotate to a hashed key.
-    let rawApiKey: string | null = null;
-
-    if (!existingKey) {
-      const newKey = generateApiKey();
-      const hashedKey = hashApiKey(newKey);
-      const updateKeyResult = await dbWrite.execute(
-        `UPDATE users SET api_key = ?, updated_at = datetime('now')
-         WHERE id = ? AND api_key IS NULL`,
-        [hashedKey, user.id]
-      );
-
-      if (updateKeyResult.changes === 1) {
-        // We won the race — use our generated key
-        rawApiKey = newKey;
-      } else {
-        // Another request already set a key — the user must use that key.
-        // We cannot recover the raw key from the hash, so return an error
-        // asking the user to use their existing key or reset it.
-        return NextResponse.json(
-          { error: "API key already exists. Use your existing key or reset it." },
-          { status: 409 }
-        );
-      }
-    } else {
-      // User already has a key — for legacy plaintext keys, return the raw value.
-      // For hashed keys, we cannot return the raw key.
-      if (existingKey.startsWith("hash:")) {
-        return NextResponse.json(
-          { error: "API key already exists. Use your existing key or reset it." },
-          { status: 409 }
-        );
-      }
-      // Legacy plaintext key — return it (user should rotate via key reset)
-      rawApiKey = existingKey;
-    }
+    // 5. Generate a fresh api_key (key rotation on every successful verification)
+    // This replaces any existing key — the user always gets a new key on login.
+    const rawApiKey = generateApiKey();
+    const hashedKey = hashApiKey(rawApiKey);
+    await dbWrite.execute(
+      `UPDATE users SET api_key = ?, updated_at = datetime('now')
+       WHERE id = ?`,
+      [hashedKey, user.id]
+    );
 
     // 6. Now that we have the credentials ready, consume the code (atomic)
     // Conditions: not used, no failed attempts (re-check in SQL for atomicity)

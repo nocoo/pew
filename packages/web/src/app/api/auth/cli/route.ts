@@ -4,18 +4,18 @@
  * Flow:
  * 1. CLI starts local HTTP server, opens browser to this URL with ?callback=...
  * 2. User is already signed in via Google OAuth (or redirected to /login first)
- * 3. This endpoint fetches/generates user's api_key (stored as SHA-256 hash)
- * 4. Redirects back to CLI's local server with api_key in URL fragment (not query string)
+ * 3. This endpoint generates a fresh api_key (stored as SHA-256 hash, replacing any old one)
+ * 4. Redirects back to CLI's local server with api_key in query string
  *
  * Security:
  * - Callback URL must be localhost or 127.0.0.1
- * - API key is passed via URL fragment to avoid CWE-598 (query string exposure)
- * - API key is stored as SHA-256 hash — the raw key is only shown once at creation
+ * - API key is stored as SHA-256 hash — the raw key is only returned once
+ * - Each login rotates the key, so old keys become invalid
  */
 
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
-import { getDbRead, getDbWrite } from "@/lib/db";
+import { getDbWrite } from "@/lib/db";
 import { generateApiKey, hashApiKey } from "@/lib/crypto-utils";
 
 /**
@@ -84,55 +84,27 @@ export async function GET(request: Request) {
     );
   }
 
-  // 3. Get or generate api_key
-  const dbRead = await getDbRead();
+  // 3. Generate a fresh api_key (key rotation on every login)
   const dbWrite = await getDbWrite();
   const userId = authResult.userId;
   const email = authResult.email ?? "";
 
   try {
-    const existingKey = await dbRead.getUserApiKey(userId);
-    let rawApiKey: string;
+    const rawApiKey = generateApiKey();
+    const hashedKey = hashApiKey(rawApiKey);
+    await dbWrite.execute(
+      "UPDATE users SET api_key = ?, updated_at = datetime('now') WHERE id = ?",
+      [hashedKey, userId]
+    );
 
-    if (!existingKey) {
-      // Generate a new api_key and store as SHA-256 hash
-      const newKey = generateApiKey();
-      const hashedKey = hashApiKey(newKey);
-      // Use atomic conditional update to guard against race conditions
-      const updateResult = await dbWrite.execute(
-        "UPDATE users SET api_key = ?, updated_at = datetime('now') WHERE id = ? AND api_key IS NULL",
-        [hashedKey, userId]
-      );
-
-      if (updateResult.changes === 1) {
-        rawApiKey = newKey;
-      } else {
-        // Another request already set a key — cannot recover raw key from hash
-        return NextResponse.json(
-          { error: "API key already exists. Use your existing key or reset it." },
-          { status: 409 }
-        );
-      }
-    } else if (existingKey.startsWith("hash:")) {
-      // Already hashed — cannot recover raw key
-      return NextResponse.json(
-        { error: "API key already exists. Use your existing key or reset it." },
-        { status: 409 }
-      );
-    } else {
-      // Legacy plaintext key — return it
-      rawApiKey = existingKey;
-    }
-
-    // 4. Redirect back to CLI with api_key in URL fragment (not query string).
-    // Fragments are NOT sent to servers, not logged in proxy/access logs,
-    // and not stored in most browser history implementations (CWE-598 mitigation).
+    // 4. Redirect back to CLI with api_key in query string.
+    // The localhost callback is only accessible on the user's machine.
     const redirectUrl = new URL(callbackUrl.toString());
+    redirectUrl.searchParams.set("api_key", rawApiKey);
+    redirectUrl.searchParams.set("email", email);
     if (state) {
       redirectUrl.searchParams.set("state", state);
     }
-    // Append credentials as fragment — CLI local server parses fragment via JS
-    redirectUrl.hash = `api_key=${encodeURIComponent(rawApiKey)}&email=${encodeURIComponent(email)}`;
 
     return NextResponse.redirect(redirectUrl.toString());
   } catch (err) {

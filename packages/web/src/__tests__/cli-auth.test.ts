@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET, getPublicOrigin } from "@/app/api/auth/cli/route";
-import { createMockDbRead, createMockDbWrite } from "./test-utils";
+import { createMockDbWrite } from "./test-utils";
 import * as dbModule from "@/lib/db";
 
 // Mock db
@@ -8,7 +8,6 @@ vi.mock("@/lib/db", async (importOriginal) => {
   const original = await importOriginal<typeof dbModule>();
   return {
     ...original,
-    getDbRead: vi.fn(),
     getDbWrite: vi.fn(),
   };
 });
@@ -35,16 +34,11 @@ function makeRequest(callback?: string, state?: string): Request {
 }
 
 describe("GET /api/auth/cli", () => {
-  let mockDbRead: ReturnType<typeof createMockDbRead>;
   let mockDbWrite: ReturnType<typeof createMockDbWrite>;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockDbRead = createMockDbRead();
     mockDbWrite = createMockDbWrite();
-    vi.mocked(dbModule.getDbRead).mockResolvedValue(
-      mockDbRead as unknown as dbModule.DbRead
-    );
     vi.mocked(dbModule.getDbWrite).mockResolvedValue(
       mockDbWrite as unknown as dbModule.DbWrite
     );
@@ -160,7 +154,7 @@ describe("GET /api/auth/cli", () => {
     });
 
     it("should accept localhost callback URLs", async () => {
-      mockDbRead.getUserApiKey.mockResolvedValueOnce("existing-key-123");
+      mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
 
       const res = await GET(
         makeRequest("http://localhost:9999/callback")
@@ -169,12 +163,12 @@ describe("GET /api/auth/cli", () => {
       expect(res.status).toBe(307);
       const location = res.headers.get("Location")!;
       expect(location).toContain("localhost:9999");
-      // API key is now in URL fragment (not query string) for security
-      expect(location).toContain("#api_key=existing-key-123");
+      // API key is in query string (readable by CLI local server)
+      expect(location).toContain("api_key=pk_");
     });
 
     it("should accept 127.0.0.1 callback URLs", async () => {
-      mockDbRead.getUserApiKey.mockResolvedValueOnce("existing-key-456");
+      mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
 
       const res = await GET(
         makeRequest("http://127.0.0.1:8888/callback")
@@ -194,36 +188,7 @@ describe("GET /api/auth/cli", () => {
       });
     });
 
-    it("should reuse existing legacy api_key if user already has one", async () => {
-      mockDbRead.getUserApiKey.mockResolvedValueOnce("existing-key-abc");
-
-      const res = await GET(
-        makeRequest("http://localhost:9999/callback")
-      );
-
-      expect(res.status).toBe(307);
-      const location = res.headers.get("Location")!;
-      // API key is in URL fragment for security
-      expect(location).toContain("#api_key=existing-key-abc");
-      // Should NOT have called execute to generate a new key
-      expect(mockDbWrite.execute).not.toHaveBeenCalled();
-    });
-
-    it("should return 409 if user already has a hashed api_key", async () => {
-      mockDbRead.getUserApiKey.mockResolvedValueOnce("hash:abc123def456");
-
-      const res = await GET(
-        makeRequest("http://localhost:9999/callback")
-      );
-
-      // Cannot recover raw key from hash — return 409
-      expect(res.status).toBe(409);
-      const body = await res.json();
-      expect(body.error).toContain("API key already exists");
-    });
-
-    it("should generate new api_key if user has none", async () => {
-      mockDbRead.getUserApiKey.mockResolvedValueOnce(null);
+    it("should always generate a fresh api_key (key rotation)", async () => {
       mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
 
       const res = await GET(
@@ -232,8 +197,8 @@ describe("GET /api/auth/cli", () => {
 
       expect(res.status).toBe(307);
       const location = res.headers.get("Location")!;
-      // API key is in URL fragment
-      expect(location).toContain("#api_key=pk_");
+      // API key is in query string
+      expect(location).toContain("api_key=pk_");
       // Should have called execute to save new hashed key
       expect(mockDbWrite.execute).toHaveBeenCalledOnce();
       expect(mockDbWrite.execute.mock.calls[0]![0]).toContain(
@@ -243,26 +208,29 @@ describe("GET /api/auth/cli", () => {
       expect(mockDbWrite.execute.mock.calls[0]![1]![0]).toMatch(
         /^hash:[a-f0-9]{64}$/
       );
+      // No conditional WHERE api_key IS NULL — always overwrites
+      expect(mockDbWrite.execute.mock.calls[0]![0]).not.toContain(
+        "api_key IS NULL"
+      );
     });
 
-    it("should include email in callback redirect fragment", async () => {
+    it("should include email in callback redirect query string", async () => {
       vi.mocked(resolveUser).mockResolvedValue({
         userId: "u1",
         email: "test@example.com",
       });
-      mockDbRead.getUserApiKey.mockResolvedValueOnce("key-xyz");
+      mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
 
       const res = await GET(
         makeRequest("http://localhost:9999/callback")
       );
 
       const location = res.headers.get("Location")!;
-      // Email is now in URL fragment alongside api_key
       expect(location).toContain("email=test%40example.com");
     });
 
     it("should forward state parameter in callback redirect", async () => {
-      mockDbRead.getUserApiKey.mockResolvedValueOnce("key-xyz");
+      mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
 
       const res = await GET(
         makeRequest("http://localhost:9999/callback", "my-nonce-123")
@@ -270,13 +238,12 @@ describe("GET /api/auth/cli", () => {
 
       expect(res.status).toBe(307);
       const location = res.headers.get("Location")!;
-      // State is in query string, api_key in fragment
       expect(location).toContain("state=my-nonce-123");
-      expect(location).toContain("#api_key=key-xyz");
+      expect(location).toContain("api_key=pk_");
     });
 
     it("should omit state from redirect when not provided", async () => {
-      mockDbRead.getUserApiKey.mockResolvedValueOnce("key-xyz");
+      mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
 
       const res = await GET(
         makeRequest("http://localhost:9999/callback")
@@ -287,8 +254,8 @@ describe("GET /api/auth/cli", () => {
       expect(location).not.toContain("state=");
     });
 
-    it("should return 500 on D1 failure", async () => {
-      mockDbRead.getUserApiKey.mockRejectedValueOnce(new Error("D1 down"));
+    it("should return 500 on DB failure", async () => {
+      mockDbWrite.execute.mockRejectedValueOnce(new Error("DB down"));
 
       const res = await GET(
         makeRequest("http://localhost:9999/callback")
