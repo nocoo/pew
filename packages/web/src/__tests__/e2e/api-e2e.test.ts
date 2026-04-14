@@ -420,8 +420,16 @@ async function cleanupShowcases(d1: D1Client): Promise<void> {
   await d1.execute("DELETE FROM showcase_upvotes WHERE user_id = ?", [
     TEST_USER_ID,
   ]);
-  // Delete showcases
+  // Also delete upvotes for the test repo_key to handle leftovers from prior
+  // crashed runs with a different TEST_USER_ID (global uniqueness on repo_key)
+  await d1.execute(
+    "DELETE FROM showcase_upvotes WHERE showcase_id IN (SELECT id FROM showcases WHERE repo_key = ?)",
+    ["nocoo/pew"],
+  );
+  // Delete showcases owned by this test user
   await d1.execute("DELETE FROM showcases WHERE user_id = ?", [TEST_USER_ID]);
+  // Delete the specific test repo_key regardless of owner
+  await d1.execute("DELETE FROM showcases WHERE repo_key = ?", ["nocoo/pew"]);
 }
 
 /** Helper to create a showcase and return its ID */
