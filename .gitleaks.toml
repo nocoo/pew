@@ -7,15 +7,16 @@
 
 # --- Fake publishable API keys in test fixtures ---
 # All test tokens are short human-readable names like pk_test, pk_abc123,
-# pk_bad_key, etc.  Real production keys are pk_ + 32 hex chars — those
-# will NOT match this pattern.
+# pk_bad_key, etc.  Real production keys are pk_ + 32 hex chars (35 chars
+# total) — the anchored regex below only matches tokens with 1–20 chars
+# after "pk_", so a genuine production key (32 hex chars) can never match.
 [[allowlists]]
   description = "short fake pk_ API keys in test files"
   paths = [
     '''__tests__/''',
   ]
   regexes = [
-    '''pk_[a-zA-Z][a-zA-Z0-9_]{0,29}''',
+    '''^pk_[a-zA-Z0-9_]{1,20}$''',
   ]
 
 # --- Hardcoded dummy secrets in worker / web / D1 tests ---
