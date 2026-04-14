@@ -2,7 +2,11 @@
  * L3 API E2E tests — hit real Next.js dev server on port 17020 with real D1.
  *
  * The server runs with E2E_SKIP_AUTH=true, so all requests are authenticated
- * as E2E_TEST_USER_ID ("e2e-test-user-id") without needing OAuth.
+ * as E2E_TEST_USER_ID without needing OAuth.
+ *
+ * To prevent concurrent CI runs from colliding on pew-db-test, the E2E runner
+ * (scripts/run-e2e.ts) generates a unique E2E_TEST_USER_ID per run and passes
+ * it via environment variables to both the Next.js server and this test file.
  *
  * Prerequisites:
  *   - Next.js dev server running on E2E_PORT (default 17020) with E2E_SKIP_AUTH=true
@@ -27,8 +31,10 @@ import { D1Client } from "../../lib/d1";
 const E2E_PORT = process.env.E2E_PORT || "17020";
 const BASE_URL = `http://localhost:${E2E_PORT}`;
 
-const TEST_USER_ID = "e2e-test-user-id";
-const TEST_USER_EMAIL = "e2e@test.local";
+// Per-run unique user ID/email — set by scripts/run-e2e.ts to isolate
+// concurrent CI runs sharing the same pew-db-test D1 database.
+const TEST_USER_ID = process.env.E2E_TEST_USER_ID || "e2e-test-user-id";
+const TEST_USER_EMAIL = process.env.E2E_TEST_USER_EMAIL || "e2e@test.local";
 
 /** Headers for ingest requests — includes version gate header */
 const INGEST_HEADERS = {
