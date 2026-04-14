@@ -119,13 +119,14 @@ export async function parseVscodeCopilotV3File(
     const toolCallRounds = Array.isArray(metadata.toolCallRounds) ? metadata.toolCallRounds : [];
     const { toolArgsTokens, thinkingTokens, responseTokens } = estimateToolRoundTokens(toolCallRounds);
 
-    // When API-reported tokens are absent (v3 format in newer VS Code builds),
-    // fall back to estimation from available metadata fields.
-    const hasApiTokens = metadata.promptTokens != null || metadata.outputTokens != null;
-    const effectiveInputTokens = hasApiTokens ? promptTokens : estimateV3InputTokens(metadata);
-    // When outputTokens is API-reported, responseTokens is already included in it;
+    // Fall back to estimation per-field when API-reported tokens are absent
+    // (v3 format in newer VS Code builds may omit one or both counts).
+    const effectiveInputTokens = metadata.promptTokens != null
+      ? promptTokens
+      : estimateV3InputTokens(metadata);
+    // When outputTokens is API-reported, responseTokens is already included;
     // only add responseTokens when falling back to estimation.
-    const effectiveOutputTokens = hasApiTokens
+    const effectiveOutputTokens = metadata.outputTokens != null
       ? outputTokens + toolArgsTokens
       : responseTokens + toolArgsTokens;
 

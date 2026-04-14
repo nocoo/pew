@@ -528,6 +528,62 @@ describe("parseVscodeCopilotV3File", () => {
     expect(result.deltas[0].tokens.inputTokens).toBe(1);
   });
 
+  it("should estimate input independently when only outputTokens is present", async () => {
+    const filePath = join(tempDir, "session.json");
+    await writeFile(filePath, makeV3Session([
+      {
+        requestId: "req_1",
+        timestamp: 1775652693236,
+        modelId: "copilot/claude-sonnet-4",
+        result: {
+          metadata: {
+            // promptTokens absent, outputTokens present
+            outputTokens: 500,
+            toolCallRounds: [
+              { response: "ok", toolCalls: [{ name: "read_file", arguments: "z".repeat(80) }] },
+            ],
+            renderedUserMessage: "a".repeat(400),
+          },
+        },
+      },
+    ]));
+
+    const result = await parseVscodeCopilotV3File({ filePath });
+    expect(result.deltas).toHaveLength(1);
+    // inputTokens should fall back to estimation: floor(400/4) = 100
+    expect(result.deltas[0].tokens.inputTokens).toBe(100);
+    // outputTokens should use API value + toolArgs: 500 + floor(80/4) = 520
+    expect(result.deltas[0].tokens.outputTokens).toBe(520);
+  });
+
+  it("should estimate output independently when only promptTokens is present", async () => {
+    const filePath = join(tempDir, "session.json");
+    await writeFile(filePath, makeV3Session([
+      {
+        requestId: "req_1",
+        timestamp: 1775652693236,
+        modelId: "copilot/claude-sonnet-4",
+        result: {
+          metadata: {
+            // promptTokens present, outputTokens absent
+            promptTokens: 30000,
+            toolCallRounds: [
+              { response: "b".repeat(200), toolCalls: [{ name: "grep", arguments: "q".repeat(40) }] },
+            ],
+            renderedUserMessage: "Fix the bug",
+          },
+        },
+      },
+    ]));
+
+    const result = await parseVscodeCopilotV3File({ filePath });
+    expect(result.deltas).toHaveLength(1);
+    // inputTokens should use API value: 30000
+    expect(result.deltas[0].tokens.inputTokens).toBe(30000);
+    // outputTokens should fall back to estimation: responseTokens + toolArgsTokens = floor(200/4) + floor(40/4) = 50 + 10 = 60
+    expect(result.deltas[0].tokens.outputTokens).toBe(60);
+  });
+
   it("should skip request when no API tokens and no estimable content", async () => {
     const filePath = join(tempDir, "session.json");
     await writeFile(filePath, makeV3Session([
