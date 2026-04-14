@@ -11,7 +11,7 @@ import {
   getDriver,
   installAll,
 } from "../notifier/registry.js";
-import { SECURE_DIR_MODE } from "../storage/secure-mkdir.js";
+import { SECURE_DIR_MODE, ensureSecureDir } from "../storage/secure-mkdir.js";
 
 export interface InitOptions {
   stateDir: string;
@@ -31,6 +31,7 @@ export interface InitOptions {
   ) => Promise<NotifierOperationResult>;
   getAllDriversFn?: typeof getAllDrivers;
   mkdirFn?: typeof mkdir;
+  ensureSecureDirFn?: typeof ensureSecureDir;
   spawn?: (cmd: string, args: string[], opts?: object) => { status: number | null };
 }
 
@@ -46,6 +47,7 @@ export async function executeInit(opts: InitOptions): Promise<InitResult> {
   const resolvePewBinFn = opts.resolvePewBinFn ?? resolvePewBin;
   const getAllDriversFn = opts.getAllDriversFn ?? getAllDrivers;
   const mkdirFn = opts.mkdirFn ?? mkdir;
+  const ensureSecureDirFn = opts.ensureSecureDirFn ?? ensureSecureDir;
 
   const pewBin = opts.pewBin ?? (await resolvePewBinFn());
   const paths = resolveNotifierPathsFn(opts.home, opts.env);
@@ -66,6 +68,9 @@ export async function executeInit(opts: InitOptions): Promise<InitResult> {
 
   await mkdirFn(paths.stateDir, { recursive: true, mode: SECURE_DIR_MODE });
   await mkdirFn(paths.binDir, { recursive: true, mode: SECURE_DIR_MODE });
+  // Repair existing directory permissions if they were created with a looser mode
+  ensureSecureDirFn(paths.stateDir);
+  ensureSecureDirFn(paths.binDir);
 
   const notifySource = buildNotifyHandler({
     stateDir: paths.stateDir,

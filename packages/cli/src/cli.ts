@@ -21,6 +21,7 @@ import { executeUpdate } from "./commands/update.js";
 import { resolveNotifierPaths } from "./notifier/paths.js";
 import { statusAll } from "./notifier/registry.js";
 import { ConfigManager } from "./config/manager.js";
+import { ensureSecureDir } from "./storage/secure-mkdir.js";
 
 // ---------------------------------------------------------------------------
 // CLI version — read from package.json (single source of truth)
@@ -237,6 +238,7 @@ const syncCommand = defineCommand({
     }
 
     // Ensure a stable device ID exists for multi-device dedup
+    ensureSecureDir(paths.stateDir);
     const configManager = new ConfigManager(paths.stateDir, args.dev);
     const deviceId = await configManager.ensureDeviceId();
 
@@ -643,6 +645,7 @@ const notifyCommand = defineCommand({
     }
 
     // Ensure a stable device ID exists for multi-device dedup
+    ensureSecureDir(paths.stateDir);
     const notifyConfigManager = new ConfigManager(paths.stateDir);
     const notifyDeviceId = await notifyConfigManager.ensureDeviceId();
 

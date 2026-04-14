@@ -53,6 +53,7 @@ describe("executeInit", () => {
       })),
       installAllFn: vi.fn(async () => hooks),
       mkdirFn: vi.fn(async () => {}),
+      ensureSecureDirFn: vi.fn(),
     });
 
     expect(result.pewBin).toBe("/tmp/bin/pew");
@@ -107,6 +108,7 @@ describe("executeInit", () => {
       })),
       installDriverFn,
       mkdirFn: vi.fn(async () => {}),
+      ensureSecureDirFn: vi.fn(),
     });
 
     expect(installDriverFn).toHaveBeenCalledTimes(1);
@@ -139,6 +141,7 @@ describe("executeInit", () => {
       })),
       installDriverFn,
       mkdirFn: vi.fn(async () => {}),
+      ensureSecureDirFn: vi.fn(),
     });
 
     expect(result.hooks).toHaveLength(2);
@@ -158,6 +161,7 @@ describe("executeInit", () => {
         path: "/tmp/pew/bin/notify.cjs",
       })),
       mkdirFn: vi.fn(async () => {}),
+      ensureSecureDirFn: vi.fn(),
     });
 
     expect(result.hooks).toEqual([
@@ -227,6 +231,7 @@ describe("executeInit", () => {
       })),
       installDriverFn,
       mkdirFn: vi.fn(async () => {}),
+      ensureSecureDirFn: vi.fn(),
     });
 
     expect(result.hooks).toHaveLength(1);

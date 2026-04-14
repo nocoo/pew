@@ -43,7 +43,7 @@ export function buildNotifyHandler(opts: BuildNotifyHandlerOptions): string {
 // ${NOTIFY_HANDLER_MARKER} — Auto-generated, do not edit
 "use strict";
 
-const { appendFileSync, readFileSync, mkdirSync, existsSync } = require("node:fs");
+const { appendFileSync, readFileSync, mkdirSync, existsSync, chmodSync } = require("node:fs");
 const { join, resolve } = require("node:path");
 const { spawn } = require("node:child_process");
 const { homedir } = require("node:os");
@@ -72,7 +72,9 @@ for (let i = 0; i < rawArgs.length; i++) {
 
 try {
   mkdirSync(STATE_DIR, { recursive: true, mode: 0o700 });
-  appendFileSync(join(STATE_DIR, "notify.signal"), "\\n", "utf8");
+  const signalPath = join(STATE_DIR, "notify.signal");
+  appendFileSync(signalPath, "\\n", "utf8");
+  chmodSync(signalPath, 0o600);
 } catch (_) {}
 
 const bin = existsSync(PEW_BIN) ? PEW_BIN : "npx";

@@ -1,6 +1,6 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
-import { SECURE_DIR_MODE, SECURE_FILE_MODE } from "./secure-mkdir.js";
+import { SECURE_DIR_MODE, SECURE_FILE_MODE, chmodSecureFile } from "./secure-mkdir.js";
 
 /**
  * Generic base class for persisting cursor state to disk as JSON.
@@ -32,5 +32,6 @@ export class BaseCursorStore<T> {
     const dir = dirname(this.filePath);
     await mkdir(dir, { recursive: true, mode: SECURE_DIR_MODE });
     await writeFile(this.filePath, JSON.stringify(state, null, 2) + "\n", { mode: SECURE_FILE_MODE });
+    await chmodSecureFile(this.filePath);
   }
 }

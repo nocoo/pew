@@ -1,13 +1,15 @@
 /**
- * Secure directory creation helpers for sensitive pew config directories.
+ * Secure directory and file helpers for sensitive pew config directories.
  *
  * Directories containing API keys, cursors, and other sensitive data should
  * use mode 0o700 (rwx------) to prevent other users from listing contents.
+ * Files should use mode 0o600 (rw-------) to prevent other users from reading.
  *
- * Note: File permissions (0o600) are already handled by @nocoo/cli-base's
- * ConfigManager. This module ensures directory permissions are also hardened.
+ * IMPORTANT: writeFile/appendFile `mode` only applies when *creating* a file.
+ * Pre-existing files retain their old permissions. Always call
+ * `chmodSync(path, SECURE_FILE_MODE)` after writing to enforce 0o600.
  */
-import { mkdir } from "node:fs/promises";
+import { mkdir, chmod } from "node:fs/promises";
 import { mkdirSync as mkdirSyncFs, chmodSync, statSync } from "node:fs";
 
 /** Restrictive mode for sensitive directories (owner rwx only) */
@@ -51,4 +53,23 @@ export function mkdirSecureSync(
   options?: { recursive?: boolean },
 ): void {
   mkdirSyncFs(path, { ...options, mode: SECURE_DIR_MODE });
+}
+
+/**
+ * Enforce secure permissions on a file after writing.
+ *
+ * writeFile/appendFile `mode` only takes effect when the file is *created*.
+ * If the file already existed, its permissions are unchanged. This async
+ * helper unconditionally sets the file to 0o600 (owner rw only).
+ */
+export async function chmodSecureFile(filePath: string): Promise<void> {
+  await chmod(filePath, SECURE_FILE_MODE);
+}
+
+/**
+ * Synchronous variant of chmodSecureFile for contexts where async is
+ * not possible (e.g. generated CJS notify handler).
+ */
+export function chmodSecureFileSync(filePath: string): void {
+  chmodSync(filePath, SECURE_FILE_MODE);
 }
