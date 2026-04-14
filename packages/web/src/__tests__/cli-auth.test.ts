@@ -51,28 +51,30 @@ describe("GET /api/auth/cli", () => {
   });
 
   describe("getPublicOrigin", () => {
-    it("should use x-forwarded-host and x-forwarded-proto", () => {
-      const req = new Request("http://0.0.0.0:8080/api/auth/cli", {
-        headers: {
-          "x-forwarded-host": "pew.md",
-          "x-forwarded-proto": "https",
-        },
-      });
-      expect(getPublicOrigin(req)).toBe("https://pew.md");
-    });
-
-    it("should default to https when x-forwarded-proto is absent", () => {
-      const req = new Request("http://0.0.0.0:8080/api/auth/cli", {
-        headers: {
-          "x-forwarded-host": "pew.md",
-        },
-      });
-      expect(getPublicOrigin(req)).toBe("https://pew.md");
-    });
-
-    it("should fall back to NEXTAUTH_URL", () => {
+    it("should use NEXTAUTH_URL when set", () => {
       const orig = process.env.NEXTAUTH_URL;
       process.env.NEXTAUTH_URL = "https://pew.md";
+      try {
+        const req = new Request("http://0.0.0.0:8080/api/auth/cli", {
+          headers: {
+            "x-forwarded-host": "pew.md",
+            "x-forwarded-proto": "https",
+          },
+        });
+        // Uses NEXTAUTH_URL, ignores forwarded headers
+        expect(getPublicOrigin(req)).toBe("https://pew.md");
+      } finally {
+        if (orig === undefined) {
+          delete process.env.NEXTAUTH_URL;
+        } else {
+          process.env.NEXTAUTH_URL = orig;
+        }
+      }
+    });
+
+    it("should strip trailing slash from NEXTAUTH_URL", () => {
+      const orig = process.env.NEXTAUTH_URL;
+      process.env.NEXTAUTH_URL = "https://pew.md/";
       try {
         const req = new Request("http://0.0.0.0:8080/api/auth/cli");
         expect(getPublicOrigin(req)).toBe("https://pew.md");
@@ -85,7 +87,28 @@ describe("GET /api/auth/cli", () => {
       }
     });
 
-    it("should fall back to request URL origin", () => {
+    it("should ignore x-forwarded-host (security: no header trust)", () => {
+      const orig = process.env.NEXTAUTH_URL;
+      delete process.env.NEXTAUTH_URL;
+      try {
+        const req = new Request("http://0.0.0.0:8080/api/auth/cli", {
+          headers: {
+            "x-forwarded-host": "evil.com",
+            "x-forwarded-proto": "https",
+          },
+        });
+        // Falls back to request URL, ignoring forwarded headers
+        expect(getPublicOrigin(req)).toBe("http://0.0.0.0:8080");
+      } finally {
+        if (orig === undefined) {
+          delete process.env.NEXTAUTH_URL;
+        } else {
+          process.env.NEXTAUTH_URL = orig;
+        }
+      }
+    });
+
+    it("should fall back to request URL origin when NEXTAUTH_URL is not set", () => {
       const orig = process.env.NEXTAUTH_URL;
       delete process.env.NEXTAUTH_URL;
       try {
@@ -114,24 +137,29 @@ describe("GET /api/auth/cli", () => {
     });
 
     it("should use public origin for unauthenticated redirect", async () => {
-      vi.mocked(resolveUser).mockResolvedValueOnce(null);
+      const orig = process.env.NEXTAUTH_URL;
+      process.env.NEXTAUTH_URL = "https://pew.md";
+      try {
+        vi.mocked(resolveUser).mockResolvedValueOnce(null);
 
-      const req = new Request(
-        "http://0.0.0.0:8080/api/auth/cli?callback=" +
-          encodeURIComponent("http://localhost:9999/callback"),
-        {
-          headers: {
-            "x-forwarded-host": "pew.md",
-            "x-forwarded-proto": "https",
-          },
+        const req = new Request(
+          "http://0.0.0.0:8080/api/auth/cli?callback=" +
+            encodeURIComponent("http://localhost:9999/callback"),
+        );
+        const res = await GET(req);
+
+        expect(res.status).toBe(307);
+        const location = res.headers.get("Location")!;
+        // Should use NEXTAUTH_URL origin, not forwarded headers
+        expect(location.startsWith("https://pew.md/login")).toBe(true);
+        expect(location).not.toContain("0.0.0.0");
+      } finally {
+        if (orig === undefined) {
+          delete process.env.NEXTAUTH_URL;
+        } else {
+          process.env.NEXTAUTH_URL = orig;
         }
-      );
-      const res = await GET(req);
-
-      expect(res.status).toBe(307);
-      const location = res.headers.get("Location")!;
-      expect(location.startsWith("https://pew.md/login")).toBe(true);
-      expect(location).not.toContain("0.0.0.0");
+      }
     });
   });
 

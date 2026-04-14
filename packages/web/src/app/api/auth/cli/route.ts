@@ -15,24 +15,20 @@ import { resolveUser } from "@/lib/auth-helpers";
 import { getDbRead, getDbWrite } from "@/lib/db";
 
 /**
- * Resolve the public-facing origin from the request.
+ * Resolve the public-facing origin.
  *
- * In production behind Railway's reverse proxy, `request.url` contains the
- * internal container URL (e.g. `http://0.0.0.0:8080`). We must use the
- * forwarded headers or NEXTAUTH_URL to construct the correct public origin.
+ * Uses NEXTAUTH_URL when available (the canonical public URL configured at
+ * deploy time). Falls back to the request URL origin for local development.
+ *
+ * We intentionally do NOT trust X-Forwarded-Host / X-Forwarded-Proto from the
+ * request — those headers are attacker-controllable and were a security issue.
  */
-export function getPublicOrigin(request: Request): string {
-  const fwdHost = request.headers.get("x-forwarded-host");
-  if (fwdHost) {
-    const fwdProto = request.headers.get("x-forwarded-proto") || "https";
-    return `${fwdProto}://${fwdHost}`;
-  }
-
+export function getPublicOrigin(_request: Request): string {
   if (process.env.NEXTAUTH_URL) {
-    return process.env.NEXTAUTH_URL;
+    return process.env.NEXTAUTH_URL.replace(/\/+$/, "");
   }
 
-  return new URL(request.url).origin;
+  return new URL(_request.url).origin;
 }
 
 export async function GET(request: Request) {
