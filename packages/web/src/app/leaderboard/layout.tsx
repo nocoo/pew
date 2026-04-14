@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Github, ShieldCheck } from "lucide-react";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -17,7 +18,7 @@ export default function LeaderboardLayout({
     <div className="relative flex min-h-screen flex-col bg-background">
       {/* Top-right icons — same pattern as landing page */}
       <div className="absolute right-6 top-4 z-50 flex items-center gap-1">
-        <a
+        <Link
           href="/privacy"
           className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-[color] duration-200 hover:text-foreground"
           aria-label="Privacy policy"
@@ -27,7 +28,7 @@ export default function LeaderboardLayout({
             strokeWidth={1.5}
             aria-hidden="true"
           />
-        </a>
+        </Link>
         <a
           href="https://github.com/nocoo/pew"
           target="_blank"

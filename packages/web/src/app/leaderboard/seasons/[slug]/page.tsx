@@ -415,11 +415,14 @@ export default function SeasonLeaderboardPage() {
         )}
       </main>
 
-      {/* Profile dialog */}
-      {dialogMember && data && seasonEndExclusive && (
+      {/* Profile dialog — lazy mounted to avoid useAdmin/useSeasons firing while closed */}
+      {dialogOpen && dialogMember && data && seasonEndExclusive && (
         <UserProfileDialog
           open={dialogOpen}
-          onOpenChange={setDialogOpen}
+          onOpenChange={(v) => {
+            setDialogOpen(v);
+            if (!v) setDialogMember(null);
+          }}
           slug={dialogMember.slug ?? dialogMember.user_id}
           name={dialogMember.name}
           image={dialogMember.image}

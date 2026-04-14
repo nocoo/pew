@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import {
   Globe,
   Users,
@@ -8,6 +8,11 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
 
 // ---------------------------------------------------------------------------
 // Types (re-exported for consumers)
@@ -161,23 +166,36 @@ function DropdownItem({
   active,
   onClick,
   children,
+  id,
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
+  id: string;
 }) {
   return (
-    <button
+    <div
+      role="option"
+      id={id}
+      aria-selected={active}
+      tabIndex={-1}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       className={cn(
-        "flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors",
+        "flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors outline-none",
+        "focus-visible:ring-2 focus-visible:ring-ring",
         active
           ? "bg-accent text-foreground"
           : "text-muted-foreground hover:bg-accent hover:text-foreground",
       )}
     >
       {children}
-    </button>
+    </div>
   );
 }
 
@@ -197,22 +215,69 @@ export function ScopeDropdown({
   teams: Team[];
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function handleClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, [open]);
+  const listboxRef = useRef<HTMLDivElement>(null);
 
   const iconClass = "h-3.5 w-3.5 shrink-0 text-muted-foreground";
 
-  // Find selected item
+  // Determine which option is currently selected
+  const activeId = value.type === "global"
+    ? "scope-global"
+    : value.type === "org"
+      ? `scope-org-${value.id}`
+      : `scope-team-${value.id}`;
+
+  // Roving focus: arrow keys move focus among [role="option"] elements
+  const handleListboxKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      const container = listboxRef.current;
+      if (!container) return;
+      const items = Array.from(
+        container.querySelectorAll<HTMLElement>('[role="option"]'),
+      );
+      if (items.length === 0) return;
+
+      const current = document.activeElement as HTMLElement;
+      const idx = items.indexOf(current);
+
+      let next: HTMLElement | undefined;
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          next = items[(idx + 1) % items.length];
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          next = items[(idx - 1 + items.length) % items.length];
+          break;
+        case "Home":
+          e.preventDefault();
+          next = items[0];
+          break;
+        case "End":
+          e.preventDefault();
+          next = items[items.length - 1];
+          break;
+      }
+      next?.focus();
+    },
+    [],
+  );
+
+  // Auto-focus the selected option (or first) when popover opens
+  const handleOpenAutoFocus = useCallback(
+    (e: Event) => {
+      e.preventDefault(); // prevent Radix from focusing the content wrapper
+      const container = listboxRef.current;
+      if (!container) return;
+      const target =
+        container.querySelector<HTMLElement>(`#${CSS.escape(activeId)}`) ??
+        container.querySelector<HTMLElement>('[role="option"]');
+      target?.focus();
+    },
+    [activeId],
+  );
+
+  // Find selected item for trigger label
   const selectedOrg = value.type === "org" ? organizations.find((o) => o.id === value.id) : null;
   const selectedTeam = value.type === "team" ? teams.find((t) => t.id === value.id) : null;
   const label = value.type === "global" ? "Global" : selectedOrg?.name ?? selectedTeam?.name ?? "Global";
@@ -231,34 +296,53 @@ export function ScopeDropdown({
   // Hide dropdown if no orgs or teams
   if (organizations.length === 0 && teams.length === 0) return null;
 
+  const select = (scope: ScopeSelection) => {
+    onChange(scope);
+    setOpen(false);
+  };
+
   return (
-    <div ref={ref} className="relative shrink-0">
-      <button
-        onClick={() => setOpen(!open)}
-        className={cn(
-          "flex items-center gap-2 rounded-lg bg-secondary px-3 py-[10px] text-sm font-medium transition-colors",
-          "text-foreground hover:bg-accent",
-        )}
-      >
-        {labelIcon}
-        {label}
-        <ChevronDown
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          role="combobox"
+          aria-expanded={open}
+          aria-haspopup="listbox"
+          aria-controls="scope-listbox"
           className={cn(
-            "h-3.5 w-3.5 text-muted-foreground transition-transform duration-200",
-            open && "rotate-180",
+            "flex items-center gap-2 rounded-lg bg-secondary px-3 py-2.5 text-sm font-medium transition-colors",
+            "text-foreground hover:bg-accent",
           )}
-          strokeWidth={1.5}
-        />
-      </button>
-      {open && (
-        <div className="absolute left-0 top-full z-50 mt-1 min-w-[180px] max-h-[320px] overflow-y-auto rounded-lg border border-border bg-background p-1 shadow-lg">
+        >
+          {labelIcon}
+          {label}
+          <ChevronDown
+            className={cn(
+              "h-3.5 w-3.5 text-muted-foreground transition-transform duration-200",
+              open && "rotate-180",
+            )}
+            strokeWidth={1.5}
+          />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="min-w-[180px] max-h-[320px] overflow-y-auto p-1"
+        onOpenAutoFocus={handleOpenAutoFocus}
+      >
+        <div
+          ref={listboxRef}
+          id="scope-listbox"
+          role="listbox"
+          aria-activedescendant={activeId}
+          aria-label="Leaderboard scope"
+          onKeyDown={handleListboxKeyDown}
+        >
           {/* Global option */}
           <DropdownItem
+            id="scope-global"
             active={value.type === "global"}
-            onClick={() => {
-              onChange({ type: "global" });
-              setOpen(false);
-            }}
+            onClick={() => select({ type: "global" })}
           >
             <Globe className={iconClass} strokeWidth={1.5} />
             Global
@@ -267,17 +351,18 @@ export function ScopeDropdown({
           {/* Organizations group */}
           {organizations.length > 0 && (
             <>
-              <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-1">
+              <div
+                role="presentation"
+                className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-1"
+              >
                 Organizations
               </div>
               {organizations.map((org) => (
                 <DropdownItem
                   key={org.id}
+                  id={`scope-org-${org.id}`}
                   active={value.type === "org" && value.id === org.id}
-                  onClick={() => {
-                    onChange({ type: "org", id: org.id });
-                    setOpen(false);
-                  }}
+                  onClick={() => select({ type: "org", id: org.id })}
                 >
                   <OrgLogoIcon logoUrl={org.logoUrl} name={org.name} />
                   {org.name}
@@ -289,17 +374,18 @@ export function ScopeDropdown({
           {/* Teams group */}
           {teams.length > 0 && (
             <>
-              <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-1">
+              <div
+                role="presentation"
+                className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-1"
+              >
                 Teams
               </div>
               {teams.map((team) => (
                 <DropdownItem
                   key={team.id}
+                  id={`scope-team-${team.id}`}
                   active={value.type === "team" && value.id === team.id}
-                  onClick={() => {
-                    onChange({ type: "team", id: team.id });
-                    setOpen(false);
-                  }}
+                  onClick={() => select({ type: "team", id: team.id })}
                 >
                   <TeamLogoIcon logoUrl={team.logo_url} name={team.name} />
                   {team.name}
@@ -308,7 +394,7 @@ export function ScopeDropdown({
             </>
           )}
         </div>
-      )}
-    </div>
+      </PopoverContent>
+    </Popover>
   );
 }
