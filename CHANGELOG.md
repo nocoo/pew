@@ -1,5 +1,35 @@
 # Changelog
 
+## v2.20.6
+
+### Added
+- Add legend isolate and cmd-click exclude filter
+
+### Changed
+- Rename Team.logo_url to Team.logoUrl (camelCase)
+- Move scope types and storage utils to lib/leaderboard-scope.ts
+- Move logo components to dedicated logo-icons.tsx
+- Extract shared row layout constants to leaderboard-layout.ts
+- Record PR operation in AGENTS.md
+
+### Fixed
+- Remove conflicting aria-activedescendant from scope dropdown
+- Properly lazy-mount UserProfileDialog in season leaderboard
+- Add listbox semantics and roving focus to scope dropdown
+- Lazy-mount UserProfileDialog in leaderboard-page-shell
+- Achievements page spacing, border-radius, and lazy dialog
+- Use --radius-card token for showcases error block
+- Use next/link for privacy nav in leaderboard layout
+- Remove dead animationDelay and use CSS variable for header glow
+- Replace custom scope-dropdown with shadcn Popover
+- Use per-field fallback for v3 token estimation
+- Correct by-agent area series render mapping
+- Estimate tokens for v3 format when API-reported counts are absent
+
+### Removed
+- Remove AGENTS.md (not part of project)
+- Remove unused exports from popover component
+
 ## v2.20.5
 
 ### Changed
