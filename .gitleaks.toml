@@ -1,0 +1,9 @@
+# Gitleaks configuration — allowlist false positives in test files
+# See: https://github.com/gitleaks/gitleaks#configuration
+
+[allowlist]
+  paths = [
+    '''__tests__/''',
+    '''\.test\.ts$''',
+    '''\.test\.tsx$''',
+  ]

@@ -11,6 +11,9 @@
  * Set PEW_G2_SOFT=1 for soft-degrade mode (warn and skip).
  */
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { resolve, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const softMode = process.env.PEW_G2_SOFT === "1";
 
@@ -97,7 +100,14 @@ const hasGitleaks = requireTool("gitleaks");
 if (hasGitleaks) {
   const range = resolveUpstreamRange();
   console.log(`🔍 gitleaks: scanning commits ${range}...`);
-  const r = spawnSync("gitleaks", ["git", `--log-opts=${range}`], {
+  const gitleaksArgs = ["git", `--log-opts=${range}`];
+  // Use repo-level .gitleaks.toml if it exists (allowlists test files)
+  const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+  const configPath = resolve(repoRoot, ".gitleaks.toml");
+  if (existsSync(configPath)) {
+    gitleaksArgs.push("--config", configPath);
+  }
+  const r = spawnSync("gitleaks", gitleaksArgs, {
     stdio: "inherit",
   });
   if (r.status !== 0) {
