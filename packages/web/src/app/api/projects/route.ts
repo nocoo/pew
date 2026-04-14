@@ -27,6 +27,7 @@ const VALID_SOURCES = new Set([
 ]);
 
 const MAX_NAME_LENGTH = 100;
+const MAX_ALIASES = 50;
 
 /** Names reserved for internal UI/API use (case-insensitive comparison). */
 const RESERVED_NAMES = new Set(["unassigned"]);
@@ -213,6 +214,12 @@ export async function POST(request: Request) {
     if (!Array.isArray(body.aliases)) {
       return NextResponse.json(
         { error: "aliases must be an array" },
+        { status: 400 },
+      );
+    }
+    if (body.aliases.length > MAX_ALIASES) {
+      return NextResponse.json(
+        { error: `Maximum ${MAX_ALIASES} aliases allowed` },
         { status: 400 },
       );
     }

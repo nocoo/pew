@@ -26,6 +26,8 @@ const VALID_SOURCES = new Set([
 ]);
 
 const MAX_NAME_LENGTH = 100;
+const MAX_ALIASES = 50;
+const MAX_TAGS = 50;
 
 /** Tag format: lowercase alphanumeric + hyphens, 1-30 chars. */
 const TAG_REGEX = /^[a-z0-9-]{1,30}$/;
@@ -167,6 +169,12 @@ export async function PATCH(
     if (error) {
       return NextResponse.json({ error }, { status: 400 });
     }
+    if (valid.length > MAX_ALIASES) {
+      return NextResponse.json(
+        { error: `Maximum ${MAX_ALIASES} aliases allowed per request` },
+        { status: 400 },
+      );
+    }
 
     // Deduplicate by (source, project_ref) key
     const seen = new Set<string>();
@@ -234,6 +242,12 @@ export async function PATCH(
     if (error) {
       return NextResponse.json({ error }, { status: 400 });
     }
+    if (valid.length > MAX_ALIASES) {
+      return NextResponse.json(
+        { error: `Maximum ${MAX_ALIASES} aliases allowed per request` },
+        { status: 400 },
+      );
+    }
 
     // Verify each alias is actually attached to this project
     const notFound: AliasInput[] = [];
@@ -270,6 +284,12 @@ export async function PATCH(
         { status: 400 },
       );
     }
+    if (body.add_tags.length > MAX_TAGS) {
+      return NextResponse.json(
+        { error: `Maximum ${MAX_TAGS} tags allowed per request` },
+        { status: 400 },
+      );
+    }
     for (const tag of body.add_tags) {
       if (typeof tag !== "string") {
         return NextResponse.json(
@@ -296,6 +316,12 @@ export async function PATCH(
     if (!Array.isArray(body.remove_tags)) {
       return NextResponse.json(
         { error: "remove_tags must be an array" },
+        { status: 400 },
+      );
+    }
+    if (body.remove_tags.length > MAX_TAGS) {
+      return NextResponse.json(
+        { error: `Maximum ${MAX_TAGS} tags allowed per request` },
         { status: 400 },
       );
     }
