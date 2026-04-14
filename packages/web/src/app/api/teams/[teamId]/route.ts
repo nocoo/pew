@@ -118,7 +118,7 @@ export async function PATCH(
 
   let name: string | undefined;
   let autoRegisterSeason: boolean | undefined;
-  let regenerateInviteCode = false;
+  let regenerateInviteCode: boolean;
   try {
     const body = await request.json();
     name = typeof body.name === "string" ? body.name.trim() : undefined;
