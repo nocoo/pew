@@ -237,13 +237,16 @@ describe("resolvePewBin", () => {
     const binPath = join(tempDir, "pew");
     const prevPath = process.env.PATH;
     const prevArgv = process.argv.slice();
+    // Use an isolated temp dir for argv[1] so the sibling check finds no "pew"
+    // next to it — avoids false hits from /tmp/pew existing on some machines.
+    const argvDir = await mkdtemp(join(tmpdir(), "pew-argv-no-sibling-"));
 
     try {
       await writeFile(binPath, "#!/bin/sh\nexit 0\n", "utf8");
       await chmod(binPath, 0o755);
 
       process.env.PATH = `${tempDir}:${prevPath ?? ""}`;
-      process.argv = [prevArgv[0] ?? "node", "/tmp/pew"];
+      process.argv = [prevArgv[0] ?? "node", join(argvDir, "entry.js")];
 
       const resolved = await resolvePewBin();
       expect(resolved).toBe(binPath);
@@ -251,6 +254,7 @@ describe("resolvePewBin", () => {
       process.argv = prevArgv;
       process.env.PATH = prevPath;
       await rm(tempDir, { recursive: true, force: true });
+      await rm(argvDir, { recursive: true, force: true });
     }
   });
 
