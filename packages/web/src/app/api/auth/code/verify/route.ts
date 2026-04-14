@@ -73,18 +73,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: AUTH_ERROR }, { status: 401 });
     }
 
-    // 4. Get user info BEFORE consuming the code
-    // This ensures that if user lookup or api_key generation fails, the code remains usable
+    // 4. Atomically consume the code FIRST to prevent race conditions.
+    // Only one concurrent request can succeed — the loser gets "code already used"
+    // and never touches the API key.
+    const consumeResult = await dbWrite.execute(
+      `UPDATE auth_codes
+       SET used_at = datetime('now')
+       WHERE code = ? AND used_at IS NULL AND failed_attempts = 0`,
+      [normalizedCode]
+    );
+
+    if (consumeResult.changes === 0) {
+      // Code was already consumed by a concurrent request
+      return NextResponse.json({ error: AUTH_ERROR }, { status: 401 });
+    }
+
+    // 5. Code is now ours — look up the user
     const user = await dbRead.getUserById(authCode.user_id);
 
     if (!user) {
-      // User was deleted after code creation — don't consume the code, just fail
-      // (Edge case: code is orphaned, will expire naturally)
+      // User was deleted after code creation — code is already consumed, just fail
       return NextResponse.json({ error: "User not found" }, { status: 500 });
     }
 
-    // 5. Generate a fresh api_key (key rotation on every successful verification)
-    // This replaces any existing key — the user always gets a new key on login.
+    // 6. Generate a fresh api_key (key rotation on every successful verification)
+    // Safe from races — only one request reaches this point per code.
     const rawApiKey = generateApiKey();
     const hashedKey = hashApiKey(rawApiKey);
     await dbWrite.execute(
@@ -93,21 +106,7 @@ export async function POST(request: Request) {
       [hashedKey, user.id]
     );
 
-    // 6. Now that we have the credentials ready, consume the code (atomic)
-    // Conditions: not used, no failed attempts (re-check in SQL for atomicity)
-    const updateResult = await dbWrite.execute(
-      `UPDATE auth_codes
-       SET used_at = datetime('now')
-       WHERE code = ? AND used_at IS NULL AND failed_attempts = 0`,
-      [normalizedCode]
-    );
-
-    // If no rows updated, race condition — someone else invalidated or used it
-    if (updateResult.changes === 0) {
-      return NextResponse.json({ error: AUTH_ERROR }, { status: 401 });
-    }
-
-    // 7. Return credentials (code is now consumed)
+    // 7. Return credentials
     // This is the ONLY time the raw API key is visible to the user.
     return NextResponse.json({
       api_key: rawApiKey,

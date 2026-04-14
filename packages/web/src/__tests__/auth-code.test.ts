@@ -474,11 +474,11 @@ describe("POST /api/auth/code/verify", () => {
     });
     mockGetDbRead.mockResolvedValue(mockDbRead as unknown as DbRead);
 
-    // Key update succeeds, but SET used_at returns 0 rows (someone else used it first)
+    // Atomic consume returns 0 rows — someone else used the code first
+    // The API key update should never be reached.
     const mockDbWrite = createMockDbWrite();
     mockDbWrite.execute
-      .mockResolvedValueOnce({ changes: 1 })  // api_key update
-      .mockResolvedValueOnce({ changes: 0 }); // used_at race lost
+      .mockResolvedValueOnce({ changes: 0 }); // used_at race lost (consume fails)
     mockGetDbWrite.mockResolvedValue(mockDbWrite as unknown as DbWrite);
 
     const request = new Request("http://localhost/api/auth/code/verify", {
@@ -492,6 +492,12 @@ describe("POST /api/auth/code/verify", () => {
 
     const body = await response.json();
     expect(body.error).toBe(AUTH_ERROR);
+
+    // Verify api_key was never touched (race loser must not overwrite winner's key)
+    const apiKeyCalls = mockDbWrite.execute.mock.calls.filter(
+      (call) => (call[0] as string).includes("UPDATE users SET api_key")
+    );
+    expect(apiKeyCalls.length).toBe(0);
   });
 
   it("should return 400 on invalid JSON body", async () => {
@@ -522,7 +528,7 @@ describe("POST /api/auth/code/verify", () => {
     expect(body.error).toBe("code is required");
   });
 
-  it("should return 500 when user not found and NOT consume code", async () => {
+  it("should return 500 when user not found (code is already consumed)", async () => {
     const mockDbRead = createMockDbRead();
     mockDbRead.getAuthCode.mockResolvedValue({
       code: "ABCD-1234",
@@ -550,11 +556,17 @@ describe("POST /api/auth/code/verify", () => {
     const body = await response.json();
     expect(body.error).toBe("User not found");
 
-    // Verify code was NOT consumed (no SET used_at call)
+    // Code was consumed atomically before user lookup (by design — prevents race)
     const usedAtCalls = mockDbWrite.execute.mock.calls.filter(
       (call) => (call[0] as string).includes("SET used_at")
     );
-    expect(usedAtCalls.length).toBe(0);
+    expect(usedAtCalls.length).toBe(1);
+
+    // But api_key was NOT updated (user lookup failed)
+    const apiKeyCalls = mockDbWrite.execute.mock.calls.filter(
+      (call) => (call[0] as string).includes("UPDATE users SET api_key")
+    );
+    expect(apiKeyCalls.length).toBe(0);
   });
 
   it("should return 500 on database error", async () => {
