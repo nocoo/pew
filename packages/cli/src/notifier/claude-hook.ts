@@ -153,7 +153,10 @@ export async function getClaudeHookStatus(opts: ClaudeHookOptions): Promise<Noti
 }
 
 function buildClaudeHookCommand(notifyPath: string): string {
-  return `/usr/bin/env node ${quoteArg(notifyPath)} --source=${SOURCE}`;
+  if (/[`${}\\]/.test(notifyPath)) {
+    throw new Error("Notify path contains unsafe characters");
+  }
+  return `/usr/bin/env node ${shellEscape(notifyPath)} --source=${SOURCE}`;
 }
 
 async function loadSettings(
@@ -270,7 +273,11 @@ async function writeSettings(
   return backupPath;
 }
 
-function quoteArg(value: string): string {
-  if (/^[A-Za-z0-9_\-./:@]+$/.test(value)) return value;
-  return `"${value.replace(/"/g, '\\"')}"`;
+/**
+ * POSIX single-quote escaping: wraps in single quotes and escapes
+ * embedded single quotes as '\'' to prevent ALL shell expansion
+ * (including $(...) command substitution).
+ */
+function shellEscape(s: string): string {
+  return "'" + s.replace(/'/g, "'\\''") + "'";
 }

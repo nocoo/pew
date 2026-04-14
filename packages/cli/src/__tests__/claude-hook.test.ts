@@ -74,7 +74,7 @@ describe("Claude hook installer", () => {
           hooks: {
             SessionEnd: [
               {
-                hooks: [{ command: `/usr/bin/env node ${notifyPath} --source=claude-code` }],
+                hooks: [{ command: `/usr/bin/env node '${notifyPath}' --source=claude-code` }],
               },
             ],
           },
@@ -104,7 +104,7 @@ describe("Claude hook installer", () => {
                   { type: "command", command: "echo existing" },
                   {
                     type: "command",
-                    command: `/usr/bin/env node ${notifyPath} --source=claude-code`,
+                    command: `/usr/bin/env node '${notifyPath}' --source=claude-code`,
                   },
                 ],
               },
@@ -187,13 +187,13 @@ describe("Claude hook installer", () => {
     expect(result.backupPath).toContain(".bak.");
   });
 
-  it("quotes notify paths that contain spaces", async () => {
+  it("single-quotes notify paths that contain spaces", async () => {
     const spacedPath = join(tempDir, "notify dir", "notify.cjs");
 
     await installClaudeHook({ settingsPath, notifyPath: spacedPath });
     const saved = JSON.parse(await readFile(settingsPath, "utf8"));
 
-    expect(saved.hooks.SessionEnd[0].hooks[0].command).toContain(`"${spacedPath}"`);
+    expect(saved.hooks.SessionEnd[0].hooks[0].command).toContain(`'${spacedPath}'`);
   });
 
   it("re-throws non-ENOENT errors when reading settings", async () => {

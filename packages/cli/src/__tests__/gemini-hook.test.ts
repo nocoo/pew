@@ -105,7 +105,7 @@ describe("Gemini hook installer", () => {
               {
                 matcher: "exit|clear|logout|prompt_input_exit|other",
                 hooks: [
-                  { name: "pew-tracker", type: "command", command: `/usr/bin/env node ${notifyPath} --source=gemini-cli` },
+                  { name: "pew-tracker", type: "command", command: `/usr/bin/env node '${notifyPath}' --source=gemini-cli` },
                   { name: "custom-hook", type: "command", command: "echo done" },
                 ],
               },
@@ -128,15 +128,15 @@ describe("Gemini hook installer", () => {
     expect(saved.hooks.SessionEnd[0].hooks[0].name).toBe("custom-hook");
   });
 
-  it("quotes notifyPath containing special characters", async () => {
+  it("single-quotes notifyPath containing special characters", async () => {
     const specialNotifyPath = "/tmp/my pew dir/bin/notify.cjs";
     const result = await installGeminiHook({ settingsPath, notifyPath: specialNotifyPath });
     const saved = JSON.parse(await readFile(settingsPath, "utf8"));
 
     expect(result.changed).toBe(true);
-    // The command should have quoted the path due to the space
+    // The command should have single-quoted the path due to the space
     const command = saved.hooks.SessionEnd[0].hooks[0].command as string;
-    expect(command).toContain('"');
+    expect(command).toContain("'");
     expect(command).toContain("my pew dir");
   });
 
@@ -303,7 +303,7 @@ describe("Gemini hook installer", () => {
   describe("normalizeEntry edge cases", () => {
     it("repairs hook name when it differs but command matches", async () => {
       // Hook has wrong name but matching command — should be repaired to "pew-tracker"
-      const command = `/usr/bin/env node ${notifyPath} --source=gemini-cli`;
+      const command = `/usr/bin/env node '${notifyPath}' --source=gemini-cli`;
       await writeFile(
         settingsPath,
         `${JSON.stringify(

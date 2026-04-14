@@ -109,6 +109,10 @@ export async function getOpenCodePluginStatus(
 }
 
 function buildOpenCodePlugin({ notifyPath }: { notifyPath: string }): string {
+  if (/[`${}\\]/.test(notifyPath)) {
+    throw new Error("Notify path contains unsafe characters");
+  }
+  const escapedPath = shellEscape(notifyPath);
   return `// ${PLUGIN_MARKER}
 const notifyPath = ${JSON.stringify(notifyPath)};
 export const PewTrackerPlugin = async ({ $ }) => {
@@ -117,7 +121,7 @@ export const PewTrackerPlugin = async ({ $ }) => {
       if (!event || event.type !== "session.updated") return;
       try {
         if (!notifyPath) return;
-        const proc = $\`/usr/bin/env node ${"${notifyPath}"} --source=opencode\`;
+        const proc = $\`/usr/bin/env node ${escapedPath} --source=opencode\`;
         if (proc && typeof proc.catch === "function") proc.catch(() => {});
       } catch (_) {}
     }
@@ -136,4 +140,13 @@ async function readOptional(
     if ((err as NodeJS.ErrnoException | undefined)?.code === "ENOENT") return null;
     throw err;
   }
+}
+
+/**
+ * POSIX single-quote escaping: wraps in single quotes and escapes
+ * embedded single quotes as '\'' to prevent ALL shell expansion
+ * (including $(...) command substitution).
+ */
+function shellEscape(s: string): string {
+  return "'" + s.replace(/'/g, "'\\''") + "'";
 }
