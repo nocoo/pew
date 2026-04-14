@@ -420,7 +420,12 @@ describe("GET /api/auth/cli", () => {
 // Showcase API E2E Tests
 // ===========================================================================
 
-async function cleanupShowcases(d1: D1Client): Promise<void> {
+/**
+ * beforeAll crash-recovery cleanup: remove stale rows by repo_key (from
+ * crashed CI runs) AND by user_id. Safe because no other run is relying
+ * on this data yet — we haven't started our tests.
+ */
+async function cleanupShowcasesBefore(d1: D1Client): Promise<void> {
   // 1. Remove stale rows left by crashed CI runs that used the same fixed
   //    repo_key (UNIQUE constraint). This must run first so the current run
   //    can INSERT the key without a 409 conflict.
@@ -443,7 +448,25 @@ async function cleanupShowcases(d1: D1Client): Promise<void> {
   await d1.execute("DELETE FROM showcases WHERE user_id = ?", [TEST_USER_ID]);
 }
 
-/** Helper to create a showcase and return its ID */
+/**
+ * afterAll cleanup: ONLY delete by user_id. Do NOT delete by repo_key here
+ * because a concurrent run may have already created a new row with the same
+ * repo_key — deleting it would break that run's assertions.
+ */
+async function cleanupShowcasesAfter(d1: D1Client): Promise<void> {
+  await d1.execute("DELETE FROM showcase_upvotes WHERE user_id = ?", [
+    TEST_USER_ID,
+  ]);
+  await d1.execute(
+    "DELETE FROM showcase_upvotes WHERE showcase_id IN (SELECT id FROM showcases WHERE user_id = ?)",
+    [TEST_USER_ID],
+  );
+  await d1.execute("DELETE FROM showcases WHERE user_id = ?", [TEST_USER_ID]);
+}
+
+/** Helper to create a showcase and return its ID.
+ *  If a 409 is returned (another concurrent run already owns the repo_key),
+ *  look up the existing row in D1 and reuse its ID instead of failing. */
 async function createTestShowcase(
   repoUrl: string,
   tagline?: string,
@@ -456,12 +479,22 @@ async function createTestShowcase(
       tagline,
     }),
   });
-  if (res.status !== 201) {
+  if (res.status === 201) {
     const body = await res.json();
-    throw new Error(`Failed to create showcase: ${body.error}`);
+    return body.id;
+  }
+  if (res.status === 409) {
+    // Another run created the showcase between our cleanup and create.
+    // Fetch the existing row from D1 and reuse it.
+    const existing = await d1.firstOrNull<{ id: string }>(
+      "SELECT id FROM showcases WHERE repo_key = ?",
+      [SHOWCASE_REPO_KEY],
+    );
+    if (existing) return existing.id;
+    // If somehow not found after 409, fall through to throw
   }
   const body = await res.json();
-  return body.id;
+  throw new Error(`Failed to create showcase: ${body.error}`);
 }
 
 /** Helper to assert showcase tests should run - throws if rate limited */
@@ -478,7 +511,7 @@ describe("Showcase API", () => {
 
   // Clean up any leftover showcase data and create ONE shared showcase
   beforeAll(async () => {
-    await cleanupShowcases(d1);
+    await cleanupShowcasesBefore(d1);
     // Try to create a single showcase (1 GitHub API call)
     // If rate limited, mark tests to skip
     try {
@@ -497,9 +530,9 @@ describe("Showcase API", () => {
     }
   });
 
-  // Clean up showcases after all showcase tests
+  // Clean up showcases after all showcase tests — only by user_id (safe)
   afterAll(async () => {
-    await cleanupShowcases(d1);
+    await cleanupShowcasesAfter(d1);
   });
 
   // -------------------------------------------------------------------------
