@@ -26,7 +26,7 @@ export interface LeaderboardEntry {
     image: string | null;
     slug: string | null;
   };
-  teams: { id: string; name: string; logo_url: string | null }[];
+  teams: { id: string; name: string; logoUrl: string | null }[];
   badges: LeaderboardBadge[];
   total_tokens: number;
   input_tokens: number;

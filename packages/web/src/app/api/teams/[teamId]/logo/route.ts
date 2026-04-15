@@ -152,7 +152,7 @@ export async function POST(
     }
   }
 
-  return NextResponse.json({ logo_url: newLogoUrl });
+  return NextResponse.json({ logoUrl: newLogoUrl });
 }
 
 // ---------------------------------------------------------------------------

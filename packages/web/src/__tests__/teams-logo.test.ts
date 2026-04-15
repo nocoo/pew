@@ -165,7 +165,7 @@ describe("POST /api/teams/[teamId]/logo", () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.logo_url).toBe("https://cdn.example.com/new.jpg");
+    expect(body.logoUrl).toBe("https://cdn.example.com/new.jpg");
   });
 
   it("should reject invalid image data", async () => {
@@ -210,7 +210,7 @@ describe("POST /api/teams/[teamId]/logo", () => {
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.logo_url).toBe(newUrl);
+    expect(body.logoUrl).toBe(newUrl);
     expect(putTeamLogo).toHaveBeenCalledOnce();
     expect(putTeamLogo).toHaveBeenCalledWith("t1", expect.any(Buffer));
     // Should persist to DB

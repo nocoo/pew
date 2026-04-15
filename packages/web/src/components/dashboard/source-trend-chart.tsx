@@ -14,6 +14,7 @@ import { chartAxis } from "@/lib/palette";
 import { agentColor } from "@/lib/palette";
 import { sourceLabel } from "@/hooks/use-usage-data";
 import type { SourceTrendPoint } from "@/lib/usage-helpers";
+import { nextHiddenLegendKeys } from "@/lib/chart-legend-filter";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 import {
   ChartTooltip,
@@ -97,7 +98,8 @@ function SourceTrendTooltip({
 
 /**
  * Line chart showing token usage per source (tool) over time.
- * Each source gets a distinct colored line. Click legend to toggle visibility.
+ * Each source gets a distinct colored line.
+ * Click legend to isolate, cmd/ctrl+click legend to toggle visibility.
  */
 export function SourceTrendChart({ data, className }: SourceTrendChartProps) {
   const [hiddenSources, setHiddenSources] = useState<Set<string>>(new Set());
@@ -131,15 +133,14 @@ export function SourceTrendChart({ data, className }: SourceTrendChartProps) {
     );
   }
 
-  function toggleSource(source: string) {
+  function handleLegendClick(source: string, metaKey: boolean) {
     setHiddenSources((prev) => {
-      const next = new Set(prev);
-      if (next.has(source)) {
-        next.delete(source);
-      } else {
-        next.add(source);
-      }
-      return next;
+      return nextHiddenLegendKeys({
+        keys: sourceKeys,
+        hiddenKeys: prev,
+        targetKey: source,
+        metaKey,
+      });
     });
   }
 
@@ -163,7 +164,9 @@ export function SourceTrendChart({ data, className }: SourceTrendChartProps) {
               <button
                 key={source}
                 type="button"
-                onClick={() => toggleSource(source)}
+                onClick={(event) =>
+                  handleLegendClick(source, event.metaKey || event.ctrlKey)
+                }
                 className={cn(
                   "flex items-center gap-1.5 transition-opacity",
                   isHidden && "opacity-40"

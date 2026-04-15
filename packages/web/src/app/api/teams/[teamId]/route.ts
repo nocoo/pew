@@ -70,12 +70,14 @@ export async function GET(
     }
 
     // Strip invite_code for non-owners
-    const { invite_code: _, ...teamWithoutCode } = team;
-    const sanitizedTeam = role === "owner" ? team : teamWithoutCode;
+    const { invite_code, logo_url, ...teamWithoutSensitive } = team;
+    const sanitizedTeam = role === "owner"
+      ? { ...teamWithoutSensitive, invite_code }
+      : teamWithoutSensitive;
 
     return NextResponse.json({
       ...sanitizedTeam,
-      logo_url: team.logo_url ?? null,
+      logoUrl: logo_url ?? null,
       auto_register_season: !!team.auto_register_season,
       role,
       members: members.map((m) => ({

@@ -1,0 +1,47 @@
+# Gitleaks configuration — suppress specific false-positive patterns in test files
+# See: https://github.com/gitleaks/gitleaks#configuration
+#
+# IMPORTANT: Do NOT blanket-exclude test directories or file globs.
+# Only allowlist the exact dummy-token patterns that trigger generic-api-key,
+# and scope each rule to the files where those tokens actually appear.
+
+# --- Fake publishable API keys in test fixtures ---
+# All test tokens are short human-readable names like pk_test, pk_abc123,
+# pk_bad_key, etc.  Real production keys are pk_ + 32 hex chars (35 chars
+# total) — the anchored regex below only matches tokens with 1–20 chars
+# after "pk_", so a genuine production key (32 hex chars) can never match.
+[[allowlists]]
+  description = "short fake pk_ API keys in test files"
+  paths = [
+    '''__tests__/''',
+  ]
+  regexes = [
+    '''^pk_[a-zA-Z0-9_]{1,20}$''',
+  ]
+
+# --- Hardcoded dummy secrets in worker / web / D1 tests ---
+[[allowlists]]
+  description = "hardcoded test-secret / test-api-token values"
+  paths = [
+    '''packages/worker/src/.*\.test\.ts$''',
+    '''packages/worker-read/src/.*\.test\.ts$''',
+    '''packages/web/src/__tests__/''',
+  ]
+  regexes = [
+    '''test-secret-abc123''',
+    '''test-api-token''',
+    '''test-read-secret''',
+    '''test-secret''',
+  ]
+
+# --- Fake cloud tokens in D1 test guard ---
+[[allowlists]]
+  description = "fake cloud tokens in d1-test-guard test"
+  paths = [
+    '''scripts/__tests__/d1-test-guard\.test\.ts$''',
+  ]
+  regexes = [
+    '''tok-prod-xxx''',
+    '''shared-secret''',
+    '''shared-read-secret''',
+  ]

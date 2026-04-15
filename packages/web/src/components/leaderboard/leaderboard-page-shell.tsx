@@ -8,6 +8,7 @@ import { LeaderboardRow } from "@/components/leaderboard/leaderboard-row";
 import { UserProfileDialog } from "@/components/user-profile-dialog";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { PERIOD_TO_TAB } from "@/components/leaderboard/period-tabs";
+import { ROW_CLASSES } from "@/components/leaderboard/leaderboard-layout";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -105,7 +106,7 @@ export function LeaderboardPageShell({
             <button
               onClick={loadMore}
               disabled={loadingMore}
-              className="w-full rounded-[var(--radius-card)] bg-secondary py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
+              className={`w-full ${ROW_CLASSES} text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50`}
             >
               {loadingMore ? "Loading..." : "Show more"}
             </button>
@@ -120,16 +121,18 @@ export function LeaderboardPageShell({
         </div>
       )}
 
-      {/* User profile dialog — stays in-page, preserves scroll & pagination */}
-      <UserProfileDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        slug={dialogEntry?.user.slug ?? dialogEntry?.user.id ?? null}
-        name={dialogEntry?.user.name ?? null}
-        image={dialogEntry?.user.image ?? null}
-        badges={dialogEntry?.badges ?? []}
-        defaultTab={PERIOD_TO_TAB[period]}
-      />
+      {/* User profile dialog — lazy mounted to avoid useAdmin/useSeasons firing while closed */}
+      {dialogOpen && (
+        <UserProfileDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          slug={dialogEntry?.user.slug ?? dialogEntry?.user.id ?? null}
+          name={dialogEntry?.user.name ?? null}
+          image={dialogEntry?.user.image ?? null}
+          badges={dialogEntry?.badges ?? []}
+          defaultTab={PERIOD_TO_TAB[period]}
+        />
+      )}
     </TooltipProvider>
   );
 }

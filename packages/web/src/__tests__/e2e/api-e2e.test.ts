@@ -2,7 +2,11 @@
  * L3 API E2E tests — hit real Next.js dev server on port 17020 with real D1.
  *
  * The server runs with E2E_SKIP_AUTH=true, so all requests are authenticated
- * as E2E_TEST_USER_ID ("e2e-test-user-id") without needing OAuth.
+ * as E2E_TEST_USER_ID without needing OAuth.
+ *
+ * To prevent concurrent CI runs from colliding on pew-db-test, the E2E runner
+ * (scripts/run-e2e.ts) generates a unique E2E_TEST_USER_ID per run and passes
+ * it via environment variables to both the Next.js server and this test file.
  *
  * Prerequisites:
  *   - Next.js dev server running on E2E_PORT (default 17020) with E2E_SKIP_AUTH=true
@@ -27,8 +31,18 @@ import { D1Client } from "../../lib/d1";
 const E2E_PORT = process.env.E2E_PORT || "17020";
 const BASE_URL = `http://localhost:${E2E_PORT}`;
 
-const TEST_USER_ID = "e2e-test-user-id";
-const TEST_USER_EMAIL = "e2e@test.local";
+// Per-run unique user ID/email — set by scripts/run-e2e.ts to isolate
+// concurrent CI runs sharing the same pew-db-test D1 database.
+const TEST_USER_ID = process.env.E2E_TEST_USER_ID || "e2e-test-user-id";
+const TEST_USER_EMAIL = process.env.E2E_TEST_USER_EMAIL || "e2e@test.local";
+
+// Per-run unique showcase repo — uses TEST_USER_ID to derive a unique
+// repo_key so concurrent CI runs never collide on the UNIQUE constraint.
+// The E2E server runs with E2E_MOCK_GITHUB=1, so fetchGitHubMetadata()
+// returns mock data and does not require a real GitHub repository.
+const SHOWCASE_RUN_SLUG = TEST_USER_ID.replace(/[^a-zA-Z0-9_.-]/g, "-");
+const SHOWCASE_REPO_URL = `https://github.com/e2e-test/${SHOWCASE_RUN_SLUG}`;
+const SHOWCASE_REPO_KEY = `e2e-test/${SHOWCASE_RUN_SLUG}`.toLowerCase();
 
 /** Headers for ingest requests — includes version gate header */
 const INGEST_HEADERS = {
@@ -409,16 +423,49 @@ describe("GET /api/auth/cli", () => {
 // Showcase API E2E Tests
 // ===========================================================================
 
-async function cleanupShowcases(d1: D1Client): Promise<void> {
-  // Delete upvotes first (FK constraint)
+/**
+ * beforeAll cleanup: remove stale rows by this run's unique repo_key AND
+ * user_id. With per-run unique repo_keys, we only need to clean our own data.
+ */
+async function cleanupShowcasesBefore(d1: D1Client): Promise<void> {
+  // Clean up by repo_key (in case a previous crashed run with the same
+  // TEST_USER_ID left data behind — unlikely but safe)
+  await d1.execute(
+    "DELETE FROM showcase_upvotes WHERE showcase_id IN (SELECT id FROM showcases WHERE repo_key = ?)",
+    [SHOWCASE_REPO_KEY],
+  );
+  await d1.execute("DELETE FROM showcases WHERE repo_key = ?", [
+    SHOWCASE_REPO_KEY,
+  ]);
+
+  // Clean up by user_id
   await d1.execute("DELETE FROM showcase_upvotes WHERE user_id = ?", [
     TEST_USER_ID,
   ]);
-  // Delete showcases
+  await d1.execute(
+    "DELETE FROM showcase_upvotes WHERE showcase_id IN (SELECT id FROM showcases WHERE user_id = ?)",
+    [TEST_USER_ID],
+  );
   await d1.execute("DELETE FROM showcases WHERE user_id = ?", [TEST_USER_ID]);
 }
 
-/** Helper to create a showcase and return its ID */
+/**
+ * afterAll cleanup: ONLY delete by user_id. Do NOT delete by repo_key here
+ * because a concurrent run may have already created a new row with the same
+ * repo_key — deleting it would break that run's assertions.
+ */
+async function cleanupShowcasesAfter(d1: D1Client): Promise<void> {
+  await d1.execute("DELETE FROM showcase_upvotes WHERE user_id = ?", [
+    TEST_USER_ID,
+  ]);
+  await d1.execute(
+    "DELETE FROM showcase_upvotes WHERE showcase_id IN (SELECT id FROM showcases WHERE user_id = ?)",
+    [TEST_USER_ID],
+  );
+  await d1.execute("DELETE FROM showcases WHERE user_id = ?", [TEST_USER_ID]);
+}
+
+/** Helper to create a showcase and return its ID. */
 async function createTestShowcase(
   repoUrl: string,
   tagline?: string,
@@ -431,50 +478,37 @@ async function createTestShowcase(
       tagline,
     }),
   });
-  if (res.status !== 201) {
+  if (res.status === 201) {
     const body = await res.json();
-    throw new Error(`Failed to create showcase: ${body.error}`);
+    return body.id;
   }
   const body = await res.json();
-  return body.id;
+  throw new Error(`Failed to create showcase (${res.status}): ${body.error}`);
 }
 
-/** Helper to assert showcase tests should run - throws if rate limited */
-function requireShowcase(id: string | null, skipFlag: boolean): asserts id is string {
-  if (skipFlag || !id) {
-    throw new Error("SKIPPED: GitHub API rate limited — showcase not created");
+/** Helper to assert showcase was created successfully */
+function requireShowcase(id: string | null): asserts id is string {
+  if (!id) {
+    throw new Error("SKIPPED: showcase not created");
   }
 }
 
 describe("Showcase API", () => {
   // Shared showcase ID — created once, used by multiple tests
   let sharedShowcaseId: string | null = null;
-  let skipShowcaseTests = false;
 
   // Clean up any leftover showcase data and create ONE shared showcase
   beforeAll(async () => {
-    await cleanupShowcases(d1);
-    // Try to create a single showcase (1 GitHub API call)
-    // If rate limited, mark tests to skip
-    try {
-      sharedShowcaseId = await createTestShowcase(
-        "https://github.com/nocoo/pew",
-        "E2E test showcase",
-      );
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
-      if (msg.includes("rate limit")) {
-        console.warn("⚠️  GitHub API rate limited — showcase-dependent tests will fail with SKIPPED");
-        skipShowcaseTests = true;
-      } else {
-        throw err;
-      }
-    }
+    await cleanupShowcasesBefore(d1);
+    sharedShowcaseId = await createTestShowcase(
+      SHOWCASE_REPO_URL,
+      "E2E test showcase",
+    );
   });
 
-  // Clean up showcases after all showcase tests
+  // Clean up showcases after all showcase tests — only by user_id (safe)
   afterAll(async () => {
-    await cleanupShowcases(d1);
+    await cleanupShowcasesAfter(d1);
   });
 
   // -------------------------------------------------------------------------
@@ -500,13 +534,13 @@ describe("Showcase API", () => {
 
   describe("POST /api/showcases", () => {
     it("should return 409 for duplicate repo (using shared showcase)", async () => {
-      requireShowcase(sharedShowcaseId, skipShowcaseTests);
-      // The shared showcase already uses nocoo/pew, so this should 409
+      requireShowcase(sharedShowcaseId);
+      // The shared showcase already uses SHOWCASE_REPO_KEY, so this should 409
       const res = await fetch(`${BASE_URL}/api/showcases`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          github_url: "https://github.com/nocoo/pew",
+          github_url: SHOWCASE_REPO_URL,
         }),
       });
       expect(res.status).toBe(409);
@@ -535,7 +569,7 @@ describe("Showcase API", () => {
 
   describe("GET /api/showcases", () => {
     it("should list public showcases", async () => {
-      requireShowcase(sharedShowcaseId, skipShowcaseTests);
+      requireShowcase(sharedShowcaseId);
       const res = await fetch(`${BASE_URL}/api/showcases`);
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -554,7 +588,7 @@ describe("Showcase API", () => {
     });
 
     it("should return mine=1 showcases for authenticated user", async () => {
-      requireShowcase(sharedShowcaseId, skipShowcaseTests);
+      requireShowcase(sharedShowcaseId);
       const res = await fetch(`${BASE_URL}/api/showcases?mine=1`);
       expect(res.status).toBe(200);
       const body = await res.json();
@@ -583,13 +617,13 @@ describe("Showcase API", () => {
 
   describe("GET /api/showcases/[id]", () => {
     it("should return single showcase", async () => {
-      requireShowcase(sharedShowcaseId, skipShowcaseTests);
+      requireShowcase(sharedShowcaseId);
       const res = await fetch(`${BASE_URL}/api/showcases/${sharedShowcaseId}`);
       expect(res.status).toBe(200);
       const body = await res.json();
 
       expect(body.id).toBe(sharedShowcaseId);
-      expect(body.repo_key).toBe("nocoo/pew");
+      expect(body.repo_key).toBe(SHOWCASE_REPO_KEY);
       expect(body.user.id).toBe(TEST_USER_ID);
     });
 
@@ -605,7 +639,7 @@ describe("Showcase API", () => {
 
   describe("PATCH /api/showcases/[id]", () => {
     it("should update tagline", async () => {
-      requireShowcase(sharedShowcaseId, skipShowcaseTests);
+      requireShowcase(sharedShowcaseId);
       const res = await fetch(`${BASE_URL}/api/showcases/${sharedShowcaseId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -620,7 +654,7 @@ describe("Showcase API", () => {
     });
 
     it("should update visibility", async () => {
-      requireShowcase(sharedShowcaseId, skipShowcaseTests);
+      requireShowcase(sharedShowcaseId);
       const res = await fetch(`${BASE_URL}/api/showcases/${sharedShowcaseId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -650,7 +684,7 @@ describe("Showcase API", () => {
 
   describe("POST /api/showcases/[id]/upvote", () => {
     it("should add upvote", async () => {
-      requireShowcase(sharedShowcaseId, skipShowcaseTests);
+      requireShowcase(sharedShowcaseId);
       const res = await fetch(`${BASE_URL}/api/showcases/${sharedShowcaseId}/upvote`, {
         method: "POST",
       });
@@ -669,7 +703,7 @@ describe("Showcase API", () => {
     });
 
     it("should remove upvote on second call (toggle)", async () => {
-      requireShowcase(sharedShowcaseId, skipShowcaseTests);
+      requireShowcase(sharedShowcaseId);
       const res = await fetch(`${BASE_URL}/api/showcases/${sharedShowcaseId}/upvote`, {
         method: "POST",
       });
@@ -707,7 +741,7 @@ describe("Showcase API", () => {
 
   describe("DELETE /api/showcases/[id]", () => {
     it("should delete the shared showcase", async () => {
-      requireShowcase(sharedShowcaseId, skipShowcaseTests);
+      requireShowcase(sharedShowcaseId);
       // Delete the shared showcase (last test, so it's safe)
       const deleteRes = await fetch(`${BASE_URL}/api/showcases/${sharedShowcaseId}`, {
         method: "DELETE",

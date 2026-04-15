@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { chartAxis, CHART_COLORS } from "@/lib/palette";
+import { nextHiddenLegendKeys } from "@/lib/chart-legend-filter";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 import {
   ChartTooltip,
@@ -90,7 +91,8 @@ function ProjectTrendTooltip({
 
 /**
  * Multi-line LineChart showing daily session counts per project over time.
- * Each project gets a distinct colored line. Click legend to toggle visibility.
+ * Each project gets a distinct colored line.
+ * Click legend to isolate, cmd/ctrl+click legend to toggle visibility.
  */
 export function ProjectTrendChart({
   timeline,
@@ -129,15 +131,14 @@ export function ProjectTrendChart({
     );
   }
 
-  function toggleProject(name: string) {
+  function handleLegendClick(name: string, metaKey: boolean) {
     setHiddenProjects((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) {
-        next.delete(name);
-      } else {
-        next.add(name);
-      }
-      return next;
+      return nextHiddenLegendKeys({
+        keys: projectKeys,
+        hiddenKeys: prev,
+        targetKey: name,
+        metaKey,
+      });
     });
   }
 
@@ -159,7 +160,9 @@ export function ProjectTrendChart({
               <button
                 key={name}
                 type="button"
-                onClick={() => toggleProject(name)}
+                onClick={(event) =>
+                  handleLegendClick(name, event.metaKey || event.ctrlKey)
+                }
                 className={cn(
                   "flex items-center gap-1.5 transition-opacity",
                   isHidden && "opacity-40",

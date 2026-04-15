@@ -105,6 +105,25 @@ export function SourceAreaChart({
     return Object.keys((data[0] as (typeof data)[number]).sources);
   }, [data]);
 
+  // Stacked render order: low-total sources first, high-total sources last.
+  // This avoids zero/low sources drawing the top boundary and appearing dominant.
+  const sourceRenderKeys = useMemo(() => {
+    if (!sourceKeys.length) return [];
+    const totals = new Map(sourceKeys.map((key) => [key, 0]));
+
+    for (const point of data) {
+      for (const key of sourceKeys) {
+        totals.set(key, (totals.get(key) ?? 0) + (point.sources[key] ?? 0));
+      }
+    }
+
+    return [...sourceKeys].sort((a, b) => {
+      const diff = (totals.get(a) ?? 0) - (totals.get(b) ?? 0);
+      if (diff !== 0) return diff;
+      return a.localeCompare(b);
+    });
+  }, [data, sourceKeys]);
+
   // Pad data to end of month if padToDate is provided
   const chartData = useMemo(() => {
     const raw = data.map((pt) => ({
@@ -188,7 +207,7 @@ export function SourceAreaChart({
             margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
           >
             <defs>
-              {sourceKeys.map((source) => (
+              {sourceRenderKeys.map((source) => (
                 <linearGradient
                   key={source}
                   id={gradId(source)}
@@ -231,7 +250,7 @@ export function SourceAreaChart({
               width={48}
             />
             <Tooltip content={<SourceAreaTooltip />} isAnimationActive={false} />
-            {sourceKeys.map((source) => (
+            {sourceRenderKeys.map((source) => (
               <Area
                 key={source}
                 type="monotone"

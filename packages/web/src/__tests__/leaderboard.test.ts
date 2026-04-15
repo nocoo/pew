@@ -175,7 +175,7 @@ describe("GET /api/leaderboard", () => {
           image: "https://example.com/alice.jpg",
           slug: "alice",
         },
-        teams: [{ id: "t1", name: "Team Alpha", logo_url: "https://s.zhe.to/apps/pew/teams-logo/t1/abc.jpg" }],
+        teams: [{ id: "t1", name: "Team Alpha", logoUrl: "https://s.zhe.to/apps/pew/teams-logo/t1/abc.jpg" }],
         badges: [],
         total_tokens: 5000000,
         input_tokens: 3000000,
@@ -188,8 +188,8 @@ describe("GET /api/leaderboard", () => {
       expect(body.entries[1].rank).toBe(2);
       expect(body.entries[1].user.name).toBe("Bob");
       expect(body.entries[1].teams).toEqual([
-        { id: "t1", name: "Team Alpha", logo_url: "https://s.zhe.to/apps/pew/teams-logo/t1/abc.jpg" },
-        { id: "t2", name: "Team Beta", logo_url: "https://s.zhe.to/apps/pew/teams-logo/t2/def.jpg" },
+        { id: "t1", name: "Team Alpha", logoUrl: "https://s.zhe.to/apps/pew/teams-logo/t1/abc.jpg" },
+        { id: "t2", name: "Team Beta", logoUrl: "https://s.zhe.to/apps/pew/teams-logo/t2/def.jpg" },
       ]);
     });
 
@@ -542,7 +542,7 @@ describe("GET /api/leaderboard", () => {
       const res = await GET(makeGetRequest("/api/leaderboard"));
       const body = await res.json();
 
-      expect(body.entries[0].teams).toEqual([{ id: "t1", name: "Eng", logo_url: "https://s.zhe.to/apps/pew/teams-logo/t1/xyz.jpg" }]);
+      expect(body.entries[0].teams).toEqual([{ id: "t1", name: "Eng", logoUrl: "https://s.zhe.to/apps/pew/teams-logo/t1/xyz.jpg" }]);
       expect(mockDb.getLeaderboardUserTeams).toHaveBeenCalledWith(["u1"]);
     });
   });

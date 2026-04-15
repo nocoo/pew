@@ -145,10 +145,10 @@ function TeamRow({
 
         {/* Team icon / logo */}
         <div className="flex flex-1 items-center gap-3 min-w-0">
-          {entry.team.logo_url ? (
+          {entry.team.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- external team logos
             <img
-              src={entry.team.logo_url}
+              src={entry.team.logoUrl}
               alt={entry.team.name}
               className="h-8 w-8 shrink-0 rounded-full object-cover"
             />
@@ -415,11 +415,14 @@ export default function SeasonLeaderboardPage() {
         )}
       </main>
 
-      {/* Profile dialog */}
-      {dialogMember && data && seasonEndExclusive && (
+      {/* Profile dialog — lazy mounted to avoid useAdmin/useSeasons firing while closed */}
+      {dialogOpen && dialogMember && data && seasonEndExclusive && (
         <UserProfileDialog
           open={dialogOpen}
-          onOpenChange={setDialogOpen}
+          onOpenChange={(v) => {
+            setDialogOpen(v);
+            if (!v) setDialogMember(null);
+          }}
           slug={dialogMember.slug ?? dialogMember.user_id}
           name={dialogMember.name}
           image={dialogMember.image}

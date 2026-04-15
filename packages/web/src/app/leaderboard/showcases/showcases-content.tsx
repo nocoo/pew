@@ -59,7 +59,7 @@ export function ShowcasesContent({ isLoggedIn }: ShowcasesContentProps) {
   // Error state
   if (error) {
     return (
-      <div className="rounded-xl bg-destructive/10 p-4 text-sm text-destructive mt-4">
+      <div className="rounded-[var(--radius-card)] bg-destructive/10 p-4 text-sm text-destructive mt-4">
         Failed to load showcases: {error}
       </div>
     );

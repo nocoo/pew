@@ -166,13 +166,13 @@ export async function GET(request: Request) {
 
     // Fetch teams for all users in the leaderboard
     const userIds = actualRows.map((r) => r.user_id);
-    const teamsByUser = new Map<string, { id: string; name: string; logo_url: string | null }[]>();
+    const teamsByUser = new Map<string, { id: string; name: string; logoUrl: string | null }[]>();
 
     if (userIds.length > 0) {
       const teamRows = await db.getLeaderboardUserTeams(userIds);
       for (const row of teamRows) {
         const list = teamsByUser.get(row.user_id) ?? [];
-        list.push({ id: row.team_id, name: row.team_name, logo_url: row.logo_url ?? null });
+        list.push({ id: row.team_id, name: row.team_name, logoUrl: row.logo_url ?? null });
         teamsByUser.set(row.user_id, list);
       }
     }

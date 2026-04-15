@@ -15,6 +15,7 @@ import {
   toDeviceTrendPoints,
   buildDeviceLabelMap,
 } from "@/lib/device-helpers";
+import { nextHiddenLegendKeys } from "@/lib/chart-legend-filter";
 import type { DeviceAggregate, DeviceTimelinePoint } from "@pew/core";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 import {
@@ -100,7 +101,8 @@ function DeviceTrendTooltip({
 
 /**
  * Multi-line LineChart showing token usage per device over time.
- * Each device gets a distinct colored line. Click legend to toggle visibility.
+ * Each device gets a distinct colored line.
+ * Click legend to isolate, cmd/ctrl+click legend to toggle visibility.
  */
 export function DeviceTrendChart({
   timeline,
@@ -136,15 +138,14 @@ export function DeviceTrendChart({
     );
   }
 
-  function toggleDevice(deviceId: string) {
+  function handleLegendClick(deviceId: string, metaKey: boolean) {
     setHiddenDevices((prev) => {
-      const next = new Set(prev);
-      if (next.has(deviceId)) {
-        next.delete(deviceId);
-      } else {
-        next.add(deviceId);
-      }
-      return next;
+      return nextHiddenLegendKeys({
+        keys: deviceKeys,
+        hiddenKeys: prev,
+        targetKey: deviceId,
+        metaKey,
+      });
     });
   }
 
@@ -166,7 +167,9 @@ export function DeviceTrendChart({
               <button
                 key={deviceId}
                 type="button"
-                onClick={() => toggleDevice(deviceId)}
+                onClick={(event) =>
+                  handleLegendClick(deviceId, event.metaKey || event.ctrlKey)
+                }
                 className={cn(
                   "flex items-center gap-1.5 transition-opacity",
                   isHidden && "opacity-40"

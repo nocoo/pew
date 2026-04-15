@@ -1,4 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { ROW_CLASSES, COL_RANK, COL_SESSIONS, COL_DURATION, COL_TOKENS } from "@/components/leaderboard/leaderboard-layout";
 
 /**
  * Loading skeleton for leaderboard rows.
@@ -11,10 +13,10 @@ export function LeaderboardSkeleton({ count = 10 }: { count?: number }) {
       {Array.from({ length: count }).map((_, i) => (
         <div
           key={i}
-          className="flex items-center gap-3 rounded-[var(--radius-card)] bg-secondary px-4 py-3"
+          className={cn("flex items-center gap-3", ROW_CLASSES)}
         >
           {/* Rank */}
-          <Skeleton className="h-5 w-8 shrink-0" />
+          <Skeleton className={cn(COL_RANK, "h-5")} />
           {/* Avatar */}
           <Skeleton className="h-8 w-8 rounded-full shrink-0" />
           {/* Name + badge */}
@@ -22,11 +24,11 @@ export function LeaderboardSkeleton({ count = 10 }: { count?: number }) {
             <Skeleton className="h-4 w-32" />
           </div>
           {/* Session count (hidden on mobile) */}
-          <Skeleton className="hidden sm:block h-3 w-24 shrink-0" />
+          <Skeleton className={cn(COL_SESSIONS, "h-3")} />
           {/* Duration (hidden on mobile) */}
-          <Skeleton className="hidden sm:block h-3 w-24 shrink-0" />
+          <Skeleton className={cn(COL_DURATION, "h-3")} />
           {/* Total tokens */}
-          <Skeleton className="h-7 w-[120px] sm:w-[280px] shrink-0" />
+          <Skeleton className={cn(COL_TOKENS, "h-7")} />
         </div>
       ))}
     </div>

@@ -8,7 +8,7 @@ import {
   type ScopeSelection,
   type Organization,
   type Team,
-} from "@/components/leaderboard/scope-dropdown";
+} from "@/lib/leaderboard-scope";
 
 // ---------------------------------------------------------------------------
 // Types
