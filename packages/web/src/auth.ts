@@ -73,10 +73,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async (req) => {
   const dbWrite = await getDbWrite();
 
   return {
-    // Trust the host header for automatic URL detection.
-    // This allows the app to work behind reverse proxies (e.g. pew.dev.hexly.ai)
-    // so Auth.js reads x-forwarded-host instead of using localhost.
-    trustHost: true,
+    // When NEXTAUTH_URL is configured, Auth.js uses it as the canonical origin
+    // and trustHost is unnecessary. Only enable trustHost as a fallback for
+    // local dev / environments without NEXTAUTH_URL where the host header is
+    // needed for URL detection behind proxies.
+    trustHost: !process.env.NEXTAUTH_URL,
     adapter: D1AuthAdapter(dbRead, dbWrite),
     providers: [Google],
     session: {

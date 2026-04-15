@@ -33,17 +33,14 @@ const TRUSTED_ORIGIN: { proto: string; host: string } | null = (() => {
  * Exported for unit testing.
  */
 export function buildRedirectUrl(req: NextRequest, pathname: string): URL {
-  const trustedProto = TRUSTED_ORIGIN?.proto ?? "https";
-  const forwardedHost = req.headers.get("x-forwarded-host");
-
-  if (
-    forwardedHost &&
-    TRUSTED_ORIGIN &&
-    TRUSTED_ORIGIN.host === forwardedHost
-  ) {
-    return new URL(pathname, `${trustedProto}://${forwardedHost}`);
+  // When TRUSTED_ORIGIN is configured (from NEXTAUTH_URL), always use the
+  // pinned origin — never fall back to the request origin, which could be
+  // influenced by forwarded headers (CWE-601).
+  if (TRUSTED_ORIGIN) {
+    return new URL(pathname, `${TRUSTED_ORIGIN.proto}://${TRUSTED_ORIGIN.host}`);
   }
 
+  // Fallback for local dev / environments without NEXTAUTH_URL.
   return new URL(pathname, req.nextUrl.origin);
 }
 

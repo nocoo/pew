@@ -66,14 +66,14 @@ describe("buildRedirectUrl", () => {
     expect(url.href).toBe("https://proxy.example.com/login");
   });
 
-  it("should ignore forwarded host when it does not match NEXTAUTH_URL", async () => {
+  it("should use pinned origin when forwarded host does not match NEXTAUTH_URL", async () => {
     const { buildRedirectUrl } = await importProxy("https://legit.example.com");
     const req = makeReq("/dashboard", {
       "x-forwarded-host": "evil.example.com",
     });
     const url = buildRedirectUrl(req, "/login");
-    // Falls back to request origin
-    expect(url.origin).toBe("https://pew.example.com");
+    // Always uses pinned origin when NEXTAUTH_URL is configured (CWE-601)
+    expect(url.origin).toBe("https://legit.example.com");
   });
 
   it("should ignore forwarded host when NEXTAUTH_URL is not set", async () => {
