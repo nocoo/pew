@@ -135,7 +135,7 @@ describe("GET /api/live", () => {
     expect(db.error).not.toMatch(/\bok\b/i);
   });
 
-  it("should sanitize ok from D1 error messages", async () => {
+  it("should sanitize error details from D1 error messages", async () => {
     const mockDbRead = createMockDbRead();
     mockDbRead.ping.mockRejectedValue(new Error("ok something failed"));
     getDbRead.mockResolvedValue(mockDbRead);
@@ -143,7 +143,8 @@ describe("GET /api/live", () => {
     const res = await GET(makeGetRequest());
     const body = (await res.json()) as Record<string, unknown>;
     const db = body.db as Record<string, unknown>;
-    expect(db.error).toBe("*** something failed");
+    // Internal error details are redacted for security
+    expect(db.error).toBe("Service unavailable");
   });
 
   it("should handle non-Error throw from D1", async () => {
@@ -158,7 +159,8 @@ describe("GET /api/live", () => {
     expect(body.status).toBe("error");
     const db = body.db as Record<string, unknown>;
     expect(db.connected).toBe(false);
-    expect(db.error).toBe("string error");
+    // Internal error details are redacted for security
+    expect(db.error).toBe("Service unavailable");
   });
 
   // -------------------------------------------------------------------------

@@ -289,6 +289,7 @@ describe("GET /api/leaderboard", () => {
 
   describe("team filter", () => {
     it("should pass teamId when team param is provided", async () => {
+      mockDb.checkTeamMembershipExists.mockResolvedValueOnce(true);
       mockDb.getGlobalLeaderboard.mockResolvedValueOnce([]);
       mockDb.getLeaderboardSessionStats.mockResolvedValueOnce([]);
 
@@ -380,6 +381,7 @@ describe("GET /api/leaderboard", () => {
 
   describe("organization filter", () => {
     it("should pass orgId when org param is provided", async () => {
+      mockDb.checkOrgMembership.mockResolvedValueOnce(true);
       mockDb.getGlobalLeaderboard.mockResolvedValueOnce([]);
       mockDb.getLeaderboardSessionStats.mockResolvedValueOnce([]);
 
@@ -434,6 +436,7 @@ describe("GET /api/leaderboard", () => {
     });
 
     it("should set Cache-Control: private, no-store for org-scoped leaderboard", async () => {
+      mockDb.checkOrgMembership.mockResolvedValueOnce(true);
       mockDb.getGlobalLeaderboard.mockResolvedValueOnce([]);
       mockDb.getLeaderboardSessionStats.mockResolvedValueOnce([]);
 
@@ -458,6 +461,7 @@ describe("GET /api/leaderboard", () => {
     });
 
     it("should include scope='team' and scopeId when team param is provided", async () => {
+      mockDb.checkTeamMembershipExists.mockResolvedValueOnce(true);
       mockDb.getGlobalLeaderboard.mockResolvedValueOnce([]);
       mockDb.getLeaderboardSessionStats.mockResolvedValueOnce([]);
 
@@ -470,6 +474,7 @@ describe("GET /api/leaderboard", () => {
     });
 
     it("should include scope='org' and scopeId when org param is provided", async () => {
+      mockDb.checkOrgMembership.mockResolvedValueOnce(true);
       mockDb.getGlobalLeaderboard.mockResolvedValueOnce([]);
       mockDb.getLeaderboardSessionStats.mockResolvedValueOnce([]);
 
@@ -496,6 +501,7 @@ describe("GET /api/leaderboard", () => {
     });
 
     it("should NOT set cache headers for team-scoped leaderboard", async () => {
+      mockDb.checkTeamMembershipExists.mockResolvedValueOnce(true);
       mockDb.getGlobalLeaderboard.mockResolvedValueOnce([]);
       mockDb.getLeaderboardSessionStats.mockResolvedValueOnce([]);
 
@@ -704,6 +710,7 @@ describe("GET /api/leaderboard", () => {
     });
 
     it("should use private cache when source + team are combined", async () => {
+      mockDb.checkTeamMembershipExists.mockResolvedValueOnce(true);
       mockDb.getGlobalLeaderboard.mockResolvedValueOnce([]);
       mockDb.getLeaderboardSessionStats.mockResolvedValueOnce([]);
 

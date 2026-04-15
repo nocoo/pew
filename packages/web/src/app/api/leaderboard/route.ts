@@ -132,20 +132,40 @@ export async function GET(request: Request) {
     offset = parsed;
   }
 
-  // Check auth for scoped requests — anonymous users silently degrade to global
+  const db = await getDbRead();
+
+  // Check auth for scoped requests — anonymous users silently degrade to global.
+  // Authenticated users must be a member of the requested team/org.
   let teamId: string | undefined;
   let orgId: string | undefined;
 
   if (teamIdParam || orgIdParam) {
     const authResult = await resolveUser(request);
     if (authResult) {
-      teamId = teamIdParam ?? undefined;
-      orgId = orgIdParam ?? undefined;
+      if (teamIdParam) {
+        const isMember = await db.checkTeamMembershipExists(teamIdParam, authResult.userId);
+        if (!isMember) {
+          return NextResponse.json(
+            { error: "Not a member of this team" },
+            { status: 403 },
+          );
+        }
+        teamId = teamIdParam;
+      }
+      if (orgIdParam) {
+        const isMember = await db.checkOrgMembership(orgIdParam, authResult.userId);
+        if (!isMember) {
+          return NextResponse.json(
+            { error: "Not a member of this organization" },
+            { status: 403 },
+          );
+        }
+        orgId = orgIdParam;
+      }
     }
     // else: silently ignore scope params for anonymous users
   }
 
-  const db = await getDbRead();
   const fromDate = periodStartDate(period);
 
   try {

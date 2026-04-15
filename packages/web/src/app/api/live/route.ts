@@ -26,24 +26,31 @@ interface DbStatus {
   error?: string;
 }
 
+/** Timeout in ms for the DB health-check ping. */
+const DB_PING_TIMEOUT_MS = 3_000;
+
 export async function GET() {
   const start = performance.now();
   let dbStatus: DbStatus;
 
   try {
     const db = await getDbRead();
-    await db.ping();
+    // Race the ping against a timeout to prevent hanging health checks.
+    await Promise.race([
+      db.ping(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("DB ping timed out")), DB_PING_TIMEOUT_MS),
+      ),
+    ]);
     dbStatus = {
       connected: true,
       latencyMs: Math.round(performance.now() - start),
     };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    // Strip any accidental "ok" from error messages
-    const sanitized = message.replace(/\bok\b/gi, "***");
+  } catch {
+    // Redact internal error details — callers only need to know the DB is down.
     dbStatus = {
       connected: false,
-      error: sanitized,
+      error: "Service unavailable",
     };
   }
 

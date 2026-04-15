@@ -6,17 +6,41 @@ import type { NextRequest } from "next/server";
 const SKIP_AUTH = process.env.E2E_SKIP_AUTH === "true";
 
 /**
- * Build redirect URL respecting reverse proxy headers.
+ * Trusted origin derived from NEXTAUTH_URL at startup.
+ * Used to pin protocol and host — we never read X-Forwarded-Proto from the
+ * request, preventing an attacker from injecting an arbitrary scheme.
+ */
+const TRUSTED_ORIGIN: { proto: string; host: string } | null = (() => {
+  try {
+    const raw = process.env.NEXTAUTH_URL;
+    if (raw) {
+      const u = new URL(raw);
+      return { proto: u.protocol.replace(":", ""), host: u.host };
+    }
+  } catch {
+    // Malformed NEXTAUTH_URL — treat as unset.
+  }
+  return null;
+})();
+
+/**
+ * Build redirect URL using the pinned origin from NEXTAUTH_URL.
+ *
+ * The protocol is always derived from NEXTAUTH_URL (or defaults to "https"),
+ * never from the X-Forwarded-Proto request header.
+ * X-Forwarded-Host is only trusted when it matches the NEXTAUTH_URL host.
+ *
  * Exported for unit testing.
  */
 export function buildRedirectUrl(req: NextRequest, pathname: string): URL {
-  const forwardedHost = req.headers.get("x-forwarded-host");
-  const forwardedProto = req.headers.get("x-forwarded-proto") || "https";
-
-  if (forwardedHost) {
-    return new URL(pathname, `${forwardedProto}://${forwardedHost}`);
+  // When TRUSTED_ORIGIN is configured (from NEXTAUTH_URL), always use the
+  // pinned origin — never fall back to the request origin, which could be
+  // influenced by forwarded headers (CWE-601).
+  if (TRUSTED_ORIGIN) {
+    return new URL(pathname, `${TRUSTED_ORIGIN.proto}://${TRUSTED_ORIGIN.host}`);
   }
 
+  // Fallback for local dev / environments without NEXTAUTH_URL.
   return new URL(pathname, req.nextUrl.origin);
 }
 
