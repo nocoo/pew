@@ -73,11 +73,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth(async (req) => {
   const dbWrite = await getDbWrite();
 
   return {
-    // When NEXTAUTH_URL is configured, Auth.js uses it as the canonical origin
-    // and trustHost is unnecessary. Only enable trustHost as a fallback for
-    // local dev / environments without NEXTAUTH_URL where the host header is
-    // needed for URL detection behind proxies.
-    trustHost: !process.env.NEXTAUTH_URL,
+    // Must be true for Railway reverse proxy: Auth.js needs to read
+    // X-Forwarded-Host to match the session cookie domain. Setting this to
+    // false breaks session validation (auth() returns null → 401 on /api/*).
+    // Open-redirect risk is mitigated separately in proxy.ts via TRUSTED_ORIGIN.
+    trustHost: true,
     adapter: D1AuthAdapter(dbRead, dbWrite),
     providers: [Google],
     session: {
