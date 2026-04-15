@@ -8,11 +8,18 @@
  * 4. Cleans up
  */
 
+import { randomBytes } from "node:crypto";
 import { spawn, type Subprocess } from "bun";
 import { ensurePortFree, cleanupBuildDir, loadEnvLocal, loadEnvTest } from "./e2e-utils";
 import { validateAndOverride } from "./d1-test-guard";
 
 const E2E_PORT = process.env.E2E_PORT || "17020";
+
+// Generate a unique run ID to isolate concurrent E2E runs sharing pew-db-test.
+// Each run seeds/cleans its own user, so parallel CI jobs never collide.
+const RUN_ID = randomBytes(4).toString("hex");
+const E2E_TEST_USER_ID = `e2e-test-user-${RUN_ID}`;
+const E2E_TEST_USER_EMAIL = `e2e-${RUN_ID}@test.local`;
 
 const E2E_DIST_DIR = "packages/web/.next-e2e";
 
@@ -48,8 +55,14 @@ async function main() {
   const envLocal = loadEnvLocal();
   const envTest = loadEnvTest();
   const isolatedEnv = await validateAndOverride(envLocal, envTest);
-  console.log("🔒 D1 test isolation verified — using pew-db-test\n");
-  const mergedEnv = { ...process.env, ...isolatedEnv };
+  console.log("🔒 D1 test isolation verified — using pew-db-test");
+  console.log(`🆔 E2E run isolation: ${E2E_TEST_USER_ID}\n`);
+  const mergedEnv = {
+    ...process.env,
+    ...isolatedEnv,
+    E2E_TEST_USER_ID,
+    E2E_TEST_USER_EMAIL,
+  };
 
   console.log(`🌐 Starting E2E server on port ${E2E_PORT}...`);
   serverProcess = spawn(["bun", "run", "next", "dev", "-p", E2E_PORT], {
@@ -58,6 +71,7 @@ async function main() {
       ...mergedEnv,
       NEXT_DIST_DIR: ".next-e2e",
       E2E_SKIP_AUTH: "true",
+      E2E_MOCK_GITHUB: "1",
     },
     stdout: "pipe",
     stderr: "pipe",

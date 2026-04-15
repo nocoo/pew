@@ -20,6 +20,19 @@ import { getDbRead, getDbWrite } from "@/lib/db";
 // ---------------------------------------------------------------------------
 
 export async function DELETE(request: Request) {
+  // Account deletion is a destructive action — only allow browser session auth.
+  // Reject API key (Bearer token) authentication with 403.
+  const authHeader = request.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    return NextResponse.json(
+      {
+        error:
+          "Account deletion requires browser session authentication. API key authentication is not allowed for this action.",
+      },
+      { status: 403 },
+    );
+  }
+
   const authResult = await resolveUser(request);
   if (!authResult) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

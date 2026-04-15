@@ -46,6 +46,23 @@ describe("DELETE /api/account/delete", () => {
       const body = await res.json();
       expect(body.error).toBe("Unauthorized");
     });
+
+    it("should reject deletion with API key authentication", async () => {
+      const response = await DELETE(
+        new Request("http://localhost/api/account/delete", {
+          method: "DELETE",
+          headers: {
+            Authorization: "Bearer pk_test_key",
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ confirm_email: "test@example.com" }),
+        })
+      );
+
+      expect(response.status).toBe(403);
+      const data = await response.json();
+      expect(data.error).toContain("browser session");
+    });
   });
 
   describe("validation", () => {

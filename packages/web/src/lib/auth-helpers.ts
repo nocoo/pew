@@ -1,16 +1,21 @@
 /**
  * Shared auth helper for API routes.
  *
- * In E2E mode (E2E_SKIP_AUTH=true + NODE_ENV=development), returns a
- * deterministic test user so that API tests can run without OAuth.
+ * In E2E mode (E2E_SKIP_AUTH=true + NODE_ENV=development), returns the
+ * test user configured via E2E_TEST_USER_ID / E2E_TEST_USER_EMAIL env vars
+ * so that API tests can run without OAuth. Defaults to a fixed ID for
+ * local dev; the E2E runner overrides these with a per-run unique ID to
+ * prevent concurrent CI jobs from colliding on the shared test database.
  */
 
 import { auth } from "@/auth";
 import { getDbRead } from "@/lib/db";
 
-/** The fixed user ID used when E2E auth is bypassed */
-export const E2E_TEST_USER_ID = "e2e-test-user-id";
-export const E2E_TEST_USER_EMAIL = "e2e@test.local";
+/** The user ID used when E2E auth is bypassed (overridable via env) */
+export const E2E_TEST_USER_ID =
+  process.env.E2E_TEST_USER_ID || "e2e-test-user-id";
+export const E2E_TEST_USER_EMAIL =
+  process.env.E2E_TEST_USER_EMAIL || "e2e@test.local";
 
 export interface AuthResult {
   userId: string;
