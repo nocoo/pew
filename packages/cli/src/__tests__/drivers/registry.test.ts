@@ -121,6 +121,80 @@ describe("createTokenDrivers", () => {
     expect(fileDrivers).toHaveLength(2);
     expect(dbDrivers).toHaveLength(1);
   });
+
+  it("includes kosmos file driver when kosmosDataDir is set", () => {
+    const { fileDrivers } = createTokenDrivers({ kosmosDataDir: "/tmp/kosmos" });
+    expect(fileDrivers).toHaveLength(1);
+    expect(fileDrivers[0].source).toBe("kosmos");
+  });
+
+  it("includes pmstudio file driver when pmstudioDataDir is set", () => {
+    const { fileDrivers } = createTokenDrivers({ pmstudioDataDir: "/tmp/pmstudio" });
+    expect(fileDrivers).toHaveLength(1);
+    expect(fileDrivers[0].source).toBe("pmstudio");
+  });
+
+  it("includes hermes default DB driver when hermesDbPath and openHermesDb are set", () => {
+    const mockOpener = vi.fn().mockReturnValue(null);
+    const { dbDrivers } = createTokenDrivers({
+      hermesDbPath: "/tmp/hermes/state.db",
+      openHermesDb: mockOpener,
+    });
+    expect(dbDrivers).toHaveLength(1);
+    expect(dbDrivers[0].source).toBe("hermes");
+  });
+
+  it("includes hermes profile DB drivers when hermesProfileDbPaths are set", () => {
+    const mockOpener = vi.fn().mockReturnValue(null);
+    const { dbDrivers } = createTokenDrivers({
+      openHermesDb: mockOpener,
+      hermesProfileDbPaths: [
+        { dbPath: "/tmp/hermes/profiles/a/state.db", dbKey: "profiles/a" },
+        { dbPath: "/tmp/hermes/profiles/b/state.db", dbKey: "profiles/b" },
+      ],
+    });
+    expect(dbDrivers).toHaveLength(2);
+    expect(dbDrivers[0].source).toBe("hermes");
+    expect(dbDrivers[1].source).toBe("hermes");
+  });
+
+  it("includes both default + profile hermes DB drivers together", () => {
+    const mockOpener = vi.fn().mockReturnValue(null);
+    const { dbDrivers } = createTokenDrivers({
+      hermesDbPath: "/tmp/hermes/state.db",
+      openHermesDb: mockOpener,
+      hermesProfileDbPaths: [
+        { dbPath: "/tmp/hermes/profiles/a/state.db", dbKey: "profiles/a" },
+      ],
+    });
+    expect(dbDrivers).toHaveLength(2);
+  });
+
+  it("excludes hermes drivers when openHermesDb is not provided", () => {
+    const { dbDrivers } = createTokenDrivers({
+      hermesDbPath: "/tmp/hermes/state.db",
+      hermesProfileDbPaths: [
+        { dbPath: "/tmp/hermes/profiles/a/state.db", dbKey: "profiles/a" },
+      ],
+    });
+    expect(dbDrivers).toHaveLength(0);
+  });
+
+  it("returns all 10 file drivers when all dirs including kosmos and pmstudio are set", () => {
+    const { fileDrivers } = createTokenDrivers({
+      claudeDir: "/tmp/claude",
+      codexSessionsDir: "/tmp/codex",
+      copilotCliLogsDir: "/tmp/copilot/logs",
+      geminiDir: "/tmp/gemini",
+      kosmosDataDir: "/tmp/kosmos",
+      openCodeMessageDir: "/tmp/oc",
+      openclawDir: "/tmp/openclaw",
+      piSessionsDir: "/tmp/pi/sessions",
+      pmstudioDataDir: "/tmp/pmstudio",
+      vscodeCopilotDirs: ["/tmp/vsc"],
+    });
+    expect(fileDrivers).toHaveLength(10);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -220,5 +294,32 @@ describe("createSessionDrivers", () => {
     });
     expect(fileDrivers).toHaveLength(2);
     expect(dbDrivers).toHaveLength(1);
+  });
+
+  it("includes kosmos session driver when kosmosDataDir is set", () => {
+    const { fileDrivers } = createSessionDrivers({ kosmosDataDir: "/tmp/kosmos" });
+    expect(fileDrivers).toHaveLength(1);
+    expect(fileDrivers[0].source).toBe("kosmos");
+  });
+
+  it("includes pmstudio session driver when pmstudioDataDir is set", () => {
+    const { fileDrivers } = createSessionDrivers({ pmstudioDataDir: "/tmp/pmstudio" });
+    expect(fileDrivers).toHaveLength(1);
+    expect(fileDrivers[0].source).toBe("pmstudio");
+  });
+
+  it("returns all 9 file drivers when all dirs including kosmos and pmstudio are set", () => {
+    const { fileDrivers } = createSessionDrivers({
+      claudeDir: "/tmp/claude",
+      codexSessionsDir: "/tmp/codex",
+      copilotCliLogsDir: "/tmp/copilot/logs",
+      geminiDir: "/tmp/gemini",
+      kosmosDataDir: "/tmp/kosmos",
+      openCodeMessageDir: "/tmp/oc",
+      openclawDir: "/tmp/openclaw",
+      piSessionsDir: "/tmp/pi/sessions",
+      pmstudioDataDir: "/tmp/pmstudio",
+    });
+    expect(fileDrivers).toHaveLength(9);
   });
 });

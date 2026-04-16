@@ -279,5 +279,61 @@ describe("vscodeCopilotTokenDriver", () => {
       const result2 = await vscodeCopilotTokenDriver.parse(filePath, resume2);
       expect(result2.deltas).toHaveLength(0);
     });
+
+    it("parses v3 JSON files and builds cursor with processedRequestIds", async () => {
+      const filePath = join(tempDir, "session.json");
+      const v3Data = {
+        version: 3,
+        requests: [
+          {
+            requestId: "req_001",
+            modelId: "copilot/gpt-4o",
+            timestamp: 1709827200000,
+            message: { text: "Hello" },
+            result: {
+              metadata: {
+                promptTokens: 800,
+                outputTokens: 300,
+                toolCallRounds: [],
+              },
+              value: "response",
+            },
+          },
+        ],
+      };
+      await writeFile(filePath, JSON.stringify(v3Data));
+
+      const resume = {
+        kind: "vscode-copilot" as const,
+        startOffset: 0,
+        requestMeta: {},
+        processedRequestIndices: [],
+        processedRequestIds: new Set<string>(),
+      };
+      const result = await vscodeCopilotTokenDriver.parse(filePath, resume);
+
+      expect(result.deltas).toHaveLength(1);
+      expect(result.deltas[0].source).toBe("vscode-copilot");
+      expect(result.deltas[0].model).toBe("gpt-4o");
+      expect(result.deltas[0].tokens.inputTokens).toBe(800);
+      expect(result.deltas[0].tokens.outputTokens).toBe(300);
+
+      // v3 parse result carries processedRequestIds instead of CRDT state
+      expect(result.processedRequestIds).toContain("req_001");
+      expect(result.endOffset).toBe(0); // v3 doesn't use byte offset
+      expect(result.requestMeta).toEqual({});
+      expect(result.processedRequestIndices).toEqual([]);
+
+      // Build cursor from v3 result
+      const fingerprint: FileFingerprint = {
+        inode: 200,
+        mtimeMs: Date.now(),
+        size: 1024,
+      };
+      const cursor = vscodeCopilotTokenDriver.buildCursor(fingerprint, result);
+      expect(cursor.inode).toBe(200);
+      expect(cursor.processedRequestIds).toContain("req_001");
+      expect(cursor.offset).toBe(0);
+    });
   });
 });

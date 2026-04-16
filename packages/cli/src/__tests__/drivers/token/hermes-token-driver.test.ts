@@ -50,6 +50,64 @@ describe("hermesSqliteTokenDriver", () => {
     expect(driver.dbKey).toBe("profiles/tomato");
   });
 
+  it("returns prevCursor when DB file does not exist and prevCursor is provided", async () => {
+    const driver = createHermesSqliteTokenDriver({
+      dbPath: join(tempDir, "nonexistent.db"),
+      dbKey: "default",
+      openHermesDb: () => null,
+    });
+
+    const prevCursor: HermesSqliteCursor = {
+      sessionTotals: { "old-session": { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, reasoning: 0 } },
+      inode: 42,
+      updatedAt: "2026-01-01T00:00:00Z",
+    };
+    const ctx: SyncContext = {};
+    const result = await driver.run(prevCursor, ctx);
+
+    expect(result.deltas).toEqual([]);
+    expect(result.rowCount).toBe(0);
+    // Should return the prevCursor, not a fresh one
+    expect(result.cursor).toBe(prevCursor);
+  });
+
+  it("returns fresh cursor when DB file does not exist and no prevCursor", async () => {
+    const driver = createHermesSqliteTokenDriver({
+      dbPath: join(tempDir, "nonexistent.db"),
+      dbKey: "default",
+      openHermesDb: () => null,
+    });
+
+    const ctx: SyncContext = {};
+    const result = await driver.run(undefined, ctx);
+
+    expect(result.deltas).toEqual([]);
+    expect(result.rowCount).toBe(0);
+    expect(result.cursor.sessionTotals).toEqual({});
+    expect(result.cursor.inode).toBe(0);
+    expect(result.cursor.updatedAt).toBeDefined();
+  });
+
+  it("returns prevCursor when DB exists but openHermesDb returns null", async () => {
+    const driver = createHermesSqliteTokenDriver({
+      dbPath,
+      dbKey: "default",
+      openHermesDb: () => null,
+    });
+
+    const prevCursor: HermesSqliteCursor = {
+      sessionTotals: { "old-session": { input: 100, output: 50, cacheRead: 0, cacheWrite: 0, reasoning: 0 } },
+      inode: 42,
+      updatedAt: "2026-01-01T00:00:00Z",
+    };
+    const ctx: SyncContext = {};
+    const result = await driver.run(prevCursor, ctx);
+
+    expect(result.deltas).toEqual([]);
+    expect(result.rowCount).toBe(0);
+    expect(result.cursor).toBe(prevCursor);
+  });
+
   it("returns empty result when openHermesDb returns null", async () => {
     const driver = createHermesSqliteTokenDriver({
       dbPath,

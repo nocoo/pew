@@ -63,6 +63,32 @@ describe("ConfigManager", () => {
     expect(manager.configPath).toBe(join(tempDir, "config.dev.json"));
   });
 
+  it("getToken() returns undefined when no config exists", () => {
+    const manager = new ConfigManager(tempDir);
+    expect(manager.getToken()).toBeUndefined();
+  });
+
+  it("getToken() returns token after load", async () => {
+    const manager = new ConfigManager(tempDir);
+    await manager.save({ token: "zb_test" });
+    const manager2 = new ConfigManager(tempDir);
+    await manager2.load();
+    expect(manager2.getToken()).toBe("zb_test");
+  });
+
+  it("isLoggedIn() returns false when no token", () => {
+    const manager = new ConfigManager(tempDir);
+    expect(manager.isLoggedIn()).toBe(false);
+  });
+
+  it("isLoggedIn() returns true when token exists", async () => {
+    const manager = new ConfigManager(tempDir);
+    await manager.save({ token: "zb_active" });
+    const manager2 = new ConfigManager(tempDir);
+    await manager2.load();
+    expect(manager2.isLoggedIn()).toBe(true);
+  });
+
   it("should isolate dev and prod configs", async () => {
     const prod = new ConfigManager(tempDir, false);
     const dev = new ConfigManager(tempDir, true);
