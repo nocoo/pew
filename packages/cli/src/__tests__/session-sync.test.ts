@@ -482,7 +482,7 @@ describe("executeSessionSync", () => {
     expect(r1.totalSnapshots).toBeGreaterThanOrEqual(1);
 
     // Wait to ensure mtime differs, then append new data
-    await new Promise((r) => setTimeout(r, 50));
+    await new Promise((r) => setTimeout(r, 1));
     const content2 = content1 + [
       claudeUserLine("2026-03-07T10:20:00.000Z"),
       claudeAssistantLine("2026-03-07T10:25:00.000Z"),

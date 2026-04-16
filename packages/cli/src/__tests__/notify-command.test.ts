@@ -432,7 +432,7 @@ describe("trailing-edge cooldown sync", () => {
     });
 
     // Give it some time — no trailing sync should ever fire
-    await new Promise((r) => setTimeout(r, 50));
+    await new Promise((r) => setTimeout(r, 10));
     expect(coordinatedSyncFn).toHaveBeenCalledTimes(1);
   });
 
@@ -453,7 +453,7 @@ describe("trailing-edge cooldown sync", () => {
       coordinatedSyncFn,
     });
 
-    await new Promise((r) => setTimeout(r, 50));
+    await new Promise((r) => setTimeout(r, 10));
     expect(coordinatedSyncFn).toHaveBeenCalledTimes(1);
   });
 
@@ -500,7 +500,7 @@ describe("trailing-edge cooldown sync", () => {
     }, { timeout: 2_000 });
 
     // Give extra time to confirm no fourth call (reduced from 300ms)
-    await new Promise((r) => setTimeout(r, 50));
+    await new Promise((r) => setTimeout(r, 10));
     expect(coordinatedSyncFn).toHaveBeenCalledTimes(3);
   });
 
@@ -567,7 +567,7 @@ describe("trailing-edge cooldown sync", () => {
     });
 
     // Live PID → trailing.lock is valid → no trailing sync scheduled
-    await new Promise((r) => setTimeout(r, 50));
+    await new Promise((r) => setTimeout(r, 10));
     expect(coordinatedSyncFn).toHaveBeenCalledTimes(1);
   });
 });
