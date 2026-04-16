@@ -221,6 +221,208 @@ describe("PATCH /api/projects/:id", () => {
       expect(mockDbWrite.execute).not.toHaveBeenCalled();
     });
 
+    it("should reject invalid JSON body", async () => {
+      const req = new Request("http://localhost:7020/api/projects/proj-1", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: "not-json{{{",
+      });
+      const res = await PATCH(req, {
+        params: Promise.resolve({ id: "proj-1" }),
+      });
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("Invalid JSON");
+    });
+
+    it("should reject add_aliases that is not an array", async () => {
+      mockDbRead.getProjectById.mockResolvedValueOnce({
+        id: "proj-1",
+        name: "Old Name",
+        created_at: "2026-01-01T00:00:00Z",
+      });
+
+      const res = await callPatch({ add_aliases: "not-array" });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("must be an array");
+      expect(mockDbWrite.execute).not.toHaveBeenCalled();
+    });
+
+    it("should reject add_aliases entry missing source/project_ref", async () => {
+      mockDbRead.getProjectById.mockResolvedValueOnce({
+        id: "proj-1",
+        name: "Old Name",
+        created_at: "2026-01-01T00:00:00Z",
+      });
+
+      const res = await callPatch({ add_aliases: [{ bad: true }] });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("source and project_ref");
+      expect(mockDbWrite.execute).not.toHaveBeenCalled();
+    });
+
+    it("should reject add_aliases exceeding MAX_ALIASES", async () => {
+      mockDbRead.getProjectById.mockResolvedValueOnce({
+        id: "proj-1",
+        name: "Old Name",
+        created_at: "2026-01-01T00:00:00Z",
+      });
+
+      const tooMany = Array.from({ length: 51 }, (_, i) => ({
+        source: "claude-code",
+        project_ref: `ref-${i}`,
+      }));
+      const res = await callPatch({ add_aliases: tooMany });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("Maximum");
+      expect(mockDbWrite.execute).not.toHaveBeenCalled();
+    });
+
+    it("should reject remove_aliases exceeding MAX_ALIASES", async () => {
+      mockDbRead.getProjectById.mockResolvedValueOnce({
+        id: "proj-1",
+        name: "Old Name",
+        created_at: "2026-01-01T00:00:00Z",
+      });
+
+      const tooMany = Array.from({ length: 51 }, (_, i) => ({
+        source: "claude-code",
+        project_ref: `ref-${i}`,
+      }));
+      const res = await callPatch({ remove_aliases: tooMany });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("Maximum");
+      expect(mockDbWrite.execute).not.toHaveBeenCalled();
+    });
+
+    it("should reject add_tags that is not an array", async () => {
+      mockDbRead.getProjectById.mockResolvedValueOnce({
+        id: "proj-1",
+        name: "Old Name",
+        created_at: "2026-01-01T00:00:00Z",
+      });
+
+      const res = await callPatch({ add_tags: "not-array" });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("add_tags must be an array");
+      expect(mockDbWrite.execute).not.toHaveBeenCalled();
+    });
+
+    it("should reject add_tags exceeding MAX_TAGS", async () => {
+      mockDbRead.getProjectById.mockResolvedValueOnce({
+        id: "proj-1",
+        name: "Old Name",
+        created_at: "2026-01-01T00:00:00Z",
+      });
+
+      const tooMany = Array.from({ length: 51 }, (_, i) => `tag-${i}`);
+      const res = await callPatch({ add_tags: tooMany });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("Maximum");
+      expect(mockDbWrite.execute).not.toHaveBeenCalled();
+    });
+
+    it("should reject non-string tag in add_tags", async () => {
+      mockDbRead.getProjectById.mockResolvedValueOnce({
+        id: "proj-1",
+        name: "Old Name",
+        created_at: "2026-01-01T00:00:00Z",
+      });
+
+      const res = await callPatch({ add_tags: [123] });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("must be a string");
+      expect(mockDbWrite.execute).not.toHaveBeenCalled();
+    });
+
+    it("should reject invalid tag format in add_tags", async () => {
+      mockDbRead.getProjectById.mockResolvedValueOnce({
+        id: "proj-1",
+        name: "Old Name",
+        created_at: "2026-01-01T00:00:00Z",
+      });
+
+      const res = await callPatch({ add_tags: ["INVALID TAG!"] });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("Invalid tag");
+      expect(mockDbWrite.execute).not.toHaveBeenCalled();
+    });
+
+    it("should reject remove_tags that is not an array", async () => {
+      mockDbRead.getProjectById.mockResolvedValueOnce({
+        id: "proj-1",
+        name: "Old Name",
+        created_at: "2026-01-01T00:00:00Z",
+      });
+
+      const res = await callPatch({ remove_tags: "not-array" });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("remove_tags must be an array");
+      expect(mockDbWrite.execute).not.toHaveBeenCalled();
+    });
+
+    it("should reject remove_tags exceeding MAX_TAGS", async () => {
+      mockDbRead.getProjectById.mockResolvedValueOnce({
+        id: "proj-1",
+        name: "Old Name",
+        created_at: "2026-01-01T00:00:00Z",
+      });
+
+      const tooMany = Array.from({ length: 51 }, (_, i) => `tag-${i}`);
+      const res = await callPatch({ remove_tags: tooMany });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("Maximum");
+      expect(mockDbWrite.execute).not.toHaveBeenCalled();
+    });
+
+    it("should reject non-string tag in remove_tags", async () => {
+      mockDbRead.getProjectById.mockResolvedValueOnce({
+        id: "proj-1",
+        name: "Old Name",
+        created_at: "2026-01-01T00:00:00Z",
+      });
+
+      const res = await callPatch({ remove_tags: [42] });
+
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("must be a string");
+      expect(mockDbWrite.execute).not.toHaveBeenCalled();
+    });
+
+    it("should reject remove_aliases with invalid format (not an array)", async () => {
+      mockDbRead.getProjectById.mockResolvedValueOnce({
+        id: "proj-1",
+        name: "Old Name",
+        created_at: "2026-01-01T00:00:00Z",
+      });
+
+      const res = await callPatch({ remove_aliases: "not-an-array" });
+
+      expect(res.status).toBe(400);
+      expect(mockDbWrite.execute).not.toHaveBeenCalled();
+    });
+
     it("should reject remove_aliases not attached to this project", async () => {
       mockDbRead.getProjectById.mockResolvedValueOnce({
         id: "proj-1",
@@ -448,6 +650,63 @@ describe("PATCH /api/projects/:id", () => {
       expect(deleteCall![1]).not.toContain("existing-tag");
     });
 
+    it("should roll back by re-inserting removed aliases when later write fails", async () => {
+      mockDbRead.getProjectById.mockResolvedValueOnce({
+        id: "proj-1",
+        name: "Old Name",
+        created_at: "2026-01-01T00:00:00Z",
+      });
+      mockDbRead.aliasAttachedToProject.mockResolvedValueOnce(true); // alias attached
+
+      // Phase 2: remove succeeds, updated_at fails
+      mockDbWrite.execute
+        .mockResolvedValueOnce({ meta: {} }) // DELETE alias succeeds
+        .mockRejectedValueOnce(new Error("D1 error")) // UPDATE updated_at fails
+        // Rollback: re-insert removed alias
+        .mockResolvedValueOnce({ meta: {} });
+
+      const res = await callPatch({
+        remove_aliases: [{ source: "opencode", project_ref: "def456" }],
+      });
+
+      expect(res.status).toBe(500);
+
+      // Verify rollback re-inserted the removed alias
+      const rollbackCalls = mockDbWrite.execute.mock.calls.slice(2);
+      const insertCall = rollbackCalls.find(
+        (call) => (call[0] as string).includes("INSERT OR IGNORE INTO project_aliases"),
+      );
+      expect(insertCall).toBeDefined();
+      expect(insertCall![1]).toContain("def456");
+    });
+
+    it("should log error when rollback itself fails", async () => {
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      mockDbRead.getProjectById.mockResolvedValueOnce({
+        id: "proj-1",
+        name: "Old Name",
+        created_at: "2026-01-01T00:00:00Z",
+      });
+      mockDbRead.getProjectByNameExcluding.mockResolvedValueOnce(null);
+
+      // Phase 2: rename succeeds, updated_at fails, rollback also fails
+      mockDbWrite.execute
+        .mockResolvedValueOnce({ meta: {} }) // UPDATE name succeeds
+        .mockRejectedValueOnce(new Error("D1 error")) // UPDATE updated_at fails
+        .mockRejectedValueOnce(new Error("Rollback D1 error")); // rollback fails
+
+      const res = await callPatch({ name: "New Name" });
+
+      expect(res.status).toBe(500);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Rollback failed:",
+        expect.any(Error),
+      );
+
+      consoleErrorSpy.mockRestore();
+    });
+
     it("should NOT insert phantom tag during rollback when remove_tags includes non-existent tag", async () => {
       // Bug scenario: remove_tags includes a tag that doesn't actually exist.
       // If the DELETE is tracked unconditionally, rollback would
@@ -620,6 +879,52 @@ describe("PATCH /api/projects/:id", () => {
       expect(insertCalls).toHaveLength(0);
     });
 
+    it("should successfully remove aliases", async () => {
+      mockDbRead.getProjectById
+        .mockResolvedValueOnce({
+          id: "proj-1",
+          name: "My Project",
+          created_at: "2026-03-10T00:00:00Z",
+        })
+        .mockResolvedValueOnce({
+          id: "proj-1",
+          name: "My Project",
+          created_at: "2026-03-10T00:00:00Z",
+        });
+      mockDbRead.aliasAttachedToProject.mockResolvedValueOnce(true);
+
+      mockDbWrite.execute.mockResolvedValue({ meta: {} });
+      mockDbRead.query.mockResolvedValueOnce({ results: [], meta: {} });
+      mockDbRead.getProjectTagList.mockResolvedValueOnce([]);
+
+      const res = await callPatch({
+        remove_aliases: [{ source: "claude-code", project_ref: "abc123" }],
+      });
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.aliases).toEqual([]);
+    });
+
+    it("should return 404 when project not found after update", async () => {
+      mockDbRead.getProjectById
+        .mockResolvedValueOnce({
+          id: "proj-1",
+          name: "Old Name",
+          created_at: "2026-03-10T00:00:00Z",
+        })
+        .mockResolvedValueOnce(null); // project gone after update
+      mockDbRead.getProjectByNameExcluding.mockResolvedValueOnce(null);
+
+      mockDbWrite.execute.mockResolvedValue({ meta: {} });
+
+      const res = await callPatch({ name: "New Name" });
+
+      expect(res.status).toBe(404);
+      const body = await res.json();
+      expect(body.error).toContain("not found after update");
+    });
+
     it("should deduplicate add_aliases by (source, project_ref)", async () => {
       mockDbRead.getProjectById
         .mockResolvedValueOnce({
@@ -732,6 +1037,21 @@ describe("DELETE /api/projects/:id", () => {
     expect(body.success).toBe(true);
     expect(mockDbWrite.execute).toHaveBeenCalledTimes(3);
   });
+
+  it("should return 500 when delete fails", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({
+      userId: "u1",
+      email: "test@example.com",
+    });
+    mockDbRead.projectExistsForUser.mockResolvedValueOnce(true);
+    mockDbWrite.execute.mockRejectedValueOnce(new Error("D1 error"));
+
+    const res = await callDelete();
+
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.error).toContain("Failed to delete");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -797,6 +1117,49 @@ describe("POST /api/projects", () => {
       const res = await POST(makePostRequest({ name: "UNASSIGNED" }));
       expect(res.status).toBe(400);
       expect(mockDbWrite.execute).not.toHaveBeenCalled();
+    });
+
+    it("should reject invalid JSON body", async () => {
+      const req = new Request("http://localhost:7020/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "not-json{{{",
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("Invalid JSON");
+    });
+
+    it("should reject aliases that is not an array", async () => {
+      const res = await POST(
+        makePostRequest({ name: "Test", aliases: "not-array" }),
+      );
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("aliases must be an array");
+    });
+
+    it("should reject aliases exceeding MAX_ALIASES", async () => {
+      const tooMany = Array.from({ length: 51 }, (_, i) => ({
+        source: "claude-code",
+        project_ref: `ref-${i}`,
+      }));
+      const res = await POST(
+        makePostRequest({ name: "Test", aliases: tooMany }),
+      );
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("Maximum");
+    });
+
+    it("should reject alias entry missing source/project_ref", async () => {
+      const res = await POST(
+        makePostRequest({ name: "Test", aliases: [{ bad: true }] }),
+      );
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("source and project_ref");
     });
 
     it("should reject duplicate project name", async () => {
@@ -918,6 +1281,34 @@ describe("POST /api/projects", () => {
       expect(call3![0]).toContain("DELETE FROM project_aliases");
       const call4 = mockDbWrite.execute.mock.calls[3];
       expect(call4![0]).toContain("DELETE FROM projects");
+    });
+
+    it("should log error when rollback itself fails", async () => {
+      const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+      mockDbRead.getProjectByName.mockResolvedValueOnce(null);
+      mockDbRead.sessionRecordExists.mockResolvedValueOnce(true);
+      mockDbRead.getAliasOwner.mockResolvedValueOnce(null);
+
+      mockDbWrite.execute
+        .mockResolvedValueOnce({ meta: {} }) // INSERT project succeeds
+        .mockRejectedValueOnce(new Error("UNIQUE constraint")) // INSERT alias fails
+        .mockRejectedValueOnce(new Error("Rollback D1 error")); // rollback fails
+
+      const res = await POST(
+        makePostRequest({
+          name: "Test",
+          aliases: [{ source: "claude-code", project_ref: "abc123" }],
+        }),
+      );
+
+      expect(res.status).toBe(500);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Rollback failed:",
+        expect.any(Error),
+      );
+
+      consoleErrorSpy.mockRestore();
     });
   });
 
@@ -1049,6 +1440,19 @@ describe("POST /api/projects", () => {
       expect(body.total_duration).toBe(1500);
       expect(body.models).toEqual(["gemini-2.5-pro"]);
     });
+
+    it("should return 500 when project not found after creation", async () => {
+      mockDbRead.getProjectByName.mockResolvedValueOnce(null);
+      mockDbRead.getProjectById.mockResolvedValueOnce(null); // project gone after creation
+
+      mockDbWrite.execute.mockResolvedValue({ meta: {} });
+
+      const res = await POST(makePostRequest({ name: "Ghost Project" }));
+
+      expect(res.status).toBe(500);
+      const body = await res.json();
+      expect(body.error).toContain("not found after creation");
+    });
   });
 });
 
@@ -1175,6 +1579,54 @@ describe("GET /api/projects", () => {
     const body = await res.json();
     expect(body.projects).toEqual([]);
     expect(body.unassigned).toEqual([]);
+  });
+
+  it("should aggregate multiple aliases on the same project", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({
+      userId: "u1",
+      email: "test@example.com",
+    });
+
+    mockDbRead.listProjects.mockResolvedValueOnce([
+      { id: "p1", name: "Project A", created_at: "2026-03-10T00:00:00Z" },
+    ]);
+    mockDbRead.listAliasesWithStats.mockResolvedValueOnce([
+      {
+        project_id: "p1",
+        source: "claude-code",
+        project_ref: "abc",
+        session_count: 5,
+        last_active: "2026-03-09T12:00:00Z",
+        total_messages: 100,
+        total_duration_seconds: 3000,
+        models: "claude-4-opus",
+        absolute_last_active: "2026-03-09T12:00:00Z",
+      },
+      {
+        project_id: "p1",
+        source: "opencode",
+        project_ref: "def",
+        session_count: 3,
+        last_active: "2026-03-10T12:00:00Z",
+        total_messages: 50,
+        total_duration_seconds: 1000,
+        models: "gemini-2.5-pro",
+        absolute_last_active: "2026-03-14T08:00:00Z",
+      },
+    ]);
+    mockDbRead.listUnassignedRefs.mockResolvedValueOnce([]);
+    mockDbRead.listProjectTags.mockResolvedValueOnce([]);
+
+    const res = await GET(new Request("http://localhost:7020/api/projects"));
+
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.projects[0].session_count).toBe(8);
+    expect(body.projects[0].total_messages).toBe(150);
+    expect(body.projects[0].total_duration).toBe(4000);
+    expect(body.projects[0].last_active).toBe("2026-03-10T12:00:00Z");
+    expect(body.projects[0].absolute_last_active).toBe("2026-03-14T08:00:00Z");
+    expect(body.projects[0].aliases).toHaveLength(2);
   });
 
   it("should return 500 on D1 error", async () => {

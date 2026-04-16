@@ -101,6 +101,18 @@ describe("GET /api/admin/seasons", () => {
     expect(json.error).toBe("Forbidden");
   });
 
+  it("should return 500 on generic GET error", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.listSeasons.mockRejectedValueOnce(new Error("Connection refused"));
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await GET(makeJsonRequest("GET", "/api/admin/seasons"));
+    expect(res.status).toBe(500);
+    const json = await res.json();
+    expect(json.error).toContain("Failed to list seasons");
+    consoleSpy.mockRestore();
+  });
+
   it("should handle no-such-table gracefully", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
     mockDbRead.listSeasons.mockRejectedValueOnce(new Error("no such table: seasons"));
@@ -250,6 +262,102 @@ describe("POST /api/admin/seasons", () => {
       })
     );
     expect(res.status).toBe(403);
+  });
+
+  it("should return 400 for invalid JSON body", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+
+    const req = new Request("http://localhost/api/admin/seasons", {
+      method: "POST",
+      body: "not-json",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toBe("Invalid JSON");
+  });
+
+  it("should return 400 for missing name", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+
+    const res = await POST(
+      makeJsonRequest("POST", "/api/admin/seasons", {
+        slug: "s1",
+        start_date: "2099-04-01T00:00:00Z",
+        end_date: "2099-04-30T23:59:00Z",
+      })
+    );
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toContain("name must be 1-64 characters");
+  });
+
+  it("should return 400 for missing slug", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+
+    const res = await POST(
+      makeJsonRequest("POST", "/api/admin/seasons", {
+        name: "Season 1",
+        start_date: "2099-04-01T00:00:00Z",
+        end_date: "2099-04-30T23:59:00Z",
+      })
+    );
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toContain("slug must be");
+  });
+
+  it("should return 400 for missing end_date", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+
+    const res = await POST(
+      makeJsonRequest("POST", "/api/admin/seasons", {
+        name: "Season 1",
+        slug: "s1",
+        start_date: "2099-04-01T00:00:00Z",
+      })
+    );
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toContain("end_date must be ISO 8601");
+  });
+
+  it("should return 503 on no-such-table error in POST", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.getSeasonBySlug.mockRejectedValueOnce(new Error("no such table: seasons"));
+
+    const res = await POST(
+      makeJsonRequest("POST", "/api/admin/seasons", {
+        name: "Season 1",
+        slug: "s1",
+        start_date: "2099-04-01T00:00:00Z",
+        end_date: "2099-04-30T23:59:00Z",
+      })
+    );
+    expect(res.status).toBe(503);
+    const json = await res.json();
+    expect(json.error).toContain("not yet migrated");
+  });
+
+  it("should return 500 on generic POST error", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.getSeasonBySlug.mockRejectedValueOnce(new Error("Connection timeout"));
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await POST(
+      makeJsonRequest("POST", "/api/admin/seasons", {
+        name: "Season 1",
+        slug: "s1",
+        start_date: "2099-04-01T00:00:00Z",
+        end_date: "2099-04-30T23:59:00Z",
+      })
+    );
+    expect(res.status).toBe(500);
+    const json = await res.json();
+    expect(json.error).toContain("Failed to create season");
+    consoleSpy.mockRestore();
   });
 });
 

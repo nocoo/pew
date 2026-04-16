@@ -5,6 +5,8 @@ import {
   buildDeviceLabelMap,
   toDeviceTrendPoints,
   toDeviceSharePoints,
+  toDeviceAgentBreakdown,
+  toDeviceModelBreakdown,
 } from "@/lib/device-helpers";
 
 // ---------------------------------------------------------------------------
@@ -269,5 +271,101 @@ describe("toDeviceSharePoints", () => {
       .map(([, v]) => v as number);
 
     expect(values.reduce((a, b) => a + b, 0)).toBe(100);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// toDeviceAgentBreakdown
+// ---------------------------------------------------------------------------
+
+const makeDetail = (overrides: Partial<{ source: string; model: string; input_tokens: number; output_tokens: number; cached_input_tokens: number; total_tokens: number; device_id: string; date: string }> = {}) => ({
+  source: "claude",
+  model: "sonnet",
+  input_tokens: 100,
+  output_tokens: 50,
+  cached_input_tokens: 10,
+  total_tokens: 160,
+  device_id: "dev-1",
+  date: "2026-04-01",
+  ...overrides,
+});
+
+describe("toDeviceAgentBreakdown", () => {
+  it("should return empty array for empty input", () => {
+    expect(toDeviceAgentBreakdown([])).toEqual([]);
+  });
+
+  it("should return single result for single item", () => {
+    const result = toDeviceAgentBreakdown([makeDetail()]);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.source).toBe("claude");
+    expect(result[0]!.total_tokens).toBe(160);
+  });
+
+  it("should aggregate items with same source", () => {
+    const result = toDeviceAgentBreakdown([
+      makeDetail({ source: "claude", input_tokens: 100, output_tokens: 50, cached_input_tokens: 10, total_tokens: 160 }),
+      makeDetail({ source: "claude", input_tokens: 200, output_tokens: 100, cached_input_tokens: 20, total_tokens: 320 }),
+    ]);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.input_tokens).toBe(300);
+    expect(result[0]!.output_tokens).toBe(150);
+    expect(result[0]!.cached_input_tokens).toBe(30);
+    expect(result[0]!.total_tokens).toBe(480);
+  });
+
+  it("should sort descending by total_tokens", () => {
+    const result = toDeviceAgentBreakdown([
+      makeDetail({ source: "small-agent", total_tokens: 100 }),
+      makeDetail({ source: "big-agent", total_tokens: 9000 }),
+      makeDetail({ source: "mid-agent", total_tokens: 500 }),
+    ]);
+    expect(result.map((r) => r.source)).toEqual(["big-agent", "mid-agent", "small-agent"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// toDeviceModelBreakdown
+// ---------------------------------------------------------------------------
+
+describe("toDeviceModelBreakdown", () => {
+  it("should return empty array for empty input", () => {
+    expect(toDeviceModelBreakdown([])).toEqual([]);
+  });
+
+  it("should return single result for single item", () => {
+    const result = toDeviceModelBreakdown([makeDetail()]);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.model).toBe("sonnet");
+    expect(result[0]!.total_tokens).toBe(160);
+  });
+
+  it("should aggregate items with same model", () => {
+    const result = toDeviceModelBreakdown([
+      makeDetail({ model: "sonnet", input_tokens: 100, output_tokens: 50, cached_input_tokens: 10, total_tokens: 160 }),
+      makeDetail({ model: "sonnet", input_tokens: 200, output_tokens: 100, cached_input_tokens: 20, total_tokens: 320 }),
+    ]);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.input_tokens).toBe(300);
+    expect(result[0]!.total_tokens).toBe(480);
+  });
+
+  it("should sort descending by total_tokens", () => {
+    const result = toDeviceModelBreakdown([
+      makeDetail({ model: "haiku", total_tokens: 100 }),
+      makeDetail({ model: "opus", total_tokens: 9000 }),
+      makeDetail({ model: "sonnet", total_tokens: 500 }),
+    ]);
+    expect(result.map((r) => r.model)).toEqual(["opus", "sonnet", "haiku"]);
+  });
+
+  it("should limit to top 10 models", () => {
+    const details = Array.from({ length: 15 }, (_, i) =>
+      makeDetail({ model: `model-${String(i).padStart(2, "0")}`, total_tokens: (15 - i) * 100 }),
+    );
+    const result = toDeviceModelBreakdown(details);
+    expect(result).toHaveLength(10);
+    expect(result[0]!.model).toBe("model-00");
+    expect(result[9]!.model).toBe("model-09");
   });
 });

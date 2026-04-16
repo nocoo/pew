@@ -301,6 +301,30 @@ describe("GET /api/admin/organizations/[orgId]", () => {
     });
     expect(res.status).toBe(403);
   });
+
+  it("should return 503 on no-such-table error", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.firstOrNull.mockRejectedValueOnce(new Error("no such table: organizations"));
+
+    const res = await GET_ONE(makeOrgRequest("GET", "org-1"), {
+      params: Promise.resolve({ orgId: "org-1" }),
+    });
+    expect(res.status).toBe(503);
+    const json = await res.json();
+    expect(json.error).toContain("not yet migrated");
+  });
+
+  it("should return 500 on unexpected error", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.firstOrNull.mockRejectedValueOnce(new Error("connection lost"));
+
+    const res = await GET_ONE(makeOrgRequest("GET", "org-1"), {
+      params: Promise.resolve({ orgId: "org-1" }),
+    });
+    expect(res.status).toBe(500);
+    const json = await res.json();
+    expect(json.error).toBe("Failed to get organization");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -412,6 +436,96 @@ describe("PATCH /api/admin/organizations/[orgId]", () => {
     });
     expect(res.status).toBe(403);
   });
+
+  it("should reject invalid JSON body", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    const req = new Request("http://localhost:7020/api/admin/organizations/org-1", {
+      method: "PATCH",
+      body: "not json",
+      headers: { "Content-Type": "application/json" },
+    });
+    const res = await PATCH(req, {
+      params: Promise.resolve({ orgId: "org-1" }),
+    });
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toBe("Invalid JSON");
+  });
+
+  it("should reject name with length 0", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.firstOrNull.mockResolvedValueOnce({ id: "org-1", slug: "test" });
+
+    const res = await PATCH(makeOrgRequest("PATCH", "org-1", { name: "" }), {
+      params: Promise.resolve({ orgId: "org-1" }),
+    });
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toContain("name");
+  });
+
+  it("should reject name longer than 64 characters", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.firstOrNull.mockResolvedValueOnce({ id: "org-1", slug: "test" });
+
+    const res = await PATCH(makeOrgRequest("PATCH", "org-1", { name: "a".repeat(65) }), {
+      params: Promise.resolve({ orgId: "org-1" }),
+    });
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toContain("name");
+  });
+
+  it("should reject invalid slug format", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.firstOrNull.mockResolvedValueOnce({ id: "org-1", slug: "test" });
+
+    const res = await PATCH(makeOrgRequest("PATCH", "org-1", { slug: "INVALID!" }), {
+      params: Promise.resolve({ orgId: "org-1" }),
+    });
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toContain("slug");
+  });
+
+  it("should return 404 when org not found after update", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.firstOrNull
+      .mockResolvedValueOnce({ id: "org-1", slug: "test" }) // existing
+      .mockResolvedValueOnce(null); // post-update read returns null
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
+
+    const res = await PATCH(makeOrgRequest("PATCH", "org-1", { name: "Updated" }), {
+      params: Promise.resolve({ orgId: "org-1" }),
+    });
+    expect(res.status).toBe(404);
+    const json = await res.json();
+    expect(json.error).toContain("not found after update");
+  });
+
+  it("should return 503 on no-such-table error", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.firstOrNull.mockRejectedValueOnce(new Error("no such table: organizations"));
+
+    const res = await PATCH(makeOrgRequest("PATCH", "org-1", { name: "New" }), {
+      params: Promise.resolve({ orgId: "org-1" }),
+    });
+    expect(res.status).toBe(503);
+    const json = await res.json();
+    expect(json.error).toContain("not yet migrated");
+  });
+
+  it("should return 500 on unexpected error", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.firstOrNull.mockRejectedValueOnce(new Error("connection lost"));
+
+    const res = await PATCH(makeOrgRequest("PATCH", "org-1", { name: "New" }), {
+      params: Promise.resolve({ orgId: "org-1" }),
+    });
+    expect(res.status).toBe(500);
+    const json = await res.json();
+    expect(json.error).toBe("Failed to update organization");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -469,5 +583,17 @@ describe("DELETE /api/admin/organizations/[orgId]", () => {
       params: Promise.resolve({ orgId: "org-1" }),
     });
     expect(res.status).toBe(503);
+  });
+
+  it("should return 500 on unexpected delete error", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.firstOrNull.mockRejectedValueOnce(new Error("connection lost"));
+
+    const res = await DELETE(makeOrgRequest("DELETE", "org-1"), {
+      params: Promise.resolve({ orgId: "org-1" }),
+    });
+    expect(res.status).toBe(500);
+    const json = await res.json();
+    expect(json.error).toBe("Failed to delete organization");
   });
 });
