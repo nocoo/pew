@@ -1,0 +1,2 @@
+{"type":"config","name":"pew Unit Test Speed Optimization","metricName":"test_time_s","metricUnit":"s","bestDirection":"lower"}
+{"run":1,"commit":"cd7607e","metric":4,"metrics":{"test_count":3662,"test_time_s":10.5},"status":"keep","description":"Baseline: 3662 tests, 4.0s wall time, 10.5s test time","timestamp":1776379584199,"segment":0,"confidence":null,"iterationTokens":374,"asi":{"hypothesis":"Establish baseline measurement for test optimization","baseline":true,"wall_time_s":4,"parallel_test_time_s":10.5}}
