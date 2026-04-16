@@ -22,27 +22,24 @@ Optimize unit test execution speed while maintaining:
 bun run test 2>&1 | grep -E "Duration|Tests"
 ```
 
-## Current Progress
+## Final Results
 - 3662 tests, 211 test files
-- **Baseline**: tests ~10.5s → **Current**: tests ~6.8-7.3s (**~35% improvement**)
+- **Baseline**: Duration ~4.2s, tests ~10.5s
+- **Final**: Duration ~2.75s, tests ~6.9s
+- **Improvement: ~35% faster**
 - Coverage: **99.27%** (target ≥95%)
 
 ## Optimizations Applied
 | Commit | Description | Impact |
 |--------|-------------|--------|
-| 777a639 | login.test.ts timeouts 500ms→50ms | -1.2s |
-| bea8bbb | notify-command.test.ts delays 200/300ms→20/50ms | -0.4s |
-| 80442e6 | sync.test.ts mtime delays 50ms→1ms | -0.3s |
-| ab3c913 | upload.test.ts Retry-After 1s→0s | -1.0s |
-| e2eec10 | login.test.ts server delays 100ms→10ms | -0.8s |
-| 2068792 | coordinator-integration delays 50/100ms→10/20ms | -0.2s |
-| b65a7b4 | session-sync + notify-command additional delays | -0.2s |
-
-## Remaining Optimization Ideas
-1. ~~Reduce fake timer timeouts~~ ✅ Done
-2. Consider vitest thread pool configuration
-3. Reduce module import overhead (large collect time)
-4. Investigate sync.test.ts (still 700ms with 71 tests)
+| 777a639 | login.test.ts timeouts 500ms→50ms | -1.2s tests |
+| bea8bbb | notify-command.test.ts delays 200/300ms→20/50ms | -0.4s tests |
+| 80442e6 | sync.test.ts mtime delays 50ms→1ms | -0.3s tests |
+| ab3c913 | upload.test.ts Retry-After 1s→0s | -1.0s tests |
+| e2eec10 | login.test.ts server delays 100ms→10ms | -0.8s tests |
+| 2068792 | coordinator-integration delays 50/100ms→10/20ms | -0.2s tests |
+| b65a7b4 | session-sync + notify-command additional delays | -0.2s tests |
+| 94c3620 | Enable vitest threads pool | -1.4s Duration |
 
 ## Rules
 - Every change must pass all tests
