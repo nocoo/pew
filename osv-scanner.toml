@@ -2,10 +2,6 @@
 # https://google.github.io/osv-scanner/configuration/
 
 [[IgnoredVulns]]
-id = "GHSA-5f7q-jpqc-wp7h"
-reason = "False positive: next@16.2.1 > fixed version 16.1.5. OSV database affected range is 16.0.0-beta.0 to 16.1.5."
-
-[[IgnoredVulns]]
 id = "GHSA-4w7w-66w2-5vf9"
 reason = "Dev-only: vite@7.3.1 is vitest's internal dependency, not used in production."
 
