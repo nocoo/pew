@@ -1287,27 +1287,33 @@ describe("POST /api/teams/join", () => {
 // ===========================================================================
 
 describe("GET /api/organizations/[orgId]/members", () => {
-  it("should return 401/404/500/503 for non-existent org", async () => {
+  it("should return 404 for non-existent org (or 503 if Worker unavailable)", async () => {
     const res = await fetch(`${BASE_URL}/api/organizations/non-existent-org/members`);
-    expect([401, 404, 500, 503]).toContain(res.status);
+    // Expected: 404 (not found)
+    // Tolerated: 503 (Worker timeout), 500 (DB error)
+    expect([404, 500, 503]).toContain(res.status);
   });
 });
 
 describe("POST /api/organizations/[orgId]/join", () => {
-  it("should return 404 for non-existent org", async () => {
+  it("should return 404 for non-existent org (or 503 if Worker unavailable)", async () => {
     const res = await fetch(`${BASE_URL}/api/organizations/non-existent-org/join`, {
       method: "POST",
     });
-    expect([404, 500]).toContain(res.status);
+    // Expected: 404 (not found)
+    // Tolerated: 503 (Worker timeout), 500 (DB error)
+    expect([404, 500, 503]).toContain(res.status);
   });
 });
 
 describe("DELETE /api/organizations/[orgId]/leave", () => {
-  it("should return 400/403/404/500 for non-existent org", async () => {
+  it("should return 404 for non-existent org (or 503 if Worker unavailable)", async () => {
     const res = await fetch(`${BASE_URL}/api/organizations/non-existent-org/leave`, {
       method: "DELETE",
     });
-    expect([400, 403, 404, 500]).toContain(res.status);
+    // Expected: 404 (not found)
+    // Tolerated: 503 (Worker timeout), 500 (DB error)
+    expect([404, 500, 503]).toContain(res.status);
   });
 });
 
@@ -1316,18 +1322,24 @@ describe("DELETE /api/organizations/[orgId]/leave", () => {
 // ===========================================================================
 
 describe("GET /api/seasons/[seasonId]/leaderboard", () => {
-  it("should return 404 for non-existent season", async () => {
+  it("should return 404 for non-existent season (or 500 if DB error)", async () => {
     const res = await fetch(`${BASE_URL}/api/seasons/non-existent-season/leaderboard`);
-    expect([404, 500]).toContain(res.status);
+    // Expected: 404 (not found)
+    // Tolerated: 500 (DB error), 503 (Worker timeout)
+    expect([404, 500, 503]).toContain(res.status);
   });
 });
 
 describe("POST /api/seasons/[seasonId]/register", () => {
-  it("should return 400/403/404/500 for non-existent season", async () => {
+  it("should return 404 for non-existent season (or 500 if DB error)", async () => {
     const res = await fetch(`${BASE_URL}/api/seasons/non-existent-season/register`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ team_id: "t1" }),
     });
-    expect([400, 403, 404, 500]).toContain(res.status);
+    // Expected: 404 (not found)
+    // Tolerated: 500 (DB error), 503 (Worker timeout)
+    expect([404, 500, 503]).toContain(res.status);
   });
 });
 
@@ -1349,87 +1361,86 @@ describe("GET /api/admin/check", () => {
 });
 
 describe("GET /api/admin/settings", () => {
-  it("should return 403 for non-admin or 200 for admin", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/settings`);
-    expect([200, 403, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("GET /api/admin/users", () => {
-  it("should return 403 for non-admin or 200 for admin", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/users`);
-    expect([200, 403, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("GET /api/admin/invites", () => {
-  it("should return 403 for non-admin or 200 for admin", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/invites`);
-    expect([200, 403, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("GET /api/admin/badges", () => {
-  it("should return 403 for non-admin or 200 for admin", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/badges`);
-    expect([200, 403, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("GET /api/admin/pricing", () => {
-  it("should return 403 for non-admin or 200 for admin", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/pricing`);
-    expect([200, 403, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("GET /api/admin/seasons", () => {
-  it("should return 403 for non-admin or 200 for admin", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/seasons`);
-    expect([200, 403, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("GET /api/admin/organizations", () => {
-  it("should return 403 for non-admin or 200 for admin", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/organizations`);
-    expect([200, 403, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("GET /api/admin/showcases", () => {
-  it("should return 403 for non-admin or 200 for admin", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/showcases`);
-    expect([200, 403, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("GET /api/admin/storage", () => {
-  it("should return 403 for non-admin or 200 for admin", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/storage`);
-    expect([200, 403, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("GET /api/admin/cache", () => {
-  it("should return 403 for non-admin or 200 for admin", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/cache`);
-    expect([200, 403, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("GET /api/admin/usage/compare", () => {
-  it("should return 403 for non-admin or 400/200 for admin", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/usage/compare`);
-    // 400 if missing params, 403 if not admin, 500 if table missing
-    expect([200, 400, 403, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("GET /api/admin/badges/assignments", () => {
-  it("should return 403 for non-admin or 200 for admin", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/badges/assignments`);
-    expect([200, 403, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
@@ -1466,29 +1477,29 @@ describe("DELETE /api/account/delete", () => {
 // ===========================================================================
 
 describe("POST /api/admin/badges/[id]/archive", () => {
-  it("should return 403 for non-admin or 404 for non-existent badge", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/badges/non-existent/archive`, {
       method: "POST",
     });
-    expect([403, 404, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("POST /api/admin/badges/[id]/unarchive", () => {
-  it("should return 403 for non-admin or 404 for non-existent badge", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/badges/non-existent/unarchive`, {
       method: "POST",
     });
-    expect([403, 404, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("POST /api/admin/badges/assignments/[id]/revoke", () => {
-  it("should return 403 for non-admin or 404 for non-existent assignment", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/badges/assignments/non-existent/revoke`, {
       method: "POST",
     });
-    expect([403, 404, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
@@ -1497,74 +1508,74 @@ describe("POST /api/admin/badges/assignments/[id]/revoke", () => {
 // ===========================================================================
 
 describe("GET /api/admin/organizations/[orgId]", () => {
-  it("should return 403 for non-admin or 404 for non-existent org", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/organizations/non-existent`);
-    expect([403, 404, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("PATCH /api/admin/organizations/[orgId]", () => {
-  it("should return 403 for non-admin or 404 for non-existent org", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/organizations/non-existent`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: "Test" }),
     });
-    expect([403, 404, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("DELETE /api/admin/organizations/[orgId]", () => {
-  it("should return 403 for non-admin or 404 for non-existent org", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/organizations/non-existent`, {
       method: "DELETE",
     });
-    expect([403, 404, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("POST /api/admin/organizations/[orgId]/logo", () => {
-  it("should return 403 for non-admin or 404 for non-existent org", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/organizations/non-existent/logo`, {
       method: "POST",
     });
-    expect([400, 403, 404, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("DELETE /api/admin/organizations/[orgId]/logo", () => {
-  it("should return 403 for non-admin or 404 for non-existent org", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/organizations/non-existent/logo`, {
       method: "DELETE",
     });
-    expect([403, 404, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("GET /api/admin/organizations/[orgId]/members", () => {
-  it("should return 403 for non-admin or 404 for non-existent org", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/organizations/non-existent/members`);
-    expect([403, 404, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("POST /api/admin/organizations/[orgId]/members", () => {
-  it("should return 403 for non-admin or 400/404 for missing data", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/organizations/non-existent/members`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: "test@example.com" }),
     });
-    expect([400, 403, 404, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("DELETE /api/admin/organizations/[orgId]/members/[userId]", () => {
-  it("should return 403 for non-admin or 404 for non-existent", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/organizations/non-existent/members/non-existent`, {
       method: "DELETE",
     });
-    expect([403, 404, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
@@ -1573,31 +1584,31 @@ describe("DELETE /api/admin/organizations/[orgId]/members/[userId]", () => {
 // ===========================================================================
 
 describe("PATCH /api/admin/seasons/[seasonId]", () => {
-  it("should return 403 for non-admin or 404 for non-existent season", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/seasons/non-existent`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: "Test Season" }),
     });
-    expect([403, 404, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("POST /api/admin/seasons/[seasonId]/snapshot", () => {
-  it("should return 403 for non-admin or 404 for non-existent season", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/seasons/non-existent/snapshot`, {
       method: "POST",
     });
-    expect([403, 404, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("POST /api/admin/seasons/[seasonId]/sync-rosters", () => {
-  it("should return 403 for non-admin or 404 for non-existent season", async () => {
+  it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/seasons/non-existent/sync-rosters`, {
       method: "POST",
     });
-    expect([403, 404, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
@@ -1606,29 +1617,28 @@ describe("POST /api/admin/seasons/[seasonId]/sync-rosters", () => {
 // ===========================================================================
 
 describe("POST /api/teams/[teamId]/logo", () => {
-  it("should return 401/403 for non-member or missing data", async () => {
+  it("should return 403 for non-member", async () => {
     const res = await fetch(`${BASE_URL}/api/teams/non-existent/logo`, {
       method: "POST",
     });
-    // 400 if no file, 403 if not member
-    expect([400, 403, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("DELETE /api/teams/[teamId]/logo", () => {
-  it("should return 403 for non-member or 404 for no logo", async () => {
+  it("should return 403 for non-member", async () => {
     const res = await fetch(`${BASE_URL}/api/teams/non-existent/logo`, {
       method: "DELETE",
     });
-    expect([403, 404, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 });
 
 describe("DELETE /api/teams/[teamId]/members/[userId]", () => {
-  it("should return 403 for non-owner or 404 for non-existent", async () => {
+  it("should return 403 for non-member", async () => {
     const res = await fetch(`${BASE_URL}/api/teams/non-existent/members/non-existent`, {
       method: "DELETE",
     });
-    expect([400, 403, 404, 500]).toContain(res.status);
+    expect(res.status).toBe(403);
   });
 })
