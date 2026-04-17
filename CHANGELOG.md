@@ -1,5 +1,75 @@
 # Changelog
 
+## v2.20.7
+
+### Added
+- Add L2 E2E tests for 98.5% route coverage (64/65)
+- Upgrade /api/live endpoints to surety standard (#106)
+- Admins see all orgs and teams in scope dropdown
+
+### Changed
+- Mark L2 E2E coverage autoresearch as complete (98.5%)
+- Add L2 E2E tests for 23 additional routes
+- Initialize L2 coverage autoresearch
+- Update autoresearch with safety fix notes
+- Finalize autoresearch session with complete summary
+- Update autoresearch experiment log
+- Update autoresearch progress and add ideas file
+- Enable vitest threads pool for better parallelization
+- Reduce delays in session-sync and notify-command tests
+- Reduce coordinator-integration.test.ts delays
+- Reduce login.test.ts server startup delays from 100ms to 10ms
+- Fix upload.test.ts Retry-After causing 1s delay
+- Reduce sync.test.ts mtime delays from 50ms to 1ms
+- Reduce notify-command.test.ts delays
+- Reduce login.test.ts timeouts from 500ms to 50ms
+- Initialize autoresearch for test speed optimization
+- Add targeted tests to push 13 files above 95% coverage
+- Improve coverage for log, logout, drivers, registry, and config manager
+- Add tests for invites/by-device/sync-rosters/teams/github/verify-invite/season-helpers
+- Add tests for projects/org/register/seasons routes to 100% coverage
+- Add tests for compare, cache, lib files
+- Add comprehensive tests for badges admin routes
+- Fix flaky resolvePewBin test on macOS
+- Add gitleaks allowlist and improve E2E showcase cleanup
+- Add Bearer auth rejection test for account deletion
+
+### Fixed
+- Resolve TypeScript errors in CI
+- Correct commit hash in autoresearch.jsonl run 17
+- Tighten status code assertions in L2 E2E tests
+- Restore safe timing values to avoid CI flakes
+- Fix truncated teams-detail test and incorrect by-device assertion
+- Button outline variant remove dark:bg-input
+- Admins bypass membership check in leaderboard API
+- Add no-cache headers to /api/organizations/mine and /api/teams
+- Restore trustHost for Railway reverse proxy compatibility
+- Use no-cache headers for health check endpoint
+- Disable trustHost when NEXTAUTH_URL is configured and pin redirect origin
+- Pin protocol and stop trusting forwarded headers
+- Verify team/org membership for scoped leaderboard
+- Add array size limits to project alias/tag inputs
+- Harden health check endpoint
+- Validate X-Forwarded-Host against allowlist
+- Tighten E2E_MOCK_GITHUB gate to development-only
+- Gate E2E_MOCK_GITHUB behind NODE_ENV !== production check
+- Isolate showcase E2E with per-run unique repo_key
+- Serialize showcase E2E for concurrent CI isolation
+- Clean up stale showcase rows by repo_key before per-user cleanup
+- Anchor gitleaks allowlist regex to reject real API keys
+- Scope gitleaks allowlist to exact test tokens and paths
+- Use real repo URL for showcase E2E and scope cleanup by user_id
+- Narrow gitleaks allowlist to specific fake-token patterns
+- Isolate showcase repo_key per E2E run to prevent concurrent CI collisions
+- Isolate E2E test runs with per-run unique user IDs
+- Remove useless initial assignment to regenerateInviteCode
+- Add invite code regeneration for legacy weak codes
+- Harden team invite code handling
+- Reject API key auth on account deletion endpoint
+
+### Removed
+- Remove stale Next.js CVE ignore (GHSA-5f7q-jpqc-wp7h)
+
 ## v2.20.6
 
 ### Added
