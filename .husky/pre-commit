@@ -1,6 +1,7 @@
 #!/usr/bin/env sh
 
 # pre-commit: L1 Unit/Component + G1 Static Analysis (quality system)
+# Optimized for speed: runs tests, typecheck, and lint-staged in parallel
 
 # G0: Verify lockfile is in sync with package.json (catches missing workspace deps)
 # This mirrors CI's `bun install --frozen-lockfile` check
@@ -12,29 +13,56 @@ if [ $LOCK_EXIT -ne 0 ]; then
   exit 1
 fi
 
-# L1 Unit/Component: coverage ≥90% enforced by vitest.config.ts
-bun run test:coverage 2>&1
-TEST_EXIT=$?
+# Create temp files for exit codes
+TMP_DIR=$(mktemp -d)
+TEST_EXIT_FILE="$TMP_DIR/test_exit"
+TSC_EXIT_FILE="$TMP_DIR/tsc_exit"
+LINT_EXIT_FILE="$TMP_DIR/lint_exit"
 
-if [ $TEST_EXIT -ne 0 ]; then
+# Run L1 tests, G1a typecheck, and G1b lint-staged in parallel
+(
+  # L1 Unit/Component: coverage ≥90% enforced by vitest.config.ts
+  bun run test:coverage 2>&1
+  echo $? > "$TEST_EXIT_FILE"
+) &
+TEST_PID=$!
+
+(
+  # G1a Static Analysis: TypeScript strict (full project — tsc needs complete context)
+  bun run lint:typecheck 2>&1
+  echo $? > "$TSC_EXIT_FILE"
+) &
+TSC_PID=$!
+
+(
+  # G1b Static Analysis: ESLint strict (staged files only, via lint-staged)
+  bunx lint-staged 2>&1
+  echo $? > "$LINT_EXIT_FILE"
+) &
+LINT_PID=$!
+
+# Wait for all to complete
+wait $TEST_PID
+wait $TSC_PID
+wait $LINT_PID
+
+# Check exit codes
+TEST_EXIT=$(cat "$TEST_EXIT_FILE")
+TSC_EXIT=$(cat "$TSC_EXIT_FILE")
+LINT_EXIT=$(cat "$LINT_EXIT_FILE")
+rm -rf "$TMP_DIR"
+
+if [ "$TEST_EXIT" -ne 0 ]; then
   echo "❌ pre-commit FAILED: Unit tests or coverage threshold (90%) not met."
   exit 1
 fi
 
-# G1a Static Analysis: TypeScript strict (full project — tsc needs complete context)
-bun run lint:typecheck 2>&1
-TSC_EXIT=$?
-
-if [ $TSC_EXIT -ne 0 ]; then
+if [ "$TSC_EXIT" -ne 0 ]; then
   echo "❌ pre-commit FAILED: TypeScript type check errors."
   exit 1
 fi
 
-# G1b Static Analysis: ESLint strict (staged files only, via lint-staged)
-bunx lint-staged 2>&1
-LINT_EXIT=$?
-
-if [ $LINT_EXIT -ne 0 ]; then
+if [ "$LINT_EXIT" -ne 0 ]; then
   echo "❌ pre-commit FAILED: ESLint errors in staged files."
   exit 1
 fi

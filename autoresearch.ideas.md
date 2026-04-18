@@ -1,15 +1,14 @@
-# Autoresearch Ideas: Unit Test Optimization
+# Autoresearch Ideas: Pre-commit Performance Optimization
 
 ## Completed ✅
-- [x] Reduce timeout delays (500ms → 50ms, etc.)
-- [x] Fix Retry-After header causing real 1s delay
-- [x] Reduce mtime delays (50ms → 1ms)
-- [x] Enable vitest threads pool
+- [x] Run L1 tests and G1a typecheck in parallel — saves ~1.5s by overlapping 5-6s tests with 4-5s typecheck
 
 ## Attempted but Not Viable ❌
-- [x] vmThreads pool — faster (1.4s vs 2.8s) but causes test isolation failures
-- [x] sequence.shuffle — no improvement
-- [x] typecheck.enabled: false — already default behavior
+- [x] Enable incremental tsc for cli/worker/worker-read — lockfile overhead negates typecheck gains
+- [x] Limit vitest threads to 4-8 — doubled test time due to pool contention
+- [x] Remove json+html coverage reporters — no measurable improvement, high variance
+- [x] Run tsc in parallel (5 concurrent) — slower than sequential (4.2s vs 2.75s) due to CPU contention
+- [x] Text-only coverage reporter — actually slower than text+json+html (5.5s vs 4.8s)
 
 ## Potential Future Optimizations (Not Yet Tried)
 
