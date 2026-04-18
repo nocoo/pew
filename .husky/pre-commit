@@ -42,6 +42,8 @@ LINT_EXIT_FILE="$TMP_DIR/lint_exit"
 ) &
 TEST_PID=$!
 
+TS_STAGED=$(echo "$STAGED_FILES" | grep -E '\.(ts|tsx)$' || true)
+
 if [ -n "$TSC_AFFECTING" ]; then
   (
     # G1a Static Analysis: TypeScript strict (full project — tsc needs complete context)
@@ -54,17 +56,22 @@ else
   TSC_PID=""
 fi
 
-(
-  # G1b Static Analysis: ESLint strict (staged files only, via lint-staged)
-  bunx lint-staged 2>&1
-  echo $? > "$LINT_EXIT_FILE"
-) &
-LINT_PID=$!
+if [ -n "$TS_STAGED" ]; then
+  (
+    # G1b Static Analysis: ESLint strict (staged files only, via lint-staged)
+    bunx lint-staged 2>&1
+    echo $? > "$LINT_EXIT_FILE"
+  ) &
+  LINT_PID=$!
+else
+  echo 0 > "$LINT_EXIT_FILE"
+  LINT_PID=""
+fi
 
 # Wait for all to complete
 wait $TEST_PID
 [ -n "$TSC_PID" ] && wait $TSC_PID
-wait $LINT_PID
+[ -n "$LINT_PID" ] && wait $LINT_PID
 
 # Check exit codes
 TEST_EXIT=$(cat "$TEST_EXIT_FILE")
