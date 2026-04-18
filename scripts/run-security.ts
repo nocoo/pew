@@ -10,7 +10,7 @@
  * Default: tool missing → hard failure with install instructions.
  * Set PEW_G2_SOFT=1 for soft-degrade mode (warn and skip).
  */
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -78,19 +78,39 @@ function requireTool(key: string): boolean {
 let failed = false;
 let hardMissing = false;
 
+interface ScanJob {
+  label: string;
+  cmd: string;
+  args: string[];
+  successMsg: string;
+  failMsg: string;
+}
+
+function runJob(job: ScanJob): Promise<{ output: string; status: number }> {
+  return new Promise((resolve) => {
+    const child = spawn(job.cmd, job.args, { stdio: ["ignore", "pipe", "pipe"] });
+    let output = "";
+    child.stdout?.on("data", (d) => (output += d.toString()));
+    child.stderr?.on("data", (d) => (output += d.toString()));
+    child.on("close", (code) => resolve({ output, status: code ?? 1 }));
+    child.on("error", (err) => resolve({ output: String(err), status: 1 }));
+  });
+}
+
+const jobs: { job: ScanJob; promise: Promise<{ output: string; status: number }> }[] = [];
+
 // osv-scanner
 const hasOsv = requireTool("osv-scanner");
 if (hasOsv) {
+  const job: ScanJob = {
+    label: "osv-scanner",
+    cmd: "osv-scanner",
+    args: ["--lockfile=bun.lock"],
+    successMsg: "✅ osv-scanner: clean",
+    failMsg: "❌ osv-scanner found vulnerabilities.",
+  };
   console.log("🔍 osv-scanner: scanning bun.lock...");
-  const r = spawnSync("osv-scanner", ["--lockfile=bun.lock"], {
-    stdio: "inherit",
-  });
-  if (r.status !== 0) {
-    console.error("❌ osv-scanner found vulnerabilities.");
-    failed = true;
-  } else {
-    console.log("✅ osv-scanner: clean");
-  }
+  jobs.push({ job, promise: runJob(job) });
 } else if (!softMode) {
   hardMissing = true;
 }
@@ -107,17 +127,33 @@ if (hasGitleaks) {
   if (existsSync(configPath)) {
     gitleaksArgs.push("--config", configPath);
   }
-  const r = spawnSync("gitleaks", gitleaksArgs, {
-    stdio: "inherit",
-  });
-  if (r.status !== 0) {
-    console.error("❌ gitleaks found secrets in commits.");
-    failed = true;
-  } else {
-    console.log("✅ gitleaks: clean");
-  }
+  const job: ScanJob = {
+    label: "gitleaks",
+    cmd: "gitleaks",
+    args: gitleaksArgs,
+    successMsg: "✅ gitleaks: clean",
+    failMsg: "❌ gitleaks found secrets in commits.",
+  };
+  jobs.push({ job, promise: runJob(job) });
 } else if (!softMode) {
   hardMissing = true;
+}
+
+// Run osv-scanner and gitleaks in parallel; print results in deterministic order
+const results = await Promise.all(jobs.map((j) => j.promise));
+for (let i = 0; i < jobs.length; i++) {
+  const { job } = jobs[i];
+  const { output, status } = results[i];
+  if (output.trim().length > 0) {
+    process.stdout.write(output);
+    if (!output.endsWith("\n")) process.stdout.write("\n");
+  }
+  if (status !== 0) {
+    console.error(job.failMsg);
+    failed = true;
+  } else {
+    console.log(job.successMsg);
+  }
 }
 
 if (hardMissing) {
