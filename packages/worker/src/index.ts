@@ -155,8 +155,8 @@ async function handleLive(env: Env): Promise<Response> {
     await env.DB.prepare("SELECT 1 AS probe").first();
     database = { connected: true };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    database = { connected: false, error: msg.replace(/\bok\b/gi, "***") };
+    console.error(err);
+    database = { connected: false, error: "Internal server error" };
   }
 
   const healthy = database.connected;
@@ -195,8 +195,8 @@ async function handleTokenIngest(body: unknown, env: Env): Promise<Response> {
 
     return Response.json({ ingested: records.length });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return Response.json({ error: `D1 batch failed: ${message}` }, { status: 500 });
+    console.error(err);
+    return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 
@@ -231,8 +231,8 @@ async function handleSessionIngest(body: unknown, env: Env): Promise<Response> {
 
     return Response.json({ ingested: records.length });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return Response.json({ error: `D1 batch failed: ${message}` }, { status: 500 });
+    console.error(err);
+    return Response.json({ error: "Internal server error" }, { status: 500 });
   }
 }
 

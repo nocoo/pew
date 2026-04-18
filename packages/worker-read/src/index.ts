@@ -217,8 +217,8 @@ async function handleLive(env: Env): Promise<Response> {
     await env.DB.prepare("SELECT 1 AS probe").first();
     database = { connected: true };
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    database = { connected: false, error: msg.replace(/\bok\b/gi, "***") };
+    console.error(err);
+    database = { connected: false, error: "Internal server error" };
   }
 
   const healthy = database.connected;
@@ -266,9 +266,9 @@ async function handleQuery(body: unknown, env: Env): Promise<Response> {
       meta: result.meta ?? { changes: 0, duration: 0 },
     });
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    console.error(err);
     return Response.json(
-      { error: `D1 query failed: ${message}` },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }
@@ -359,9 +359,9 @@ async function handleRpc(body: unknown, env: Env): Promise<Response> {
         );
     }
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    console.error(err);
     return Response.json(
-      { error: `RPC failed: ${message}` },
+      { error: "Internal server error" },
       { status: 500 },
     );
   }
