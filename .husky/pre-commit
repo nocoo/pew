@@ -5,7 +5,8 @@
 
 # G0: Verify lockfile is in sync with package.json (catches missing workspace deps)
 # Skip if no package.json or bun.lock changes are staged
-PKG_CHANGES=$(git diff --cached --name-only | grep -E "package\.json|bun\.lock" || true)
+STAGED_FILES=$(git diff --cached --name-only)
+PKG_CHANGES=$(echo "$STAGED_FILES" | grep -E "package\.json|bun\.lock" || true)
 
 if [ -n "$PKG_CHANGES" ]; then
   bun install --frozen-lockfile 2>&1
@@ -15,6 +16,16 @@ if [ -n "$PKG_CHANGES" ]; then
     echo "❌ pre-commit FAILED: Lockfile out of sync. Run 'bun install' and commit bun.lock."
     exit 1
   fi
+fi
+
+# Detect whether code (TS/TSX or config affecting build) is being touched.
+# Docs-only / autoresearch-only commits skip the heavy gates entirely.
+CODE_CHANGES=$(echo "$STAGED_FILES" | grep -E '\.(ts|tsx|js|mjs|cjs|json)$' || true)
+TSC_AFFECTING=$(echo "$STAGED_FILES" | grep -E '\.(ts|tsx)$|tsconfig.*\.json$' || true)
+
+if [ -z "$CODE_CHANGES" ]; then
+  echo "⏭️  pre-commit: no code changes staged — skipping L1/G1a/G1b gates"
+  exit 0
 fi
 
 # Create temp files for exit codes
@@ -31,12 +42,17 @@ LINT_EXIT_FILE="$TMP_DIR/lint_exit"
 ) &
 TEST_PID=$!
 
-(
-  # G1a Static Analysis: TypeScript strict (full project — tsc needs complete context)
-  bun run lint:typecheck 2>&1
-  echo $? > "$TSC_EXIT_FILE"
-) &
-TSC_PID=$!
+if [ -n "$TSC_AFFECTING" ]; then
+  (
+    # G1a Static Analysis: TypeScript strict (full project — tsc needs complete context)
+    bun run lint:typecheck 2>&1
+    echo $? > "$TSC_EXIT_FILE"
+  ) &
+  TSC_PID=$!
+else
+  echo 0 > "$TSC_EXIT_FILE"
+  TSC_PID=""
+fi
 
 (
   # G1b Static Analysis: ESLint strict (staged files only, via lint-staged)
@@ -47,7 +63,7 @@ LINT_PID=$!
 
 # Wait for all to complete
 wait $TEST_PID
-wait $TSC_PID
+[ -n "$TSC_PID" ] && wait $TSC_PID
 wait $LINT_PID
 
 # Check exit codes
