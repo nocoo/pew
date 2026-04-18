@@ -11,6 +11,9 @@ export default defineConfig({
   test: {
     globals: true,
     pool: "threads",
+    cache: {
+      dir: "node_modules/.cache/vitest",
+    },
     poolOptions: {
       threads: {
         singleThread: false,
