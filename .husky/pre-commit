@@ -4,13 +4,17 @@
 # Optimized for speed: runs tests, typecheck, and lint-staged in parallel
 
 # G0: Verify lockfile is in sync with package.json (catches missing workspace deps)
-# This mirrors CI's `bun install --frozen-lockfile` check
-bun install --frozen-lockfile 2>&1
-LOCK_EXIT=$?
+# Skip if no package.json or bun.lock changes are staged
+PKG_CHANGES=$(git diff --cached --name-only | grep -E "package\.json|bun\.lock" || true)
 
-if [ $LOCK_EXIT -ne 0 ]; then
-  echo "❌ pre-commit FAILED: Lockfile out of sync. Run 'bun install' and commit bun.lock."
-  exit 1
+if [ -n "$PKG_CHANGES" ]; then
+  bun install --frozen-lockfile 2>&1
+  LOCK_EXIT=$?
+
+  if [ $LOCK_EXIT -ne 0 ]; then
+    echo "❌ pre-commit FAILED: Lockfile out of sync. Run 'bun install' and commit bun.lock."
+    exit 1
+  fi
 fi
 
 # Create temp files for exit codes

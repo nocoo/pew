@@ -6,9 +6,12 @@ set -e
 
 START_TOTAL=$(date +%s.%N)
 
-# G0: bun install --frozen-lockfile
+# G0: bun install --frozen-lockfile (skip if no package changes)
 START_G0=$(date +%s.%N)
-bun install --frozen-lockfile 2>&1 > /dev/null
+PKG_CHANGES=$(git diff --cached --name-only | grep -E "package\.json|bun\.lock" || true)
+if [ -n "$PKG_CHANGES" ]; then
+  bun install --frozen-lockfile 2>&1 > /dev/null
+fi
 END_G0=$(date +%s.%N)
 G0_TIME=$(echo "$END_G0 - $START_G0" | bc)
 
@@ -63,4 +66,4 @@ echo "METRIC g0_lockfile_s=$G0_TIME"
 echo "METRIC l1_tests_s=$L1_TIME"
 echo "METRIC g1a_typecheck_s=$G1A_TIME"
 echo "METRIC g1b_lintstaged_s=$G1B_TIME"
-echo "✅ Pre-commit benchmark complete (parallel L1+G1a+G1b)"
+echo "✅ Pre-commit benchmark complete (parallel L1+G1a+G1b, skip G0 if no pkg changes)"
