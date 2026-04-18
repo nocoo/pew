@@ -543,7 +543,7 @@ export default function AdminStoragePage() {
                       placeholder="Filter users..."
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      className="w-full rounded-lg border border-border bg-card pl-9 pr-8 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
+                      className="w-full rounded-lg border border-border bg-secondary pl-9 pr-8 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
                     />
                     {search && (
                       <button
@@ -562,7 +562,7 @@ export default function AdminStoragePage() {
 
               {/* User table */}
               {filteredUsers.length === 0 ? (
-                <div className="rounded-xl bg-card p-8 text-center text-sm text-muted-foreground">
+                <div className="rounded-xl bg-secondary p-8 text-center text-sm text-muted-foreground">
                   {search ? "No users match your filter." : "No users found."}
                 </div>
               ) : (
@@ -686,7 +686,7 @@ export default function AdminStoragePage() {
                   <button
                     onClick={fetchCacheKeys}
                     disabled={cacheLoading}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 rounded-md bg-secondary px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors disabled:opacity-50"
                   >
                     <RefreshCw
                       className={cn(
@@ -734,7 +734,7 @@ export default function AdminStoragePage() {
                     {Object.entries(cacheTypeCounts).map(([type, count]) => (
                       <span
                         key={type}
-                        className="inline-flex items-center gap-1 rounded-full bg-card px-2 py-0.5 text-xs"
+                        className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs"
                       >
                         <span className="text-muted-foreground">{type}:</span>
                         <span className="font-medium tabular-nums">{count}</span>
@@ -749,18 +749,18 @@ export default function AdminStoragePage() {
 
               {/* Cache key list */}
               {cacheLoading ? (
-                <div className="rounded-xl bg-card p-4 space-y-2">
+                <div className="rounded-xl bg-secondary p-4 space-y-2">
                   <Skeleton className="h-4 w-24" />
                   <Skeleton className="h-12 w-full" />
                   <Skeleton className="h-12 w-full" />
                 </div>
               ) : cacheKeys.length === 0 ? (
-                <div className="rounded-xl bg-card p-8 text-center text-sm text-muted-foreground">
+                <div className="rounded-xl bg-secondary p-8 text-center text-sm text-muted-foreground">
                   No cached entries. Cache will be populated as users access
                   pricing, seasons, and leaderboards.
                 </div>
               ) : (
-                <div className="rounded-xl bg-card p-1 space-y-1 flex-1 lg:overflow-y-auto min-h-0">
+                <div className="rounded-xl bg-secondary p-1 space-y-1 flex-1 lg:overflow-y-auto min-h-0">
                   {cacheKeys.map((key) => {
                     const { type, description } = describeCacheKey(key);
                     const isDeleting = cacheDeletingKey === key;
@@ -789,7 +789,7 @@ export default function AdminStoragePage() {
                                 type === "Achievement" &&
                                   "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
                                 type === "Unknown" &&
-                                  "bg-card text-muted-foreground"
+                                  "bg-secondary text-muted-foreground"
                               )}
                             >
                               {type}

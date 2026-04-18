@@ -186,7 +186,7 @@ function AchievementCard({ achievement }: { achievement: UserAchievement }) {
     <div
       className={cn(
         "flex items-center gap-3 rounded-lg p-3 transition-colors",
-        isUnlocked ? "bg-card/60" : "bg-muted/20"
+        isUnlocked ? "bg-secondary/60" : "bg-muted/20"
       )}
     >
       <AchievementRing

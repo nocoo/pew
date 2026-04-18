@@ -262,7 +262,7 @@ function TagEditor({
             autoFocus
           />
           {suggestions.length > 0 && (
-            <div className="absolute left-0 top-full z-10 mt-1 rounded-md border border-border bg-card shadow-md">
+            <div className="absolute left-0 top-full z-10 mt-1 rounded-md border border-border bg-secondary shadow-md">
               {suggestions.slice(0, 5).map((s) => (
                 <button
                   key={s}

@@ -154,7 +154,7 @@ function SalaryEstimatorCard({
       {/* Header */}
       <div className="mb-4 flex items-start justify-between gap-2">
         <div className="flex items-center gap-2">
-          <div className="rounded-md bg-card p-2 text-primary">
+          <div className="rounded-md bg-background p-2 text-primary">
             <Banknote className="h-4 w-4" strokeWidth={1.5} />
           </div>
           <div>
@@ -432,7 +432,7 @@ function SalaryDisplay({
     <div
       className={cn(
         "rounded-lg p-3 text-center",
-        highlight ? "bg-card" : "bg-muted/30"
+        highlight ? "bg-secondary" : "bg-muted/30"
       )}
     >
       <p className="text-[10px] uppercase tracking-wider text-muted-foreground">

@@ -384,7 +384,7 @@ function AchievementCard({ achievement, index, isExpanded, onToggle, onUserClick
     <div
       className={cn(
         "flex flex-col rounded-xl p-4 transition-all animate-fade-up",
-        isUnlocked ? "bg-card/80 hover:bg-card" : "bg-muted/30 hover:bg-muted/50",
+        isUnlocked ? "bg-secondary/80 hover:bg-card" : "bg-muted/30 hover:bg-muted/50",
         isExpanded && "ring-1 ring-border",
       )}
       style={{ animationDelay: `${Math.min(index * 30, 400)}ms` }}
@@ -535,7 +535,7 @@ interface SummaryBarProps {
 
 function SummaryBar({ totalUnlocked, totalAchievements, diamondCount, currentStreak }: SummaryBarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-4 rounded-xl bg-card/50 p-4 text-sm animate-fade-up" style={{ animationDelay: "120ms" }}>
+    <div className="flex flex-wrap items-center gap-4 rounded-xl bg-secondary/50 p-4 text-sm animate-fade-up" style={{ animationDelay: "120ms" }}>
       <div className="flex items-center gap-2">
         <Trophy className="h-4 w-4 text-chart-6" strokeWidth={1.5} />
         <span className="font-medium">{totalUnlocked}</span>

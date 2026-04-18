@@ -49,7 +49,7 @@ export function PeakHoursCard({ slots, className }: PeakHoursCardProps) {
     >
       {/* Header */}
       <div className="mb-4 flex items-center gap-2">
-        <div className="rounded-md bg-card p-2 text-muted-foreground">
+        <div className="rounded-md bg-background p-2 text-muted-foreground">
           <Flame className="h-5 w-5" strokeWidth={1.5} />
         </div>
         <p className="text-xs md:text-sm text-muted-foreground">Peak Hours</p>

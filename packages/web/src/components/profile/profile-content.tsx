@@ -204,7 +204,7 @@ export function ProfileContent({
               className={cn(
                 "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 tab === t.id
-                  ? "bg-card text-foreground shadow-sm"
+                  ? "bg-secondary text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >

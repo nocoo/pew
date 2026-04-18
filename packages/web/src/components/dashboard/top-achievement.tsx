@@ -204,7 +204,7 @@ export function TopAchievement({
           return (
             <div
               key={ach.id}
-              className="flex items-center gap-3 rounded-xl bg-card/50 p-3"
+              className="flex items-center gap-3 rounded-xl bg-secondary/50 p-3"
             >
               {/* Icon */}
               <div className={cn(

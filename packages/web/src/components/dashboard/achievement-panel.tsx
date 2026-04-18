@@ -169,7 +169,7 @@ export function AchievementCard({ achievement, className }: AchievementCardProps
     <div
       className={cn(
         "flex items-center gap-3 rounded-xl p-3 transition-colors",
-        isUnlocked ? "bg-card/50 hover:bg-card" : "bg-muted/30",
+        isUnlocked ? "bg-secondary/50 hover:bg-card" : "bg-muted/30",
         className
       )}
     >
