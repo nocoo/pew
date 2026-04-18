@@ -137,3 +137,58 @@ export const TEAM_JOIN_RATE_LIMIT: RateLimitConfig = {
   maxRequests: 5,
   windowSeconds: 60,
 };
+
+/** Rate limit for auth code generation: 10 per hour per IP */
+export const AUTH_CODE_GENERATE_RATE_LIMIT: RateLimitConfig = {
+  maxRequests: 10,
+  windowSeconds: 3600, // 1 hour
+};
+
+/** Rate limit for auth code verification: 5 per minute per IP */
+export const AUTH_CODE_VERIFY_RATE_LIMIT: RateLimitConfig = {
+  maxRequests: 5,
+  windowSeconds: 60,
+};
+
+/** Rate limit for CLI auth callback: 10 per hour per IP */
+export const AUTH_CLI_RATE_LIMIT: RateLimitConfig = {
+  maxRequests: 10,
+  windowSeconds: 3600, // 1 hour
+};
+
+/** Rate limit for ingest endpoint: 300 per minute per user (or per IP if unauthenticated) */
+export const INGEST_RATE_LIMIT: RateLimitConfig = {
+  maxRequests: 300,
+  windowSeconds: 60,
+};
+
+// ---------------------------------------------------------------------------
+// Client IP extraction
+// ---------------------------------------------------------------------------
+
+/**
+ * Best-effort extraction of the client IP from a Request.
+ *
+ * Order of precedence:
+ * 1. `x-forwarded-for` (first hop)
+ * 2. `x-real-ip`
+ * 3. `cf-connecting-ip` (Cloudflare)
+ *
+ * Falls back to "unknown" so rate limiting still applies as a global bucket
+ * for requests where no proxy header is present.
+ */
+export function getClientIp(request: Request): string {
+  const xff = request.headers.get("x-forwarded-for");
+  if (xff) {
+    const first = xff.split(",")[0]?.trim();
+    if (first) return first;
+  }
+
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp) return realIp.trim();
+
+  const cf = request.headers.get("cf-connecting-ip");
+  if (cf) return cf.trim();
+
+  return "unknown";
+}

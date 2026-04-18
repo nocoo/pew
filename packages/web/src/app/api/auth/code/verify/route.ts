@@ -13,6 +13,11 @@
 
 import { NextResponse } from "next/server";
 import { getDbRead, getDbWrite } from "@/lib/db";
+import {
+  AUTH_CODE_VERIFY_RATE_LIMIT,
+  getClientIp,
+  inMemoryRateLimiter,
+} from "@/lib/rate-limit";
 
 // Generic error message for all auth failures (avoids information leakage)
 const AUTH_ERROR = "Invalid or expired code";
@@ -27,6 +32,19 @@ function generateApiKey(): string {
 }
 
 export async function POST(request: Request) {
+  // Rate limit: 5 verification attempts per minute per IP
+  const ip = getClientIp(request);
+  const rl = inMemoryRateLimiter.check(
+    `auth-code-verify:${ip}`,
+    AUTH_CODE_VERIFY_RATE_LIMIT,
+  );
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } },
+    );
+  }
+
   // 1. Parse and validate request body
   let body: { code?: string } | null;
   try {

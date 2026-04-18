@@ -15,6 +15,11 @@ import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
 import { MAX_INGEST_BATCH_SIZE, MIN_CLIENT_VERSION } from "@pew/core";
 import type { ValidationResult } from "@pew/core";
+import {
+  INGEST_RATE_LIMIT,
+  getClientIp,
+  inMemoryRateLimiter,
+} from "@/lib/rate-limit";
 
 // ---------------------------------------------------------------------------
 // Factory config
@@ -61,6 +66,20 @@ export function createIngestHandler<T>(
     }
 
     const { userId } = authResult;
+
+    // 1c. Rate limit: 60 requests/minute per authenticated user
+    // (falls back to client IP if userId is somehow empty)
+    const rateKey = userId || `ip:${getClientIp(request)}`;
+    const rl = inMemoryRateLimiter.check(
+      `ingest:${rateKey}`,
+      INGEST_RATE_LIMIT,
+    );
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfter) } },
+      );
+    }
 
     // 1b. Version gate — reject old clients with token inflation bugs
     const clientVersion = request.headers.get("X-Pew-Client-Version");

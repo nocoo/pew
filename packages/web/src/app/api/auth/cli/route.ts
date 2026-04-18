@@ -13,6 +13,11 @@
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
 import { getDbRead, getDbWrite } from "@/lib/db";
+import {
+  AUTH_CLI_RATE_LIMIT,
+  getClientIp,
+  inMemoryRateLimiter,
+} from "@/lib/rate-limit";
 
 /**
  * Resolve the public-facing origin.
@@ -32,6 +37,19 @@ export function getPublicOrigin(_request: Request): string {
 }
 
 export async function GET(request: Request) {
+  // Rate limit: 10 CLI auth attempts per hour per IP
+  const ip = getClientIp(request);
+  const rl = inMemoryRateLimiter.check(
+    `auth-cli:${ip}`,
+    AUTH_CLI_RATE_LIMIT,
+  );
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } },
+    );
+  }
+
   const url = new URL(request.url);
   const callback = url.searchParams.get("callback");
   const state = url.searchParams.get("state");
