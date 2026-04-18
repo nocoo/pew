@@ -8,6 +8,7 @@ TMP_DIR=$(mktemp -d)
 
 # Warm caches first (idempotent, not counted)
 bun run test:coverage:cached > /dev/null 2>&1 || true
+bun run lint:typecheck:cached > /dev/null 2>&1 || true
 bun run test:security > /dev/null 2>&1 || true
 
 START_RUN=$(date +%s.%N)
@@ -19,7 +20,7 @@ START_RUN=$(date +%s.%N)
 ) &
 P1=$!
 (
-  S=$(date +%s.%N); bun run lint:typecheck > /dev/null 2>&1; E=$(date +%s.%N)
+  S=$(date +%s.%N); bun run lint:typecheck:cached > /dev/null 2>&1; E=$(date +%s.%N)
   echo "$E - $S" | bc > "$TMP_DIR/tsc"
 ) &
 P2=$!

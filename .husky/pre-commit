@@ -45,7 +45,7 @@ TEST_PID=$!
 if [ -n "$TSC_AFFECTING" ]; then
   (
     # G1a Static Analysis: TypeScript strict (full project — tsc needs complete context)
-    bun run lint:typecheck 2>&1
+    bun run lint:typecheck:cached 2>&1
     echo $? > "$TSC_EXIT_FILE"
   ) &
   TSC_PID=$!
