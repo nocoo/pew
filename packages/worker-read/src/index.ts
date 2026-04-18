@@ -58,6 +58,23 @@ export interface Env {
 }
 
 // ---------------------------------------------------------------------------
+// Constant-time string comparison
+// ---------------------------------------------------------------------------
+
+/**
+ * Compare two strings in constant time to prevent timing attacks.
+ * Uses crypto.subtle.timingSafeEqual (available in Cloudflare Workers runtime).
+ * Length mismatch returns false without timing leak from byte comparison.
+ */
+async function secureCompare(a: string, b: string): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const bufA = encoder.encode(a);
+  const bufB = encoder.encode(b);
+  if (bufA.byteLength !== bufB.byteLength) return false;
+  return crypto.subtle.timingSafeEqual(bufA, bufB);
+}
+
+// ---------------------------------------------------------------------------
 // Write-statement guard (enhanced)
 // ---------------------------------------------------------------------------
 
@@ -387,10 +404,10 @@ const worker: ExportedHandler<Env> = {
       return handleLive(env);
     }
 
-    // Auth: all other routes require Bearer token
+    // Auth: all other routes require Bearer token (constant-time comparison)
     const authHeader = request.headers.get("Authorization");
     const expected = `Bearer ${env.WORKER_READ_SECRET}`;
-    if (!authHeader || authHeader !== expected) {
+    if (!authHeader || !(await secureCompare(authHeader, expected))) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
