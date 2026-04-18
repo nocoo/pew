@@ -2,20 +2,46 @@
 
 # pre-push: L2 Integration/API + G2 Security (quality system)
 # L1+G1 already enforced by pre-commit.
+# E2E and security gates are independent — run in parallel.
+
+TMP_DIR=$(mktemp -d)
+E2E_OUT="$TMP_DIR/e2e.log"
+G2_OUT="$TMP_DIR/g2.log"
+E2E_EXIT_FILE="$TMP_DIR/e2e_exit"
+G2_EXIT_FILE="$TMP_DIR/g2_exit"
 
 # L2 Integration/API: real HTTP E2E against dev server on :17020
-bun run test:e2e 2>&1
-E2E_EXIT=$?
+(
+  bun run test:e2e > "$E2E_OUT" 2>&1
+  echo $? > "$E2E_EXIT_FILE"
+) &
+E2E_PID=$!
 
-if [ $E2E_EXIT -ne 0 ]; then
+# G2 Security: osv-scanner (dependency CVEs) + gitleaks (secret leak in commits)
+(
+  bun run test:security > "$G2_OUT" 2>&1
+  echo $? > "$G2_EXIT_FILE"
+) &
+G2_PID=$!
+
+wait $E2E_PID
+wait $G2_PID
+
+E2E_EXIT=$(cat "$E2E_EXIT_FILE")
+G2_EXIT=$(cat "$G2_EXIT_FILE")
+
+echo "─── L2 Integration/API E2E ───"
+cat "$E2E_OUT"
+echo "─── G2 Security ───"
+cat "$G2_OUT"
+rm -rf "$TMP_DIR"
+
+if [ "$E2E_EXIT" -ne 0 ]; then
   echo "❌ pre-push FAILED: API E2E tests did not pass."
   exit 1
 fi
 
-# G2 Security: osv-scanner (dependency CVEs) + gitleaks (secret leak in commits)
-bun run test:security 2>&1
-G2_EXIT=$?
-if [ $G2_EXIT -ne 0 ]; then
+if [ "$G2_EXIT" -ne 0 ]; then
   echo "❌ pre-push FAILED: G2 security gate."
   exit 1
 fi
