@@ -37,7 +37,7 @@ LINT_EXIT_FILE="$TMP_DIR/lint_exit"
 # Run L1 tests, G1a typecheck, and G1b lint-staged in parallel
 (
   # L1 Unit/Component: coverage ≥90% enforced by vitest.config.ts
-  bun run test:coverage 2>&1
+  bun run test:coverage:cached 2>&1
   echo $? > "$TEST_EXIT_FILE"
 ) &
 TEST_PID=$!

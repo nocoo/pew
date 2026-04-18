@@ -25,7 +25,7 @@ START_PARALLEL=$(date +%s.%N)
 TMP_DIR=$(mktemp -d)
 
 (
-  S=$(date +%s.%N); bun run test:coverage > /dev/null 2>&1; E=$(date +%s.%N)
+  S=$(date +%s.%N); PEW_L1_NO_CACHE=1 bun run test:coverage:cached > /dev/null 2>&1; E=$(date +%s.%N)
   echo "$E - $S" | bc > "$TMP_DIR/l1_time"
 ) &
 L1_PID=$!

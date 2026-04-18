@@ -9,6 +9,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:coverage:cached": "bun run scripts/run-l1.ts",
     "dev": "bun run --cwd packages/web dev",
     "build": "rm -f packages/*/tsconfig.tsbuildinfo && bun run --filter @pew/core build && bun run --filter @pew/web build",
     "lint": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/cli/tsconfig.json && tsc --noEmit -p packages/web/tsconfig.json && tsc --noEmit -p packages/worker/tsconfig.json && tsc --noEmit -p packages/worker-read/tsconfig.json && eslint . --max-warnings=0",
