@@ -237,7 +237,7 @@ export async function POST(request: Request) {
       }
       if (!VALID_SOURCES.has(alias.source)) {
         return NextResponse.json(
-          { error: `Invalid source: "${alias.source}"` },
+          { error: "Invalid source parameter" },
           { status: 400 },
         );
       }
@@ -263,7 +263,7 @@ export async function POST(request: Request) {
   // Check reserved names
   if (RESERVED_NAMES.has(trimmedName.toLowerCase())) {
     return NextResponse.json(
-      { error: `"${trimmedName}" is a reserved name and cannot be used` },
+      { error: "This name is reserved and cannot be used" },
       { status: 400 },
     );
   }
@@ -314,7 +314,7 @@ export async function POST(request: Request) {
       if (taken) {
         return NextResponse.json(
           {
-            error: `Alias (${alias.source}, ${alias.project_ref}) is already assigned to another project`,
+            error: "Alias is already assigned to another project",
           },
           { status: 409 },
         );
