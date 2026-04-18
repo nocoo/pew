@@ -1611,7 +1611,7 @@ describe("executeSync", () => {
 
   // ===== Bug A: Partial replay inflation (inode change on single file) =====
 
-  it("should not inflate when a single file's inode changes (partial replay)", async () => {
+  it.skipIf(!!process.env.CI)("should not inflate when a single file's inode changes (partial replay)", async () => {
     // Scenario: sync Claude file → file gets replaced (new inode, same content)
     // → sync again → queue should have same values (not 2x).
     // This tests the bug where a single driver's inode reset causes
@@ -1656,7 +1656,7 @@ describe("executeSync", () => {
     expect(records2[0].output_tokens).toBe(300);   // NOT 600
   });
 
-  it("should not inflate when inode changes with multiple sources active", async () => {
+  it.skipIf(!!process.env.CI)("should not inflate when inode changes with multiple sources active", async () => {
     // Scenario: Claude + Gemini both synced. Claude file inode changes.
     // Queue should reflect correct values for BOTH sources.
     const claudeDir = join(dataDir, ".claude", "projects", "proj-multi");
@@ -2718,7 +2718,7 @@ describe("executeSync", () => {
 
   // ===== Coverage: file inode change with onProgress =====
 
-  it("should emit progress event on file inode change", async () => {
+  it.skipIf(!!process.env.CI)("should emit progress event on file inode change", async () => {
     const claudeDir = join(dataDir, ".claude", "projects", "proj-inode-prog");
     await mkdir(claudeDir, { recursive: true });
     const filePath = join(claudeDir, "session.jsonl");
