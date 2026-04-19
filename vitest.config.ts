@@ -29,6 +29,9 @@ export default defineConfig({
     ],
     coverage: {
       provider: "v8",
+      // experimentalAstAwareRemapping reduces variance and slightly improves
+      // wall-clock by avoiding the legacy source-map-based remap path.
+      experimentalAstAwareRemapping: true,
       reporter: ["text", "json", "html"],
       include: ["packages/*/src/**/*.{ts,tsx}"],
       exclude: [
