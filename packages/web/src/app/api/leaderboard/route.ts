@@ -78,7 +78,7 @@ export async function GET(request: Request) {
   // Validate period
   if (!VALID_PERIODS.has(period)) {
     return NextResponse.json(
-      { error: `Invalid period: "${period}". Use week, month, or all.` },
+      { error: "Invalid period parameter. Use week, month, or all." },
       { status: 400 },
     );
   }
@@ -102,7 +102,7 @@ export async function GET(request: Request) {
   // Validate source filter
   if (sourceFilter && !VALID_SOURCES.has(sourceFilter)) {
     return NextResponse.json(
-      { error: `Invalid source: "${sourceFilter}"` },
+      { error: "Invalid source parameter" },
       { status: 400 },
     );
   }

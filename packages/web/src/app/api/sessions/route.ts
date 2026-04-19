@@ -58,7 +58,7 @@ export async function GET(request: Request) {
   // Validate source filter
   if (sourceFilter && !VALID_SOURCES.has(sourceFilter)) {
     return NextResponse.json(
-      { error: `Invalid source: "${sourceFilter}"` },
+      { error: "Invalid source parameter" },
       { status: 400 },
     );
   }
@@ -66,7 +66,7 @@ export async function GET(request: Request) {
   // Validate kind filter
   if (kindFilter && !VALID_KINDS.has(kindFilter)) {
     return NextResponse.json(
-      { error: `Invalid kind: "${kindFilter}"` },
+      { error: "Invalid kind parameter" },
       { status: 400 },
     );
   }

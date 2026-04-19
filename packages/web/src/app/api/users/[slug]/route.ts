@@ -162,7 +162,7 @@ export async function GET(
 
   if (sourceFilter && !VALID_SOURCES.has(sourceFilter)) {
     return NextResponse.json(
-      { error: `Invalid source: "${sourceFilter}"` },
+      { error: "Invalid source parameter" },
       { status: 400 },
     );
   }

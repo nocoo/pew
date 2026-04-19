@@ -571,7 +571,7 @@ export async function GET(
   const def = getAchievementDef(id);
   if (!def) {
     return NextResponse.json(
-      { error: `Achievement not found: ${id}` },
+      { error: "Achievement not found" },
       { status: 404 },
     );
   }
@@ -579,7 +579,7 @@ export async function GET(
   // Timezone-dependent achievements have no social features
   if (TIMEZONE_DEPENDANT_IDS.has(id)) {
     return NextResponse.json(
-      { error: `Achievement "${id}" is timezone-dependent and has no social features` },
+      { error: "Achievement is timezone-dependent and has no social features" },
       { status: 404 },
     );
   }

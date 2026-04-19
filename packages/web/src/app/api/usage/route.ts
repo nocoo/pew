@@ -62,7 +62,7 @@ export async function GET(request: Request) {
   // Validate source filter
   if (sourceFilter && !VALID_SOURCES.has(sourceFilter)) {
     return NextResponse.json(
-      { error: `Invalid source: "${sourceFilter}"` },
+      { error: "Invalid source parameter" },
       { status: 400 }
     );
   }
@@ -70,7 +70,7 @@ export async function GET(request: Request) {
   // Validate granularity
   if (!VALID_GRANULARITIES.has(granularity)) {
     return NextResponse.json(
-      { error: `Invalid granularity: "${granularity}"` },
+      { error: "Invalid granularity parameter" },
       { status: 400 }
     );
   }

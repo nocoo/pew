@@ -79,7 +79,7 @@ function validateAliases(
       };
     }
     if (!VALID_SOURCES.has(alias.source)) {
-      return { valid: [], error: `Invalid source: "${alias.source}"` };
+      return { valid: [], error: "Invalid source parameter" };
     }
     result.push({ source: alias.source, project_ref: alias.project_ref });
   }
@@ -145,7 +145,7 @@ export async function PATCH(
     // Check reserved names
     if (RESERVED_NAMES.has(trimmedName.toLowerCase())) {
       return NextResponse.json(
-        { error: `"${trimmedName}" is a reserved name and cannot be used` },
+        { error: "This name is reserved and cannot be used" },
         { status: 400 },
       );
     }
@@ -218,7 +218,7 @@ export async function PATCH(
       if (taken && taken.project_id !== projectId) {
         return NextResponse.json(
           {
-            error: `Alias (${alias.source}, ${alias.project_ref}) is already assigned to another project`,
+            error: "Alias is already assigned to another project",
           },
           { status: 409 },
         );
@@ -301,7 +301,7 @@ export async function PATCH(
       if (!TAG_REGEX.test(normalized)) {
         return NextResponse.json(
           {
-            error: `Invalid tag "${tag}": must be 1-30 chars, lowercase alphanumeric + hyphens`,
+            error: "Invalid tag: must be 1-30 chars, lowercase alphanumeric + hyphens",
           },
           { status: 400 },
         );
