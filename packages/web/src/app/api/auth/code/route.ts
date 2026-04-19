@@ -10,6 +10,11 @@
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
 import { getDbWrite } from "@/lib/db";
+import {
+  AUTH_CODE_GENERATE_RATE_LIMIT,
+  getClientIp,
+  inMemoryRateLimiter,
+} from "@/lib/rate-limit";
 
 // Human-readable alphabet: excludes 0/O/I/L/1 to avoid confusion
 const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
@@ -35,6 +40,19 @@ function generateCode(): string {
 }
 
 export async function POST(request: Request) {
+  // Rate limit: 10 code generations per hour per IP
+  const ip = getClientIp(request);
+  const rl = inMemoryRateLimiter.check(
+    `auth-code-generate:${ip}`,
+    AUTH_CODE_GENERATE_RATE_LIMIT,
+  );
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfter) } },
+    );
+  }
+
   // 1. Require session authentication
   const authResult = await resolveUser(request);
   if (!authResult) {

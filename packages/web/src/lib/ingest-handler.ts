@@ -15,6 +15,11 @@ import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
 import { MAX_INGEST_BATCH_SIZE, MIN_CLIENT_VERSION } from "@pew/core";
 import type { ValidationResult } from "@pew/core";
+import {
+  INGEST_RATE_LIMIT,
+  getClientIp,
+  inMemoryRateLimiter,
+} from "@/lib/rate-limit";
 
 // ---------------------------------------------------------------------------
 // Factory config
@@ -62,7 +67,21 @@ export function createIngestHandler<T>(
 
     const { userId } = authResult;
 
-    // 1b. Version gate — reject old clients with token inflation bugs
+    // 2. Rate limit: 300 per minute per user
+    // (falls back to client IP if userId is somehow empty)
+    const rateKey = userId || `ip:${getClientIp(request)}`;
+    const rl = inMemoryRateLimiter.check(
+      `ingest:${rateKey}`,
+      INGEST_RATE_LIMIT,
+    );
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfter) } },
+      );
+    }
+
+    // 3. Version gate — reject old clients with token inflation bugs
     const clientVersion = request.headers.get("X-Pew-Client-Version");
     if (!clientVersion || compareSemver(clientVersion, MIN_CLIENT_VERSION) < 0) {
       return NextResponse.json(
@@ -74,7 +93,7 @@ export function createIngestHandler<T>(
       );
     }
 
-    // 2. Parse body
+    // 4. Parse body
     let records: unknown[];
     try {
       const body = await request.json();
@@ -92,7 +111,7 @@ export function createIngestHandler<T>(
       );
     }
 
-    // 3. Validate batch constraints
+    // 5. Validate batch constraints
     if (records.length === 0) {
       return NextResponse.json(
         { error: "Request body must not be empty" },
@@ -109,7 +128,7 @@ export function createIngestHandler<T>(
       );
     }
 
-    // 4. Validate individual records
+    // 6. Validate individual records
     const validated: T[] = [];
     for (let i = 0; i < records.length; i++) {
       const result = validateRecord(records[i], i);
@@ -119,7 +138,7 @@ export function createIngestHandler<T>(
       validated.push(result.record);
     }
 
-    // 5. Forward to Worker for atomic batch upsert
+    // 7. Forward to Worker for atomic batch upsert
     const workerUrl = getWorkerUrl();
     const workerSecret = process.env.WORKER_SECRET ?? "";
 

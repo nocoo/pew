@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET, getPublicOrigin } from "@/app/api/auth/cli/route";
 import { createMockDbRead, createMockDbWrite } from "./test-utils";
 import * as dbModule from "@/lib/db";
+import { inMemoryRateLimiter } from "@/lib/rate-limit";
 
 // Mock db
 vi.mock("@/lib/db", async (importOriginal) => {
@@ -40,6 +41,7 @@ describe("GET /api/auth/cli", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    inMemoryRateLimiter.reset();
     mockDbRead = createMockDbRead();
     mockDbWrite = createMockDbWrite();
     vi.mocked(dbModule.getDbRead).mockResolvedValue(

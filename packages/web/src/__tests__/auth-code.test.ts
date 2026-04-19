@@ -18,6 +18,7 @@ vi.mock("@/lib/db", () => ({
 
 import { resolveUser } from "@/lib/auth-helpers";
 import { getDbRead, getDbWrite, type DbRead, type DbWrite } from "@/lib/db";
+import { inMemoryRateLimiter } from "@/lib/rate-limit";
 
 const mockResolveUser = vi.mocked(resolveUser);
 const mockGetDbRead = vi.mocked(getDbRead);
@@ -30,6 +31,7 @@ const mockGetDbWrite = vi.mocked(getDbWrite);
 describe("POST /api/auth/code", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    inMemoryRateLimiter.reset();
   });
 
   it("should return 401 when not authenticated", async () => {
@@ -191,6 +193,7 @@ const AUTH_ERROR = "Invalid or expired code";
 describe("POST /api/auth/code/verify", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    inMemoryRateLimiter.reset();
   });
 
   it("should return 400 when code is missing", async () => {
