@@ -53,6 +53,8 @@ describe("handleInviteGate", () => {
     vi.clearAllMocks();
     mockDbRead = createMockDbRead();
     mockDbWrite = createMockDbWrite();
+    // Ensure production-only guard is not set during tests
+    delete process.env.RAILWAY_ENVIRONMENT;
   });
 
   afterEach(() => {
@@ -221,6 +223,30 @@ describe("handleInviteGate", () => {
 
     // Should NOT have queried the database at all
     expect(vi.mocked(mockDbRead.firstOrNull)).not.toHaveBeenCalled();
+  });
+
+  it("should NOT skip check when RAILWAY_ENVIRONMENT is set (production guard)", async () => {
+    vi.stubEnv("E2E_SKIP_AUTH", "true");
+    vi.stubEnv("NODE_ENV", "test");
+    process.env.RAILWAY_ENVIRONMENT = "production";
+
+    // New user (no existing account)
+    vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce(null);
+
+    try {
+      const result = await handleInviteGate(
+        makeReq(), // no invite cookie
+        GOOGLE_ACCOUNT,
+        mockDbRead,
+        mockDbWrite
+      );
+      // Bypass should NOT trigger; full invite-gate logic runs and rejects
+      expect(typeof result).toBe("string");
+      expect(result).toContain("/login?error=InviteRequired");
+      expect(vi.mocked(mockDbRead.firstOrNull)).toHaveBeenCalled();
+    } finally {
+      delete process.env.RAILWAY_ENVIRONMENT;
+    }
   });
 
   it("should handle req=undefined gracefully (Server Component safety)", async () => {

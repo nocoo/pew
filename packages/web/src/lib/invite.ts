@@ -100,7 +100,8 @@ export async function handleInviteGate(
   // E2E test bypass
   if (
     process.env.E2E_SKIP_AUTH === "true" &&
-    process.env.NODE_ENV !== "production"
+    process.env.NODE_ENV !== "production" &&
+    !process.env.RAILWAY_ENVIRONMENT
   ) {
     return true;
   }

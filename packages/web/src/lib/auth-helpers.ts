@@ -64,6 +64,7 @@ export async function resolveUser(
 function isE2EMode(): boolean {
   return (
     process.env.E2E_SKIP_AUTH === "true" &&
-    process.env.NODE_ENV === "development"
+    process.env.NODE_ENV === "development" &&
+    !process.env.RAILWAY_ENVIRONMENT
   );
 }
