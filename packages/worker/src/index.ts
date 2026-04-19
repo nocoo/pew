@@ -138,6 +138,23 @@ function validateRequest<T>(
 }
 
 // ---------------------------------------------------------------------------
+// Constant-time string comparison
+// ---------------------------------------------------------------------------
+
+/**
+ * Compare two strings in constant time to prevent timing attacks.
+ * Uses crypto.subtle.timingSafeEqual (available in Cloudflare Workers runtime).
+ * Length mismatch returns false without timing leak from byte comparison.
+ */
+async function secureCompare(a: string, b: string): Promise<boolean> {
+  const encoder = new TextEncoder();
+  const bufA = encoder.encode(a);
+  const bufB = encoder.encode(b);
+  if (bufA.byteLength !== bufB.byteLength) return false;
+  return crypto.subtle.timingSafeEqual(bufA, bufB);
+}
+
+// ---------------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------------
 
@@ -258,9 +275,9 @@ export default {
       return Response.json({ error: "Method not allowed" }, { status: 405 });
     }
 
-    // 3. Shared secret auth
+    // 3. Shared secret auth (constant-time comparison)
     const auth = request.headers.get("Authorization");
-    if (auth !== `Bearer ${env.WORKER_SECRET}`) {
+    if (!auth || !(await secureCompare(auth, `Bearer ${env.WORKER_SECRET}`))) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
