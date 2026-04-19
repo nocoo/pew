@@ -120,10 +120,11 @@ describe("pew read Worker", () => {
       const body = await res.json() as Record<string, unknown>;
       expect(body.status).toBe("error");
       expect((body.database as Record<string, unknown>).connected).toBe(false);
-      expect((body.database as Record<string, unknown>).error).toBe("DB unavailable");
+      // D1 error messages are sanitized to a generic string to avoid info disclosure.
+      expect((body.database as Record<string, unknown>).error).toBe("Internal server error");
     });
 
-    it("should sanitize 'ok' from error messages to prevent false-positive monitoring", async () => {
+    it("should not leak raw D1 error messages (and never expose 'ok' that monitors might match)", async () => {
       const badDB = {
         prepare: vi.fn().mockReturnValue({
           first: vi.fn().mockRejectedValue(new Error("ok something failed")),
@@ -137,7 +138,7 @@ describe("pew read Worker", () => {
       const body = await res.json() as Record<string, unknown>;
       expect(body.status).toBe("error");
       const database = body.database as Record<string, unknown>;
-      expect(database.error).toBe("*** something failed");
+      expect(database.error).toBe("Internal server error");
       expect(database.error).not.toMatch(/\bok\b/i);
     });
 
@@ -491,7 +492,7 @@ describe("pew read Worker", () => {
       );
       expect(res.status).toBe(500);
       const body = await res.json() as Record<string, unknown>;
-      expect(body.error).toContain("D1 query failed");
+      expect(body.error).toBe("Internal server error");
     });
   });
 

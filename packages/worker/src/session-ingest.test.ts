@@ -367,7 +367,7 @@ describe("Worker session ingest endpoint", () => {
 
       expect(res.status).toBe(500);
       const body = await json(res);
-      expect(body.error).toContain("D1 batch failed");
+      expect(body.error).toBe("Internal server error");
     });
   });
 });

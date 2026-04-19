@@ -300,8 +300,8 @@ describe("Worker ingest endpoint", () => {
 
       expect(res.status).toBe(500);
       const body = await json(res);
-      expect(body.error).toContain("D1 batch failed");
-      expect(body.error).toContain("table not found");
+      expect(body.error).toBe("Internal server error");
+      expect(body.error).not.toContain("table not found");
     });
 
     it("should handle max batch of 50 records", async () => {
@@ -433,7 +433,8 @@ describe("Worker /api/live endpoint", () => {
     const res = await worker.fetch(makeLiveRequest(), env);
     const body = await json(res);
     const database = body.database as Record<string, unknown>;
-    expect(database.error).toBe("*** something failed");
+    expect(database.error).toBe("Internal server error");
+    expect(database.error).not.toMatch(/\bok\b/i);
   });
 
   it("should handle non-Error throw from D1", async () => {
@@ -448,7 +449,7 @@ describe("Worker /api/live endpoint", () => {
     const body = await json(res);
     const database = body.database as Record<string, unknown>;
     expect(database.connected).toBe(false);
-    expect(database.error).toBe("string error");
+    expect(database.error).toBe("Internal server error");
   });
 
   // -----------------------------------------------------------------------

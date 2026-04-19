@@ -37,7 +37,7 @@ describe("GET /api/usage route edge cases", () => {
 
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({
-      error: 'Invalid granularity: "month"',
+      error: "Invalid granularity parameter",
     });
     expect(mockDbRead.getUsageRecords).not.toHaveBeenCalled();
   });
