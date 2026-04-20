@@ -37,7 +37,7 @@ export default defineConfig({
       // wall-clock by avoiding the legacy source-map-based remap path.
       experimentalAstAwareRemapping: true,
       reporter: ["text", "json", "html"],
-      include: ["packages/*/src/**/*.{ts,tsx}"],
+      include: ["packages/*/src/**/*.ts"],
       exclude: [
         "**/*.test.ts",
         "**/*.test.tsx",
