@@ -11,6 +11,10 @@ export default defineConfig({
   test: {
     globals: true,
     pool: "threads",
+    include: [
+      "packages/*/src/**/*.test.{ts,tsx}",
+      "scripts/**/*.test.{ts,tsx}",
+    ],
     cache: {
       dir: "node_modules/.cache/vitest",
     },
