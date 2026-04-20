@@ -7,9 +7,8 @@ on:
     branches: [main]
   workflow_dispatch:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+# Note: concurrency is handled by individual jobs to avoid deadlock with reusable workflows.
+# The base-ci workflow has its own concurrency settings.
 
 jobs:
   # ─────────────────────────────────────────────────────
