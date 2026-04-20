@@ -28,8 +28,7 @@ test.describe("admin pages", () => {
 
   test("showcases page loads", async ({ page }) => {
     await page.goto("/admin/showcases");
-    const hasContent = await page.locator("main").first().isVisible().catch(() => false);
-    expect(hasContent).toBe(true);
+    await expect(page.locator("main")).toBeVisible();
   });
 
   test("storage page loads", async ({ page }) => {

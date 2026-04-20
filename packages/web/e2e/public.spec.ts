@@ -8,7 +8,7 @@ test.describe("public pages", () => {
 
   test("public profile page loads", async ({ page }) => {
     await page.goto("/u/test-user");
-    // Should not crash
+    // Should not crash, may show profile or 404
     const url = page.url();
     expect(url).toContain("/u/");
   });
