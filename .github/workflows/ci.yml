@@ -1,71 +1,63 @@
 name: CI
 
 on:
-  pull_request:
-    branches: [main]
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  quality-gate:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+  # ─────────────────────────────────────────────────────
+  # L1 + G1 + G2 — Core quality gate from base-ci
+  # ─────────────────────────────────────────────────────
+  quality:
+    uses: nocoo/base-ci/.github/workflows/bun-quality.yml@v2026
+    with:
+      bun-version: "latest"
+      pre-command: "bun run build"
+      typecheck-command: "" # Included in lint script
+      test-command: "bun run test:coverage"
+      # L2/L3 are defined locally for full secret control
+      enable-l2: "false"
+      enable-l3: "false"
+      enable-worker: "false"
+    secrets: inherit
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-        with:
-          fetch-depth: 0 # Full history for gitleaks
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
-        with:
-          bun-version: latest
-
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build
-        run: bun run build
-
-      - name: G1 Static Analysis
-        run: bun run lint
-
-      - name: L1 Unit Tests + Coverage
-        run: bun run test:coverage
-
-      - name: G2a Dependency CVE Scan
-        run: |
-          curl -sSfL https://github.com/google/osv-scanner/releases/download/v2.0.2/osv-scanner_linux_amd64 -o /tmp/osv-scanner
-          chmod +x /tmp/osv-scanner
-          /tmp/osv-scanner --lockfile=bun.lock
-
-      - name: G2b Secret Leak Scan
-        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # ═══════════════════════════════════════════════════════════════
-  # Stage 2: E2E tests (requires secrets)
-  # ═══════════════════════════════════════════════════════════════
-  e2e-api:
+  # ─────────────────────────────────────────────────────
+  # L2: API E2E (real HTTP against test D1)
+  # Runs in PARALLEL with quality for faster CI.
+  # ─────────────────────────────────────────────────────
+  api-e2e:
+    name: "L2 API E2E"
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    needs: quality-gate
     # Only run if secrets are available (skip for external PRs)
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-
+    env:
+      CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      CF_D1_DATABASE_ID: ${{ secrets.CF_D1_DATABASE_ID }}
+      CF_D1_API_TOKEN: ${{ secrets.CF_D1_API_TOKEN }}
+      CF_D1_DATABASE_ID_TEST: ${{ secrets.CF_D1_DATABASE_ID_TEST }}
+      WORKER_INGEST_URL: ${{ secrets.WORKER_INGEST_URL }}
+      WORKER_INGEST_URL_TEST: ${{ secrets.WORKER_INGEST_URL_TEST }}
+      WORKER_READ_URL: ${{ secrets.WORKER_READ_URL }}
+      WORKER_READ_URL_TEST: ${{ secrets.WORKER_READ_URL_TEST }}
+      WORKER_SECRET: ${{ secrets.WORKER_SECRET }}
+      WORKER_READ_SECRET: ${{ secrets.WORKER_READ_SECRET }}
+      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+      - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+      - run: bun install --frozen-lockfile
 
       - name: Build
         run: bun run build
@@ -91,5 +83,66 @@ jobs:
           WORKER_READ_URL_TEST=${{ secrets.WORKER_READ_URL_TEST }}
           EOF
 
-      - name: L2 API E2E Tests
+      - name: "L2: API E2E tests"
         run: bun run test:e2e
+
+  # ─────────────────────────────────────────────────────
+  # L3: Browser E2E (Playwright against test D1)
+  # Runs in PARALLEL with quality for faster CI.
+  # ─────────────────────────────────────────────────────
+  browser-e2e:
+    name: "L3 Browser E2E"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Only run if secrets are available (skip for external PRs)
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    env:
+      CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+      CF_D1_DATABASE_ID: ${{ secrets.CF_D1_DATABASE_ID }}
+      CF_D1_API_TOKEN: ${{ secrets.CF_D1_API_TOKEN }}
+      CF_D1_DATABASE_ID_TEST: ${{ secrets.CF_D1_DATABASE_ID_TEST }}
+      WORKER_INGEST_URL: ${{ secrets.WORKER_INGEST_URL }}
+      WORKER_INGEST_URL_TEST: ${{ secrets.WORKER_INGEST_URL_TEST }}
+      WORKER_READ_URL: ${{ secrets.WORKER_READ_URL }}
+      WORKER_READ_URL_TEST: ${{ secrets.WORKER_READ_URL_TEST }}
+      WORKER_SECRET: ${{ secrets.WORKER_SECRET }}
+      WORKER_READ_SECRET: ${{ secrets.WORKER_READ_SECRET }}
+      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: bun install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: bunx playwright install --with-deps chromium
+
+      - name: Build
+        run: bun run build
+
+      - name: Write .env.local
+        run: |
+          cat > packages/web/.env.local << 'EOF'
+          CF_ACCOUNT_ID=${{ secrets.CF_ACCOUNT_ID }}
+          CF_D1_DATABASE_ID=${{ secrets.CF_D1_DATABASE_ID }}
+          CF_D1_API_TOKEN=${{ secrets.CF_D1_API_TOKEN }}
+          WORKER_INGEST_URL=${{ secrets.WORKER_INGEST_URL }}
+          WORKER_READ_URL=${{ secrets.WORKER_READ_URL }}
+          WORKER_SECRET=${{ secrets.WORKER_SECRET }}
+          WORKER_READ_SECRET=${{ secrets.WORKER_READ_SECRET }}
+          AUTH_SECRET=${{ secrets.AUTH_SECRET }}
+          EOF
+
+      - name: Write .env.test
+        run: |
+          cat > packages/web/.env.test << 'EOF'
+          CF_D1_DATABASE_ID_TEST=${{ secrets.CF_D1_DATABASE_ID_TEST }}
+          WORKER_INGEST_URL_TEST=${{ secrets.WORKER_INGEST_URL_TEST }}
+          WORKER_READ_URL_TEST=${{ secrets.WORKER_READ_URL_TEST }}
+          EOF
+
+      - name: "L3: Playwright E2E tests"
+        run: bun run test:e2e:ui
