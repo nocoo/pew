@@ -126,10 +126,10 @@ export default defineConfig({
         "**/worker-read/src/rpc/*.ts",
       ],
       thresholds: {
-        statements: 90,
+        statements: 95,
         branches: 90,
-        functions: 90,
-        lines: 90,
+        functions: 95,
+        lines: 95,
       },
     },
   },
