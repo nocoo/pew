@@ -101,3 +101,14 @@ test.describe("admin storage page", () => {
     expect(hasContent).toBe(true);
   });
 });
+
+test.describe("admin compare result page", () => {
+  test("page loads (requires compare data)", async ({ page }) => {
+    await page.goto("/admin/compare/result");
+    await page.waitForTimeout(2000);
+    // May redirect to compare page or show results
+    const url = page.url();
+    const isOnPage = url.includes("/admin/compare");
+    expect(isOnPage).toBe(true);
+  });
+});

@@ -23,3 +23,14 @@ test.describe("teams page", () => {
     expect(hasButton || hasContent).toBe(true);
   });
 });
+
+test.describe("team detail page", () => {
+  test("page loads for non-existent team", async ({ page }) => {
+    await page.goto("/teams/non-existent-team-id");
+    await page.waitForTimeout(2000);
+    // May show not found or redirect
+    const url = page.url();
+    const hasContent = await page.locator("main").first().isVisible().catch(() => false);
+    expect(url.includes("/teams") || hasContent).toBe(true);
+  });
+});

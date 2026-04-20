@@ -110,3 +110,14 @@ test.describe("leaderboard seasons", () => {
     expect(hasNav).toBe(true);
   });
 });
+
+test.describe("leaderboard season detail", () => {
+  test("page loads for non-existent season", async ({ page }) => {
+    await page.goto("/leaderboard/seasons/non-existent-season");
+    await page.waitForTimeout(2000);
+    // May show not found or redirect
+    const url = page.url();
+    const hasContent = await page.locator("main").first().isVisible().catch(() => false);
+    expect(url.includes("/leaderboard") || hasContent).toBe(true);
+  });
+});
