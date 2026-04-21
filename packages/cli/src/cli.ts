@@ -170,6 +170,14 @@ const syncCommand = defineCommand({
       // Native SQLite module not available — SQLite sync will be skipped
     }
 
+    let openCursorDb: typeof import("./parsers/cursor-db.js").openCursorDb | undefined;
+    try {
+      const cursorMod = await import("./parsers/cursor-db.js");
+      openCursorDb = cursorMod.openCursorDb;
+    } catch {
+      // Native SQLite module not available — Cursor sync will be skipped
+    }
+
     // Ensure a stable device ID exists for multi-device dedup
     const configManager = new ConfigManager(paths.stateDir, args.dev);
     const deviceId = await configManager.ensureDeviceId();
@@ -242,6 +250,8 @@ const syncCommand = defineCommand({
       openCodeDbPath: paths.openCodeDbPath,
       openSessionDb,
       openclawDir: paths.openclawDir,
+      cursorDbPaths: paths.cursorDbPaths,
+      openCursorDb,
       onCorruptLine: handleCorruptLine,
       onProgress(event) {
         logSessionSyncProgress(event);
@@ -262,6 +272,7 @@ const syncCommand = defineCommand({
       if (sessionResult.sources.gemini > 0) sessParts.push(`Gemini: ${sessionResult.sources.gemini}`);
       if (sessionResult.sources.opencode > 0) sessParts.push(`OpenCode: ${sessionResult.sources.opencode}`);
       if (sessionResult.sources.openclaw > 0) sessParts.push(`OpenClaw: ${sessionResult.sources.openclaw}`);
+      if (sessionResult.sources.cursor > 0) sessParts.push(`Cursor: ${sessionResult.sources.cursor}`);
       if (sessParts.length > 0) {
         log.text(pc.dim(sessParts.join("  |  ")));
       }
@@ -275,6 +286,7 @@ const syncCommand = defineCommand({
     if (sfs.gemini > 0) sessScanParts.push(`Gemini: ${sfs.gemini}`);
     if (sfs.opencode > 0) sessScanParts.push(`OpenCode: ${sfs.opencode}`);
     if (sfs.openclaw > 0) sessScanParts.push(`OpenClaw: ${sfs.openclaw}`);
+    if (sfs.cursor > 0) sessScanParts.push(`Cursor: ${sfs.cursor}`);
     if (sessScanParts.length > 0) {
       log.text(`Files scanned: ${pc.dim(sessScanParts.join("  |  "))}`);
     }

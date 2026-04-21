@@ -40,6 +40,10 @@ import {
   createOpenCodeSqliteSessionDriver,
   type OpenCodeSqliteSessionDriverOpts,
 } from "./session/opencode-sqlite-session-driver.js";
+import {
+  createCursorSqliteSessionDriver,
+  type CursorSqliteSessionDriverOpts,
+} from "./session/cursor-session-driver.js";
 
 // ---------------------------------------------------------------------------
 // Token driver registry options
@@ -126,6 +130,8 @@ export interface SessionDriverRegistryOpts {
   codexSessionsDir?: string;
   openCodeDbPath?: string;
   openSessionDb?: OpenCodeSqliteSessionDriverOpts["openSessionDb"];
+  cursorDbPaths?: string[];
+  openCursorDb?: CursorSqliteSessionDriverOpts["openCursorDb"];
 }
 
 export interface SessionDriverSet {
@@ -164,6 +170,16 @@ export function createSessionDrivers(opts: SessionDriverRegistryOpts): SessionDr
         openSessionDb: opts.openSessionDb,
       }),
     );
+  }
+  if (opts.cursorDbPaths && opts.openCursorDb) {
+    for (const dbPath of opts.cursorDbPaths) {
+      dbDrivers.push(
+        createCursorSqliteSessionDriver({
+          dbPath,
+          openCursorDb: opts.openCursorDb,
+        }),
+      );
+    }
   }
 
   return { fileDrivers, dbDrivers };

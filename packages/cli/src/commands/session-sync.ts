@@ -19,6 +19,7 @@ import type {
   SessionQueueRecord,
   SessionFileCursor,
   OpenCodeSqliteSessionCursor,
+  CursorSqliteCursor,
   Source,
 } from "@pew/core";
 import { SessionCursorStore } from "../storage/session-cursor-store.js";
@@ -56,6 +57,14 @@ export interface SessionSyncOptions {
   } | null;
   /** Override: OpenClaw data directory (~/.openclaw) */
   openclawDir?: string;
+  /** Override: Cursor state.vscdb paths */
+  cursorDbPaths?: string[];
+  /** Factory for opening the Cursor SQLite DB (DI for testability) */
+  openCursorDb?: (dbPath: string) => {
+    queryComposers: () => import("../parsers/cursor-db.js").CursorKVRow[];
+    queryItemTable: () => import("../parsers/cursor-db.js").CursorKVRow[];
+    close: () => void;
+  } | null;
   /** Progress callback */
   onProgress?: (event: SessionProgressEvent) => void;
   /** Callback invoked when a corrupted JSONL line is found in the queue */
@@ -81,6 +90,7 @@ export interface SessionSyncResult {
     gemini: number;
     opencode: number;
     openclaw: number;
+    cursor: number;
   };
   /** Total files/directories scanned per source */
   filesScanned: {
@@ -89,6 +99,7 @@ export interface SessionSyncResult {
     gemini: number;
     opencode: number;
     openclaw: number;
+    cursor: number;
   };
 }
 
@@ -134,6 +145,7 @@ function sourceKey(source: Source): keyof SessionSyncResult["sources"] | null {
     case "opencode": return "opencode";
     case "openclaw": return "openclaw";
     case "codex": return "codex";
+    case "cursor": return "cursor";
     case "vscode-copilot": return null;
     case "copilot-cli": return null;
   }
@@ -157,8 +169,8 @@ export async function executeSessionSync(
   const cursors = await cursorStore.load();
 
   const allSnapshots: SessionSnapshot[] = [];
-  const sourceCounts = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0 };
-  const filesScanned = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0 };
+  const sourceCounts = { claude: 0, codex: 0, cursor: 0, gemini: 0, opencode: 0, openclaw: 0 };
+  const filesScanned = { claude: 0, codex: 0, cursor: 0, gemini: 0, opencode: 0, openclaw: 0 };
 
   // Build driver sets from options
   const { fileDrivers, dbDrivers } = createSessionDrivers(opts);

@@ -14,6 +14,7 @@
 export type Source =
   | "claude-code"
   | "codex"
+  | "cursor"
   | "gemini-cli"
   | "opencode"
   | "openclaw"
@@ -287,6 +288,16 @@ export interface OpenCodeSqliteSessionCursor {
   updatedAt: string;
 }
 
+/** Cursor for Cursor SQLite session data (state.vscdb) */
+export interface CursorSqliteCursor {
+  /** Max lastUpdatedAt seen from composer data (epoch ms) */
+  lastUpdatedAt: number;
+  /** DB file inode (detect replacement/recreation) */
+  inode: number;
+  /** ISO 8601 timestamp of last update */
+  updatedAt: string;
+}
+
 /** Top-level session cursor state */
 export interface SessionCursorState {
   version: 1;
@@ -294,6 +305,8 @@ export interface SessionCursorState {
   files: Record<string, SessionFileCursor>;
   /** OpenCode SQLite session cursor (separate from per-file cursors) */
   openCodeSqlite?: OpenCodeSqliteSessionCursor;
+  /** Cursor SQLite session cursor */
+  cursorSqlite?: CursorSqliteCursor;
   /** ISO 8601 timestamp of last update */
   updatedAt: string | null;
 }

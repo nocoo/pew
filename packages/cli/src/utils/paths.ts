@@ -2,6 +2,39 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 
 /**
+ * Resolve the platform-specific Cursor state.vscdb paths.
+ *
+ * Returns an array of possible paths where Cursor stores its data.
+ */
+function resolveCursorDbPaths(home: string): string[] {
+  const platform = process.platform;
+  const paths: string[] = [];
+
+  if (platform === "darwin") {
+    paths.push(
+      join(home, "Library", "Application Support", "Cursor", "User", "globalStorage", "state.vscdb"),
+    );
+  } else if (platform === "win32") {
+    const appdata = process.env.APPDATA || join(home, "AppData", "Roaming");
+    paths.push(
+      join(appdata, "Cursor", "User", "globalStorage", "state.vscdb"),
+    );
+  } else {
+    // Linux
+    paths.push(
+      join(home, ".config", "Cursor", "User", "globalStorage", "state.vscdb"),
+    );
+  }
+
+  // Linux SSH remote server
+  paths.push(
+    join(home, ".cursor-server", "data", "User", "globalStorage", "state.vscdb"),
+  );
+
+  return paths;
+}
+
+/**
  * Resolve the platform-specific VSCode Copilot base directories.
  *
  * Returns an array of base dirs for both stable and Insiders builds:
@@ -74,5 +107,7 @@ export function resolveDefaultPaths(home = homedir()) {
     vscodeCopilotDirs: resolveVscodeCopilotDirs(home),
     /** GitHub Copilot CLI logs: ~/.copilot/logs */
     copilotCliLogsDir: join(home, ".copilot", "logs"),
+    /** Cursor state.vscdb paths (platform-aware) */
+    cursorDbPaths: resolveCursorDbPaths(home),
   };
 }

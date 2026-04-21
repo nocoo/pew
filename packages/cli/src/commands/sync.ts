@@ -64,6 +64,7 @@ export interface SyncResult {
   sources: {
     claude: number;
     codex: number;
+    cursor: number;
     gemini: number;
     opencode: number;
     openclaw: number;
@@ -74,6 +75,7 @@ export interface SyncResult {
   filesScanned: {
     claude: number;
     codex: number;
+    cursor: number;
     gemini: number;
     opencode: number;
     openclaw: number;
@@ -98,6 +100,7 @@ function sourceKey(source: Source): keyof SyncResult["sources"] {
     case "opencode": return "opencode";
     case "openclaw": return "openclaw";
     case "codex": return "codex";
+    case "cursor": return "cursor";
     case "vscode-copilot": return "vscodeCopilot";
     case "copilot-cli": return "copilotCli";
   }
@@ -181,8 +184,8 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   let replayDetected = false;
 
   const allDeltas: ParsedDelta[] = [];
-  const sourceCounts = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0, copilotCli: 0 };
-  const filesScanned = { claude: 0, codex: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0, copilotCli: 0 };
+  const sourceCounts = { claude: 0, codex: 0, cursor: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0, copilotCli: 0 };
+  const filesScanned = { claude: 0, codex: 0, cursor: 0, gemini: 0, opencode: 0, openclaw: 0, vscodeCopilot: 0, copilotCli: 0 };
 
   // Collect all discovered file paths (across all drivers) for knownFilePaths
   const discoveredFiles = new Set<string>();

@@ -61,6 +61,7 @@ describe("resolveDefaultPaths", () => {
       "openclawDir",
       "vscodeCopilotDirs",
       "copilotCliLogsDir",
+      "cursorDbPaths",
     ];
     const paths = resolveDefaultPaths("/fakehome");
     expect(Object.keys(paths)).toHaveLength(keys.length);
