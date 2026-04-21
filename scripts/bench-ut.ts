@@ -105,7 +105,7 @@ const variance = durs.reduce((a, b) => a + (b - mean) ** 2, 0) / durs.length;
 const stddev = Math.sqrt(variance);
 
 const last = results[results.length - 1];
-const cov = last.cov!;
+const cov = last?.cov ?? { stmts: 0, branches: 0, funcs: 0, lines: 0 };
 
 console.log(`METRIC ut_median_s=${median.toFixed(3)}`);
 console.log(`METRIC ut_min_s=${min.toFixed(3)}`);
@@ -115,8 +115,8 @@ console.log(`METRIC coverage_stmts=${cov.stmts}`);
 console.log(`METRIC coverage_branches=${cov.branches}`);
 console.log(`METRIC coverage_funcs=${cov.funcs}`);
 console.log(`METRIC coverage_lines=${cov.lines}`);
-console.log(`METRIC test_count=${last.testCount}`);
-console.log(`METRIC file_count=${last.fileCount}`);
+console.log(`METRIC test_count=${last?.testCount ?? 0}`);
+console.log(`METRIC file_count=${last?.fileCount ?? 0}`);
 
 // Enforce coverage floors (statements, functions, lines).
 const fails: string[] = [];
