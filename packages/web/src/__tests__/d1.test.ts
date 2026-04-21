@@ -260,6 +260,15 @@ describe("D1Client", () => {
       expect(results).toHaveLength(0);
       expect(mockFetch).not.toHaveBeenCalled();
     });
+
+    it("should default params to empty array when omitted", async () => {
+      mockFetch.mockResolvedValueOnce(mockD1Response([{ id: 1 }]));
+
+      await client.batch([{ sql: "SELECT 1" }]);
+
+      const body = JSON.parse(mockFetch.mock.calls[0]![1].body);
+      expect(body.params).toEqual([]);
+    });
   });
 
   describe("firstOrNull()", () => {
@@ -324,6 +333,14 @@ describe("getD1Client / resetD1Client", () => {
     // If they are empty strings, D1Client constructor throws
     resetD1Client();
     vi.stubEnv("CF_ACCOUNT_ID", "");
+    expect(() => getD1Client()).toThrow("accountId is required");
+  });
+
+  it("should fall back to empty string when env vars are undefined", () => {
+    resetD1Client();
+    vi.stubEnv("CF_ACCOUNT_ID", undefined as unknown as string);
+    vi.stubEnv("CF_D1_DATABASE_ID", undefined as unknown as string);
+    vi.stubEnv("CF_D1_API_TOKEN", undefined as unknown as string);
     expect(() => getD1Client()).toThrow("accountId is required");
   });
 });
