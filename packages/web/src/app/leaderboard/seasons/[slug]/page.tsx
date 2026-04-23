@@ -130,7 +130,7 @@ function TeamRow({
       <button
         onClick={() => canExpand && handleToggle()}
         className={cn(
-          "relative flex w-full items-center gap-3 overflow-hidden rounded-[var(--radius-card)] bg-secondary px-4 py-3 text-left transition-colors",
+          "relative flex w-full items-center gap-3 overflow-hidden rounded-card bg-secondary px-4 py-3 text-left transition-colors",
           canExpand && "hover:bg-accent cursor-pointer",
           entry.rank <= 3 && "ring-1 ring-border/50",
           expanded && "rounded-b-none",
@@ -210,7 +210,7 @@ function TeamRow({
 
       {/* Expanded member list */}
       {expanded && (
-        <div className="rounded-b-[var(--radius-card)] border-t border-border bg-secondary/50 px-4 py-2 space-y-1">
+        <div className="rounded-b-card border-t border-border bg-secondary/50 px-4 py-2 space-y-1">
           {membersLoading ? (
             <div className="flex items-center justify-center py-4">
               <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
@@ -372,7 +372,7 @@ export default function SeasonLeaderboardPage() {
 
         {/* Error */}
         {error && (
-          <div className="rounded-[var(--radius-card)] bg-destructive/10 p-4 text-sm text-destructive">
+          <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
             {error}
           </div>
         )}
@@ -392,7 +392,7 @@ export default function SeasonLeaderboardPage() {
             )}
           >
             {data.entries.length === 0 ? (
-              <div className="rounded-[var(--radius-card)] bg-secondary p-8 text-center text-sm text-muted-foreground">
+              <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
                 <Trophy className="mx-auto h-12 w-12 mb-4 opacity-30" />
                 <p className="text-lg">No teams registered yet</p>
                 <p className="text-sm mt-1">

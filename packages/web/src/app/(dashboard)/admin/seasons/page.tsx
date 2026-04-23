@@ -840,7 +840,7 @@ export default function AdminSeasonsPage() {
 
       {/* Error */}
       {error && (
-        <div className="rounded-[var(--radius-card)] bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
           Failed to load seasons: {error}
         </div>
       )}
@@ -864,7 +864,7 @@ export default function AdminSeasonsPage() {
       {!loading && (
         <>
           {rows.length === 0 ? (
-            <div className="rounded-[var(--radius-card)] bg-secondary p-8 text-center text-sm text-muted-foreground">
+            <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
               No seasons yet. Create one to get started.
             </div>
           ) : (

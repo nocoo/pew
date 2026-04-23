@@ -427,7 +427,7 @@ export default function AdminInvitesPage() {
 
       {/* Error */}
       {error && (
-        <div className="rounded-[var(--radius-card)] bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
           Failed to load invite codes: {error}
         </div>
       )}
@@ -529,7 +529,7 @@ export default function AdminInvitesPage() {
       {!loading && (
         <>
           {filteredRows.length === 0 ? (
-            <div className="rounded-[var(--radius-card)] bg-secondary p-8 text-center text-sm text-muted-foreground">
+            <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
               {statusFilter === "available"
                 ? "No available invite codes."
                 : "No invite codes yet. Generate some to get started."}

@@ -175,7 +175,7 @@ export default function AgentsPage() {
 
       {/* Error */}
       {error && (
-        <div className="rounded-[var(--radius-card)] bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
           Failed to load usage data: {error}
         </div>
       )}
@@ -187,7 +187,7 @@ export default function AgentsPage() {
       {!loading && data && (
         <>
           {agentGroups.length === 0 ? (
-            <div className="rounded-[var(--radius-card)] bg-secondary p-8 text-center text-sm text-muted-foreground">
+            <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
               No usage data yet. Start using your AI coding tools and sync with pew!
             </div>
           ) : (

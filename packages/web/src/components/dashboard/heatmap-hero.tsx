@@ -156,7 +156,7 @@ export function HeatmapHero({
     return (
       <div className={cn("grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4", className)}>
         {/* Left: Activity skeleton */}
-        <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+        <div className="rounded-card bg-secondary p-4 md:p-5">
           <Skeleton className="h-4 w-24 mb-3" />
           <div className="flex items-start justify-between mb-3">
             <div className="space-y-1">
@@ -172,7 +172,7 @@ export function HeatmapHero({
           </div>
         </div>
         {/* Center: Goal skeleton */}
-        <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+        <div className="rounded-card bg-secondary p-4 md:p-5">
           <Skeleton className="h-4 w-24 mb-3" />
           <div className="space-y-1 mb-3">
             <Skeleton className="h-7 w-20" />
@@ -186,7 +186,7 @@ export function HeatmapHero({
           </div>
         </div>
         {/* Right: Achievements skeleton */}
-        <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5 space-y-2">
+        <div className="rounded-card bg-secondary p-4 md:p-5 space-y-2">
           <Skeleton className="h-4 w-28 mb-3" />
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-16 w-full rounded-xl" />
@@ -203,7 +203,7 @@ export function HeatmapHero({
       className,
     )}>
       {/* Left: Activity card */}
-      <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5 min-w-0 flex flex-col">
+      <div className="rounded-card bg-secondary p-4 md:p-5 min-w-0 flex flex-col">
         {/* Section title — height matches Goal Tracker (h-7 placeholder for alignment) */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -254,13 +254,13 @@ export function HeatmapHero({
       </div>
 
       {/* Center: Goal Tracker card */}
-      <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5 min-w-0 flex flex-col">
+      <div className="rounded-card bg-secondary p-4 md:p-5 min-w-0 flex flex-col">
         <GoalHeatmap data={data} year={year} className="flex-1" />
       </div>
 
       {/* Right: Top Achievements card */}
       {hasAchievements && (
-        <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5 flex flex-col">
+        <div className="rounded-card bg-secondary p-4 md:p-5 flex flex-col">
           <TopAchievement achievements={achievements} className="flex-1" />
         </div>
       )}

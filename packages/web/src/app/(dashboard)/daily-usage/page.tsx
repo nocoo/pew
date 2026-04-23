@@ -162,7 +162,7 @@ function DayRow({ group, pricingMap }: { group: DailyGroup; pricingMap: PricingM
 
 function ChartSkeleton() {
   return (
-    <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+    <div className="rounded-card bg-secondary p-4 md:p-5">
       <div className="mb-4 flex items-center justify-between">
         <Skeleton className="h-3 w-20" />
         <div className="flex items-center gap-4">
@@ -177,7 +177,7 @@ function ChartSkeleton() {
 
 function DonutSkeleton() {
   return (
-    <div className="rounded-[var(--radius-card)] bg-secondary p-3">
+    <div className="rounded-card bg-secondary p-3">
       <Skeleton className="h-3 w-16 mb-2" />
       <div className="flex items-center gap-3">
         {/* Donut placeholder */}
@@ -202,7 +202,7 @@ function DailySkeleton() {
     <div className="grid gap-4 md:gap-6 xl:grid-cols-4">
       {/* Left column skeleton: 4 charts + table */}
       <div className="xl:col-span-3 space-y-4 md:space-y-6">
-        <div className="rounded-[var(--radius-card)] border border-secondary bg-background p-4 md:p-5">
+        <div className="rounded-card border border-secondary bg-background p-4 md:p-5">
           <div className="flex items-center gap-2 mb-4">
             <Skeleton className="h-4 w-32" />
           </div>
@@ -244,7 +244,7 @@ function DailySkeleton() {
 
       {/* Right column skeleton: 3 donut charts */}
       <div className="xl:col-span-1 space-y-4 md:space-y-6">
-        <div className="rounded-[var(--radius-card)] border border-secondary bg-background p-4 md:p-5">
+        <div className="rounded-card border border-secondary bg-background p-4 md:p-5">
           <div className="flex items-center gap-2 mb-4">
             <Skeleton className="h-4 w-32" />
           </div>
@@ -393,7 +393,7 @@ export default function DailyUsagePage() {
 
       {/* Error */}
       {error && (
-        <div className="rounded-[var(--radius-card)] bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
           Failed to load usage data: {error}
         </div>
       )}
@@ -493,7 +493,7 @@ export default function DailyUsagePage() {
               </div>
             </div>
           ) : (
-            <div className="rounded-[var(--radius-card)] bg-secondary p-8 text-center text-sm text-muted-foreground">
+            <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
               No usage data for {formatMonth(year, month)}.
             </div>
           )}

@@ -31,7 +31,7 @@ export function ShowcaseCard({ showcase, isLoggedIn, onLoginRequired, onUpvoteCh
   const githubOwner = showcase.repo_key.split("/")[0];
 
   return (
-    <article className="group relative flex flex-col sm:flex-row gap-4 rounded-[var(--radius-card)] bg-secondary p-4 transition-all hover:bg-secondary/80">
+    <article className="group relative flex flex-col sm:flex-row gap-4 rounded-card bg-secondary p-4 transition-all hover:bg-secondary/80">
       {/* OG Image */}
       <Link
         href={showcase.github_url}

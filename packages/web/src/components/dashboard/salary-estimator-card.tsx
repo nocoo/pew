@@ -147,7 +147,7 @@ function SalaryEstimatorCard({
   return (
     <div
       className={cn(
-        "rounded-[var(--radius-card)] bg-secondary p-4 md:p-5 flex flex-col",
+        "rounded-card bg-secondary p-4 md:p-5 flex flex-col",
         className
       )}
     >
@@ -277,7 +277,7 @@ function SalaryTrendChart({ data, className }: SalaryTrendChartProps) {
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-[var(--radius-card)] bg-secondary p-8 text-sm text-muted-foreground",
+          "flex items-center justify-center rounded-card bg-secondary p-8 text-sm text-muted-foreground",
           className
         )}
       >
@@ -289,7 +289,7 @@ function SalaryTrendChart({ data, className }: SalaryTrendChartProps) {
   return (
     <div
       className={cn(
-        "rounded-[var(--radius-card)] bg-secondary p-4 md:p-5 flex flex-col",
+        "rounded-card bg-secondary p-4 md:p-5 flex flex-col",
         className
       )}
     >

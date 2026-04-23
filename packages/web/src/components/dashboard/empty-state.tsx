@@ -50,7 +50,7 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "rounded-[var(--radius-card)] bg-secondary p-8 md:p-12 text-center",
+        "rounded-card bg-secondary p-8 md:p-12 text-center",
         className
       )}
     >

@@ -639,7 +639,7 @@ export default function AchievementsPage() {
 
         {/* Error */}
         {error && (
-          <div className="rounded-[var(--radius-card)] bg-destructive/10 p-4 text-sm text-destructive">
+          <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
             Failed to load achievements: {error}
           </div>
         )}

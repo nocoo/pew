@@ -33,7 +33,7 @@ function SessionsSkeleton() {
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5 space-y-3"
+            className="rounded-card bg-secondary p-4 md:p-5 space-y-3"
           >
             <Skeleton className="h-3 w-20" />
             <Skeleton className="h-7 w-28" />
@@ -47,7 +47,7 @@ function SessionsSkeleton() {
         {Array.from({ length: 2 }).map((_, i) => (
           <div
             key={i}
-            className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5 space-y-3"
+            className="rounded-card bg-secondary p-4 md:p-5 space-y-3"
           >
             <Skeleton className="h-3 w-20" />
             <Skeleton className="h-7 w-28" />
@@ -58,18 +58,18 @@ function SessionsSkeleton() {
 
       {/* 2-col chart row (heatmap + peak hours) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-        <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+        <div className="rounded-card bg-secondary p-4 md:p-5">
           <Skeleton className="h-3 w-28 mb-4" />
           <Skeleton className="h-[200px] w-full" />
         </div>
-        <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+        <div className="rounded-card bg-secondary p-4 md:p-5">
           <Skeleton className="h-3 w-24 mb-4" />
           <Skeleton className="h-[200px] w-full" />
         </div>
       </div>
 
       {/* Message chart */}
-      <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+      <div className="rounded-card bg-secondary p-4 md:p-5">
         <Skeleton className="h-3 w-28 mb-4" />
         <Skeleton className="h-[240px] md:h-[280px] w-full" />
       </div>
@@ -147,7 +147,7 @@ export default function SessionsPage() {
 
       {/* Error state */}
       {sessionData.error && (
-        <div className="rounded-[var(--radius-card)] bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
           Failed to load session data: {sessionData.error}
         </div>
       )}

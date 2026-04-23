@@ -78,7 +78,7 @@ export function LeaderboardPageShell({
     <TooltipProvider>
       {/* Error */}
       {error && (
-        <div className="rounded-[var(--radius-card)] bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
           Failed to load leaderboard: {error}
         </div>
       )}
@@ -116,7 +116,7 @@ export function LeaderboardPageShell({
 
       {/* Empty state — only show after loading completes with no results */}
       {!loading && entries.length === 0 && !error && (
-        <div className="rounded-[var(--radius-card)] bg-secondary p-8 text-center text-sm text-muted-foreground">
+        <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
           {emptyMessage}
         </div>
       )}

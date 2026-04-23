@@ -9,7 +9,7 @@ export function DashboardSkeleton() {
       {/* ── Hero: Activity + Goal + Achievements (3-col grid) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4">
         {/* Left: Activity skeleton */}
-        <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+        <div className="rounded-card bg-secondary p-4 md:p-5">
           <Skeleton className="h-4 w-24 mb-3" />
           <div className="flex items-start justify-between mb-3">
             <div className="space-y-1">
@@ -25,7 +25,7 @@ export function DashboardSkeleton() {
           </div>
         </div>
         {/* Center: Goal skeleton */}
-        <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+        <div className="rounded-card bg-secondary p-4 md:p-5">
           <Skeleton className="h-4 w-24 mb-3" />
           <div className="space-y-1 mb-3">
             <Skeleton className="h-7 w-20" />
@@ -39,7 +39,7 @@ export function DashboardSkeleton() {
           </div>
         </div>
         {/* Right: Achievements skeleton */}
-        <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5 space-y-2">
+        <div className="rounded-card bg-secondary p-4 md:p-5 space-y-2">
           <Skeleton className="h-4 w-28 mb-3" />
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-16 w-full rounded-xl" />
@@ -54,7 +54,7 @@ export function DashboardSkeleton() {
           {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={i}
-              className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5 space-y-3"
+              className="rounded-card bg-secondary p-4 md:p-5 space-y-3"
             >
               <Skeleton className="h-3 w-20" />
               <Skeleton className="h-7 w-28" />
@@ -68,7 +68,7 @@ export function DashboardSkeleton() {
           {Array.from({ length: 4 }).map((_, i) => (
             <div
               key={`econ-${i}`}
-              className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5 space-y-3"
+              className="rounded-card bg-secondary p-4 md:p-5 space-y-3"
             >
               <Skeleton className="h-3 w-20" />
               <Skeleton className="h-7 w-28" />
@@ -86,12 +86,12 @@ export function DashboardSkeleton() {
           <div className="flex flex-col gap-3 md:gap-4">
             <div>
               <Skeleton className="h-8 w-36 mb-3 rounded-lg" />
-              <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+              <div className="rounded-card bg-secondary p-4 md:p-5">
                 <Skeleton className="h-3 w-24 mb-4" />
                 <Skeleton className="h-[240px] md:h-[280px] w-full" />
               </div>
             </div>
-            <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+            <div className="rounded-card bg-secondary p-4 md:p-5">
               <Skeleton className="h-3 w-20 mb-4" />
               <Skeleton className="h-[200px] md:h-[240px] w-full" />
             </div>
@@ -99,13 +99,13 @@ export function DashboardSkeleton() {
           {/* Right column */}
           <div className="flex flex-col gap-3 md:gap-4">
             <div className="hidden lg:block h-[28px] shrink-0" />
-            <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+            <div className="rounded-card bg-secondary p-4 md:p-5">
               <Skeleton className="h-3 w-20 mb-4" />
               <div className="flex justify-center">
                 <Skeleton className="h-[180px] w-[180px] rounded-full" />
               </div>
             </div>
-            <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+            <div className="rounded-card bg-secondary p-4 md:p-5">
               <Skeleton className="h-3 w-20 mb-4" />
               <div className="flex justify-center">
                 <Skeleton className="h-[180px] w-[180px] rounded-full" />
@@ -119,17 +119,17 @@ export function DashboardSkeleton() {
       <DashboardSegment title="Insights">
         {/* Row 1: Weekday vs Weekend + Hourly Chart */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-          <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+          <div className="rounded-card bg-secondary p-4 md:p-5">
             <Skeleton className="h-3 w-28 mb-4" />
             <Skeleton className="h-[180px] w-full" />
           </div>
-          <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+          <div className="rounded-card bg-secondary p-4 md:p-5">
             <Skeleton className="h-3 w-24 mb-4" />
             <Skeleton className="h-[180px] w-full" />
           </div>
         </div>
         {/* Row 2: Salary Estimator */}
-        <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+        <div className="rounded-card bg-secondary p-4 md:p-5">
           <Skeleton className="h-3 w-32 mb-4" />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Skeleton className="h-[200px] w-full" />

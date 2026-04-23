@@ -69,7 +69,7 @@ function SeasonCard({
       <Link
         href={`/leaderboard/seasons/${season.slug}`}
         className={cn(
-          "group relative flex-1 block overflow-hidden rounded-[var(--radius-card)] bg-secondary px-4 py-3 transition-colors",
+          "group relative flex-1 block overflow-hidden rounded-card bg-secondary px-4 py-3 transition-colors",
           "hover:bg-accent cursor-pointer",
         )}
       >
@@ -121,7 +121,7 @@ function SeasonCard({
 
 function SeasonCardSkeleton() {
   return (
-    <div className="rounded-[var(--radius-card)] bg-secondary px-4 py-3">
+    <div className="rounded-card bg-secondary px-4 py-3">
       <div className="flex items-start justify-between">
         <div className="flex-1 space-y-3">
           <div className="flex items-center gap-2">
@@ -170,7 +170,7 @@ export default function SeasonsPage() {
 
         {/* Error */}
         {error && (
-          <div className="rounded-[var(--radius-card)] bg-destructive/10 p-4 text-sm text-destructive">
+          <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
             {error}
           </div>
         )}
@@ -188,7 +188,7 @@ export default function SeasonsPage() {
         {data && (
           <div className="space-y-2">
             {sortedSeasons.length === 0 ? (
-              <div className="rounded-[var(--radius-card)] bg-secondary p-8 text-center text-sm text-muted-foreground">
+              <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
                 <Trophy className="mx-auto h-12 w-12 mb-4 opacity-30" />
                 <p className="text-lg">No seasons yet</p>
                 <p className="text-sm mt-1">

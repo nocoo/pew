@@ -25,7 +25,7 @@ function ModelsSkeleton() {
       {/* 2-col chart grid (SourceTrend + ModelEvolution) */}
       <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+          <div key={i} className="rounded-card bg-secondary p-4 md:p-5">
             <Skeleton className="h-3 w-24 mb-4" />
             <Skeleton className="h-[240px] md:h-[280px] w-full" />
           </div>
@@ -33,7 +33,7 @@ function ModelsSkeleton() {
       </div>
 
       {/* Breakdown chart */}
-      <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+      <div className="rounded-card bg-secondary p-4 md:p-5">
         <Skeleton className="h-3 w-28 mb-4" />
         <Skeleton className="h-[200px] md:h-[240px] w-full" />
       </div>
@@ -139,7 +139,7 @@ export default function ModelsPage() {
 
       {/* Error */}
       {error && (
-        <div className="rounded-[var(--radius-card)] bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
           Failed to load usage data: {error}
         </div>
       )}
@@ -151,7 +151,7 @@ export default function ModelsPage() {
       {!loading && data && (
         <>
           {modelGroups.length === 0 ? (
-            <div className="rounded-[var(--radius-card)] bg-secondary p-8 text-center text-sm text-muted-foreground">
+            <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
               No usage data yet. Start using your AI coding tools and sync with pew!
             </div>
           ) : (

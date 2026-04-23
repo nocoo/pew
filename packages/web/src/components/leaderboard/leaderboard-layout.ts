@@ -10,7 +10,7 @@
 // ---------------------------------------------------------------------------
 
 /** Base card classes shared by rows, skeleton rows and auxiliary UI. */
-export const ROW_CLASSES = "rounded-[var(--radius-card)] bg-secondary px-4 py-3";
+export const ROW_CLASSES = "rounded-card bg-secondary px-4 py-3";
 
 // ---------------------------------------------------------------------------
 // Column widths — must stay in sync across TableHeader, Row & Skeleton

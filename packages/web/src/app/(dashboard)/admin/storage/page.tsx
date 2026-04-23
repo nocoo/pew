@@ -459,7 +459,7 @@ export default function AdminStoragePage() {
 
         {/* Error */}
         {error && (
-          <div className="rounded-[var(--radius-card)] bg-destructive/10 p-4 text-sm text-destructive">
+          <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
             Failed to load storage stats: {error}
           </div>
         )}

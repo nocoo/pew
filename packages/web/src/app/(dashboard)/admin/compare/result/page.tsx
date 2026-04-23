@@ -411,7 +411,7 @@ function CompareResultContent() {
 
         {/* Error */}
         {error && (
-          <div className="rounded-[var(--radius-card)] bg-destructive/10 p-4 text-sm text-destructive">
+          <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
             Failed to load comparison data: {error}
           </div>
         )}
@@ -421,7 +421,7 @@ function CompareResultContent() {
 
         {/* Chart */}
         {!loading && data && chartData.length > 0 && (
-          <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+          <div className="rounded-card bg-secondary p-4 md:p-5">
             <div className="mb-4 flex items-center justify-between">
               <p className="text-xs md:text-sm text-muted-foreground">
                 Daily Token Usage
@@ -495,7 +495,7 @@ function CompareResultContent() {
 
         {/* No data for range */}
         {!loading && data && chartData.length === 0 && (
-          <div className="rounded-[var(--radius-card)] bg-secondary p-8 text-center text-sm text-muted-foreground">
+          <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
             No usage data in the selected date range.
           </div>
         )}

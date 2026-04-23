@@ -262,7 +262,7 @@ export function ProfileAchievements({ slug }: ProfileAchievementsProps) {
 
   if (loading) {
     return (
-      <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+      <div className="rounded-card bg-secondary p-4 md:p-5">
         <div className="flex items-center justify-between mb-4">
           <p className="text-xs md:text-sm text-muted-foreground">Achievements</p>
         </div>
@@ -278,7 +278,7 @@ export function ProfileAchievements({ slug }: ProfileAchievementsProps) {
   const { achievements, summary } = data;
 
   return (
-    <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+    <div className="rounded-card bg-secondary p-4 md:p-5">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <p className="text-xs md:text-sm text-muted-foreground">Achievements</p>

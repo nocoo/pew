@@ -29,7 +29,7 @@ export function PeakHoursCard({ slots, className }: PeakHoursCardProps) {
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-[var(--radius-card)] bg-secondary p-8 text-sm text-muted-foreground",
+          "flex items-center justify-center rounded-card bg-secondary p-8 text-sm text-muted-foreground",
           className,
         )}
       >
@@ -43,7 +43,7 @@ export function PeakHoursCard({ slots, className }: PeakHoursCardProps) {
   return (
     <div
       className={cn(
-        "rounded-[var(--radius-card)] bg-secondary p-4 md:p-5",
+        "rounded-card bg-secondary p-4 md:p-5",
         className,
       )}
     >

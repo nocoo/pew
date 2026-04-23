@@ -35,7 +35,7 @@ function DevicesSkeleton() {
       {/* Stat grid (3 cols) */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="rounded-[var(--radius-card)] bg-secondary p-4 space-y-2">
+          <div key={i} className="rounded-card bg-secondary p-4 space-y-2">
             <Skeleton className="h-3 w-20" />
             <Skeleton className="h-7 w-24" />
           </div>
@@ -45,7 +45,7 @@ function DevicesSkeleton() {
       {/* 2-col chart grid (Trend + Share) */}
       <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+          <div key={i} className="rounded-card bg-secondary p-4 md:p-5">
             <Skeleton className="h-3 w-24 mb-4" />
             <Skeleton className="h-[240px] md:h-[280px] w-full" />
           </div>
@@ -53,7 +53,7 @@ function DevicesSkeleton() {
       </div>
 
       {/* Breakdown chart */}
-      <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+      <div className="rounded-card bg-secondary p-4 md:p-5">
         <Skeleton className="h-3 w-28 mb-4" />
         <Skeleton className="h-[200px] md:h-[240px] w-full" />
       </div>
@@ -101,7 +101,7 @@ function DevicesSkeleton() {
         </div>
         <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
           {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+            <div key={i} className="rounded-card bg-secondary p-4 md:p-5">
               <Skeleton className="h-3 w-20 mb-4" />
               <Skeleton className="h-[200px] w-full" />
             </div>
@@ -110,7 +110,7 @@ function DevicesSkeleton() {
         {/* Trend charts skeleton row */}
         <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
           {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+            <div key={i} className="rounded-card bg-secondary p-4 md:p-5">
               <Skeleton className="h-3 w-24 mb-4" />
               <Skeleton className="h-[240px] md:h-[280px] w-full" />
             </div>
@@ -138,17 +138,17 @@ function StatGrid({ devices }: { devices: DeviceAggregate[] }) {
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <div className="rounded-[var(--radius-card)] bg-secondary p-4">
+      <div className="rounded-card bg-secondary p-4">
         <p className="text-xs text-muted-foreground">Devices</p>
         <p className="mt-1 text-2xl font-bold tabular-nums">{deviceCount}</p>
       </div>
-      <div className="rounded-[var(--radius-card)] bg-secondary p-4">
+      <div className="rounded-card bg-secondary p-4">
         <p className="text-xs text-muted-foreground">Most Active</p>
         <p className="mt-1 text-lg font-bold truncate">
           {mostActive ? deviceLabel(mostActive) : "—"}
         </p>
       </div>
-      <div className="rounded-[var(--radius-card)] bg-secondary p-4">
+      <div className="rounded-card bg-secondary p-4">
         <p className="text-xs text-muted-foreground">Active (7d)</p>
         <p className="mt-1 text-2xl font-bold tabular-nums">
           {recentlyActive}
@@ -274,7 +274,7 @@ export default function ByDevicePage() {
 
       {/* Error */}
       {error && (
-        <div className="rounded-[var(--radius-card)] bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
           Failed to load device data: {error}
         </div>
       )}
@@ -286,7 +286,7 @@ export default function ByDevicePage() {
       {!loading && data && (
         <>
           {devices.length === 0 ? (
-            <div className="rounded-[var(--radius-card)] bg-secondary p-8 text-center text-sm text-muted-foreground">
+            <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
               No device data yet. Sync from multiple devices to compare usage.
             </div>
           ) : (

@@ -93,7 +93,7 @@ export function StatCard({
   return (
     <div
       className={cn(
-        "rounded-[var(--radius-card)] bg-secondary",
+        "rounded-card bg-secondary",
         isPrimary ? "p-5 md:p-6" : "p-4 md:p-5",
         className
       )}

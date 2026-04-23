@@ -36,7 +36,7 @@ function ProjectsSkeleton() {
       {/* Stat grid (3 cols) */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="rounded-[var(--radius-card)] bg-secondary p-4 space-y-2">
+          <div key={i} className="rounded-card bg-secondary p-4 space-y-2">
             <Skeleton className="h-3 w-20" />
             <Skeleton className="h-7 w-24" />
           </div>
@@ -46,7 +46,7 @@ function ProjectsSkeleton() {
       {/* 2-col chart grid (Trend + Share) */}
       <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+          <div key={i} className="rounded-card bg-secondary p-4 md:p-5">
             <Skeleton className="h-3 w-24 mb-4" />
             <Skeleton className="h-[240px] md:h-[280px] w-full" />
           </div>
@@ -54,7 +54,7 @@ function ProjectsSkeleton() {
       </div>
 
       {/* Breakdown chart */}
-      <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+      <div className="rounded-card bg-secondary p-4 md:p-5">
         <Skeleton className="h-3 w-28 mb-4" />
         <Skeleton className="h-[200px] md:h-[240px] w-full" />
       </div>
@@ -125,17 +125,17 @@ function StatGrid({ projects }: { projects: Project[] }) {
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <div className="rounded-[var(--radius-card)] bg-secondary p-4">
+      <div className="rounded-card bg-secondary p-4">
         <p className="text-xs text-muted-foreground">Projects</p>
         <p className="mt-1 text-2xl font-bold tabular-nums">{projectCount}</p>
       </div>
-      <div className="rounded-[var(--radius-card)] bg-secondary p-4">
+      <div className="rounded-card bg-secondary p-4">
         <p className="text-xs text-muted-foreground">Most Active</p>
         <p className="mt-1 text-lg font-bold truncate">
           {mostActive ? mostActive.name : "—"}
         </p>
       </div>
-      <div className="rounded-[var(--radius-card)] bg-secondary p-4">
+      <div className="rounded-card bg-secondary p-4">
         <p className="text-xs text-muted-foreground">Active (7d)</p>
         <p className="mt-1 text-2xl font-bold tabular-nums">
           {recentlyActive}
@@ -678,7 +678,7 @@ export default function ProjectsPage() {
 
       {/* Error */}
       {error && (
-        <div className="rounded-[var(--radius-card)] bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
           Failed to load project data: {error}
         </div>
       )}

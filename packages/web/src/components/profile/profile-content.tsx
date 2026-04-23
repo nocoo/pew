@@ -53,7 +53,7 @@ function ContentSkeleton() {
           {Array.from({ length: 3 }).map((_, i) => (
             <div
               key={i}
-              className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5 space-y-2"
+              className="rounded-card bg-secondary p-4 md:p-5 space-y-2"
             >
               <Skeleton className="h-4 w-16" />
               <Skeleton className="h-8 w-24" />
@@ -64,11 +64,11 @@ function ContentSkeleton() {
 
       {/* Charts skeleton */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-3">
-        <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+        <div className="rounded-card bg-secondary p-4 md:p-5">
           <Skeleton className="h-4 w-24 mb-3" />
           <Skeleton className="h-[220px] w-full" />
         </div>
-        <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5 flex flex-col">
+        <div className="rounded-card bg-secondary p-4 md:p-5 flex flex-col">
           <Skeleton className="h-4 w-20 mb-3" />
           <div className="flex flex-1 items-center justify-center">
             <Skeleton className="h-[180px] w-[180px] rounded-full" />
@@ -77,7 +77,7 @@ function ContentSkeleton() {
       </div>
 
       {/* Model breakdown skeleton */}
-      <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+      <div className="rounded-card bg-secondary p-4 md:p-5">
         <Skeleton className="h-4 w-20 mb-4" />
         <Skeleton className="h-[200px] w-full" />
       </div>
@@ -311,7 +311,7 @@ export function ProfileContent({
             <ProfileAchievements slug={slug} />
 
             {/* Activity heatmap */}
-            <div className="rounded-[var(--radius-card)] bg-secondary p-4 md:p-5">
+            <div className="rounded-card bg-secondary p-4 md:p-5">
               <p className="mb-3 text-xs md:text-sm text-muted-foreground">
                 {currentYear} Activity
               </p>
