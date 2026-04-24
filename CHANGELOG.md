@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.20.9
+
+### Fixed
+- Stop double-counting cacheRead in total tokens
+- Replace non-null assertion in bench-ut.ts with safe fallback
+
 ## v2.20.8
 
 ### Added
