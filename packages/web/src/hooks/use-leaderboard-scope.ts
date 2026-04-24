@@ -93,6 +93,7 @@ export function useLeaderboardScope(): UseLeaderboardScopeReturn {
 
     // Unauthenticated - use global scope immediately
     if (!isAuthenticated) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
       setScopeInitialized(true);
       setOrgsLoaded(true);
       return;
@@ -116,6 +117,7 @@ export function useLeaderboardScope(): UseLeaderboardScopeReturn {
     if (scope.type === "org" && scope.id) {
       const valid = organizations.some((o) => o.id === scope.id);
       if (!valid) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
         setScopeState({ type: "global" });
         saveScopeToStorage({ type: "global" });
       }

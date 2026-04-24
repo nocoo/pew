@@ -393,6 +393,7 @@ function AssignBadgeDialog({
   // Search users
   useEffect(() => {
     if (userQuery.length < 2) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
       setUserResults([]);
       return;
     }
@@ -886,6 +887,7 @@ export default function AdminBadgesPage() {
       return;
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
     setLoading(true);
     Promise.all([loadBadges(), loadAssignments()]).finally(() =>
       setLoading(false),
@@ -895,6 +897,7 @@ export default function AdminBadgesPage() {
   // Reload assignments when filter changes
   useEffect(() => {
     if (!isAdmin || loading) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
     loadAssignments();
   }, [statusFilter, isAdmin, loading, loadAssignments]);
 

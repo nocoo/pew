@@ -274,6 +274,7 @@ function AuthCodeModal({
   // Reset state when modal closes
   useEffect(() => {
     if (!open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
       setAuthCode(null);
       setAuthCodeExpiresAt(null);
       setAuthCodeRemaining(0);

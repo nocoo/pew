@@ -94,6 +94,7 @@ export function ShowcaseFormModal({
   // Initialize form for edit mode
   useEffect(() => {
     if (editMode && editData && open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
       setGithubUrl(editData.github_url);
       setTagline(editData.tagline || "");
       setIsPublic(editData.is_public);

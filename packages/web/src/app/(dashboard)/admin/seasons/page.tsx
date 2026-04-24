@@ -655,6 +655,7 @@ export default function AdminSeasonsPage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
     if (isAdmin) fetchRows();
   }, [isAdmin, fetchRows]);
 

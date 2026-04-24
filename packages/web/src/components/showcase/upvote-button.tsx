@@ -33,6 +33,7 @@ export function UpvoteButton({
 
   // Sync with parent when props change (e.g., after refetch)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
     setCount(initialCount);
     setUpvoted(initialUpvoted === true);
   }, [initialCount, initialUpvoted]);

@@ -186,6 +186,7 @@ export function useSeasonLeaderboard(
   useEffect(() => {
     const controller = new AbortController();
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
     fetchData(controller.signal);
 
     return () => {

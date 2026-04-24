@@ -44,6 +44,7 @@ export function useFetchData<T>(
 
   // Stable ref so `refetch` never causes extra renders / effect re-runs
   const urlRef = useRef(url);
+  // eslint-disable-next-line react-hooks/refs -- ref kept in sync with prop to avoid effect re-runs
   urlRef.current = url;
 
   const fetchData = useCallback(
@@ -86,6 +87,7 @@ export function useFetchData<T>(
   useEffect(() => {
     if (!url || !enabled) {
       // Reset state when disabled / no URL
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
       setData(null);
       setLoading(false);
       setError(null);

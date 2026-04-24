@@ -160,6 +160,7 @@ export function useAchievementMembers(
       const controller = new AbortController();
 
       // Reset data when achievementId changes to avoid stale data
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
       setData(null);
       setCursor(null);
 

@@ -125,6 +125,7 @@ export function useShowcases(options: UseShowcasesOptions = {}): UseShowcasesRes
     // Reset hasDataRef when params change to show loading state
     hasDataRef.current = false;
     // Clear data on param change to avoid stale data
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
     setData(null);
 
     fetchData(controller.signal);
