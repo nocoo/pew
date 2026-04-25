@@ -1,11 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
+import useSWR from "swr";
 import { throwApiError } from "@/lib/api-error";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+import { fetcher } from "@/lib/fetcher";
 
 export interface ProjectAliasInput {
   source: string;
@@ -52,10 +50,6 @@ export interface UseProjectsOptions {
   to?: string;
 }
 
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
-
 interface UseProjectsResult {
   data: ProjectsData | null;
   /** All unique tags across all projects, sorted alphabetically. */
@@ -83,66 +77,19 @@ interface UseProjectsResult {
 export function useProjects(options?: UseProjectsOptions): UseProjectsResult {
   const from = options?.from;
   const to = options?.to;
-  const [data, setData] = useState<ProjectsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  // ---------------------------------------------------------------------------
-  // Fetch
-  // ---------------------------------------------------------------------------
-
-  const fetchData = useCallback(async (signal?: AbortSignal) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const params = new URLSearchParams();
-      if (from) {
-        params.set("from", from);
-        if (to) params.set("to", to);
-      }
-      const qs = params.toString();
-      const url = qs ? `/api/projects?${qs}` : "/api/projects";
-      const res = await fetch(url, signal ? { signal } : undefined);
-
-      if (signal?.aborted) return;
-
-      if (!res.ok) {
-        await throwApiError(res);
-      }
-
-      const json = (await res.json()) as ProjectsData;
-
-      if (signal?.aborted) return;
-
-      setData(json);
-    } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") return;
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      if (!signal?.aborted) {
-        setLoading(false);
-      }
+  const url = useMemo(() => {
+    const params = new URLSearchParams();
+    if (from) {
+      params.set("from", from);
+      if (to) params.set("to", to);
     }
+    const qs = params.toString();
+    return qs ? `/api/projects?${qs}` : "/api/projects";
   }, [from, to]);
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    // Clear data on filter change to avoid stale data
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-    setData(null);
-
-    fetchData(controller.signal);
-
-    return () => {
-      controller.abort();
-    };
-  }, [fetchData]);
-
-  // ---------------------------------------------------------------------------
-  // Derived: all unique tags
-  // ---------------------------------------------------------------------------
+  const { data, error, isLoading, mutate } = useSWR<ProjectsData>(url, fetcher);
+  const [mutationError, setMutationError] = useState<string | null>(null);
 
   const allTags = useMemo(() => {
     const set = new Set<string>();
@@ -151,10 +98,6 @@ export function useProjects(options?: UseProjectsOptions): UseProjectsResult {
     }
     return Array.from(set).sort();
   }, [data]);
-
-  // ---------------------------------------------------------------------------
-  // Mutations
-  // ---------------------------------------------------------------------------
 
   const createProject = useCallback(
     async (
@@ -167,21 +110,16 @@ export function useProjects(options?: UseProjectsOptions): UseProjectsResult {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name, aliases }),
         });
-
-        if (!res.ok) {
-          await throwApiError(res);
-        }
-
+        if (!res.ok) await throwApiError(res);
         const project = (await res.json()) as Project;
-        // Refetch to get updated data (unassigned list changes)
-        await fetchData();
+        await mutate();
         return project;
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
+        setMutationError(err instanceof Error ? err.message : "Unknown error");
         return null;
       }
     },
-    [fetchData],
+    [mutate],
   );
 
   const updateProject = useCallback(
@@ -201,49 +139,43 @@ export function useProjects(options?: UseProjectsOptions): UseProjectsResult {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(updates),
         });
-
-        if (!res.ok) {
-          await throwApiError(res);
-        }
-
+        if (!res.ok) await throwApiError(res);
         const project = (await res.json()) as Project;
-        await fetchData();
+        await mutate();
         return project;
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
+        setMutationError(err instanceof Error ? err.message : "Unknown error");
         return null;
       }
     },
-    [fetchData],
+    [mutate],
   );
 
   const deleteProject = useCallback(
     async (id: string): Promise<boolean> => {
       try {
-        const res = await fetch(`/api/projects/${id}`, {
-          method: "DELETE",
-        });
-
-        if (!res.ok) {
-          await throwApiError(res);
-        }
-
-        await fetchData();
+        const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
+        if (!res.ok) await throwApiError(res);
+        await mutate();
         return true;
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Unknown error");
+        setMutationError(err instanceof Error ? err.message : "Unknown error");
         return false;
       }
     },
-    [fetchData],
+    [mutate],
   );
 
   return {
-    data,
+    data: data ?? null,
     allTags,
-    loading,
-    error,
-    refetch: () => fetchData(),
+    loading: isLoading,
+    error:
+      mutationError ??
+      (error ? (error instanceof Error ? error.message : String(error)) : null),
+    refetch: () => {
+      void mutate();
+    },
     createProject,
     updateProject,
     deleteProject,

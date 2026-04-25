@@ -1,12 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
+import useSWR from "swr";
 import type { SeasonStatus } from "@pew/core";
-import { throwApiError } from "@/lib/api-error";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+import { fetcher } from "@/lib/fetcher";
 
 export interface SeasonTeamEntry {
   rank: number;
@@ -51,10 +48,6 @@ export interface SeasonLeaderboardData {
   entries: SeasonTeamEntry[];
 }
 
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
-
 interface UseSeasonLeaderboardResult {
   data: SeasonLeaderboardData | null;
   loading: boolean;
@@ -70,68 +63,17 @@ interface UseSeasonLeaderboardResult {
 export function useSeasonLeaderboard(
   seasonIdOrSlug: string | null,
 ): UseSeasonLeaderboardResult {
-  const [data, setData] = useState<SeasonLeaderboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const key = seasonIdOrSlug ? `/api/seasons/${seasonIdOrSlug}/leaderboard` : null;
+  const { data, error, isLoading, isValidating, mutate } =
+    useSWR<SeasonLeaderboardData>(key, fetcher);
+
+  const fetchedTeamsRef = useRef<Set<string>>(new Set());
+  const loadingTeamIdsRef = useRef<Set<string>>(new Set());
   const [loadingTeamIds, setLoadingTeamIds] = useState<Set<string>>(new Set());
 
-  // Track if initial load has completed to avoid stale closure issues
-  const hasLoadedRef = useRef(false);
-
-  // Track which teams have already been fetched to avoid duplicate requests
-  const fetchedTeamsRef = useRef<Set<string>>(new Set());
-
-  // Track team IDs currently being loaded (ref for stable closure)
-  const loadingTeamIdsRef = useRef<Set<string>>(new Set());
-
-  // Initial fetch without expand=members for faster load
-  const fetchData = useCallback(async (signal?: AbortSignal) => {
-    if (!seasonIdOrSlug) return;
-
-    if (!hasLoadedRef.current) {
-      setLoading(true);
-    } else {
-      setRefreshing(true);
-    }
-    setError(null);
-    // Reset fetched teams on full refetch
-    fetchedTeamsRef.current = new Set();
-
-    try {
-      const res = await fetch(
-        `/api/seasons/${seasonIdOrSlug}/leaderboard`,
-        signal ? { signal } : undefined,
-      );
-
-      if (signal?.aborted) return;
-
-      if (!res.ok) {
-        await throwApiError(res);
-      }
-
-      const json = (await res.json()) as SeasonLeaderboardData;
-
-      if (signal?.aborted) return;
-
-      setData(json);
-      hasLoadedRef.current = true;
-    } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") return;
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      if (!signal?.aborted) {
-        setLoading(false);
-        setRefreshing(false);
-      }
-    }
-  }, [seasonIdOrSlug]);
-
-  // Load members for a specific team on-demand
   const loadTeamMembers = useCallback(
     async (teamId: string) => {
       if (!seasonIdOrSlug || !data) return;
-      // Skip if already fetched or currently loading (use ref for stable identity)
       if (fetchedTeamsRef.current.has(teamId) || loadingTeamIdsRef.current.has(teamId)) {
         return;
       }
@@ -149,25 +91,23 @@ export function useSeasonLeaderboard(
         }
 
         const json = (await res.json()) as SeasonLeaderboardData;
-        // Find the team entry with members
-        const teamWithMembers = json.entries.find(
-          (e) => e.team.id === teamId,
-        );
+        const teamWithMembers = json.entries.find((e) => e.team.id === teamId);
 
         if (teamWithMembers?.members) {
           const members = teamWithMembers.members;
           fetchedTeamsRef.current.add(teamId);
-          setData((prev) => {
-            if (!prev) return prev;
-            return {
-              ...prev,
-              entries: prev.entries.map((entry): SeasonTeamEntry =>
-                entry.team.id === teamId
-                  ? { ...entry, members }
-                  : entry,
-              ),
-            };
-          });
+          await mutate(
+            (prev) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                entries: prev.entries.map((entry): SeasonTeamEntry =>
+                  entry.team.id === teamId ? { ...entry, members } : entry,
+                ),
+              };
+            },
+            { revalidate: false },
+          );
         }
       } catch {
         // Silently fail — user can retry by collapsing/expanding again
@@ -180,26 +120,18 @@ export function useSeasonLeaderboard(
         });
       }
     },
-    [seasonIdOrSlug, data],
+    [seasonIdOrSlug, data, mutate],
   );
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-    fetchData(controller.signal);
-
-    return () => {
-      controller.abort();
-    };
-  }, [fetchData]);
-
   return {
-    data,
-    loading,
-    refreshing,
-    error,
-    refetch: () => fetchData(),
+    data: data ?? null,
+    loading: isLoading,
+    refreshing: isValidating && !isLoading,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
+    refetch: () => {
+      fetchedTeamsRef.current = new Set();
+      void mutate();
+    },
     loadTeamMembers,
     loadingTeamIds,
   };

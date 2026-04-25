@@ -2,8 +2,9 @@
 
 import type { AchievementTier, AchievementCategory } from "@/lib/achievement-helpers";
 import { useFetchData } from "@/hooks/use-fetch-data";
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { throwApiError } from "@/lib/api-error";
+import { useCallback, useMemo } from "react";
+import useSWRInfinite from "swr/infinite";
+import { fetcher } from "@/lib/fetcher";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -108,81 +109,43 @@ export function useAchievementMembers(
   achievementId: string | null,
   limit = 20
 ): UseAchievementMembersResult {
-  const [data, setData] = useState<AchievementMembersData | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [cursor, setCursor] = useState<string | null>(null);
-
-  const fetchData = useCallback(async (nextCursor?: string, signal?: AbortSignal) => {
-    if (!achievementId) return;
-
-    setLoading(true);
-    setError(null);
-
-    try {
+  const getKey = useCallback(
+    (pageIndex: number, previousPageData: AchievementMembersData | null) => {
+      if (!achievementId) return null;
+      if (previousPageData && previousPageData.cursor === null) return null;
       const params = new URLSearchParams({ limit: String(limit) });
-      if (nextCursor) params.set("cursor", nextCursor);
-
-      const res = await fetch(`/api/achievements/${achievementId}/members?${params}`, signal ? { signal } : undefined);
-
-      if (signal?.aborted) return;
-
-      if (!res.ok) {
-        await throwApiError(res);
+      if (pageIndex > 0 && previousPageData?.cursor) {
+        params.set("cursor", previousPageData.cursor);
       }
+      return `/api/achievements/${achievementId}/members?${params}`;
+    },
+    [achievementId, limit],
+  );
 
-      const json: AchievementMembersData = await res.json();
+  const { data, error, isLoading, isValidating, size, setSize } =
+    useSWRInfinite<AchievementMembersData>(getKey, fetcher, {
+      revalidateFirstPage: false,
+    });
 
-      if (signal?.aborted) return;
-
-      if (nextCursor) {
-        // Append to existing data
-        setData((prev) => ({
-          members: [...(prev?.members ?? []), ...json.members],
-          cursor: json.cursor,
-        }));
-      } else {
-        setData(json);
+  const lastCursor = data && data.length > 0 ? data[data.length - 1]?.cursor ?? null : null;
+  const combined: AchievementMembersData | null = data
+    ? {
+        members: data.flatMap((d) => d.members),
+        cursor: lastCursor,
       }
-      setCursor(json.cursor);
-    } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") return;
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      if (!signal?.aborted) {
-        setLoading(false);
-      }
-    }
-  }, [achievementId, limit]);
-
-  useEffect(() => {
-    if (achievementId) {
-      const controller = new AbortController();
-
-      // Reset data when achievementId changes to avoid stale data
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-      setData(null);
-      setCursor(null);
-
-      fetchData(undefined, controller.signal);
-
-      return () => {
-        controller.abort();
-      };
-    }
-  }, [achievementId, fetchData]);
+    : null;
 
   const loadMore = useCallback(() => {
-    if (cursor && !loading) {
-      fetchData(cursor);
+    if (lastCursor && !isValidating) {
+      void setSize(size + 1);
     }
-  }, [cursor, loading, fetchData]);
+  }, [lastCursor, isValidating, setSize, size]);
 
   return {
-    data,
-    loading,
-    error,
+    data: combined,
+    loading: isLoading || (isValidating && size > 1),
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
     loadMore,
-    hasMore: cursor !== null,
+    hasMore: lastCursor !== null,
   };
 }

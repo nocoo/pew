@@ -4,8 +4,10 @@
 
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useCallback, useMemo, useState } from "react";
+import useSWR from "swr";
 import { throwApiError } from "@/lib/api-error";
+import { fetcher } from "@/lib/fetcher";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -71,71 +73,28 @@ export interface UseShowcasesResult {
 export function useShowcases(options: UseShowcasesOptions = {}): UseShowcasesResult {
   const { mine = false, limit = 20, offset = 0 } = options;
 
-  const [data, setData] = useState<ShowcasesResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Track whether we have data to determine loading vs refreshing
-  const hasDataRef = useRef(false);
-
-  const fetchData = useCallback(async (signal?: AbortSignal) => {
-    // Use ref to check if we have data (avoids data in deps)
-    if (!hasDataRef.current) {
-      setLoading(true);
-    } else {
-      setRefreshing(true);
-    }
-    setError(null);
-
-    try {
-      const params = new URLSearchParams();
-      if (mine) params.set("mine", "1");
-      params.set("limit", String(limit));
-      params.set("offset", String(offset));
-
-      const res = await fetch(`/api/showcases?${params.toString()}`, signal ? { signal } : undefined);
-
-      if (signal?.aborted) return;
-
-      if (!res.ok) {
-        await throwApiError(res);
-      }
-
-      const json = (await res.json()) as ShowcasesResponse;
-
-      if (signal?.aborted) return;
-
-      setData(json);
-      hasDataRef.current = true;
-    } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") return;
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      if (!signal?.aborted) {
-        setLoading(false);
-        setRefreshing(false);
-      }
-    }
+  const url = useMemo(() => {
+    const params = new URLSearchParams();
+    if (mine) params.set("mine", "1");
+    params.set("limit", String(limit));
+    params.set("offset", String(offset));
+    return `/api/showcases?${params.toString()}`;
   }, [mine, limit, offset]);
 
-  useEffect(() => {
-    const controller = new AbortController();
+  const { data, error, isLoading, isValidating, mutate } = useSWR<ShowcasesResponse>(
+    url,
+    fetcher,
+  );
 
-    // Reset hasDataRef when params change to show loading state
-    hasDataRef.current = false;
-    // Clear data on param change to avoid stale data
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-    setData(null);
-
-    fetchData(controller.signal);
-
-    return () => {
-      controller.abort();
-    };
-  }, [fetchData]);
-
-  return { data, loading, refreshing, error, refetch: () => fetchData() };
+  return {
+    data: data ?? null,
+    loading: isLoading,
+    refreshing: isValidating && !isLoading,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
+    refetch: () => {
+      void mutate();
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------
