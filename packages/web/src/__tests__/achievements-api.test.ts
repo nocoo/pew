@@ -268,6 +268,154 @@ describe("GET /api/achievements", () => {
       const body = await res.json();
       expect(body.error).toBe("Failed to compute achievements");
     });
+
+    it("should return 500 and log when error is a non-Error throwable", async () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      mockClient.getAchievementUsageAggregates.mockRejectedValueOnce("string error");
+
+      const res = await GET(makeGetRequest("/api/achievements"));
+
+      expect(res.status).toBe(500);
+      consoleSpy.mockRestore();
+    });
+
+    it("defaults all token/session/diversity values to 0 when aggregates are null/empty", async () => {
+      // All aggregate RPCs return null (worker-read returns null for empty aggregates).
+      // This exercises every `usageAgg?.X ?? 0`, `sessionAgg?.X ?? 0`, `diversity?.X ?? 0` branch.
+      mockClient.getAchievementUsageAggregates.mockResolvedValue(null);
+      mockClient.getAchievementDailyUsage.mockResolvedValue([]);
+      mockClient.getAchievementDailyCostBreakdown.mockResolvedValue([]);
+      mockClient.getAchievementDiversityCounts.mockResolvedValue(null);
+      mockClient.getAchievementSessionAggregates.mockResolvedValue(null);
+      mockClient.getAchievementHourlyUsage.mockResolvedValue([]);
+      mockClient.getAchievementCostByModelSource.mockResolvedValue([]);
+      mockClient.getAchievementEarners.mockResolvedValue([]);
+      mockClient.getAchievementEarnersCount.mockResolvedValue(0);
+
+      const res = await GET(makeGetRequest("/api/achievements"));
+
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      // All achievements present, all currentValues at 0 (or fall-through defaults)
+      expect(body.achievements.length).toBe(25);
+      const ids = [
+        "power-user",
+        "big-day",
+        "input-hog",
+        "output-addict",
+        "reasoning-junkie",
+        "cache-master",
+        "quick-draw",
+        "marathon",
+        "big-spender",
+        "daily-burn",
+        "tool-hoarder",
+        "model-tourist",
+        "device-nomad",
+        "chatterbox",
+        "session-hoarder",
+        "automation-addict",
+        "first-blood",
+        "centurion",
+        "millionaire",
+        "billionaire",
+        "veteran",
+      ];
+      const byId = new Map<string, { currentValue: number; tier: string }>(
+        body.achievements.map((a: { id: string; currentValue: number; tier: string }) => [a.id, { currentValue: a.currentValue, tier: a.tier }]),
+      );
+      for (const id of ids) {
+        const a = byId.get(id);
+        expect(a, `achievement ${id}`).toBeDefined();
+        expect(a!.currentValue).toBe(0);
+        expect(a!.tier).toBe("locked");
+      }
+      expect(body.summary.totalUnlocked).toBe(0);
+      expect(body.summary.diamondCount).toBe(0);
+      expect(body.summary.currentStreak).toBe(0);
+    });
+
+    it("computes cache-master=0 when input_tokens is 0 (avoids divide-by-zero branch)", async () => {
+      mockClient.getAchievementUsageAggregates.mockResolvedValue({
+        total_tokens: 0,
+        input_tokens: 0,
+        output_tokens: 0,
+        cached_input_tokens: 0,
+        reasoning_output_tokens: 0,
+      });
+      mockClient.getAchievementDailyUsage.mockResolvedValue([]);
+      mockClient.getAchievementDailyCostBreakdown.mockResolvedValue([]);
+      mockClient.getAchievementDiversityCounts.mockResolvedValue({
+        source_count: 0,
+        model_count: 0,
+        device_count: 0,
+      });
+      mockClient.getAchievementSessionAggregates.mockResolvedValue({
+        total_sessions: 0,
+        quick_sessions: 0,
+        marathon_sessions: 0,
+        max_messages: 0,
+        automated_sessions: 0,
+      });
+      mockClient.getAchievementHourlyUsage.mockResolvedValue([]);
+      mockClient.getAchievementCostByModelSource.mockResolvedValue([]);
+      mockClient.getAchievementEarners.mockResolvedValue([]);
+      mockClient.getAchievementEarnersCount.mockResolvedValue(0);
+
+      const res = await GET(makeGetRequest("/api/achievements"));
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      const cacheMaster = body.achievements.find((a: { id: string }) => a.id === "cache-master");
+      expect(cacheMaster.currentValue).toBe(0);
+    });
+
+    it("applies cached_input_tokens cost when pricing.cached is set", async () => {
+      // Forces computeCost to enter the `cachedTokens && pricing.cached` truthy branch.
+      // claude-sonnet-4-20250514 has a cached price set in the default pricing map.
+      mockClient.getAchievementUsageAggregates.mockResolvedValue({
+        total_tokens: 100,
+        input_tokens: 100,
+        output_tokens: 0,
+        cached_input_tokens: 1_000_000,
+        reasoning_output_tokens: 0,
+      });
+      mockClient.getAchievementDailyUsage.mockResolvedValue([]);
+      mockClient.getAchievementDailyCostBreakdown.mockResolvedValue([
+        {
+          day: "2026-04-03",
+          model: "claude-sonnet-4-20250514",
+          source: null,
+          input_tokens: 0,
+          output_tokens: 0,
+          cached_input_tokens: 1_000_000,
+        },
+      ]);
+      mockClient.getAchievementDiversityCounts.mockResolvedValue({
+        source_count: 0, model_count: 0, device_count: 0,
+      });
+      mockClient.getAchievementSessionAggregates.mockResolvedValue({
+        total_sessions: 0, quick_sessions: 0, marathon_sessions: 0, max_messages: 0, automated_sessions: 0,
+      });
+      mockClient.getAchievementHourlyUsage.mockResolvedValue([]);
+      mockClient.getAchievementCostByModelSource.mockResolvedValue([
+        {
+          model: "claude-sonnet-4-20250514",
+          source: null,
+          input_tokens: 0,
+          output_tokens: 0,
+          cached_input_tokens: 1_000_000,
+        },
+      ]);
+      mockClient.getAchievementEarners.mockResolvedValue([]);
+      mockClient.getAchievementEarnersCount.mockResolvedValue(0);
+
+      const res = await GET(makeGetRequest("/api/achievements"));
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      // big-spender / daily-burn currentValue should reflect the cached cost (positive)
+      const bigSpender = body.achievements.find((a: { id: string }) => a.id === "big-spender");
+      expect(bigSpender.currentValue).toBeGreaterThan(0);
+    });
   });
 
   // -------------------------------------------------------------------------

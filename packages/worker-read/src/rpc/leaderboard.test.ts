@@ -389,6 +389,106 @@ describe("leaderboard RPC handlers", () => {
       // Should have been called twice (first with nickname, then without)
       expect(db.prepare).toHaveBeenCalledTimes(2);
     });
+
+    it("should rethrow non-schema errors (no fallback)", async () => {
+      db.all.mockRejectedValueOnce(new Error("connection refused"));
+
+      const request: GetGlobalLeaderboardRequest = {
+        method: "leaderboard.getGlobal",
+        limit: 20,
+      };
+      await expect(handleLeaderboardRpc(request, db, kv)).rejects.toThrow(
+        "connection refused",
+      );
+      // Only the first prepare attempt should have been made (no fallback retry)
+      expect(db.prepare).toHaveBeenCalledTimes(1);
+    });
+
+    it("should treat a non-Error throwable as a non-schema error and rethrow", async () => {
+      db.all.mockRejectedValueOnce("not an Error instance");
+
+      const request: GetGlobalLeaderboardRequest = {
+        method: "leaderboard.getGlobal",
+        limit: 20,
+      };
+      await expect(handleLeaderboardRpc(request, db, kv)).rejects.toBeDefined();
+      expect(db.prepare).toHaveBeenCalledTimes(1);
+    });
+
+    it("should fall back when error message includes 'no such table'", async () => {
+      db.all
+        .mockRejectedValueOnce(new Error("no such table: users"))
+        .mockResolvedValueOnce({ results: mockRows });
+
+      const request: GetGlobalLeaderboardRequest = {
+        method: "leaderboard.getGlobal",
+        limit: 20,
+      };
+      const response = await handleLeaderboardRpc(request, db, kv);
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(body).toEqual({ result: mockRows, _cached: false });
+      expect(db.prepare).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // leaderboard.getUserTeams
+  // -------------------------------------------------------------------------
+
+  describe("leaderboard.getUserTeams", () => {
+    it("should return team memberships for given userIds", async () => {
+      const rows = [
+        { user_id: "u1", team_id: "t1", team_name: "Acme", logo_url: null },
+        { user_id: "u2", team_id: "t2", team_name: "Globex", logo_url: "https://x/y.png" },
+      ];
+      db.all.mockResolvedValue({ results: rows });
+
+      const response = await handleLeaderboardRpc(
+        { method: "leaderboard.getUserTeams", userIds: ["u1", "u2"] } as never,
+        db,
+        kv,
+      );
+
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as { result: typeof rows };
+      expect(body.result).toEqual(rows);
+      expect(db.bind).toHaveBeenCalledWith("u1", "u2");
+    });
+
+    it("should return empty array when userIds is empty", async () => {
+      const response = await handleLeaderboardRpc(
+        { method: "leaderboard.getUserTeams", userIds: [] } as never,
+        db,
+        kv,
+      );
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ result: [] });
+      expect(db.prepare).not.toHaveBeenCalled();
+    });
+
+    it("should return empty array when userIds is undefined", async () => {
+      const response = await handleLeaderboardRpc(
+        { method: "leaderboard.getUserTeams" } as never,
+        db,
+        kv,
+      );
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ result: [] });
+      expect(db.prepare).not.toHaveBeenCalled();
+    });
+
+    it("should silently return empty when tables do not exist", async () => {
+      db.all.mockRejectedValueOnce(new Error("no such table: team_members"));
+      const response = await handleLeaderboardRpc(
+        { method: "leaderboard.getUserTeams", userIds: ["u1"] } as never,
+        db,
+        kv,
+      );
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ result: [] });
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -477,7 +577,7 @@ describe("leaderboard RPC handlers", () => {
     });
 
     it("should return empty on table-not-found error", async () => {
-      db.all.mockRejectedValue(new Error("no such table: session_records"));
+      db.all.mockRejectedValueOnce(new Error("no such table: session_records"));
 
       const request: GetUserSessionStatsRequest = {
         method: "leaderboard.getUserSessionStats",
@@ -488,6 +588,28 @@ describe("leaderboard RPC handlers", () => {
 
       expect(response.status).toBe(200);
       expect(body).toEqual({ result: [] });
+    });
+
+    it("should rethrow non-schema errors", async () => {
+      db.all.mockRejectedValueOnce(new Error("connection refused"));
+      await expect(
+        handleLeaderboardRpc(
+          { method: "leaderboard.getUserSessionStats", userIds: ["u1"] } as never,
+          db,
+          kv,
+        ),
+      ).rejects.toThrow("connection refused");
+    });
+
+    it("should rethrow non-Error throwables (not a 'no such table' string)", async () => {
+      db.all.mockRejectedValueOnce("opaque failure");
+      await expect(
+        handleLeaderboardRpc(
+          { method: "leaderboard.getUserSessionStats", userIds: ["u1"] } as never,
+          db,
+          kv,
+        ),
+      ).rejects.toBeDefined();
     });
   });
 

@@ -520,6 +520,84 @@ describe("parseVscodeCopilotFile", () => {
     expect(result.deltas).toHaveLength(1);
   });
 
+  it("covers defensive branches: invalid kind=0 / kind=2 / kind=1 shapes are skipped", async () => {
+    const filePath = join(tempDir, "defensive.jsonl");
+    const lines = [
+      // kind=0 with no `v` payload — `v?.requests` is undefined
+      JSON.stringify({ kind: 0 }),
+      // kind=0 with `requests` not an array — Array.isArray() guard fires
+      JSON.stringify({ kind: 0, v: { requests: "not-an-array" } }),
+      // kind=0 snapshot with index-0 valid + entries 1..3 that are not objects (skipped silently)
+      JSON.stringify({ kind: 0, v: { requests: [makeRequest("copilot/claude-opus-4.6", 1772780000000), null, "string-entry", 42] } }),
+      // kind=0 snapshot with a request whose modelId is empty string (extractRequestMeta returns null)
+      JSON.stringify({ kind: 0, v: { requests: [{ modelId: "", timestamp: 1772780001000 }] } }),
+      // kind=0 snapshot with a request whose timestamp is NaN (Number.isFinite false)
+      JSON.stringify({ kind: 0, v: { requests: [{ modelId: "copilot/x", timestamp: NaN }] } }),
+      // kind=0 snapshot with a request whose modelId is not a string
+      JSON.stringify({ kind: 0, v: { requests: [{ modelId: 42, timestamp: 1772780002000 }] } }),
+      // kind=2 with k.length !== 1 (skipped)
+      JSON.stringify({ kind: 2, k: ["foo", "bar"], v: [{}] }),
+      // kind=2 with k[0] !== "requests" (skipped)
+      JSON.stringify({ kind: 2, k: ["sessions"], v: [{}] }),
+      // kind=2 with non-array v (skipped)
+      JSON.stringify({ kind: 2, k: ["requests"], v: "oops" }),
+      // kind=2 with array entries that are not objects (counted but no meta)
+      JSON.stringify({ kind: 2, k: ["requests"], v: [null, "x", 1] }),
+      // kind=1 with k length !== 3 (skipped)
+      JSON.stringify({ kind: 1, k: ["requests", 0], v: {} }),
+      // kind=1 with k[0] !== "requests" (skipped)
+      JSON.stringify({ kind: 1, k: ["sessions", 0, "result"], v: {} }),
+      // kind=1 with negative index (skipped)
+      JSON.stringify({ kind: 1, k: ["requests", -1, "result"], v: resultWithTokens(1, 1) }),
+      // kind=1 with non-finite index (string "abc" -> NaN -> skipped)
+      JSON.stringify({ kind: 1, k: ["requests", "abc", "result"], v: resultWithTokens(1, 1) }),
+      // kind=1 with string-numeric index — cond-expr Number(k[1]) branch
+      JSON.stringify({ kind: 1, k: ["requests", "3", "result"], v: resultWithTokens(0, 0) }),
+      // Need request meta for index 3 so the kind=1 above is processed (zero-token path)
+      // but first need 3 valid request appends for indices 1,2,3 (index 0 was claimed above)
+      appendRequestLine(makeRequest("copilot/claude-opus-4.6", 1772780010000)),
+      appendRequestLine(makeRequest("copilot/claude-opus-4.6", 1772780020000)),
+      appendRequestLine(makeRequest("copilot/claude-opus-4.6", 1772780030000)),
+      // valid kind=1 result for index 0 (already in meta from snapshot) producing 1 delta
+      setResultLine(0, resultWithTokens(100, 50)),
+    ];
+    await writeFile(filePath, lines.join("\n") + "\n");
+
+    const skips: SkipInfo[] = [];
+    const result = await parseVscodeCopilotFile({
+      filePath,
+      startOffset: 0,
+      requestMeta: {},
+      processedRequestIndices: [],
+      onSkip: (s) => skips.push(s),
+    });
+
+    // Only the index=0 valid result produces a delta; other defensive branches skip silently or via onSkip.
+    expect(result.deltas).toHaveLength(1);
+    expect(result.deltas[0]?.tokens.inputTokens).toBe(100);
+  });
+
+  it("covers kind=1 already-processed-index branch (index in processedRequestIndices)", async () => {
+    const filePath = join(tempDir, "already-processed.jsonl");
+    const lines = [
+      snapshotLine([makeRequest("copilot/claude-opus-4.6", 1772780000000)]),
+      // index 0 was already processed in a previous run — should be skipped here
+      setResultLine(0, resultWithTokens(9999, 9999)),
+    ];
+    await writeFile(filePath, lines.join("\n") + "\n");
+
+    const result = await parseVscodeCopilotFile({
+      filePath,
+      startOffset: 0,
+      requestMeta: {},
+      processedRequestIndices: [0],
+    });
+
+    // No delta because index 0 was pre-marked processed (covers `processedSet.has(index)` early-continue).
+    expect(result.deltas).toHaveLength(0);
+    expect(result.processedRequestIndices).toEqual([0]);
+  });
+
   it("should handle zero-token results (skip them)", async () => {
     const filePath = join(tempDir, "session.jsonl");
     const lines = [

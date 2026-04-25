@@ -340,6 +340,104 @@ describe("badges RPC handlers", () => {
         expect.stringContaining("revoked_at IS NOT NULL AND ba.revoked_at > ba.expires_at"),
       );
     });
+
+    it("should filter expired assignments", async () => {
+      db.all.mockResolvedValue({ results: [] });
+      const request: ListAssignmentsRequest = {
+        method: "badges.listAssignments",
+        status: "expired",
+        limit: 50,
+        offset: 0,
+      };
+      await handleBadgesRpc(request, db);
+      expect(db.prepare).toHaveBeenCalledWith(
+        expect.stringContaining("revoked_at IS NULL AND ba.expires_at <="),
+      );
+    });
+
+    it("should apply no status filter when status='all'", async () => {
+      db.all.mockResolvedValue({ results: [] });
+      const request: ListAssignmentsRequest = {
+        method: "badges.listAssignments",
+        status: "all",
+        limit: 50,
+        offset: 0,
+      };
+      await handleBadgesRpc(request, db);
+      const sql = (db.prepare as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
+      // No revoked_at / expires_at predicates
+      expect(sql).not.toMatch(/revoked_at IS NULL/);
+      expect(sql).not.toMatch(/revoked_at IS NOT NULL/);
+    });
+
+    it("should default to no status filter when status omitted", async () => {
+      db.all.mockResolvedValue({ results: [] });
+      const request = {
+        method: "badges.listAssignments",
+        limit: 50,
+        offset: 0,
+      } as ListAssignmentsRequest;
+      await handleBadgesRpc(request, db);
+      const sql = (db.prepare as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
+      expect(sql).not.toMatch(/revoked_at IS NULL/);
+      expect(sql).not.toMatch(/revoked_at IS NOT NULL/);
+    });
+
+    it("should filter by badgeId only", async () => {
+      db.all.mockResolvedValue({ results: [] });
+      const request: ListAssignmentsRequest = {
+        method: "badges.listAssignments",
+        badgeId: "b1",
+        status: "all",
+        limit: 10,
+        offset: 0,
+      };
+      await handleBadgesRpc(request, db);
+      const sql = (db.prepare as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
+      expect(sql).toContain("ba.badge_id = ?");
+      expect(sql).not.toContain("ba.user_id = ?");
+      // bind: badgeId, limit, offset
+      expect(db.bind).toHaveBeenCalledWith("b1", 10, 0);
+    });
+
+    it("should filter by userId only", async () => {
+      db.all.mockResolvedValue({ results: [] });
+      const request: ListAssignmentsRequest = {
+        method: "badges.listAssignments",
+        userId: "u1",
+        status: "all",
+        limit: 10,
+        offset: 0,
+      };
+      await handleBadgesRpc(request, db);
+      const sql = (db.prepare as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
+      expect(sql).toContain("ba.user_id = ?");
+      expect(sql).not.toContain("ba.badge_id = ?");
+      expect(db.bind).toHaveBeenCalledWith("u1", 10, 0);
+    });
+
+    it("should filter by both badgeId and userId", async () => {
+      db.all.mockResolvedValue({ results: [] });
+      const request: ListAssignmentsRequest = {
+        method: "badges.listAssignments",
+        badgeId: "b1",
+        userId: "u1",
+        status: "active",
+        limit: 10,
+        offset: 0,
+      };
+      await handleBadgesRpc(request, db);
+      const sql = (db.prepare as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
+      expect(sql).toContain("ba.badge_id = ?");
+      expect(sql).toContain("ba.user_id = ?");
+      expect(sql).toMatch(/AND/);
+      // bind: badgeId, userId, now-iso, limit, offset
+      const bindArgs = (db.bind as ReturnType<typeof vi.fn>).mock.calls[0];
+      expect(bindArgs?.[0]).toBe("b1");
+      expect(bindArgs?.[1]).toBe("u1");
+      expect(bindArgs?.[bindArgs.length - 2]).toBe(10);
+      expect(bindArgs?.[bindArgs.length - 1]).toBe(0);
+    });
   });
 
   // -------------------------------------------------------------------------
