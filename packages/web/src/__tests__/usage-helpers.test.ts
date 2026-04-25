@@ -1036,3 +1036,55 @@ describe("toHourlyWeekdayWeekend", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Defensive default-argument paths
+// ---------------------------------------------------------------------------
+
+describe("default `now` and `today` arguments", () => {
+  it("computeMoMGrowth handles January reference (previous month wraps to December of previous year)", () => {
+    const rows = [
+      // December 2025 (previous month when ref = Jan 2026)
+      makeRow({ hour_start: "2025-12-15T10:00:00Z", total_tokens: 100, input_tokens: 80, output_tokens: 20, cached_input_tokens: 10 }),
+      // January 2026 (current)
+      makeRow({ hour_start: "2026-01-05T10:00:00Z", total_tokens: 200, input_tokens: 160, output_tokens: 40, cached_input_tokens: 20 }),
+    ];
+    const ref = new Date("2026-01-15T12:00:00Z");
+    const result = computeMoMGrowth(rows, getDefaultPricingMap(), ref);
+    expect(result.currentMonth.tokens).toBe(200);
+    expect(result.previousMonth.tokens).toBe(100);
+  });
+
+  it("computeWoWGrowth uses current date when `now` argument is omitted", () => {
+    // Empty rows — just confirms the default branch executes without throwing.
+    const result = computeWoWGrowth([], getDefaultPricingMap());
+    expect(result.currentWeek.tokens).toBe(0);
+    expect(result.previousWeek.tokens).toBe(0);
+    expect(result.tokenGrowth).toBe(0);
+  });
+
+  it("computeStreak uses getLocalToday when `today` argument is omitted", () => {
+    // Empty rows — the only effect of the default branch is to assign today; result still zeros.
+    const result = computeStreak([]);
+    expect(result.currentStreak).toBe(0);
+    expect(result.longestStreak).toBe(0);
+    expect(result.isActiveToday).toBe(false);
+  });
+
+  it("toDominantSourceTimeline returns dominantShare=0 for a day with all-zero token rows", () => {
+    // A row with total_tokens=0 makes dayTotal=0, exercising the `dayTotal > 0 ? ... : 0` branch.
+    const rows = [
+      makeRow({
+        hour_start: "2026-03-10T10:00:00Z",
+        source: "claude-code",
+        total_tokens: 0,
+        input_tokens: 0,
+        output_tokens: 0,
+        cached_input_tokens: 0,
+      }),
+    ];
+    const out = toDominantSourceTimeline(rows);
+    expect(out).toHaveLength(1);
+    expect(out[0]!.dominantShare).toBe(0);
+  });
+});
+
