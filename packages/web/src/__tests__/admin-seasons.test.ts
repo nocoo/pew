@@ -818,4 +818,98 @@ describe("PATCH /api/admin/seasons/[seasonId]", () => {
     expect(json.error).toBe("Failed to update season");
     consoleSpy.mockRestore();
   });
+
+  it("should return 500 when a non-Error throwable is rejected", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.getSeasonById.mockRejectedValueOnce("opaque");
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await PATCH(
+      makeJsonRequest("PATCH", "/api/admin/seasons", { name: "New Name" }),
+      { params: patchParams }
+    );
+    expect(res.status).toBe(500);
+    consoleSpy.mockRestore();
+  });
+
+  it("persists allow_late_registration / allow_late_withdrawal flags (true and false)", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.getSeasonById
+      .mockResolvedValueOnce({
+        id: "season-1",
+        name: "Season",
+        slug: "s1",
+        start_date: "2099-06-01T00:00:00Z",
+        end_date: "2099-06-30T23:59:00Z",
+        allow_late_registration: 0,
+        allow_roster_changes: 0,
+        allow_late_withdrawal: 0,
+      })
+      .mockResolvedValueOnce({
+        id: "season-1",
+        name: "Season",
+        slug: "s1",
+        start_date: "2099-06-01T00:00:00Z",
+        end_date: "2099-06-30T23:59:00Z",
+        allow_late_registration: 1,
+        allow_roster_changes: 0,
+        allow_late_withdrawal: 0,
+      });
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
+
+    const res = await PATCH(
+      makeJsonRequest("PATCH", "/api/admin/seasons", {
+        allow_late_registration: true,
+        allow_late_withdrawal: false,
+      }),
+      { params: patchParams }
+    );
+    expect(res.status).toBe(200);
+    // Verify both flag updates were applied
+    expect(mockDbWrite.execute).toHaveBeenCalledTimes(1);
+    const sqlCall = mockDbWrite.execute.mock.calls[0]!;
+    const sql = sqlCall[0] as string;
+    const values = sqlCall[1] as unknown[];
+    expect(sql).toContain("allow_late_registration = ?");
+    expect(sql).toContain("allow_late_withdrawal = ?");
+    // true → 1, false → 0
+    expect(values).toContain(1);
+    expect(values).toContain(0);
+  });
+
+  it("persists allow_roster_changes=false (does not flip 0\u21921 backfill)", async () => {
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.getSeasonById
+      .mockResolvedValueOnce({
+        id: "season-1",
+        name: "Season",
+        slug: "s1",
+        start_date: "2099-06-01T00:00:00Z",
+        end_date: "2099-06-30T23:59:00Z",
+        allow_late_registration: 0,
+        allow_roster_changes: 1, // currently on
+        allow_late_withdrawal: 0,
+      })
+      .mockResolvedValueOnce({
+        id: "season-1",
+        name: "Season",
+        slug: "s1",
+        start_date: "2099-06-01T00:00:00Z",
+        end_date: "2099-06-30T23:59:00Z",
+        allow_late_registration: 0,
+        allow_roster_changes: 0,
+        allow_late_withdrawal: 0,
+      });
+    mockDbWrite.execute.mockResolvedValueOnce({ changes: 1, duration: 0.01 });
+
+    const res = await PATCH(
+      makeJsonRequest("PATCH", "/api/admin/seasons", {
+        allow_roster_changes: false,
+      }),
+      { params: patchParams }
+    );
+    expect(res.status).toBe(200);
+    const values = mockDbWrite.execute.mock.calls[0]![1] as unknown[];
+    expect(values).toContain(0);
+  });
 });

@@ -215,5 +215,74 @@ describe("GET /api/admin/showcases", () => {
       const json = await res.json();
       expect(json.error).toBe("Failed to list showcases");
     });
+
+    it("returns 500 on non-Error rejection (string thrown)", async () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      const mockDb = {
+        firstOrNull: vi.fn().mockRejectedValue("opaque failure"),
+      };
+      mockGetDbRead.mockResolvedValue(mockDb as never);
+
+      const res = await GET(createRequest());
+      expect(res.status).toBe(500);
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe("row defaults for nullable columns", () => {
+    beforeEach(() => {
+      mockResolveAdmin.mockResolvedValue({ userId: "admin", email: "admin@example.com" });
+    });
+
+    it("defaults stars/forks to 0 and language/license/homepage to null when columns are null; topics defaults to []", async () => {
+      const rowWithNulls = {
+        ...mockShowcase,
+        stars: null,
+        forks: null,
+        language: null,
+        license: null,
+        homepage: null,
+        topics: null,
+      };
+      const mockDb = {
+        firstOrNull: vi.fn().mockResolvedValue({ count: 1 }),
+        query: vi.fn().mockResolvedValue({ results: [rowWithNulls] }),
+      };
+      mockGetDbRead.mockResolvedValue(mockDb as never);
+
+      const res = await GET(createRequest());
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.showcases[0]).toMatchObject({
+        stars: 0,
+        forks: 0,
+        language: null,
+        license: null,
+        homepage: null,
+        topics: [],
+      });
+    });
+
+    it("defaults total/stats counts to 0 when count queries return null rows", async () => {
+      const mockDb = {
+        // first call (count): null; second call (stats): null
+        firstOrNull: vi
+          .fn()
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(null),
+        query: vi.fn().mockResolvedValue({ results: [] }),
+      };
+      mockGetDbRead.mockResolvedValue(mockDb as never);
+
+      const res = await GET(createRequest());
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.total).toBe(0);
+      expect(json.stats).toEqual({
+        totalShowcases: 0,
+        uniqueUsers: 0,
+        uniqueGithubOwners: 0,
+      });
+    });
   });
 });

@@ -235,4 +235,106 @@ describe("Claude hook installer", () => {
     expect(result.changed).toBe(true);
     expect(mkdirCallCount).toBe(2);
   });
+
+  it("falls back to '.' when settingsPath has no slash and URL mkdir fails", async () => {
+    const captured: string[] = [];
+    const fsMock = {
+      readFile: async () => {
+        const err = new Error("ENOENT") as NodeJS.ErrnoException;
+        err.code = "ENOENT";
+        throw err;
+      },
+      writeFile: async () => {},
+      mkdir: async (p: string) => {
+        captured.push(p);
+        if (captured.length === 1) throw new Error("Invalid URL");
+      },
+    };
+    // Settings path with no slash — fallback should use "."
+    await installClaudeHook({ settingsPath: "settings.json", notifyPath, fs: fsMock });
+    expect(captured).toHaveLength(2);
+    expect(captured[1]).toBe(".");
+  });
+
+  it("reports error when settings JSON is a top-level array", async () => {
+    // Top-level array — hits the `Array.isArray(parsed)` invalid branch in loadSettings
+    await writeFile(settingsPath, JSON.stringify(["not", "an", "object"]), "utf8");
+    const status = await getClaudeHookStatus({ settingsPath, notifyPath });
+    expect(status).toBe("error");
+  });
+
+  it("ignores non-object hook entries inside a SessionEnd hooks array", async () => {
+    // Existing settings: SessionEnd entry with an entry whose .hooks contains non-object items
+    // (null, string, number) — covers `!hook || typeof hook !== 'object'` guards in
+    // normalizeEntry, stripCommand, and hasCommand.
+    await writeFile(
+      settingsPath,
+      JSON.stringify({
+        hooks: {
+          SessionEnd: [
+            {
+              matcher: "*",
+              hooks: [
+                null,
+                "not-an-object",
+                42,
+                { type: "command", command: "echo other" },
+              ],
+            },
+          ],
+        },
+      }),
+      "utf8",
+    );
+
+    // Status should be 'not-installed' (commandMatches false for all valid entries, junk skipped)
+    expect(
+      await getClaudeHookStatus({ settingsPath, notifyPath }),
+    ).toBe("not-installed");
+
+    // Install should preserve junk entries verbatim
+    await installClaudeHook({ settingsPath, notifyPath });
+    const after = JSON.parse(await readFile(settingsPath, "utf8")) as {
+      hooks: { SessionEnd: Array<{ hooks: unknown[] }> };
+    };
+    const entry = after.hooks.SessionEnd[0]!;
+    // Original junk preserved; pew hook appended
+    expect(entry.hooks).toEqual(
+      expect.arrayContaining([null, "not-an-object", 42]),
+    );
+    expect(after.hooks.SessionEnd.length).toBe(2);
+
+    // Uninstall should leave the junk entries alone
+    await uninstallClaudeHook({ settingsPath, notifyPath });
+    const afterUninstall = JSON.parse(await readFile(settingsPath, "utf8")) as {
+      hooks: { SessionEnd: Array<{ hooks: unknown[] }> };
+    };
+    const entryAfter = afterUninstall.hooks.SessionEnd[0]!;
+    expect(entryAfter.hooks).toEqual(
+      expect.arrayContaining([null, "not-an-object", 42]),
+    );
+  });
+
+  it("leaves SessionEnd entries untouched when their .hooks is not an array", async () => {
+    // Covers the early-return branch in normalizeEntry/stripCommand when hooks is not an array.
+    await writeFile(
+      settingsPath,
+      JSON.stringify({
+        hooks: {
+          SessionEnd: [
+            { matcher: "*", hooks: "not-an-array" },
+            { matcher: "build" }, // hooks missing entirely
+          ],
+        },
+      }),
+      "utf8",
+    );
+    expect(
+      await getClaudeHookStatus({ settingsPath, notifyPath }),
+    ).toBe("not-installed");
+
+    // Uninstall is a no-op (nothing to strip) — should report "skip" or "unchanged"
+    const res = await uninstallClaudeHook({ settingsPath, notifyPath });
+    expect(res.changed).toBe(false);
+  });
 });
