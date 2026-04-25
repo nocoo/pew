@@ -13,6 +13,8 @@ import {
   type GetSeasonTeamSessionStatsRequest,
   type GetSeasonMemberSessionStatsRequest,
   type GetSeasonTeamMembersRequest,
+  type AggregateTeamTokensRequest,
+  type AggregateMemberTokensRequest,
 } from "./seasons";
 import type { D1Database, KVNamespace } from "@cloudflare/workers-types";
 
@@ -689,6 +691,168 @@ describe("seasons RPC handlers", () => {
       const response = await handleSeasonsRpc(request, db, kv);
 
       expect(response.status).toBe(400);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // seasons.aggregateTeamTokens
+  // -------------------------------------------------------------------------
+
+  describe("seasons.aggregateTeamTokens", () => {
+    it("should return team aggregate rows", async () => {
+      const rows = [
+        {
+          team_id: "t1",
+          total_tokens: 1000,
+          input_tokens: 600,
+          output_tokens: 400,
+          cached_input_tokens: 100,
+        },
+      ];
+      db.all.mockResolvedValue({ results: rows });
+      const req: AggregateTeamTokensRequest = {
+        method: "seasons.aggregateTeamTokens",
+        seasonId: "s1",
+        fromDate: "2026-01-01T00:00:00Z",
+        toDate: "2026-04-01T00:00:00Z",
+      };
+      const res = await handleSeasonsRpc(req, db, kv);
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ result: rows });
+      expect(db.bind).toHaveBeenCalledWith(
+        "2026-01-01T00:00:00Z",
+        "2026-04-01T00:00:00Z",
+        "s1",
+      );
+    });
+
+    it("should return empty array when no rows", async () => {
+      db.all.mockResolvedValue({ results: [] });
+      const req: AggregateTeamTokensRequest = {
+        method: "seasons.aggregateTeamTokens",
+        seasonId: "s1",
+        fromDate: "a",
+        toDate: "b",
+      };
+      expect(await (await handleSeasonsRpc(req, db, kv)).json()).toEqual({ result: [] });
+    });
+
+    it("should return 400 when seasonId missing", async () => {
+      const req = {
+        method: "seasons.aggregateTeamTokens",
+        seasonId: "",
+        fromDate: "a",
+        toDate: "b",
+      } as AggregateTeamTokensRequest;
+      expect((await handleSeasonsRpc(req, db, kv)).status).toBe(400);
+    });
+
+    it("should return 400 when fromDate missing", async () => {
+      const req = {
+        method: "seasons.aggregateTeamTokens",
+        seasonId: "s",
+        fromDate: "",
+        toDate: "b",
+      } as AggregateTeamTokensRequest;
+      expect((await handleSeasonsRpc(req, db, kv)).status).toBe(400);
+    });
+
+    it("should return 400 when toDate missing", async () => {
+      const req = {
+        method: "seasons.aggregateTeamTokens",
+        seasonId: "s",
+        fromDate: "a",
+        toDate: "",
+      } as AggregateTeamTokensRequest;
+      expect((await handleSeasonsRpc(req, db, kv)).status).toBe(400);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // seasons.aggregateMemberTokens
+  // -------------------------------------------------------------------------
+
+  describe("seasons.aggregateMemberTokens", () => {
+    it("should return member aggregate rows with placeholders matching teamIds", async () => {
+      const rows = [
+        {
+          team_id: "t1",
+          user_id: "u1",
+          total_tokens: 500,
+          input_tokens: 300,
+          output_tokens: 200,
+          cached_input_tokens: 50,
+        },
+      ];
+      db.all.mockResolvedValue({ results: rows });
+      const req: AggregateMemberTokensRequest = {
+        method: "seasons.aggregateMemberTokens",
+        seasonId: "s1",
+        fromDate: "a",
+        toDate: "b",
+        teamIds: ["t1", "t2"],
+      };
+      const res = await handleSeasonsRpc(req, db, kv);
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ result: rows });
+      // Verify placeholders count & bind order: fromDate, toDate, seasonId, ...teamIds
+      const sql = (db.prepare as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
+      expect(sql).toContain("IN (?,?)");
+      expect(db.bind).toHaveBeenCalledWith("a", "b", "s1", "t1", "t2");
+    });
+
+    it("should return 400 when teamIds is empty array", async () => {
+      const req: AggregateMemberTokensRequest = {
+        method: "seasons.aggregateMemberTokens",
+        seasonId: "s1",
+        fromDate: "a",
+        toDate: "b",
+        teamIds: [],
+      };
+      expect((await handleSeasonsRpc(req, db, kv)).status).toBe(400);
+    });
+
+    it("should return 400 when teamIds is undefined", async () => {
+      const req = {
+        method: "seasons.aggregateMemberTokens",
+        seasonId: "s1",
+        fromDate: "a",
+        toDate: "b",
+      } as unknown as AggregateMemberTokensRequest;
+      expect((await handleSeasonsRpc(req, db, kv)).status).toBe(400);
+    });
+
+    it("should return 400 when seasonId missing", async () => {
+      const req: AggregateMemberTokensRequest = {
+        method: "seasons.aggregateMemberTokens",
+        seasonId: "",
+        fromDate: "a",
+        toDate: "b",
+        teamIds: ["t1"],
+      };
+      expect((await handleSeasonsRpc(req, db, kv)).status).toBe(400);
+    });
+
+    it("should return 400 when fromDate missing", async () => {
+      const req: AggregateMemberTokensRequest = {
+        method: "seasons.aggregateMemberTokens",
+        seasonId: "s",
+        fromDate: "",
+        toDate: "b",
+        teamIds: ["t1"],
+      };
+      expect((await handleSeasonsRpc(req, db, kv)).status).toBe(400);
+    });
+
+    it("should return 400 when toDate missing", async () => {
+      const req: AggregateMemberTokensRequest = {
+        method: "seasons.aggregateMemberTokens",
+        seasonId: "s",
+        fromDate: "a",
+        toDate: "",
+        teamIds: ["t1"],
+      };
+      expect((await handleSeasonsRpc(req, db, kv)).status).toBe(400);
     });
   });
 
