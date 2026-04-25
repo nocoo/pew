@@ -238,4 +238,50 @@ describe("collectClaudeSessions", () => {
     expect(result[0].assistantMessages).toBe(1);
     expect(result[0].totalMessages).toBe(3);
   });
+
+  it("should treat non-string timestamp and non-string type as null (defensive coercion)", async () => {
+    const f = join(tmpDir, "non-string.jsonl");
+    const lines = [
+      JSON.stringify({
+        type: 42, // not a string
+        timestamp: 1772780000000, // not a string
+        sessionId: "ses-001",
+        message: { model: "claude-sonnet-4-20250514" },
+      }),
+      // A second line with a valid timestamp so the session is emitted
+      line({ timestamp: "2026-03-07T11:00:00.000Z" }),
+    ];
+    await writeFile(f, lines.join("\n") + "\n");
+
+    const result = await collectClaudeSessions(f);
+    expect(result).toHaveLength(1);
+    // First line: type was a number → NOT counted as user/assistant; only second line counts.
+    expect(result[0].userMessages).toBe(0);
+    expect(result[0].assistantMessages).toBe(1);
+    expect(result[0].totalMessages).toBe(2);
+    // Min/Max timestamps come from the valid line only.
+    expect(result[0].startedAt).toBe("2026-03-07T11:00:00.000Z");
+  });
+
+  it("should drop sessions whose lines never carry a valid timestamp", async () => {
+    const f = join(tmpDir, "no-ts.jsonl");
+    const lines = [
+      JSON.stringify({
+        type: "assistant",
+        sessionId: "ses-no-ts",
+        message: { model: "claude-sonnet-4-20250514" },
+      }),
+      JSON.stringify({
+        type: "user",
+        sessionId: "ses-no-ts",
+      }),
+      // A second session WITH a valid timestamp — should still be emitted.
+      line({ sessionId: "ses-with-ts" }),
+    ];
+    await writeFile(f, lines.join("\n") + "\n");
+
+    const result = await collectClaudeSessions(f);
+    expect(result).toHaveLength(1);
+    expect(result[0].sessionKey).toBe("claude:ses-with-ts");
+  });
 });

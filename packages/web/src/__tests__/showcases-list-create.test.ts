@@ -190,6 +190,48 @@ describe("GET /api/showcases", () => {
       expect(json.showcases[0].has_upvoted).toBe(true);
     });
 
+    it("defaults stars/forks/language/license/homepage to fallbacks when null and parses topics JSON when present", async () => {
+      mockResolveUser.mockResolvedValue(null);
+      const mockDb = createMockDbRead({
+        countShowcases: 1,
+        listShowcases: [
+          createMockShowcase({
+            stars: null as unknown as number,
+            forks: null as unknown as number,
+            language: null,
+            license: null,
+            homepage: null,
+            topics: '["typescript","react"]' as unknown as null,
+          }),
+        ],
+      });
+      mockGetDbRead.mockResolvedValue(mockDb as never);
+
+      const res = await GET(createGetRequest());
+      expect(res.status).toBe(200);
+      const json = await res.json();
+      expect(json.showcases[0].stars).toBe(0);
+      expect(json.showcases[0].forks).toBe(0);
+      expect(json.showcases[0].language).toBeNull();
+      expect(json.showcases[0].license).toBeNull();
+      expect(json.showcases[0].homepage).toBeNull();
+      expect(json.showcases[0].topics).toEqual(["typescript", "react"]);
+    });
+
+    it("returns 500 on non-Error throwable rejection (covers err instanceof Error false branch)", async () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+      mockResolveUser.mockResolvedValue(null);
+      const mockDb = {
+        countShowcases: vi.fn().mockRejectedValue("opaque failure"),
+        listShowcases: vi.fn(),
+      };
+      mockGetDbRead.mockResolvedValue(mockDb as never);
+
+      const res = await GET(createGetRequest());
+      expect(res.status).toBe(500);
+      consoleSpy.mockRestore();
+    });
+
     it("respects limit and offset params", async () => {
       mockResolveUser.mockResolvedValue(null);
       const mockDb = createMockDbRead({
