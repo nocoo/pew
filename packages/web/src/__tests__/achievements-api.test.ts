@@ -116,15 +116,19 @@ describe("GET /api/achievements", () => {
       expect(res.status).toBe(200);
       const body = await res.json();
 
-      expect(body.achievements).toBeDefined();
       expect(Array.isArray(body.achievements)).toBe(true);
       expect(body.achievements.length).toBe(25);
 
-      expect(body.summary).toBeDefined();
-      expect(body.summary.totalAchievements).toBe(25);
-      expect(typeof body.summary.totalUnlocked).toBe("number");
-      expect(typeof body.summary.diamondCount).toBe("number");
-      expect(typeof body.summary.currentStreak).toBe("number");
+      expect(body.summary).toMatchObject({
+        totalAchievements: 25,
+        totalUnlocked: expect.any(Number),
+        diamondCount: expect.any(Number),
+        currentStreak: expect.any(Number),
+      });
+      // diamondCount cannot exceed totalUnlocked, totalUnlocked cannot exceed total
+      expect(body.summary.diamondCount).toBeLessThanOrEqual(body.summary.totalUnlocked);
+      expect(body.summary.totalUnlocked).toBeLessThanOrEqual(body.summary.totalAchievements);
+      expect(body.summary.currentStreak).toBeGreaterThanOrEqual(0);
     });
 
     it("should return all achievement fields", async () => {
@@ -132,20 +136,32 @@ describe("GET /api/achievements", () => {
       const body = await res.json();
 
       const ach = body.achievements[0];
-      expect(ach.id).toBeDefined();
-      expect(ach.name).toBeDefined();
-      expect(ach.flavorText).toBeDefined();
-      expect(ach.icon).toBeDefined();
-      expect(ach.category).toBeDefined();
-      expect(ach.tier).toBeDefined();
+      // Strong: assert types AND domain constraints (not just presence)
+      expect(typeof ach.id).toBe("string");
+      expect(ach.id.length).toBeGreaterThan(0);
+      expect(typeof ach.name).toBe("string");
+      expect(ach.name.length).toBeGreaterThan(0);
+      expect(typeof ach.flavorText).toBe("string");
+      expect(typeof ach.icon).toBe("string");
+      expect(["volume", "consistency", "efficiency", "spending", "diversity", "sessions", "special"]).toContain(
+        ach.category,
+      );
+      expect(["locked", "bronze", "silver", "gold", "diamond"]).toContain(ach.tier);
       expect(typeof ach.currentValue).toBe("number");
       expect(ach.tiers).toHaveLength(4);
+      // tiers must be strictly increasing
+      for (let i = 1; i < ach.tiers.length; i++) {
+        expect(ach.tiers[i]).toBeGreaterThan(ach.tiers[i - 1]);
+      }
       expect(typeof ach.progress).toBe("number");
-      expect(ach.displayValue).toBeDefined();
-      expect(ach.displayThreshold).toBeDefined();
-      expect(ach.unit).toBeDefined();
+      expect(ach.progress).toBeGreaterThanOrEqual(0);
+      expect(ach.progress).toBeLessThanOrEqual(1);
+      expect(typeof ach.displayValue).toBe("string");
+      expect(typeof ach.displayThreshold).toBe("string");
+      expect(typeof ach.unit).toBe("string");
       expect(Array.isArray(ach.earnedBy)).toBe(true);
       expect(typeof ach.totalEarned).toBe("number");
+      expect(ach.totalEarned).toBeGreaterThanOrEqual(0);
     });
 
     it("should compute correct achievement tiers", async () => {
