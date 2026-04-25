@@ -271,20 +271,19 @@ function AuthCodeModal({
   const [copiedCode, setCopiedCode] = useState(false);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Reset state when modal closes
-  useEffect(() => {
+  // Reset state when modal closes — render-time update pattern.
+  // (The countdown interval is cleaned up by the useEffect below when
+  // authCodeExpiresAt becomes null.)
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
     if (!open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
       setAuthCode(null);
       setAuthCodeExpiresAt(null);
       setAuthCodeRemaining(0);
       setCopiedCode(false);
-      if (countdownRef.current) {
-        clearInterval(countdownRef.current);
-        countdownRef.current = null;
-      }
     }
-  }, [open]);
+  }
 
   // Countdown timer for auth code
   useEffect(() => {

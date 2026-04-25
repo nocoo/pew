@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import Image from "next/image";
 import {
   Plus,
@@ -374,43 +376,33 @@ function AssignBadgeDialog({
 }: AssignBadgeDialogProps) {
   const [selectedBadgeId, setSelectedBadgeId] = useState<string>("");
   const [userQuery, setUserQuery] = useState("");
-  const [userResults, setUserResults] = useState<UserSearchResult[]>([]);
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [selectedUser, setSelectedUser] = useState<UserSearchResult | null>(null);
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
-  const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const activeBadges = badges.filter((b) => b.is_archived === 0);
   const selectedBadge = badges.find((b) => b.id === selectedBadgeId);
 
-  // Search users
+  // Debounce the user query
   useEffect(() => {
-    if (userQuery.length < 2) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-      setUserResults([]);
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      setSearching(true);
-      try {
-        const res = await fetch(
-          `/api/admin/users?q=${encodeURIComponent(userQuery)}&limit=10`,
-        );
-        if (res.ok) {
-          const data = await res.json();
-          setUserResults(data.users ?? []);
-        }
-      } catch {
-        // ignore
-      } finally {
-        setSearching(false);
-      }
+    const timer = setTimeout(() => {
+      setDebouncedQuery(userQuery);
     }, 300);
-
     return () => clearTimeout(timer);
   }, [userQuery]);
+
+  // Search users via SWR
+  const { data: searchData, isLoading: searching } = useSWR<{
+    users: UserSearchResult[];
+  }>(
+    debouncedQuery.length >= 2
+      ? `/api/admin/users?q=${encodeURIComponent(debouncedQuery)}&limit=10`
+      : null,
+    fetcher
+  );
+  const userResults = searchData?.users ?? [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -540,7 +532,8 @@ function AssignBadgeDialog({
                         type="button"
                         onClick={() => {
                           setSelectedUser(user);
-                          setUserResults([]);
+                          setUserQuery("");
+                          setDebouncedQuery("");
                         }}
                         className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-secondary"
                       >
@@ -629,17 +622,18 @@ interface RevokeDialogProps {
 function RevokeDialog({ open, isActive, onClose, onConfirm }: RevokeDialogProps) {
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
+  const [prevOpen, setPrevOpen] = useState(open);
 
   const action = isActive ? "Revoke" : "Clear";
 
-  /* eslint-disable react-hooks/set-state-in-effect -- reset state when dialog closes */
-  useEffect(() => {
+  // Reset form state when dialog closes (render-time)
+  if (prevOpen !== open) {
+    setPrevOpen(open);
     if (!open) {
       setReason("");
       setLoading(false);
     }
-  }, [open]);
-  /* eslint-enable react-hooks/set-state-in-effect */
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -829,9 +823,6 @@ export default function AdminBadgesPage() {
   const { isAdmin, loading: adminLoading } = useAdmin();
 
   const [activeTab, setActiveTab] = useState<TabId>("definitions");
-  const [badges, setBadges] = useState<BadgeRow[]>([]);
-  const [assignments, setAssignments] = useState<BadgeAssignmentRow[]>([]);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [showCreateDialog, setShowCreateDialog] = useState(false);
@@ -846,54 +837,42 @@ export default function AdminBadgesPage() {
 
   const { confirm, dialogProps } = useConfirm();
 
-  // Load data
-  const loadBadges = useCallback(async () => {
-    try {
-      const res = await fetch("/api/admin/badges");
-      if (!res.ok) throw new Error("Failed to load badges");
-      const data = await res.json();
-      setBadges(data.badges ?? []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load badges");
-    }
-  }, []);
+  // SWR-backed data
+  const {
+    data: badgesData,
+    isLoading: badgesLoading,
+    mutate: mutateBadges,
+  } = useSWR<{ badges: BadgeRow[] }>(
+    isAdmin ? "/api/admin/badges" : null,
+    fetcher
+  );
+  const badges = badgesData?.badges ?? [];
 
-  const loadAssignments = useCallback(async () => {
-    try {
-      const statusParam = statusFilter === "all" ? "all" : statusFilter;
-      const res = await fetch(
-        `/api/admin/badges/assignments?status=${statusParam}&limit=100`,
-      );
-      if (!res.ok) throw new Error("Failed to load assignments");
-      const data = await res.json();
-      setAssignments(data.assignments ?? []);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load assignments",
-      );
-    }
-  }, [statusFilter]);
+  const statusParam = statusFilter === "all" ? "all" : statusFilter;
+  const {
+    data: assignmentsData,
+    isLoading: assignmentsLoading,
+    mutate: mutateAssignments,
+  } = useSWR<{ assignments: BadgeAssignmentRow[] }>(
+    isAdmin ? `/api/admin/badges/assignments?status=${statusParam}&limit=100` : null,
+    fetcher
+  );
+  const assignments = assignmentsData?.assignments ?? [];
+
+  const loading = badgesLoading || assignmentsLoading;
+
+  const loadBadges = useCallback(() => mutateBadges(), [mutateBadges]);
+  const loadAssignments = useCallback(
+    () => mutateAssignments(),
+    [mutateAssignments]
+  );
 
   useEffect(() => {
     if (adminLoading) return;
     if (!isAdmin) {
       router.push("/dashboard");
-      return;
     }
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-    setLoading(true);
-    Promise.all([loadBadges(), loadAssignments()]).finally(() =>
-      setLoading(false),
-    );
-  }, [isAdmin, adminLoading, router, loadBadges, loadAssignments]);
-
-  // Reload assignments when filter changes
-  useEffect(() => {
-    if (!isAdmin || loading) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-    loadAssignments();
-  }, [statusFilter, isAdmin, loading, loadAssignments]);
+  }, [isAdmin, adminLoading, router]);
 
   // Actions
   const handleArchive = async (badgeId: string) => {

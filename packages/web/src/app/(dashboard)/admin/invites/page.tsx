@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import { useRouter } from "next/navigation";
 import { Plus, Trash2, Copy, Check, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -21,6 +23,8 @@ type StatusFilter = "all" | "available";
 // ---------------------------------------------------------------------------
 // Skeleton
 // ---------------------------------------------------------------------------
+
+const EMPTY_ROWS: InviteCodeRow[] = [];
 
 function InvitesSkeleton() {
   return (
@@ -94,14 +98,41 @@ export default function AdminInvitesPage() {
   const router = useRouter();
   const { isAdmin, loading: adminLoading } = useAdmin();
 
-  const [rows, setRows] = useState<InviteCodeRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: rowsData,
+    error: rowsError,
+    isLoading: rowsLoading,
+    mutate: mutateRows,
+  } = useSWR<{ rows: InviteCodeRow[] }>(
+    isAdmin ? "/api/admin/invites" : null,
+    fetcher,
+  );
+  const rows = rowsData?.rows ?? EMPTY_ROWS;
+  const loading = isAdmin ? rowsLoading : false;
+  const error = rowsError
+    ? rowsError instanceof Error
+      ? rowsError.message
+      : "Failed to load."
+    : null;
   const [message, setMessage] = useState<MessageBannerMsg | null>(null);
 
-  // Require invite code toggle
+  // Require invite code toggle — backed by SWR, synced to local state for optimistic toggles.
+  const {
+    data: settingsData,
+    isLoading: settingsLoading,
+    mutate: mutateSettings,
+  } = useSWR<{ settings: Array<{ key: string; value: string }> }>(
+    isAdmin ? "/api/admin/settings" : null,
+    fetcher,
+  );
   const [requireInvite, setRequireInvite] = useState(true);
-  const [requireInviteLoading, setRequireInviteLoading] = useState(true);
+  const [syncedSettings, setSyncedSettings] = useState<typeof settingsData>(undefined);
+  if (settingsData && settingsData !== syncedSettings) {
+    setSyncedSettings(settingsData);
+    const setting = settingsData.settings.find((s) => s.key === "require_invite_code");
+    setRequireInvite(setting?.value !== "false");
+  }
+  const requireInviteLoading = isAdmin ? settingsLoading : false;
   const [togglingRequireInvite, setTogglingRequireInvite] = useState(false);
 
   // Filter
@@ -137,58 +168,12 @@ export default function AdminInvitesPage() {
   }, [adminLoading, isAdmin, router]);
 
   // ---------------------------------------------------------------------------
-  // Fetch rows
+  // Refetch helper (after mutations)
   // ---------------------------------------------------------------------------
 
-  const fetchRows = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/admin/invites");
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-      const json = (await res.json()) as { rows: InviteCodeRow[] };
-      setRows(json.rows);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-    if (isAdmin) fetchRows();
-  }, [isAdmin, fetchRows]);
-
-  // ---------------------------------------------------------------------------
-  // Fetch require_invite_code setting
-  // ---------------------------------------------------------------------------
-
-  const fetchRequireInvite = useCallback(async () => {
-    setRequireInviteLoading(true);
-    try {
-      const res = await fetch("/api/admin/settings");
-      if (res.ok) {
-        const json = (await res.json()) as {
-          settings: Array<{ key: string; value: string }>;
-        };
-        const setting = json.settings.find((s) => s.key === "require_invite_code");
-        setRequireInvite(setting?.value !== "false");
-      }
-    } catch {
-      // Silently fail, default to true
-    } finally {
-      setRequireInviteLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-    if (isAdmin) fetchRequireInvite();
-  }, [isAdmin, fetchRequireInvite]);
+  const fetchRows = useCallback(() => {
+    void mutateRows();
+  }, [mutateRows]);
 
   // ---------------------------------------------------------------------------
   // Toggle require_invite_code
@@ -217,6 +202,7 @@ export default function AdminInvitesPage() {
       }
 
       setRequireInvite(newValue);
+      void mutateSettings();
       setMessage({
         type: "success",
         text: newValue

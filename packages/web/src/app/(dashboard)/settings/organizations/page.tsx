@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useMemo, useState } from "react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import { Building2, Users, Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -34,50 +36,45 @@ interface OrgMember {
 // ---------------------------------------------------------------------------
 
 export default function OrganizationsPage() {
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [myOrgIds, setMyOrgIds] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: allData, error: allError, isLoading: allLoading, mutate: mutateAll } =
+    useSWR<{ organizations: Organization[] }>("/api/organizations", fetcher);
+  const { data: mineData, error: mineError, isLoading: mineLoading, mutate: mutateMine } =
+    useSWR<{ organizations: Organization[] }>("/api/organizations/mine", fetcher);
+
+  const [overrides, setOverrides] = useState<
+    Map<string, { joined: boolean; delta: number }>
+  >(new Map());
   const [pendingAction, setPendingAction] = useState<string | null>(null);
+
+  const baseMyOrgIds = useMemo(
+    () => new Set((mineData?.organizations ?? []).map((o) => o.id)),
+    [mineData],
+  );
+
+  const myOrgIds = useMemo(() => {
+    const set = new Set(baseMyOrgIds);
+    for (const [id, ov] of overrides) {
+      if (ov.joined) set.add(id);
+      else set.delete(id);
+    }
+    return set;
+  }, [baseMyOrgIds, overrides]);
+
+  const organizations = useMemo(() => {
+    const base = allData?.organizations ?? [];
+    return base.map((o) => {
+      const ov = overrides.get(o.id);
+      return ov ? { ...o, memberCount: Math.max(0, o.memberCount + ov.delta) } : o;
+    });
+  }, [allData, overrides]);
+
+  const loading = allLoading || mineLoading;
+  const error = allError || mineError ? "Failed to load organizations" : null;
 
   // Members modal state
   const [membersModalOrg, setMembersModalOrg] = useState<Organization | null>(null);
   const [members, setMembers] = useState<OrgMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
-
-  // ---------------------------------------------------------------------------
-  // Fetch organizations
-  // ---------------------------------------------------------------------------
-
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [allRes, mineRes] = await Promise.all([
-        fetch("/api/organizations"),
-        fetch("/api/organizations/mine"),
-      ]);
-
-      if (!allRes.ok || !mineRes.ok) {
-        setError("Failed to load organizations");
-        return;
-      }
-
-      const allData = await allRes.json();
-      const mineData = await mineRes.json();
-
-      setOrganizations(allData.organizations || []);
-      setMyOrgIds(new Set((mineData.organizations || []).map((o: { id: string }) => o.id)));
-    } catch {
-      setError("Failed to load organizations");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-    fetchData();
-  }, [fetchData]);
 
   // ---------------------------------------------------------------------------
   // Join / Leave
@@ -88,11 +85,13 @@ export default function OrganizationsPage() {
     try {
       const res = await fetch(`/api/organizations/${orgId}/join`, { method: "POST" });
       if (res.ok) {
-        setMyOrgIds((prev) => new Set([...prev, orgId]));
-        // Update member count
-        setOrganizations((prev) =>
-          prev.map((o) => (o.id === orgId ? { ...o, memberCount: o.memberCount + 1 } : o))
-        );
+        setOverrides((prev) => {
+          const next = new Map(prev);
+          next.set(orgId, { joined: true, delta: 1 });
+          return next;
+        });
+        void mutateAll();
+        void mutateMine();
       }
     } finally {
       setPendingAction(null);
@@ -104,15 +103,13 @@ export default function OrganizationsPage() {
     try {
       const res = await fetch(`/api/organizations/${orgId}/leave`, { method: "DELETE" });
       if (res.ok) {
-        setMyOrgIds((prev) => {
-          const next = new Set(prev);
-          next.delete(orgId);
+        setOverrides((prev) => {
+          const next = new Map(prev);
+          next.set(orgId, { joined: false, delta: -1 });
           return next;
         });
-        // Update member count
-        setOrganizations((prev) =>
-          prev.map((o) => (o.id === orgId ? { ...o, memberCount: Math.max(0, o.memberCount - 1) } : o))
-        );
+        void mutateAll();
+        void mutateMine();
       }
     } finally {
       setPendingAction(null);

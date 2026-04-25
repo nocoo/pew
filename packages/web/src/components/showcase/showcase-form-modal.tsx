@@ -91,16 +91,20 @@ export function ShowcaseFormModal({
     og_image_url: string;
   } | null>(null);
 
-  // Initialize form for edit mode
-  useEffect(() => {
+  // Initialize / reset form when open state changes. Runs during render via
+  // the "reset state on prop change" pattern rather than inside an effect.
+  const [prevOpen, setPrevOpen] = useState(open);
+  const [prevEditId, setPrevEditId] = useState<string | null>(editData?.id ?? null);
+  const currentEditId = editData?.id ?? null;
+  if (prevOpen !== open || prevEditId !== currentEditId) {
+    setPrevOpen(open);
+    setPrevEditId(currentEditId);
     if (editMode && editData && open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
       setGithubUrl(editData.github_url);
       setTagline(editData.tagline || "");
       setIsPublic(editData.is_public);
       setRefreshedData(null);
     } else if (!open) {
-      // Reset on close
       setGithubUrl("");
       setTagline("");
       setIsPublic(true);
@@ -108,7 +112,7 @@ export function ShowcaseFormModal({
       resetPreview();
       setRefreshedData(null);
     }
-  }, [editMode, editData, open, resetPreview]);
+  }
 
   // Invalidate preview when URL changes after successful preview (add mode only)
   useEffect(() => {

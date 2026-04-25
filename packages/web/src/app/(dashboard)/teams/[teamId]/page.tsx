@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import { useParams, useRouter } from "next/navigation";
 import {
   Users,
@@ -349,9 +351,13 @@ export default function TeamDetailPage() {
   const router = useRouter();
   const teamId = params.teamId;
 
-  const [team, setTeam] = useState<TeamDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: team, error: swrError, isLoading: loading, mutate: mutateTeam } =
+    useSWR<TeamDetail>(teamId ? `/api/teams/${teamId}` : null, fetcher);
+  const error = swrError
+    ? swrError instanceof Error
+      ? swrError.message
+      : "Failed to load team"
+    : null;
   const [message, setMessage] = useState<MessageBannerMsg | null>(null);
 
   // Profile dialog state
@@ -374,40 +380,24 @@ export default function TeamDetailPage() {
   const [savingName, setSavingName] = useState(false);
   const editInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-register state (for conditional rendering of season list)
+  // Auto-register: sync from SWR data using render-time update pattern.
   const [autoRegisterEnabled, setAutoRegisterEnabled] = useState(false);
+  const [prevTeamId, setPrevTeamId] = useState<string | null>(null);
+  const [prevAutoRegister, setPrevAutoRegister] = useState<boolean | null>(null);
+  if (team && (team.id !== prevTeamId || team.auto_register_season !== prevAutoRegister)) {
+    setPrevTeamId(team.id);
+    setPrevAutoRegister(team.auto_register_season);
+    setAutoRegisterEnabled(team.auto_register_season);
+  }
 
   const handleMemberClick = useCallback((member: TeamMember) => {
     setDialogMember(member);
     setDialogOpen(true);
   }, []);
 
-  const fetchTeam = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch(`/api/teams/${teamId}`);
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(
-          (body as { error?: string }).error ?? `HTTP ${res.status}`,
-        );
-      }
-      const data = (await res.json()) as TeamDetail;
-      setTeam(data);
-      setAutoRegisterEnabled(data.auto_register_season);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load team");
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-    fetchTeam();
-  }, [fetchTeam]);
+  const fetchTeam = useCallback(() => {
+    void mutateTeam();
+  }, [mutateTeam]);
 
   // -------------------------------------------------------------------------
   // Logo upload/remove (owner only)
