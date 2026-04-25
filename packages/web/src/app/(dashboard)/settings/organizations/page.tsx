@@ -90,8 +90,9 @@ export default function OrganizationsPage() {
           next.set(orgId, { joined: true, delta: 1 });
           return next;
         });
-        void mutateAll();
-        void mutateMine();
+        await mutateAll();
+        await mutateMine();
+        setOverrides(new Map());
       }
     } finally {
       setPendingAction(null);
@@ -108,8 +109,9 @@ export default function OrganizationsPage() {
           next.set(orgId, { joined: false, delta: -1 });
           return next;
         });
-        void mutateAll();
-        void mutateMine();
+        await mutateAll();
+        await mutateMine();
+        setOverrides(new Map());
       }
     } finally {
       setPendingAction(null);

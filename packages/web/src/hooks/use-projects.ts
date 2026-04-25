@@ -104,6 +104,7 @@ export function useProjects(options?: UseProjectsOptions): UseProjectsResult {
       name: string,
       aliases?: ProjectAliasInput[],
     ): Promise<Project | null> => {
+      setMutationError(null);
       try {
         const res = await fetch("/api/projects", {
           method: "POST",
@@ -133,6 +134,7 @@ export function useProjects(options?: UseProjectsOptions): UseProjectsResult {
         remove_tags?: string[];
       },
     ): Promise<Project | null> => {
+      setMutationError(null);
       try {
         const res = await fetch(`/api/projects/${id}`, {
           method: "PATCH",
@@ -153,6 +155,7 @@ export function useProjects(options?: UseProjectsOptions): UseProjectsResult {
 
   const deleteProject = useCallback(
     async (id: string): Promise<boolean> => {
+      setMutationError(null);
       try {
         const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
         if (!res.ok) await throwApiError(res);
