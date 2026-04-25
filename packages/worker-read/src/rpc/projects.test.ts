@@ -682,6 +682,95 @@ describe("projects RPC handlers", () => {
   });
 
   // -------------------------------------------------------------------------
+  // 400 validation matrix for handlers without explicit missing-param tests
+  // -------------------------------------------------------------------------
+
+  describe("400 validation matrix", () => {
+    it("projects.getAliasOwner: missing userId/source/projectRef returns 400", async () => {
+      for (const partial of [
+        { userId: "" },
+        { userId: "u1", source: "" },
+        { userId: "u1", source: "claude-code", projectRef: "" },
+      ]) {
+        const response = await handleProjectsRpc(
+          { method: "projects.getAliasOwner", ...partial } as never,
+          db,
+        );
+        expect(response.status).toBe(400);
+      }
+    });
+
+    it("projects.aliasAttachedToProject: missing any of 4 params returns 400", async () => {
+      for (const partial of [
+        { userId: "" },
+        { userId: "u1", projectId: "" },
+        { userId: "u1", projectId: "p1", source: "" },
+        { userId: "u1", projectId: "p1", source: "claude-code", projectRef: "" },
+      ]) {
+        const response = await handleProjectsRpc(
+          { method: "projects.aliasAttachedToProject", ...partial } as never,
+          db,
+        );
+        expect(response.status).toBe(400);
+      }
+    });
+
+    it("projects.tagExists: missing userId/projectId/tag returns 400", async () => {
+      for (const partial of [
+        { userId: "" },
+        { userId: "u1", projectId: "" },
+        { userId: "u1", projectId: "p1", tag: "" },
+      ]) {
+        const response = await handleProjectsRpc(
+          { method: "projects.tagExists", ...partial } as never,
+          db,
+        );
+        expect(response.status).toBe(400);
+      }
+    });
+
+    it("projects.getTagList: missing userId or projectId returns 400", async () => {
+      for (const partial of [
+        { userId: "" },
+        { userId: "u1", projectId: "" },
+      ]) {
+        const response = await handleProjectsRpc(
+          { method: "projects.getTagList", ...partial } as never,
+          db,
+        );
+        expect(response.status).toBe(400);
+      }
+    });
+
+    it("projects.getByNameExcluding: missing userId/name/excludeId returns 400", async () => {
+      for (const partial of [
+        { userId: "" },
+        { userId: "u1", name: "" },
+        { userId: "u1", name: "x", excludeId: "" },
+      ]) {
+        const response = await handleProjectsRpc(
+          { method: "projects.getByNameExcluding", ...partial } as never,
+          db,
+        );
+        expect(response.status).toBe(400);
+      }
+    });
+
+    it("projects.existsForUser: missing userId or projectId returns 400", async () => {
+      for (const partial of [
+        { userId: "" },
+        { userId: "u1", projectId: "" },
+      ]) {
+        const response = await handleProjectsRpc(
+          { method: "projects.existsForUser", ...partial } as never,
+          db,
+        );
+        expect(response.status).toBe(400);
+      }
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // Unknown method
   // -------------------------------------------------------------------------
 

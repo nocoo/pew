@@ -127,4 +127,40 @@ describe("collectCopilotCliSessions", () => {
     expect(result[0].assistantMessages).toBe(10);
     expect(result[0].totalMessages).toBe(20); // user + assistant per spec
   });
+
+  it("handles AI request line without a timestamp (falls back to firstTimestamp)", async () => {
+    const filePath = join(tempDir, "no-ts-request.log");
+    // First two lines have timestamps; the request line itself does NOT.
+    const content = [
+      "2026-04-11T11:00:00.000Z [INFO] Workspace initialized: 12345678-1234-5678-1234-123456789abc (checkpoints: 0)",
+      "2026-04-11T11:00:01.000Z [INFO] Using default model: gpt-4o",
+      "[INFO] --- Start of group: Sending request to the AI model ---", // no timestamp prefix
+      "", // also covers `if (!line) continue` early-skip
+    ].join("\n") + "\n";
+    await writeFile(filePath, content);
+
+    const result = await collectCopilotCliSessions(filePath);
+    expect(result).toHaveLength(1);
+    expect(result[0].userMessages).toBe(1);
+    // Without a request-line timestamp, lastMessageAt falls back to firstTimestamp.
+    expect(result[0].lastMessageAt).toBe("2026-04-11T11:00:00.000Z");
+    expect(result[0].durationSeconds).toBe(0);
+  });
+
+  it("keeps the first encountered timestamp even when later lines also have timestamps", async () => {
+    const filePath = join(tempDir, "multi-ts.log");
+    const content = [
+      "2026-04-11T10:00:00.000Z [INFO] some unrelated startup line",
+      "2026-04-11T11:00:00.000Z [INFO] Workspace initialized: 12345678-1234-5678-1234-123456789abc (checkpoints: 0)",
+      "2026-04-11T11:00:01.000Z [INFO] Using default model: gpt-4o",
+      "2026-04-11T11:00:02.000Z [INFO] --- Start of group: Sending request to the AI model ---",
+    ].join("\n") + "\n";
+    await writeFile(filePath, content);
+
+    const result = await collectCopilotCliSessions(filePath);
+    expect(result).toHaveLength(1);
+    // firstTimestamp is set on the very first timestamped line; subsequent lines
+    // hit the `timestamp && !firstTimestamp` short-circuit (false branch).
+    expect(result[0].startedAt).toBe("2026-04-11T10:00:00.000Z");
+  });
 });
