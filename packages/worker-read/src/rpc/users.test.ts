@@ -11,6 +11,12 @@ import {
   type GetUserApiKeyRequest,
   type GetUserEmailRequest,
   type SearchUsersRequest,
+  type GetUserSlugOnlyRequest,
+  type GetUserNicknameSlugRequest,
+  type CheckSharedTeamRequest,
+  type CheckSharedSeasonRequest,
+  type GetUserFirstSeenRequest,
+  type GetPublicUserBySlugOrIdRequest,
 } from "./users";
 
 // ---------------------------------------------------------------------------
@@ -534,6 +540,265 @@ describe("Users RPC handlers", () => {
       const response = await handleUsersRpc(request, db);
 
       expect(response.status).toBe(400);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // users.getSlugOnly
+  // -------------------------------------------------------------------------
+
+  describe("users.getSlugOnly", () => {
+    it("should return slug row when user exists", async () => {
+      db.bind.mockReturnValue({ first: vi.fn().mockResolvedValue({ slug: "alice" }) });
+      const req: GetUserSlugOnlyRequest = { method: "users.getSlugOnly", userId: "u1" };
+      const res = await handleUsersRpc(req, db);
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ result: { slug: "alice" } });
+      expect(db.prepare).toHaveBeenCalledWith("SELECT slug FROM users WHERE id = ?");
+    });
+
+    it("should return null when user not found", async () => {
+      db.bind.mockReturnValue({ first: vi.fn().mockResolvedValue(null) });
+      const req: GetUserSlugOnlyRequest = { method: "users.getSlugOnly", userId: "missing" };
+      const res = await handleUsersRpc(req, db);
+      expect(await res.json()).toEqual({ result: null });
+    });
+
+    it("should return 400 when userId missing", async () => {
+      const req = { method: "users.getSlugOnly", userId: "" } as GetUserSlugOnlyRequest;
+      const res = await handleUsersRpc(req, db);
+      expect(res.status).toBe(400);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // users.getNicknameSlug
+  // -------------------------------------------------------------------------
+
+  describe("users.getNicknameSlug", () => {
+    it("should return nickname/slug row", async () => {
+      const row = { nickname: "Ali", slug: "alice" };
+      db.bind.mockReturnValue({ first: vi.fn().mockResolvedValue(row) });
+      const req: GetUserNicknameSlugRequest = { method: "users.getNicknameSlug", userId: "u1" };
+      const res = await handleUsersRpc(req, db);
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ result: row });
+      expect(db.prepare).toHaveBeenCalledWith("SELECT nickname, slug FROM users WHERE id = ?");
+    });
+
+    it("should return null when missing", async () => {
+      db.bind.mockReturnValue({ first: vi.fn().mockResolvedValue(null) });
+      const req: GetUserNicknameSlugRequest = { method: "users.getNicknameSlug", userId: "x" };
+      expect(await (await handleUsersRpc(req, db)).json()).toEqual({ result: null });
+    });
+
+    it("should return 400 when userId missing", async () => {
+      const req = { method: "users.getNicknameSlug", userId: "" } as GetUserNicknameSlugRequest;
+      const res = await handleUsersRpc(req, db);
+      expect(res.status).toBe(400);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // users.checkSharedTeam
+  // -------------------------------------------------------------------------
+
+  describe("users.checkSharedTeam", () => {
+    it("should return shared:true when row exists", async () => {
+      db.bind.mockReturnValue({ first: vi.fn().mockResolvedValue({ team_id: "t1" }) });
+      const req: CheckSharedTeamRequest = {
+        method: "users.checkSharedTeam",
+        userId1: "a",
+        userId2: "b",
+      };
+      const res = await handleUsersRpc(req, db);
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ result: { shared: true } });
+      expect(db.bind).toHaveBeenCalledWith("a", "b");
+    });
+
+    it("should return shared:false when no row", async () => {
+      db.bind.mockReturnValue({ first: vi.fn().mockResolvedValue(null) });
+      const req: CheckSharedTeamRequest = {
+        method: "users.checkSharedTeam",
+        userId1: "a",
+        userId2: "b",
+      };
+      const res = await handleUsersRpc(req, db);
+      expect(await res.json()).toEqual({ result: { shared: false } });
+    });
+
+    it("should return 400 when userId1 missing", async () => {
+      const req = {
+        method: "users.checkSharedTeam",
+        userId1: "",
+        userId2: "b",
+      } as CheckSharedTeamRequest;
+      expect((await handleUsersRpc(req, db)).status).toBe(400);
+    });
+
+    it("should return 400 when userId2 missing", async () => {
+      const req = {
+        method: "users.checkSharedTeam",
+        userId1: "a",
+        userId2: "",
+      } as CheckSharedTeamRequest;
+      expect((await handleUsersRpc(req, db)).status).toBe(400);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // users.checkSharedSeason
+  // -------------------------------------------------------------------------
+
+  describe("users.checkSharedSeason", () => {
+    it("should return shared:true when row exists", async () => {
+      db.bind.mockReturnValue({ first: vi.fn().mockResolvedValue({ season_id: "s1" }) });
+      const req: CheckSharedSeasonRequest = {
+        method: "users.checkSharedSeason",
+        userId1: "a",
+        userId2: "b",
+      };
+      const res = await handleUsersRpc(req, db);
+      expect(await res.json()).toEqual({ result: { shared: true } });
+    });
+
+    it("should return shared:false when no row", async () => {
+      db.bind.mockReturnValue({ first: vi.fn().mockResolvedValue(null) });
+      const req: CheckSharedSeasonRequest = {
+        method: "users.checkSharedSeason",
+        userId1: "a",
+        userId2: "b",
+      };
+      expect(await (await handleUsersRpc(req, db)).json()).toEqual({ result: { shared: false } });
+    });
+
+    it("should return 400 when userId1 missing", async () => {
+      const req = {
+        method: "users.checkSharedSeason",
+        userId1: "",
+        userId2: "b",
+      } as CheckSharedSeasonRequest;
+      expect((await handleUsersRpc(req, db)).status).toBe(400);
+    });
+
+    it("should return 400 when userId2 missing", async () => {
+      const req = {
+        method: "users.checkSharedSeason",
+        userId1: "a",
+        userId2: "",
+      } as CheckSharedSeasonRequest;
+      expect((await handleUsersRpc(req, db)).status).toBe(400);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // users.getFirstSeen
+  // -------------------------------------------------------------------------
+
+  describe("users.getFirstSeen", () => {
+    it("should return ISO string when usage exists", async () => {
+      db.bind.mockReturnValue({
+        first: vi.fn().mockResolvedValue({ first_seen: "2026-01-15T00:00:00Z" }),
+      });
+      const req: GetUserFirstSeenRequest = { method: "users.getFirstSeen", userId: "u1" };
+      const res = await handleUsersRpc(req, db);
+      expect(await res.json()).toEqual({ result: "2026-01-15T00:00:00Z" });
+    });
+
+    it("should return null when no usage rows", async () => {
+      db.bind.mockReturnValue({ first: vi.fn().mockResolvedValue({ first_seen: null }) });
+      const req: GetUserFirstSeenRequest = { method: "users.getFirstSeen", userId: "u1" };
+      expect(await (await handleUsersRpc(req, db)).json()).toEqual({ result: null });
+    });
+
+    it("should return null when row itself is null", async () => {
+      db.bind.mockReturnValue({ first: vi.fn().mockResolvedValue(null) });
+      const req: GetUserFirstSeenRequest = { method: "users.getFirstSeen", userId: "u1" };
+      expect(await (await handleUsersRpc(req, db)).json()).toEqual({ result: null });
+    });
+
+    it("should return 400 when userId missing", async () => {
+      const req = { method: "users.getFirstSeen", userId: "" } as GetUserFirstSeenRequest;
+      expect((await handleUsersRpc(req, db)).status).toBe(400);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // users.getPublicBySlugOrId
+  // -------------------------------------------------------------------------
+
+  describe("users.getPublicBySlugOrId", () => {
+    it("should return user matched by slug (no fallback)", async () => {
+      const row = {
+        id: "u1",
+        name: "Alice",
+        nickname: "Ali",
+        image: null,
+        slug: "alice",
+        created_at: "2026-01-01T00:00:00Z",
+        is_public: 1,
+      };
+      const firstFn = vi.fn().mockResolvedValueOnce(row);
+      db.bind.mockReturnValue({ first: firstFn });
+      const req: GetPublicUserBySlugOrIdRequest = {
+        method: "users.getPublicBySlugOrId",
+        slugOrId: "alice",
+      };
+      const res = await handleUsersRpc(req, db);
+      expect(await res.json()).toEqual({ result: row });
+      // slug query only — no fallback to id query
+      expect(firstFn).toHaveBeenCalledTimes(1);
+    });
+
+    it("should fall back to id when slug not found", async () => {
+      const row = {
+        id: "u1",
+        name: "Alice",
+        nickname: null,
+        image: null,
+        slug: null,
+        created_at: "2026-01-01T00:00:00Z",
+        is_public: 0,
+      };
+      const firstFn = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(row);
+      db.bind.mockReturnValue({ first: firstFn });
+      const req: GetPublicUserBySlugOrIdRequest = {
+        method: "users.getPublicBySlugOrId",
+        slugOrId: "u1",
+      };
+      const res = await handleUsersRpc(req, db);
+      expect(await res.json()).toEqual({ result: row });
+      expect(firstFn).toHaveBeenCalledTimes(2);
+      // Both queries used
+      const calls = (db.prepare as ReturnType<typeof vi.fn>).mock.calls.map(
+        (c: unknown[]) => c[0],
+      );
+      expect(calls.some((s: unknown) => typeof s === "string" && s.includes("WHERE slug = ?"))).toBe(
+        true,
+      );
+      expect(calls.some((s: unknown) => typeof s === "string" && s.includes("WHERE id = ?"))).toBe(
+        true,
+      );
+    });
+
+    it("should return null when neither slug nor id match", async () => {
+      const firstFn = vi.fn().mockResolvedValue(null);
+      db.bind.mockReturnValue({ first: firstFn });
+      const req: GetPublicUserBySlugOrIdRequest = {
+        method: "users.getPublicBySlugOrId",
+        slugOrId: "none",
+      };
+      expect(await (await handleUsersRpc(req, db)).json()).toEqual({ result: null });
+      expect(firstFn).toHaveBeenCalledTimes(2);
+    });
+
+    it("should return 400 when slugOrId missing", async () => {
+      const req = {
+        method: "users.getPublicBySlugOrId",
+        slugOrId: "",
+      } as GetPublicUserBySlugOrIdRequest;
+      expect((await handleUsersRpc(req, db)).status).toBe(400);
     });
   });
 
