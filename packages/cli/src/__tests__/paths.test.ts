@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { join } from "node:path";
 import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { resolveDefaultPaths } from "../utils/paths.js";
 
 describe("resolveDefaultPaths", () => {
@@ -61,7 +61,6 @@ describe("resolveDefaultPaths", () => {
   });
 
   it("should use actual homedir when no argument passed", () => {
-    const { homedir } = require("node:os");
     const home = homedir();
     const paths = resolveDefaultPaths();
     expect(paths.stateDir).toBe(join(home, ".config", "pew"));
