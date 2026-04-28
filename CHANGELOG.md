@@ -1,5 +1,40 @@
 # Changelog
 
+## v2.20.10
+
+### Changed
+- Enable no-constant-binary-expression for tests
+- Enable no-require-imports for tests
+- Upgrade next to 16.2.4
+- Log runs 87-92 (branches 93.58→94.51)
+- Add 2 tests for /api/devices null-column defaults + non-string alias rejection
+- Add 8 tests: projects RPC 400-validation matrix + copilot-cli-session edge cases — branches 94.34→94.51
+- Add 4 tests for showcases route (null columns, non-Error rejection) + claude-session (non-string coercion, empty-timestamp sessions) — branches 94.20→94.34
+- Add 4 tests for usage-helpers default-argument paths and zero-day-total dominantShare — branches 94.14→94.20
+- Add 6 tests for admin/showcases (null defaults) + admin/seasons (flag-false branches, non-Error throw) — branches 93.90→94.14
+- Add 9 tests for leaderboard RPC: getUserTeams (untested), schema-fallback rethrow paths, non-Error throwables — branches 93.58→93.75
+- Strengthen 22 weak toBeDefined() assertions in achievements API tests to type+domain checks (category/tier enum, progress \u2208[0,1], tiers monotonic, summary invariants)
+- Export & test session-sync helpers (toQueueRecord, sourceKey): cover projectRef hash-fallback + all Source enum cases + exhaustiveness throw
+- Add 11 tests for seasons RPC: aggregateTeamTokens & aggregateMemberTokens (success + 400 matrix + bind-arg verification)
+- Add 18 tests for organizations RPC: listWithCount, getById/BySlug, checkMembership, listMembersAdmin, countMembers, listForUser 400
+- Add 25 tests for teams RPC: listAll, getSeasonRegistrations, schema fallback (getById/getMembers), 400 validation matrix
+- Add 22 tests for 6 untested users RPC handlers (getSlugOnly, getNicknameSlug, checkSharedTeam/Season, getFirstSeen, getPublicBySlugOrId)
+- Branches=91.62, stmts=96.93, funcs=97.01, lines=97.61, 3698 tests
+- Tighten achievements tests (secondary sort, currentStreak, SQL fingerprints)
+- Include worker-read RPC handlers in coverage scope
+- Deepen /api/achievements coverage (limit, tz, streak, SQL branches)
+- Cover /api/admin/check E2E bypass guard branches
+- Cover /api/live DB ping 3s timeout branch
+- Upgrade fast-xml-parser and pin postcss override
+- Bump eslint-plugin-react-hooks to 7.1.1
+
+### Fixed
+- Suppress react-hooks/set-state-in-effect for fetch effects
+- Upgrade fast-xml-parser to fix CVE GHSA-gh4j-gqv2-49f6
+
+### Removed
+- Enable no-unused-vars + scope no-dynamic-delete to inline disables
+
 ## v2.20.9
 
 ### Fixed
