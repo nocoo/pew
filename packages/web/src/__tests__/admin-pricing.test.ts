@@ -213,13 +213,13 @@ describe("POST /api/admin/pricing", () => {
       email: "a@test.com",
     });
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
-    mockDbRead.getModelPricingByModelSource.mockResolvedValueOnce({
+    mockDbWrite.batch.mockResolvedValueOnce([{ results: [{
       id: 1,
       model: "gpt-4o",
       input: 1,
       output: 2,
       cached: null,
-    });
+    }], meta: { changes: 0, duration: 0 } }]);
 
     const res = await POST(
       makeJson("POST", { model: "gpt-4o", input: 1, output: 2, cached: null }),
@@ -234,7 +234,7 @@ describe("POST /api/admin/pricing", () => {
       email: "a@test.com",
     });
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
-    mockDbRead.getModelPricingByModelSource.mockResolvedValueOnce({
+    mockDbWrite.batch.mockResolvedValueOnce([{ results: [{
       id: 1,
       model: "gpt-4o",
       input: 2.5,
@@ -242,7 +242,7 @@ describe("POST /api/admin/pricing", () => {
       cached: null,
       source: null,
       note: null,
-    });
+    }], meta: { changes: 0, duration: 0 } }]);
 
     const res = await POST(
       makeJson("POST", { model: "gpt-4o", input: 2.5, output: 10.0 }),
@@ -339,12 +339,12 @@ describe("PUT /api/admin/pricing", () => {
       email: "a@test.com",
     });
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
-    mockDbRead.getModelPricingById.mockResolvedValueOnce({
+    mockDbWrite.batch.mockResolvedValueOnce([{ results: [{
       id: 1,
       model: "gpt-4o",
       input: 2.5,
       output: 15,
-    });
+    }], meta: { changes: 0, duration: 0 } }]);
 
     const res = await PUT(makeJson("PUT", { id: 1, output: 15 }));
 
@@ -417,12 +417,12 @@ describe("PUT /api/admin/pricing", () => {
       email: "a@test.com",
     });
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
-    mockDbRead.getModelPricingById.mockResolvedValueOnce({
+    mockDbWrite.batch.mockResolvedValueOnce([{ results: [{
       id: 1,
       model: "gpt-4o",
       input: 5,
       output: 10,
-    });
+    }], meta: { changes: 0, duration: 0 } }]);
 
     const res = await PUT(makeJson("PUT", { id: 1, input: 5 }));
 
@@ -462,7 +462,7 @@ describe("PUT /api/admin/pricing", () => {
       email: "a@test.com",
     });
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
-    mockDbRead.getModelPricingById.mockResolvedValueOnce({ id: 1, cached: null });
+    mockDbWrite.batch.mockResolvedValueOnce([{ results: [{ id: 1, cached: null }], meta: { changes: 0, duration: 0 } }]);
 
     const res = await PUT(makeJson("PUT", { id: 1, cached: null }));
 
@@ -477,7 +477,7 @@ describe("PUT /api/admin/pricing", () => {
       email: "a@test.com",
     });
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
-    mockDbRead.getModelPricingById.mockResolvedValueOnce({ id: 1 });
+    mockDbWrite.batch.mockResolvedValueOnce([{ results: [{ id: 1 }], meta: { changes: 0, duration: 0 } }]);
 
     const res = await PUT(
       makeJson("PUT", { id: 1, source: "openai", note: "updated" }),

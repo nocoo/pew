@@ -122,7 +122,14 @@ export async function POST(request: Request) {
       [model.trim(), input, output, cached ?? null, source ?? null, note ?? null]
     );
 
-    const row = await dbRead.getModelPricingByModelSource(model.trim(), source ?? null);
+    // Read back from dbWrite (same D1 instance) to avoid replication lag
+    const readBackResults = await dbWrite.batch([
+      {
+        sql: "SELECT * FROM model_pricing WHERE model = ? AND (source = ? OR (source IS NULL AND ? IS NULL))",
+        params: [model.trim(), source ?? null, source ?? null],
+      },
+    ]);
+    const row = readBackResults[0]?.results[0] ?? null;
 
     await runWriteSideEffects(dbRead);
 
@@ -234,7 +241,11 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Entry not found" }, { status: 404 });
     }
 
-    const row = await dbRead.getModelPricingById(id);
+    // Read back from dbWrite (same D1 instance) to avoid replication lag
+    const readBackResults = await dbWrite.batch([
+      { sql: "SELECT * FROM model_pricing WHERE id = ?", params: [id] },
+    ]);
+    const row = readBackResults[0]?.results[0] ?? null;
 
     await runWriteSideEffects(dbRead);
 

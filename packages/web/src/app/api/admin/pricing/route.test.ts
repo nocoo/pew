@@ -48,7 +48,7 @@ describe("admin pricing CRUD side-effects", () => {
 
   it("POST → after successful insert runs invalidate + rebuild side-effects", async () => {
     dbWrite.execute.mockResolvedValueOnce({ changes: 1, lastInsertRowId: 1 });
-    dbRead.getModelPricingByModelSource.mockResolvedValueOnce(ROW as never);
+    dbWrite.batch.mockResolvedValueOnce([{ results: [ROW], meta: { changes: 0, duration: 0 } }]);
 
     const res = await POST(
       makeJsonRequest("POST", "/api/admin/pricing", {
@@ -74,7 +74,7 @@ describe("admin pricing CRUD side-effects", () => {
 
   it("POST → tolerates rebuild rejection (allSettled): still returns 201", async () => {
     dbWrite.execute.mockResolvedValueOnce({ changes: 1, lastInsertRowId: 1 });
-    dbRead.getModelPricingByModelSource.mockResolvedValueOnce(ROW as never);
+    dbWrite.batch.mockResolvedValueOnce([{ results: [ROW], meta: { changes: 0, duration: 0 } }]);
     dbRead.rebuildDynamicPricing.mockRejectedValueOnce(new Error("worker-read down"));
 
     const res = await POST(
@@ -92,7 +92,7 @@ describe("admin pricing CRUD side-effects", () => {
 
   it("PUT → after successful update runs invalidate + rebuild", async () => {
     dbWrite.execute.mockResolvedValueOnce({ changes: 1 });
-    dbRead.getModelPricingById.mockResolvedValueOnce(ROW as never);
+    dbWrite.batch.mockResolvedValueOnce([{ results: [ROW], meta: { changes: 0, duration: 0 } }]);
 
     const res = await PUT(
       makeJsonRequest("PUT", "/api/admin/pricing", { id: 1, input: 4 }),
