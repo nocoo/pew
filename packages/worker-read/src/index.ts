@@ -71,18 +71,25 @@ async function secureCompare(a: string, b: string): Promise<boolean> {
   const encoder = new TextEncoder();
   const bufA = encoder.encode(a);
   const bufB = encoder.encode(b);
-  if (bufA.byteLength !== bufB.byteLength) return false;
+  // Use the longer length so comparison time doesn't leak secret length.
+  const len = Math.max(bufA.byteLength, bufB.byteLength);
+  const paddedA = new Uint8Array(len);
+  const paddedB = new Uint8Array(len);
+  paddedA.set(bufA);
+  paddedB.set(bufB);
   // Cloudflare Workers expose crypto.subtle.timingSafeEqual; Node/Vitest does not.
   const subtle = crypto.subtle as SubtleCrypto & {
     timingSafeEqual?: (a: BufferSource, b: BufferSource) => boolean;
   };
   if (typeof subtle.timingSafeEqual === "function") {
-    return subtle.timingSafeEqual(bufA, bufB);
+    return (
+      bufA.byteLength === bufB.byteLength && subtle.timingSafeEqual(paddedA, paddedB)
+    );
   }
   // Fallback constant-time comparison (XOR every byte, accumulate diff bits).
-  let diff = 0;
-  for (let i = 0; i < bufA.byteLength; i++) {
-    diff |= (bufA[i] ?? 0) ^ (bufB[i] ?? 0);
+  let diff = bufA.byteLength ^ bufB.byteLength;
+  for (let i = 0; i < len; i++) {
+    diff |= (paddedA[i] ?? 0) ^ (paddedB[i] ?? 0);
   }
   return diff === 0;
 }
