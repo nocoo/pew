@@ -58,13 +58,20 @@ function shouldSkipForZeroPrice(
   return incomingZero && existingPositive;
 }
 
+function cloneEntry(entry: DynamicPricingEntry): DynamicPricingEntry {
+  return {
+    ...entry,
+    ...(entry.aliases ? { aliases: [...entry.aliases] } : {}),
+  };
+}
+
 function applyLayer(
   byModel: Map<string, DynamicPricingEntry>,
   layer: DynamicPricingEntry[]
 ): void {
   for (const entry of layer) {
     if (shouldSkipForZeroPrice(byModel.get(entry.model), entry)) continue;
-    byModel.set(entry.model, entry);
+    byModel.set(entry.model, cloneEntry(entry));
   }
 }
 
@@ -73,7 +80,9 @@ export function mergePricingSources(input: MergeInput): MergeResult {
   const byModel = new Map<string, DynamicPricingEntry>();
 
   // 1. baseline
-  for (const e of input.baseline) byModel.set(e.model, { ...e, origin: "baseline" });
+  for (const e of input.baseline) {
+    byModel.set(e.model, { ...cloneEntry(e), origin: "baseline" });
+  }
   // 2. openrouter
   applyLayer(byModel, input.openRouter);
   // 3. models.dev
@@ -85,7 +94,7 @@ export function mergePricingSources(input: MergeInput): MergeResult {
       const existing = byModel.get(row.model);
       const next: DynamicPricingEntry = existing
         ? {
-            ...existing,
+            ...cloneEntry(existing),
             inputPerMillion: row.input,
             outputPerMillion: row.output,
             cachedPerMillion: row.cached,

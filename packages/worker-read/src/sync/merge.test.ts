@@ -187,4 +187,27 @@ describe("mergePricingSources", () => {
     });
     expect(r1.entries.map((e) => e.model)).toEqual(r2.entries.map((e) => e.model));
   });
+
+  it("purity — repeated calls with same input do not mutate caller objects or duplicate aliases", () => {
+    const original = entry("anthropic/claude-sonnet-4", "openrouter", 3, 15);
+    const snapshot = JSON.parse(JSON.stringify(original));
+    const r1 = mergePricingSources({
+      baseline: [],
+      openRouter: [original],
+      modelsDev: [],
+      admin: [],
+      now: NOW,
+    });
+    const r2 = mergePricingSources({
+      baseline: [],
+      openRouter: [original],
+      modelsDev: [],
+      admin: [],
+      now: NOW,
+    });
+    expect(original).toEqual(snapshot);
+    expect(r1.entries[0].aliases).toEqual(["claude-sonnet-4"]);
+    expect(r2.entries[0].aliases).toEqual(["claude-sonnet-4"]);
+    expect(r1.entries[0]).not.toBe(original);
+  });
 });
