@@ -313,7 +313,7 @@ test("both reject → both errors logged with source tag")
 test("never throws — even when db.* throws synchronously")
 ```
 
-Mocks the `DbWorker` interface; no real RPC. The matrix exists so that future regressions in either degradation branch fail loudly.
+Mocks the `PricingMapDb` shape (the narrowed `Pick<DbRead, ...>` from the helper); no real RPC. The matrix exists so that future regressions in either degradation branch fail loudly.
 
 ### `route.test.ts` updates (api/pricing)
 
