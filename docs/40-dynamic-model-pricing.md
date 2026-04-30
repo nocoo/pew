@@ -1,6 +1,16 @@
 # 40 — Dynamic Model Pricing
 
-## Status: Draft (Review Round 2)
+## Status: Shipped — admin CRUD layer removed (2026-05)
+
+> **Historical note.** This document captures the original design that
+> introduced the dynamic pipeline (baseline + OpenRouter + models.dev →
+> KV `pricing:dynamic`) **alongside** the legacy admin-CRUD
+> `model_pricing` table and `pricing:all` cache. The admin layer
+> (`/admin/pricing`, `/api/admin/pricing*`, `pricing.listModelPricing`,
+> worker-read `admin-loader`, `origin: "admin"`) was removed in May
+> 2026 — see migration `021-drop-model-pricing.sql`. The remaining
+> source of truth is the dynamic dataset; admin operators view it via
+> `/admin/model-prices` and trigger refreshes via "Force sync now".
 
 ## Background
 

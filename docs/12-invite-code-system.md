@@ -362,7 +362,7 @@ atomically in the `signIn` callback.
 
 ### Admin Page: `/admin/invites`
 
-Follows the established pattern from `/admin/pricing`:
+Follows the established pattern from `/admin/model-prices`:
 
 - **Header**: Title "Invite Codes" + "Generate Codes" button.
 - **Generate dialog**: Number input (1-20) in a collapsible card.

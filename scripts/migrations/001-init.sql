@@ -100,23 +100,6 @@ CREATE INDEX IF NOT EXISTS idx_session_user_time           ON session_records(us
 CREATE INDEX IF NOT EXISTS idx_session_user_source_project ON session_records(user_id, source, project_ref);
 
 -- ============================================================
--- Model pricing (admin-managed)
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS model_pricing (
-  id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  model      TEXT    NOT NULL,
-  input      REAL    NOT NULL,
-  output     REAL    NOT NULL,
-  cached     REAL,
-  source     TEXT,
-  note       TEXT,
-  updated_at TEXT    NOT NULL DEFAULT (datetime('now')),
-  created_at TEXT    NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(model, source)
-);
-
--- ============================================================
 -- Invite codes (single-use registration gate)
 -- ============================================================
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+### Removed
+- Drop legacy `model_pricing` D1 table, admin CRUD UI/API (`/admin/pricing`, `/api/admin/pricing*`), worker-read admin-loader + `pricing.listModelPricing` / `pricing.getModelPricingByModelSource` RPCs, `origin: "admin"` pricing layer, and `pricing:all` KV cache (migration 021). Dynamic pricing pipeline (baseline + OpenRouter + models.dev → `pricing:dynamic`) is the sole source of truth.
+
 ## v2.22.0
 
 ### Added

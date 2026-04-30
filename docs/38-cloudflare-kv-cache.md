@@ -2,6 +2,14 @@
 
 > Add edge caching to worker-read via Cloudflare KV, reducing D1 query load
 > for frequently-accessed, slowly-changing, **identity-independent** data.
+>
+> **Historical note (2026-05):** All references below to
+> `pricing.listModelPricing` / `pricing:all` / `model_pricing` describe the
+> legacy admin-CRUD pricing path that was removed in migration 021 (see
+> `docs/40-dynamic-model-pricing.md`). The active pricing cache is now
+> `pricing:dynamic` populated by the worker-read sync orchestrator from
+> baseline + OpenRouter + models.dev. Treat the table-4/admin-pricing rows
+> as historical context only.
 
 ## Status
 
