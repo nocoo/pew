@@ -205,13 +205,15 @@ describe("pricing", () => {
       expect(map.models["my-custom-model"]).toEqual({ input: 7, output: 30, cached: 0.7 });
     });
 
-    it("should override source defaults when row has source", () => {
+    it("should scope source-tagged admin rows to (source, model) only", () => {
       const row = makeDbRow({ model: "custom-claude", source: "claude-code", input: 5, output: 25, cached: 0.5 });
       const map = buildPricingMap({ dynamic: [], dbRows: [row] });
 
-      expect(map.sourceDefaults["claude-code"]).toEqual({ input: 5, output: 25, cached: 0.5 });
-      // Should also be added as exact model entry
-      expect(map.models["custom-claude"]).toEqual({ input: 5, output: 25, cached: 0.5 });
+      // Lives only under sourceModels[source][model] — not in models[] and not
+      // in sourceDefaults[source] (which remains the model-agnostic fallback).
+      expect(map.sourceModels?.["claude-code"]?.["custom-claude"]).toEqual({ input: 5, output: 25, cached: 0.5 });
+      expect(map.models["custom-claude"]).toBeUndefined();
+      expect(map.sourceDefaults["claude-code"]).toEqual(DEFAULT_SOURCE_DEFAULTS["claude-code"]);
     });
 
     it("should omit cached from pricing when DB cached is null", () => {
@@ -339,6 +341,93 @@ describe("pricing", () => {
 
       const p = lookupPricing(map, "o3");
       expect(p).toEqual({ input: 99, output: 199, cached: 9.9 });
+    });
+
+    // -----------------------------------------------------------------------
+    // (source, model) admin override semantics — N3 tightening (#5).
+    // -----------------------------------------------------------------------
+
+    it("(source, model) admin override beats global models[] when source matches", () => {
+      const map = buildPricingMap({
+        dynamic: [
+          {
+            model: "gpt-4o",
+            provider: "OpenAI",
+            displayName: "GPT-4o",
+            inputPerMillion: 2.5,
+            outputPerMillion: 10,
+            cachedPerMillion: 1.25,
+            contextWindow: 128000,
+            origin: "baseline",
+            updatedAt: "2026-04-30T00:00:00.000Z",
+          },
+        ],
+        dbRows: [
+          {
+            id: 1,
+            model: "gpt-4o",
+            input: 7,
+            output: 21,
+            cached: 1.5,
+            source: "codex",
+            note: null,
+            updated_at: "2026-01-01T00:00:00Z",
+            created_at: "2026-01-01T00:00:00Z",
+          },
+        ],
+      });
+      // codex source → scoped override wins.
+      expect(lookupPricing(map, "gpt-4o", "codex")).toEqual({ input: 7, output: 21, cached: 1.5 });
+      // Other source / no source → still the dynamic baseline.
+      expect(lookupPricing(map, "gpt-4o", "claude-code")).toEqual({ input: 2.5, output: 10, cached: 1.25 });
+      expect(lookupPricing(map, "gpt-4o")).toEqual({ input: 2.5, output: 10, cached: 1.25 });
+    });
+
+    it("(source, model) admin override does not bleed into other sources or sourceDefaults", () => {
+      const map = buildPricingMap({
+        dynamic: [],
+        dbRows: [
+          {
+            id: 1,
+            model: "custom-claude",
+            input: 5,
+            output: 25,
+            cached: 0.5,
+            source: "claude-code",
+            note: null,
+            updated_at: "2026-01-01T00:00:00Z",
+            created_at: "2026-01-01T00:00:00Z",
+          },
+        ],
+      });
+      // Same model under a different source → falls through to source default + prefix + fallback.
+      const otherSource = lookupPricing(map, "custom-claude", "codex");
+      expect(otherSource).toEqual(DEFAULT_SOURCE_DEFAULTS["codex"]);
+      // No source → fallback (no prefix match for "custom-claude").
+      expect(lookupPricing(map, "custom-claude")).toEqual(DEFAULT_FALLBACK);
+    });
+
+    it("source-less admin row still acts as a global model override (unchanged)", () => {
+      const map = buildPricingMap({
+        dynamic: [],
+        dbRows: [
+          {
+            id: 1,
+            model: "gpt-4o",
+            input: 99,
+            output: 199,
+            cached: 9.9,
+            source: null,
+            note: null,
+            updated_at: "2026-01-01T00:00:00Z",
+            created_at: "2026-01-01T00:00:00Z",
+          },
+        ],
+      });
+      // Any source (or none) sees the global override.
+      expect(lookupPricing(map, "gpt-4o")).toEqual({ input: 99, output: 199, cached: 9.9 });
+      expect(lookupPricing(map, "gpt-4o", "codex")).toEqual({ input: 99, output: 199, cached: 9.9 });
+      expect(lookupPricing(map, "gpt-4o", "claude-code")).toEqual({ input: 99, output: 199, cached: 9.9 });
     });
   });
 });

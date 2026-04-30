@@ -71,6 +71,12 @@ export interface DbPricingRow {
 /** Serialisable pricing map sent to clients via /api/pricing */
 export interface PricingMap {
   models: Record<string, ModelPricing>;
+  /**
+   * Per-(source, model) overrides from admin rows whose `source != null`.
+   * Beats `models[model]` only when the lookup carries a matching source.
+   * Optional on the wire for backward compatibility with older clients.
+   */
+  sourceModels?: Record<string, Record<string, ModelPricing>>;
   prefixes: Array<{ prefix: string; pricing: ModelPricing }>;
   sourceDefaults: Record<string, ModelPricing>;
   fallback: ModelPricing;
@@ -126,6 +132,7 @@ export const DEFAULT_FALLBACK: ModelPricing = { input: 3, output: 15, cached: 0.
 export function getDefaultPricingMap(): PricingMap {
   return {
     models: {},
+    sourceModels: {},
     prefixes: [...DEFAULT_PREFIX_PRICES],
     sourceDefaults: { ...DEFAULT_SOURCE_DEFAULTS },
     fallback: DEFAULT_FALLBACK,
@@ -140,12 +147,18 @@ export interface BuildPricingMapInput {
 /**
  * Project the dynamic dataset + admin DB rows into a PricingMap.
  *
- * Layering (later wins):
+ * Layering (later wins, evaluated by `lookupPricing`):
  *   1. dynamic entries (already merged baseline → openrouter → models.dev → admin
  *      in the worker-read sync layer); aliases share the same pricing pointer.
+ *      All written into `models[model]`.
  *   2. admin DB rows (`model_pricing`):
- *        - row.source != null → write sourceDefaults[source] AND models[model]
- *        - row.source == null → write models[model]
+ *        - row.source == null → write `models[model]` (global model override)
+ *        - row.source != null → write `sourceModels[source][model]` ONLY
+ *          (scoped override; does NOT pollute the global `models[model]` table
+ *          and does NOT redefine the model-agnostic `sourceDefaults[source]`
+ *          fallback). This gives admins a precise "this source uses a different
+ *          price for this model" knob without leaking into other sources or
+ *          into source-less lookups.
  */
 export function buildPricingMap({
   dynamic,
@@ -153,6 +166,7 @@ export function buildPricingMap({
 }: BuildPricingMapInput): PricingMap {
   const map: PricingMap = {
     models: {},
+    sourceModels: {},
     prefixes: [...DEFAULT_PREFIX_PRICES],
     sourceDefaults: { ...DEFAULT_SOURCE_DEFAULTS },
     fallback: DEFAULT_FALLBACK,
@@ -182,10 +196,16 @@ export function buildPricingMap({
     };
 
     if (row.source) {
-      map.sourceDefaults[row.source] = pricing;
+      // Source-scoped override: store under (source, model) only. Do NOT mutate
+      // map.models[row.model] (would leak the price into source-less lookups
+      // and into other sources) and do NOT mutate sourceDefaults[row.source]
+      // (that table is the model-agnostic fallback per source).
+      if (!map.sourceModels) map.sourceModels = {};
+      const bucket = (map.sourceModels[row.source] ??= {});
+      bucket[row.model] = pricing;
+    } else {
+      map.models[row.model] = pricing;
     }
-
-    map.models[row.model] = pricing;
   }
 
   return map;
@@ -197,13 +217,31 @@ export function buildPricingMap({
 
 /**
  * Look up pricing for a model from a PricingMap.
- * Tries exact match → prefix → source default → fallback.
+ *
+ * Resolution order (first hit wins):
+ *   1. (source, model) override from `sourceModels[source][model]` (admin row
+ *      with non-null source and matching model).
+ *   2. exact match in `models[model]` (dynamic dataset or admin row with
+ *      `source == null`).
+ *   3. prefix match against `prefixes`.
+ *   4. source default `sourceDefaults[source]` (model-agnostic per source).
+ *   5. global `fallback`.
+ *
+ * Note: source-scoped admin overrides (#1) are deliberately checked BEFORE the
+ * global exact-match (#2) so they can override even a globally-priced model.
  */
 export function lookupPricing(
   pricingMap: PricingMap,
   model: string,
   source?: string
 ): ModelPricing {
+  // Source-scoped admin override (highest priority when both keys match)
+  if (source) {
+    const sourceBucket = pricingMap.sourceModels?.[source];
+    const scoped = sourceBucket?.[model];
+    if (scoped) return scoped;
+  }
+
   // Exact match
   const exact = pricingMap.models[model];
   if (exact) return exact;
@@ -215,7 +253,7 @@ export function lookupPricing(
   );
   if (prefixMatch) return prefixMatch.pricing;
 
-  // Source default
+  // Source default (model-agnostic)
   if (source) {
     const srcDefault = pricingMap.sourceDefaults[source];
     if (srcDefault) return srcDefault;

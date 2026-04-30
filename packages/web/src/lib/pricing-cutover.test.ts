@@ -9,8 +9,9 @@
  *      yields the same {input, output, cached} pricing when the new
  *      buildPricingMap is fed the baseline regression-floor JSON.
  *   2. Admin DB rows still win over dynamic entries for the same model.
- *   3. Source-tagged admin rows still write both sourceDefaults[source]
- *      and models[model].
+ *   3. Source-tagged admin rows scope to (source, model) only — they do NOT
+ *      pollute the global `models[model]` table or the model-agnostic
+ *      `sourceDefaults[source]` fallback (semantics tightened in N3).
  *   4. Aliases share the same pricing pointer as their canonical entry.
  *   5. Empty inputs return only the safety net (no exact-match table).
  *
@@ -97,7 +98,7 @@ describe("pricing cutover (C5)", () => {
     });
   });
 
-  it("admin row with source='codex' writes both sourceDefaults['codex'] and models[model]", () => {
+  it("admin row with source='codex' is scoped — it does not bleed into models[] or sourceDefaults[]", () => {
     const map = buildPricingMap({
       dynamic,
       dbRows: [
@@ -110,16 +111,17 @@ describe("pricing cutover (C5)", () => {
         }),
       ],
     });
-    expect(map.sourceDefaults["codex"]).toEqual({
+    // Scoped override lives in sourceModels, NOT in sourceDefaults or models[].
+    expect(map.sourceModels?.["codex"]?.["gpt-4o"]).toEqual({
       input: 7,
       output: 21,
       cached: 1.5,
     });
-    expect(map.models["gpt-4o"]).toEqual({
-      input: 7,
-      output: 21,
-      cached: 1.5,
-    });
+    // sourceDefaults still holds the static safety-net for codex (untouched by
+    // a (source, model) row — that table is the model-agnostic fallback).
+    expect(map.sourceDefaults["codex"]).toEqual(DEFAULT_SOURCE_DEFAULTS["codex"]);
+    // models["gpt-4o"] keeps the dynamic baseline (no leakage from the codex row).
+    expect(map.models["gpt-4o"]).not.toEqual({ input: 7, output: 21, cached: 1.5 });
   });
 
   it("aliases resolve to the canonical entry's pricing pointer", () => {
