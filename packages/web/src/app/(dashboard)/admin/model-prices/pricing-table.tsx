@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DynamicPricingEntryDto } from "@/lib/rpc-types";
 import {
@@ -85,39 +85,44 @@ export function PricingTable({ entries }: Props) {
     );
   }
 
-  const selectClass =
-    "rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow";
-
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 items-center">
         <input
           type="search"
           value={filter}
           onChange={(e) => { setFilter(e.target.value); resetPage(); }}
           placeholder="Filter by model, display name, or provider…"
-          className={cn("w-full max-w-sm placeholder:text-muted-foreground/50", selectClass)}
+          className="w-full max-w-sm rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
         />
-        <select
-          value={provider}
-          onChange={(e) => { setProvider(e.target.value); resetPage(); }}
-          className={selectClass}
-        >
-          <option value="">All Providers</option>
-          {providers.map((p) => (
-            <option key={p} value={p}>{p}</option>
-          ))}
-        </select>
-        <select
-          value={origin}
-          onChange={(e) => { setOrigin(e.target.value); resetPage(); }}
-          className={selectClass}
-        >
-          <option value="">All Origins</option>
-          {KNOWN_ORIGINS.map((o) => (
-            <option key={o} value={o}>{o}</option>
-          ))}
-        </select>
+        <div className="relative flex items-center rounded-lg bg-secondary p-1">
+          <span className="pl-2 pr-1 text-xs text-muted-foreground select-none">Provider:</span>
+          <select
+            value={provider}
+            onChange={(e) => { setProvider(e.target.value); resetPage(); }}
+            className="appearance-none rounded-md bg-transparent pl-2 pr-6 py-1.5 text-xs font-medium text-foreground outline-none cursor-pointer"
+          >
+            <option value="">All</option>
+            {providers.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" strokeWidth={2} />
+        </div>
+        <div className="relative flex items-center rounded-lg bg-secondary p-1">
+          <span className="pl-2 pr-1 text-xs text-muted-foreground select-none">Origin:</span>
+          <select
+            value={origin}
+            onChange={(e) => { setOrigin(e.target.value); resetPage(); }}
+            className="appearance-none rounded-md bg-transparent pl-2 pr-6 py-1.5 text-xs font-medium text-foreground outline-none cursor-pointer"
+          >
+            <option value="">All</option>
+            {KNOWN_ORIGINS.map((o) => (
+              <option key={o} value={o}>{o}</option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" strokeWidth={2} />
+        </div>
       </div>
 
       <div className="rounded-xl bg-secondary p-1 overflow-x-auto">

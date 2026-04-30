@@ -1,11 +1,13 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { DynamicPricingMetaDto } from "@/lib/rpc-types";
 
 interface Props {
   meta: DynamicPricingMetaDto | null;
   servedFrom: "kv" | "baseline";
+  children?: ReactNode;
 }
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -27,7 +29,7 @@ function staleness(iso: string): "fresh" | "stale" | "danger" {
   return "fresh";
 }
 
-export function PricingMetaBanner({ meta, servedFrom }: Props) {
+export function PricingMetaBanner({ meta, servedFrom, children }: Props) {
   if (!meta) {
     return (
       <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
@@ -58,6 +60,7 @@ export function PricingMetaBanner({ meta, servedFrom }: Props) {
           <span className="rounded-full bg-accent px-2 py-0.5">models.dev {meta.modelsDevCount}</span>
           <span className="rounded-full bg-accent px-2 py-0.5">admin {meta.adminOverrideCount}</span>
         </div>
+        {children && <div className="ml-auto flex flex-wrap items-center gap-2">{children}</div>}
       </div>
 
       {servedFrom === "baseline" && (
