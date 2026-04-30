@@ -12,7 +12,8 @@
  * - Client pages fetch the merged map from `/api/pricing` and pass it to
  *   `lookupPricing()` for per-model resolution.
  *
- * Matching strategy: exact model ID → prefix match → source default → fallback.
+ * Matching strategy (first hit wins): (source, model) admin override →
+ * exact model ID → prefix match → source default → fallback.
  *
  * Client-safe: this module must not import any server-only code so client
  * bundles (e.g. use-pricing.ts → getDefaultPricingMap) stay free of db-worker.
