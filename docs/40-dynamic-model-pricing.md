@@ -1,6 +1,6 @@
 # 40 — Dynamic Model Pricing
 
-## Status: Draft
+## Status: Draft (Review Round 2)
 
 ## Background
 
@@ -14,48 +14,58 @@ Reference implementation: **manifest** project fetches from OpenRouter API + mod
 ## Goals
 
 1. **Dashboard Model Prices page** — sortable, filterable table showing all known model prices with last-updated timestamp.
-2. **Automated daily sync** — fetch pricing from external APIs on worker startup + daily cron, store in KV.
-3. **Unified cost calculation** — replace all hardcoded pricing lookups with a single function that resolves from KV-backed dynamic pricing.
+2. **Automated daily sync** — fetch pricing from external APIs on a Cloudflare Cron Trigger, store in KV.
+3. **Unified cost calculation** — replace the hardcoded `DEFAULT_MODEL_PRICES` exact-match table with a KV-backed dynamic dataset; keep the existing prefix/source/fallback safety net.
 
 ## Architecture
 
 ### Pricing Data Lifecycle
 
 ```
-  ┌── One-time (implementation) ──────────────────────────┐
-  │  bun run sync-prices                                  │
+  ┌── One-time / on-demand (developer) ───────────────────┐
+  │  bun run sync-prices  (root script)                   │
   │  Fetch OpenRouter + models.dev → merge → write        │
   │  packages/worker-read/src/data/model-prices.json      │
-  │  (checked into git as the static baseline)            │
+  │  (checked into git as the bundled baseline)           │
   └───────────────────────────────────────────────────────┘
 
-  ┌── Runtime (daily) ────────────────────────────────────┐
-  │  worker-read startup / cron trigger                   │
-  │  1. Load model-prices.json as immediate default       │
-  │  2. Async fetch OpenRouter + models.dev               │
+  ┌── Runtime (Cloudflare Worker) ────────────────────────┐
+  │  scheduled() handler (cron: "0 3 * * *")              │
+  │  1. Async fetch OpenRouter + models.dev               │
+  │  2. Read admin override rows from D1                  │
   │  3. Merge: baseline → OpenRouter → models.dev → admin │
   │  4. Write merged result to KV "pricing:dynamic"       │
+  │  5. Write meta to KV "pricing:dynamic:meta"           │
+  │                                                       │
+  │  fetch() handler — read-only:                         │
+  │  - Returns KV data; on KV miss returns bundled        │
+  │    baseline JSON (zero-latency cold start).           │
+  │  - NEVER calls external APIs from the request path.   │
   └───────────────────────────────────────────────────────┘
 ```
+
+> **Workers note:** Cloudflare Workers have no "startup" hook. Sync runs only on `scheduled` (cron) or via an admin-triggered RPC that hits the same sync function. Cold-start safety comes from the bundled JSON, not from in-handler fetching.
 
 ### Request Flow
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │  KV namespace: CACHE                                    │
-│  Key: "pricing:dynamic"                                 │
-│  Value: JSON array of DynamicPricingEntry[]             │
-│  TTL: 86400 (24h, refreshed daily)                      │
+│  Key:  "pricing:dynamic"       Value: DynamicPricingEntry[]
+│  Key:  "pricing:dynamic:meta"  Value: DynamicPricingMeta
+│  TTL:  none (long-lived) — staleness judged by meta.lastSyncedAt
 │                                                         │
 │  Fallback (KV empty): model-prices.json bundled in      │
 │  worker-read at deploy time                             │
 └────────────────┬────────────────────────────────────────┘
                  │ RPC: pricing.getDynamicPricing
+                 │ RPC: pricing.getDynamicPricingMeta
                  ▼
 ┌─────────────────────────────────────────────────────────┐
-│  Next.js API: GET /api/pricing                          │
-│  • Returns full DynamicPricingEntry[] for table page    │
-│  • Returns PricingMap for cost calculation              │
+│  Next.js API:                                           │
+│  • GET /api/pricing         → PricingMap (compat path)  │
+│  • GET /api/pricing/models  → DynamicPricingEntry[] +   │
+│                                meta (for table page)    │
 └────────────────┬────────────────────────────────────────┘
                  │
         ┌────────┴────────┐
@@ -67,13 +77,15 @@ Reference implementation: **manifest** project fetches from OpenRouter API + mod
 └──────────────┘  └──────────────────────────┘
 ```
 
-### Pricing Resolution Order (startup)
+### Pricing Resolution Order (read path)
 
-1. **Immediate** — load `model-prices.json` (bundled with worker deploy, always available)
-2. **Async overlay** — fetch OpenRouter + models.dev → merge → overwrite KV
-3. **Admin overlay** — DB overrides applied on top (highest priority)
+1. **KV `pricing:dynamic`** (populated by latest sync)
+2. **Bundled `model-prices.json`** (deploy-time baseline; used when KV is empty)
+3. **`DEFAULT_PREFIX_PRICES`** (existing prefix table — kept for dated-suffix matching)
+4. **`DEFAULT_SOURCE_DEFAULTS`** (existing per-source defaults — kept for sources never covered by OpenRouter/models.dev, e.g. `pi`, `pmstudio`)
+5. **`DEFAULT_FALLBACK`** ($3 / $15 / $0.3 — absolute last resort)
 
-This eliminates the cold-start problem: pricing is available from the first request, even before any external API call completes.
+The hardcoded `DEFAULT_MODEL_PRICES` exact-match table is removed in C5; everything below it stays.
 
 ## Data Model
 
@@ -86,10 +98,17 @@ interface DynamicPricingEntry {
   displayName: string | null; // e.g. "Claude Sonnet 4"
   inputPerMillion: number;    // USD per 1M input tokens
   outputPerMillion: number;   // USD per 1M output tokens
-  cachedPerMillion: number | null; // USD per 1M cached tokens (if known)
+  cachedPerMillion: number | null; // USD per 1M cached input tokens
   contextWindow: number | null;
-  source: 'openrouter' | 'models.dev' | 'admin'; // which source provided this
+  /**
+   * Where THIS pricing data was sourced. Renamed from `source` to avoid
+   * collision with existing `model_pricing.source` (which is a usage/tool
+   * source like "codex", "claude-code"). The two concepts are orthogonal.
+   */
+  origin: 'baseline' | 'openrouter' | 'models.dev' | 'admin';
   updatedAt: string;          // ISO 8601 timestamp of last sync
+  /** Optional bare-name aliases that resolve to this entry. See "Alias / collision policy". */
+  aliases?: string[];
 }
 ```
 
@@ -99,15 +118,57 @@ interface DynamicPricingEntry {
 interface DynamicPricingMeta {
   lastSyncedAt: string;       // ISO 8601 of last successful sync
   modelCount: number;
+  baselineCount: number;
   openRouterCount: number;
   modelsDevCount: number;
   adminOverrideCount: number;
+  /** Last sync error, if any. UI can warn when lastSyncedAt is >48h old. */
+  lastError?: { at: string; message: string } | null;
 }
 ```
 
 KV keys:
 - `pricing:dynamic` → `DynamicPricingEntry[]`
-- `pricing:meta` → `DynamicPricingMeta`
+- `pricing:dynamic:meta` → `DynamicPricingMeta`
+- `pricing:all` (existing) → admin DB rows; **kept unchanged** to serve the admin CRUD list.
+
+## Naming & Boundary Decisions (locked)
+
+These resolve ambiguities raised in review.
+
+### N1. `origin` vs `source`
+- `DynamicPricingEntry.origin` ∈ `{baseline, openrouter, models.dev, admin}` — provenance of the pricing data.
+- `model_pricing.source` (existing DB column) — usage/tool source (`codex`, `claude-code`, etc.); **unchanged semantics**, still drives `sourceDefaults` in `PricingMap`.
+- The two never share a column or value space.
+
+### N2. KV channels
+- `pricing:all` — existing; admin CRUD list of D1 rows. **Kept**.
+- `pricing:dynamic` — new; merged dynamic dataset. **New**.
+- `pricing:dynamic:meta` — new; sync stats.
+- These are independent. `/api/admin/pricing` reads `pricing:all`; `/api/pricing` and `/api/pricing/models` read `pricing:dynamic`.
+
+### N3. Admin override semantics
+- An admin DB row in `model_pricing` is keyed by `(model, source)`; `source` may be `null`.
+- During merge, an admin row **fully replaces** the entry with the same `(model, source)` from baseline/OpenRouter/models.dev. No field-level overlay.
+- Deleting the admin row reverts that entry to whichever upstream source last provided it.
+- `DynamicPricingEntry.origin = 'admin'` is **never written back to D1**; it only marks runtime provenance.
+
+### N4. Admin cache invalidation
+The current `/api/admin/pricing` POST/PUT/DELETE writes D1 but does **not** invalidate `pricing:all`. With dynamic pricing in play this is a gap — admin overrides could be stale up to 24h.
+- C6 adds: after every admin write, invalidate `pricing:all`, then call the same merge function used by `scheduled()` to rebuild `pricing:dynamic` + `pricing:dynamic:meta` synchronously (admin endpoints are low-traffic; the rebuild does no external fetch — it reads D1 + bundled baseline + the latest cached external fetch results, which are stored alongside meta).
+- To support this, `scheduled()` also stores the most recent raw external fetch results in KV (`pricing:dynamic:openrouter-raw` / `:models-dev-raw`) so admin rebuilds don't need network IO.
+
+### N5. Reasoning-token pricing (out of scope, explicitly)
+- pew records `reasoning_output_tokens` but `estimateCost()` currently bills it via the `output` price.
+- This proposal **does not** introduce a separate reasoning price field on `DynamicPricingEntry`.
+- If a future provider exposes reasoning cost separately (some OpenAI o-series models on OpenRouter do), a follow-up issue extends `DynamicPricingEntry` and `estimateCost()` together.
+
+### N6. Alias / collision policy
+OpenRouter IDs are `provider/model` (e.g. `anthropic/claude-sonnet-4`). Models.dev IDs are bare. To resolve naming friction:
+- Always store the canonical entry under its full provider-qualified ID when one exists.
+- Compute candidate bare aliases. **Write a bare alias only when no other entry already claims it** (no cross-provider collision).
+- When a bare name has multiple claimants, none win — the resolver falls back to prefix/source/fallback chain.
+- Aliases are recorded on the entry's `aliases` field for transparency; the `PricingMap.models` map is built by expanding canonical ID + non-conflicting aliases.
 
 ## Implementation Plan
 
@@ -116,67 +177,60 @@ KV keys:
 **Goal:** Fetch current pricing from external APIs and check in as a JSON file — this becomes the always-available default that ships with every deploy.
 
 **Script to create:**
-- `packages/worker-read/scripts/sync-prices.ts` — CLI script (run with `bun run sync-prices`)
-  - Fetches OpenRouter + models.dev
-  - Merges with standard priority rules
-  - Writes `packages/worker-read/src/data/model-prices.json`
-  - Outputs summary (model count, provider breakdown)
+- `scripts/sync-prices.ts` (monorepo root) — CLI script (`bun run sync-prices`)
+  - Imports the **same** parse/normalize/merge pure functions used by the worker.
+  - Fetches OpenRouter + models.dev.
+  - Writes `packages/worker-read/src/data/model-prices.json`.
+  - Outputs summary (model count, provider breakdown, alias collisions).
+
+> Why monorepo root, not `packages/worker-read/scripts/`? worker-read is a Cloudflare Worker bundle; its build/typecheck config is workers-only. Local Node/Bun scripts in that package would muddle the build.
 
 **Output file:** `packages/worker-read/src/data/model-prices.json`
-- Array of `DynamicPricingEntry[]` (same format as KV storage)
-- Checked into git — serves as the deploy-time baseline
-- Can be refreshed anytime via `bun run sync-prices` (e.g. before a release)
+- Array of `DynamicPricingEntry[]` (same schema as KV storage).
+- Checked into git — serves as the deploy-time baseline.
+- Refresh anytime via `bun run sync-prices`.
 
 **Root package.json script:**
 ```json
-"sync-prices": "bun packages/worker-read/scripts/sync-prices.ts"
+"sync-prices": "bun scripts/sync-prices.ts"
 ```
 
-### Phase 1: External API Sync in worker-read
+### Phase 1: External API Sync — pure functions
 
-**Files to create:**
+**Files to create (worker-read, but tree-shakeable / Node-importable):**
 - `packages/worker-read/src/sync/openrouter.ts` — fetch & parse OpenRouter API
 - `packages/worker-read/src/sync/models-dev.ts` — fetch & parse models.dev API
-- `packages/worker-read/src/sync/pricing-sync.ts` — orchestrator: merge sources + DB overrides → write KV
+- `packages/worker-read/src/sync/merge.ts` — merge sources (priority + protection rules + alias policy)
 
 **Merge priority (lowest → highest):**
-1. Checked-in `model-prices.json` (bundled baseline, always available)
-2. OpenRouter (broadest coverage, fetched live)
+1. Bundled `model-prices.json` (always available)
+2. OpenRouter (broadest coverage)
 3. models.dev (curated, more accurate for major providers)
-4. Admin DB overrides (user-defined, always wins)
+4. Admin DB overrides (user-defined, highest)
 
 **Protection rules (from manifest):**
-- Never overwrite a real-priced entry with a zero/null-priced entry (prevents free-tier listings from erasing actual prices)
-- OpenRouter model IDs use `provider/model` format — store under both full ID and bare model name
-
-**Startup behavior:**
-1. Immediately load `model-prices.json` → write to KV if KV is empty (zero-latency bootstrap)
-2. Kick off async fetch of OpenRouter + models.dev
-3. On success, merge all sources → overwrite KV with fresh data
-4. On failure, KV retains last good data (or baseline if never synced)
-
-**Trigger:**
-- On worker start (first request after deploy, with baseline loaded synchronously)
-- Daily via Cloudflare Cron Trigger (`crons = ["0 3 * * *"]` in wrangler.toml)
+- Never overwrite a real-priced entry with a zero/null-priced entry.
+- Validate all parsed numbers: finite, ≥0; skip invalid entries with a warning.
+- Apply alias policy from N6.
 
 **OpenRouter parsing:**
 ```
 GET https://openrouter.ai/api/v1/models
 → response.data[].id               → model ID (e.g. "anthropic/claude-sonnet-4")
-→ response.data[].pricing.prompt   → string, parse to number (per-token)
-→ response.data[].pricing.completion → string, parse to number (per-token)
+→ response.data[].pricing.prompt   → string, parse to number (per-token → ×1e6 for per-million)
+→ response.data[].pricing.completion → string, parse to number
 → response.data[].context_length   → contextWindow
-→ response.data[].name             → displayName (strip "Provider: " prefix)
+→ response.data[].name             → displayName
 ```
 
 **models.dev parsing:**
 ```
 GET https://models.dev/api.json
-→ response[providerId].models[modelId].cost.input  → per-million-token price
-→ response[providerId].models[modelId].cost.output → per-million-token price
+→ response[providerId].models[modelId].cost.input      → per-million-token price
+→ response[providerId].models[modelId].cost.output     → per-million-token price
 → response[providerId].models[modelId].cost.cache_read → cached price
-→ response[providerId].models[modelId].name        → displayName
-→ response[providerId].models[modelId].limit.context → contextWindow
+→ response[providerId].models[modelId].name            → displayName
+→ response[providerId].models[modelId].limit.context   → contextWindow
 ```
 
 Provider ID mapping for models.dev:
@@ -193,106 +247,128 @@ const MODELS_DEV_PROVIDERS: Record<string, string> = {
 };
 ```
 
-### Phase 2: New RPC Endpoint + API Route
+### Phase 2: worker-read scheduled handler + RPC
 
-**worker-read RPC:**
-- `pricing.getDynamicPricing` — read `pricing:dynamic` from KV (with fallback to on-demand sync if KV miss)
-- `pricing.getDynamicPricingMeta` — read `pricing:meta` from KV
-- `pricing.triggerSync` — admin-only: force immediate re-sync
+**`packages/worker-read/wrangler.toml`** additions:
+```toml
+[triggers]
+crons = ["0 3 * * *"]
+```
 
-**Next.js API route changes:**
-- `GET /api/pricing` — extend to return dynamic pricing data when `?format=table` (full entries for page) or `?format=map` (PricingMap for cost calculation, default for backward compat)
-- Or: new `GET /api/pricing/models` for the table page, keep `/api/pricing` as PricingMap
+**`packages/worker-read/src/index.ts`** additions:
+- Export `scheduled(event, env, ctx)`. It calls a single `runPricingSync(env)` function that performs fetch → merge → KV write (`pricing:dynamic`, `pricing:dynamic:meta`, raw caches).
 
-### Phase 3: Dashboard Model Prices Page
+**RPC endpoints (new):**
+- `pricing.getDynamicPricing` — read `pricing:dynamic` from KV; on miss return bundled baseline. Never fetches externally.
+- `pricing.getDynamicPricingMeta` — read `pricing:dynamic:meta`.
+- `pricing.rebuildDynamicPricing` — admin-only; runs `runPricingSync` synchronously (used by admin CRUD invalidation in C6, and by an optional admin "force sync now" button).
 
-**Route:** `/pricing` (or `/models` — under dashboard layout)
+> No HTTP-triggered external fetch from `fetch()` request handlers — all external IO lives in `scheduled` and the admin-gated rebuild RPC.
+
+**Existing `pricing.listModelPricing` / `pricing:all`:** unchanged. Continues to back the admin CRUD list.
+
+### Phase 3: Web API + Dashboard Page
+
+**Next.js API:**
+- `GET /api/pricing` — **unchanged response shape** (`PricingMap`); internally now sourced from `pricing.getDynamicPricing` instead of `pricing.listModelPricing` + static merge.
+- `GET /api/pricing/models` — new; returns `{ entries: DynamicPricingEntry[]; meta: DynamicPricingMeta }` for the table page.
+
+**Page route:** `/pricing` (under dashboard layout)
 
 **Features:**
 | Feature | Description |
 |---------|-------------|
 | Sortable columns | Model, Provider, Input $/1M, Output $/1M, Cached $/1M, Context Window |
-| Filter by provider | Multi-select dropdown (Anthropic, OpenAI, Google, etc.) |
+| Filter by provider | Multi-select dropdown |
 | Search by model name | Text input, instant filter |
 | Price formatting | Adaptive precision: <$0.01→4dp, <$1→3dp, else→2dp |
-| Source badge | Color-coded: models.dev (green), OpenRouter (blue), admin (purple) |
-| Last synced | Timestamp in page header |
+| Origin badge | Color-coded: baseline (gray), models.dev (green), OpenRouter (blue), admin (purple) |
+| Last synced | Timestamp in page header (from meta.lastSyncedAt); warn banner if >48h |
 | Model count | "Showing X of Y models" |
 | Pagination | Client-side, 25 per page |
 | Empty/loading states | Skeleton rows while loading |
 
-**Components to create:**
-- `packages/web/src/app/(dashboard)/pricing/page.tsx` — page component
-- `packages/web/src/components/pricing/pricing-table.tsx` — table with sort/filter
-- `packages/web/src/components/pricing/pricing-filters.tsx` — filter bar
+**Components:**
+- `packages/web/src/app/(dashboard)/pricing/page.tsx`
+- `packages/web/src/components/pricing/pricing-table.tsx`
+- `packages/web/src/components/pricing/pricing-filters.tsx`
 
-### Phase 4: Unified Cost Calculation
-
-**Current state — scattered pricing lookups:**
-- `packages/web/src/lib/pricing.ts` → `lookupPricing()` uses static map + DB overrides
-- `packages/web/src/lib/cost-helpers.ts` → `computeTotalCost()`, `toDailyCostPoints()`, etc.
-- `packages/web/src/hooks/use-pricing.ts` → `usePricingMap()` fetches from API
-
-**Target state — single source of truth from KV:**
-
-1. **`buildPricingMap()` refactor** — instead of merging static defaults + DB rows, it consumes the full `DynamicPricingEntry[]` from the sync system. The checked-in `model-prices.json` (loaded at startup) guarantees pricing is never empty.
-
-2. **Remove `DEFAULT_MODEL_PRICES` hardcoded table** — replaced by `model-prices.json` (a real, complete dataset from external APIs). Keep only `DEFAULT_FALLBACK` as the absolute last-resort ($3/$15/$0.3) for models not in any source.
-
-3. **`lookupPricing()` stays the same interface** — callers don't change. The resolution chain becomes:
-   - Exact model match in dynamic map
-   - Prefix match (e.g. `claude-sonnet-4` matches `claude-sonnet-4-20250514`)
-   - Source default (per-tool fallback)
-   - Global fallback
-
-4. **Server-side cost calculation** — worker-read already has access to KV. Add a `pricing.lookupModel` RPC that returns pricing for a given model ID, so server-side aggregations can compute costs without the full map.
+### Phase 4: Unified Cost Calculation (the cutover)
 
 **Files to modify:**
-- `packages/web/src/lib/pricing.ts` — remove hardcoded tables, consume dynamic data
-- `packages/web/src/hooks/use-pricing.ts` — no change (already fetches from API)
-- `packages/web/src/lib/cost-helpers.ts` — no change (already takes PricingMap as param)
-- `packages/web/src/app/api/pricing/route.ts` — source data from worker-read KV instead of DB query + static merge
+- `packages/web/src/lib/pricing.ts`
+  - **Remove** `DEFAULT_MODEL_PRICES`.
+  - **Keep** `DEFAULT_PREFIX_PRICES`, `DEFAULT_SOURCE_DEFAULTS`, `DEFAULT_FALLBACK`.
+  - `buildPricingMap()` now takes `{ dynamic: DynamicPricingEntry[]; dbRows: DbPricingRow[] }`. Dynamic entries become exact-match models; DB rows still feed `sourceDefaults` and override `models` (existing semantics preserved).
+- `packages/web/src/app/api/pricing/route.ts` — fetch dynamic entries via worker-read RPC, then call updated `buildPricingMap`.
+- `packages/web/src/hooks/use-pricing.ts` — no change.
+- `packages/web/src/lib/cost-helpers.ts` — no change.
+
+**Regression guarantee:** existing `packages/web/src/__tests__/pricing.test.ts` snapshots must stay green. C2's `model-prices.json` MUST contain all 14 models currently in `DEFAULT_MODEL_PRICES` with the same `input`/`output`/`cached` values, so `lookupPricing()` returns identical results across the cutover.
 
 ### Phase 5: Admin Override Integration
 
-The existing admin UI (`/admin/pricing`) continues to work but its role changes:
-- Admin overrides are the **highest priority** in the merge chain
-- The sync process reads admin DB rows and applies them on top of API data
-- Admin UI gains a "source" column showing where each price came from
-- Admin can see which models were auto-synced vs manually overridden
+The existing admin UI (`/admin/pricing`) continues to work; this phase wires it into the dynamic system.
+
+- Admin POST/PUT/DELETE endpoints invalidate `pricing:all` AND call `pricing.rebuildDynamicPricing` synchronously.
+- Admin UI gains an "Origin" column (baseline / openrouter / models.dev / admin).
+- Optional "Force sync now" button → `pricing.rebuildDynamicPricing`.
 
 ## Migration Strategy
 
-1. **Phase 0 first**: Run `sync-prices` script, check in `model-prices.json` — baseline is immediately available.
-2. **Non-breaking**: Deploy Phase 1-2. KV gets populated live, existing code still works with static defaults.
-3. **Feature flag**: New `/pricing` page is additive, no existing page changes.
-4. **Gradual cutover**: Phase 4 replaces `DEFAULT_MODEL_PRICES` with `model-prices.json` consumption — `lookupPricing()` interface is identical, all callers work unchanged.
-5. **Fallback chain**: KV fresh data → KV stale data → bundled `model-prices.json` → `DEFAULT_FALLBACK`. Users never see broken cost calculations.
+1. **C0 (this commit):** Doc revisions; no code change.
+2. **C1–C2:** Add sync core + bundled baseline JSON. Nothing reads them yet.
+3. **C3:** worker-read writes KV via cron; new RPC available but unused.
+4. **C4:** New `/pricing` page + `/api/pricing/models`. Old `/api/pricing` still uses static path. **Additive only.**
+5. **C5 (cutover):** `lib/pricing.ts` switches to dynamic source. Existing tests green; behavior identical for 14 known models, expanded coverage for the rest.
+6. **C6:** Admin invalidation hookup. Optional UI polish.
+
+Fallback chain at every step: KV fresh → KV stale → bundled `model-prices.json` → prefix/source/fallback. Users never see broken cost calculations.
 
 ## Risks & Mitigations
 
 | Risk | Mitigation |
 |------|-----------|
-| OpenRouter API down | Retry 3x with backoff; KV retains last good data; baseline JSON always available |
+| OpenRouter API down | Retry 3x with backoff in `scheduled`; KV retains last good data; baseline JSON always available |
 | models.dev API down | Independent of OpenRouter; partial sync still useful |
-| Price format changes | Validate parsed numbers (>0, finite); skip invalid entries |
-| KV cold start (empty) | Immediately seed from `model-prices.json` on first request |
-| Rate limiting | Single daily fetch; no user-triggered sync (admin only) |
-| Stale KV (sync fails for days) | `pricing:meta.lastSyncedAt` displayed on page; alert if >48h stale |
-| Stale baseline JSON | Refresh before each release via `bun run sync-prices`; CI can warn if >30d old |
+| Price format changes | Validate parsed numbers (finite, ≥0); skip invalid entries with warning logged to meta.lastError |
+| KV cold start (empty) | Read path falls through to bundled `model-prices.json` |
+| Rate limiting | Single daily fetch via cron; admin-triggered rebuild reuses cached raw fetch results |
+| Stale KV (sync fails for days) | `pricing:dynamic:meta.lastSyncedAt` shown on page; warn banner if >48h |
+| Stale baseline JSON | CI lint warns when `model-prices.json` is >30 days old; refresh before each release |
+| Bare-alias collisions across providers | Alias policy N6: collisions skip writing the alias; resolver falls through |
+| Admin override stale up to 24h | C6 invalidates KV + rebuilds synchronously on every admin write |
 
 ## Testing Strategy
 
-- **L1 Unit**: Parse functions for OpenRouter/models.dev responses (mock JSON fixtures)
-- **L1 Unit**: Merge logic (priority, protection rules, dedup)
-- **L1 Unit**: `sync-prices` script produces valid `model-prices.json`
-- **L2 Integration**: Full sync → KV write → RPC read round-trip (against test KV namespace)
-- **L2 Integration**: Cold start loads baseline JSON correctly when KV is empty
-- **L3 E2E**: `/pricing` page renders table, filters work, sort works
+- **L1 Unit:** OpenRouter parser (mock `data.json` fixture; covers missing fields, zero prices, malformed pricing strings)
+- **L1 Unit:** models.dev parser (mock fixture; covers missing providers, missing cost fields)
+- **L1 Unit:** Merge logic (priority order, zero-price protection, alias collision policy, admin override semantics)
+- **L1 Unit:** `scripts/sync-prices.ts` produces a `model-prices.json` that matches schema and contains all 14 currently-hardcoded models with identical prices (regression guard for C5 cutover)
+- **L1 Unit:** existing `pricing.test.ts` stays green after C5
+- **L2 Integration:** `scheduled()` end-to-end against test KV + mocked external APIs (KV write → RPC read round-trip)
+- **L2 Integration:** Cold start with empty KV returns bundled baseline
+- **L2 Integration:** Admin write invalidates and rebuilds dynamic KV (C6)
+- **L3 E2E:** `/pricing` page renders, filters/sort/pagination work
 
 ## Out of Scope
 
-- Real-time price updates (sub-daily) — daily is sufficient for AI model pricing
-- Historical price tracking — only current prices stored
-- CLI-side pricing (CLI already uploads raw tokens; cost is calculated server-side)
-- Custom provider pricing from CLI config — handled by existing admin override flow
+- Real-time price updates (sub-daily) — daily is sufficient.
+- Historical price tracking — only current prices stored.
+- CLI-side pricing (CLI uploads raw tokens; cost is calculated server-side).
+- Custom provider pricing from CLI config — handled by existing admin override flow.
+- Reasoning-token-specific pricing — see N5; tracked as a follow-up issue if needed.
+
+## Atomic Commit Plan
+
+| # | Scope | Files | Touches behavior? |
+|---|-------|-------|-------------------|
+| C0 | Doc revision (this commit) | `docs/40-dynamic-model-pricing.md` | No |
+| C1 | Sync pure functions + L1 tests | `packages/worker-read/src/sync/{openrouter,models-dev,merge}.ts`, fixtures, tests | No |
+| C2 | Root sync script + checked-in baseline | `scripts/sync-prices.ts`, `packages/worker-read/src/data/model-prices.json`, root `package.json` script, baseline schema/regression tests | No |
+| C3 | Worker `scheduled` + RPC + KV writes | `packages/worker-read/{wrangler.toml, src/index.ts, src/rpc/pricing.ts}`, tests | New surface only — no read switchover |
+| C4 | New `/api/pricing/models` + `/pricing` page | `packages/web/src/app/api/pricing/models/route.ts`, `(dashboard)/pricing/page.tsx`, components, tests | Additive |
+| C5 | **Cutover**: `lib/pricing.ts` consumes dynamic data | `packages/web/src/lib/pricing.ts`, `packages/web/src/app/api/pricing/route.ts`, regression tests | **Yes** — single behavioral switch |
+| C6 | Admin invalidation + UI polish | `packages/web/src/app/api/admin/pricing/*`, admin UI, optional "force sync now" button | Yes — admin path only |
+
+Each commit is independently deployable. C5 is the only behavioral switch on the read path; if anything regresses there, revert C5 alone.
