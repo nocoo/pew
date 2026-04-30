@@ -50,19 +50,19 @@ export function ForceSyncButton({ onComplete }: Props) {
   const disabled = state.kind === "syncing";
 
   return (
-    <div className="space-y-2">
-      <Button onClick={handleClick} disabled={disabled} variant="secondary">
-        {state.kind === "syncing" ? "Syncing…" : "Force sync now"}
+    <>
+      <Button onClick={handleClick} disabled={disabled} variant="secondary" size="sm">
+        {state.kind === "syncing" ? "Syncing…" : "Force sync"}
       </Button>
 
       {state.kind === "ok" && (
-        <div className="rounded-card bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-300">
+        <div className="w-full rounded-card bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-300">
           Synced {state.outcome.entriesWritten} entries.
         </div>
       )}
 
       {state.kind === "partial" && (
-        <div className="rounded-card bg-yellow-500/10 p-3 text-xs text-yellow-700 dark:text-yellow-300 space-y-1">
+        <div className="w-full rounded-card bg-yellow-500/10 p-3 text-xs text-yellow-700 dark:text-yellow-300 space-y-1">
           <div>
             Partial sync: wrote {state.outcome.entriesWritten} entries; some
             sources failed.
@@ -76,10 +76,10 @@ export function ForceSyncButton({ onComplete }: Props) {
       )}
 
       {state.kind === "error" && (
-        <div className="rounded-card bg-destructive/10 p-3 text-xs text-destructive">
+        <div className="w-full rounded-card bg-destructive/10 p-3 text-xs text-destructive">
           {state.message}
         </div>
       )}
-    </div>
+    </>
   );
 }

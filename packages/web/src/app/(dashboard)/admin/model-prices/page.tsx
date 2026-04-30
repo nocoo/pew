@@ -87,8 +87,14 @@ export default function ModelPricesPage() {
 
       {data && (
         <>
-          <PricingMetaBanner meta={data.meta} servedFrom={data.servedFrom} />
-          <ForceSyncButton onComplete={() => fetchModels()} />
+          <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
+            <div className="flex-1 min-w-0">
+              <PricingMetaBanner meta={data.meta} servedFrom={data.servedFrom} />
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pt-3">
+              <ForceSyncButton onComplete={() => fetchModels()} />
+            </div>
+          </div>
           <PricingTable entries={data.entries} />
         </>
       )}

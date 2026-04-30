@@ -39,17 +39,25 @@ export function PricingMetaBanner({ meta, servedFrom }: Props) {
   const stale = staleness(meta.lastSyncedAt);
   const stalenessClass =
     stale === "danger"
-      ? "bg-destructive/10 text-destructive"
+      ? "text-destructive"
       : stale === "stale"
-        ? "bg-yellow-500/10 text-yellow-700 dark:text-yellow-300"
-        : "bg-muted text-muted-foreground";
+        ? "text-yellow-700 dark:text-yellow-300"
+        : "text-muted-foreground";
 
   return (
     <div className="space-y-2">
-      <div className={cn("rounded-card p-4 text-sm flex flex-wrap items-center gap-x-4 gap-y-2", stalenessClass)}>
-        <span className="font-medium">Last synced:</span>
-        <span title={meta.lastSyncedAt}>{formatRelative(meta.lastSyncedAt)}</span>
-        <span className="text-xs opacity-70">({meta.lastSyncedAt})</span>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-card bg-secondary px-4 py-3 text-sm">
+        <span className={cn("font-medium", stalenessClass)} title={meta.lastSyncedAt}>
+          Last synced: {formatRelative(meta.lastSyncedAt)}
+        </span>
+        <span className="hidden sm:inline text-border">|</span>
+        <div className="flex flex-wrap gap-1.5 text-[10px] text-muted-foreground">
+          <span className="rounded-full bg-accent px-2 py-0.5">total {meta.modelCount}</span>
+          <span className="rounded-full bg-accent px-2 py-0.5">baseline {meta.baselineCount}</span>
+          <span className="rounded-full bg-accent px-2 py-0.5">openrouter {meta.openRouterCount}</span>
+          <span className="rounded-full bg-accent px-2 py-0.5">models.dev {meta.modelsDevCount}</span>
+          <span className="rounded-full bg-accent px-2 py-0.5">admin {meta.adminOverrideCount}</span>
+        </div>
       </div>
 
       {servedFrom === "baseline" && (
@@ -67,14 +75,6 @@ export function PricingMetaBanner({ meta, servedFrom }: Props) {
           ))}
         </div>
       )}
-
-      <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
-        <span className="rounded-full bg-accent px-2 py-0.5">total {meta.modelCount}</span>
-        <span className="rounded-full bg-accent px-2 py-0.5">baseline {meta.baselineCount}</span>
-        <span className="rounded-full bg-accent px-2 py-0.5">openrouter {meta.openRouterCount}</span>
-        <span className="rounded-full bg-accent px-2 py-0.5">models.dev {meta.modelsDevCount}</span>
-        <span className="rounded-full bg-accent px-2 py-0.5">admin {meta.adminOverrideCount}</span>
-      </div>
     </div>
   );
 }
