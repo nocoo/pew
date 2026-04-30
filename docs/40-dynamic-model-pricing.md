@@ -19,28 +19,36 @@ Reference implementation: **manifest** project fetches from OpenRouter API + mod
 
 ## Architecture
 
+### Pricing Data Lifecycle
+
 ```
-┌─────────────────────────────────────────────────────────┐
-│  External APIs (daily fetch)                            │
-│  • https://openrouter.ai/api/v1/models                  │
-│  • https://models.dev/api.json                          │
-└────────────────┬────────────────────────────────────────┘
-                 │ worker-read cron trigger (Cloudflare)
-                 ▼
-┌─────────────────────────────────────────────────────────┐
-│  worker-read: pricing-sync handler                      │
-│  1. Fetch OpenRouter → parse → Map<modelId, entry>      │
-│  2. Fetch models.dev → parse → overlay on OpenRouter    │
-│  3. Merge admin DB overrides (highest priority)         │
-│  4. Write merged result to KV key "pricing:dynamic"     │
-└────────────────┬────────────────────────────────────────┘
-                 │
-                 ▼
+  ┌── One-time (implementation) ──────────────────────────┐
+  │  bun run sync-prices                                  │
+  │  Fetch OpenRouter + models.dev → merge → write        │
+  │  packages/worker-read/src/data/model-prices.json      │
+  │  (checked into git as the static baseline)            │
+  └───────────────────────────────────────────────────────┘
+
+  ┌── Runtime (daily) ────────────────────────────────────┐
+  │  worker-read startup / cron trigger                   │
+  │  1. Load model-prices.json as immediate default       │
+  │  2. Async fetch OpenRouter + models.dev               │
+  │  3. Merge: baseline → OpenRouter → models.dev → admin │
+  │  4. Write merged result to KV "pricing:dynamic"       │
+  └───────────────────────────────────────────────────────┘
+```
+
+### Request Flow
+
+```
 ┌─────────────────────────────────────────────────────────┐
 │  KV namespace: CACHE                                    │
 │  Key: "pricing:dynamic"                                 │
 │  Value: JSON array of DynamicPricingEntry[]             │
 │  TTL: 86400 (24h, refreshed daily)                      │
+│                                                         │
+│  Fallback (KV empty): model-prices.json bundled in      │
+│  worker-read at deploy time                             │
 └────────────────┬────────────────────────────────────────┘
                  │ RPC: pricing.getDynamicPricing
                  ▼
@@ -58,6 +66,14 @@ Reference implementation: **manifest** project fetches from OpenRouter API + mod
 │  page (new)  │  │  via unified lookupPrice │
 └──────────────┘  └──────────────────────────┘
 ```
+
+### Pricing Resolution Order (startup)
+
+1. **Immediate** — load `model-prices.json` (bundled with worker deploy, always available)
+2. **Async overlay** — fetch OpenRouter + models.dev → merge → overwrite KV
+3. **Admin overlay** — DB overrides applied on top (highest priority)
+
+This eliminates the cold-start problem: pricing is available from the first request, even before any external API call completes.
 
 ## Data Model
 
@@ -95,6 +111,27 @@ KV keys:
 
 ## Implementation Plan
 
+### Phase 0: Bootstrap Static Baseline (one-time)
+
+**Goal:** Fetch current pricing from external APIs and check in as a JSON file — this becomes the always-available default that ships with every deploy.
+
+**Script to create:**
+- `packages/worker-read/scripts/sync-prices.ts` — CLI script (run with `bun run sync-prices`)
+  - Fetches OpenRouter + models.dev
+  - Merges with standard priority rules
+  - Writes `packages/worker-read/src/data/model-prices.json`
+  - Outputs summary (model count, provider breakdown)
+
+**Output file:** `packages/worker-read/src/data/model-prices.json`
+- Array of `DynamicPricingEntry[]` (same format as KV storage)
+- Checked into git — serves as the deploy-time baseline
+- Can be refreshed anytime via `bun run sync-prices` (e.g. before a release)
+
+**Root package.json script:**
+```json
+"sync-prices": "bun packages/worker-read/scripts/sync-prices.ts"
+```
+
 ### Phase 1: External API Sync in worker-read
 
 **Files to create:**
@@ -103,16 +140,23 @@ KV keys:
 - `packages/worker-read/src/sync/pricing-sync.ts` — orchestrator: merge sources + DB overrides → write KV
 
 **Merge priority (lowest → highest):**
-1. OpenRouter (broadest coverage, baseline)
-2. models.dev (curated, more accurate for major providers)
-3. Admin DB overrides (user-defined, always wins)
+1. Checked-in `model-prices.json` (bundled baseline, always available)
+2. OpenRouter (broadest coverage, fetched live)
+3. models.dev (curated, more accurate for major providers)
+4. Admin DB overrides (user-defined, always wins)
 
 **Protection rules (from manifest):**
 - Never overwrite a real-priced entry with a zero/null-priced entry (prevents free-tier listings from erasing actual prices)
 - OpenRouter model IDs use `provider/model` format — store under both full ID and bare model name
 
+**Startup behavior:**
+1. Immediately load `model-prices.json` → write to KV if KV is empty (zero-latency bootstrap)
+2. Kick off async fetch of OpenRouter + models.dev
+3. On success, merge all sources → overwrite KV with fresh data
+4. On failure, KV retains last good data (or baseline if never synced)
+
 **Trigger:**
-- On worker start (first request after deploy via lazy init)
+- On worker start (first request after deploy, with baseline loaded synchronously)
 - Daily via Cloudflare Cron Trigger (`crons = ["0 3 * * *"]` in wrangler.toml)
 
 **OpenRouter parsing:**
@@ -191,9 +235,9 @@ const MODELS_DEV_PROVIDERS: Record<string, string> = {
 
 **Target state — single source of truth from KV:**
 
-1. **`buildPricingMap()` refactor** — instead of merging static defaults + DB rows, it consumes the full `DynamicPricingEntry[]` from the sync system. Static defaults become a last-resort fallback only when KV is empty (cold start).
+1. **`buildPricingMap()` refactor** — instead of merging static defaults + DB rows, it consumes the full `DynamicPricingEntry[]` from the sync system. The checked-in `model-prices.json` (loaded at startup) guarantees pricing is never empty.
 
-2. **Remove `DEFAULT_MODEL_PRICES`** — all pricing data comes from external APIs. Keep `DEFAULT_FALLBACK` as the absolute last-resort ($3/$15/$0.3) for truly unknown models.
+2. **Remove `DEFAULT_MODEL_PRICES` hardcoded table** — replaced by `model-prices.json` (a real, complete dataset from external APIs). Keep only `DEFAULT_FALLBACK` as the absolute last-resort ($3/$15/$0.3) for models not in any source.
 
 3. **`lookupPricing()` stays the same interface** — callers don't change. The resolution chain becomes:
    - Exact model match in dynamic map
@@ -219,27 +263,31 @@ The existing admin UI (`/admin/pricing`) continues to work but its role changes:
 
 ## Migration Strategy
 
-1. **Non-breaking**: Deploy Phase 1-2 first. KV gets populated, existing code unchanged.
-2. **Feature flag**: New `/pricing` page is additive, no existing page changes.
-3. **Gradual cutover**: Phase 4 replaces `DEFAULT_MODEL_PRICES` but `lookupPricing()` interface is identical — all callers work unchanged.
-4. **Fallback safety**: If KV is empty or sync fails, fall back to current static defaults. Users never see broken cost calculations.
+1. **Phase 0 first**: Run `sync-prices` script, check in `model-prices.json` — baseline is immediately available.
+2. **Non-breaking**: Deploy Phase 1-2. KV gets populated live, existing code still works with static defaults.
+3. **Feature flag**: New `/pricing` page is additive, no existing page changes.
+4. **Gradual cutover**: Phase 4 replaces `DEFAULT_MODEL_PRICES` with `model-prices.json` consumption — `lookupPricing()` interface is identical, all callers work unchanged.
+5. **Fallback chain**: KV fresh data → KV stale data → bundled `model-prices.json` → `DEFAULT_FALLBACK`. Users never see broken cost calculations.
 
 ## Risks & Mitigations
 
 | Risk | Mitigation |
 |------|-----------|
-| OpenRouter API down | Retry 3x with backoff; KV retains last good data (24h TTL) |
+| OpenRouter API down | Retry 3x with backoff; KV retains last good data; baseline JSON always available |
 | models.dev API down | Independent of OpenRouter; partial sync still useful |
 | Price format changes | Validate parsed numbers (>0, finite); skip invalid entries |
-| KV cold start (empty) | Fall back to static `DEFAULT_FALLBACK`; trigger sync on first miss |
+| KV cold start (empty) | Immediately seed from `model-prices.json` on first request |
 | Rate limiting | Single daily fetch; no user-triggered sync (admin only) |
 | Stale KV (sync fails for days) | `pricing:meta.lastSyncedAt` displayed on page; alert if >48h stale |
+| Stale baseline JSON | Refresh before each release via `bun run sync-prices`; CI can warn if >30d old |
 
 ## Testing Strategy
 
 - **L1 Unit**: Parse functions for OpenRouter/models.dev responses (mock JSON fixtures)
 - **L1 Unit**: Merge logic (priority, protection rules, dedup)
+- **L1 Unit**: `sync-prices` script produces valid `model-prices.json`
 - **L2 Integration**: Full sync → KV write → RPC read round-trip (against test KV namespace)
+- **L2 Integration**: Cold start loads baseline JSON correctly when KV is empty
 - **L3 E2E**: `/pricing` page renders table, filters work, sort works
 
 ## Out of Scope
