@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { KVNamespace } from "@cloudflare/workers-types";
 
+import { memoryKv } from "../__test-helpers__/memory-kv";
 import {
   readDynamic,
   writeDynamicOrThrow,
@@ -14,37 +14,6 @@ import {
   KEY_LAST_FETCH_MODELS_DEV,
 } from "./kv-store";
 import type { DynamicPricingEntry, DynamicPricingMeta } from "./types";
-
-function memoryKv(): KVNamespace & {
-  store: Map<string, string>;
-  get: ReturnType<typeof vi.fn>;
-  put: ReturnType<typeof vi.fn>;
-} {
-  const store = new Map<string, string>();
-  const kv = {
-    store,
-    get: vi.fn(async (key: string, type?: string) => {
-      const raw = store.get(key);
-      if (raw === undefined) return null;
-      if (type === "json") {
-        try {
-          return JSON.parse(raw);
-        } catch {
-          return null;
-        }
-      }
-      return raw;
-    }),
-    put: vi.fn(async (key: string, value: string, _opts?: { expirationTtl?: number }) => {
-      store.set(key, value);
-    }),
-  } as unknown as KVNamespace & {
-    store: Map<string, string>;
-    get: ReturnType<typeof vi.fn>;
-    put: ReturnType<typeof vi.fn>;
-  };
-  return kv;
-}
 
 const ENTRY: DynamicPricingEntry = {
   model: "anthropic/claude-sonnet-4",

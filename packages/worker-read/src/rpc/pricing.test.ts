@@ -20,7 +20,8 @@ import {
   type SyncOutcome,
 } from "../sync/orchestrator";
 import type { DynamicPricingEntry, DynamicPricingMeta } from "../sync/types";
-import type { D1Database, KVNamespace } from "@cloudflare/workers-types";
+import type { D1Database } from "@cloudflare/workers-types";
+import { memoryKv } from "../__test-helpers__/memory-kv";
 
 // ---------------------------------------------------------------------------
 // Mock D1Database
@@ -396,28 +397,6 @@ describe("pricing RPC handlers", () => {
   // -------------------------------------------------------------------------
 
   describe("pricing.rebuildDynamicPricing", () => {
-    function memoryKv(): KVNamespace & { store: Map<string, string> } {
-      const store = new Map<string, string>();
-      return {
-        store,
-        get: vi.fn(async (key: string, type?: string) => {
-          const raw = store.get(key);
-          if (raw === undefined) return null;
-          if (type === "json") {
-            try {
-              return JSON.parse(raw);
-            } catch {
-              return null;
-            }
-          }
-          return raw;
-        }),
-        put: vi.fn(async (key: string, value: string) => {
-          store.set(key, value);
-        }),
-      } as unknown as KVNamespace & { store: Map<string, string> };
-    }
-
     function emptyDb(): D1Database {
       return {
         prepare: vi.fn().mockReturnValue({
