@@ -1,6 +1,21 @@
 {
   "anthropic": {
     "models": {
+      "claude-3.5-haiku-20241022": {
+        "name": "Claude 3.5 Haiku",
+        "cost": { "input": 0.8, "output": 4, "cache_read": 0.08 },
+        "limit": { "context": 200000 }
+      },
+      "claude-3.5-sonnet-20241022": {
+        "name": "Claude 3.5 Sonnet",
+        "cost": { "input": 3, "output": 15, "cache_read": 0.3 },
+        "limit": { "context": 200000 }
+      },
+      "claude-opus-4-20250514": {
+        "name": "Claude Opus 4",
+        "cost": { "input": 15, "output": 75, "cache_read": 1.5 },
+        "limit": { "context": 200000 }
+      },
       "claude-sonnet-4-20250514": {
         "name": "Claude Sonnet 4",
         "cost": { "input": 3, "output": 15, "cache_read": 0.3 },
@@ -8,12 +23,61 @@
       }
     }
   },
+  "google": {
+    "models": {
+      "gemini-2.0-flash": {
+        "name": "Gemini 2.0 Flash",
+        "cost": { "input": 0.1, "output": 0.4, "cache_read": 0.025 },
+        "limit": { "context": 1000000 }
+      },
+      "gemini-2.5-flash": {
+        "name": "Gemini 2.5 Flash",
+        "cost": { "input": 0.15, "output": 0.6, "cache_read": 0.04 },
+        "limit": { "context": 1000000 }
+      },
+      "gemini-2.5-pro": {
+        "name": "Gemini 2.5 Pro",
+        "cost": { "input": 1.25, "output": 10, "cache_read": 0.31 },
+        "limit": { "context": 1000000 }
+      }
+    }
+  },
   "openai": {
     "models": {
+      "gpt-4.1": {
+        "name": "GPT-4.1",
+        "cost": { "input": 2, "output": 8, "cache_read": 0.5 },
+        "limit": { "context": 128000 }
+      },
+      "gpt-4.1-mini": {
+        "name": "GPT-4.1 Mini",
+        "cost": { "input": 0.4, "output": 1.6, "cache_read": 0.1 },
+        "limit": { "context": 128000 }
+      },
+      "gpt-4.1-nano": {
+        "name": "GPT-4.1 Nano",
+        "cost": { "input": 0.1, "output": 0.4, "cache_read": 0.025 },
+        "limit": { "context": 128000 }
+      },
       "gpt-4o": {
         "name": "GPT-4o",
         "cost": { "input": 2.5, "output": 10, "cache_read": 1.25 },
         "limit": { "context": 128000 }
+      },
+      "gpt-4o-mini": {
+        "name": "GPT-4o Mini",
+        "cost": { "input": 0.15, "output": 0.6, "cache_read": 0.075 },
+        "limit": { "context": 128000 }
+      },
+      "o3": {
+        "name": "o3",
+        "cost": { "input": 10, "output": 40, "cache_read": 2.5 },
+        "limit": { "context": 200000 }
+      },
+      "o4-mini": {
+        "name": "o4 Mini",
+        "cost": { "input": 1.1, "output": 4.4, "cache_read": 0.275 },
+        "limit": { "context": 200000 }
       }
     }
   }

@@ -107,14 +107,19 @@ export async function runSync(opts: SyncOptions): Promise<SyncResult> {
 
   // Regression signal: any prior model not seen in either upstream this run.
   // Compares against upstream IDs (not merged output) so the baseline floor
-  // doesn't mask upstream churn.
-  const upstreamIds = new Set<string>([
-    ...orParse.entries.map((e) => e.model),
-    ...mdParse.entries.map((e) => e.model),
-  ]);
+  // doesn't mask upstream churn. Alias-aware: a prior bare ID is "covered"
+  // when some upstream `provider/X` has X === priorId, since merge would
+  // alias-expand it to the bare name.
+  const upstreamIds = new Set<string>();
+  const upstreamSuffixes = new Set<string>();
+  for (const e of [...orParse.entries, ...mdParse.entries]) {
+    upstreamIds.add(e.model);
+    const slash = e.model.indexOf("/");
+    if (slash >= 0) upstreamSuffixes.add(e.model.slice(slash + 1));
+  }
   const removedModels = prior
     .map((e) => e.model)
-    .filter((id) => !upstreamIds.has(id))
+    .filter((id) => !upstreamIds.has(id) && !upstreamSuffixes.has(id))
     .sort();
 
   // Preserve prior updatedAt when nothing meaningful changed — keeps re-runs

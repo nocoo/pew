@@ -1,6 +1,36 @@
 {
   "data": [
     {
+      "id": "anthropic/claude-3.5-haiku-20241022",
+      "name": "Anthropic: Claude 3.5 Haiku",
+      "context_length": 200000,
+      "pricing": {
+        "prompt": "0.0000008",
+        "completion": "0.000004",
+        "input_cache_read": "0.00000008"
+      }
+    },
+    {
+      "id": "anthropic/claude-3.5-sonnet-20241022",
+      "name": "Anthropic: Claude 3.5 Sonnet",
+      "context_length": 200000,
+      "pricing": {
+        "prompt": "0.000003",
+        "completion": "0.000015",
+        "input_cache_read": "0.0000003"
+      }
+    },
+    {
+      "id": "anthropic/claude-opus-4-20250514",
+      "name": "Anthropic: Claude Opus 4",
+      "context_length": 200000,
+      "pricing": {
+        "prompt": "0.000015",
+        "completion": "0.000075",
+        "input_cache_read": "0.0000015"
+      }
+    },
+    {
       "id": "anthropic/claude-sonnet-4-20250514",
       "name": "Anthropic: Claude Sonnet 4",
       "context_length": 200000,
@@ -11,6 +41,66 @@
       }
     },
     {
+      "id": "google/gemini-2.0-flash",
+      "name": "Google: Gemini 2.0 Flash",
+      "context_length": 1000000,
+      "pricing": {
+        "prompt": "0.0000001",
+        "completion": "0.0000004",
+        "input_cache_read": "0.000000025"
+      }
+    },
+    {
+      "id": "google/gemini-2.5-flash",
+      "name": "Google: Gemini 2.5 Flash",
+      "context_length": 1000000,
+      "pricing": {
+        "prompt": "0.00000015",
+        "completion": "0.0000006",
+        "input_cache_read": "0.00000004"
+      }
+    },
+    {
+      "id": "google/gemini-2.5-pro",
+      "name": "Google: Gemini 2.5 Pro",
+      "context_length": 1000000,
+      "pricing": {
+        "prompt": "0.00000125",
+        "completion": "0.00001",
+        "input_cache_read": "0.00000031"
+      }
+    },
+    {
+      "id": "openai/gpt-4.1",
+      "name": "OpenAI: GPT-4.1",
+      "context_length": 128000,
+      "pricing": {
+        "prompt": "0.000002",
+        "completion": "0.000008",
+        "input_cache_read": "0.0000005"
+      }
+    },
+    {
+      "id": "openai/gpt-4.1-mini",
+      "name": "OpenAI: GPT-4.1 Mini",
+      "context_length": 128000,
+      "pricing": {
+        "prompt": "0.0000004",
+        "completion": "0.0000016",
+        "input_cache_read": "0.0000001"
+      }
+    },
+    {
+      "id": "openai/gpt-4.1-nano",
+      "name": "OpenAI: GPT-4.1 Nano",
+      "context_length": 128000,
+      "pricing": {
+        "prompt": "0.0000001",
+        "completion": "0.0000004",
+        "input_cache_read": "0.000000025"
+      }
+    },
+    {
       "id": "openai/gpt-4o",
       "name": "OpenAI: GPT-4o",
       "context_length": 128000,
@@ -18,6 +108,36 @@
         "prompt": "0.0000025",
         "completion": "0.00001",
         "input_cache_read": "0.00000125"
+      }
+    },
+    {
+      "id": "openai/gpt-4o-mini",
+      "name": "OpenAI: GPT-4o Mini",
+      "context_length": 128000,
+      "pricing": {
+        "prompt": "0.00000015",
+        "completion": "0.0000006",
+        "input_cache_read": "0.000000075"
+      }
+    },
+    {
+      "id": "openai/o3",
+      "name": "OpenAI: o3",
+      "context_length": 200000,
+      "pricing": {
+        "prompt": "0.00001",
+        "completion": "0.00004",
+        "input_cache_read": "0.0000025"
+      }
+    },
+    {
+      "id": "openai/o4-mini",
+      "name": "OpenAI: o4 Mini",
+      "context_length": 200000,
+      "pricing": {
+        "prompt": "0.0000011",
+        "completion": "0.0000044",
+        "input_cache_read": "0.000000275"
       }
     }
   ]

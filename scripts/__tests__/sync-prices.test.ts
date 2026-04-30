@@ -225,4 +225,11 @@ describe("main (dry-run path)", () => {
     expect(second).toBe(first);
     rmSync(resolve(out, ".."), { recursive: true, force: true });
   });
+
+  it("default output: dry-run against committed baseline exits 0 (acceptance smoke)", async () => {
+    // No --output flag → uses the committed packages/worker-read/src/data/model-prices.json.
+    // The fixtures must cover every legacy model id, otherwise removal guard fires.
+    const code = await main(["--dry-run", "--fixture", FIXTURE_DIR]);
+    expect(code).toBe(0);
+  });
 });
