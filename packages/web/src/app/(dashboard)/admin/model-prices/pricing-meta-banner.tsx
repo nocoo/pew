@@ -58,7 +58,6 @@ export function PricingMetaBanner({ meta, servedFrom, children }: Props) {
           <span className="rounded-full bg-accent px-2 py-0.5">baseline {meta.baselineCount}</span>
           <span className="rounded-full bg-accent px-2 py-0.5">openrouter {meta.openRouterCount}</span>
           <span className="rounded-full bg-accent px-2 py-0.5">models.dev {meta.modelsDevCount}</span>
-          <span className="rounded-full bg-accent px-2 py-0.5">admin {meta.adminOverrideCount}</span>
         </div>
         {children && <div className="ml-auto flex flex-wrap items-center gap-2">{children}</div>}
       </div>

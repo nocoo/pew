@@ -25,8 +25,6 @@ import baseline from "../data/model-prices.json";
 import { mergePricingSources } from "./merge";
 import { parseModelsDev } from "./models-dev";
 import { parseOpenRouter } from "./openrouter";
-import { loadAdminRows } from "./admin-loader";
-import type { AdminPricingRow } from "./types";
 import {
   readLastFetch,
   writeDynamicOrThrow,
@@ -40,7 +38,7 @@ export const OPENROUTER_URL = "https://openrouter.ai/api/v1/models";
 export const MODELS_DEV_URL = "https://models.dev/api.json";
 const FETCH_TIMEOUT_MS = 20_000;
 
-export type SyncErrorSource = "openrouter" | "models.dev" | "d1" | "kv";
+export type SyncErrorSource = "openrouter" | "models.dev" | "kv";
 
 export interface SyncError {
   source: SyncErrorSource;
@@ -71,7 +69,7 @@ export interface SyncOptions {
   /**
    * Controls upstream-fetch policy:
    *   - undefined (cron default): fetch upstream, fall back to last-fetch cache on failure.
-   *   - false (admin CRUD invalidation): skip upstream fetch entirely; merge from last-fetch cache + baseline + admin D1. Cheap; admin row is the source of truth being mutated.
+   *   - false (cheap rebuild): skip upstream fetch entirely; merge from last-fetch cache + baseline.
    *   - true ("Force sync now"): always fetch upstream; do NOT fall back to cache on failure (operator wants fresh).
    */
   forceRefetch?: boolean;
@@ -84,7 +82,7 @@ async function resolveSource(
   deps: SyncDeps,
   forceRefetch: boolean | undefined
 ): Promise<FetchResolution> {
-  // Admin-CRUD path: do not hit upstream. Use cached JSON if any.
+  // Cheap-rebuild path: do not hit upstream. Use cached JSON if any.
   if (forceRefetch === false) {
     const cached = await readLastFetch(deps.kv, source);
     if (cached) return { json: cached.json, fromCache: true, error: null };
@@ -131,17 +129,10 @@ export async function syncDynamicPricing(
   const orParse = parseOpenRouter(orRes.json ?? { data: [] }, now);
   const mdParse = parseModelsDev(mdRes.json ?? {}, now);
 
-  const adminResult = await loadAdminRows(deps.db);
-  const admin: AdminPricingRow[] = adminResult.rows;
-  if (adminResult.error) {
-    errors.push({ source: "d1", message: adminResult.error });
-  }
-
   const merged = mergePricingSources({
     baseline: baseline as DynamicPricingEntry[],
     openRouter: orParse.entries,
     modelsDev: mdParse.entries,
-    admin,
     now,
   });
 

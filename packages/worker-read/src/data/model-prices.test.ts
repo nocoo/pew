@@ -75,7 +75,7 @@ describe("model-prices.json baseline", () => {
       expect(typeof e.provider).toBe("string");
       expect(typeof e.inputPerMillion).toBe("number");
       expect(typeof e.outputPerMillion).toBe("number");
-      expect(["baseline", "openrouter", "models.dev", "admin"]).toContain(e.origin);
+      expect(["baseline", "openrouter", "models.dev"]).toContain(e.origin);
       expect(typeof e.updatedAt).toBe("string");
     }
   });

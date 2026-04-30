@@ -18,10 +18,10 @@ import type { DynamicPricingEntry } from "./types";
 
 const NOW = "2026-04-30T00:00:00.000Z";
 
-function mockDb(rows: unknown[] = []): D1Database {
+function mockDb(): D1Database {
   return {
     prepare: vi.fn().mockReturnValue({
-      all: vi.fn().mockResolvedValue({ results: rows }),
+      all: vi.fn().mockResolvedValue({ results: [] }),
     }),
   } as unknown as D1Database;
 }
@@ -142,25 +142,6 @@ describe("syncDynamicPricing", () => {
     expect(r.entriesWritten).toBe((baseline as DynamicPricingEntry[]).length);
   });
 
-  it("admin source=null overrides entry; source='codex' counted but does not change entry pricing", async () => {
-    db = mockDb([
-      // Override the bundled gpt-4o baseline with a sentinel admin price.
-      { model: "gpt-4o", source: null, input: 99, output: 199, cached: 9.9 },
-      // Side-channel: codex source should count but not change entries.
-      { model: "gpt-4o", source: "codex", input: 7, output: 21, cached: 1.5 },
-    ]);
-    const fetchImpl = mockFetch({
-      [OPENROUTER_URL]: { status: 200, body: { data: [] } },
-      [MODELS_DEV_URL]: { status: 200, body: {} },
-    });
-    const r = await syncDynamicPricing({ db, kv, fetchImpl }, NOW);
-    const stored = JSON.parse(kv.store.get(KEY_DYNAMIC)!) as DynamicPricingEntry[];
-    const overridden = stored.find((e) => e.model === "gpt-4o");
-    expect(overridden?.inputPerMillion).toBe(99);
-    expect(overridden?.origin).toBe("admin");
-    expect(r.meta.adminOverrideCount).toBe(2);
-  });
-
   it("lastErrors is null when next sync succeeds for all sources", async () => {
     const fetchImpl = mockFetch({
       [OPENROUTER_URL]: { status: 200, body: OPENROUTER_OK },
@@ -175,7 +156,6 @@ describe("syncDynamicPricing", () => {
       ...kv,
       get: kv.get,
       put: vi.fn(async (key: string) => {
-        // Only fail the dynamic entries write; admin-loader doesn't touch KV.
         if (key === KEY_DYNAMIC || key === KEY_DYNAMIC_META) {
           throw new Error("kv 503");
         }
@@ -253,23 +233,5 @@ describe("syncDynamicPricing", () => {
     expect(r.errors.find((e) => e.source === "openrouter")).toBeDefined();
     // Should not have used the cached OpenRouter data; entry count should be only models.dev + baseline.
     // We don't pin exact counts (depends on baseline), just verify it's not throwing on the cache path.
-  });
-
-  it("D1 admin-loader failure → ok=false with source='d1' in errors; entries still merged from upstream + baseline", async () => {
-    const throwingDb = {
-      prepare: vi.fn().mockReturnValue({
-        all: vi.fn().mockRejectedValue(new Error("D1 down")),
-      }),
-    } as unknown as D1Database;
-    const fetchImpl = mockFetch({
-      [OPENROUTER_URL]: { status: 200, body: OPENROUTER_OK },
-      [MODELS_DEV_URL]: { status: 200, body: MODELS_DEV_OK },
-    });
-    const r = await syncDynamicPricing({ db: throwingDb, kv, fetchImpl }, NOW);
-    expect(r.ok).toBe(false);
-    expect(r.errors.some((e) => e.source === "d1" && e.message.includes("D1 down"))).toBe(true);
-    expect(r.entriesWritten).toBeGreaterThanOrEqual((baseline as DynamicPricingEntry[]).length);
-    expect(kv.store.has(KEY_DYNAMIC)).toBe(true);
-    expect(r.meta.lastErrors?.some((e) => e.source === "d1")).toBe(true);
   });
 });

@@ -20,7 +20,6 @@ const META = {
   baselineCount: 14,
   openRouterCount: 8,
   modelsDevCount: 6,
-  adminOverrideCount: 1,
   lastErrors: null,
 };
 

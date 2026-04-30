@@ -53,16 +53,6 @@ export interface TimelineRow {
   cached_input_tokens: number;
 }
 
-export interface PricingRow {
-  model: string;
-  source: string | null;
-  input_price: number;
-  output_price: number;
-  cached_input_price: number | null;
-}
-
-// ---------------------------------------------------------------------------
-// RPC Request Types
 // ---------------------------------------------------------------------------
 
 export interface GetUsageRequest {
@@ -99,16 +89,11 @@ export interface GetDeviceTimelineRequest {
   tzOffset?: number;
 }
 
-export interface GetModelPricingRequest {
-  method: "usage.getModelPricing";
-}
-
 export type UsageRpcRequest =
   | GetUsageRequest
   | GetDeviceSummaryRequest
   | GetDeviceCostDetailsRequest
-  | GetDeviceTimelineRequest
-  | GetModelPricingRequest;
+  | GetDeviceTimelineRequest;
 
 // ---------------------------------------------------------------------------
 // Handlers
@@ -323,14 +308,6 @@ async function handleGetDeviceTimeline(
   return Response.json({ result: results.results });
 }
 
-async function handleGetModelPricing(db: D1Database): Promise<Response> {
-  const results = await db
-    .prepare("SELECT * FROM model_pricing ORDER BY model ASC")
-    .all<PricingRow>();
-
-  return Response.json({ result: results.results });
-}
-
 // ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
@@ -348,8 +325,6 @@ export async function handleUsageRpc(
       return handleGetDeviceCostDetails(request, db);
     case "usage.getDeviceTimeline":
       return handleGetDeviceTimeline(request, db);
-    case "usage.getModelPricing":
-      return handleGetModelPricing(db);
     default:
       return Response.json(
         { error: `Unknown usage method: ${(request as { method: string }).method}` },

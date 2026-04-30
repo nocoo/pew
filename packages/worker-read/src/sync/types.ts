@@ -13,7 +13,7 @@ export interface DynamicPricingEntry {
   outputPerMillion: number;
   cachedPerMillion: number | null;
   contextWindow: number | null;
-  origin: "baseline" | "openrouter" | "models.dev" | "admin";
+  origin: "baseline" | "openrouter" | "models.dev";
   updatedAt: string;
   aliases?: string[];
 }
@@ -24,26 +24,15 @@ export interface DynamicPricingMeta {
   baselineCount: number;
   openRouterCount: number;
   modelsDevCount: number;
-  adminOverrideCount: number;
   lastErrors?: Array<{
-    source: "openrouter" | "models.dev" | "d1" | "kv";
+    source: "openrouter" | "models.dev" | "kv";
     at: string;
     message: string;
   }> | null;
-}
-
-/** Admin override row consumed by merge. Mirrors model_pricing schema. */
-export interface AdminPricingRow {
-  model: string;
-  source: string | null;
-  input: number;
-  output: number;
-  cached: number | null;
 }
 
 export const PRICING_ORIGINS = [
   "baseline",
   "openrouter",
   "models.dev",
-  "admin",
 ] as const;

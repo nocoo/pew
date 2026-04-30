@@ -1,11 +1,11 @@
 /**
- * Merge baseline + upstream + admin pricing layers into a deterministic
+ * Merge baseline + upstream pricing layers into a deterministic
  * DynamicPricingEntry list.
  *
  * Pure function — caller injects `now` so meta.lastSyncedAt is testable.
  *
  * Layer order:
- *   baseline → openrouter → models.dev → admin
+ *   baseline → openrouter → models.dev
  *
  * Zero-price protection: an upstream layer that reports 0 input AND 0 output
  * for an entry that already has positive prices is silently skipped. This
@@ -17,17 +17,9 @@
  * canonical key. Without this, the bare baseline would freeze stale legacy
  * pricing while the slashed upstream entry sat alongside it, and the alias
  * expansion step would refuse to claim the bare name (already taken).
- *
- * Admin rules:
- *   - row.source === null → overwrites/inserts the matching entry, origin='admin'.
- *   - row.source !== null → recorded in sourceOverrides side-channel only.
- *     The merge layer is intentionally ignorant of PricingMap; the consumer
- *     (web buildPricingMap) projects sourceOverrides into PricingMap.sourceDefaults
- *     and PricingMap.models[model] per existing semantics.
  */
 
 import type {
-  AdminPricingRow,
   DynamicPricingEntry,
   DynamicPricingMeta,
 } from "./types";
@@ -36,19 +28,11 @@ export interface MergeInput {
   baseline: DynamicPricingEntry[];
   openRouter: DynamicPricingEntry[];
   modelsDev: DynamicPricingEntry[];
-  admin: AdminPricingRow[];
   now: string;
-}
-
-export interface SourceOverride {
-  source: string;
-  pricing: { input: number; output: number; cached: number | null };
-  model: string;
 }
 
 export interface MergeResult {
   entries: DynamicPricingEntry[];
-  sourceOverrides: SourceOverride[];
   meta: Omit<DynamicPricingMeta, "lastErrors">;
   warnings: string[];
 }
@@ -80,7 +64,7 @@ function applyLayer(
     const exact = byModel.get(entry.model);
     // Alias-aware: if no exact match but a bare baseline holds the suffix,
     // displace it. Only triggers for slashed upstream IDs where the suffix
-    // matches a bare existing entry. Restricted to baseline so admin/upstream
+    // matches a bare existing entry. Restricted to baseline so upstream
     // entries already keyed by slashed IDs aren't silently overwritten.
     let displaced: DynamicPricingEntry | undefined;
     let displacedKey: string | undefined;
@@ -114,46 +98,8 @@ export function mergePricingSources(input: MergeInput): MergeResult {
   applyLayer(byModel, input.openRouter);
   // 3. models.dev
   applyLayer(byModel, input.modelsDev);
-  // 4. admin
-  const sourceOverrides: SourceOverride[] = [];
-  for (const row of input.admin) {
-    if (row.source === null) {
-      const existing = byModel.get(row.model);
-      const next: DynamicPricingEntry = existing
-        ? {
-            ...cloneEntry(existing),
-            inputPerMillion: row.input,
-            outputPerMillion: row.output,
-            cachedPerMillion: row.cached,
-            origin: "admin",
-            updatedAt: input.now,
-          }
-        : {
-            model: row.model,
-            provider: "Admin",
-            displayName: null,
-            inputPerMillion: row.input,
-            outputPerMillion: row.output,
-            cachedPerMillion: row.cached,
-            contextWindow: null,
-            origin: "admin",
-            updatedAt: input.now,
-          };
-      byModel.set(row.model, next);
-    } else {
-      sourceOverrides.push({
-        source: row.source,
-        model: row.model,
-        pricing: {
-          input: row.input,
-          output: row.output,
-          cached: row.cached,
-        },
-      });
-    }
-  }
 
-  // 5. alias expansion (last)
+  // 4. alias expansion (last)
   // Stable ordering needed before alias decisions so test results are deterministic.
   const sorted = Array.from(byModel.values()).sort((a, b) => {
     if (a.provider !== b.provider) return a.provider < b.provider ? -1 : 1;
@@ -192,20 +138,17 @@ export function mergePricingSources(input: MergeInput): MergeResult {
       case "models.dev":
         modelsDevCount++;
         break;
-      // admin entries already counted via adminOverrideCount
     }
   }
 
   return {
     entries: sorted,
-    sourceOverrides,
     meta: {
       lastSyncedAt: input.now,
       modelCount: sorted.length,
       baselineCount,
       openRouterCount,
       modelsDevCount,
-      adminOverrideCount: input.admin.length,
     },
     warnings,
   };

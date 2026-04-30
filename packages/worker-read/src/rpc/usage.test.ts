@@ -5,7 +5,6 @@ import {
   type GetDeviceSummaryRequest,
   type GetDeviceCostDetailsRequest,
   type GetDeviceTimelineRequest,
-  type GetModelPricingRequest,
 } from "./usage";
 import type { D1Database } from "@cloudflare/workers-types";
 
@@ -253,41 +252,6 @@ describe("usage RPC handlers", () => {
       const response = await handleUsageRpc(request, db);
 
       expect(response.status).toBe(400);
-    });
-  });
-
-  // -------------------------------------------------------------------------
-  // usage.getModelPricing
-  // -------------------------------------------------------------------------
-
-  describe("usage.getModelPricing", () => {
-    it("should return model pricing list", async () => {
-      const mockPricing = [
-        {
-          model: "claude-sonnet-4",
-          source: null,
-          input_price: 3.0,
-          output_price: 15.0,
-          cached_input_price: 0.3,
-        },
-        {
-          model: "gpt-4o",
-          source: "codex",
-          input_price: 5.0,
-          output_price: 15.0,
-          cached_input_price: 2.5,
-        },
-      ];
-      db.all.mockResolvedValue({ results: mockPricing });
-
-      const request: GetModelPricingRequest = {
-        method: "usage.getModelPricing",
-      };
-      const response = await handleUsageRpc(request, db);
-      const body = await response.json();
-
-      expect(response.status).toBe(200);
-      expect(body).toEqual({ result: mockPricing });
     });
   });
 

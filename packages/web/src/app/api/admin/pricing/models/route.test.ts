@@ -43,7 +43,6 @@ const META: DynamicPricingMetaDto = {
   baselineCount: 0,
   openRouterCount: 1,
   modelsDevCount: 0,
-  adminOverrideCount: 0,
   lastErrors: null,
 };
 
@@ -157,7 +156,6 @@ describe("GET /api/admin/pricing/models", () => {
     ]);
     expect(Object.keys(body.meta).sort()).toEqual(
       [
-        "adminOverrideCount",
         "baselineCount",
         "lastErrors",
         "lastSyncedAt",

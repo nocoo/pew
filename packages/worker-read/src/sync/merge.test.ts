@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { mergePricingSources } from "./merge";
-import type { AdminPricingRow, DynamicPricingEntry } from "./types";
+import type { DynamicPricingEntry } from "./types";
 
 const NOW = "2026-04-30T00:00:00.000Z";
 
@@ -32,7 +32,6 @@ describe("mergePricingSources", () => {
       baseline,
       openRouter: [],
       modelsDev: [],
-      admin: [],
       now: NOW,
     });
     expect(r.entries).toHaveLength(1);
@@ -48,7 +47,6 @@ describe("mergePricingSources", () => {
       baseline,
       openRouter,
       modelsDev: [],
-      admin: [],
       now: NOW,
     });
     expect(r.entries[0].origin).toBe("openrouter");
@@ -64,7 +62,6 @@ describe("mergePricingSources", () => {
       baseline,
       openRouter,
       modelsDev: [],
-      admin: [],
       now: NOW,
     });
     expect(r.entries[0].inputPerMillion).toBe(3);
@@ -78,59 +75,10 @@ describe("mergePricingSources", () => {
       baseline: [],
       openRouter,
       modelsDev,
-      admin: [],
       now: NOW,
     });
     expect(r.entries[0].origin).toBe("models.dev");
     expect(r.entries[0].inputPerMillion).toBe(2.5);
-  });
-
-  it("admin source=null overwrites entry; sourceOverrides empty", () => {
-    const baseline = [entry("anthropic/claude-sonnet-4", "baseline", 3, 15)];
-    const admin: AdminPricingRow[] = [
-      {
-        model: "anthropic/claude-sonnet-4",
-        source: null,
-        input: 99,
-        output: 199,
-        cached: 9.9,
-      },
-    ];
-    const r = mergePricingSources({
-      baseline,
-      openRouter: [],
-      modelsDev: [],
-      admin,
-      now: NOW,
-    });
-    expect(r.entries[0].inputPerMillion).toBe(99);
-    expect(r.entries[0].cachedPerMillion).toBe(9.9);
-    expect(r.entries[0].origin).toBe("admin");
-    expect(r.sourceOverrides).toEqual([]);
-    expect(r.meta.adminOverrideCount).toBe(1);
-  });
-
-  it("admin source='codex' goes to sourceOverrides; entries untouched", () => {
-    const baseline = [entry("openai/gpt-4o", "baseline", 2.5, 10, { provider: "OpenAI" })];
-    const admin: AdminPricingRow[] = [
-      { model: "openai/gpt-4o", source: "codex", input: 7, output: 21, cached: 1.5 },
-    ];
-    const r = mergePricingSources({
-      baseline,
-      openRouter: [],
-      modelsDev: [],
-      admin,
-      now: NOW,
-    });
-    expect(r.entries[0].inputPerMillion).toBe(2.5);
-    expect(r.entries[0].origin).toBe("baseline");
-    expect(r.sourceOverrides).toHaveLength(1);
-    expect(r.sourceOverrides[0]).toEqual({
-      source: "codex",
-      model: "openai/gpt-4o",
-      pricing: { input: 7, output: 21, cached: 1.5 },
-    });
-    expect(r.meta.adminOverrideCount).toBe(1);
   });
 
   it("alias expansion — single canonical claims bare name", () => {
@@ -139,7 +87,6 @@ describe("mergePricingSources", () => {
       baseline,
       openRouter: [],
       modelsDev: [],
-      admin: [],
       now: NOW,
     });
     expect(r.entries[0].aliases).toEqual(["claude-sonnet-4"]);
@@ -154,7 +101,6 @@ describe("mergePricingSources", () => {
       baseline,
       openRouter: [],
       modelsDev: [],
-      admin: [],
       now: NOW,
     });
     for (const e of r.entries) {
@@ -175,14 +121,12 @@ describe("mergePricingSources", () => {
       baseline: baseline1,
       openRouter: [],
       modelsDev: [],
-      admin: [],
       now: NOW,
     });
     const r2 = mergePricingSources({
       baseline: baseline2,
       openRouter: [],
       modelsDev: [],
-      admin: [],
       now: NOW,
     });
     expect(r1.entries.map((e) => e.model)).toEqual(r2.entries.map((e) => e.model));
@@ -195,7 +139,6 @@ describe("mergePricingSources", () => {
       baseline,
       openRouter: [],
       modelsDev,
-      admin: [],
       now: NOW,
     });
     expect(r.entries).toHaveLength(1);
@@ -212,7 +155,6 @@ describe("mergePricingSources", () => {
       baseline,
       openRouter: [],
       modelsDev,
-      admin: [],
       now: NOW,
     });
     expect(r.entries).toHaveLength(1);
@@ -221,7 +163,7 @@ describe("mergePricingSources", () => {
     expect(r.entries[0].inputPerMillion).toBe(2.5);
   });
 
-  it("alias-aware does not displace non-baseline (admin/upstream) bare entries", () => {
+  it("alias-aware does not displace non-baseline (upstream) bare entries", () => {
     const openRouter = [
       entry("gpt-4o", "openrouter", 1, 4, { provider: "OpenAI" }),
       entry("openai/gpt-4o", "openrouter", 3, 12, { provider: "OpenAI" }),
@@ -230,7 +172,6 @@ describe("mergePricingSources", () => {
       baseline: [],
       openRouter,
       modelsDev: [],
-      admin: [],
       now: NOW,
     });
     // Both kept: bare came from upstream (not baseline) so no displacement.
@@ -244,14 +185,12 @@ describe("mergePricingSources", () => {
       baseline: [],
       openRouter: [original],
       modelsDev: [],
-      admin: [],
       now: NOW,
     });
     const r2 = mergePricingSources({
       baseline: [],
       openRouter: [original],
       modelsDev: [],
-      admin: [],
       now: NOW,
     });
     expect(original).toEqual(snapshot);

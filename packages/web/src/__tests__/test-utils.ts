@@ -113,7 +113,6 @@ export function createMockDbRead() {
         baselineCount: 0,
         openRouterCount: 0,
         modelsDevCount: 0,
-        adminOverrideCount: 0,
         lastErrors: null,
       },
     }),

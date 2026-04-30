@@ -385,7 +385,7 @@ export type { DynamicPricingOrigin } from "./pricing";
 export type DynamicPricingEntryDto = DynamicPricingEntry;
 
 export interface DynamicPricingErrorDto {
-  source: "openrouter" | "models.dev" | "d1" | "kv";
+  source: "openrouter" | "models.dev" | "kv";
   at: string;
   message: string;
 }
@@ -396,17 +396,15 @@ export interface DynamicPricingMetaDto {
   baselineCount: number;
   openRouterCount: number;
   modelsDevCount: number;
-  adminOverrideCount: number;
   lastErrors: DynamicPricingErrorDto[] | null;
 }
 
 // ---------------------------------------------------------------------------
 // Sync outcome (mirror of worker-read SyncOutcome).
-// Returned from pricing.rebuildDynamicPricing — used by admin invalidation
-// and the "Force sync now" button.
+// Returned from pricing.rebuildDynamicPricing — used by the "Force sync now" button.
 // ---------------------------------------------------------------------------
 
-export type SyncErrorSourceDto = "openrouter" | "models.dev" | "d1" | "kv";
+export type SyncErrorSourceDto = "openrouter" | "models.dev" | "kv";
 
 export interface SyncErrorDto {
   source: SyncErrorSourceDto;

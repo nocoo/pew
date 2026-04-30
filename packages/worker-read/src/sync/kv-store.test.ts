@@ -33,7 +33,6 @@ const META: DynamicPricingMeta = {
   baselineCount: 0,
   openRouterCount: 1,
   modelsDevCount: 0,
-  adminOverrideCount: 0,
   lastErrors: null,
 };
 
