@@ -39,6 +39,7 @@ CLI entry:
 ```bash
 bun run sync-prices                        # fetch live, write baseline
 bun run sync-prices --dry-run              # fetch + merge, print summary, do not write
+bun run sync-prices --allow-removals       # accept model removals (must be paired with PR explanation)
 bun run sync-prices --fixture <dir>        # read JSON from local dir instead of network (used by tests)
 ```
 
@@ -68,11 +69,14 @@ export async function runSync(opts: SyncOptions): Promise<SyncResult>;
 
 `runSync` composition:
 
-1. **Fetch** — when `fixtureDir` is null, GET `https://openrouter.ai/api/v1/models` and `https://models.dev/api.json` in parallel with a 30 s timeout each. Both must succeed; any failure returns exit 1.
+1. **Fetch** — when `fixtureDir` is null, GET `https://openrouter.ai/api/v1/models` and `https://models.dev/api.json` in parallel with a 30 s timeout each. Both must succeed; any failure returns exit 1. **Strategy note:** this is a baseline-refresh tool, not the runtime sync. For the developer-facing one-shot we want both sources or nothing — partial output would silently bake an incomplete picture into the checked-in file. C3 (the cron path) takes a different stance: it tolerates partial success and keeps last good in KV.
 2. **Parse** — `parseOpenRouter(json, now)` and `parseModelsDev(json, now)` from C1.
 3. **Read prior baseline** — if `outputPath` already exists, load and pass as `baseline` to merge. (First-run case: `baseline = []`.)
 4. **Merge** — `mergePricingSources({ baseline, openRouter, modelsDev, admin: [], now })`. C2 has no admin overlay.
-5. **Regression check** (always, even in `--dry-run`) — assert every model ID present in the prior baseline JSON is still present in the new entries. If any model would be dropped, exit 2 with the list. (External APIs occasionally drop a model temporarily; we refuse to silently shrink the baseline.)
+5. **Regression check** (always, even in `--dry-run`):
+   - Compare model ID set of the prior baseline JSON against the new entries.
+   - If `removedModels.length > 0` and `--allow-removals` is **not** set → exit 2 with the list of removed IDs. This is the default safety net (external APIs sometimes drop a model temporarily).
+   - If `--allow-removals` **is** set → print `REMOVED: <model id>` lines to stdout (one per removed model) so the developer can paste them into the commit message, and proceed. CI never passes this flag.
 6. **Write** — only when `dryRun === false`. Serialize with `JSON.stringify(entries, null, 2) + '\n'`. Output is sorted by `[provider, model]` (already enforced by C1's merge), so re-running with no upstream changes produces a zero-diff file.
 
 CLI argument parsing uses `Bun.argv` directly — no extra dep.
@@ -100,6 +104,7 @@ Initial content for this commit:
 test('fixture mode produces deterministic output')
 test('dry-run does not write file')
 test('regression check fails when prior baseline has model that fixture lacks')
+test('--allow-removals lets removals through and prints REMOVED: lines')
 test('first-run (no prior baseline) writes successfully')
 test('warnings from parsers propagate into SyncResult')
 ```
@@ -111,13 +116,15 @@ Network is never exercised — every test passes `fixtureDir`. Live-fetch path i
 Pure data validation, no I/O beyond reading the JSON file:
 
 ```typescript
-test('all 14 DEFAULT_MODEL_PRICES models are present with identical pricing')
+test('every legacy model in LEGACY_DEFAULT_MODEL_PRICES is present with identical pricing')
 test('every entry conforms to DynamicPricingEntry schema')
 test('entries are sorted by [provider, model]')
 test('no duplicate model IDs')
 ```
 
-The first test imports `DEFAULT_MODEL_PRICES` from `packages/web/src/lib/pricing.ts` and walks every entry; for each, it finds the matching baseline entry (by exact `model` key) and asserts `inputPerMillion === input`, `outputPerMillion === output`, `cachedPerMillion === cached ?? null`. This is the regression guard that lets C5 swap the lookup source without surprising users.
+The first test uses a **local** `LEGACY_DEFAULT_MODEL_PRICES` constant defined inside this test file (a frozen copy of the 14 entries currently in `packages/web/src/lib/pricing.ts`). It deliberately does **not** import from `web/src/lib/pricing.ts` — C5 will delete that table, and a guard that depends on the thing it's guarding would self-destruct on the cutover. The frozen copy stays as the long-term regression floor: any future edit that drops one of these 14 model IDs (or changes their per-million prices) fails the test, regardless of whether `DEFAULT_MODEL_PRICES` still exists.
+
+If product later decides one of the 14 legacy prices is genuinely wrong, the fix is: edit `LEGACY_DEFAULT_MODEL_PRICES` in this file in the same commit, with the rationale in the commit message.
 
 ## Conventions followed
 
