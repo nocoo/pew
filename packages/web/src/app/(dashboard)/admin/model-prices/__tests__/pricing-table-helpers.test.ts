@@ -68,6 +68,16 @@ describe("pricing-table-helpers", () => {
       expect(sorted.map((e) => e.cachedPerMillion)).toEqual([1, 5, null]);
     });
 
+    it("nulls sort to the end even when direction is desc", () => {
+      const data = [
+        entry({ model: "a", cachedPerMillion: null }),
+        entry({ model: "b", cachedPerMillion: 5 }),
+        entry({ model: "c", cachedPerMillion: 1 }),
+      ];
+      const sorted = sortEntries(data, "cachedPerMillion", "desc");
+      expect(sorted.map((e) => e.cachedPerMillion)).toEqual([5, 1, null]);
+    });
+
     it("does not mutate input", () => {
       const data = [
         entry({ model: "z" }),

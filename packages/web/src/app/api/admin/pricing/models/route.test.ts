@@ -121,8 +121,12 @@ describe("GET /api/admin/pricing/models", () => {
   });
 
   it("contract: round-trips a representative DynamicPricingEntry / Meta payload", async () => {
+    const entryWithAliases: DynamicPricingEntryDto = {
+      ...ENTRY,
+      aliases: ["claude-sonnet-4", "anthropic/claude-sonnet-4-20250514"],
+    };
     mockDbRead.getDynamicPricing.mockResolvedValueOnce({
-      entries: [ENTRY],
+      entries: [entryWithAliases],
       servedFrom: "baseline",
     } as never);
     mockDbRead.getDynamicPricingMeta.mockResolvedValueOnce(META as never);
@@ -131,10 +135,11 @@ describe("GET /api/admin/pricing/models", () => {
       entries: DynamicPricingEntryDto[];
       meta: DynamicPricingMetaDto;
     };
-    // Field-level pin on the wire shape so any worker-side rename trips this test.
+    // Pin wire shape so any worker-side rename trips this test.
     const e = body.entries[0]!;
     expect(Object.keys(e).sort()).toEqual(
       [
+        "aliases",
         "cachedPerMillion",
         "contextWindow",
         "displayName",
@@ -146,6 +151,10 @@ describe("GET /api/admin/pricing/models", () => {
         "updatedAt",
       ].sort(),
     );
+    expect(e.aliases).toEqual([
+      "claude-sonnet-4",
+      "anthropic/claude-sonnet-4-20250514",
+    ]);
     expect(Object.keys(body.meta).sort()).toEqual(
       [
         "adminOverrideCount",

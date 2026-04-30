@@ -30,14 +30,6 @@ const NUMERIC_KEYS = new Set<SortKey>([
   "contextWindow",
 ]);
 
-function compareNumeric(a: number | null, b: number | null): number {
-  // Nulls sort to the end regardless of direction caller flips.
-  if (a == null && b == null) return 0;
-  if (a == null) return 1;
-  if (b == null) return -1;
-  return a - b;
-}
-
 function compareString(a: string | null, b: string | null): number {
   if (a == null && b == null) return 0;
   if (a == null) return 1;
@@ -55,19 +47,20 @@ export function sortEntries(
   copy.sort((a, b) => {
     let primary: number;
     if (NUMERIC_KEYS.has(key)) {
-      primary =
-        sign *
-        compareNumeric(
-          a[key] as number | null,
-          b[key] as number | null,
-        );
+      const av = a[key] as number | null;
+      const bv = b[key] as number | null;
+      // Nulls always sort to the end regardless of direction.
+      if (av == null && bv == null) primary = 0;
+      else if (av == null) primary = 1;
+      else if (bv == null) primary = -1;
+      else primary = sign * (av - bv);
     } else {
-      primary =
-        sign *
-        compareString(
-          a[key] as string | null,
-          b[key] as string | null,
-        );
+      const av = a[key] as string | null;
+      const bv = b[key] as string | null;
+      if (av == null && bv == null) primary = 0;
+      else if (av == null) primary = 1;
+      else if (bv == null) primary = -1;
+      else primary = sign * av.localeCompare(bv);
     }
     if (primary !== 0) return primary;
     // Stable secondary sort: provider asc, then model asc.
