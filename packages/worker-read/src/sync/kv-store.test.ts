@@ -35,7 +35,7 @@ function memoryKv(): KVNamespace & {
       }
       return raw;
     }),
-    put: vi.fn(async (key: string, value: string) => {
+    put: vi.fn(async (key: string, value: string, _opts?: { expirationTtl?: number }) => {
       store.set(key, value);
     }),
   } as unknown as KVNamespace & {
@@ -160,6 +160,15 @@ describe("kv-store", () => {
     });
     expect(kv.store.has(KEY_LAST_FETCH_OPENROUTER)).toBe(false);
     expect(errSpy).toHaveBeenCalled();
+  });
+
+  it("writeLastFetch passes 7-day TTL to kv.put", async () => {
+    await writeLastFetch(kv, "openrouter", { json: { a: 1 }, fetchedAt: "T" });
+    expect(kv.put).toHaveBeenCalledWith(
+      KEY_LAST_FETCH_OPENROUTER,
+      expect.any(String),
+      { expirationTtl: 7 * 24 * 60 * 60 },
+    );
   });
 
   it("writeLastFetch swallows kv.put errors and logs", async () => {

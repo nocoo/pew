@@ -31,6 +31,9 @@ export interface CachedFetch<T = unknown> {
 // 24 MB — KV per-value limit is 25 MB; leave headroom for JSON overhead.
 const MAX_LAST_FETCH_BYTES = 24 * 1024 * 1024;
 
+// 7 days — if cron fails continuously, stale cache auto-expires.
+const LAST_FETCH_TTL_SECONDS = 7 * 24 * 60 * 60;
+
 function lastFetchKey(source: LastFetchSource): string {
   return source === "openrouter" ? KEY_LAST_FETCH_OPENROUTER : KEY_LAST_FETCH_MODELS_DEV;
 }
@@ -119,7 +122,7 @@ export async function writeLastFetch(
     return;
   }
   try {
-    await kv.put(key, serialized);
+    await kv.put(key, serialized, { expirationTtl: LAST_FETCH_TTL_SECONDS });
   } catch (err) {
     console.error(`dynamic pricing kv write error key=${key}:`, err);
   }
