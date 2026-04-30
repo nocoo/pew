@@ -22,6 +22,7 @@
     "sync": "bun run build && NODE_TLS_REJECT_UNAUTHORIZED=0 bun packages/cli/dist/bin.js sync --dev",
     "sync:prod": "bun run build && bun packages/cli/dist/bin.js sync",
     "release": "bun run scripts/release.ts",
+    "sync-prices": "bun scripts/sync-prices.ts",
     "prepare": "husky",
     "typecheck": "tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/cli/tsconfig.json && tsc --noEmit -p packages/web/tsconfig.json && tsc --noEmit -p packages/worker/tsconfig.json && tsc --noEmit -p packages/worker-read/tsconfig.json"
   },

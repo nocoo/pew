@@ -1,0 +1,156 @@
+[
+  {
+    "model": "claude-3.5-haiku-20241022",
+    "provider": "Anthropic",
+    "displayName": "Claude 3.5 Haiku",
+    "inputPerMillion": 0.8,
+    "outputPerMillion": 4,
+    "cachedPerMillion": 0.08,
+    "contextWindow": 200000,
+    "origin": "baseline",
+    "updatedAt": "2026-04-30T00:00:00.000Z"
+  },
+  {
+    "model": "claude-3.5-sonnet-20241022",
+    "provider": "Anthropic",
+    "displayName": "Claude 3.5 Sonnet",
+    "inputPerMillion": 3,
+    "outputPerMillion": 15,
+    "cachedPerMillion": 0.3,
+    "contextWindow": 200000,
+    "origin": "baseline",
+    "updatedAt": "2026-04-30T00:00:00.000Z"
+  },
+  {
+    "model": "claude-opus-4-20250514",
+    "provider": "Anthropic",
+    "displayName": "Claude Opus 4",
+    "inputPerMillion": 15,
+    "outputPerMillion": 75,
+    "cachedPerMillion": 1.5,
+    "contextWindow": 200000,
+    "origin": "baseline",
+    "updatedAt": "2026-04-30T00:00:00.000Z"
+  },
+  {
+    "model": "claude-sonnet-4-20250514",
+    "provider": "Anthropic",
+    "displayName": "Claude Sonnet 4",
+    "inputPerMillion": 3,
+    "outputPerMillion": 15,
+    "cachedPerMillion": 0.3,
+    "contextWindow": 200000,
+    "origin": "baseline",
+    "updatedAt": "2026-04-30T00:00:00.000Z"
+  },
+  {
+    "model": "gemini-2.0-flash",
+    "provider": "Google",
+    "displayName": "Gemini 2.0 Flash",
+    "inputPerMillion": 0.1,
+    "outputPerMillion": 0.4,
+    "cachedPerMillion": 0.025,
+    "contextWindow": 1000000,
+    "origin": "baseline",
+    "updatedAt": "2026-04-30T00:00:00.000Z"
+  },
+  {
+    "model": "gemini-2.5-flash",
+    "provider": "Google",
+    "displayName": "Gemini 2.5 Flash",
+    "inputPerMillion": 0.15,
+    "outputPerMillion": 0.6,
+    "cachedPerMillion": 0.04,
+    "contextWindow": 1000000,
+    "origin": "baseline",
+    "updatedAt": "2026-04-30T00:00:00.000Z"
+  },
+  {
+    "model": "gemini-2.5-pro",
+    "provider": "Google",
+    "displayName": "Gemini 2.5 Pro",
+    "inputPerMillion": 1.25,
+    "outputPerMillion": 10,
+    "cachedPerMillion": 0.31,
+    "contextWindow": 1000000,
+    "origin": "baseline",
+    "updatedAt": "2026-04-30T00:00:00.000Z"
+  },
+  {
+    "model": "gpt-4.1",
+    "provider": "OpenAI",
+    "displayName": "GPT-4.1",
+    "inputPerMillion": 2,
+    "outputPerMillion": 8,
+    "cachedPerMillion": 0.5,
+    "contextWindow": 128000,
+    "origin": "baseline",
+    "updatedAt": "2026-04-30T00:00:00.000Z"
+  },
+  {
+    "model": "gpt-4.1-mini",
+    "provider": "OpenAI",
+    "displayName": "GPT-4.1 Mini",
+    "inputPerMillion": 0.4,
+    "outputPerMillion": 1.6,
+    "cachedPerMillion": 0.1,
+    "contextWindow": 128000,
+    "origin": "baseline",
+    "updatedAt": "2026-04-30T00:00:00.000Z"
+  },
+  {
+    "model": "gpt-4.1-nano",
+    "provider": "OpenAI",
+    "displayName": "GPT-4.1 Nano",
+    "inputPerMillion": 0.1,
+    "outputPerMillion": 0.4,
+    "cachedPerMillion": 0.025,
+    "contextWindow": 128000,
+    "origin": "baseline",
+    "updatedAt": "2026-04-30T00:00:00.000Z"
+  },
+  {
+    "model": "gpt-4o",
+    "provider": "OpenAI",
+    "displayName": "GPT-4o",
+    "inputPerMillion": 2.5,
+    "outputPerMillion": 10,
+    "cachedPerMillion": 1.25,
+    "contextWindow": 128000,
+    "origin": "baseline",
+    "updatedAt": "2026-04-30T00:00:00.000Z"
+  },
+  {
+    "model": "gpt-4o-mini",
+    "provider": "OpenAI",
+    "displayName": "GPT-4o Mini",
+    "inputPerMillion": 0.15,
+    "outputPerMillion": 0.6,
+    "cachedPerMillion": 0.075,
+    "contextWindow": 128000,
+    "origin": "baseline",
+    "updatedAt": "2026-04-30T00:00:00.000Z"
+  },
+  {
+    "model": "o3",
+    "provider": "OpenAI",
+    "displayName": "o3",
+    "inputPerMillion": 10,
+    "outputPerMillion": 40,
+    "cachedPerMillion": 2.5,
+    "contextWindow": 200000,
+    "origin": "baseline",
+    "updatedAt": "2026-04-30T00:00:00.000Z"
+  },
+  {
+    "model": "o4-mini",
+    "provider": "OpenAI",
+    "displayName": "o4 Mini",
+    "inputPerMillion": 1.1,
+    "outputPerMillion": 4.4,
+    "cachedPerMillion": 0.275,
+    "contextWindow": 200000,
+    "origin": "baseline",
+    "updatedAt": "2026-04-30T00:00:00.000Z"
+  }
+]

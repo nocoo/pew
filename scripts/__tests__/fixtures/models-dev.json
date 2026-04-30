@@ -1,0 +1,20 @@
+{
+  "anthropic": {
+    "models": {
+      "claude-sonnet-4-20250514": {
+        "name": "Claude Sonnet 4",
+        "cost": { "input": 3, "output": 15, "cache_read": 0.3 },
+        "limit": { "context": 200000 }
+      }
+    }
+  },
+  "openai": {
+    "models": {
+      "gpt-4o": {
+        "name": "GPT-4o",
+        "cost": { "input": 2.5, "output": 10, "cache_read": 1.25 },
+        "limit": { "context": 128000 }
+      }
+    }
+  }
+}
