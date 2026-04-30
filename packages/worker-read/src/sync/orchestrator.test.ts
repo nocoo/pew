@@ -190,4 +190,45 @@ describe("syncDynamicPricing", () => {
     const r = await syncDynamicPricing({ db, kv, fetchImpl }, NOW);
     expect(r.meta.lastErrors).toBeNull();
   });
+
+  it("KV put failure → ok=false, errors include source='kv', meta still returned", async () => {
+    const failingKv = {
+      ...kv,
+      get: kv.get,
+      put: vi.fn(async (key: string) => {
+        // Only fail the dynamic entries write; admin-loader doesn't touch KV.
+        if (key === KEY_DYNAMIC || key === KEY_DYNAMIC_META) {
+          throw new Error("kv 503");
+        }
+        kv.store.set(key, "");
+      }),
+      store: kv.store,
+    } as unknown as typeof kv;
+    const fetchImpl = mockFetch({
+      [OPENROUTER_URL]: { status: 200, body: OPENROUTER_OK },
+      [MODELS_DEV_URL]: { status: 200, body: MODELS_DEV_OK },
+    });
+    const r = await syncDynamicPricing({ db, kv: failingKv, fetchImpl }, NOW);
+    expect(r.ok).toBe(false);
+    expect(r.errors.some((e) => e.source === "kv")).toBe(true);
+    expect(r.meta.lastErrors?.some((e) => e.source === "kv")).toBe(true);
+  });
+
+  it("D1 admin-loader failure → ok=false with source='d1' in errors; entries still merged from upstream + baseline", async () => {
+    const throwingDb = {
+      prepare: vi.fn().mockReturnValue({
+        all: vi.fn().mockRejectedValue(new Error("D1 down")),
+      }),
+    } as unknown as D1Database;
+    const fetchImpl = mockFetch({
+      [OPENROUTER_URL]: { status: 200, body: OPENROUTER_OK },
+      [MODELS_DEV_URL]: { status: 200, body: MODELS_DEV_OK },
+    });
+    const r = await syncDynamicPricing({ db: throwingDb, kv, fetchImpl }, NOW);
+    expect(r.ok).toBe(false);
+    expect(r.errors.some((e) => e.source === "d1" && e.message.includes("D1 down"))).toBe(true);
+    expect(r.entriesWritten).toBeGreaterThanOrEqual((baseline as DynamicPricingEntry[]).length);
+    expect(kv.store.has(KEY_DYNAMIC)).toBe(true);
+    expect(r.meta.lastErrors?.some((e) => e.source === "d1")).toBe(true);
+  });
 });

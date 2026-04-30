@@ -16,9 +16,9 @@ describe("admin-loader", () => {
     errSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
   });
 
-  it("empty table → []", async () => {
+  it("empty table → rows=[], error=null", async () => {
     const db = mockDb(async () => ({ results: [] }));
-    expect(await loadAdminRows(db)).toEqual([]);
+    expect(await loadAdminRows(db)).toEqual({ rows: [], error: null });
   });
 
   it("maps mixed source=null and source='codex' rows", async () => {
@@ -28,17 +28,22 @@ describe("admin-loader", () => {
         { model: "gpt-4o", source: "codex", input: 7, output: 21, cached: 1.5 },
       ],
     }));
-    expect(await loadAdminRows(db)).toEqual([
-      { model: "gpt-4o", source: null, input: 2.5, output: 10, cached: 1.25 },
-      { model: "gpt-4o", source: "codex", input: 7, output: 21, cached: 1.5 },
-    ]);
+    expect(await loadAdminRows(db)).toEqual({
+      rows: [
+        { model: "gpt-4o", source: null, input: 2.5, output: 10, cached: 1.25 },
+        { model: "gpt-4o", source: "codex", input: 7, output: 21, cached: 1.5 },
+      ],
+      error: null,
+    });
   });
 
-  it("D1 throws → returns [] and logs", async () => {
+  it("D1 throws → returns rows=[] with error message and logs", async () => {
     const db = mockDb(async () => {
       throw new Error("D1 down");
     });
-    expect(await loadAdminRows(db)).toEqual([]);
+    const result = await loadAdminRows(db);
+    expect(result.rows).toEqual([]);
+    expect(result.error).toBe("D1 down");
     expect(errSpy).toHaveBeenCalled();
   });
 });

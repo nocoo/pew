@@ -29,9 +29,9 @@ import { loadAdminRows } from "./admin-loader";
 import type { AdminPricingRow } from "./types";
 import {
   readLastFetch,
-  writeDynamic,
+  writeDynamicOrThrow,
   writeLastFetch,
-  writeMeta,
+  writeMetaOrThrow,
   type LastFetchSource,
 } from "./kv-store";
 import type { DynamicPricingEntry, DynamicPricingMeta } from "./types";
@@ -107,11 +107,10 @@ export async function syncDynamicPricing(
   const orParse = parseOpenRouter(orRes.json ?? { data: [] }, now);
   const mdParse = parseModelsDev(mdRes.json ?? {}, now);
 
-  let admin: AdminPricingRow[] = [];
-  try {
-    admin = await loadAdminRows(deps.db);
-  } catch (err) {
-    errors.push({ source: "d1", message: (err as Error).message ?? String(err) });
+  const adminResult = await loadAdminRows(deps.db);
+  const admin: AdminPricingRow[] = adminResult.rows;
+  if (adminResult.error) {
+    errors.push({ source: "d1", message: adminResult.error });
   }
 
   const merged = mergePricingSources({
@@ -122,18 +121,32 @@ export async function syncDynamicPricing(
     now,
   });
 
-  const meta: DynamicPricingMeta = {
+  // Build meta first so we can attempt to write both entries and meta atomically
+  // (best-effort: if either write fails we surface kv error and ok=false).
+  const buildMeta = (): DynamicPricingMeta => ({
     ...merged.meta,
     lastErrors: errors.length
       ? errors.map((e) => ({ source: e.source, at: now, message: e.message }))
       : null,
-  };
+  });
 
   try {
-    await writeDynamic(deps.kv, merged.entries);
-    await writeMeta(deps.kv, meta);
+    await writeDynamicOrThrow(deps.kv, merged.entries);
   } catch (err) {
-    errors.push({ source: "kv", message: (err as Error).message ?? String(err) });
+    const message = (err as Error).message ?? String(err);
+    console.error("dynamic pricing kv write error key=pricing:dynamic:", err);
+    errors.push({ source: "kv", message });
+  }
+
+  // Re-build meta now that errors may include the entries-write failure.
+  let meta = buildMeta();
+  try {
+    await writeMetaOrThrow(deps.kv, meta);
+  } catch (err) {
+    const message = (err as Error).message ?? String(err);
+    console.error("dynamic pricing kv write error key=pricing:dynamic:meta:", err);
+    errors.push({ source: "kv", message });
+    meta = buildMeta();
   }
 
   return {

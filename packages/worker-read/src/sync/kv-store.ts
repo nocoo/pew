@@ -66,12 +66,30 @@ export async function writeDynamic(
   await writeJson(kv, KEY_DYNAMIC, entries);
 }
 
+/**
+ * Throwing variant of writeDynamic — orchestrator uses this so KV failures
+ * surface in SyncOutcome.errors instead of being silently swallowed.
+ */
+export async function writeDynamicOrThrow(
+  kv: KVNamespace,
+  entries: DynamicPricingEntry[]
+): Promise<void> {
+  await kv.put(KEY_DYNAMIC, JSON.stringify(entries));
+}
+
 export async function readMeta(kv: KVNamespace): Promise<DynamicPricingMeta | null> {
   return readJson<DynamicPricingMeta>(kv, KEY_DYNAMIC_META);
 }
 
 export async function writeMeta(kv: KVNamespace, meta: DynamicPricingMeta): Promise<void> {
   await writeJson(kv, KEY_DYNAMIC_META, meta);
+}
+
+export async function writeMetaOrThrow(
+  kv: KVNamespace,
+  meta: DynamicPricingMeta
+): Promise<void> {
+  await kv.put(KEY_DYNAMIC_META, JSON.stringify(meta));
 }
 
 export async function readLastFetch(
