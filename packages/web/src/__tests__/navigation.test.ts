@@ -231,6 +231,7 @@ describe("route labels", () => {
       badges: "Badges",
       storage: "Storage",
       pricing: "Token Pricing",
+      "model-prices": "Model Prices",
       invites: "Invite Codes",
       compare: "Compare Users",
       result: "Results",

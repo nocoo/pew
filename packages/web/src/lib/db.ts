@@ -37,6 +37,8 @@ import type {
   ShowcaseExistsResult,
   SessionRecordRow,
   PricingRow,
+  DynamicPricingEntryDto,
+  DynamicPricingMetaDto,
   AdminStorageUserRow,
   UsageRecordRow,
   UsageDeviceSummaryRow,
@@ -460,6 +462,15 @@ export interface DbRead {
     model: string,
     source: string | null,
   ): Promise<PricingRow | null>;
+
+  /** Get dynamic pricing entries (KV-backed, falls back to bundled baseline) */
+  getDynamicPricing(): Promise<{
+    entries: DynamicPricingEntryDto[];
+    servedFrom: "kv" | "baseline";
+  }>;
+
+  /** Get dynamic pricing meta (last sync stats + per-source errors) */
+  getDynamicPricingMeta(): Promise<DynamicPricingMetaDto>;
 
   // ---------------------------------------------------------------------------
   // Usage domain RPC methods

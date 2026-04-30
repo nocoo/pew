@@ -383,6 +383,42 @@ export interface PricingRow {
 }
 
 // ---------------------------------------------------------------------------
+// Dynamic pricing DTOs (mirror worker-read sync/types — kept web-side until
+// a cross-package alias is introduced; route.test.ts contract test pins shape).
+// ---------------------------------------------------------------------------
+
+export type DynamicPricingOrigin = "baseline" | "openrouter" | "models.dev" | "admin";
+
+export interface DynamicPricingEntryDto {
+  model: string;
+  provider: string | null;
+  displayName: string | null;
+  inputPerMillion: number;
+  outputPerMillion: number;
+  cachedPerMillion: number | null;
+  contextWindow: number | null;
+  origin: DynamicPricingOrigin;
+  updatedAt: string;
+  aliases?: string[];
+}
+
+export interface DynamicPricingErrorDto {
+  source: "openrouter" | "models.dev" | "d1" | "kv";
+  at: string;
+  message: string;
+}
+
+export interface DynamicPricingMetaDto {
+  lastSyncedAt: string;
+  modelCount: number;
+  baselineCount: number;
+  openRouterCount: number;
+  modelsDevCount: number;
+  adminOverrideCount: number;
+  lastErrors: DynamicPricingErrorDto[] | null;
+}
+
+// ---------------------------------------------------------------------------
 // Admin domain types
 // ---------------------------------------------------------------------------
 

@@ -69,6 +69,7 @@ export const ADMIN_NAV_GROUP: NavGroupDef = {
   defaultOpen: true,
   items: [
     { href: "/admin/pricing", label: "Token Pricing", icon: "DollarSign" },
+    { href: "/admin/model-prices", label: "Model Prices", icon: "Tag" },
     { href: "/admin/invites", label: "Invite Codes", icon: "Ticket" },
     { href: "/admin/organizations", label: "Organizations", icon: "Building2" },
     { href: "/admin/seasons", label: "Seasons", icon: "Trophy" },
@@ -108,6 +109,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   badges: "Badges",
   storage: "Storage",
   pricing: "Token Pricing",
+  "model-prices": "Model Prices",
   invites: "Invite Codes",
   compare: "Compare Users",
   result: "Results",

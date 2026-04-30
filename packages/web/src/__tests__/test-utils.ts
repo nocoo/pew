@@ -102,6 +102,8 @@ export function createMockDbRead() {
     listModelPricing: vi.fn(),
     getModelPricingById: vi.fn(),
     getModelPricingByModelSource: vi.fn(),
+    getDynamicPricing: vi.fn(),
+    getDynamicPricingMeta: vi.fn(),
     // Admin RPC methods
     getAdminStorageStats: vi.fn(),
     // Sessions RPC methods
@@ -225,6 +227,8 @@ export function createMockDbRead() {
     listModelPricing: ReturnType<typeof vi.fn>;
     getModelPricingById: ReturnType<typeof vi.fn>;
     getModelPricingByModelSource: ReturnType<typeof vi.fn>;
+    getDynamicPricing: ReturnType<typeof vi.fn>;
+    getDynamicPricingMeta: ReturnType<typeof vi.fn>;
     getAdminStorageStats: ReturnType<typeof vi.fn>;
     getSessionRecords: ReturnType<typeof vi.fn>;
     getUsageRecords: ReturnType<typeof vi.fn>;

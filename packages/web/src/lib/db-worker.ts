@@ -38,6 +38,8 @@ import type {
   ShowcaseExistsResult,
   SessionRecordRow,
   PricingRow,
+  DynamicPricingEntryDto,
+  DynamicPricingMetaDto,
   AdminStorageUserRow,
   UsageRecordRow,
   UsageDeviceSummaryRow,
@@ -814,6 +816,21 @@ export function createWorkerDbRead(): DbRead {
         method: "pricing.getModelPricingByModelSource",
         model,
         source,
+      });
+    },
+
+    async getDynamicPricing(): Promise<{
+      entries: DynamicPricingEntryDto[];
+      servedFrom: "kv" | "baseline";
+    }> {
+      return rpc<{ entries: DynamicPricingEntryDto[]; servedFrom: "kv" | "baseline" }>({
+        method: "pricing.getDynamicPricing",
+      });
+    },
+
+    async getDynamicPricingMeta(): Promise<DynamicPricingMetaDto> {
+      return rpc<DynamicPricingMetaDto>({
+        method: "pricing.getDynamicPricingMeta",
       });
     },
 
