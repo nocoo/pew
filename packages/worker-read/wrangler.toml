@@ -16,9 +16,15 @@ database_id = "5c00ebbf-a0ed-49d9-a64f-5712c272e96f"
 binding = "CACHE"
 id = "5df59e90f9e34c5da40fd312eb83e4ee"
 
+[triggers]
+crons = ["0 3 * * *"]
+
 # ---------- Test environment ----------
 [env.test]
 name = "pew-test"
+
+[env.test.triggers]
+crons = ["0 3 * * *"]
 
 [[env.test.d1_databases]]
 binding = "DB"

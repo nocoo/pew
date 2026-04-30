@@ -6,6 +6,9 @@
 
 import type { D1Database, KVNamespace } from "@cloudflare/workers-types";
 import { withCache, TTL_24H } from "../cache";
+import baseline from "../data/model-prices.json";
+import { readDynamic, readMeta } from "../sync/kv-store";
+import type { DynamicPricingEntry, DynamicPricingMeta } from "../sync/types";
 
 // ---------------------------------------------------------------------------
 // Cache Keys
@@ -48,10 +51,20 @@ export interface GetModelPricingByModelSourceRequest {
   source: string | null;
 }
 
+export interface GetDynamicPricingRequest {
+  method: "pricing.getDynamicPricing";
+}
+
+export interface GetDynamicPricingMetaRequest {
+  method: "pricing.getDynamicPricingMeta";
+}
+
 export type PricingRpcRequest =
   | ListModelPricingRequest
   | GetModelPricingByIdRequest
-  | GetModelPricingByModelSourceRequest;
+  | GetModelPricingByModelSourceRequest
+  | GetDynamicPricingRequest
+  | GetDynamicPricingMetaRequest;
 
 // ---------------------------------------------------------------------------
 // Handlers
@@ -115,6 +128,41 @@ async function handleGetModelPricingByModelSource(
 // Router
 // ---------------------------------------------------------------------------
 
+const BASELINE_ENTRIES = baseline as DynamicPricingEntry[];
+
+async function handleGetDynamicPricing(kv: KVNamespace): Promise<Response> {
+  const stored = await readDynamic(kv);
+  if (stored && stored.length > 0) {
+    return Response.json({ result: { entries: stored, servedFrom: "kv" } });
+  }
+  return Response.json({
+    result: { entries: BASELINE_ENTRIES, servedFrom: "baseline" },
+  });
+}
+
+async function handleGetDynamicPricingMeta(kv: KVNamespace): Promise<Response> {
+  const stored = await readMeta(kv);
+  if (stored) {
+    return Response.json({ result: stored });
+  }
+  const synthesized: DynamicPricingMeta = {
+    lastSyncedAt: "1970-01-01T00:00:00.000Z",
+    modelCount: BASELINE_ENTRIES.length,
+    baselineCount: BASELINE_ENTRIES.length,
+    openRouterCount: 0,
+    modelsDevCount: 0,
+    adminOverrideCount: 0,
+    lastErrors: [
+      {
+        source: "kv",
+        at: new Date().toISOString(),
+        message: "KV empty (cold start)",
+      },
+    ],
+  };
+  return Response.json({ result: synthesized });
+}
+
 export async function handlePricingRpc(
   request: PricingRpcRequest,
   db: D1Database,
@@ -127,6 +175,10 @@ export async function handlePricingRpc(
       return handleGetModelPricingById(request, db);
     case "pricing.getModelPricingByModelSource":
       return handleGetModelPricingByModelSource(request, db);
+    case "pricing.getDynamicPricing":
+      return handleGetDynamicPricing(kv);
+    case "pricing.getDynamicPricingMeta":
+      return handleGetDynamicPricingMeta(kv);
     default:
       return Response.json(
         { error: `Unknown pricing method: ${(request as { method: string }).method}` },

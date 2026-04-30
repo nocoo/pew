@@ -4,7 +4,15 @@ import {
   type ListModelPricingRequest,
   type GetModelPricingByIdRequest,
   type GetModelPricingByModelSourceRequest,
+  type GetDynamicPricingRequest,
+  type GetDynamicPricingMetaRequest,
 } from "./pricing";
+import baseline from "../data/model-prices.json";
+import {
+  KEY_DYNAMIC,
+  KEY_DYNAMIC_META,
+} from "../sync/kv-store";
+import type { DynamicPricingEntry, DynamicPricingMeta } from "../sync/types";
 import type { D1Database, KVNamespace } from "@cloudflare/workers-types";
 
 // ---------------------------------------------------------------------------
@@ -284,6 +292,95 @@ describe("pricing RPC handlers", () => {
       expect(response.status).toBe(400);
       const body = (await response.json()) as { error: string };
       expect(body.error).toContain("model is required");
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // pricing.getDynamicPricing
+  // -------------------------------------------------------------------------
+
+  describe("pricing.getDynamicPricing", () => {
+    it("returns stored entries with servedFrom='kv' when KV populated", async () => {
+      const entries: DynamicPricingEntry[] = [
+        {
+          model: "anthropic/claude-sonnet-4",
+          provider: "Anthropic",
+          displayName: null,
+          inputPerMillion: 3,
+          outputPerMillion: 15,
+          cachedPerMillion: 0.3,
+          contextWindow: 200000,
+          origin: "openrouter",
+          updatedAt: "2026-04-30T00:00:00.000Z",
+        },
+      ];
+      kv.get.mockImplementation(async (key: string) => {
+        if (key === KEY_DYNAMIC) return entries;
+        return null;
+      });
+      const req: GetDynamicPricingRequest = { method: "pricing.getDynamicPricing" };
+      const res = await handlePricingRpc(req, db, kv);
+      const body = (await res.json()) as { result: { entries: DynamicPricingEntry[]; servedFrom: string } };
+      expect(res.status).toBe(200);
+      expect(body.result.servedFrom).toBe("kv");
+      expect(body.result.entries).toEqual(entries);
+    });
+
+    it("falls back to bundled baseline with servedFrom='baseline' on KV miss", async () => {
+      const req: GetDynamicPricingRequest = { method: "pricing.getDynamicPricing" };
+      const res = await handlePricingRpc(req, db, kv);
+      const body = (await res.json()) as { result: { entries: DynamicPricingEntry[]; servedFrom: string } };
+      expect(res.status).toBe(200);
+      expect(body.result.servedFrom).toBe("baseline");
+      expect(body.result.entries).toEqual(baseline);
+    });
+
+    it("falls back to baseline when stored entries array is empty", async () => {
+      kv.get.mockImplementation(async (key: string) => {
+        if (key === KEY_DYNAMIC) return [];
+        return null;
+      });
+      const req: GetDynamicPricingRequest = { method: "pricing.getDynamicPricing" };
+      const res = await handlePricingRpc(req, db, kv);
+      const body = (await res.json()) as { result: { servedFrom: string } };
+      expect(body.result.servedFrom).toBe("baseline");
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // pricing.getDynamicPricingMeta
+  // -------------------------------------------------------------------------
+
+  describe("pricing.getDynamicPricingMeta", () => {
+    it("returns stored meta when KV populated", async () => {
+      const meta: DynamicPricingMeta = {
+        lastSyncedAt: "2026-04-30T00:00:00.000Z",
+        modelCount: 42,
+        baselineCount: 14,
+        openRouterCount: 20,
+        modelsDevCount: 8,
+        adminOverrideCount: 0,
+        lastErrors: null,
+      };
+      kv.get.mockImplementation(async (key: string) => {
+        if (key === KEY_DYNAMIC_META) return meta;
+        return null;
+      });
+      const req: GetDynamicPricingMetaRequest = { method: "pricing.getDynamicPricingMeta" };
+      const res = await handlePricingRpc(req, db, kv);
+      const body = (await res.json()) as { result: DynamicPricingMeta };
+      expect(body.result).toEqual(meta);
+    });
+
+    it("synthesizes cold-start meta on KV miss with kv error in lastErrors", async () => {
+      const req: GetDynamicPricingMetaRequest = { method: "pricing.getDynamicPricingMeta" };
+      const res = await handlePricingRpc(req, db, kv);
+      const body = (await res.json()) as { result: DynamicPricingMeta };
+      expect(body.result.lastSyncedAt).toBe("1970-01-01T00:00:00.000Z");
+      expect(body.result.baselineCount).toBe((baseline as DynamicPricingEntry[]).length);
+      expect(body.result.modelCount).toBe((baseline as DynamicPricingEntry[]).length);
+      expect(body.result.lastErrors?.[0]?.source).toBe("kv");
+      expect(body.result.lastErrors?.[0]?.message).toContain("cold start");
     });
   });
 

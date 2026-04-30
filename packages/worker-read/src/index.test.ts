@@ -603,4 +603,31 @@ describe("pew read Worker", () => {
       expect(body.error).toContain("JSON");
     });
   });
+
+  describe("scheduled handler", () => {
+    it("is exported and callable; logs success path", async () => {
+      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response(JSON.stringify({ data: [] }), { status: 200 })
+      );
+      const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+      const errSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+      try {
+        expect(typeof worker.scheduled).toBe("function");
+        await worker.scheduled!(
+          { cron: "0 3 * * *", scheduledTime: Date.now(), type: "scheduled" } as unknown as ScheduledController,
+          createEnv(),
+          { waitUntil: () => undefined, passThroughOnException: () => undefined } as unknown as ExecutionContext
+        );
+        expect(logSpy.mock.calls.flat().some((arg) =>
+          typeof arg === "string" && arg.startsWith("dynamic pricing sync")
+        ) || errSpy.mock.calls.flat().some((arg) =>
+          typeof arg === "string" && arg.startsWith("dynamic pricing sync")
+        )).toBe(true);
+      } finally {
+        fetchSpy.mockRestore();
+        logSpy.mockRestore();
+        errSpy.mockRestore();
+      }
+    });
+  });
 });

@@ -34,6 +34,7 @@ import { handleAdminRpc, type AdminRpcRequest } from "./rpc/admin";
 import { handleLiveRpc, type LiveRpcRequest } from "./rpc/live";
 import { handleCacheRpc, type CacheRpcRequest } from "./rpc/cache";
 import { handleBadgesRpc, type BadgesRpcRequest } from "./rpc/badges";
+import { syncDynamicPricing } from "./sync/orchestrator";
 
 // ---------------------------------------------------------------------------
 // Version
@@ -469,6 +470,19 @@ const worker: ExportedHandler<Env> = {
 
     // Unknown route
     return Response.json({ error: "Not found" }, { status: 404 });
+  },
+
+  async scheduled(_event, env) {
+    const now = new Date().toISOString();
+    const outcome = await syncDynamicPricing({ db: env.DB, kv: env.CACHE }, now);
+    if (!outcome.ok) {
+      console.error("dynamic pricing sync degraded", {
+        entries: outcome.entriesWritten,
+        errors: outcome.errors,
+      });
+    } else {
+      console.log("dynamic pricing sync ok", { entries: outcome.entriesWritten });
+    }
   },
 };
 
