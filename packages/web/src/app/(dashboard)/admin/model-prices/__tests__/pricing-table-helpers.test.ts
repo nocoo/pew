@@ -4,7 +4,6 @@ import {
   filterEntries,
   filterByFacets,
   originChipClass,
-  formatNullable,
   formatPrice,
   formatContext,
 } from "../pricing-table-helpers";
@@ -122,17 +121,6 @@ describe("pricing-table-helpers", () => {
       expect(originChipClass("openrouter")).toContain("blue");
       expect(originChipClass("models.dev")).toContain("emerald");
       expect(originChipClass("admin")).toContain("purple");
-    });
-  });
-
-  describe("formatNullable", () => {
-    it("null renders as em-dash", () => {
-      expect(formatNullable(null)).toBe("—");
-    });
-
-    it("non-null renders with optional prefix", () => {
-      expect(formatNullable(3)).toBe("3");
-      expect(formatNullable(3, "$")).toBe("$3");
     });
   });
 

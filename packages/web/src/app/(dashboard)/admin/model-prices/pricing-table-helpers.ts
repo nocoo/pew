@@ -103,11 +103,6 @@ export function originChipClass(origin: DynamicPricingOrigin): string {
   }
 }
 
-export function formatNullable(value: number | null, prefix = ""): string {
-  if (value == null) return "—";
-  return `${prefix}${value}`;
-}
-
 export function formatPrice(value: number | null): string {
   if (value == null) return "—";
   return `$${value.toFixed(2)}`;
