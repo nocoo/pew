@@ -7,7 +7,7 @@
 
 import { NextResponse } from "next/server";
 import { getDbRead } from "@/lib/db";
-import { lookupPricing, type PricingMap } from "@/lib/pricing";
+import { estimateCost, lookupPricing, type PricingMap } from "@/lib/pricing";
 import { loadPricingMap } from "@/lib/load-pricing-map";
 import {
   ACHIEVEMENT_DEFS,
@@ -48,14 +48,7 @@ function computeCost(
   pricingMap: PricingMap
 ): number {
   const pricing = lookupPricing(pricingMap, model, source ?? undefined);
-
-  const inputCost = (inputTokens / 1_000_000) * pricing.input;
-  const outputCost = (outputTokens / 1_000_000) * pricing.output;
-  const cachedCost = cachedTokens && pricing.cached
-    ? (cachedTokens / 1_000_000) * pricing.cached
-    : 0;
-
-  return inputCost + outputCost + cachedCost;
+  return estimateCost(inputTokens, outputTokens, cachedTokens, pricing).totalCost;
 }
 
 function computeStreak(activeDays: Set<string>, today: string): number {
