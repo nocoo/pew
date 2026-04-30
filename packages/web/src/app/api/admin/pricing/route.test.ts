@@ -60,7 +60,7 @@ describe("admin pricing CRUD side-effects", () => {
     expect(res.status).toBe(201);
     expect(dbRead.invalidateCacheKey).toHaveBeenCalledWith("pricing:all");
     expect(dbRead.rebuildDynamicPricing).toHaveBeenCalledTimes(1);
-    expect(dbRead.rebuildDynamicPricing).toHaveBeenCalledWith();
+    expect(dbRead.rebuildDynamicPricing).toHaveBeenCalledWith({ forceRefetch: false });
   });
 
   it("POST → does not run side-effects on validation failure (400)", async () => {

@@ -178,7 +178,7 @@ async function handleRebuildDynamicPricing(
   const outcome: SyncOutcome = await syncDynamicPricing(
     { db, kv },
     new Date().toISOString(),
-    { forceRefetch: req.forceRefetch === true }
+    { forceRefetch: req.forceRefetch }
   );
   return Response.json({ result: outcome });
 }

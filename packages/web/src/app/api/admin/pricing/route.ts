@@ -20,7 +20,7 @@ import { getDbRead, getDbWrite, type DbRead } from "@/lib/db";
 async function runWriteSideEffects(dbRead: DbRead): Promise<void> {
   const results = await Promise.allSettled([
     dbRead.invalidateCacheKey("pricing:all"),
-    dbRead.rebuildDynamicPricing(),
+    dbRead.rebuildDynamicPricing({ forceRefetch: false }),
   ]);
   if (results[0].status === "rejected") {
     console.error(

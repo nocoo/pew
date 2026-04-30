@@ -457,7 +457,7 @@ describe("pricing RPC handlers", () => {
       vi.spyOn(console, "warn").mockImplementation(() => undefined);
     });
 
-    it("default (no forceRefetch) does not hit upstream; merges last-fetch cache + admin D1 + baseline", async () => {
+    it("forceRefetch=false does not hit upstream; merges last-fetch cache + admin D1 + baseline", async () => {
       const fetchSpy = vi.fn().mockRejectedValue(new Error("should not be called"));
       vi.stubGlobal("fetch", fetchSpy);
 
@@ -474,6 +474,7 @@ describe("pricing RPC handlers", () => {
 
       const req: RebuildDynamicPricingRequest = {
         method: "pricing.rebuildDynamicPricing",
+        forceRefetch: false,
       };
       const res = await handlePricingRpc(req, emptyDb(), memKv);
       const body = (await res.json()) as { result: SyncOutcome };
@@ -485,6 +486,36 @@ describe("pricing RPC handlers", () => {
       );
       expect(memKv.store.has(KEY_DYNAMIC)).toBe(true);
       expect(fetchSpy).not.toHaveBeenCalled();
+
+      vi.unstubAllGlobals();
+    });
+
+    it("undefined forceRefetch (cron default) fetches upstream with cache fallback", async () => {
+      const fetchSpy = vi.fn(async (url: string | URL | Request) => {
+        const u =
+          typeof url === "string"
+            ? url
+            : url instanceof URL
+              ? url.toString()
+              : url.url;
+        const body = u === OPENROUTER_URL ? OPENROUTER_OK : MODELS_DEV_OK;
+        return new Response(JSON.stringify(body), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      });
+      vi.stubGlobal("fetch", fetchSpy);
+
+      const memKv = memoryKv();
+      const req: RebuildDynamicPricingRequest = {
+        method: "pricing.rebuildDynamicPricing",
+      };
+      const res = await handlePricingRpc(req, emptyDb(), memKv);
+      const body = (await res.json()) as { result: SyncOutcome };
+
+      expect(res.status).toBe(200);
+      expect(body.result.ok).toBe(true);
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
 
       vi.unstubAllGlobals();
     });
