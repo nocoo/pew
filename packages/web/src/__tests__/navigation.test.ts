@@ -230,7 +230,6 @@ describe("route labels", () => {
       seasons: "Seasons",
       badges: "Badges",
       storage: "Storage",
-      pricing: "Token Pricing",
       "model-prices": "Model Prices",
       invites: "Invite Codes",
       compare: "Compare Users",
@@ -262,11 +261,11 @@ describe("breadcrumbsFromPathname", () => {
   });
 
   it("should return breadcrumbs for nested admin routes with non-clickable Admin", () => {
-    const crumbs = breadcrumbsFromPathname("/admin/pricing");
+    const crumbs = breadcrumbsFromPathname("/admin/model-prices");
     expect(crumbs).toEqual([
       { label: "Home", href: "/dashboard" },
       { label: "Admin" },
-      { label: "Token Pricing" },
+      { label: "Model Prices" },
     ]);
   });
 

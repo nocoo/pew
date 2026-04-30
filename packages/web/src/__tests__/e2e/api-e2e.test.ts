@@ -1388,13 +1388,6 @@ describe("GET /api/admin/badges", () => {
   });
 });
 
-describe("GET /api/admin/pricing", () => {
-  it("should return 403 for non-admin", async () => {
-    const res = await fetch(`${BASE_URL}/api/admin/pricing`);
-    expect(res.status).toBe(403);
-  });
-});
-
 describe("GET /api/admin/seasons", () => {
   it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/seasons`);

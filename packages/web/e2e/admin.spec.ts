@@ -21,9 +21,9 @@ test.describe("admin pages", () => {
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Invite");
   });
 
-  test("pricing page loads", async ({ page }) => {
-    await page.goto("/admin/pricing");
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("Pricing");
+  test("model-prices page loads", async ({ page }) => {
+    await page.goto("/admin/model-prices");
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("Model Prices");
   });
 
   test("seasons page loads", async ({ page }) => {

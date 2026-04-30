@@ -2,8 +2,7 @@
  * GET /api/admin/pricing/models — admin-only view of dynamic pricing entries.
  *
  * Reads from worker-read's KV-backed `pricing.getDynamicPricing` /
- * `pricing.getDynamicPricingMeta`. Strictly read-only — separate from the
- * `/api/admin/pricing` Token Pricing CRUD endpoint.
+ * `pricing.getDynamicPricingMeta`. Strictly read-only.
  */
 
 import { NextResponse } from "next/server";

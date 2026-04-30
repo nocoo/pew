@@ -72,8 +72,7 @@ export default function ModelPricesPage() {
       <div>
         <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">Model Prices</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Dynamic pricing entries published by the worker-read sync. Read-only view; edits go through{" "}
-          <a className="underline" href="/admin/pricing">Token Pricing</a>.
+          Dynamic pricing entries published by the worker-read sync (baseline JSON, openrouter, models.dev). Read-only view.
         </p>
       </div>
 
