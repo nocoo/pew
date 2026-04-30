@@ -7,36 +7,35 @@ Expose the dynamic pricing data published by C3 to the web app, and add a sortab
 ## Files added
 
 ```
-packages/web/src/app/api/pricing/models/
-└── route.ts                                          # GET → { entries, meta, servedFrom }
+packages/web/src/app/api/admin/pricing/models/
+└── route.ts                                          # GET → { entries, meta, servedFrom }, admin-only
 
-packages/web/src/app/api/pricing/models/
+packages/web/src/app/api/admin/pricing/models/
 └── route.test.ts                                     # auth + RPC delegation + error fallback
 
-packages/web/src/app/(dashboard)/pricing/
-├── page.tsx                                          # server component shell
-├── pricing-table.tsx                                 # client component: sort/filter/search
-├── pricing-meta-banner.tsx                           # client component: meta + lastErrors[] surface
+packages/web/src/app/(dashboard)/admin/model-prices/
+├── page.tsx                                          # client component (admin-gated via useAdmin())
+├── pricing-table.tsx                                 # presentation: sort/filter/search
+├── pricing-meta-banner.tsx                           # presentation: meta + lastErrors[] surface
+├── pricing-table-helpers.ts                          # pure sort/filter helpers (unit-tested)
 └── __tests__/
-    ├── pricing-table.test.tsx
-    └── pricing-meta-banner.test.tsx
-
-packages/web/src/lib/
-└── dynamic-pricing-types.ts                          # re-export of DynamicPricingEntry/Meta from worker-read
+    └── pricing-table-helpers.test.ts                 # vitest unit tests for the pure helpers
 ```
+
+(Path `/admin/model-prices` chosen to avoid colliding with existing `/admin/pricing` (Token Pricing CRUD). Final label/path subject to one-line product confirmation; spec uses `model-prices` as placeholder.)
 
 ## Files modified
 
 ```
 packages/web/src/lib/db-worker.ts                     # add getDynamicPricing(), getDynamicPricingMeta() RPC wrappers
-packages/web/src/components/sidebar.tsx               # (or wherever nav lives) add /pricing link, admin-only
+packages/web/src/lib/navigation.ts                    # add { href: '/admin/model-prices', label: 'Model Prices', icon: 'Tag' } to ADMIN_NAV_GROUP
 ```
 
 No edits to existing routes, charts, `lib/pricing.ts`, or any cost calculation.
 
 ## Module contracts
 
-### `app/api/pricing/models/route.ts`
+### `app/api/admin/pricing/models/route.ts`
 
 ```typescript
 export async function GET(request: Request): Promise<Response>;
@@ -44,12 +43,14 @@ export async function GET(request: Request): Promise<Response>;
 
 Behavior:
 
-1. **Auth gate**: resolve user via `resolveUser(request)`. If not logged in → 401. If user is not admin → 403. (The `/pricing` page is admin-only in C4; if product later wants it on the public dashboard, drop the admin check then.)
+1. **Auth gate** (existing pattern from `app/api/organizations/mine/route.ts`):
+   - `const auth = await resolveUser(request)`; null → 401.
+   - `const admin = await isAdminUser(auth.userId)`; false → 403.
 2. **Fetch**:
    - `entries = await db.getDynamicPricing()` (returns `{ entries, servedFrom }`)
    - `meta = await db.getDynamicPricingMeta()`
    - Both via the existing `getDbRead()` worker-read client.
-3. **Return** `NextResponse.json({ entries: entries.entries, servedFrom: entries.servedFrom, meta }, { headers: { 'cache-control': 'private, max-age=60' } })`. 60 s edge cache is enough — the underlying KV updates daily.
+3. **Return** `NextResponse.json({ entries: entries.entries, servedFrom: entries.servedFrom, meta }, { headers: { 'cache-control': 'private, no-store' } })`. Admin-gated data is never cached at the edge — same posture as existing admin APIs.
 4. **Error fallback**: if either RPC throws (worker-read unreachable), return 503 with `{ error, fallback: { entries: [], meta: null } }`. Page must render the error state without crashing.
 
 This route does **not** import `lib/pricing.ts` — it's strictly the dynamic dataset, separate from the cost-calc `PricingMap` served by `/api/pricing`.
@@ -61,21 +62,32 @@ async getDynamicPricing(): Promise<{ entries: DynamicPricingEntry[]; servedFrom:
 async getDynamicPricingMeta(): Promise<DynamicPricingMeta>;
 ```
 
-Implemented as thin RPC wrappers, mirroring the existing `listModelPricing()` pattern. Types imported from the new `lib/dynamic-pricing-types.ts` (which re-exports from `@pew/worker-read/src/sync/types`). The re-export indirection means future type tweaks happen in one place.
+Implemented as thin RPC wrappers, mirroring the existing `listModelPricing()` pattern.
 
-### `app/(dashboard)/pricing/page.tsx`
+**Type sourcing**: there is no `@pew/worker-read` source alias in the web tsconfig (verified). C4 inlines the `DynamicPricingEntry` / `DynamicPricingMeta` interfaces in `lib/db-worker.ts` (or a sibling `lib/dynamic-pricing-dto.ts`) as web-side DTOs that match the worker's shape exactly. A contract test in `route.test.ts` round-trips a representative payload to ensure shape parity. Future C5 may collapse this duplication once the cost path also reads dynamic types — but introducing a cross-package alias is out of scope for C4.
 
-Server component:
+### `app/(dashboard)/admin/model-prices/page.tsx`
+
+Client component, mirroring the existing `(dashboard)/admin/pricing/page.tsx` pattern:
 
 ```typescript
-export default async function PricingPage() {
-  const me = await getCurrentUser();
-  if (!me?.isAdmin) redirect('/dashboard');
+"use client";
 
-  const data = await fetchPricingModels();   // hits /api/pricing/models internally
+import { useAdmin } from "@/hooks/use-admin";
+
+export default function ModelPricesPage() {
+  const { isAdmin, isLoading } = useAdmin();
+  if (isLoading) return <PricingSkeleton />;
+  if (!isAdmin) return <ForbiddenView />;
+
+  // useSWR or useEffect+fetch on /api/admin/pricing/models
+  const { data, error } = usePricingModels();
+  if (error) return <ErrorBanner error={error} />;
+  if (!data) return <PricingSkeleton />;
+
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Model Pricing</h1>
+      <h1 className="text-2xl font-bold">Model Prices</h1>
       <PricingMetaBanner meta={data.meta} servedFrom={data.servedFrom} />
       <PricingTable entries={data.entries} />
     </div>
@@ -83,7 +95,7 @@ export default async function PricingPage() {
 }
 ```
 
-Server-side `fetchPricingModels()` calls the same worker-read RPCs directly (no internal HTTP roundtrip) for SSR speed. The `/api/pricing/models` route exists for client-side refresh and any future external integrations.
+Auth pattern (`useAdmin()` + redirect/forbidden view) matches existing `/admin/pricing/page.tsx`. No new auth helper introduced.
 
 ### `pricing-meta-banner.tsx` (client)
 
@@ -120,33 +132,27 @@ test('401 when unauthenticated')
 test('403 when authenticated but not admin')
 test('returns entries + meta + servedFrom for admin')
 test('503 with fallback shape when worker-read throws')
-test('60s cache-control header')
+test('cache-control: private, no-store')
+test('contract: response shape round-trips a representative DynamicPricingEntry/Meta')
 ```
 
-Mocks `getDbRead()` to return canned data; no real worker-read.
+Mocks `getDbRead()` and `isAdminUser()` per existing `app/api/organizations/mine/route.test.ts` pattern; no real worker-read.
 
-### `pricing-table.test.tsx`
+### `pricing-table-helpers.test.ts`
+
+The C4 spec deliberately keeps table behavior in pure helpers because the project does **not** currently depend on `@testing-library/react` (verified — no such dep in `packages/web/package.json`). Introducing a UI test library is out of scope.
 
 ```typescript
-test('renders one row per entry')
-test('default sort: [provider, model]')
-test('clicking column header toggles sort direction')
-test('filter input narrows rows by model substring (case-insensitive)')
-test('origin chip color matches origin')
-test('null context renders as em dash, not "null"')
-test('aliases visible in tooltip')
+test('sortEntries: default sort is [provider asc, model asc]')
+test('sortEntries: column toggle reverses direction')
+test('sortEntries: numeric columns sort numerically not lexicographically')
+test('filterEntries: case-insensitive substring match on model + displayName + provider')
+test('filterEntries: empty filter returns all entries')
+test('originChipClass: returns the expected color class per origin')
+test('formatNullable: null context renders as "—"')
 ```
 
-### `pricing-meta-banner.test.tsx`
-
-```typescript
-test('relative time renders for fresh sync')
-test('yellow stale warning when lastSyncedAt is 40h ago')
-test('red stale warning when lastSyncedAt is 8d ago')
-test('servedFrom=baseline shows orange fallback banner')
-test('lastErrors[] renders one row per error with source label')
-test('null lastErrors renders nothing')
-```
+The React components themselves are thin wrappers around these helpers and validated manually via `bun run dev`. If a future commit adds `@testing-library/react`, component-level tests can be filled in then.
 
 ### Existing tests
 
@@ -173,10 +179,11 @@ test('null lastErrors renders nothing')
 - `bun run --filter @pew/web typecheck` green.
 - `bun run --filter @pew/web test` green (new + old).
 - `bun run lint` green.
-- `bun run dev`, log in as admin, visit `/pricing`:
+- `bun run dev`, log in as admin, visit `/admin/model-prices`:
   - Table renders all entries.
   - Meta banner shows `lastSyncedAt`.
   - When worker-read KV is empty, banner shows orange `servedFrom=baseline` notice and table shows the bundled baseline rows.
   - Filter + sort work without page reload.
-- Non-admin user visiting `/pricing` is redirected to `/dashboard`.
+- Non-admin user visiting `/admin/model-prices` sees the standard forbidden view (same as other admin pages).
 - Existing `/dashboard` charts and cost summaries render identical numbers as before C4.
+- `/admin/pricing` (existing Token Pricing CRUD) is untouched and renders identically.
