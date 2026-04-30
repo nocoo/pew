@@ -417,15 +417,27 @@ describe("GET /api/achievements", () => {
       expect(bigSpender.currentValue).toBeGreaterThan(0);
     });
 
-    it("admin/dynamic pricing override flows into big-spender currentValue", async () => {
+    it("dynamic pricing override flows into big-spender currentValue", async () => {
       // Sentinel verifying achievement spend goes through loadPricingMap, not the
-      // static prefix table: an admin override of 1000 $/M for an unknown model
+      // static prefix table: a dynamic-pricing entry of 1000 $/M for an unknown model
       // must change big-spender's currentValue.
       const SENTINEL_MODEL = "totally-unknown-sentinel";
-      mockClient.listModelPricing.mockResolvedValue([
-        { id: 1, model: SENTINEL_MODEL, source: null, input: 1000, output: 1000, cached: null, note: null, updated_at: "2026-04-30T00:00:00.000Z" },
-      ]);
-      mockClient.getDynamicPricing.mockResolvedValue({ entries: [], servedFrom: "kv" });
+      mockClient.getDynamicPricing.mockResolvedValue({
+        entries: [
+          {
+            model: SENTINEL_MODEL,
+            provider: null,
+            displayName: null,
+            inputPerMillion: 1000,
+            outputPerMillion: 1000,
+            cachedPerMillion: 100,
+            contextWindow: null,
+            origin: "baseline",
+            updatedAt: "2026-04-30T00:00:00.000Z",
+          },
+        ],
+        servedFrom: "kv",
+      });
 
       mockClient.getAchievementUsageAggregates.mockResolvedValue({
         total_tokens: 1_000_000, input_tokens: 1_000_000, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0,
@@ -447,7 +459,7 @@ describe("GET /api/achievements", () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       const bigSpender = body.achievements.find((a: { id: string }) => a.id === "big-spender");
-      // 1M input tokens × $1000/M = $1000 — only reachable via admin override.
+      // 1M input tokens × $1000/M = $1000 — only reachable via dynamic-entry override.
       expect(bigSpender.currentValue).toBeCloseTo(1000, 1);
     });
 
@@ -455,14 +467,26 @@ describe("GET /api/achievements", () => {
       // Regression: previously inputCost used the full inputTokens (incl. cached portion)
       // and additionally charged cached price → cached tokens billed at input + cached.
       // Canonical estimateCost subtracts cachedTokens from inputTokens before the input charge.
-      // Setup: admin override input=$10/M, cached=$1/M; 1M input tokens of which all are cached.
+      // Setup: dynamic entry input=$10/M, cached=$1/M; 1M input tokens of which all are cached.
       // Expected (canonical): input charge = (1M − 1M)/1M × 10 = $0; cached = 1M/1M × 1 = $1 → $1.
       // Buggy old behavior would yield: 1M × 10/1M + 1M × 1/1M = $11.
       const SENTINEL_MODEL = "double-count-sentinel";
-      mockClient.listModelPricing.mockResolvedValue([
-        { id: 1, model: SENTINEL_MODEL, source: null, input: 10, output: 10, cached: 1, note: null, updated_at: "2026-04-30T00:00:00.000Z" },
-      ]);
-      mockClient.getDynamicPricing.mockResolvedValue({ entries: [], servedFrom: "kv" });
+      mockClient.getDynamicPricing.mockResolvedValue({
+        entries: [
+          {
+            model: SENTINEL_MODEL,
+            provider: null,
+            displayName: null,
+            inputPerMillion: 10,
+            outputPerMillion: 10,
+            cachedPerMillion: 1,
+            contextWindow: null,
+            origin: "baseline",
+            updatedAt: "2026-04-30T00:00:00.000Z",
+          },
+        ],
+        servedFrom: "kv",
+      });
 
       mockClient.getAchievementUsageAggregates.mockResolvedValue({
         total_tokens: 1_000_000, input_tokens: 1_000_000, output_tokens: 0, cached_input_tokens: 1_000_000, reasoning_output_tokens: 0,
@@ -487,16 +511,28 @@ describe("GET /api/achievements", () => {
       expect(bigSpender.currentValue).toBeCloseTo(1, 5);
     });
 
-    it("falls back to input × 0.1 when admin pricing has no cached price", async () => {
+    it("falls back to input × 0.1 when dynamic pricing has no cached price", async () => {
       // Regression: previously when pricing.cached was null/undefined, cached cost was 0.
       // Canonical estimateCost falls back to pricing.input * 0.1.
-      // Setup: admin override input=$10/M, cached=null; 1M input tokens all cached.
+      // Setup: dynamic entry input=$10/M, cached=null; 1M input tokens all cached.
       // Expected: input charge $0 + cached charge = 1M/1M × (10 × 0.1) = $1. Old buggy: $0.
       const SENTINEL_MODEL = "cached-fallback-sentinel";
-      mockClient.listModelPricing.mockResolvedValue([
-        { id: 1, model: SENTINEL_MODEL, source: null, input: 10, output: 10, cached: null, note: null, updated_at: "2026-04-30T00:00:00.000Z" },
-      ]);
-      mockClient.getDynamicPricing.mockResolvedValue({ entries: [], servedFrom: "kv" });
+      mockClient.getDynamicPricing.mockResolvedValue({
+        entries: [
+          {
+            model: SENTINEL_MODEL,
+            provider: null,
+            displayName: null,
+            inputPerMillion: 10,
+            outputPerMillion: 10,
+            cachedPerMillion: null,
+            contextWindow: null,
+            origin: "baseline",
+            updatedAt: "2026-04-30T00:00:00.000Z",
+          },
+        ],
+        servedFrom: "kv",
+      });
 
       mockClient.getAchievementUsageAggregates.mockResolvedValue({
         total_tokens: 1_000_000, input_tokens: 1_000_000, output_tokens: 0, cached_input_tokens: 1_000_000, reasoning_output_tokens: 0,

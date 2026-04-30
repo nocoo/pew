@@ -98,8 +98,6 @@ export function originChipClass(origin: DynamicPricingOrigin): string {
       return "bg-blue-500/10 text-blue-600 dark:text-blue-400";
     case "models.dev":
       return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400";
-    case "admin":
-      return "bg-purple-500/10 text-purple-600 dark:text-purple-400";
   }
 }
 

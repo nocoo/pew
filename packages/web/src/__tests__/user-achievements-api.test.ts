@@ -348,10 +348,22 @@ describe("GET /api/users/[slug]/achievements", () => {
     it("does not double-count cached tokens against input price (big-spender)", async () => {
       // Regression mirror of /api/achievements equivalent — both routes share canonical estimateCost.
       const SENTINEL_MODEL = "double-count-sentinel-public";
-      mockClient.listModelPricing.mockResolvedValue([
-        { id: 1, model: SENTINEL_MODEL, source: null, input: 10, output: 10, cached: 1, note: null, updated_at: "2026-04-30T00:00:00.000Z" },
-      ]);
-      mockClient.getDynamicPricing.mockResolvedValue({ entries: [], servedFrom: "kv" });
+      mockClient.getDynamicPricing.mockResolvedValue({
+        entries: [
+          {
+            model: SENTINEL_MODEL,
+            provider: null,
+            displayName: null,
+            inputPerMillion: 10,
+            outputPerMillion: 10,
+            cachedPerMillion: 1,
+            contextWindow: null,
+            origin: "baseline",
+            updatedAt: "2026-04-30T00:00:00.000Z",
+          },
+        ],
+        servedFrom: "kv",
+      });
 
       mockClient.getAchievementUsageAggregates.mockResolvedValue({
         total_tokens: 1_000_000, input_tokens: 1_000_000, output_tokens: 0, cached_input_tokens: 1_000_000, reasoning_output_tokens: 0,
@@ -378,12 +390,24 @@ describe("GET /api/users/[slug]/achievements", () => {
       expect(bigSpender?.currentValue).toBeCloseTo(1, 5);
     });
 
-    it("falls back to input × 0.1 when admin pricing has no cached price", async () => {
+    it("falls back to input × 0.1 when dynamic pricing has no cached price", async () => {
       const SENTINEL_MODEL = "cached-fallback-sentinel-public";
-      mockClient.listModelPricing.mockResolvedValue([
-        { id: 1, model: SENTINEL_MODEL, source: null, input: 10, output: 10, cached: null, note: null, updated_at: "2026-04-30T00:00:00.000Z" },
-      ]);
-      mockClient.getDynamicPricing.mockResolvedValue({ entries: [], servedFrom: "kv" });
+      mockClient.getDynamicPricing.mockResolvedValue({
+        entries: [
+          {
+            model: SENTINEL_MODEL,
+            provider: null,
+            displayName: null,
+            inputPerMillion: 10,
+            outputPerMillion: 10,
+            cachedPerMillion: null,
+            contextWindow: null,
+            origin: "baseline",
+            updatedAt: "2026-04-30T00:00:00.000Z",
+          },
+        ],
+        servedFrom: "kv",
+      });
 
       mockClient.getAchievementUsageAggregates.mockResolvedValue({
         total_tokens: 1_000_000, input_tokens: 1_000_000, output_tokens: 0, cached_input_tokens: 1_000_000, reasoning_output_tokens: 0,

@@ -121,7 +121,6 @@ describe("pricing-table-helpers", () => {
       expect(originChipClass("baseline")).toContain("muted");
       expect(originChipClass("openrouter")).toContain("blue");
       expect(originChipClass("models.dev")).toContain("emerald");
-      expect(originChipClass("admin")).toContain("purple");
     });
   });
 
@@ -171,7 +170,7 @@ describe("pricing-table-helpers", () => {
       entry({ model: "claude-sonnet-4", provider: "Anthropic", origin: "baseline" }),
       entry({ model: "gpt-4o", provider: "OpenAI", origin: "openrouter" }),
       entry({ model: "gemini-1.5", provider: "Google", origin: "models.dev" }),
-      entry({ model: "custom-model", provider: "Anthropic", origin: "admin" }),
+      entry({ model: "custom-model", provider: "Anthropic", origin: "models.dev" }),
     ];
 
     it("filters by provider only", () => {
@@ -185,7 +184,7 @@ describe("pricing-table-helpers", () => {
     });
 
     it("filters by both provider and origin", () => {
-      const result = filterByFacets(data, { provider: "Anthropic", origin: "admin" });
+      const result = filterByFacets(data, { provider: "Anthropic", origin: "models.dev" });
       expect(result.map((e) => e.model)).toEqual(["custom-model"]);
     });
 

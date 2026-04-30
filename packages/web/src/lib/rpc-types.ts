@@ -369,19 +369,6 @@ export interface TeamByInviteCode {
 // Pricing domain types
 // ---------------------------------------------------------------------------
 
-/** Model pricing record */
-export interface PricingRow {
-  id: number;
-  model: string;
-  input: number;
-  output: number;
-  cached: number | null;
-  source: string | null;
-  note: string | null;
-  updated_at: string;
-  created_at: string;
-}
-
 // ---------------------------------------------------------------------------
 // Dynamic pricing DTOs (mirror worker-read sync/types — kept web-side until
 // a cross-package alias is introduced; route.test.ts contract test pins shape).

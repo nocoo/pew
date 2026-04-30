@@ -52,43 +52,54 @@ describe("GET /api/pricing", () => {
     expect(res.status).toBe(401);
   });
 
-  it("should return pricing map from DB rows", async () => {
+  it("should return pricing map from dynamic entries", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
-    mockDbRead.listModelPricing.mockResolvedValueOnce([
-      { model: "gpt-4o", input: 2.5, output: 10.0, cached: 1.25, source: null, note: null },
-    ]);
+    mockDbRead.getDynamicPricing.mockResolvedValueOnce({
+      entries: [
+        {
+          model: "gpt-4o",
+          provider: "OpenAI",
+          displayName: "GPT-4o",
+          inputPerMillion: 2.5,
+          outputPerMillion: 10,
+          cachedPerMillion: 1.25,
+          contextWindow: 128000,
+          origin: "baseline",
+          updatedAt: "2026-04-30T00:00:00.000Z",
+        },
+      ],
+      servedFrom: "kv",
+    });
 
     const res = await GET(new Request("http://localhost:7020/api/pricing"));
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    // buildPricingMap merges DB rows with defaults — just check it's a non-empty object
+    // buildPricingMap merges dynamic entries with defaults — just check it's a non-empty object
     expect(typeof body).toBe("object");
     expect(body).not.toEqual({});
   });
 
-  it("should fall back to defaults when table does not exist", async () => {
+  it("should fall back to defaults when dynamic call rejects", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
-    mockDbRead.listModelPricing.mockRejectedValueOnce(
-      new Error("no such table: model_pricing"),
+    mockDbRead.getDynamicPricing.mockRejectedValueOnce(
+      new Error("KV unavailable"),
     );
 
     const res = await GET(new Request("http://localhost:7020/api/pricing"));
 
     expect(res.status).toBe(200);
     const body = await res.json();
-    // Default map should have some known models
     expect(typeof body).toBe("object");
   });
 
   it("should fall back to defaults on unexpected error", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
-    mockDbRead.listModelPricing.mockRejectedValueOnce(new Error("D1 down"));
+    mockDbRead.getDynamicPricing.mockRejectedValueOnce(new Error("D1 down"));
 
     const res = await GET(new Request("http://localhost:7020/api/pricing"));
 
     expect(res.status).toBe(200);
-    // Still returns a valid response (defaults)
     const body = await res.json();
     expect(typeof body).toBe("object");
   });

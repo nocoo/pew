@@ -10,7 +10,6 @@ import {
   DEFAULT_SOURCE_DEFAULTS,
   DEFAULT_FALLBACK,
 } from "@/lib/pricing";
-import type { DbPricingRow } from "@/lib/pricing";
 
 describe("pricing", () => {
   describe("getModelPricing", () => {
@@ -176,55 +175,7 @@ describe("pricing", () => {
   });
 
   describe("buildPricingMap", () => {
-    function makeDbRow(overrides: Partial<DbPricingRow>): DbPricingRow {
-      return {
-        id: 1,
-        model: "test-model",
-        input: 5,
-        output: 20,
-        cached: null,
-        source: null,
-        note: null,
-        updated_at: "2026-01-01T00:00:00Z",
-        created_at: "2026-01-01T00:00:00Z",
-        ...overrides,
-      };
-    }
-
-    it("should override exact model prices from DB rows", () => {
-      const row = makeDbRow({ model: "claude-sonnet-4-20250514", input: 4, output: 20, cached: 0.4 });
-      const map = buildPricingMap({ dynamic: [], dbRows: [row] });
-
-      expect(map.models["claude-sonnet-4-20250514"]).toEqual({ input: 4, output: 20, cached: 0.4 });
-    });
-
-    it("should add new model entries from DB rows", () => {
-      const row = makeDbRow({ model: "my-custom-model", input: 7, output: 30, cached: 0.7 });
-      const map = buildPricingMap({ dynamic: [], dbRows: [row] });
-
-      expect(map.models["my-custom-model"]).toEqual({ input: 7, output: 30, cached: 0.7 });
-    });
-
-    it("should scope source-tagged admin rows to (source, model) only", () => {
-      const row = makeDbRow({ model: "custom-claude", source: "claude-code", input: 5, output: 25, cached: 0.5 });
-      const map = buildPricingMap({ dynamic: [], dbRows: [row] });
-
-      // Lives only under sourceModels[source][model] — not in models[] and not
-      // in sourceDefaults[source] (which remains the model-agnostic fallback).
-      expect(map.sourceModels?.["claude-code"]?.["custom-claude"]).toEqual({ input: 5, output: 25, cached: 0.5 });
-      expect(map.models["custom-claude"]).toBeUndefined();
-      expect(map.sourceDefaults["claude-code"]).toEqual(DEFAULT_SOURCE_DEFAULTS["claude-code"]);
-    });
-
-    it("should omit cached from pricing when DB cached is null", () => {
-      const row = makeDbRow({ model: "no-cache-model", input: 3, output: 15, cached: null });
-      const map = buildPricingMap({ dynamic: [], dbRows: [row] });
-
-      expect(map.models["no-cache-model"]).toEqual({ input: 3, output: 15 });
-      expect(map.models["no-cache-model"]!.cached).toBeUndefined();
-    });
-
-    it("admin row wins over a same-model dynamic entry", () => {
+    it("writes dynamic entries into models[]", () => {
       const map = buildPricingMap({
         dynamic: [
           {
@@ -239,20 +190,32 @@ describe("pricing", () => {
             updatedAt: "2026-04-30T00:00:00.000Z",
           },
         ],
-        dbRows: [
-          makeDbRow({
-            model: "claude-sonnet-4-20250514",
-            input: 99,
-            output: 199,
-            cached: 9.9,
-          }),
-        ],
       });
       expect(map.models["claude-sonnet-4-20250514"]).toEqual({
-        input: 99,
-        output: 199,
-        cached: 9.9,
+        input: 3,
+        output: 15,
+        cached: 0.3,
       });
+    });
+
+    it("omits cached field when entry's cachedPerMillion is null", () => {
+      const map = buildPricingMap({
+        dynamic: [
+          {
+            model: "no-cache-model",
+            provider: null,
+            displayName: null,
+            inputPerMillion: 3,
+            outputPerMillion: 15,
+            cachedPerMillion: null,
+            contextWindow: null,
+            origin: "baseline",
+            updatedAt: "2026-04-30T00:00:00.000Z",
+          },
+        ],
+      });
+      expect(map.models["no-cache-model"]).toEqual({ input: 3, output: 15 });
+      expect(map.models["no-cache-model"]!.cached).toBeUndefined();
     });
 
     it("aliases share the canonical entry's pricing", () => {
@@ -271,15 +234,14 @@ describe("pricing", () => {
             aliases: ["claude-sonnet-4-alias"],
           },
         ],
-        dbRows: [],
       });
       expect(map.models["claude-sonnet-4-alias"]).toEqual(
         map.models["anthropic/claude-sonnet-4"],
       );
     });
 
-    it("should handle empty inputs (returns safety-net defaults)", () => {
-      const map = buildPricingMap({ dynamic: [], dbRows: [] });
+    it("empty dynamic input returns the safety-net only", () => {
+      const map = buildPricingMap({ dynamic: [] });
       const defaults = getDefaultPricingMap();
       expect(map).toEqual(defaults);
     });
@@ -321,113 +283,24 @@ describe("pricing", () => {
       expect(p).toEqual(DEFAULT_FALLBACK);
     });
 
-    it("should prefer DB override over prefix-resolved default", () => {
-      const map = buildPricingMap({
-        dynamic: [],
-        dbRows: [
-          {
-            id: 1,
-            model: "o3",
-            input: 99,
-            output: 199,
-            cached: 9.9,
-            source: null,
-            note: null,
-            updated_at: "2026-01-01T00:00:00Z",
-            created_at: "2026-01-01T00:00:00Z",
-          },
-        ],
-      });
-
-      const p = lookupPricing(map, "o3");
-      expect(p).toEqual({ input: 99, output: 199, cached: 9.9 });
-    });
-
-    // -----------------------------------------------------------------------
-    // (source, model) admin override semantics — N3 tightening (#5).
-    // -----------------------------------------------------------------------
-
-    it("(source, model) admin override beats global models[] when source matches", () => {
+    it("dynamic exact match wins over prefix-resolved default", () => {
       const map = buildPricingMap({
         dynamic: [
           {
-            model: "gpt-4o",
+            model: "o3",
             provider: "OpenAI",
-            displayName: "GPT-4o",
-            inputPerMillion: 2.5,
-            outputPerMillion: 10,
-            cachedPerMillion: 1.25,
+            displayName: "o3",
+            inputPerMillion: 99,
+            outputPerMillion: 199,
+            cachedPerMillion: 9.9,
             contextWindow: 128000,
             origin: "baseline",
             updatedAt: "2026-04-30T00:00:00.000Z",
           },
         ],
-        dbRows: [
-          {
-            id: 1,
-            model: "gpt-4o",
-            input: 7,
-            output: 21,
-            cached: 1.5,
-            source: "codex",
-            note: null,
-            updated_at: "2026-01-01T00:00:00Z",
-            created_at: "2026-01-01T00:00:00Z",
-          },
-        ],
       });
-      // codex source → scoped override wins.
-      expect(lookupPricing(map, "gpt-4o", "codex")).toEqual({ input: 7, output: 21, cached: 1.5 });
-      // Other source / no source → still the dynamic baseline.
-      expect(lookupPricing(map, "gpt-4o", "claude-code")).toEqual({ input: 2.5, output: 10, cached: 1.25 });
-      expect(lookupPricing(map, "gpt-4o")).toEqual({ input: 2.5, output: 10, cached: 1.25 });
-    });
-
-    it("(source, model) admin override does not bleed into other sources or sourceDefaults", () => {
-      const map = buildPricingMap({
-        dynamic: [],
-        dbRows: [
-          {
-            id: 1,
-            model: "custom-claude",
-            input: 5,
-            output: 25,
-            cached: 0.5,
-            source: "claude-code",
-            note: null,
-            updated_at: "2026-01-01T00:00:00Z",
-            created_at: "2026-01-01T00:00:00Z",
-          },
-        ],
-      });
-      // Same model under a different source → falls through to source default + prefix + fallback.
-      const otherSource = lookupPricing(map, "custom-claude", "codex");
-      expect(otherSource).toEqual(DEFAULT_SOURCE_DEFAULTS["codex"]);
-      // No source → fallback (no prefix match for "custom-claude").
-      expect(lookupPricing(map, "custom-claude")).toEqual(DEFAULT_FALLBACK);
-    });
-
-    it("source-less admin row still acts as a global model override (unchanged)", () => {
-      const map = buildPricingMap({
-        dynamic: [],
-        dbRows: [
-          {
-            id: 1,
-            model: "gpt-4o",
-            input: 99,
-            output: 199,
-            cached: 9.9,
-            source: null,
-            note: null,
-            updated_at: "2026-01-01T00:00:00Z",
-            created_at: "2026-01-01T00:00:00Z",
-          },
-        ],
-      });
-      // Any source (or none) sees the global override.
-      expect(lookupPricing(map, "gpt-4o")).toEqual({ input: 99, output: 199, cached: 9.9 });
-      expect(lookupPricing(map, "gpt-4o", "codex")).toEqual({ input: 99, output: 199, cached: 9.9 });
-      expect(lookupPricing(map, "gpt-4o", "claude-code")).toEqual({ input: 99, output: 199, cached: 9.9 });
+      const p = lookupPricing(map, "o3");
+      expect(p).toEqual({ input: 99, output: 199, cached: 9.9 });
     });
   });
 });

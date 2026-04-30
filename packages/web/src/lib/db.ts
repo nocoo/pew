@@ -36,7 +36,6 @@ import type {
   ShowcaseOwnerRow,
   ShowcaseExistsResult,
   SessionRecordRow,
-  PricingRow,
   DynamicPricingMetaDto,
   SyncOutcomeDto,
   AdminStorageUserRow,
@@ -451,18 +450,6 @@ export interface DbRead {
   // ---------------------------------------------------------------------------
   // Pricing domain RPC methods
   // ---------------------------------------------------------------------------
-
-  /** List all model pricing rows */
-  listModelPricing(): Promise<PricingRow[]>;
-
-  /** Get model pricing by ID */
-  getModelPricingById(id: number): Promise<PricingRow | null>;
-
-  /** Get model pricing by model and source */
-  getModelPricingByModelSource(
-    model: string,
-    source: string | null,
-  ): Promise<PricingRow | null>;
 
   /** Get dynamic pricing entries (KV-backed, falls back to bundled baseline) */
   getDynamicPricing(): Promise<{

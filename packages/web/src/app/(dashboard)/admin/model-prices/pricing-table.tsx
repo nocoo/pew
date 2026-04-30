@@ -34,7 +34,7 @@ const COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
   { key: "updatedAt", label: "Updated" },
 ];
 
-const KNOWN_ORIGINS = ["baseline", "openrouter", "models.dev", "admin"] as const;
+const KNOWN_ORIGINS = ["baseline", "openrouter", "models.dev"] as const;
 
 export function PricingTable({ entries }: Props) {
   const [filter, setFilter] = useState("");

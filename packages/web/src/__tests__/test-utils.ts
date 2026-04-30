@@ -99,9 +99,6 @@ export function createMockDbRead() {
     getTeamMembership: vi.fn(),
     getAppSetting: vi.fn(),
     // Pricing RPC methods
-    listModelPricing: vi.fn(),
-    getModelPricingById: vi.fn(),
-    getModelPricingByModelSource: vi.fn(),
     getDynamicPricing: vi.fn(),
     getDynamicPricingMeta: vi.fn(),
     invalidateCacheKey: vi.fn().mockResolvedValue(undefined),
@@ -240,9 +237,6 @@ export function createMockDbRead() {
     countTeamMembers: ReturnType<typeof vi.fn>;
     getTeamMembership: ReturnType<typeof vi.fn>;
     getAppSetting: ReturnType<typeof vi.fn>;
-    listModelPricing: ReturnType<typeof vi.fn>;
-    getModelPricingById: ReturnType<typeof vi.fn>;
-    getModelPricingByModelSource: ReturnType<typeof vi.fn>;
     getDynamicPricing: ReturnType<typeof vi.fn>;
     getDynamicPricingMeta: ReturnType<typeof vi.fn>;
     rebuildDynamicPricing: ReturnType<typeof vi.fn>;
@@ -341,7 +335,6 @@ export function createMockClient() {
     getLeaderboardUserTeams: vi.fn(),
     getLeaderboardSessionStats: vi.fn(),
     // Pricing RPC methods (consumed by loadPricingMap on cost paths)
-    listModelPricing: vi.fn().mockResolvedValue([]),
     getDynamicPricing: vi.fn().mockResolvedValue({ entries: [], servedFrom: "baseline" }),
   };
 }

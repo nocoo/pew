@@ -37,7 +37,6 @@ import type {
   ShowcaseOwnerRow,
   ShowcaseExistsResult,
   SessionRecordRow,
-  PricingRow,
   DynamicPricingMetaDto,
   SyncOutcomeDto,
   AdminStorageUserRow,
@@ -800,25 +799,6 @@ export function createWorkerDbRead(): DbRead {
     // -------------------------------------------------------------------------
     // Pricing domain RPC methods
     // -------------------------------------------------------------------------
-
-    async listModelPricing(): Promise<PricingRow[]> {
-      return rpc<PricingRow[]>({ method: "pricing.listModelPricing" });
-    },
-
-    async getModelPricingById(id: number): Promise<PricingRow | null> {
-      return rpc<PricingRow | null>({ method: "pricing.getModelPricingById", id });
-    },
-
-    async getModelPricingByModelSource(
-      model: string,
-      source: string | null,
-    ): Promise<PricingRow | null> {
-      return rpc<PricingRow | null>({
-        method: "pricing.getModelPricingByModelSource",
-        model,
-        source,
-      });
-    },
 
     async getDynamicPricing(): Promise<{
       entries: DynamicPricingEntry[];

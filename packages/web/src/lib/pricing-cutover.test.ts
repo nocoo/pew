@@ -8,12 +8,8 @@
  *   1. Every model the pre-C5 code priced via DEFAULT_MODEL_PRICES still
  *      yields the same {input, output, cached} pricing when the new
  *      buildPricingMap is fed the baseline regression-floor JSON.
- *   2. Admin DB rows still win over dynamic entries for the same model.
- *   3. Source-tagged admin rows scope to (source, model) only — they do NOT
- *      pollute the global `models[model]` table or the model-agnostic
- *      `sourceDefaults[source]` fallback (semantics tightened in N3).
- *   4. Aliases share the same pricing pointer as their canonical entry.
- *   5. Empty inputs return only the safety net (no exact-match table).
+ *   2. Aliases share the same pricing pointer as their canonical entry.
+ *   3. Empty inputs return only the safety net (no exact-match table).
  *
  * The 14-entry frozen LEGACY copy is duplicated here on purpose: it keeps
  * the cutover guarantee independent of any other file mutating, and 14
@@ -27,7 +23,6 @@ import {
   buildPricingMap,
   DEFAULT_PREFIX_PRICES,
   DEFAULT_SOURCE_DEFAULTS,
-  type DbPricingRow,
   type DynamicPricingEntry,
   type ModelPricing,
 } from "@/lib/pricing";
@@ -56,72 +51,12 @@ const LEGACY_DEFAULT_MODEL_PRICES: Record<string, ModelPricing> = {
 
 const dynamic = baselineEntries as DynamicPricingEntry[];
 
-function makeDbRow(overrides: Partial<DbPricingRow>): DbPricingRow {
-  return {
-    id: 1,
-    model: "test-model",
-    input: 5,
-    output: 20,
-    cached: null,
-    source: null,
-    note: null,
-    updated_at: "2026-01-01T00:00:00Z",
-    created_at: "2026-01-01T00:00:00Z",
-    ...overrides,
-  };
-}
-
 describe("pricing cutover (C5)", () => {
   it("baseline dataset prices every legacy model identically to the pre-C5 table", () => {
-    const map = buildPricingMap({ dynamic, dbRows: [] });
+    const map = buildPricingMap({ dynamic });
     for (const [model, expected] of Object.entries(LEGACY_DEFAULT_MODEL_PRICES)) {
       expect(map.models[model]).toEqual(expected);
     }
-  });
-
-  it("admin row with source=null wins over the dynamic baseline for the same model", () => {
-    const map = buildPricingMap({
-      dynamic,
-      dbRows: [
-        makeDbRow({
-          model: "claude-sonnet-4-20250514",
-          input: 99,
-          output: 199,
-          cached: 9.9,
-        }),
-      ],
-    });
-    expect(map.models["claude-sonnet-4-20250514"]).toEqual({
-      input: 99,
-      output: 199,
-      cached: 9.9,
-    });
-  });
-
-  it("admin row with source='codex' is scoped — it does not bleed into models[] or sourceDefaults[]", () => {
-    const map = buildPricingMap({
-      dynamic,
-      dbRows: [
-        makeDbRow({
-          model: "gpt-4o",
-          source: "codex",
-          input: 7,
-          output: 21,
-          cached: 1.5,
-        }),
-      ],
-    });
-    // Scoped override lives in sourceModels, NOT in sourceDefaults or models[].
-    expect(map.sourceModels?.["codex"]?.["gpt-4o"]).toEqual({
-      input: 7,
-      output: 21,
-      cached: 1.5,
-    });
-    // sourceDefaults still holds the static safety-net for codex (untouched by
-    // a (source, model) row — that table is the model-agnostic fallback).
-    expect(map.sourceDefaults["codex"]).toEqual(DEFAULT_SOURCE_DEFAULTS["codex"]);
-    // models["gpt-4o"] keeps the dynamic baseline (no leakage from the codex row).
-    expect(map.models["gpt-4o"]).not.toEqual({ input: 7, output: 21, cached: 1.5 });
   });
 
   it("aliases resolve to the canonical entry's pricing pointer", () => {
@@ -137,7 +72,7 @@ describe("pricing cutover (C5)", () => {
       updatedAt: "2026-04-30T00:00:00.000Z",
       aliases: ["claude-sonnet-4-alias", "anthropic/claude-sonnet-4-20250514"],
     };
-    const map = buildPricingMap({ dynamic: [entry], dbRows: [] });
+    const map = buildPricingMap({ dynamic: [entry] });
     expect(map.models["claude-sonnet-4-alias"]).toBe(
       map.models["anthropic/claude-sonnet-4"],
     );
@@ -149,7 +84,7 @@ describe("pricing cutover (C5)", () => {
   });
 
   it("empty inputs leave only the safety net (prefixes + source defaults + fallback)", () => {
-    const map = buildPricingMap({ dynamic: [], dbRows: [] });
+    const map = buildPricingMap({ dynamic: [] });
     expect(map.models).toEqual({});
     expect(map.prefixes).toEqual(DEFAULT_PREFIX_PRICES);
     expect(map.sourceDefaults).toEqual(DEFAULT_SOURCE_DEFAULTS);

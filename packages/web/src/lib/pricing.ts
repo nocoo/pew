@@ -5,15 +5,15 @@
  *
  * Architecture:
  * - Dynamic dataset (worker-read KV, baseline JSON underneath) provides the
- *   exact-match table; admin DB rows in `model_pricing` overlay on top.
- * - `buildPricingMap({ dynamic, dbRows })` projects both into a `PricingMap`.
+ *   exact-match table.
+ * - `buildPricingMap({ dynamic })` projects dynamic entries into a `PricingMap`.
  * - Static prefix / source / fallback tables remain as the safety net beneath
- *   dynamic data and admin overrides.
+ *   dynamic data.
  * - Client pages fetch the merged map from `/api/pricing` and pass it to
  *   `lookupPricing()` for per-model resolution.
  *
- * Matching strategy (first hit wins): (source, model) admin override →
- * exact model ID → prefix match → source default → fallback.
+ * Matching strategy (first hit wins): exact model ID → prefix match →
+ * source default → fallback.
  *
  * Client-safe: this module must not import any server-only code so client
  * bundles (e.g. use-pricing.ts → getDefaultPricingMap) stay free of db-worker.
@@ -27,8 +27,7 @@
 export type DynamicPricingOrigin =
   | "baseline"
   | "openrouter"
-  | "models.dev"
-  | "admin";
+  | "models.dev";
 
 /**
  * Client-safe DTO for one dynamic pricing entry. Mirrors worker-read's
@@ -56,35 +55,16 @@ export interface ModelPricing {
   cached?: number;
 }
 
-/** A row from the model_pricing DB table */
-export interface DbPricingRow {
-  id: number;
-  model: string;
-  input: number;
-  output: number;
-  cached: number | null;
-  source: string | null;
-  note: string | null;
-  updated_at: string;
-  created_at: string;
-}
-
 /** Serialisable pricing map sent to clients via /api/pricing */
 export interface PricingMap {
   models: Record<string, ModelPricing>;
-  /**
-   * Per-(source, model) overrides from admin rows whose `source != null`.
-   * Beats `models[model]` only when the lookup carries a matching source.
-   * Optional on the wire for backward compatibility with older clients.
-   */
-  sourceModels?: Record<string, Record<string, ModelPricing>>;
   prefixes: Array<{ prefix: string; pricing: ModelPricing }>;
   sourceDefaults: Record<string, ModelPricing>;
   fallback: ModelPricing;
 }
 
 // ---------------------------------------------------------------------------
-// Static pricing tables (safety net beneath dynamic + admin)
+// Static pricing tables (safety net beneath dynamic)
 // ---------------------------------------------------------------------------
 
 /** Prefix patterns for fuzzy matching */
@@ -123,17 +103,16 @@ export const DEFAULT_SOURCE_DEFAULTS: Record<string, ModelPricing> = {
 export const DEFAULT_FALLBACK: ModelPricing = { input: 3, output: 15, cached: 0.3 };
 
 // ---------------------------------------------------------------------------
-// Build a PricingMap (merge static defaults + DB overrides)
+// Build a PricingMap (project the dynamic dataset onto static safety net)
 // ---------------------------------------------------------------------------
 
 /**
- * Build the safety-net PricingMap (no dynamic, no DB).
+ * Build the safety-net PricingMap (no dynamic data).
  * Exact-match table is empty — exact prices come from dynamic data.
  */
 export function getDefaultPricingMap(): PricingMap {
   return {
     models: {},
-    sourceModels: {},
     prefixes: [...DEFAULT_PREFIX_PRICES],
     sourceDefaults: { ...DEFAULT_SOURCE_DEFAULTS },
     fallback: DEFAULT_FALLBACK,
@@ -142,32 +121,20 @@ export function getDefaultPricingMap(): PricingMap {
 
 export interface BuildPricingMapInput {
   dynamic: DynamicPricingEntry[];
-  dbRows: DbPricingRow[];
 }
 
 /**
- * Project the dynamic dataset + admin DB rows into a PricingMap.
+ * Project the dynamic dataset into a PricingMap.
  *
- * Layering (later wins, evaluated by `lookupPricing`):
- *   1. dynamic entries (already merged baseline → openrouter → models.dev → admin
- *      in the worker-read sync layer); aliases share the same pricing pointer.
- *      All written into `models[model]`.
- *   2. admin DB rows (`model_pricing`):
- *        - row.source == null → write `models[model]` (global model override)
- *        - row.source != null → write `sourceModels[source][model]` ONLY
- *          (scoped override; does NOT pollute the global `models[model]` table
- *          and does NOT redefine the model-agnostic `sourceDefaults[source]`
- *          fallback). This gives admins a precise "this source uses a different
- *          price for this model" knob without leaking into other sources or
- *          into source-less lookups.
+ * Dynamic entries (already merged baseline → openrouter → models.dev in the
+ * worker-read sync layer) are written into `models[model]`; aliases share
+ * the same pricing pointer.
  */
 export function buildPricingMap({
   dynamic,
-  dbRows,
 }: BuildPricingMapInput): PricingMap {
   const map: PricingMap = {
     models: {},
-    sourceModels: {},
     prefixes: [...DEFAULT_PREFIX_PRICES],
     sourceDefaults: { ...DEFAULT_SOURCE_DEFAULTS },
     fallback: DEFAULT_FALLBACK,
@@ -189,60 +156,27 @@ export function buildPricingMap({
     }
   }
 
-  for (const row of dbRows) {
-    const pricing: ModelPricing = {
-      input: row.input,
-      output: row.output,
-      ...(row.cached != null ? { cached: row.cached } : {}),
-    };
-
-    if (row.source) {
-      // Source-scoped override: store under (source, model) only. Do NOT mutate
-      // map.models[row.model] (would leak the price into source-less lookups
-      // and into other sources) and do NOT mutate sourceDefaults[row.source]
-      // (that table is the model-agnostic fallback per source).
-      if (!map.sourceModels) map.sourceModels = {};
-      const bucket = (map.sourceModels[row.source] ??= {});
-      bucket[row.model] = pricing;
-    } else {
-      map.models[row.model] = pricing;
-    }
-  }
-
   return map;
 }
 
 // ---------------------------------------------------------------------------
-// Lookup (works with any PricingMap — static or merged)
+// Lookup (works with any PricingMap)
 // ---------------------------------------------------------------------------
 
 /**
  * Look up pricing for a model from a PricingMap.
  *
  * Resolution order (first hit wins):
- *   1. (source, model) override from `sourceModels[source][model]` (admin row
- *      with non-null source and matching model).
- *   2. exact match in `models[model]` (dynamic dataset or admin row with
- *      `source == null`).
- *   3. prefix match against `prefixes`.
- *   4. source default `sourceDefaults[source]` (model-agnostic per source).
- *   5. global `fallback`.
- *
- * Note: source-scoped admin overrides (#1) are deliberately checked BEFORE the
- * global exact-match (#2) so they can override even a globally-priced model.
+ *   1. exact match in `models[model]` (dynamic dataset).
+ *   2. prefix match against `prefixes`.
+ *   3. source default `sourceDefaults[source]` (model-agnostic per source).
+ *   4. global `fallback`.
  */
 export function lookupPricing(
   pricingMap: PricingMap,
   model: string,
   source?: string
 ): ModelPricing {
-  // Source-scoped admin override (highest priority when both keys match)
-  if (source) {
-    const sourceBucket = pricingMap.sourceModels?.[source];
-    const scoped = sourceBucket?.[model];
-    if (scoped) return scoped;
-  }
-
   // Exact match
   const exact = pricingMap.models[model];
   if (exact) return exact;
@@ -268,10 +202,10 @@ export function lookupPricing(
 // ---------------------------------------------------------------------------
 
 /**
- * Look up pricing for a model using the prefix/source map only — no DB.
+ * Look up pricing for a model using the prefix/source map only — no dynamic.
  * Reserved for contexts where a `db` handle isn't available (tests, simple
- * scripts). Server request paths must use `loadPricingMap(db)` so admin
- * overrides and the dynamic-pricing dataset are honoured.
+ * scripts). Server request paths must use `loadPricingMap(db)` so the
+ * dynamic-pricing dataset is honoured.
  */
 export function getModelPricing(model: string, source?: string): ModelPricing {
   return lookupPricing(getDefaultPricingMap(), model, source);

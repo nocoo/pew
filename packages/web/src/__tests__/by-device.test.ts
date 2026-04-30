@@ -15,22 +15,8 @@ vi.mock("@/lib/auth-helpers", () => ({
   resolveUser: vi.fn(),
 }));
 
-// Mock pricing — use real implementations for lookupPricing/estimateCost,
-// but mock buildPricingMap to verify DB rows are passed through.
-vi.mock("@/lib/pricing", async (importOriginal) => {
-  const original = await importOriginal<typeof import("@/lib/pricing")>();
-  return {
-    ...original,
-    buildPricingMap: vi.fn(original.buildPricingMap),
-  };
-});
-
 const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
   resolveUser: ReturnType<typeof vi.fn>;
-};
-
-const { buildPricingMap } = (await import("@/lib/pricing")) as unknown as {
-  buildPricingMap: ReturnType<typeof vi.fn>;
 };
 
 describe("GET /api/usage/by-device", () => {
@@ -100,7 +86,6 @@ describe("GET /api/usage/by-device", () => {
       mockDbRead.getDeviceSummary.mockResolvedValueOnce([]);
       mockDbRead.getDeviceCostDetails.mockResolvedValueOnce([]);
       mockDbRead.getDeviceTimeline.mockResolvedValueOnce([]);
-      mockDbRead.listModelPricing.mockResolvedValueOnce([]);
 
       const res = await GET(makeGetRequest("/api/usage/by-device"));
       expect(res.status).toBe(200);
@@ -112,7 +97,6 @@ describe("GET /api/usage/by-device", () => {
       mockDbRead.getDeviceSummary.mockResolvedValueOnce([]);
       mockDbRead.getDeviceCostDetails.mockResolvedValueOnce([]);
       mockDbRead.getDeviceTimeline.mockResolvedValueOnce([]);
-      mockDbRead.listModelPricing.mockResolvedValueOnce([]);
 
       const res = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11", granularity: "half-hour" }));
       expect(res.status).toBe(200);
@@ -128,7 +112,6 @@ describe("GET /api/usage/by-device", () => {
       mockDbRead.getDeviceSummary.mockResolvedValueOnce([]);
       mockDbRead.getDeviceCostDetails.mockResolvedValueOnce([]);
       mockDbRead.getDeviceTimeline.mockResolvedValueOnce([]);
-      mockDbRead.listModelPricing.mockResolvedValueOnce([]);
 
       const res = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-10" }));
       expect(res.status).toBe(200);
@@ -138,7 +121,6 @@ describe("GET /api/usage/by-device", () => {
       mockDbRead.getDeviceSummary.mockResolvedValueOnce([]);
       mockDbRead.getDeviceCostDetails.mockResolvedValueOnce([]);
       mockDbRead.getDeviceTimeline.mockResolvedValueOnce([]);
-      mockDbRead.listModelPricing.mockResolvedValueOnce([]);
 
       const res = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-10T23:59:59Z" }));
       expect(res.status).toBe(200);
@@ -180,7 +162,6 @@ describe("GET /api/usage/by-device", () => {
         },
       ]);
       mockDbRead.getDeviceTimeline.mockResolvedValueOnce([]);
-      mockDbRead.listModelPricing.mockResolvedValueOnce([]);
 
       const res = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" }));
       const body = await res.json();
@@ -213,7 +194,6 @@ describe("GET /api/usage/by-device", () => {
       ]);
       mockDbRead.getDeviceCostDetails.mockResolvedValueOnce([]);
       mockDbRead.getDeviceTimeline.mockResolvedValueOnce([]);
-      mockDbRead.listModelPricing.mockResolvedValueOnce([]);
 
       const res = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" }));
       const body = await res.json();
@@ -302,7 +282,6 @@ describe("GET /api/usage/by-device", () => {
         },
       ]);
       // Pricing RPC (no overrides)
-      mockDbRead.listModelPricing.mockResolvedValueOnce([]);
 
       const res = await GET(
         makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" })
@@ -343,7 +322,6 @@ describe("GET /api/usage/by-device", () => {
         },
       ]);
       mockDbRead.getDeviceTimeline.mockResolvedValueOnce([]);
-      mockDbRead.listModelPricing.mockResolvedValueOnce([]);
 
       const res = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" }));
       const body = await res.json();
@@ -383,7 +361,6 @@ describe("GET /api/usage/by-device", () => {
       ]);
       mockDbRead.getDeviceCostDetails.mockResolvedValueOnce([]);
       mockDbRead.getDeviceTimeline.mockResolvedValueOnce([]);
-      mockDbRead.listModelPricing.mockResolvedValueOnce([]);
 
       const res = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" }));
       const body = await res.json();
@@ -419,7 +396,6 @@ describe("GET /api/usage/by-device", () => {
         },
       ]);
       mockDbRead.getDeviceTimeline.mockResolvedValueOnce([]);
-      mockDbRead.listModelPricing.mockResolvedValueOnce([]);
 
       const res = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-01-01", to: "2026-03-01" }));
       const body = await res.json();
@@ -446,7 +422,6 @@ describe("GET /api/usage/by-device", () => {
       ]);
       mockDbRead.getDeviceCostDetails.mockResolvedValueOnce([]);
       mockDbRead.getDeviceTimeline.mockResolvedValueOnce([]);
-      mockDbRead.listModelPricing.mockResolvedValueOnce([]);
 
       const res = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" }));
       const body = await res.json();
@@ -476,7 +451,7 @@ describe("GET /api/usage/by-device", () => {
       });
     });
 
-    it("should use DB pricing overrides when available", async () => {
+    it("should use static pricing for known models", async () => {
       // Summary
       mockDbRead.getDeviceSummary.mockResolvedValueOnce([
         {
@@ -506,81 +481,13 @@ describe("GET /api/usage/by-device", () => {
       ]);
       // Timeline
       mockDbRead.getDeviceTimeline.mockResolvedValueOnce([]);
-      // Pricing — override claude-sonnet-4 to $100/$200 per 1M
-      mockDbRead.listModelPricing.mockResolvedValueOnce([
-        {
-          id: 1,
-          model: "claude-sonnet-4-20250514",
-          input: 100,
-          output: 200,
-          cached: null,
-          source: null,
-          note: null,
-          updated_at: "2026-03-01T00:00:00Z",
-          created_at: "2026-03-01T00:00:00Z",
-        },
-      ]);
 
       const res = await GET(
         makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" })
       );
       const body = await res.json();
 
-      // With DB override: (1M input * $100/1M) + (1M output * $200/1M) = $300
-      // Without override: (1M * $3/1M) + (1M * $15/1M) = $18
-      expect(body.devices[0].estimated_cost).toBe(300);
-
-      // Verify buildPricingMap was called with the DB rows
-      expect(buildPricingMap).toHaveBeenCalledWith(
-        expect.objectContaining({
-          dbRows: expect.arrayContaining([
-            expect.objectContaining({ model: "claude-sonnet-4-20250514", input: 100, output: 200 }),
-          ]),
-        }),
-      );
-    });
-
-    it("should fall back to static defaults when model_pricing table is missing", async () => {
-      // Summary
-      mockDbRead.getDeviceSummary.mockResolvedValueOnce([
-        {
-          device_id: "aaaa-1111",
-          alias: null,
-          first_seen: "2026-03-01T00:00:00Z",
-          last_seen: "2026-03-10T12:00:00Z",
-          total_tokens: 2_000_000,
-          input_tokens: 1_000_000,
-          output_tokens: 1_000_000,
-          cached_input_tokens: 0,
-          reasoning_output_tokens: 0,
-          sources: "claude-code",
-          models: "claude-sonnet-4-20250514",
-        },
-      ]);
-      // Cost detail
-      mockDbRead.getDeviceCostDetails.mockResolvedValueOnce([
-        {
-          device_id: "aaaa-1111",
-          source: "claude-code",
-          model: "claude-sonnet-4-20250514",
-          input_tokens: 1_000_000,
-          output_tokens: 1_000_000,
-          cached_input_tokens: 0,
-        },
-      ]);
-      // Timeline
-      mockDbRead.getDeviceTimeline.mockResolvedValueOnce([]);
-      // Pricing — table doesn't exist
-      mockDbRead.listModelPricing.mockRejectedValueOnce(
-        new Error("no such table: model_pricing")
-      );
-
-      const res = await GET(
-        makeGetRequest("/api/usage/by-device", { from: "2026-03-01", to: "2026-03-11" })
-      );
-      const body = await res.json();
-
-      // Falls back to static: (1M * $3/1M) + (1M * $15/1M) = $18
+      // Static pricing for claude-sonnet-4: (1M * $3/1M) + (1M * $15/1M) = $18
       expect(res.status).toBe(200);
       expect(body.devices[0].estimated_cost).toBe(18);
     });
