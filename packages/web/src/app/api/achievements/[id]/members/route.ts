@@ -19,7 +19,6 @@
 
 import { NextResponse } from "next/server";
 import { getDbRead } from "@/lib/db";
-import { getDefaultPricingMap } from "@/lib/pricing";
 import {
   getAchievementDef,
   computeTierProgress,
@@ -613,7 +612,6 @@ export async function GET(
   }
 
   // Get query builder for this achievement
-  getDefaultPricingMap(); // Ensure pricing is available (unused for now but may be needed for spending achievements)
   const queryBuilder = getQueryBuilder(id);
 
   if (!queryBuilder) {

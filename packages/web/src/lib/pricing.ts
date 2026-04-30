@@ -229,9 +229,10 @@ export function lookupPricing(
 // ---------------------------------------------------------------------------
 
 /**
- * Look up pricing for a model using static defaults only.
- * Kept for backward compatibility and for contexts where PricingMap
- * is not available (e.g. tests, server-side without DB).
+ * Look up pricing for a model using the prefix/source map only — no DB.
+ * Reserved for contexts where a `db` handle isn't available (tests, simple
+ * scripts). Server request paths must use `loadPricingMap(db)` so admin
+ * overrides and the dynamic-pricing dataset are honoured.
  */
 export function getModelPricing(model: string, source?: string): ModelPricing {
   return lookupPricing(getDefaultPricingMap(), model, source);

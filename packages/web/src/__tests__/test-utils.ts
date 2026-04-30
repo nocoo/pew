@@ -340,6 +340,9 @@ export function createMockClient() {
     getGlobalLeaderboard: vi.fn(),
     getLeaderboardUserTeams: vi.fn(),
     getLeaderboardSessionStats: vi.fn(),
+    // Pricing RPC methods (consumed by loadPricingMap on cost paths)
+    listModelPricing: vi.fn().mockResolvedValue([]),
+    getDynamicPricing: vi.fn().mockResolvedValue({ entries: [], servedFrom: "baseline" }),
   };
 }
 

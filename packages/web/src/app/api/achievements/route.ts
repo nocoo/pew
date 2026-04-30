@@ -11,7 +11,8 @@
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
 import { getDbRead } from "@/lib/db";
-import { getDefaultPricingMap, lookupPricing, type PricingMap } from "@/lib/pricing";
+import { lookupPricing, type PricingMap } from "@/lib/pricing";
+import { loadPricingMap } from "@/lib/load-pricing-map";
 import {
   ACHIEVEMENT_DEFS,
   TIMEZONE_DEPENDANT_IDS,
@@ -173,7 +174,7 @@ export async function GET(request: Request) {
 
   // 3. Query data (parallel fetch for performance)
   const db = await getDbRead();
-  const pricingMap = getDefaultPricingMap();
+  const pricingMap = await loadPricingMap(db);
   const today = new Date().toISOString().slice(0, 10);
 
   try {

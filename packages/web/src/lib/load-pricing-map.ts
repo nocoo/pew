@@ -54,8 +54,11 @@ export async function loadPricingMap(db: PricingMapDb): Promise<PricingMap> {
   }
 
   const dynamic =
-    dynamicSettled.status === "fulfilled" ? dynamicSettled.value.entries : [];
-  const dbRows = dbSettled.status === "fulfilled" ? dbSettled.value : [];
+    dynamicSettled.status === "fulfilled"
+      ? (dynamicSettled.value?.entries ?? [])
+      : [];
+  const dbRows =
+    dbSettled.status === "fulfilled" ? (dbSettled.value ?? []) : [];
 
   return buildPricingMap({ dynamic, dbRows });
 }

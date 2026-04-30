@@ -7,7 +7,8 @@
 
 import { NextResponse } from "next/server";
 import { getDbRead } from "@/lib/db";
-import { getDefaultPricingMap, lookupPricing, type PricingMap } from "@/lib/pricing";
+import { lookupPricing, type PricingMap } from "@/lib/pricing";
+import { loadPricingMap } from "@/lib/load-pricing-map";
 import {
   ACHIEVEMENT_DEFS,
   computeTierProgress,
@@ -96,7 +97,7 @@ export async function GET(
   const { slug } = await params;
 
   const db = await getDbRead();
-  const pricingMap = getDefaultPricingMap();
+  const pricingMap = await loadPricingMap(db);
   const today = new Date().toISOString().slice(0, 10);
 
   try {
