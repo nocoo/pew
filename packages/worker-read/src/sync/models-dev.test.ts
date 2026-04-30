@@ -83,4 +83,29 @@ describe("parseModelsDev", () => {
     const { warnings } = parseModelsDev(sample, NOW);
     expect(warnings.some((w) => w.includes("per-token units"))).toBe(false);
   });
+
+  it("parses minimax provider entries", () => {
+    const { entries } = parseModelsDev(sample, NOW);
+    const mm = entries.find((e) => e.model === "minimax/minimax-m2");
+    expect(mm).toBeDefined();
+    expect(mm!.provider).toBe("MiniMax");
+    expect(mm!.inputPerMillion).toBe(1.1);
+    expect(mm!.contextWindow).toBe(1000000);
+  });
+
+  it("parses moonshotai provider entries", () => {
+    const { entries } = parseModelsDev(sample, NOW);
+    const moon = entries.find((e) => e.model === "moonshotai/kimi-k2");
+    expect(moon).toBeDefined();
+    expect(moon!.provider).toBe("Moonshot");
+    expect(moon!.cachedPerMillion).toBe(0.15);
+  });
+
+  it("parses zai provider entries", () => {
+    const { entries } = parseModelsDev(sample, NOW);
+    const zai = entries.find((e) => e.model === "zai/glm-4-plus");
+    expect(zai).toBeDefined();
+    expect(zai!.provider).toBe("Z.ai");
+    expect(zai!.displayName).toBe("GLM-4 Plus");
+  });
 });

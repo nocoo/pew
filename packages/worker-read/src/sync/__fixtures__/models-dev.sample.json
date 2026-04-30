@@ -26,6 +26,33 @@
       }
     }
   },
+  "minimax": {
+    "models": {
+      "minimax-m2": {
+        "name": "MiniMax M2",
+        "cost": { "input": 1.1, "output": 4.4 },
+        "limit": { "context": 1000000 }
+      }
+    }
+  },
+  "moonshotai": {
+    "models": {
+      "kimi-k2": {
+        "name": "Kimi K2",
+        "cost": { "input": 0.6, "output": 2.4, "cache_read": 0.15 },
+        "limit": { "context": 131072 }
+      }
+    }
+  },
+  "zai": {
+    "models": {
+      "glm-4-plus": {
+        "name": "GLM-4 Plus",
+        "cost": { "input": 0.7, "output": 2.8 },
+        "limit": { "context": 128000 }
+      }
+    }
+  },
   "unknown-vendor": {
     "models": {
       "foo": { "cost": { "input": 1, "output": 1 } }

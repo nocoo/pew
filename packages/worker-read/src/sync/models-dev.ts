@@ -38,6 +38,9 @@ const PROVIDERS: Record<string, string> = {
   deepseek: "DeepSeek",
   mistral: "Mistral",
   xai: "xAI",
+  minimax: "MiniMax",
+  moonshotai: "Moonshot",
+  zai: "Z.ai",
   "github-copilot": "GitHub Copilot",
   alibaba: "Alibaba",
 };
