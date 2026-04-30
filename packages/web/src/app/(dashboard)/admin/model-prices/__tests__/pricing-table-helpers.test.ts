@@ -2,8 +2,11 @@ import { describe, it, expect } from "vitest";
 import {
   sortEntries,
   filterEntries,
+  filterByFacets,
   originChipClass,
   formatNullable,
+  formatPrice,
+  formatContext,
 } from "../pricing-table-helpers";
 import type { DynamicPricingEntryDto } from "@/lib/rpc-types";
 
@@ -130,6 +133,76 @@ describe("pricing-table-helpers", () => {
     it("non-null renders with optional prefix", () => {
       expect(formatNullable(3)).toBe("3");
       expect(formatNullable(3, "$")).toBe("$3");
+    });
+  });
+
+  describe("formatPrice", () => {
+    it("null renders as em-dash", () => {
+      expect(formatPrice(null)).toBe("—");
+    });
+
+    it("integer renders with 2 decimal places", () => {
+      expect(formatPrice(3)).toBe("$3.00");
+    });
+
+    it("fractional value renders with 2 decimal places", () => {
+      expect(formatPrice(0.3)).toBe("$0.30");
+    });
+
+    it("zero renders as $0.00", () => {
+      expect(formatPrice(0)).toBe("$0.00");
+    });
+  });
+
+  describe("formatContext", () => {
+    it("null renders as em-dash", () => {
+      expect(formatContext(null)).toBe("—");
+    });
+
+    it("values >= 1M render with M suffix", () => {
+      expect(formatContext(1000000)).toBe("1M");
+      expect(formatContext(2000000)).toBe("2M");
+    });
+
+    it("values >= 1K render with K suffix", () => {
+      expect(formatContext(200000)).toBe("200K");
+    });
+
+    it("fractional K renders with decimal", () => {
+      expect(formatContext(1500)).toBe("1.5K");
+    });
+
+    it("values < 1K render as raw number", () => {
+      expect(formatContext(500)).toBe("500");
+    });
+  });
+
+  describe("filterByFacets", () => {
+    const data = [
+      entry({ model: "claude-sonnet-4", provider: "Anthropic", origin: "baseline" }),
+      entry({ model: "gpt-4o", provider: "OpenAI", origin: "openrouter" }),
+      entry({ model: "gemini-1.5", provider: "Google", origin: "models.dev" }),
+      entry({ model: "custom-model", provider: "Anthropic", origin: "admin" }),
+    ];
+
+    it("filters by provider only", () => {
+      const result = filterByFacets(data, { provider: "Anthropic" });
+      expect(result.map((e) => e.model)).toEqual(["claude-sonnet-4", "custom-model"]);
+    });
+
+    it("filters by origin only", () => {
+      const result = filterByFacets(data, { origin: "openrouter" });
+      expect(result.map((e) => e.model)).toEqual(["gpt-4o"]);
+    });
+
+    it("filters by both provider and origin", () => {
+      const result = filterByFacets(data, { provider: "Anthropic", origin: "admin" });
+      expect(result.map((e) => e.model)).toEqual(["custom-model"]);
+    });
+
+    it("empty facets return all entries (passthrough)", () => {
+      const result = filterByFacets(data, {});
+      expect(result).toHaveLength(4);
     });
   });
 });

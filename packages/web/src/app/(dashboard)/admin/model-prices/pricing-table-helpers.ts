@@ -107,3 +107,37 @@ export function formatNullable(value: number | null, prefix = ""): string {
   if (value == null) return "—";
   return `${prefix}${value}`;
 }
+
+export function formatPrice(value: number | null): string {
+  if (value == null) return "—";
+  return `$${value.toFixed(2)}`;
+}
+
+export function formatContext(value: number | null): string {
+  if (value == null) return "—";
+  if (value >= 1_000_000) return `${value / 1_000_000}M`;
+  if (value >= 1_000) {
+    const k = value / 1_000;
+    return `${k % 1 === 0 ? k : k}K`;
+  }
+  return String(value);
+}
+
+export interface FacetFilter {
+  provider?: string;
+  origin?: string;
+}
+
+export function filterByFacets(
+  entries: DynamicPricingEntryDto[],
+  facets: FacetFilter,
+): DynamicPricingEntryDto[] {
+  let result = entries;
+  if (facets.provider) {
+    result = result.filter((e) => e.provider === facets.provider);
+  }
+  if (facets.origin) {
+    result = result.filter((e) => e.origin === facets.origin);
+  }
+  return result;
+}
