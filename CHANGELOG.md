@@ -1,5 +1,69 @@
 # Changelog
 
+## v2.21.0
+
+### Added
+- Add Z.ai → zhipu icon alias for provider icon resolution
+- Expand OpenRouter PROVIDER_DISPLAY to match manifest
+- Add minimax, moonshot, zai to models-dev provider whitelist
+- Add provider icon aliases and missing icons
+- Show provider SVG icons in model-prices table
+- Compact model-prices header layout
+- Add pagination, dropdown filters, and formatting to pricing table
+- Add formatPrice, formatContext, filterByFacets helpers
+- C6 admin invalidation + force sync
+- C5 cost cutover — dynamic pricing dataset feeds buildPricingMap
+- C4 — admin model prices read API + dashboard page
+- C3 — scheduled dynamic pricing sync + RPC + KV store
+- C2 — sync-prices CLI + bundled baseline JSON
+- C1 — pure parse/merge sync core
+
+### Changed
+- Extract memoryKv test helper to shared utility
+- Cover parser + kv-store + admin-loader failure branches
+- C4 polish — pin aliases passthrough + null-sort direction-invariant
+- C6 — clarify rebuild RPC auth posture in opening bullet
+- C6 — service-auth posture, request shape, rpc wrapper, 207 rule
+- C6 spec — admin invalidation + force-sync
+- C5 — DbRead helper signature, test note correction
+- C5 — partial degradation, by-device, client-safe DTO
+- Polish C4 ASCII + servedFrom casing; add C5 cost cutover spec
+- Main doc — sync C4 path/route names with c4-web-page.md
+- C4 fixes — admin no-store, /admin/model-prices, useAdmin pattern, inline DTO, pure-helper tests
+- Add C4 web page spec
+- C3 cleanup — defer rebuild RPC in main doc, sync last-fetch keys, servedFrom rename
+- C3 fixes — per-source last-fetch, lastErrors[], servedFrom, defer rebuild RPC to C6
+- Add C3 worker runtime spec
+- C2 add --allow-removals, decouple regression test from web export
+- Add C2 baseline script spec
+- Fix C1 MergeResult duplication + admin source-set rule
+- Add C1 sync core spec
+- Refine N3 admin override semantics
+- Revise dynamic model pricing per review (C0)
+- Add Phase 0 — checkin baseline JSON as default pricing
+- Add dynamic model pricing design doc (#40)
+- Fix HTML title language to match UI (pew - AI Token Usage Dashboard)
+- Unify HTML title to "pew - AI Token 用量面板"
+
+### Fixed
+- Model-prices UX polish — button layout, dropdowns, sidebar order
+- Eliminate timing oracle in secureCompare length check
+- Add per-million unit sanity guard for models.dev prices
+- Read back from dbWrite after admin pricing POST/PUT
+- Use setUTCDate/getUTCDate per DateTime Strategy in by-device route
+- Add 7-day TTL to pricing:last-fetch:* KV keys
+- Preserve three-way forceRefetch semantics in rebuild RPC
+- C5 cost-path coverage — achievement APIs use loadPricingMap
+- C3 — surface kv/d1 failures into SyncOutcome
+- C1/C2 — alias-aware merge replacement
+- C2 — fixtures cover all 14 LEGACY ids; alias-aware removal guard
+- C1 — clone entries in merge to keep purity, prevent alias dup
+
+### Removed
+- Remove unused formatNullable helper
+- Remove unused writeDynamic export from kv-store
+- C4 cleanup — isAdminUser(authResult), useAdmin loading, drop stale conventions
+
 ## v2.20.10
 
 ### Changed
