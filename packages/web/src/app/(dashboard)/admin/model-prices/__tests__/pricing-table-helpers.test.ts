@@ -205,6 +205,7 @@ describe("pricing-table-helpers", () => {
     it("resolves aliases to canonical icon", () => {
       expect(providerIconPath("Meta-llama")).toEqual({ src: "/icons/providers/meta.svg", invert: false });
       expect(providerIconPath("MistralAI")).toEqual({ src: "/icons/providers/mistral.svg", invert: false });
+      expect(providerIconPath("Z.ai")).toEqual({ src: "/icons/providers/zhipu.svg", invert: false });
     });
 
     it("returns null for unknown providers", () => {

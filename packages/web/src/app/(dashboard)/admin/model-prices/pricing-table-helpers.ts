@@ -158,6 +158,7 @@ const PROVIDER_ALIAS: Record<string, string> = {
   "meta-llama": "meta",
   mistralai: "mistral",
   "github copilot": "openai",
+  "z.ai": "zhipu",
 };
 
 const DARK_INVERT_ICONS = new Set(["anthropic", "openai", "xai"]);
