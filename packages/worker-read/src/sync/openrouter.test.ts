@@ -68,4 +68,27 @@ describe("parseOpenRouter", () => {
     expect(leading).toBeDefined();
     expect(leading!.provider).toBe("");
   });
+
+  it("resolves mistralai slug to Mistral", () => {
+    const { entries } = parseOpenRouter(sample, NOW);
+    const mistral = entries.find((e) => e.model === "mistralai/mistral-large");
+    expect(mistral).toBeDefined();
+    expect(mistral!.provider).toBe("Mistral");
+    expect(mistral!.displayName).toBe("Mistral Large");
+  });
+
+  it("resolves meta-llama slug to Meta", () => {
+    const { entries } = parseOpenRouter(sample, NOW);
+    const meta = entries.find((e) => e.model === "meta-llama/llama-3.1-70b");
+    expect(meta).toBeDefined();
+    expect(meta!.provider).toBe("Meta");
+    expect(meta!.displayName).toBe("Llama 3.1 70B");
+  });
+
+  it("resolves minimax slug to MiniMax", () => {
+    const { entries } = parseOpenRouter(sample, NOW);
+    const mm = entries.find((e) => e.model === "minimax/minimax-m2");
+    expect(mm).toBeDefined();
+    expect(mm!.provider).toBe("MiniMax");
+  });
 });

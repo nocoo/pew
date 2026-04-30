@@ -37,6 +37,33 @@
       }
     },
     {
+      "id": "mistralai/mistral-large",
+      "name": "Mistral: Mistral Large",
+      "context_length": 128000,
+      "pricing": {
+        "prompt": "0.000002",
+        "completion": "0.000006"
+      }
+    },
+    {
+      "id": "meta-llama/llama-3.1-70b",
+      "name": "Meta: Llama 3.1 70B",
+      "context_length": 131072,
+      "pricing": {
+        "prompt": "0.00000052",
+        "completion": "0.00000075"
+      }
+    },
+    {
+      "id": "minimax/minimax-m2",
+      "name": "MiniMax: MiniMax M2",
+      "context_length": 1000000,
+      "pricing": {
+        "prompt": "0.0000011",
+        "completion": "0.0000044"
+      }
+    },
+    {
       "id": "broken/model",
       "name": "Broken",
       "pricing": {
