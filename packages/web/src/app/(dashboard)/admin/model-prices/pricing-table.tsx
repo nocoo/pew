@@ -1,14 +1,16 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DynamicPricingEntryDto } from "@/lib/rpc-types";
 import {
   sortEntries,
   filterEntries,
+  filterByFacets,
   originChipClass,
-  formatNullable,
+  formatPrice,
+  formatContext,
   type SortKey,
   type SortDirection,
 } from "./pricing-table-helpers";
@@ -16,6 +18,8 @@ import {
 interface Props {
   entries: DynamicPricingEntryDto[];
 }
+
+const PAGE_SIZE = 50;
 
 const COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
   { key: "model", label: "Model" },
@@ -29,14 +33,39 @@ const COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
   { key: "updatedAt", label: "Updated" },
 ];
 
+const KNOWN_ORIGINS = ["baseline", "openrouter", "models.dev", "admin"] as const;
+
 export function PricingTable({ entries }: Props) {
   const [filter, setFilter] = useState("");
+  const [provider, setProvider] = useState("");
+  const [origin, setOrigin] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("provider");
   const [sortDir, setSortDir] = useState<SortDirection>("asc");
+  const [page, setPage] = useState(0);
+
+  const providers = useMemo(() => {
+    const set = new Set<string>();
+    for (const e of entries) {
+      if (e.provider) set.add(e.provider);
+    }
+    return Array.from(set).sort();
+  }, [entries]);
 
   const visible = useMemo(() => {
-    return sortEntries(filterEntries(entries, filter), sortKey, sortDir);
-  }, [entries, filter, sortKey, sortDir]);
+    const faceted = filterByFacets(entries, {
+      provider: provider || undefined,
+      origin: origin || undefined,
+    });
+    return sortEntries(filterEntries(faceted, filter), sortKey, sortDir);
+  }, [entries, filter, provider, origin, sortKey, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const paged = visible.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE);
+  const rangeStart = visible.length === 0 ? 0 : safePage * PAGE_SIZE + 1;
+  const rangeEnd = Math.min((safePage + 1) * PAGE_SIZE, visible.length);
+
+  const resetPage = () => setPage(0);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -45,6 +74,7 @@ export function PricingTable({ entries }: Props) {
       setSortKey(key);
       setSortDir("asc");
     }
+    resetPage();
   };
 
   if (entries.length === 0) {
@@ -55,15 +85,40 @@ export function PricingTable({ entries }: Props) {
     );
   }
 
+  const selectClass =
+    "rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow";
+
   return (
     <div className="space-y-3">
-      <input
-        type="search"
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-        placeholder="Filter by model, display name, or provider…"
-        className="w-full max-w-sm rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
-      />
+      <div className="flex flex-wrap gap-2">
+        <input
+          type="search"
+          value={filter}
+          onChange={(e) => { setFilter(e.target.value); resetPage(); }}
+          placeholder="Filter by model, display name, or provider…"
+          className={cn("w-full max-w-sm placeholder:text-muted-foreground/50", selectClass)}
+        />
+        <select
+          value={provider}
+          onChange={(e) => { setProvider(e.target.value); resetPage(); }}
+          className={selectClass}
+        >
+          <option value="">All Providers</option>
+          {providers.map((p) => (
+            <option key={p} value={p}>{p}</option>
+          ))}
+        </select>
+        <select
+          value={origin}
+          onChange={(e) => { setOrigin(e.target.value); resetPage(); }}
+          className={selectClass}
+        >
+          <option value="">All Origins</option>
+          {KNOWN_ORIGINS.map((o) => (
+            <option key={o} value={o}>{o}</option>
+          ))}
+        </select>
+      </div>
 
       <div className="rounded-xl bg-secondary p-1 overflow-x-auto">
         <table className="w-full">
@@ -92,7 +147,7 @@ export function PricingTable({ entries }: Props) {
             </tr>
           </thead>
           <tbody>
-            {visible.map((e) => (
+            {paged.map((e) => (
               <tr
                 key={`${e.provider}/${e.model}`}
                 className="border-b border-border/50 last:border-0 hover:bg-accent/50 transition-colors"
@@ -103,16 +158,16 @@ export function PricingTable({ entries }: Props) {
                 <td className="px-4 py-3 text-sm">{e.provider ?? "—"}</td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">{e.displayName ?? "—"}</td>
                 <td className="px-4 py-3 text-sm text-right tabular-nums">
-                  {formatNullable(e.inputPerMillion, "$")}
+                  {formatPrice(e.inputPerMillion)}
                 </td>
                 <td className="px-4 py-3 text-sm text-right tabular-nums">
-                  {formatNullable(e.outputPerMillion, "$")}
+                  {formatPrice(e.outputPerMillion)}
                 </td>
                 <td className="px-4 py-3 text-sm text-right tabular-nums">
-                  {formatNullable(e.cachedPerMillion, "$")}
+                  {formatPrice(e.cachedPerMillion)}
                 </td>
                 <td className="px-4 py-3 text-sm text-right tabular-nums">
-                  {formatNullable(e.contextWindow)}
+                  {formatContext(e.contextWindow)}
                 </td>
                 <td className="px-4 py-3">
                   <span
@@ -124,7 +179,7 @@ export function PricingTable({ entries }: Props) {
                     {e.origin}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-xs text-muted-foreground" title={e.updatedAt}>
+                <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap" title={e.updatedAt}>
                   {e.updatedAt.slice(0, 10)}
                 </td>
               </tr>
@@ -133,8 +188,31 @@ export function PricingTable({ entries }: Props) {
         </table>
       </div>
 
-      <div className="text-xs text-muted-foreground">
-        Showing {visible.length} of {entries.length} models
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>
+          Showing {rangeStart}–{rangeEnd} of {visible.length} models
+        </span>
+        {totalPages > 1 && (
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={safePage === 0}
+              className="rounded p-1 hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="px-2">
+              {safePage + 1} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={safePage >= totalPages - 1}
+              className="rounded p-1 hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -124,8 +124,8 @@ export function formatContext(value: number | null): string {
 }
 
 export interface FacetFilter {
-  provider?: string;
-  origin?: string;
+  provider?: string | undefined;
+  origin?: string | undefined;
 }
 
 export function filterByFacets(
