@@ -41,19 +41,23 @@ No other file touched.
 ```typescript
 const KEY_DYNAMIC = "pricing:dynamic";
 const KEY_DYNAMIC_META = "pricing:dynamic:meta";
-const KEY_LAST_FETCH = "pricing:last-fetch";   // raw upstream JSON, used by admin rebuild path (C6)
+const KEY_LAST_FETCH_OPENROUTER = "pricing:last-fetch:openrouter";
+const KEY_LAST_FETCH_MODELS_DEV = "pricing:last-fetch:models-dev";
 
 export async function readDynamic(env: Env): Promise<DynamicPricingEntry[] | null>;
 export async function writeDynamic(env: Env, entries: DynamicPricingEntry[]): Promise<void>;
 export async function readMeta(env: Env): Promise<DynamicPricingMeta | null>;
 export async function writeMeta(env: Env, meta: DynamicPricingMeta): Promise<void>;
-export async function readLastFetch(env: Env): Promise<{ openRouter: unknown; modelsDev: unknown } | null>;
-export async function writeLastFetch(env: Env, payload: { openRouter: unknown; modelsDev: unknown }): Promise<void>;
+
+export interface CachedFetch<T = unknown> { json: T; fetchedAt: string }
+export async function readLastFetch(env: Env, source: 'openrouter' | 'models.dev'): Promise<CachedFetch | null>;
+export async function writeLastFetch(env: Env, source: 'openrouter' | 'models.dev', payload: CachedFetch): Promise<void>;
 ```
 
-- All values stored as JSON strings; no per-key TTL (we judge freshness by `meta.lastSyncedAt`).
+- All values stored as JSON strings; no per-key TTL (we judge freshness by `meta.lastSyncedAt` and per-source `fetchedAt`).
 - `read*` returns `null` on KV miss or parse error (logged, not thrown).
-- `writeLastFetch` size guard: skip if serialized payload exceeds 24 MB (KV per-value limit is 25 MB; leave headroom).
+- **Per-source last-fetch** so partial-success paths can refresh whichever source succeeded without losing the cached copy of the source that failed. (If both keys go stale, we still have bundled baseline.)
+- `writeLastFetch` size guard: skip if a single source's serialized payload exceeds 24 MB (KV per-value limit is 25 MB; leave headroom).
 
 ### `sync/admin-loader.ts`
 
@@ -87,15 +91,29 @@ Pipeline:
 2. **Fetch upstream in parallel**:
    - `fetch('https://openrouter.ai/api/v1/models', { signal: AbortSignal.timeout(20_000) })`
    - `fetch('https://models.dev/api.json', { signal: AbortSignal.timeout(20_000) })`
-   - **Partial-success policy** (intentionally distinct from C2): if exactly one source fails, log it in `errors`, parse the other normally, and feed `[]` for the failed source into merge. The bundled baseline + the surviving source still produce a usable result. If both fail, fall through to step 3 with the cached `pricing:last-fetch` payload (if present).
-3. **Cache last-fetch** — when both succeed, write the raw JSON to `pricing:last-fetch` for use by C6's admin invalidation path (synchronous rebuild without re-hitting upstream).
+   - **Partial-success policy** (intentionally distinct from C2): for each source independently:
+     - On success → use the fresh JSON; immediately `writeLastFetch(env, source, { json, fetchedAt: now })`.
+     - On failure → fall back to that source's `pricing:last-fetch:<source>` if present (treat as best-effort stand-in); push a `{source, message}` into `errors`.
+     - On failure with no cached copy → feed `[]` into merge for that source.
+   - This means OpenRouter succeeding but models.dev failing still refreshes the OpenRouter cache; tomorrow's failure of OpenRouter can still use models.dev's last good copy.
+3. **(Cache happens inline in step 2 — no separate cache step.)**
 4. **Parse** with C1's `parseOpenRouter(json, now)` / `parseModelsDev(json, now)`; collect warnings.
 5. **Load admin rows** with `loadAdminRows(env)`.
 6. **Merge** with C1's `mergePricingSources({ baseline, openRouter, modelsDev, admin, now })`.
 7. **Write KV**:
    - `writeDynamic(env, entries)`
-   - `writeMeta(env, meta)` where `meta` is built from `mergeResult.meta` plus `lastError` populated from `errors[0]?.message ?? null`.
-8. Return `SyncOutcome` with `ok = errors.length === 0` (so a partial success still reports `ok: false` but with `entriesWritten > 0` — the operator sees the breakage even though users get fresh data).
+   - `writeMeta(env, meta)` — see meta shape below; carries the full `errors` list, not a single message.
+8. Return `SyncOutcome` with `ok = errors.length === 0`. Partial success → `ok: false`, `entriesWritten > 0`, with per-source diagnostics in `meta.lastErrors`.
+
+### Meta shape extension
+
+C0's `DynamicPricingMeta` field `lastError?: { at; message } | null` is replaced with:
+
+```typescript
+lastErrors?: Array<{ source: 'openrouter' | 'models.dev' | 'd1' | 'kv'; at: string; message: string }> | null;
+```
+
+Reason: C3 explicitly allows multiple simultaneous failures (both upstream + D1 are independent). A single message would lose context the `/pricing` page (C4) needs for diagnosis. The main design doc's `DynamicPricingMeta` will be updated in this commit too — same diff.
 
 `syncDynamicPricing` is the **single entry point** used by both the cron path (C3) and the admin invalidation rebuild (C6). Composing them through one function eliminates drift.
 
@@ -133,10 +151,10 @@ export interface GetDynamicPricingMetaRequest {
 
 Handlers:
 
-- `pricing.getDynamicPricing` → `readDynamic(env)`; on null, return the bundled baseline import (deterministic cold-start fallback). Always wraps the array in `{ entries, source: 'kv' | 'baseline' }` so callers can surface a "fallback active" badge in the dashboard.
-- `pricing.getDynamicPricingMeta` → `readMeta(env)`; on null, synthesize `{ lastSyncedAt: '1970-01-01T00:00:00.000Z', modelCount: baseline.length, baselineCount: baseline.length, openRouterCount: 0, modelsDevCount: 0, adminOverrideCount: 0, lastError: { at: now, message: 'KV empty (cold start)' } }`. Synthetic meta is clearly distinguishable.
+- `pricing.getDynamicPricing` → `readDynamic(env)`; on null, return the bundled baseline import (deterministic cold-start fallback). Always wraps the array in `{ entries, servedFrom: 'kv' | 'baseline' }` so callers can surface a "fallback active" badge in the dashboard. (`servedFrom` instead of `source` to avoid colliding with the `(model, source)` admin-row dimension.)
+- `pricing.getDynamicPricingMeta` → `readMeta(env)`; on null, synthesize `{ lastSyncedAt: '1970-01-01T00:00:00.000Z', modelCount: baseline.length, baselineCount: baseline.length, openRouterCount: 0, modelsDevCount: 0, adminOverrideCount: 0, lastErrors: [{ source: 'kv', at: now, message: 'KV empty (cold start)' }] }`. Synthetic meta is clearly distinguishable.
 
-Both methods are **read-only**; they never trigger sync. Sync only happens on cron or via C6's admin endpoint.
+Both methods are **read-only**; they never trigger sync. Sync only happens on cron or via C6's admin endpoint. **C3 deliberately does NOT register `pricing.rebuildDynamicPricing`** — that admin write surface lands in C6 alongside its auth + invalidation rules.
 
 ### `wrangler.toml`
 
@@ -146,13 +164,7 @@ Add to root:
 crons = ["0 3 * * *"]   # daily 03:00 UTC
 ```
 
-Mirror under `[env.test]` so the test deployment has the same shape (we do not actually want tests firing real cron, but having the binding declared keeps `wrangler deploy --env test` parity-correct):
-```toml
-[env.test.triggers]
-crons = ["0 3 * * *"]
-```
-
-CI does not deploy; this is purely declarative.
+For `[env.test]`, follow Wrangler's environment-scoped trigger syntax. **Validate with `wrangler deploy --env test --dry-run` locally before merging** — a misnamed table name silently disables the cron and only surfaces at real deploy time. If Wrangler's current version requires a different shape (e.g. `[env.test]` block with nested `triggers = { crons = [...] }`), use whichever shape `--dry-run` accepts. CI does not deploy; this is purely declarative.
 
 ## Tests
 
@@ -176,7 +188,7 @@ CI does not deploy; this is purely declarative.
 - Both upstream fail → uses `pricing:last-fetch` cache; `ok: false`; KV still written.
 - Both upstream fail AND no `last-fetch` cache → uses bundled baseline only; `ok: false`; entries === baseline.length.
 - Admin rows applied: source=null overrides entry; source='codex' contributes to `meta.adminOverrideCount` only (per C1 rule, no entries change).
-- `meta.lastError` populated from first error; cleared when next sync succeeds.
+- `meta.lastErrors` populated with per-source entries; cleared (`null`) when next sync succeeds for all sources.
 
 ### `rpc/pricing.test.ts` additions
 
@@ -194,7 +206,7 @@ CI does not deploy; this is purely declarative.
 
 - Cron firing twice in the same minute (rare CF retry) is safe: the merge is deterministic for the same inputs, and KV writes are last-write-wins with identical content → zero-diff.
 - `console.log` / `console.error` lines are tagged with the literal prefix `dynamic pricing sync ` so they're greppable in `wrangler tail`.
-- No metrics emission in C3 — operator visibility comes from the `/pricing` page (C4) showing `meta.lastSyncedAt` and `meta.lastError`.
+- No metrics emission in C3 — operator visibility comes from the `/pricing` page (C4) showing `meta.lastSyncedAt` and `meta.lastErrors`.
 
 ## Conventions followed
 

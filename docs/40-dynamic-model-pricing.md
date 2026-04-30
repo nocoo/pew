@@ -122,8 +122,9 @@ interface DynamicPricingMeta {
   openRouterCount: number;
   modelsDevCount: number;
   adminOverrideCount: number;
-  /** Last sync error, if any. UI can warn when lastSyncedAt is >48h old. */
-  lastError?: { at: string; message: string } | null;
+  /** Per-source errors from the last sync run; UI surfaces them on the /pricing page.
+   *  Multi-entry because openrouter/models.dev/d1 can fail independently in one cron tick. */
+  lastErrors?: Array<{ source: 'openrouter' | 'models.dev' | 'd1' | 'kv'; at: string; message: string }> | null;
 }
 ```
 
@@ -336,7 +337,7 @@ Fallback chain at every step: KV fresh → KV stale → bundled `model-prices.js
 |------|-----------|
 | OpenRouter API down | Retry 3x with backoff in `scheduled`; KV retains last good data; baseline JSON always available |
 | models.dev API down | Independent of OpenRouter; partial sync still useful |
-| Price format changes | Validate parsed numbers (finite, ≥0); skip invalid entries with warning logged to meta.lastError |
+| Price format changes | Validate parsed numbers (finite, ≥0); skip invalid entries with warning logged to meta.lastErrors |
 | KV cold start (empty) | Read path falls through to bundled `model-prices.json` |
 | Rate limiting | Single daily fetch via cron; admin-triggered rebuild reuses cached raw fetch results |
 | Stale KV (sync fails for days) | `pricing:dynamic:meta.lastSyncedAt` shown on page; warn banner if >48h |

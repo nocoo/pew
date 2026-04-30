@@ -49,7 +49,7 @@ export interface DynamicPricingMeta {
   openRouterCount: number;
   modelsDevCount: number;
   adminOverrideCount: number;
-  lastError?: { at: string; message: string } | null;
+  lastErrors?: Array<{ source: 'openrouter' | 'models.dev' | 'd1' | 'kv'; at: string; message: string }> | null;
 }
 
 /** Admin override row consumed by merge. Mirrors model_pricing schema. */
@@ -157,7 +157,7 @@ export interface MergeResult {
     pricing: { input: number; output: number; cached: number | null };
     model: string;            // the row.model that triggered this override (for traceability)
   }>;
-  meta: Omit<DynamicPricingMeta, 'lastSyncedAt' | 'lastError'> & { lastSyncedAt: string };
+  meta: Omit<DynamicPricingMeta, 'lastSyncedAt' | 'lastErrors'> & { lastSyncedAt: string };
   warnings: string[];
 }
 
