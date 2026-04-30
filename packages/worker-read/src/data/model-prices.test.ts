@@ -37,12 +37,20 @@ const LEGACY_DEFAULT_MODEL_PRICES: Record<string, LegacyPrice> = {
 const entries = baseline as DynamicPricingEntry[];
 const byModel = new Map(entries.map((e) => [e.model, e]));
 
+// Look up a legacy bare id by exact model match OR by aliases array, so this
+// regression keeps holding after sync-prices writes canonical slashed entries.
+function lookupLegacy(legacyId: string): DynamicPricingEntry | undefined {
+  const exact = byModel.get(legacyId);
+  if (exact) return exact;
+  return entries.find((e) => e.aliases?.includes(legacyId));
+}
+
 describe("model-prices.json baseline", () => {
   it("covers every legacy model with identical pricing", () => {
     const missing: string[] = [];
     const mismatches: string[] = [];
     for (const [model, expected] of Object.entries(LEGACY_DEFAULT_MODEL_PRICES)) {
-      const got = byModel.get(model);
+      const got = lookupLegacy(model);
       if (!got) {
         missing.push(model);
         continue;

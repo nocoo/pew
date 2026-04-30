@@ -188,6 +188,55 @@ describe("mergePricingSources", () => {
     expect(r1.entries.map((e) => e.model)).toEqual(r2.entries.map((e) => e.model));
   });
 
+  it("alias-aware: slashed upstream displaces bare baseline (no duplicate, alias claimed)", () => {
+    const baseline = [entry("gpt-4o", "baseline", 2.5, 10, { provider: "OpenAI" })];
+    const modelsDev = [entry("openai/gpt-4o", "models.dev", 3, 12, { provider: "OpenAI" })];
+    const r = mergePricingSources({
+      baseline,
+      openRouter: [],
+      modelsDev,
+      admin: [],
+      now: NOW,
+    });
+    expect(r.entries).toHaveLength(1);
+    expect(r.entries[0].model).toBe("openai/gpt-4o");
+    expect(r.entries[0].origin).toBe("models.dev");
+    expect(r.entries[0].inputPerMillion).toBe(3);
+    expect(r.entries[0].aliases).toEqual(["gpt-4o"]);
+  });
+
+  it("alias-aware: zero-price upstream against bare baseline → bare baseline retained, no displacement", () => {
+    const baseline = [entry("gpt-4o", "baseline", 2.5, 10, { provider: "OpenAI" })];
+    const modelsDev = [entry("openai/gpt-4o", "models.dev", 0, 0, { provider: "OpenAI" })];
+    const r = mergePricingSources({
+      baseline,
+      openRouter: [],
+      modelsDev,
+      admin: [],
+      now: NOW,
+    });
+    expect(r.entries).toHaveLength(1);
+    expect(r.entries[0].model).toBe("gpt-4o");
+    expect(r.entries[0].origin).toBe("baseline");
+    expect(r.entries[0].inputPerMillion).toBe(2.5);
+  });
+
+  it("alias-aware does not displace non-baseline (admin/upstream) bare entries", () => {
+    const openRouter = [
+      entry("gpt-4o", "openrouter", 1, 4, { provider: "OpenAI" }),
+      entry("openai/gpt-4o", "openrouter", 3, 12, { provider: "OpenAI" }),
+    ];
+    const r = mergePricingSources({
+      baseline: [],
+      openRouter,
+      modelsDev: [],
+      admin: [],
+      now: NOW,
+    });
+    // Both kept: bare came from upstream (not baseline) so no displacement.
+    expect(r.entries.map((e) => e.model).sort()).toEqual(["gpt-4o", "openai/gpt-4o"]);
+  });
+
   it("purity — repeated calls with same input do not mutate caller objects or duplicate aliases", () => {
     const original = entry("anthropic/claude-sonnet-4", "openrouter", 3, 15);
     const snapshot = JSON.parse(JSON.stringify(original));

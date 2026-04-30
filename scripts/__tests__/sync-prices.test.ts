@@ -232,4 +232,46 @@ describe("main (dry-run path)", () => {
     const code = await main(["--dry-run", "--fixture", FIXTURE_DIR]);
     expect(code).toBe(0);
   });
+
+  it("bare baseline + slashed upstream → upstream replaces (no duplicate, alias claims bare)", async () => {
+    // Mimics the production shape: committed baseline uses bare ids, upstream
+    // emits slashed `provider/model`. Output must not double-count and the
+    // canonical slashed entry must alias the bare id so legacy lookups land on
+    // the fresh upstream price, not stale baseline.
+    const out = tempFile();
+    writeFileSync(
+      out,
+      JSON.stringify(
+        [
+          {
+            model: "gpt-4o",
+            provider: "OpenAI",
+            displayName: "GPT-4o",
+            inputPerMillion: 999, // sentinel: stale baseline price
+            outputPerMillion: 999,
+            cachedPerMillion: null,
+            contextWindow: 128000,
+            origin: "baseline",
+            updatedAt: NOW,
+          },
+        ],
+        null,
+        2
+      ) + "\n"
+    );
+    const r = await runSync({
+      dryRun: true,
+      allowRemovals: false,
+      fixtureDir: FIXTURE_DIR,
+      outputPath: out,
+      now: NOW,
+    });
+    const slashed = r.entries.find((e) => e.model === "openai/gpt-4o");
+    const bareExact = r.entries.find((e) => e.model === "gpt-4o");
+    expect(slashed).toBeDefined();
+    expect(bareExact).toBeUndefined();
+    expect(slashed!.inputPerMillion).toBe(2.5);
+    expect(slashed!.aliases).toContain("gpt-4o");
+    rmSync(resolve(out, ".."), { recursive: true, force: true });
+  });
 });

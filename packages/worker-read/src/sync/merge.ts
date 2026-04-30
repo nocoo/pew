@@ -11,6 +11,13 @@
  * for an entry that already has positive prices is silently skipped. This
  * guards against transient upstream regressions wiping known-good prices.
  *
+ * Alias-aware replacement: when an upstream entry arrives with a slashed
+ * `provider/X` id and only a bare `X` exists (typically from the legacy
+ * baseline), the upstream entry replaces the bare baseline under the slashed
+ * canonical key. Without this, the bare baseline would freeze stale legacy
+ * pricing while the slashed upstream entry sat alongside it, and the alias
+ * expansion step would refuse to claim the bare name (already taken).
+ *
  * Admin rules:
  *   - row.source === null → overwrites/inserts the matching entry, origin='admin'.
  *   - row.source !== null → recorded in sourceOverrides side-channel only.
@@ -70,7 +77,27 @@ function applyLayer(
   layer: DynamicPricingEntry[]
 ): void {
   for (const entry of layer) {
-    if (shouldSkipForZeroPrice(byModel.get(entry.model), entry)) continue;
+    const exact = byModel.get(entry.model);
+    // Alias-aware: if no exact match but a bare baseline holds the suffix,
+    // displace it. Only triggers for slashed upstream IDs where the suffix
+    // matches a bare existing entry. Restricted to baseline so admin/upstream
+    // entries already keyed by slashed IDs aren't silently overwritten.
+    let displaced: DynamicPricingEntry | undefined;
+    let displacedKey: string | undefined;
+    if (!exact) {
+      const slash = entry.model.indexOf("/");
+      if (slash >= 0) {
+        const bare = entry.model.slice(slash + 1);
+        const bareEntry = byModel.get(bare);
+        if (bareEntry && bareEntry.origin === "baseline") {
+          displaced = bareEntry;
+          displacedKey = bare;
+        }
+      }
+    }
+    const prior = exact ?? displaced;
+    if (shouldSkipForZeroPrice(prior, entry)) continue;
+    if (displacedKey) byModel.delete(displacedKey);
     byModel.set(entry.model, cloneEntry(entry));
   }
 }
