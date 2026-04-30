@@ -3,7 +3,7 @@ import type { KVNamespace } from "@cloudflare/workers-types";
 
 import {
   readDynamic,
-  writeDynamic,
+  writeDynamicOrThrow,
   readMeta,
   writeMeta,
   readLastFetch,
@@ -79,9 +79,9 @@ describe("kv-store", () => {
     warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
   });
 
-  it("readDynamic / writeDynamic round-trips", async () => {
+  it("readDynamic / writeDynamicOrThrow round-trips", async () => {
     expect(await readDynamic(kv)).toBeNull();
-    await writeDynamic(kv, [ENTRY]);
+    await writeDynamicOrThrow(kv, [ENTRY]);
     expect(kv.store.get(KEY_DYNAMIC)).toBe(JSON.stringify([ENTRY]));
     expect(await readDynamic(kv)).toEqual([ENTRY]);
   });
@@ -108,11 +108,11 @@ describe("kv-store", () => {
     expect(await readMeta(kv)).toBeNull();
   });
 
-  it("write swallows kv.put errors and logs", async () => {
+  it("writeMeta swallows kv.put errors and logs", async () => {
     kv.put = vi.fn(async () => {
       throw new Error("kv 503");
     });
-    await writeDynamic(kv, [ENTRY]);
+    await writeMeta(kv, META);
     expect(errSpy).toHaveBeenCalled();
   });
 

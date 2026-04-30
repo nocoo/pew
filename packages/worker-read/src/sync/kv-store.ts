@@ -62,17 +62,6 @@ export async function readDynamic(kv: KVNamespace): Promise<DynamicPricingEntry[
   return Array.isArray(v) ? v : null;
 }
 
-export async function writeDynamic(
-  kv: KVNamespace,
-  entries: DynamicPricingEntry[]
-): Promise<void> {
-  await writeJson(kv, KEY_DYNAMIC, entries);
-}
-
-/**
- * Throwing variant of writeDynamic — orchestrator uses this so KV failures
- * surface in SyncOutcome.errors instead of being silently swallowed.
- */
 export async function writeDynamicOrThrow(
   kv: KVNamespace,
   entries: DynamicPricingEntry[]
