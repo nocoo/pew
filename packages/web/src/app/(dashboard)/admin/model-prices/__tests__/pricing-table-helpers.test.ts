@@ -6,6 +6,7 @@ import {
   originChipClass,
   formatPrice,
   formatContext,
+  providerIconPath,
 } from "../pricing-table-helpers";
 import type { DynamicPricingEntryDto } from "@/lib/rpc-types";
 
@@ -191,6 +192,22 @@ describe("pricing-table-helpers", () => {
     it("empty facets return all entries (passthrough)", () => {
       const result = filterByFacets(data, {});
       expect(result).toHaveLength(4);
+    });
+  });
+
+  describe("providerIconPath", () => {
+    it("returns icon path for known providers (case-insensitive)", () => {
+      expect(providerIconPath("Anthropic")).toEqual({ src: "/icons/providers/anthropic.svg", invert: true });
+      expect(providerIconPath("OpenAI")).toEqual({ src: "/icons/providers/openai.svg", invert: true });
+      expect(providerIconPath("Google")).toEqual({ src: "/icons/providers/google.svg", invert: false });
+    });
+
+    it("returns null for unknown providers", () => {
+      expect(providerIconPath("SomeNewProvider")).toBeNull();
+    });
+
+    it("returns null for null provider", () => {
+      expect(providerIconPath(null)).toBeNull();
     });
   });
 });

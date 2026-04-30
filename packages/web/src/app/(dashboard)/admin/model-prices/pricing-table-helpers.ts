@@ -136,3 +136,29 @@ export function filterByFacets(
   }
   return result;
 }
+
+const PROVIDER_ICON_SLUGS = new Set([
+  "alibaba",
+  "amazon",
+  "anthropic",
+  "cohere",
+  "deepseek",
+  "google",
+  "meta",
+  "mistral",
+  "moonshot",
+  "openai",
+  "xai",
+  "zhipu",
+]);
+
+const DARK_INVERT_ICONS = new Set(["anthropic", "openai", "xai"]);
+
+export function providerIconPath(provider: string | null): { src: string; invert: boolean } | null {
+  if (!provider) return null;
+  const slug = provider.toLowerCase();
+  if (PROVIDER_ICON_SLUGS.has(slug)) {
+    return { src: `/icons/providers/${slug}.svg`, invert: DARK_INVERT_ICONS.has(slug) };
+  }
+  return null;
+}

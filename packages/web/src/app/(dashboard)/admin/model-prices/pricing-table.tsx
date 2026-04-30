@@ -11,6 +11,7 @@ import {
   originChipClass,
   formatPrice,
   formatContext,
+  providerIconPath,
   type SortKey,
   type SortDirection,
 } from "./pricing-table-helpers";
@@ -160,7 +161,22 @@ export function PricingTable({ entries }: Props) {
                 <td className="px-4 py-3 text-sm font-mono text-foreground" title={e.aliases?.join(", ")}>
                   {e.model}
                 </td>
-                <td className="px-4 py-3 text-sm">{e.provider ?? "—"}</td>
+                <td className="px-4 py-3 text-sm">
+                  <span className="inline-flex items-center gap-1.5">
+                    {(() => {
+                      const icon = providerIconPath(e.provider);
+                      return icon ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={icon.src}
+                          alt=""
+                          className={cn("h-3.5 w-3.5 shrink-0", icon.invert && "dark:invert")}
+                        />
+                      ) : null;
+                    })()}
+                    {e.provider ?? "—"}
+                  </span>
+                </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">{e.displayName ?? "—"}</td>
                 <td className="px-4 py-3 text-sm text-right tabular-nums">
                   {formatPrice(e.inputPerMillion)}
