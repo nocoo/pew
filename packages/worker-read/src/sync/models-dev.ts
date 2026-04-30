@@ -110,5 +110,18 @@ export function parseModelsDev(json: unknown, now: string): ParseResult {
     }
   }
 
+  // Sanity guard: models.dev returns prices per-million-tokens.
+  // If the median inputPerMillion is suspiciously low, the upstream API
+  // may have switched to per-token units (off by 10^6).
+  if (entries.length > 0) {
+    const sorted = entries.map((e) => e.inputPerMillion).sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
+    if (median < 0.01) {
+      warnings.push(
+        `models.dev: median input price ${median} suggests per-token units (expected per-million)`,
+      );
+    }
+  }
+
   return { entries, warnings };
 }

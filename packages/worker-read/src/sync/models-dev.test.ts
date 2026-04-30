@@ -62,4 +62,25 @@ describe("parseModelsDev", () => {
     expect(warnings.some((w) => w.includes("bad-output") && w.includes("invalid output cost"))).toBe(true);
     expect(warnings.some((w) => w.includes("openai") && w.includes("no models"))).toBe(true);
   });
+
+  it("warns when median price is suspiciously low (per-token unit guard)", () => {
+    const perTokenData = {
+      anthropic: {
+        models: {
+          "claude-sonnet-4": {
+            name: "Claude Sonnet 4",
+            cost: { input: 0.000003, output: 0.000015 },
+            limit: { context: 200000 },
+          },
+        },
+      },
+    };
+    const { warnings } = parseModelsDev(perTokenData, NOW);
+    expect(warnings.some((w) => w.includes("per-token units"))).toBe(true);
+  });
+
+  it("does not warn when prices are in normal per-million range", () => {
+    const { warnings } = parseModelsDev(sample, NOW);
+    expect(warnings.some((w) => w.includes("per-token units"))).toBe(false);
+  });
 });
