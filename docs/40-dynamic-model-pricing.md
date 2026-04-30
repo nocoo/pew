@@ -64,17 +64,17 @@ Reference implementation: **manifest** project fetches from OpenRouter API + mod
 ┌─────────────────────────────────────────────────────────┐
 │  Next.js API:                                           │
 │  • GET /api/pricing               → PricingMap (compat) │
-│  • GET /api/admin/pricing/models  → DynamicPricingEntry[] +
-│                                      meta (admin-only)  │
+│  • GET /api/admin/pricing/models  → DynamicPricingEntry[]
+│                                     + meta (admin-only) │
 └────────────────┬────────────────────────────────────────┘
                  │
-        ┌────────┴────────┐
-        ▼                 ▼
-┌──────────────┐  ┌──────────────────────────┐
-│  Admin page         │  │  Cost calculation        │
-│  /admin/model-prices│  │  (all charts, summaries) │
-│  (new in C4)        │  │  via unified lookupPrice │
-└──────────────┘  └──────────────────────────┘
+        ┌────────┴──────────┐
+        ▼                   ▼
+┌──────────────────────┐  ┌──────────────────────────┐
+│  Admin page          │  │  Cost calculation        │
+│  /admin/model-prices │  │  (all charts, summaries) │
+│  (new in C4)         │  │  via unified lookupPrice │
+└──────────────────────┘  └──────────────────────────┘
 ```
 
 ### Pricing Resolution Order (read path)
@@ -293,7 +293,7 @@ crons = ["0 3 * * *"]
 | Origin badge | Color-coded: baseline (gray), models.dev (green), OpenRouter (blue), admin (purple) |
 | Last synced | Timestamp in page header (from meta.lastSyncedAt); warn banner if >36h |
 | Per-source error rows | Renders `meta.lastErrors[]` one row per source |
-| Servedfrom badge | Orange "showing bundled baseline" notice when `servedFrom === 'baseline'` |
+| `servedFrom` badge | Orange "showing bundled baseline" notice when `servedFrom === 'baseline'` |
 | Model count | "Showing X of Y models" |
 | Pagination | Client-side, 25 per page |
 | Empty/loading states | Skeleton rows while loading |
