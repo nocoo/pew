@@ -145,20 +145,29 @@ const PROVIDER_ICON_SLUGS = new Set([
   "deepseek",
   "google",
   "meta",
+  "minimax",
   "mistral",
   "moonshot",
+  "nvidia",
   "openai",
   "xai",
   "zhipu",
 ]);
+
+const PROVIDER_ALIAS: Record<string, string> = {
+  "meta-llama": "meta",
+  mistralai: "mistral",
+  "github copilot": "openai",
+};
 
 const DARK_INVERT_ICONS = new Set(["anthropic", "openai", "xai"]);
 
 export function providerIconPath(provider: string | null): { src: string; invert: boolean } | null {
   if (!provider) return null;
   const slug = provider.toLowerCase();
-  if (PROVIDER_ICON_SLUGS.has(slug)) {
-    return { src: `/icons/providers/${slug}.svg`, invert: DARK_INVERT_ICONS.has(slug) };
+  const resolved = PROVIDER_ALIAS[slug] ?? slug;
+  if (PROVIDER_ICON_SLUGS.has(resolved)) {
+    return { src: `/icons/providers/${resolved}.svg`, invert: DARK_INVERT_ICONS.has(resolved) };
   }
   return null;
 }

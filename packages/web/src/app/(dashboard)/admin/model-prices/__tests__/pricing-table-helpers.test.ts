@@ -202,6 +202,11 @@ describe("pricing-table-helpers", () => {
       expect(providerIconPath("Google")).toEqual({ src: "/icons/providers/google.svg", invert: false });
     });
 
+    it("resolves aliases to canonical icon", () => {
+      expect(providerIconPath("Meta-llama")).toEqual({ src: "/icons/providers/meta.svg", invert: false });
+      expect(providerIconPath("MistralAI")).toEqual({ src: "/icons/providers/mistral.svg", invert: false });
+    });
+
     it("returns null for unknown providers", () => {
       expect(providerIconPath("SomeNewProvider")).toBeNull();
     });
