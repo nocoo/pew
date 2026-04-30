@@ -32,7 +32,7 @@ function parseDateRange(fromParam: string | null, toParam: string | null) {
     fromDate = new Date(fromParam).toISOString();
   } else {
     const d = new Date();
-    d.setDate(d.getDate() - 30);
+    d.setUTCDate(d.getUTCDate() - 30);
     fromDate = d.toISOString();
   }
 
