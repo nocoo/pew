@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { SyncOutcomeDto } from "@/lib/rpc-types";
 
@@ -15,8 +15,16 @@ type State =
   | { kind: "partial"; outcome: SyncOutcomeDto }
   | { kind: "error"; message: string };
 
+const AUTO_DISMISS_MS = 4000;
+
 export function ForceSyncButton({ onComplete }: Props) {
   const [state, setState] = useState<State>({ kind: "idle" });
+
+  useEffect(() => {
+    if (state.kind === "idle" || state.kind === "syncing") return;
+    const t = setTimeout(() => setState({ kind: "idle" }), AUTO_DISMISS_MS);
+    return () => clearTimeout(t);
+  }, [state]);
 
   const handleClick = async () => {
     setState({ kind: "syncing" });
@@ -47,39 +55,24 @@ export function ForceSyncButton({ onComplete }: Props) {
     }
   };
 
-  const disabled = state.kind === "syncing";
-
   return (
-    <>
-      <Button onClick={handleClick} disabled={disabled} variant="secondary" size="sm">
+    <span className="inline-flex items-center gap-2">
+      <Button onClick={handleClick} disabled={state.kind === "syncing"} variant="secondary" size="sm">
         {state.kind === "syncing" ? "Syncing…" : "Force sync"}
       </Button>
-
       {state.kind === "ok" && (
-        <div className="w-full rounded-card bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-300">
-          Synced {state.outcome.entriesWritten} entries.
-        </div>
+        <span className="text-[10px] text-emerald-600 dark:text-emerald-400">
+          Synced {state.outcome.entriesWritten} entries
+        </span>
       )}
-
       {state.kind === "partial" && (
-        <div className="w-full rounded-card bg-yellow-500/10 p-3 text-xs text-yellow-700 dark:text-yellow-300 space-y-1">
-          <div>
-            Partial sync: wrote {state.outcome.entriesWritten} entries; some
-            sources failed.
-          </div>
-          {state.outcome.errors.map((e, i) => (
-            <div key={i} className="font-mono">
-              [{e.source}] {e.message}
-            </div>
-          ))}
-        </div>
+        <span className="text-[10px] text-yellow-600 dark:text-yellow-400">
+          Partial: {state.outcome.entriesWritten} written, {state.outcome.errors.length} failed
+        </span>
       )}
-
       {state.kind === "error" && (
-        <div className="w-full rounded-card bg-destructive/10 p-3 text-xs text-destructive">
-          {state.message}
-        </div>
+        <span className="text-[10px] text-destructive">{state.message}</span>
       )}
-    </>
+    </span>
   );
 }
