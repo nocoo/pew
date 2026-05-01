@@ -5,9 +5,8 @@
  * route; both share the same handler. Strictly read-only.
  */
 
-import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
-import { unauthorizedResponse } from "@/lib/api-responses";
+import { unauthorizedResponse, forbiddenResponse } from "@/lib/api-responses";
 import { isAdminUser } from "@/lib/admin";
 import { fetchDynamicPricingPayload } from "@/lib/pricing-models-handler";
 
@@ -19,7 +18,7 @@ export async function GET(request: Request) {
 
   const admin = await isAdminUser(authResult);
   if (!admin) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return forbiddenResponse();
   }
 
   return fetchDynamicPricingPayload();

@@ -13,12 +13,13 @@
 
 import { NextResponse } from "next/server";
 import { resolveAdmin } from "@/lib/admin";
+import { forbiddenResponse } from "@/lib/api-responses";
 import { getDbRead } from "@/lib/db";
 
 export async function POST(request: Request): Promise<Response> {
   const admin = await resolveAdmin(request);
   if (!admin) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    return forbiddenResponse();
   }
 
   const dbRead = await getDbRead();
