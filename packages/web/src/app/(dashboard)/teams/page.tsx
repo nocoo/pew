@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
+import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
 import { InviteDialog, useInviteDialog } from "@/components/teams/invite-dialog";
 
 // ---------------------------------------------------------------------------
@@ -196,7 +197,7 @@ export default function TeamsPage() {
   const [showJoinTeam, setShowJoinTeam] = useState(false);
   const [inviteCode, setInviteCode] = useState("");
   const [joiningTeam, setJoiningTeam] = useState(false);
-  const [teamMessage, setTeamMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [teamMessage, setTeamMessage] = useState<MessageBannerMsg | null>(null);
   const { data: session } = useSession();
   const currentUserId = session?.user?.id ?? null;
 
@@ -337,18 +338,7 @@ export default function TeamsPage() {
         </div>
 
         {/* Team message */}
-        {teamMessage && (
-          <div
-            className={cn(
-              "rounded-lg p-3 text-xs mb-3",
-              teamMessage.type === "success"
-                ? "bg-success/10 text-success"
-                : "bg-destructive/10 text-destructive",
-            )}
-          >
-            {teamMessage.text}
-          </div>
-        )}
+        <MessageBanner message={teamMessage} className="mb-3" />
 
         {/* Create team form */}
         {showCreateTeam && (

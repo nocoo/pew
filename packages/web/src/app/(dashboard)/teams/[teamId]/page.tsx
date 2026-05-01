@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
+import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
 import { InviteDialog, useInviteDialog } from "@/components/teams/invite-dialog";
 import {
   useSeasonRegistration,
@@ -274,10 +275,7 @@ function SeasonRegistration({
   const { seasons, loading, error, register, withdraw } =
     useSeasonRegistration({ teamId });
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [message, setMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
+  const [message, setMessage] = useState<MessageBannerMsg | null>(null);
 
   const handleRegister = async (seasonId: string) => {
     setBusyId(seasonId);
@@ -319,18 +317,7 @@ function SeasonRegistration({
 
   return (
     <div className="space-y-3">
-      {message && (
-        <div
-          className={cn(
-            "rounded-lg p-3 text-xs",
-            message.type === "success"
-              ? "bg-success/10 text-success"
-              : "bg-destructive/10 text-destructive",
-          )}
-        >
-          {message.text}
-        </div>
-      )}
+      <MessageBanner message={message} />
 
       {seasons.length === 0 ? (
         <div className="rounded-lg bg-accent/50 p-4 text-center text-sm text-muted-foreground">
@@ -365,7 +352,7 @@ export default function TeamDetailPage() {
   const [team, setTeam] = useState<TeamDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [message, setMessage] = useState<MessageBannerMsg | null>(null);
 
   // Profile dialog state
   const [dialogMember, setDialogMember] = useState<TeamMember | null>(null);
@@ -673,18 +660,7 @@ export default function TeamDetailPage() {
       </button>
 
       {/* Message */}
-      {message && (
-        <div
-          className={cn(
-            "rounded-lg p-3 text-xs",
-            message.type === "success"
-              ? "bg-success/10 text-success"
-              : "bg-destructive/10 text-destructive",
-          )}
-        >
-          {message.text}
-        </div>
-      )}
+      <MessageBanner message={message} />
 
       {/* Header */}
       <div>

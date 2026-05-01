@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
+import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
 
 // ---------------------------------------------------------------------------
@@ -626,10 +627,7 @@ export default function AdminOrganizationsPage() {
   const [rows, setRows] = useState<OrgRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
+  const [message, setMessage] = useState<MessageBannerMsg | null>(null);
 
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -759,18 +757,7 @@ export default function AdminOrganizationsPage() {
       </div>
 
       {/* Messages */}
-      {message && (
-        <div
-          className={cn(
-            "rounded-lg p-3 text-xs",
-            message.type === "success"
-              ? "bg-success/10 text-success"
-              : "bg-destructive/10 text-destructive"
-          )}
-        >
-          {message.text}
-        </div>
-      )}
+      <MessageBanner message={message} />
 
       {/* Error */}
       {error && (
