@@ -9,7 +9,23 @@ import {
   DEFAULT_PREFIX_PRICES,
   DEFAULT_SOURCE_DEFAULTS,
   DEFAULT_FALLBACK,
+  type DynamicPricingEntry,
 } from "@/lib/pricing";
+
+function dynEntry(overrides: Partial<DynamicPricingEntry> = {}): DynamicPricingEntry {
+  return {
+    model: "test-model",
+    provider: null,
+    displayName: null,
+    inputPerMillion: 3,
+    outputPerMillion: 15,
+    cachedPerMillion: null,
+    contextWindow: null,
+    origin: "baseline",
+    updatedAt: "2026-04-30T00:00:00.000Z",
+    ...overrides,
+  };
+}
 
 describe("pricing", () => {
   describe("getModelPricing", () => {
@@ -245,6 +261,30 @@ describe("pricing", () => {
       const defaults = getDefaultPricingMap();
       expect(map).toEqual(defaults);
     });
+
+    it("pre-indexes bare name: openai/gpt-5.5 → key gpt-5.5", () => {
+      const map = buildPricingMap({
+        dynamic: [dynEntry({ model: "openai/gpt-5.5", inputPerMillion: 2, outputPerMillion: 8 })],
+      });
+      expect(map.models["gpt-5.5"]).toEqual({ input: 2, output: 8 });
+    });
+
+    it("pre-indexes normalized: anthropic/claude-opus-4.7 → key claude-opus-4-7", () => {
+      const map = buildPricingMap({
+        dynamic: [dynEntry({ model: "anthropic/claude-opus-4.7", inputPerMillion: 15, outputPerMillion: 75 })],
+      });
+      expect(map.models["claude-opus-4-7"]).toEqual({ input: 15, output: 75 });
+    });
+
+    it("most expensive wins when two entries share the same bare name", () => {
+      const map = buildPricingMap({
+        dynamic: [
+          dynEntry({ model: "openai/gpt-4o", inputPerMillion: 2.5, outputPerMillion: 10 }),
+          dynEntry({ model: "azure/gpt-4o", inputPerMillion: 1, outputPerMillion: 5 }),
+        ],
+      });
+      expect(map.models["gpt-4o"]).toEqual({ input: 2.5, output: 10 });
+    });
   });
 
   describe("lookupPricing", () => {
@@ -301,6 +341,85 @@ describe("pricing", () => {
       });
       const p = lookupPricing(map, "o3");
       expect(p).toEqual({ input: 99, output: 199, cached: 9.9 });
+    });
+
+    it("bare-name lookup: gpt-5.5 finds openai/gpt-5.5 KV entry", () => {
+      const map = buildPricingMap({
+        dynamic: [dynEntry({ model: "openai/gpt-5.5", inputPerMillion: 2, outputPerMillion: 8 })],
+      });
+      const p = lookupPricing(map, "gpt-5.5");
+      expect(p).toEqual({ input: 2, output: 8 });
+    });
+
+    it("tilde: claude-sonnet-latest finds ~anthropic/claude-sonnet-latest", () => {
+      const map = buildPricingMap({
+        dynamic: [dynEntry({ model: "~anthropic/claude-sonnet-latest", inputPerMillion: 3, outputPerMillion: 15 })],
+      });
+      const p = lookupPricing(map, "claude-sonnet-latest");
+      expect(p).toEqual({ input: 3, output: 15 });
+    });
+
+    it("dot-hyphen: claude-opus-4-7 finds anthropic/claude-opus-4.7", () => {
+      const map = buildPricingMap({
+        dynamic: [dynEntry({ model: "anthropic/claude-opus-4.7", inputPerMillion: 15, outputPerMillion: 75 })],
+      });
+      const p = lookupPricing(map, "claude-opus-4-7");
+      expect(p).toEqual({ input: 15, output: 75 });
+    });
+
+    it("date suffix: claude-sonnet-4-20250514 finds anthropic/claude-sonnet-4", () => {
+      const map = buildPricingMap({
+        dynamic: [dynEntry({ model: "anthropic/claude-sonnet-4", inputPerMillion: 3, outputPerMillion: 15 })],
+      });
+      const p = lookupPricing(map, "claude-sonnet-4-20250514");
+      expect(p).toEqual({ input: 3, output: 15 });
+    });
+
+    it("context suffix: claude-opus-4.6-1m finds anthropic/claude-opus-4.6", () => {
+      const map = buildPricingMap({
+        dynamic: [dynEntry({ model: "anthropic/claude-opus-4.6", inputPerMillion: 15, outputPerMillion: 75 })],
+      });
+      const p = lookupPricing(map, "claude-opus-4.6-1m");
+      expect(p).toEqual({ input: 15, output: 75 });
+    });
+
+    it(":free suffix: gpt-4o:free finds openai/gpt-4o", () => {
+      const map = buildPricingMap({
+        dynamic: [dynEntry({ model: "openai/gpt-4o", inputPerMillion: 2.5, outputPerMillion: 10 })],
+      });
+      const p = lookupPricing(map, "gpt-4o:free");
+      expect(p).toEqual({ input: 2.5, output: 10 });
+    });
+
+    it("most expensive wins: two KV entries same bare name → returns costlier", () => {
+      const map = buildPricingMap({
+        dynamic: [
+          dynEntry({ model: "cheap/model-x", inputPerMillion: 1, outputPerMillion: 5 }),
+          dynEntry({ model: "expensive/model-x", inputPerMillion: 10, outputPerMillion: 50 }),
+        ],
+      });
+      const p = lookupPricing(map, "model-x");
+      expect(p).toEqual({ input: 10, output: 50 });
+    });
+
+    it("exact key wins over bare key when both exist", () => {
+      const map = buildPricingMap({
+        dynamic: [
+          dynEntry({ model: "openai/gpt-4o", inputPerMillion: 99, outputPerMillion: 199 }),
+          dynEntry({ model: "gpt-4o", inputPerMillion: 2.5, outputPerMillion: 10 }),
+        ],
+      });
+      const p = lookupPricing(map, "gpt-4o");
+      expect(p).toEqual({ input: 2.5, output: 10 });
+    });
+
+    it("Gemini: models/gemini-2.5-pro finds google/gemini-2.5-pro", () => {
+      const map = buildPricingMap({
+        dynamic: [dynEntry({ model: "google/gemini-2.5-pro", inputPerMillion: 1.25, outputPerMillion: 10 })],
+      });
+      const p = lookupPricing(map, "models/gemini-2.5-pro");
+      expect(p.input).toBe(1.25);
+      expect(p.output).toBe(10);
     });
   });
 });

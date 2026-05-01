@@ -12,12 +12,18 @@
  * - Client pages fetch the merged map from `/api/pricing` and pass it to
  *   `lookupPricing()` for per-model resolution.
  *
- * Matching strategy (first hit wins): exact model ID → prefix match →
- * source default → fallback.
+ * Matching strategy (first hit wins): exact model ID → bare name → normalized
+ * (dot-hyphen) → suffix-stripped → prefix match → source default → fallback.
  *
  * Client-safe: this module must not import any server-only code so client
  * bundles (e.g. use-pricing.ts → getDefaultPricingMap) stay free of db-worker.
  */
+
+import {
+  bareModelName,
+  normalizeForMatch,
+  stripVariantSuffix,
+} from "@/lib/model-info-helpers";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -129,6 +135,10 @@ export interface BuildPricingMapInput {
  * Dynamic entries (already merged baseline → openrouter → models.dev in the
  * worker-read sync layer) are written into `models[model]`; aliases share
  * the same pricing pointer.
+ *
+ * Each entry is also indexed under bare-name and dot-hyphen normalized keys
+ * using the shared normalization functions from model-info-helpers. When
+ * keys collide, the most expensive entry wins (higher output, tiebreak input).
  */
 export function buildPricingMap({
   dynamic,
@@ -140,6 +150,9 @@ export function buildPricingMap({
     fallback: DEFAULT_FALLBACK,
   };
 
+  const originalKeys = new Set<string>();
+  const derivedEntries: Array<{ key: string; pricing: ModelPricing }> = [];
+
   for (const entry of dynamic) {
     const pricing: ModelPricing = {
       input: entry.inputPerMillion,
@@ -148,15 +161,51 @@ export function buildPricingMap({
         ? { cached: entry.cachedPerMillion }
         : {}),
     };
-    map.models[entry.model] = pricing;
-    if (entry.aliases) {
-      for (const alias of entry.aliases) {
-        if (!(alias in map.models)) map.models[alias] = pricing;
-      }
+
+    const candidates = [entry.model, ...(entry.aliases ?? [])];
+    for (const c of candidates) {
+      originalKeys.add(c);
+      setIfMoreExpensive(map.models, c, pricing);
+    }
+
+    const derived = new Set<string>();
+    for (const c of candidates) {
+      derived.add(bareModelName(c));
+      derived.add(normalizeForMatch(c));
+    }
+    for (const key of derived) {
+      derivedEntries.push({ key, pricing });
     }
   }
 
+  for (const { key, pricing } of derivedEntries) {
+    if (originalKeys.has(key)) continue;
+    setIfMoreExpensive(map.models, key, pricing);
+  }
+
   return map;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function setIfMoreExpensive(
+  models: Record<string, ModelPricing>,
+  key: string,
+  pricing: ModelPricing,
+): void {
+  const existing = models[key];
+  if (!existing) {
+    models[key] = pricing;
+    return;
+  }
+  if (
+    pricing.output > existing.output ||
+    (pricing.output === existing.output && pricing.input > existing.input)
+  ) {
+    models[key] = pricing;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -168,27 +217,40 @@ export function buildPricingMap({
  *
  * Resolution order (first hit wins):
  *   1. exact match in `models[model]` (dynamic dataset).
- *   2. prefix match against `prefixes`.
- *   3. source default `sourceDefaults[source]` (model-agnostic per source).
- *   4. global `fallback`.
+ *   2. bare-name match (strip tilde + provider prefix).
+ *   3. normalized match (bare + dots → hyphens).
+ *   4. suffix-stripped match (strip date/context/qualifier suffixes).
+ *   5. prefix match against `prefixes` (static safety net).
+ *   6. source default `sourceDefaults[source]` (model-agnostic per source).
+ *   7. global `fallback`.
  */
 export function lookupPricing(
   pricingMap: PricingMap,
   model: string,
   source?: string
 ): ModelPricing {
-  // Exact match
-  const exact = pricingMap.models[model];
+  const { models } = pricingMap;
+
+  const exact = models[model];
   if (exact) return exact;
+
+  const bare = bareModelName(model);
+  if (models[bare]) return models[bare];
+
+  const norm = normalizeForMatch(model);
+  if (models[norm]) return models[norm];
+
+  const stripped = stripVariantSuffix(norm);
+  if (models[stripped]) return models[stripped];
 
   // Prefix match (Gemini models often include "models/" prefix)
   const cleanModel = model.replace(/^models\//, "");
+  const barePrefixModel = bareModelName(cleanModel);
   const prefixMatch = pricingMap.prefixes.find((p) =>
-    cleanModel.startsWith(p.prefix)
+    cleanModel.startsWith(p.prefix) || barePrefixModel.startsWith(p.prefix)
   );
   if (prefixMatch) return prefixMatch.pricing;
 
-  // Source default (model-agnostic)
   if (source) {
     const srcDefault = pricingMap.sourceDefaults[source];
     if (srcDefault) return srcDefault;

@@ -6,7 +6,7 @@ import type { DynamicPricingEntryDto } from "@/lib/rpc-types";
  *   "anthropic/claude-sonnet-4" → "claude-sonnet-4"
  *   "gpt-4.1" → "gpt-4.1"
  */
-function bareModelName(id: string): string {
+export function bareModelName(id: string): string {
   let name = id.trim().toLowerCase();
   if (name.startsWith("~")) name = name.slice(1);
   const slash = name.indexOf("/");
@@ -19,7 +19,7 @@ function bareModelName(id: string): string {
  *   "claude-opus-4.7" → "claude-opus-4-7"
  *   "openai/gpt-5.5"  → "gpt-5-5"
  */
-function normalizeForMatch(id: string): string {
+export function normalizeForMatch(id: string): string {
   return bareModelName(id).replace(/\./g, "-");
 }
 
@@ -32,7 +32,7 @@ function normalizeForMatch(id: string): string {
  *   "claude-sonnet-4-20250514" → "claude-sonnet-4"
  *   "model:free"               → "model"
  */
-function stripVariantSuffix(name: string): string {
+export function stripVariantSuffix(name: string): string {
   return name
     .replace(/[:](free|beta|extended|nitro)$/i, "")
     .replace(/-\d{6,8}$/, "")
