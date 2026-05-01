@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET, PUT, DELETE } from "@/app/api/devices/route";
-import { createMockDbRead, createMockDbWrite } from "./test-utils";
+import {
+  createMockDbRead,
+  createMockDbWrite,
+  loadMockedAuthHelpers,
+} from "./test-utils";
 import * as dbModule from "@/lib/db";
 
 // Mock db
@@ -18,9 +22,7 @@ vi.mock("@/lib/auth-helpers", () => ({
   resolveUser: vi.fn(),
 }));
 
-const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
-  resolveUser: ReturnType<typeof vi.fn>;
-};
+const { resolveUser } = await loadMockedAuthHelpers();
 
 function makeGetRequest(): Request {
   return new Request("http://localhost:7020/api/devices");

@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET, getPublicOrigin } from "@/app/api/auth/cli/route";
-import { createMockDbRead, createMockDbWrite } from "./test-utils";
+import {
+  createMockDbRead,
+  createMockDbWrite,
+  loadMockedAuthHelpers,
+} from "./test-utils";
 import * as dbModule from "@/lib/db";
 import { inMemoryRateLimiter } from "@/lib/rate-limit";
 
@@ -21,9 +25,7 @@ vi.mock("@/lib/auth-helpers", () => ({
   E2E_TEST_USER_EMAIL: "e2e@test.local",
 }));
 
-const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
-  resolveUser: ReturnType<typeof vi.fn>;
-};
+const { resolveUser } = await loadMockedAuthHelpers();
 
 function makeRequest(callback?: string, state?: string): Request {
   let url = "http://localhost:7020/api/auth/cli";

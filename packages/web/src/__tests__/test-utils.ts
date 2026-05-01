@@ -10,7 +10,33 @@
  */
 
 import { vi } from "vitest";
+import type { MockedFunction } from "vitest";
 import type { DbRead, DbWrite } from "@/lib/db";
+import type { resolveUser as ResolveUserFn } from "@/lib/auth-helpers";
+
+// ---------------------------------------------------------------------------
+// Mock module accessors
+// ---------------------------------------------------------------------------
+
+/**
+ * Typed accessor for the hoisted `vi.mock("@/lib/auth-helpers", ...)` that
+ * each route test sets up locally. The `vi.mock(...)` call MUST stay in each
+ * test file (Vitest hoisting); this helper only centralizes the post-hoist
+ * dynamic import + cast and provides a sharper type than
+ * `ReturnType<typeof vi.fn>` so that `mockResolvedValue` is type-checked.
+ *
+ * Usage in a test file:
+ *   vi.mock("@/lib/auth-helpers", () => ({ resolveUser: vi.fn() }));
+ *   const { resolveUser } = await loadMockedAuthHelpers();
+ */
+export async function loadMockedAuthHelpers(): Promise<{
+  resolveUser: MockedFunction<typeof ResolveUserFn>;
+}> {
+  const mod = (await import("@/lib/auth-helpers")) as unknown as {
+    resolveUser: MockedFunction<typeof ResolveUserFn>;
+  };
+  return { resolveUser: mod.resolveUser };
+}
 
 // ---------------------------------------------------------------------------
 // Mock DB factories
