@@ -1,6 +1,7 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatGrid } from "./stat-card";
 import { DashboardSegment } from "./dashboard-segment";
+import { ChartCardSkeleton } from "./chart-card-skeleton";
 
 /** Loading skeleton for the dashboard overview. */
 export function DashboardSkeleton() {
@@ -86,15 +87,9 @@ export function DashboardSkeleton() {
           <div className="flex flex-col gap-3 md:gap-4">
             <div>
               <Skeleton className="h-8 w-36 mb-3 rounded-lg" />
-              <div className="rounded-card bg-secondary p-4 md:p-5">
-                <Skeleton className="h-3 w-24 mb-4" />
-                <Skeleton className="h-[240px] md:h-[280px] w-full" />
-              </div>
+              <ChartCardSkeleton titleWidth="w-24" chartHeight="h-[240px] md:h-[280px]" />
             </div>
-            <div className="rounded-card bg-secondary p-4 md:p-5">
-              <Skeleton className="h-3 w-20 mb-4" />
-              <Skeleton className="h-[200px] md:h-[240px] w-full" />
-            </div>
+            <ChartCardSkeleton titleWidth="w-20" chartHeight="h-[200px] md:h-[240px]" />
           </div>
           {/* Right column */}
           <div className="flex flex-col gap-3 md:gap-4">
@@ -119,14 +114,8 @@ export function DashboardSkeleton() {
       <DashboardSegment title="Insights">
         {/* Row 1: Weekday vs Weekend + Hourly Chart */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-          <div className="rounded-card bg-secondary p-4 md:p-5">
-            <Skeleton className="h-3 w-28 mb-4" />
-            <Skeleton className="h-[180px] w-full" />
-          </div>
-          <div className="rounded-card bg-secondary p-4 md:p-5">
-            <Skeleton className="h-3 w-24 mb-4" />
-            <Skeleton className="h-[180px] w-full" />
-          </div>
+          <ChartCardSkeleton titleWidth="w-28" chartHeight="h-[180px]" />
+          <ChartCardSkeleton titleWidth="w-24" chartHeight="h-[180px]" />
         </div>
         {/* Row 2: Salary Estimator */}
         <div className="rounded-card bg-secondary p-4 md:p-5">
