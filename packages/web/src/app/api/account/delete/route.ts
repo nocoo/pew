@@ -13,6 +13,7 @@
 
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
+import { unauthorizedResponse } from "@/lib/api-responses";
 import { getDbRead, getDbWrite } from "@/lib/db";
 
 // ---------------------------------------------------------------------------
@@ -35,7 +36,7 @@ export async function DELETE(request: Request) {
 
   const authResult = await resolveUser(request);
   if (!authResult) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return unauthorizedResponse();
   }
 
   let body: Record<string, unknown>;

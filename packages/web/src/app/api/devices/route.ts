@@ -6,6 +6,7 @@
 
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
+import { unauthorizedResponse } from "@/lib/api-responses";
 import { getDbRead, getDbWrite } from "@/lib/db";
 
 // ---------------------------------------------------------------------------
@@ -15,7 +16,7 @@ import { getDbRead, getDbWrite } from "@/lib/db";
 export async function GET(request: Request) {
   const authResult = await resolveUser(request);
   if (!authResult) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return unauthorizedResponse();
   }
   const userId = authResult.userId;
 
@@ -51,7 +52,7 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   const authResult = await resolveUser(request);
   if (!authResult) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return unauthorizedResponse();
   }
   const userId = authResult.userId;
 
@@ -136,7 +137,7 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   const authResult = await resolveUser(request);
   if (!authResult) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return unauthorizedResponse();
   }
   const userId = authResult.userId;
 

@@ -7,13 +7,14 @@
 
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
+import { unauthorizedResponse } from "@/lib/api-responses";
 import { isAdminUser } from "@/lib/admin";
 import { fetchDynamicPricingPayload } from "@/lib/pricing-models-handler";
 
 export async function GET(request: Request) {
   const authResult = await resolveUser(request);
   if (!authResult) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return unauthorizedResponse();
   }
 
   const admin = await isAdminUser(authResult);
