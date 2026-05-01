@@ -15,11 +15,7 @@ export interface ParseBoundedIntOptions {
 /**
  * Parse a query string as a bounded integer.
  *
- * - `raw == null`  → returns `defaultValue` (or `"invalid"` if no default and
- *                    the option is omitted? — no: callers always pass
- *                    `defaultValue` for params that have one. If none is
- *                    provided and `raw` is null, `"invalid"` is returned so
- *                    the caller can decide whether to 400 or fall back).
+ * - `raw == null`  → `defaultValue` when provided, otherwise `"invalid"`.
  * - `raw` present but `parseInt(..., 10)` yields NaN, or value lies outside
  *   `[min, max]` → `"invalid"`.
  * - Otherwise → the parsed integer.
