@@ -54,6 +54,7 @@ function capitalize(s: string): string {
 function providerFromId(id: string): string {
   const slash = id.indexOf("/");
   const slug = slash >= 0 ? id.slice(0, slash) : id;
+  if (slug.startsWith("~")) return "OpenRouter";
   return PROVIDER_DISPLAY[slug] ?? capitalize(slug);
 }
 

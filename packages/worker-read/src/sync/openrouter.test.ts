@@ -91,4 +91,18 @@ describe("parseOpenRouter", () => {
     expect(mm).toBeDefined();
     expect(mm!.provider).toBe("MiniMax");
   });
+
+  it("resolves tilde-prefixed slugs to OpenRouter", () => {
+    const { entries } = parseOpenRouter(
+      {
+        data: [
+          { id: "~auto/best", pricing: { prompt: "0.000001", completion: "0.000002" } },
+          { id: "~openrouter/nitro", name: "Nitro", pricing: { prompt: "0.000003", completion: "0.000006" } },
+        ],
+      },
+      NOW,
+    );
+    expect(entries[0]!.provider).toBe("OpenRouter");
+    expect(entries[1]!.provider).toBe("OpenRouter");
+  });
 });

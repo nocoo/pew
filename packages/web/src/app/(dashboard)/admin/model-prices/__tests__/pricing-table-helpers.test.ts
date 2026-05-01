@@ -7,6 +7,7 @@ import {
   formatPrice,
   formatContext,
   providerIconPath,
+  OPENROUTER_FALLBACK_ICON,
 } from "../pricing-table-helpers";
 import type { DynamicPricingEntryDto } from "@/lib/rpc-types";
 
@@ -198,7 +199,11 @@ describe("pricing-table-helpers", () => {
     it("returns icon path for known providers (case-insensitive)", () => {
       expect(providerIconPath("Anthropic")).toEqual({ src: "/icons/providers/anthropic.svg", invert: true });
       expect(providerIconPath("OpenAI")).toEqual({ src: "/icons/providers/openai.svg", invert: true });
-      expect(providerIconPath("Google")).toEqual({ src: "/icons/providers/google.svg", invert: false });
+      expect(providerIconPath("DeepSeek")).toEqual({ src: "/icons/providers/deepseek.svg", invert: false });
+    });
+
+    it("maps Google to gemini icon", () => {
+      expect(providerIconPath("Google")).toEqual({ src: "/icons/providers/gemini.svg", invert: false });
     });
 
     it("resolves aliases to canonical icon", () => {
@@ -207,12 +212,26 @@ describe("pricing-table-helpers", () => {
       expect(providerIconPath("Z.ai")).toEqual({ src: "/icons/providers/zhipu.svg", invert: false });
     });
 
+    it("returns openrouter icon for OpenRouter provider", () => {
+      expect(providerIconPath("OpenRouter")).toEqual({ src: "/icons/providers/openrouter.svg", invert: false });
+    });
+
+    it("moonshot icon uses dark:invert", () => {
+      expect(providerIconPath("Moonshot")).toEqual({ src: "/icons/providers/moonshot.svg", invert: true });
+    });
+
     it("returns null for unknown providers", () => {
       expect(providerIconPath("SomeNewProvider")).toBeNull();
     });
 
     it("returns null for null provider", () => {
       expect(providerIconPath(null)).toBeNull();
+    });
+  });
+
+  describe("OPENROUTER_FALLBACK_ICON", () => {
+    it("provides openrouter icon as fallback constant", () => {
+      expect(OPENROUTER_FALLBACK_ICON).toEqual({ src: "/icons/providers/openrouter.svg", invert: false });
     });
   });
 });

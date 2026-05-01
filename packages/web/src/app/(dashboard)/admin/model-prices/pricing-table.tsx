@@ -12,6 +12,7 @@ import {
   formatPrice,
   formatContext,
   providerIconPath,
+  OPENROUTER_FALLBACK_ICON,
   type SortKey,
   type SortDirection,
 } from "./pricing-table-helpers";
@@ -164,7 +165,8 @@ export function PricingTable({ entries }: Props) {
                 <td className="px-4 py-3 text-sm">
                   <span className="inline-flex items-center gap-1.5">
                     {(() => {
-                      const icon = providerIconPath(e.provider);
+                      const icon = providerIconPath(e.provider)
+                        ?? (e.origin === "openrouter" ? OPENROUTER_FALLBACK_ICON : null);
                       return icon ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img

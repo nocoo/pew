@@ -141,6 +141,7 @@ const PROVIDER_ICON_SLUGS = new Set([
   "anthropic",
   "cohere",
   "deepseek",
+  "gemini",
   "google",
   "meta",
   "minimax",
@@ -148,6 +149,7 @@ const PROVIDER_ICON_SLUGS = new Set([
   "moonshot",
   "nvidia",
   "openai",
+  "openrouter",
   "xai",
   "zhipu",
 ]);
@@ -156,12 +158,18 @@ const PROVIDER_ALIAS: Record<string, string> = {
   "meta-llama": "meta",
   mistralai: "mistral",
   "github copilot": "openai",
+  google: "gemini",
   "z.ai": "zhipu",
 };
 
-const DARK_INVERT_ICONS = new Set(["anthropic", "openai", "xai"]);
+const DARK_INVERT_ICONS = new Set(["anthropic", "moonshot", "openai", "xai"]);
 
-export function providerIconPath(provider: string | null): { src: string; invert: boolean } | null {
+export interface ProviderIcon {
+  src: string;
+  invert: boolean;
+}
+
+export function providerIconPath(provider: string | null): ProviderIcon | null {
   if (!provider) return null;
   const slug = provider.toLowerCase();
   const resolved = PROVIDER_ALIAS[slug] ?? slug;
@@ -170,3 +178,8 @@ export function providerIconPath(provider: string | null): { src: string; invert
   }
   return null;
 }
+
+export const OPENROUTER_FALLBACK_ICON: ProviderIcon = {
+  src: "/icons/providers/openrouter.svg",
+  invert: false,
+};
