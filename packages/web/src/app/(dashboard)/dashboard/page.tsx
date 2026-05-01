@@ -11,6 +11,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useUsageData, toHeatmapData } from "@/hooks/use-usage-data";
+import { useTzOffset } from "@/hooks/use-tz-offset";
 import { useAchievements } from "@/hooks/use-achievements";
 import { formatTokens, cn } from "@/lib/utils";
 import { usePricingMap, formatCost } from "@/hooks/use-pricing";
@@ -94,7 +95,7 @@ export default function DashboardPage() {
   const { pricingMap } = usePricingMap();
 
   // Timezone offset for UTC→local date conversion (used by multiple helpers)
-  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []); // frozen per mount — acceptable; page refresh handles DST changes
+  const tzOffset = useTzOffset();
   const today = useMemo(() => getLocalToday(tzOffset), [tzOffset]);
 
   // Fill date gaps + extend to today so charts always show up to the current day

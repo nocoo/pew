@@ -11,6 +11,7 @@ import type {
 } from "@/hooks/use-usage-data";
 import { toHeatmapData } from "@/hooks/use-usage-data";
 import { useDerivedUsageData } from "@/hooks/use-derived-usage-data";
+import { useTzOffset } from "@/hooks/use-tz-offset";
 import type { BadgeIconType } from "@pew/core";
 import { throwApiError } from "@/lib/api-error";
 
@@ -147,7 +148,7 @@ export function useUserProfile(
   }, [fetchData]);
 
   // Memoize derived data to avoid recalculation on every render
-  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []); // frozen per mount — acceptable; page refresh handles DST changes
+  const tzOffset = useTzOffset();
   const { daily, sources, models } = useDerivedUsageData(data?.records ?? null, tzOffset);
   const heatmap = useMemo(() => toHeatmapData(daily), [daily]);
 

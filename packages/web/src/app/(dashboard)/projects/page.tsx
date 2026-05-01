@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useProjects } from "@/hooks/use-projects";
+import { useTzOffset } from "@/hooks/use-tz-offset";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import type { Project } from "@/hooks/use-projects";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -472,7 +473,7 @@ function SummaryTable({
 export default function ProjectsPage() {
   const [period, setPeriod] = useState<Period>("all");
   const [tagFilter, setTagFilter] = useState("");
-  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []); // frozen per mount — acceptable; page refresh handles DST changes
+  const tzOffset = useTzOffset();
   const today = useMemo(() => getLocalToday(tzOffset), [tzOffset]);
   const { from, to } = periodToDateRange(
     period,

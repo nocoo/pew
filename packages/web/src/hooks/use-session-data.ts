@@ -13,6 +13,7 @@ import {
   type ProjectBreakdownItem,
 } from "@/lib/session-helpers";
 import { useFetchData } from "@/hooks/use-fetch-data";
+import { useTzOffset } from "@/hooks/use-tz-offset";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -65,7 +66,7 @@ export function useSessionData(
 
   const records = useMemo(() => data?.records ?? [], [data]);
 
-  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []); // frozen per mount — acceptable; page refresh handles DST changes
+  const tzOffset = useTzOffset();
   const overview = useMemo(() => toSessionOverview(records), [records]);
   const hoursGrid = useMemo(() => toWorkingHoursGrid(records, tzOffset), [records, tzOffset]);
   const dailyMessages = useMemo(() => toMessageDailyStats(records, tzOffset), [records, tzOffset]);

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useUsageData, sourceLabel } from "@/hooks/use-usage-data";
+import { useTzOffset } from "@/hooks/use-tz-offset";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { formatTokens } from "@/lib/utils";
 import { usePricingMap, formatCost } from "@/hooks/use-pricing";
@@ -85,7 +86,7 @@ export default function ModelsPage() {
 
   const { pricingMap } = usePricingMap();
 
-  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []); // frozen per mount — acceptable; page refresh handles DST changes
+  const tzOffset = useTzOffset();
   const today = useMemo(() => getLocalToday(tzOffset), [tzOffset]);
 
   const modelGroups = useMemo(

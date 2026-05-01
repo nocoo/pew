@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { Zap, Brain } from "lucide-react";
 import { useSessionData } from "@/hooks/use-session-data";
+import { useTzOffset } from "@/hooks/use-tz-offset";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { useUsageData } from "@/hooks/use-usage-data";
 import { useDeviceData } from "@/hooks/use-device-data";
@@ -105,7 +106,7 @@ export default function SessionsPage() {
     [usageData],
   );
 
-  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []); // frozen per mount — acceptable; page refresh handles DST changes
+  const tzOffset = useTzOffset();
   const today = useMemo(() => getLocalToday(tzOffset), [tzOffset]);
 
   const peakSlots = useMemo(

@@ -8,6 +8,7 @@ import {
   sourceLabel,
 } from "@/hooks/use-usage-data";
 import { useDeviceData } from "@/hooks/use-device-data";
+import { useTzOffset } from "@/hooks/use-tz-offset";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { formatTokens, cn } from "@/lib/utils";
 import { usePricingMap, lookupPricing, estimateCost, formatCost } from "@/hooks/use-pricing";
@@ -283,7 +284,7 @@ export default function DailyUsagePage() {
 
   const { pricingMap } = usePricingMap();
 
-  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []); // frozen per mount — acceptable; page refresh handles DST changes
+  const tzOffset = useTzOffset();
 
   // Daily points for the main chart (padded to full month)
   const daily = useMemo(() => {

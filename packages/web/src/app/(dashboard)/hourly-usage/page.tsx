@@ -7,6 +7,7 @@ import {
   sourceLabel,
 } from "@/hooks/use-usage-data";
 import type { UsageRow } from "@/hooks/use-usage-data";
+import { useTzOffset } from "@/hooks/use-tz-offset";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { useDeviceData } from "@/hooks/use-device-data";
 import { TimelineInOutChart } from "@/components/dashboard/timeline-inout-chart";
@@ -368,7 +369,7 @@ export default function RecentPage() {
   const loading = usageLoading || deviceLoading;
 
   // For hourly pattern charts, fetch last 30 days of half-hour data
-  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []); // frozen per mount — acceptable; page refresh handles DST changes
+  const tzOffset = useTzOffset();
   const { patternFrom, patternTo } = useMemo(() => {
     const today = getLocalToday(tzOffset);
     const fromDate = new Date(today + "T00:00:00Z");

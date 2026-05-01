@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useDeviceData } from "@/hooks/use-device-data";
+import { useTzOffset } from "@/hooks/use-tz-offset";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { useUsageData } from "@/hooks/use-usage-data";
 import { formatTokens } from "@/lib/utils";
@@ -164,7 +165,7 @@ export default function ByDevicePage() {
 
   const devices = useMemo(() => data?.devices ?? [], [data]);
 
-  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []); // frozen per mount — acceptable; page refresh handles DST changes
+  const tzOffset = useTzOffset();
   const today = useMemo(() => getLocalToday(tzOffset), [tzOffset]);
 
   // Fill date gaps in device timeline so charts extend to today

@@ -6,6 +6,7 @@ import { useDerivedUsageData } from "@/hooks/use-derived-usage-data";
 import type { UsageRow, UsageSummary } from "@/lib/usage-transforms";
 import type { DailyPoint, SourceAggregate, ModelAggregate } from "@/lib/usage-transforms";
 import { useFetchData } from "@/hooks/use-fetch-data";
+import { useTzOffset } from "@/hooks/use-tz-offset";
 
 // ---------------------------------------------------------------------------
 // Re-export types and helpers for backward compatibility
@@ -58,7 +59,7 @@ export function useUsageData(
   const { days = 30, from: fromDate, to: toDate, source, deviceId, granularity = "day" } = options;
 
   // Frozen per mount — acceptable; page refresh handles DST changes
-  const tzOffset = useMemo(() => new Date().getTimezoneOffset(), []);
+  const tzOffset = useTzOffset();
 
   const url = useMemo(() => {
     // When explicit `from` is provided, use it directly; otherwise compute from `days`
