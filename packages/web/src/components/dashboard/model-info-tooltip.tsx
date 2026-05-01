@@ -12,6 +12,11 @@ import {
   formatContextWindow,
   formatPerMillion,
 } from "@/lib/model-info-helpers";
+import {
+  originChipClass,
+  providerIconPath,
+  OPENROUTER_FALLBACK_ICON,
+} from "@/app/(dashboard)/model-prices/pricing-table-helpers";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -105,8 +110,22 @@ function ModelPricingRow({
   return (
     <div className="rounded-md border border-border/50 p-2 space-y-1">
       <div className="flex items-center justify-between gap-2 text-[11px]">
-        <span className="font-medium text-foreground">{entry.provider}</span>
-        <span className="rounded-sm bg-secondary px-1.5 py-0.5 font-mono uppercase tracking-wide text-muted-foreground">
+        <span className="flex items-center gap-1 font-medium text-foreground">
+          {(() => {
+            const icon = providerIconPath(entry.provider) ?? (entry.origin === "openrouter" ? OPENROUTER_FALLBACK_ICON : null);
+            if (!icon) return null;
+            return (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={icon.src}
+                alt=""
+                className={cn("h-3 w-3", icon.invert && "dark:invert")}
+              />
+            );
+          })()}
+          {entry.provider}
+        </span>
+        <span className={cn("rounded-full px-1.5 py-0.5 text-[10px] font-medium", originChipClass(entry.origin))}>
           {entry.origin}
         </span>
       </div>
