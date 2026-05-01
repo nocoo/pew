@@ -4,10 +4,11 @@ import { useState, useMemo } from "react";
 import { Zap, Brain } from "lucide-react";
 import { useSessionData } from "@/hooks/use-session-data";
 import { useUsageData } from "@/hooks/use-usage-data";
+import { useDeviceData } from "@/hooks/use-device-data";
 import { SessionOverview } from "@/components/dashboard/session-overview";
 import { StatCard, StatGrid } from "@/components/dashboard/stat-card";
 import { WorkingHoursHeatmap } from "@/components/dashboard/working-hours-heatmap";
-import { MessageStatsChart } from "@/components/dashboard/message-stats-chart";
+import { DailyActivityChart } from "@/components/dashboard/daily-activity-chart";
 import { PeakHoursCard } from "@/components/dashboard/peak-hours-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -18,7 +19,7 @@ import {
 import type { Period } from "@/components/dashboard/period-selector";
 import { computeTokensPerHour } from "@/lib/session-helpers";
 import { computeReasoningRatio } from "@/lib/cost-helpers";
-import { detectPeakHours, getLocalToday, fillDateRange, aggregateHourlyTokens } from "@/lib/date-helpers";
+import { detectPeakHours, getLocalToday, aggregateHourlyTokens } from "@/lib/date-helpers";
 import { formatTokens } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -103,6 +104,13 @@ export default function SessionsPage() {
     granularity: "half-hour",
   });
 
+  // Daily device timeline for the "By Device" dimension on Daily Activity
+  const { data: deviceData, loading: deviceLoading } = useDeviceData({
+    from,
+    ...(to ? { to } : {}),
+    granularity: "day",
+  });
+
   const subtitle = periodLabel(period);
 
   const efficiency = useMemo(
@@ -132,10 +140,7 @@ export default function SessionsPage() {
   );
 
   // Fill date gaps in message stats so chart extends to today
-  const filledDailyMessages = useMemo(
-    () => fillDateRange(sessionData.dailyMessages, "date", (d) => ({ date: d, user: 0, assistant: 0 }), today),
-    [sessionData.dailyMessages, today],
-  );
+  // (kept for backwards-compat — DailyActivityChart owns its own filling now)
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -158,10 +163,10 @@ export default function SessionsPage() {
       )}
 
       {/* Loading state */}
-      {(sessionData.loading || usageLoading || halfHourLoading) && <SessionsSkeleton />}
+      {(sessionData.loading || usageLoading || halfHourLoading || deviceLoading) && <SessionsSkeleton />}
 
       {/* Content */}
-      {!sessionData.loading && !usageLoading && !halfHourLoading && (
+      {!sessionData.loading && !usageLoading && !halfHourLoading && !deviceLoading && (
         <>
           {/* Overview stat cards */}
           <SessionOverview data={sessionData.overview} subtitle={subtitle} />
@@ -197,7 +202,13 @@ export default function SessionsPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-3 md:gap-4">
-            <MessageStatsChart data={filledDailyMessages} />
+            <DailyActivityChart
+              sessions={sessionData.records}
+              deviceTimeline={deviceData?.timeline ?? []}
+              devices={deviceData?.devices ?? []}
+              tzOffset={tzOffset}
+              today={today}
+            />
           </div>
         </>
       )}
