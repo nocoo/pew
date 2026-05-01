@@ -210,6 +210,7 @@ describe("pricing-table-helpers", () => {
       expect(providerIconPath("Meta-llama")).toEqual({ src: "/icons/providers/meta.svg", invert: false });
       expect(providerIconPath("MistralAI")).toEqual({ src: "/icons/providers/mistral.svg", invert: false });
       expect(providerIconPath("Z.ai")).toEqual({ src: "/icons/providers/zhipu.svg", invert: false });
+      expect(providerIconPath("GitHub Copilot")).toEqual({ src: "/icons/providers/github.svg", invert: true });
     });
 
     it("returns openrouter icon for OpenRouter provider", () => {

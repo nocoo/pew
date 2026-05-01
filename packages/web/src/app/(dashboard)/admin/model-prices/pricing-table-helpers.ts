@@ -142,6 +142,7 @@ const PROVIDER_ICON_SLUGS = new Set([
   "cohere",
   "deepseek",
   "gemini",
+  "github",
   "google",
   "meta",
   "minimax",
@@ -155,14 +156,15 @@ const PROVIDER_ICON_SLUGS = new Set([
 ]);
 
 const PROVIDER_ALIAS: Record<string, string> = {
+  bedrock: "amazon",
   "meta-llama": "meta",
   mistralai: "mistral",
-  "github copilot": "openai",
+  "github copilot": "github",
   google: "gemini",
   "z.ai": "zhipu",
 };
 
-const DARK_INVERT_ICONS = new Set(["anthropic", "moonshot", "openai", "xai"]);
+const DARK_INVERT_ICONS = new Set(["anthropic", "github", "moonshot", "openai", "xai"]);
 
 export interface ProviderIcon {
   src: string;
