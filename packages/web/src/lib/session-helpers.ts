@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import { toLocalDateStr } from "@/lib/usage-helpers";
+import { sumBy } from "@/lib/array-helpers";
 
 /** Shape of a row returned by GET /api/sessions */
 export type SessionRow = {
@@ -41,8 +42,8 @@ export function toSessionOverview(records: SessionRow[]): SessionOverview {
     };
   }
 
-  const totalSeconds = records.reduce((s, r) => s + r.duration_seconds, 0);
-  const totalMessages = records.reduce((s, r) => s + r.total_messages, 0);
+  const totalSeconds = sumBy(records, "duration_seconds");
+  const totalMessages = sumBy(records, "total_messages");
 
   return {
     totalSessions: records.length,

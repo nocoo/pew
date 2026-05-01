@@ -8,6 +8,7 @@
 import type { ModelAggregate } from "@/hooks/use-usage-data";
 import type { UsageRow, UsageSummary } from "@/hooks/use-usage-data";
 import { lookupPricing, estimateCost } from "@/lib/pricing";
+import { sumBy } from "@/lib/array-helpers";
 import type { PricingMap } from "@/lib/pricing";
 import { toLocalDateStr } from "@/lib/usage-helpers";
 
@@ -160,7 +161,7 @@ export function forecastMonthlyCost(
 
   if (daysElapsed < 3 || thisMonth.length === 0) return null;
 
-  const currentMonthCost = thisMonth.reduce((sum, p) => sum + p.totalCost, 0);
+  const currentMonthCost = sumBy(thisMonth, "totalCost");
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const dailyAverage = currentMonthCost / daysElapsed;
   const projectedMonthCost = dailyAverage * daysInMonth;
