@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   __resetPricingEntriesCacheForTests,
+  invalidatePricingEntries,
 } from "@/hooks/use-pricing-entries";
 
 function mockFetchSuccess() {
@@ -121,5 +122,32 @@ describe("usePricingEntries — module cache behaviour", () => {
     expect(updatedFetch).toHaveBeenCalledTimes(1);
 
     vi.useRealTimers();
+  });
+
+  it("invalidatePricingEntries triggers immediate refetch and notifies subscribers", async () => {
+    const fetchMock = mockFetchSuccess();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { __triggerLoadForTests, __getCacheForTests } = await import(
+      "@/hooks/use-pricing-entries"
+    );
+
+    // Initial fetch
+    await __triggerLoadForTests();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(__getCacheForTests().data).not.toBeNull();
+
+    // Replace with updated pricing
+    const updatedFetch = mockFetchSuccess();
+    vi.stubGlobal("fetch", updatedFetch);
+
+    // Invalidate — should trigger a background refetch
+    invalidatePricingEntries();
+
+    // Wait for the background fetch to complete and update cache
+    await vi.waitFor(() => {
+      expect(__getCacheForTests().cachedAt).toBeGreaterThan(0);
+    });
+    expect(updatedFetch).toHaveBeenCalledTimes(1);
   });
 });

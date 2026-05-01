@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useAdmin } from "@/hooks/use-admin";
+import { invalidatePricingEntries } from "@/hooks/use-pricing-entries";
 import { Skeleton } from "@/components/ui/skeleton";
 import type {
   DynamicPricingEntryDto,
@@ -76,7 +77,7 @@ export default function ModelPricesPage() {
       {data && (
         <>
           <PricingMetaBanner meta={data.meta} servedFrom={data.servedFrom}>
-            {isAdmin && <ForceSyncButton onComplete={() => fetchModels()} />}
+            {isAdmin && <ForceSyncButton onComplete={() => { fetchModels(); invalidatePricingEntries(); }} />}
           </PricingMetaBanner>
           <PricingTable entries={data.entries} />
         </>

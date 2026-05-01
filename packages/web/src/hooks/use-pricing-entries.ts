@@ -70,6 +70,18 @@ interface UsePricingEntriesResult {
 }
 
 /**
+ * Invalidate the pricing entries cache and trigger a background refetch.
+ * All mounted subscribers are notified when fresh data arrives.
+ * Call after force-sync or any operation that updates pricing data.
+ */
+export function invalidatePricingEntries(): void {
+  cache = { ...cache, cachedAt: 0 };
+  if (!inflight) {
+    void loadOnce().catch(() => {});
+  }
+}
+
+/**
  * Subscribe to the global dynamic-pricing entries cache. The first
  * caller triggers a single fetch from `/api/pricing/models`; later
  * callers receive the cached result without re-fetching.
