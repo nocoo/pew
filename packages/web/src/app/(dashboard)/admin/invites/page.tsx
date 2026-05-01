@@ -6,6 +6,7 @@ import { Plus, Trash2, Copy, Check, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
 import { Skeleton } from "@/components/ui/skeleton";
+import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
 import type { InviteCodeRow } from "@/lib/rpc-types";
 
@@ -21,18 +22,11 @@ type StatusFilter = "all" | "available";
 
 function InvitesSkeleton() {
   return (
-    <div className="space-y-3">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="rounded-xl bg-secondary p-4">
-          <div className="flex items-center gap-4">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-4 w-16" />
-            <div className="flex-1" />
-            <Skeleton className="h-4 w-32" />
-          </div>
-        </div>
-      ))}
-    </div>
+    <RowListSkeleton
+      rows={5}
+      middle={["w-24", "w-16"]}
+      tail={["w-32"]}
+    />
   );
 }
 

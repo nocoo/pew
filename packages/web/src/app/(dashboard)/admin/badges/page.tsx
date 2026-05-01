@@ -26,6 +26,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
 import { Skeleton } from "@/components/ui/skeleton";
+import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
 import { BadgeIcon, type BadgeIconType } from "@/components/badges/badge-icon";
 import type { BadgeColorPalette } from "@pew/core";
@@ -75,19 +76,12 @@ const PALETTES: {
 
 function BadgesSkeleton() {
   return (
-    <div className="space-y-3">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="rounded-xl bg-secondary p-4">
-          <div className="flex items-center gap-4">
-            <Skeleton className="h-8 w-8 rounded" />
-            <Skeleton className="h-4 w-20" />
-            <Skeleton className="h-4 w-16" />
-            <div className="flex-1" />
-            <Skeleton className="h-4 w-24" />
-          </div>
-        </div>
-      ))}
-    </div>
+    <RowListSkeleton
+      rows={5}
+      leadingClassName="h-8 w-8 rounded"
+      middle={["w-20", "w-16"]}
+      tail={["w-24"]}
+    />
   );
 }
 

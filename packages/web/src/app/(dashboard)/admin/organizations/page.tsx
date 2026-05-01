@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
 import { Skeleton } from "@/components/ui/skeleton";
+import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
 
 // ---------------------------------------------------------------------------
@@ -51,19 +52,12 @@ interface MemberRow {
 
 function OrgsSkeleton() {
   return (
-    <div className="space-y-3">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="rounded-xl bg-secondary p-4">
-          <div className="flex items-center gap-4">
-            <Skeleton className="h-10 w-10 rounded-lg" />
-            <Skeleton className="h-4 w-32" />
-            <Skeleton className="h-4 w-16" />
-            <div className="flex-1" />
-            <Skeleton className="h-4 w-16" />
-          </div>
-        </div>
-      ))}
-    </div>
+    <RowListSkeleton
+      rows={4}
+      leadingClassName="h-10 w-10 rounded-lg"
+      middle={["w-32", "w-16"]}
+      tail={["w-16"]}
+    />
   );
 }
 
