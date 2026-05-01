@@ -48,6 +48,7 @@ export const BASE_NAV_GROUPS: NavGroupDef[] = [
       { href: "/agents", label: "By Agent", icon: "AppWindow" },
       { href: "/models", label: "By Model", icon: "Cpu" },
       { href: "/projects", label: "By Project", icon: "FolderGit2" },
+      { href: "/model-prices", label: "Model Prices", icon: "Tag" },
     ],
   },
   {
@@ -73,7 +74,6 @@ export const ADMIN_NAV_GROUP: NavGroupDef = {
     { href: "/admin/seasons", label: "Seasons", icon: "Trophy" },
     { href: "/admin/badges", label: "Badges", icon: "Medal" },
     { href: "/admin/showcases", label: "Showcases", icon: "Star" },
-    { href: "/admin/model-prices", label: "Model Prices", icon: "Tag" },
     { href: "/admin/storage", label: "Storage", icon: "Database" },
     { href: "/admin/compare", label: "Compare Users", icon: "GitCompareArrows" },
   ],

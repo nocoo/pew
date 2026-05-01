@@ -135,6 +135,63 @@ export function toMessageDailyStats(records: SessionRow[], tzOffset: number = 0)
 }
 
 // ---------------------------------------------------------------------------
+// toMessagesByDimension — daily message counts split by source / model
+// ---------------------------------------------------------------------------
+
+export type DimensionDailyPoint = {
+  date: string;
+  [key: string]: string | number;
+};
+
+/**
+ * Aggregate session records into daily message counts split along a given
+ * dimension (`source` or `model`). Returns one row per local-date with one
+ * numeric column per dimension key, plus the sorted list of keys so the
+ * caller can drive recharts `<Bar>` enumeration deterministically.
+ *
+ * Sessions without a value on the chosen dimension (e.g. `model === null`)
+ * fall into the "Unknown" bucket so they are still visible in the totals.
+ *
+ * The metric is `total_messages` per session — Daily Activity is about
+ * conversation volume, matching the existing Human/Agent split.
+ */
+export function toMessagesByDimension(
+  records: SessionRow[],
+  tzOffset: number = 0,
+  dimension: "source" | "model" = "source",
+): { data: DimensionDailyPoint[]; keys: string[] } {
+  if (records.length === 0) return { data: [], keys: [] };
+
+  const keysSet = new Set<string>();
+  const byDate = new Map<string, Map<string, number>>();
+
+  for (const r of records) {
+    const date = toLocalDateStr(r.started_at, tzOffset);
+    const rawKey = dimension === "source" ? r.source : r.model;
+    const key = rawKey ?? "Unknown";
+    keysSet.add(key);
+
+    let bucket = byDate.get(date);
+    if (!bucket) {
+      bucket = new Map<string, number>();
+      byDate.set(date, bucket);
+    }
+    bucket.set(key, (bucket.get(key) ?? 0) + r.total_messages);
+  }
+
+  const keys = Array.from(keysSet).sort();
+  const data: DimensionDailyPoint[] = Array.from(byDate.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, bucket]) => {
+      const point: DimensionDailyPoint = { date };
+      for (const k of keys) point[k] = bucket.get(k) ?? 0;
+      return point;
+    });
+
+  return { data, keys };
+}
+
+// ---------------------------------------------------------------------------
 // computeTokensPerHour
 // ---------------------------------------------------------------------------
 

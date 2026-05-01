@@ -3,6 +3,7 @@ import {
   toSessionOverview,
   toWorkingHoursGrid,
   toMessageDailyStats,
+  toMessagesByDimension,
   computeTokensPerHour,
   toProjectBreakdown,
   type SessionRow,
@@ -468,5 +469,50 @@ describe("toProjectBreakdown", () => {
     expect(breakdown).toHaveLength(1);
     expect(breakdown[0]!.projectName).toBe("Unassigned");
     expect(breakdown[0]!.sessions).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// toMessagesByDimension
+// ---------------------------------------------------------------------------
+
+describe("toMessagesByDimension", () => {
+  it("returns empty data + keys for empty input", () => {
+    expect(toMessagesByDimension([], 0, "source")).toEqual({ data: [], keys: [] });
+  });
+
+  it("groups by source when dimension=source", () => {
+    const sessions: SessionRow[] = [
+      makeSession({ source: "claude-code", started_at: "2026-03-08T10:00:00Z", total_messages: 5 }),
+      makeSession({ source: "codex", started_at: "2026-03-08T11:00:00Z", total_messages: 3 }),
+      makeSession({ source: "claude-code", started_at: "2026-03-09T10:00:00Z", total_messages: 7 }),
+    ];
+    const { data, keys } = toMessagesByDimension(sessions, 0, "source");
+    expect(keys).toEqual(["claude-code", "codex"]);
+    expect(data).toEqual([
+      { date: "2026-03-08", "claude-code": 5, codex: 3 },
+      { date: "2026-03-09", "claude-code": 7, codex: 0 },
+    ]);
+  });
+
+  it("groups by model when dimension=model and falls back to 'Unknown' for null", () => {
+    const sessions: SessionRow[] = [
+      makeSession({ model: "claude-sonnet-4", started_at: "2026-03-08T10:00:00Z", total_messages: 4 }),
+      makeSession({ model: null, started_at: "2026-03-08T11:00:00Z", total_messages: 2 }),
+    ];
+    const { data, keys } = toMessagesByDimension(sessions, 0, "model");
+    expect(keys).toEqual(["Unknown", "claude-sonnet-4"]);
+    expect(data).toEqual([
+      { date: "2026-03-08", "claude-sonnet-4": 4, Unknown: 2 },
+    ]);
+  });
+
+  it("respects tzOffset when bucketing by local date", () => {
+    // 2026-03-08T01:00:00Z → PST = 2026-03-07 17:00 → date "2026-03-07"
+    const sessions: SessionRow[] = [
+      makeSession({ source: "claude-code", started_at: "2026-03-08T01:00:00Z", total_messages: 1 }),
+    ];
+    const { data } = toMessagesByDimension(sessions, 480, "source");
+    expect(data[0]?.date).toBe("2026-03-07");
   });
 });
