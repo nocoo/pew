@@ -24,12 +24,30 @@ function normalizeForMatch(id: string): string {
 }
 
 /**
+ * Strip known variant suffixes for relaxed matching.
+ * Handles context-window tags (-1m, -200k), date stamps (-20250514),
+ * and OpenRouter qualifiers (:free, :beta, :extended, :nitro).
+ *   "claude-opus-4-6-1m"      → "claude-opus-4-6"
+ *   "gpt-4o-2024-08-06"       → "gpt-4o"        (NOT stripped — 8-digit inside)
+ *   "claude-sonnet-4-20250514" → "claude-sonnet-4"
+ *   "model:free"               → "model"
+ */
+function stripVariantSuffix(name: string): string {
+  return name
+    .replace(/[:](free|beta|extended|nitro)$/i, "")
+    .replace(/-\d{6,8}$/, "")
+    .replace(/-\d+[km]$/i, "");
+}
+
+/**
  * Find all pricing entries that match a given model identifier.
  *
  * Multi-level matching (first level with hits wins):
  *   1. Exact match on `model` or `aliases` (case-insensitive)
  *   2. Bare-name match — strip `~` and `provider/` prefix, then compare
  *   3. Fuzzy match — additionally normalize `.` ↔ `-` for version variants
+ *   4. Suffix-stripped — strip context-window (-1m), date (-20250514),
+ *      and qualifier (:free) suffixes from both sides
  *
  * Lookup is case-insensitive at all levels.
  */
@@ -42,10 +60,12 @@ export function findPricingEntriesForModel(
 
   const needleBare = bareModelName(model);
   const needleNorm = normalizeForMatch(model);
+  const needleStripped = stripVariantSuffix(needleNorm);
 
   const exactMatches: DynamicPricingEntryDto[] = [];
   const bareMatches: DynamicPricingEntryDto[] = [];
   const fuzzyMatches: DynamicPricingEntryDto[] = [];
+  const suffixMatches: DynamicPricingEntryDto[] = [];
 
   for (const entry of entries) {
     const candidates = [entry.model, ...(entry.aliases ?? [])];
@@ -57,6 +77,8 @@ export function findPricingEntriesForModel(
       bareMatches.push(entry);
     } else if (candidates.some((c) => normalizeForMatch(c) === needleNorm)) {
       fuzzyMatches.push(entry);
+    } else if (candidates.some((c) => stripVariantSuffix(normalizeForMatch(c)) === needleStripped)) {
+      suffixMatches.push(entry);
     }
   }
 
@@ -64,7 +86,9 @@ export function findPricingEntriesForModel(
     ? exactMatches
     : bareMatches.length > 0
       ? bareMatches
-      : fuzzyMatches;
+      : fuzzyMatches.length > 0
+        ? fuzzyMatches
+        : suffixMatches;
 
   // Dedup by (model, provider, origin)
   const seen = new Set<string>();

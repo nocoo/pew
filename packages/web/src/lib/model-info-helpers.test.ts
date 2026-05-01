@@ -77,6 +77,40 @@ describe("findPricingEntriesForModel", () => {
     });
   });
 
+  describe("level 4: suffix-stripped match", () => {
+    it("strips context-window suffix -1m", () => {
+      const e = entry({ model: "anthropic/claude-opus-4.6" });
+      expect(findPricingEntriesForModel([e], "claude-opus-4.6-1m")).toEqual([e]);
+    });
+
+    it("strips context-window suffix -200k", () => {
+      const e = entry({ model: "openai/gpt-4.1" });
+      expect(findPricingEntriesForModel([e], "gpt-4.1-200k")).toEqual([e]);
+    });
+
+    it("strips date suffix -20250514", () => {
+      const e = entry({ model: "anthropic/claude-sonnet-4" });
+      expect(findPricingEntriesForModel([e], "claude-sonnet-4-20250514")).toEqual([e]);
+    });
+
+    it("strips OpenRouter :free qualifier", () => {
+      const e = entry({ model: "openai/gpt-4o" });
+      expect(findPricingEntriesForModel([e], "gpt-4o:free")).toEqual([e]);
+    });
+
+    it("combines dot-hyphen normalization with suffix stripping", () => {
+      const e = entry({ model: "anthropic/claude-opus-4.6" });
+      expect(findPricingEntriesForModel([e], "claude-opus-4-6-1m")).toEqual([e]);
+    });
+
+    it("prefers fuzzy match over suffix-stripped match", () => {
+      const fuzzy = entry({ model: "anthropic/claude-opus-4.6", origin: "openrouter" });
+      const suffix = entry({ model: "anthropic/claude-opus-4.6-1m", origin: "models.dev" });
+      const result = findPricingEntriesForModel([fuzzy, suffix], "claude-opus-4-6");
+      expect(result).toEqual([fuzzy]);
+    });
+  });
+
   describe("sorting and dedup", () => {
     it("returns multiple entries across origins, sorted baseline → openrouter → models.dev", () => {
       const a = entry({ origin: "models.dev", provider: "Z" });
