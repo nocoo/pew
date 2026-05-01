@@ -37,6 +37,8 @@ interface DailyActivityChartProps {
   tzOffset: number;
   /** Local YYYY-MM-DD for "today" — chart fills empty days up to this */
   today: string;
+  /** When true, "By Device" tab shows a loading indicator instead of empty state */
+  deviceLoading?: boolean;
   className?: string;
 }
 
@@ -132,6 +134,7 @@ export function DailyActivityChart({
   devices,
   tzOffset,
   today,
+  deviceLoading,
   className,
 }: DailyActivityChartProps) {
   const [dim, setDim] = useState<Dimension>("human-agent");
@@ -278,7 +281,11 @@ export function DailyActivityChart({
       )}
 
       {/* Chart */}
-      {isEmpty ? (
+      {deviceLoading && dim === "device" ? (
+        <div className="flex h-[240px] items-center justify-center text-sm text-muted-foreground">
+          Loading device data…
+        </div>
+      ) : isEmpty ? (
         <div className="flex h-[240px] items-center justify-center text-sm text-muted-foreground">
           No {dim === "device" ? "device" : "message"} data yet
         </div>

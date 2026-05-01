@@ -163,10 +163,10 @@ export default function SessionsPage() {
       )}
 
       {/* Loading state */}
-      {(sessionData.loading || usageLoading || halfHourLoading || deviceLoading) && <SessionsSkeleton />}
+      {(sessionData.loading || usageLoading || halfHourLoading) && <SessionsSkeleton />}
 
       {/* Content */}
-      {!sessionData.loading && !usageLoading && !halfHourLoading && !deviceLoading && (
+      {!sessionData.loading && !usageLoading && !halfHourLoading && (
         <>
           {/* Overview stat cards */}
           <SessionOverview data={sessionData.overview} subtitle={subtitle} />
@@ -206,6 +206,7 @@ export default function SessionsPage() {
               sessions={sessionData.records}
               deviceTimeline={deviceData?.timeline ?? []}
               devices={deviceData?.devices ?? []}
+              deviceLoading={deviceLoading}
               tzOffset={tzOffset}
               today={today}
             />
