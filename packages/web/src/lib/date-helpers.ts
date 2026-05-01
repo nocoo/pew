@@ -251,24 +251,17 @@ function format12h(hour: number, minute: number): string {
 /**
  * Format a duration in seconds as a compact human-readable string.
  *
- * Examples:
+ * Re-exported from `@/lib/format`. Examples:
  * - 0       → "—"
  * - 30      → "< 1m"
  * - 150     → "2m"
  * - 3700    → "1h 1m"
  * - 86400   → "24h"
  * - 90061   → "25h 1m"
+ *
+ * @deprecated Prefer importing from `@/lib/format` in new code.
  */
-export function formatDuration(seconds: number): string {
-  if (seconds <= 0) return "—";
-  if (seconds < 60) return "< 1m";
-  const totalMinutes = Math.floor(seconds / 60);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  if (hours === 0) return `${minutes}m`;
-  if (minutes === 0) return `${hours}h`;
-  return `${hours}h ${minutes}m`;
-}
+export { formatDuration } from "./format";
 
 // ---------------------------------------------------------------------------
 // fillDateRange — fill gaps + extend to today

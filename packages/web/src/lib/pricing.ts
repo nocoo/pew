@@ -313,11 +313,7 @@ export function estimateCost(
 
 /**
  * Format USD cost with appropriate precision and thousand separators.
+ *
+ * @deprecated Re-exported from `@/lib/format`; new code should import from there.
  */
-export function formatCost(cost: number): string {
-  if (cost === 0) return "$0.00";
-  if (cost < 0.01) return `$${cost.toFixed(4)}`;
-  if (cost < 1) return `$${cost.toFixed(2)}`;
-  if (cost < 100) return `$${cost.toFixed(2)}`;
-  return `$${cost.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-}
+export { formatCost } from "./format";

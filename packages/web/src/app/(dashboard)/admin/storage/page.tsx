@@ -13,7 +13,8 @@ import {
   Database,
   HardDrive,
 } from "lucide-react";
-import { cn, formatTokens, formatTokensFull } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { formatTokens, formatTokensFull, formatDuration } from "@/lib/format";
 import { useAdmin } from "@/hooks/use-admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -47,15 +48,6 @@ type SortDir = "asc" | "desc";
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/** Format duration in seconds to human-readable string */
-function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  return m > 0 ? `${h}h ${m}m` : `${h}h`;
-}
 
 /** Parse cache key and return human-readable description */
 function describeCacheKey(key: string): { type: string; description: string } {
