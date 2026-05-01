@@ -8,6 +8,7 @@
 import { NextResponse } from "next/server";
 import { resolveAdmin } from "@/lib/admin";
 import { getDbRead } from "@/lib/db";
+import { sumBy } from "@/lib/array-helpers";
 
 // ---------------------------------------------------------------------------
 // Types (re-export for backwards compatibility)
@@ -43,11 +44,11 @@ export async function GET(request: Request) {
     // Summary row
     const summary: StorageSummary = {
       total_users: users.length,
-      total_tokens: users.reduce((s, r) => s + r.total_tokens, 0),
-      total_sessions: users.reduce((s, r) => s + r.session_count, 0),
-      total_usage_rows: users.reduce((s, r) => s + r.usage_row_count, 0),
-      total_messages: users.reduce((s, r) => s + r.total_messages, 0),
-      total_duration_seconds: users.reduce((s, r) => s + r.total_duration_seconds, 0),
+      total_tokens: sumBy(users, "total_tokens"),
+      total_sessions: sumBy(users, "session_count"),
+      total_usage_rows: sumBy(users, "usage_row_count"),
+      total_messages: sumBy(users, "total_messages"),
+      total_duration_seconds: sumBy(users, "total_duration_seconds"),
     };
 
     return NextResponse.json({ users, summary });
