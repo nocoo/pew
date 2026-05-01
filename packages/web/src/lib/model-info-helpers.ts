@@ -1,14 +1,37 @@
 import type { DynamicPricingEntryDto } from "@/lib/rpc-types";
 
 /**
+ * Extract the bare model name by stripping tilde and provider prefix.
+ *   "~openai/gpt-5.5"  → "gpt-5.5"
+ *   "anthropic/claude-sonnet-4" → "claude-sonnet-4"
+ *   "gpt-4.1" → "gpt-4.1"
+ */
+function bareModelName(id: string): string {
+  let name = id.trim().toLowerCase();
+  if (name.startsWith("~")) name = name.slice(1);
+  const slash = name.indexOf("/");
+  if (slash >= 0) name = name.slice(slash + 1);
+  return name;
+}
+
+/**
+ * Normalize for fuzzy version matching: bare name + dots → hyphens.
+ *   "claude-opus-4.7" → "claude-opus-4-7"
+ *   "openai/gpt-5.5"  → "gpt-5-5"
+ */
+function normalizeForMatch(id: string): string {
+  return bareModelName(id).replace(/\./g, "-");
+}
+
+/**
  * Find all pricing entries that match a given model identifier.
  *
- * Matches by exact `model` string OR membership in any entry's `aliases`
- * list. The same logical model can show up multiple times across origins
- * (baseline / openrouter / models.dev) or providers, and all of them are
- * returned so callers can render a comparison view.
+ * Multi-level matching (first level with hits wins):
+ *   1. Exact match on `model` or `aliases` (case-insensitive)
+ *   2. Bare-name match — strip `~` and `provider/` prefix, then compare
+ *   3. Fuzzy match — additionally normalize `.` ↔ `-` for version variants
  *
- * Lookup is case-insensitive on the comparison key.
+ * Lookup is case-insensitive at all levels.
  */
 export function findPricingEntriesForModel(
   entries: readonly DynamicPricingEntryDto[],
@@ -17,30 +40,49 @@ export function findPricingEntriesForModel(
   const needle = model.trim().toLowerCase();
   if (!needle) return [];
 
-  const matches: DynamicPricingEntryDto[] = [];
-  const seen = new Set<string>();
+  const needleBare = bareModelName(model);
+  const needleNorm = normalizeForMatch(model);
+
+  const exactMatches: DynamicPricingEntryDto[] = [];
+  const bareMatches: DynamicPricingEntryDto[] = [];
+  const fuzzyMatches: DynamicPricingEntryDto[] = [];
 
   for (const entry of entries) {
     const candidates = [entry.model, ...(entry.aliases ?? [])];
-    const hit = candidates.some((c) => c.trim().toLowerCase() === needle);
-    if (!hit) continue;
+    const candidatesLower = candidates.map((c) => c.trim().toLowerCase());
 
-    // Dedup by (model, provider, origin) — the same triple appearing twice
-    // would just be a sync glitch; show one.
+    if (candidatesLower.some((c) => c === needle)) {
+      exactMatches.push(entry);
+    } else if (candidates.some((c) => bareModelName(c) === needleBare)) {
+      bareMatches.push(entry);
+    } else if (candidates.some((c) => normalizeForMatch(c) === needleNorm)) {
+      fuzzyMatches.push(entry);
+    }
+  }
+
+  const matches = exactMatches.length > 0
+    ? exactMatches
+    : bareMatches.length > 0
+      ? bareMatches
+      : fuzzyMatches;
+
+  // Dedup by (model, provider, origin)
+  const seen = new Set<string>();
+  const deduped: DynamicPricingEntryDto[] = [];
+  for (const entry of matches) {
     const key = `${entry.model}|${entry.provider}|${entry.origin}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    matches.push(entry);
+    deduped.push(entry);
   }
 
-  // Stable order: baseline first, then openrouter, then models.dev. Falls
-  // back to provider then model for ties.
+  // Stable order: baseline → openrouter → models.dev
   const ORIGIN_RANK: Record<DynamicPricingEntryDto["origin"], number> = {
     baseline: 0,
     openrouter: 1,
     "models.dev": 2,
   };
-  return matches.sort((a, b) => {
+  return deduped.sort((a, b) => {
     const r = ORIGIN_RANK[a.origin] - ORIGIN_RANK[b.origin];
     if (r !== 0) return r;
     const p = (a.provider ?? "").localeCompare(b.provider ?? "");
