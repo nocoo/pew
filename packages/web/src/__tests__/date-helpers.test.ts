@@ -12,6 +12,7 @@ import {
   formatDuration,
   fillDateRange,
   fillTimelineGaps,
+  aggregateHourlyTokens,
 } from "@/lib/date-helpers";
 import type { UsageRow } from "@/hooks/use-usage-data";
 
@@ -571,5 +572,36 @@ describe("fillTimelineGaps", () => {
     const data = [original];
     const result = fillTimelineGaps(data, "date", makeZeroRows, "2026-03-15");
     expect(result[0]).toBe(original);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// aggregateHourlyTokens
+// ---------------------------------------------------------------------------
+
+describe("aggregateHourlyTokens", () => {
+  it("returns 24-element zero array for empty input", () => {
+    const out = aggregateHourlyTokens([], 0);
+    expect(out).toHaveLength(24);
+    expect(out.every((v) => v === 0)).toBe(true);
+  });
+
+  it("buckets by UTC hour when tzOffset is 0", () => {
+    const rows = [
+      makeRow({ hour_start: "2026-03-09T10:00:00.000Z", total_tokens: 100 }),
+      makeRow({ hour_start: "2026-03-09T10:30:00.000Z", total_tokens: 50 }),
+      makeRow({ hour_start: "2026-03-09T22:00:00.000Z", total_tokens: 30 }),
+    ];
+    const out = aggregateHourlyTokens(rows, 0);
+    expect(out[10]).toBe(150);
+    expect(out[22]).toBe(30);
+    expect(out[0]).toBe(0);
+  });
+
+  it("shifts hour bucket according to tzOffset (PST = +480 minutes west)", () => {
+    // 10:00 UTC → 02:00 PST
+    const rows = [makeRow({ hour_start: "2026-03-09T10:00:00.000Z", total_tokens: 100 })];
+    const out = aggregateHourlyTokens(rows, 480);
+    expect(out[2]).toBe(100);
   });
 });

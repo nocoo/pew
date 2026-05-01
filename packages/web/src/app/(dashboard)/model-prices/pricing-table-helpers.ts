@@ -1,5 +1,5 @@
 /**
- * Pure helpers for the /admin/model-prices table.
+ * Pure helpers for the /model-prices table.
  *
  * Sort/filter/format logic is split out so it can be unit-tested without
  * pulling in @testing-library/react (not a dep of @pew/web).

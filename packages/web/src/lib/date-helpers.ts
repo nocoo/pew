@@ -429,3 +429,30 @@ export function fmtHour(hour: number): string {
   if (hour < 12) return `${hour}a`;
   return `${hour - 12}p`;
 }
+
+// ---------------------------------------------------------------------------
+// aggregateHourlyTokens — 24-bucket histogram of total tokens by local hour
+// ---------------------------------------------------------------------------
+
+/**
+ * Aggregate raw usage rows (any granularity) into a length-24 array of
+ * total token counts indexed by local-hour-of-day [0..23].
+ *
+ * Used by the Peak Hours card to render a familiar 24-bar histogram view
+ * that lines up visually with the Working Hours heatmap above it.
+ */
+export function aggregateHourlyTokens(
+  rows: UsageRow[],
+  tzOffset: number = 0,
+): number[] {
+  const buckets = new Array<number>(24).fill(0);
+  for (const r of rows) {
+    const utcMs = new Date(r.hour_start).getTime();
+    const localMs = utcMs - tzOffset * 60_000;
+    const local = new Date(localMs);
+    const hour = local.getUTCHours();
+    buckets[hour] = (buckets[hour] ?? 0) + r.total_tokens;
+  }
+  return buckets;
+}
+

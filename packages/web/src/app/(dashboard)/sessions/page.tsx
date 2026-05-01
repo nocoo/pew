@@ -18,7 +18,7 @@ import {
 import type { Period } from "@/components/dashboard/period-selector";
 import { computeTokensPerHour } from "@/lib/session-helpers";
 import { computeReasoningRatio } from "@/lib/cost-helpers";
-import { detectPeakHours, getLocalToday, fillDateRange } from "@/lib/date-helpers";
+import { detectPeakHours, getLocalToday, fillDateRange, aggregateHourlyTokens } from "@/lib/date-helpers";
 import { formatTokens } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -126,6 +126,11 @@ export default function SessionsPage() {
     [halfHourUsage, tzOffset],
   );
 
+  const peakHourly = useMemo(
+    () => (halfHourUsage ? aggregateHourlyTokens(halfHourUsage.records, tzOffset) : new Array<number>(24).fill(0)),
+    [halfHourUsage, tzOffset],
+  );
+
   // Fill date gaps in message stats so chart extends to today
   const filledDailyMessages = useMemo(
     () => fillDateRange(sessionData.dailyMessages, "date", (d) => ({ date: d, user: 0, assistant: 0 }), today),
@@ -188,7 +193,7 @@ export default function SessionsPage() {
           {/* Charts row: working hours + peak hours */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
             <WorkingHoursHeatmap data={sessionData.hoursGrid} />
-            <PeakHoursCard slots={peakSlots} />
+            <PeakHoursCard hourly={peakHourly} slots={peakSlots.slice(0, 3)} />
           </div>
 
           <div className="grid grid-cols-1 gap-3 md:gap-4">
