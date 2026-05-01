@@ -2,6 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatGrid } from "./stat-card";
 import { DashboardSegment } from "./dashboard-segment";
 import { ChartCardSkeleton } from "./chart-card-skeleton";
+import { StatCardSkeleton } from "./stat-card-skeleton";
 
 /** Loading skeleton for the dashboard overview. */
 export function DashboardSkeleton() {
@@ -53,28 +54,14 @@ export function DashboardSkeleton() {
         {/* Row 1 — Core metrics skeleton (4 cols) */}
         <StatGrid columns={4}>
           {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="rounded-card bg-secondary p-4 md:p-5 space-y-3"
-            >
-              <Skeleton className="h-3 w-20" />
-              <Skeleton className="h-7 w-28" />
-              <Skeleton className="h-3 w-16" />
-            </div>
+            <StatCardSkeleton key={i} />
           ))}
         </StatGrid>
 
         {/* Row 2 — Economy metrics skeleton (4 cols) */}
         <StatGrid columns={4}>
           {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={`econ-${i}`}
-              className="rounded-card bg-secondary p-4 md:p-5 space-y-3"
-            >
-              <Skeleton className="h-3 w-20" />
-              <Skeleton className="h-7 w-28" />
-              <Skeleton className="h-3 w-16" />
-            </div>
+            <StatCardSkeleton key={`econ-${i}`} />
           ))}
         </StatGrid>
       </DashboardSegment>

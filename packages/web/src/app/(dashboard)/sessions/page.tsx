@@ -10,8 +10,8 @@ import { StatCard, StatGrid } from "@/components/dashboard/stat-card";
 import { WorkingHoursHeatmap } from "@/components/dashboard/working-hours-heatmap";
 import { DailyActivityChart } from "@/components/dashboard/daily-activity-chart";
 import { PeakHoursCard } from "@/components/dashboard/peak-hours-card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { ChartCardSkeleton } from "@/components/dashboard/chart-card-skeleton";
+import { StatCardSkeleton } from "@/components/dashboard/stat-card-skeleton";
 import {
   PeriodSelector,
   periodToDateRange,
@@ -33,28 +33,14 @@ function SessionsSkeleton() {
       {/* 4-col stat grid (SessionOverview) */}
       <StatGrid columns={4}>
         {Array.from({ length: 4 }).map((_, i) => (
-          <div
-            key={i}
-            className="rounded-card bg-secondary p-4 md:p-5 space-y-3"
-          >
-            <Skeleton className="h-3 w-20" />
-            <Skeleton className="h-7 w-28" />
-            <Skeleton className="h-3 w-16" />
-          </div>
+          <StatCardSkeleton key={i} />
         ))}
       </StatGrid>
 
       {/* 2-col efficiency row */}
       <StatGrid columns={2}>
         {Array.from({ length: 2 }).map((_, i) => (
-          <div
-            key={i}
-            className="rounded-card bg-secondary p-4 md:p-5 space-y-3"
-          >
-            <Skeleton className="h-3 w-20" />
-            <Skeleton className="h-7 w-28" />
-            <Skeleton className="h-3 w-16" />
-          </div>
+          <StatCardSkeleton key={i} />
         ))}
       </StatGrid>
 
