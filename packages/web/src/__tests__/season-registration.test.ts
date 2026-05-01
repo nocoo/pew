@@ -18,12 +18,10 @@ vi.mock("@/auth", () => ({
 }));
 
 import { POST, DELETE } from "@/app/api/seasons/[seasonId]/register/route";
-import { createMockDbRead, createMockDbWrite, makeJsonRequest } from "./test-utils";
+import { createMockDbRead, createMockDbWrite, loadMockedAuthHelpers, makeJsonRequest } from "./test-utils";
 import * as dbModule from "@/lib/db";
 
-const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
-  resolveUser: ReturnType<typeof vi.fn>;
-};
+const { resolveUser } = await loadMockedAuthHelpers();
 
 // ---------------------------------------------------------------------------
 // Helpers

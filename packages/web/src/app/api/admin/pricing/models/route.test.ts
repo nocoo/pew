@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "./route";
-import { createMockDbRead, makeGetRequest } from "@/__tests__/test-utils";
+import { createMockDbRead, loadMockedAuthHelpers, makeGetRequest } from "@/__tests__/test-utils";
 import type {
   DynamicPricingEntryDto,
   DynamicPricingMetaDto,
@@ -21,9 +21,7 @@ vi.mock("@/lib/admin", () => ({
 import { getDbRead } from "@/lib/db";
 import { isAdminUser } from "@/lib/admin";
 
-const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
-  resolveUser: ReturnType<typeof vi.fn>;
-};
+const { resolveUser } = await loadMockedAuthHelpers();
 
 const ENTRY: DynamicPricingEntryDto = {
   model: "anthropic/claude-sonnet-4",

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createMockDbRead, createMockDbWrite } from "./test-utils";
+import { createMockDbRead, createMockDbWrite, loadMockedAuthHelpers } from "./test-utils";
 import * as dbModule from "@/lib/db";
 
 // ---------------------------------------------------------------------------
@@ -19,9 +19,7 @@ vi.mock("@/lib/admin", () => ({
   isAdminUser: vi.fn(),
 }));
 
-const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
-  resolveUser: ReturnType<typeof vi.fn>;
-};
+const { resolveUser } = await loadMockedAuthHelpers();
 
 const { isAdminUser } = (await import("@/lib/admin")) as unknown as {
   isAdminUser: ReturnType<typeof vi.fn>;

@@ -14,15 +14,13 @@ vi.mock("@/lib/auth-helpers", () => ({
   resolveUser: vi.fn(),
 }));
 
-const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
-  resolveUser: ReturnType<typeof vi.fn>;
-};
+const { resolveUser } = await loadMockedAuthHelpers();
 
 const { getDbRead } = (await import("@/lib/db")) as unknown as {
   getDbRead: ReturnType<typeof vi.fn>;
 };
 
-import { createMockDbRead } from "./test-utils";
+import { createMockDbRead, loadMockedAuthHelpers } from "./test-utils";
 
 // ---------------------------------------------------------------------------
 // GET /api/pricing

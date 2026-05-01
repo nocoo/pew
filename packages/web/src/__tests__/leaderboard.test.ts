@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "@/app/api/leaderboard/route";
 import * as dbModule from "@/lib/db";
-import { createMockDbRead, makeGetRequest } from "./test-utils";
+import { createMockDbRead, loadMockedAuthHelpers, makeGetRequest } from "./test-utils";
 
 // Mock DB
 vi.mock("@/lib/db", () => ({
@@ -19,9 +19,7 @@ vi.mock("@/auth", () => ({
   shouldUseSecureCookies: vi.fn(() => false),
 }));
 
-const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
-  resolveUser: ReturnType<typeof vi.fn>;
-};
+const { resolveUser } = await loadMockedAuthHelpers();
 
 describe("GET /api/leaderboard", () => {
   let mockDb: ReturnType<typeof createMockDbRead>;

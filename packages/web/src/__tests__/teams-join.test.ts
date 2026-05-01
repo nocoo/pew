@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createMockDbRead, createMockDbWrite } from "./test-utils";
+import { createMockDbRead, createMockDbWrite, loadMockedAuthHelpers } from "./test-utils";
 import * as dbModule from "@/lib/db";
 import { inMemoryRateLimiter } from "@/lib/rate-limit";
 
@@ -21,9 +21,7 @@ vi.mock("@/lib/season-roster", () => ({
   syncSeasonRosters: vi.fn(),
 }));
 
-const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
-  resolveUser: ReturnType<typeof vi.fn>;
-};
+const { resolveUser } = await loadMockedAuthHelpers();
 
 function makeJson(body?: unknown): Request {
   const opts: RequestInit = { method: "POST" };

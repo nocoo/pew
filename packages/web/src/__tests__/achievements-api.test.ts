@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "@/app/api/achievements/route";
 import * as dbModule from "@/lib/db";
-import { createMockClient, makeGetRequest } from "./test-utils";
+import { createMockClient, loadMockedAuthHelpers, makeGetRequest } from "./test-utils";
 
 // Mock DB
 vi.mock("@/lib/db", () => ({
@@ -15,9 +15,7 @@ vi.mock("@/lib/auth-helpers", () => ({
   resolveUser: vi.fn(),
 }));
 
-const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
-  resolveUser: ReturnType<typeof vi.fn>;
-};
+const { resolveUser } = await loadMockedAuthHelpers();
 
 describe("GET /api/achievements", () => {
   let mockClient: ReturnType<typeof createMockClient>;

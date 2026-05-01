@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createMockDbRead, createMockDbWrite, makeJsonRequest } from "./test-utils";
+import { createMockDbRead, createMockDbWrite, loadMockedAuthHelpers, makeJsonRequest } from "./test-utils";
 import * as dbModule from "@/lib/db";
 
 // ---------------------------------------------------------------------------
@@ -15,9 +15,7 @@ vi.mock("@/lib/auth-helpers", () => ({
   resolveUser: vi.fn(),
 }));
 
-const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
-  resolveUser: ReturnType<typeof vi.fn>;
-};
+const { resolveUser } = await loadMockedAuthHelpers();
 
 // ---------------------------------------------------------------------------
 // GET /api/settings

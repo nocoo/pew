@@ -17,15 +17,13 @@ vi.mock("@/lib/auth-helpers", () => ({
   E2E_TEST_USER_EMAIL: "e2e@test.local",
 }));
 
-const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
-  resolveUser: ReturnType<typeof vi.fn>;
-};
+const { resolveUser } = await loadMockedAuthHelpers();
 
 const { getDbRead } = (await import("@/lib/db")) as unknown as {
   getDbRead: ReturnType<typeof vi.fn>;
 };
 
-import { createMockDbRead } from "./test-utils";
+import { createMockDbRead, loadMockedAuthHelpers } from "./test-utils";
 
 // ---------------------------------------------------------------------------
 // Tests

@@ -1,13 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { loadMockedAuthHelpers } from "./test-utils";
 
 // Mock resolveUser from auth-helpers
 vi.mock("@/lib/auth-helpers", () => ({
   resolveUser: vi.fn(),
 }));
 
-const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
-  resolveUser: ReturnType<typeof vi.fn>;
-};
+const { resolveUser } = await loadMockedAuthHelpers();
 
 // Mock global fetch for Worker proxy calls
 const mockFetch = vi.fn();

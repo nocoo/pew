@@ -22,12 +22,10 @@ import { GET as LIST_MINE } from "@/app/api/organizations/mine/route";
 import { GET as LIST_MEMBERS } from "@/app/api/organizations/[orgId]/members/route";
 import { POST as JOIN } from "@/app/api/organizations/[orgId]/join/route";
 import { DELETE as LEAVE } from "@/app/api/organizations/[orgId]/leave/route";
-import { createMockDbRead, createMockDbWrite, makeJsonRequest } from "./test-utils";
+import { createMockDbRead, createMockDbWrite, loadMockedAuthHelpers, makeJsonRequest } from "./test-utils";
 import * as dbModule from "@/lib/db";
 
-const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
-  resolveUser: ReturnType<typeof vi.fn>;
-};
+const { resolveUser } = await loadMockedAuthHelpers();
 
 // ---------------------------------------------------------------------------
 // Helpers

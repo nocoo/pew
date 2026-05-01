@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as dbModule from "@/lib/db";
 import { POST, DELETE } from "./route";
-import { createMockDbRead, createMockDbWrite } from "@/__tests__/test-utils";
+import { createMockDbRead, createMockDbWrite, loadMockedAuthHelpers } from "@/__tests__/test-utils";
 
 vi.mock("@/lib/db", () => ({
   getDbRead: vi.fn(),
@@ -26,9 +26,7 @@ vi.mock("sharp", () => {
   return { default: mockSharp };
 });
 
-const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
-  resolveUser: ReturnType<typeof vi.fn>;
-};
+const { resolveUser } = await loadMockedAuthHelpers();
 
 const { putTeamLogo, deleteTeamLogoByUrl } = (await import("@/lib/r2")) as unknown as {
   putTeamLogo: ReturnType<typeof vi.fn>;

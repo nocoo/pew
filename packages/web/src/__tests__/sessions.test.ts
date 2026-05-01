@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import * as dbModule from "@/lib/db";
-import { createMockDbRead, makeGetRequest } from "./test-utils";
+import { createMockDbRead, loadMockedAuthHelpers, makeGetRequest } from "./test-utils";
 
 // Mock DB
 vi.mock("@/lib/db", () => ({
@@ -14,9 +14,7 @@ vi.mock("@/lib/auth-helpers", () => ({
   resolveUser: vi.fn(),
 }));
 
-const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
-  resolveUser: ReturnType<typeof vi.fn>;
-};
+const { resolveUser } = await loadMockedAuthHelpers();
 
 describe("GET /api/sessions", () => {
   let GET: (req: Request) => Promise<Response>;

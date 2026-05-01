@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "./route";
-import { createMockDbRead, makeGetRequest } from "@/__tests__/test-utils";
+import { createMockDbRead, loadMockedAuthHelpers, makeGetRequest } from "@/__tests__/test-utils";
 import * as dbModule from "@/lib/db";
 
 vi.mock("@/lib/db", () => ({
@@ -11,9 +11,7 @@ vi.mock("@/lib/auth-helpers", () => ({
   resolveUser: vi.fn(),
 }));
 
-const { resolveUser } = (await import("@/lib/auth-helpers")) as unknown as {
-  resolveUser: ReturnType<typeof vi.fn>;
-};
+const { resolveUser } = await loadMockedAuthHelpers();
 
 function makeParams(orgId = "org1") {
   return { params: Promise.resolve({ orgId }) };
