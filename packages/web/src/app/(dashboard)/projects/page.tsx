@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useProjects } from "@/hooks/use-projects";
 import type { Project } from "@/hooks/use-projects";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ChartCardSkeleton } from "@/components/dashboard/chart-card-skeleton";
 import { ProjectBreakdownChart } from "@/components/dashboard/project-breakdown-chart";
 import {
   ProjectTrendChart,
@@ -46,18 +47,12 @@ function ProjectsSkeleton() {
       {/* 2-col chart grid (Trend + Share) */}
       <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="rounded-card bg-secondary p-4 md:p-5">
-            <Skeleton className="h-3 w-24 mb-4" />
-            <Skeleton className="h-[240px] md:h-[280px] w-full" />
-          </div>
+          <ChartCardSkeleton key={i} titleWidth="w-24" chartHeight="h-[240px] md:h-[280px]" />
         ))}
       </div>
 
       {/* Breakdown chart */}
-      <div className="rounded-card bg-secondary p-4 md:p-5">
-        <Skeleton className="h-3 w-28 mb-4" />
-        <Skeleton className="h-[200px] md:h-[240px] w-full" />
-      </div>
+      <ChartCardSkeleton titleWidth="w-28" chartHeight="h-[200px] md:h-[240px]" />
 
       {/* Summary table */}
       <div className="rounded-xl bg-secondary p-1">

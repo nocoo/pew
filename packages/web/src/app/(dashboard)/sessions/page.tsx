@@ -11,6 +11,7 @@ import { WorkingHoursHeatmap } from "@/components/dashboard/working-hours-heatma
 import { DailyActivityChart } from "@/components/dashboard/daily-activity-chart";
 import { PeakHoursCard } from "@/components/dashboard/peak-hours-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ChartCardSkeleton } from "@/components/dashboard/chart-card-skeleton";
 import {
   PeriodSelector,
   periodToDateRange,
@@ -59,21 +60,12 @@ function SessionsSkeleton() {
 
       {/* 2-col chart row (heatmap + peak hours) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-        <div className="rounded-card bg-secondary p-4 md:p-5">
-          <Skeleton className="h-3 w-28 mb-4" />
-          <Skeleton className="h-[200px] w-full" />
-        </div>
-        <div className="rounded-card bg-secondary p-4 md:p-5">
-          <Skeleton className="h-3 w-24 mb-4" />
-          <Skeleton className="h-[200px] w-full" />
-        </div>
+        <ChartCardSkeleton titleWidth="w-28" chartHeight="h-[200px]" />
+        <ChartCardSkeleton titleWidth="w-24" chartHeight="h-[200px]" />
       </div>
 
       {/* Message chart */}
-      <div className="rounded-card bg-secondary p-4 md:p-5">
-        <Skeleton className="h-3 w-28 mb-4" />
-        <Skeleton className="h-[240px] md:h-[280px] w-full" />
-      </div>
+      <ChartCardSkeleton titleWidth="w-28" chartHeight="h-[240px] md:h-[280px]" />
     </div>
   );
 }

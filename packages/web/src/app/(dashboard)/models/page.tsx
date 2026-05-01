@@ -7,6 +7,7 @@ import { usePricingMap, formatCost } from "@/hooks/use-pricing";
 import { groupByModel, toSourceTrendPoints } from "@/lib/usage-helpers";
 import { toModelEvolutionPoints } from "@/lib/model-helpers";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ChartCardSkeleton } from "@/components/dashboard/chart-card-skeleton";
 import { modelColor, agentColor, withAlpha } from "@/lib/palette";
 import { ModelBreakdownChart } from "@/components/dashboard/model-breakdown-chart";
 import { SourceTrendChart } from "@/components/dashboard/source-trend-chart";
@@ -26,18 +27,12 @@ function ModelsSkeleton() {
       {/* 2-col chart grid (SourceTrend + ModelEvolution) */}
       <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         {Array.from({ length: 2 }).map((_, i) => (
-          <div key={i} className="rounded-card bg-secondary p-4 md:p-5">
-            <Skeleton className="h-3 w-24 mb-4" />
-            <Skeleton className="h-[240px] md:h-[280px] w-full" />
-          </div>
+          <ChartCardSkeleton key={i} titleWidth="w-24" chartHeight="h-[240px] md:h-[280px]" />
         ))}
       </div>
 
       {/* Breakdown chart */}
-      <div className="rounded-card bg-secondary p-4 md:p-5">
-        <Skeleton className="h-3 w-28 mb-4" />
-        <Skeleton className="h-[200px] md:h-[240px] w-full" />
-      </div>
+      <ChartCardSkeleton titleWidth="w-28" chartHeight="h-[200px] md:h-[240px]" />
 
       {/* Summary table */}
       <div className="rounded-xl bg-secondary p-1">
