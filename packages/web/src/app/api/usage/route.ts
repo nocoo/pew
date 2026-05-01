@@ -14,6 +14,7 @@
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
 import { unauthorizedResponse } from "@/lib/api-responses";
+import { parseBoundedInt } from "@/lib/query-params";
 import { getDbRead } from "@/lib/db";
 
 // ---------------------------------------------------------------------------
@@ -58,7 +59,11 @@ export async function GET(request: Request) {
   const fromParam = url.searchParams.get("from");
   const toParam = url.searchParams.get("to");
   const tzOffsetParam = url.searchParams.get("tzOffset");
-  const tzOffset = tzOffsetParam !== null ? parseInt(tzOffsetParam, 10) : 0;
+  const tzOffset = parseBoundedInt(tzOffsetParam, {
+    min: -840,
+    max: 840,
+    defaultValue: 0,
+  });
 
   // Validate source filter
   if (sourceFilter && !VALID_SOURCES.has(sourceFilter)) {
@@ -77,7 +82,7 @@ export async function GET(request: Request) {
   }
 
   // Validate tzOffset
-  if (!Number.isFinite(tzOffset) || Math.abs(tzOffset) > 840) {
+  if (tzOffset === "invalid") {
     return NextResponse.json(
       { error: "Invalid tzOffset value" },
       { status: 400 }

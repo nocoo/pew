@@ -53,4 +53,28 @@ describe("GET /api/usage route edge cases", () => {
     });
     expect(mockDbRead.getUsageRecords).not.toHaveBeenCalled();
   });
+
+  it("rejects non-numeric tzOffset values", async () => {
+    const res = await GET(
+      makeGetRequest("/api/usage", { tzOffset: "abc" }),
+    );
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: "Invalid tzOffset value",
+    });
+    expect(mockDbRead.getUsageRecords).not.toHaveBeenCalled();
+  });
+
+  it("rejects tzOffset outside the +/- 840 range", async () => {
+    const res = await GET(
+      makeGetRequest("/api/usage", { tzOffset: "900" }),
+    );
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({
+      error: "Invalid tzOffset value",
+    });
+    expect(mockDbRead.getUsageRecords).not.toHaveBeenCalled();
+  });
 });

@@ -14,6 +14,7 @@
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
 import { unauthorizedResponse } from "@/lib/api-responses";
+import { parseBoundedInt } from "@/lib/query-params";
 import { getDbRead } from "@/lib/db";
 import { lookupPricing, estimateCost } from "@/lib/pricing";
 import { loadPricingMap } from "@/lib/load-pricing-map";
@@ -70,7 +71,11 @@ export async function GET(request: Request) {
   const toParam = url.searchParams.get("to");
   const granularityParam = url.searchParams.get("granularity");
   const tzOffsetParam = url.searchParams.get("tzOffset");
-  const tzOffset = tzOffsetParam !== null ? parseInt(tzOffsetParam, 10) : 0;
+  const tzOffset = parseBoundedInt(tzOffsetParam, {
+    min: -840,
+    max: 840,
+    defaultValue: 0,
+  });
 
   // Validate granularity
   const granularity: "half-hour" | "day" =
@@ -84,7 +89,7 @@ export async function GET(request: Request) {
     );
   }
 
-  if (!Number.isFinite(tzOffset) || Math.abs(tzOffset) > 840) {
+  if (tzOffset === "invalid") {
     return NextResponse.json(
       { error: "Invalid tzOffset value" },
       { status: 400 }
