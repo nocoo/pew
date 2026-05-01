@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useProjects } from "@/hooks/use-projects";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import type { Project } from "@/hooks/use-projects";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChartCardSkeleton } from "@/components/dashboard/chart-card-skeleton";
@@ -672,11 +673,7 @@ export default function ProjectsPage() {
       </div>
 
       {/* Error */}
-      {error && (
-        <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
-          Failed to load project data: {error}
-        </div>
-      )}
+      <ErrorBanner messagePrefix="Failed to load project data" error={error} />
 
       {/* Loading */}
       {loading && <ProjectsSkeleton />}

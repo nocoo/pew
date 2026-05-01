@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatTokens, formatTokensFull, formatDuration } from "@/lib/format";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { useAdmin } from "@/hooks/use-admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -451,11 +452,7 @@ export default function AdminStoragePage() {
         </div>
 
         {/* Error */}
-        {error && (
-          <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
-            Failed to load storage stats: {error}
-          </div>
-        )}
+        <ErrorBanner messagePrefix="Failed to load storage stats" error={error} />
 
         {/* Loading */}
         {loading && <StorageSkeleton />}

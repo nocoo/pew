@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useDeviceData } from "@/hooks/use-device-data";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { useUsageData } from "@/hooks/use-usage-data";
 import { formatTokens } from "@/lib/utils";
 import { formatCost } from "@/hooks/use-pricing";
@@ -262,11 +263,7 @@ export default function ByDevicePage() {
       </div>
 
       {/* Error */}
-      {error && (
-        <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
-          Failed to load device data: {error}
-        </div>
-      )}
+      <ErrorBanner messagePrefix="Failed to load device data" error={error} />
 
       {/* Loading */}
       {loading && <DevicesSkeleton />}

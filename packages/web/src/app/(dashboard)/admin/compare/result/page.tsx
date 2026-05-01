@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { formatTokens, formatTokensFull } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -411,11 +412,7 @@ function CompareResultContent() {
         </div>
 
         {/* Error */}
-        {error && (
-          <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
-            Failed to load comparison data: {error}
-          </div>
-        )}
+        <ErrorBanner messagePrefix="Failed to load comparison data" error={error} />
 
         {/* Loading */}
         {loading && <CompareSkeleton />}

@@ -28,6 +28,7 @@ import { HourlyChart } from "@/components/dashboard/hourly-chart";
 import { SalaryEstimator } from "@/components/dashboard/salary-estimator-card";
 import { SnapshotAlert } from "@/components/dashboard/snapshot-alert";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { DashboardEmptyState } from "@/components/dashboard/empty-state";
 import { DashboardSegment } from "@/components/dashboard/dashboard-segment";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
@@ -194,11 +195,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Error state */}
-      {error && (
-        <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
-          Failed to load usage data: {error}
-        </div>
-      )}
+      <ErrorBanner messagePrefix="Failed to load usage data" error={error} />
 
       {/* Loading state */}
       {loading && <DashboardSkeleton />}

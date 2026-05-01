@@ -7,6 +7,7 @@ import {
   sourceLabel,
 } from "@/hooks/use-usage-data";
 import type { UsageRow } from "@/hooks/use-usage-data";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { useDeviceData } from "@/hooks/use-device-data";
 import { TimelineInOutChart } from "@/components/dashboard/timeline-inout-chart";
 import { TimelineDeviceChart } from "@/components/dashboard/timeline-device-chart";
@@ -460,11 +461,7 @@ export default function RecentPage() {
       </div>
 
       {/* Error */}
-      {error && (
-        <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
-          Failed to load usage data: {error}
-        </div>
-      )}
+      <ErrorBanner messagePrefix="Failed to load usage data" error={error} />
 
       {/* Loading */}
       {allLoading && <RecentSkeleton />}

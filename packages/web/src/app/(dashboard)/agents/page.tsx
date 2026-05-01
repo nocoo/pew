@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { useUsageData } from "@/hooks/use-usage-data";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { formatTokens } from "@/lib/utils";
 import { usePricingMap, formatCost } from "@/hooks/use-pricing";
 import { groupByAgent } from "@/lib/usage-helpers";
@@ -178,11 +179,7 @@ export default function AgentsPage() {
       </div>
 
       {/* Error */}
-      {error && (
-        <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
-          Failed to load usage data: {error}
-        </div>
-      )}
+      <ErrorBanner messagePrefix="Failed to load usage data" error={error} />
 
       {/* Loading */}
       {loading && <AgentsSkeleton />}

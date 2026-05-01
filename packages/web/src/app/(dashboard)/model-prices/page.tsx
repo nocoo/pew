@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAdmin } from "@/hooks/use-admin";
 import { invalidatePricingEntries } from "@/hooks/use-pricing-entries";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { Skeleton } from "@/components/ui/skeleton";
 import type {
   DynamicPricingEntryDto,
@@ -66,11 +67,7 @@ export default function ModelPricesPage() {
         </p>
       </div>
 
-      {error && (
-        <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
-          Failed to load: {error}
-        </div>
-      )}
+      <ErrorBanner messagePrefix="Failed to load" error={error} />
 
       {loading && !data && <PageSkeleton />}
 

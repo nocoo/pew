@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import {
   useAchievements,
   useAchievementMembers,
@@ -638,11 +639,7 @@ export default function AchievementsPage() {
         <LeaderboardNav />
 
         {/* Error */}
-        {error && (
-          <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
-            Failed to load achievements: {error}
-          </div>
-        )}
+        <ErrorBanner messagePrefix="Failed to load achievements" error={error} />
 
         {/* Loading */}
         {loading && <AchievementsSkeleton />}

@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
 import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
@@ -820,11 +821,7 @@ export default function AdminSeasonsPage() {
       <MessageBanner message={message} />
 
       {/* Error */}
-      {error && (
-        <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
-          Failed to load seasons: {error}
-        </div>
-      )}
+      <ErrorBanner messagePrefix="Failed to load seasons" error={error} />
 
       {/* Create form */}
       {showCreate && (

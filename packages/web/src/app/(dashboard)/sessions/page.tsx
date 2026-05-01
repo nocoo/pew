@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { Zap, Brain } from "lucide-react";
 import { useSessionData } from "@/hooks/use-session-data";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { useUsageData } from "@/hooks/use-usage-data";
 import { useDeviceData } from "@/hooks/use-device-data";
 import { SessionOverview } from "@/components/dashboard/session-overview";
@@ -134,11 +135,7 @@ export default function SessionsPage() {
       </div>
 
       {/* Error state */}
-      {sessionData.error && (
-        <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
-          Failed to load session data: {sessionData.error}
-        </div>
-      )}
+      <ErrorBanner messagePrefix="Failed to load session data" error={sessionData.error} />
 
       {/* Loading state */}
       {(sessionData.loading || usageLoading || halfHourLoading) && <SessionsSkeleton />}

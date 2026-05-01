@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn, formatTokens, formatTokensFull } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -362,11 +363,7 @@ function ComparePageContent() {
         )}
 
         {/* Error */}
-        {error && (
-          <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
-            Failed to load users: {error}
-          </div>
-        )}
+        <ErrorBanner messagePrefix="Failed to load users" error={error} />
 
         {/* Search bar */}
         {!loading && users.length > 0 && (

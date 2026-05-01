@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import type { LeaderboardEntry, LeaderboardPeriod } from "@/hooks/use-leaderboard";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { TableHeader } from "@/components/leaderboard/table-header";
 import { LeaderboardSkeleton } from "@/components/leaderboard/leaderboard-skeleton";
 import { LeaderboardRow } from "@/components/leaderboard/leaderboard-row";
@@ -77,11 +78,7 @@ export function LeaderboardPageShell({
   return (
     <TooltipProvider>
       {/* Error */}
-      {error && (
-        <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
-          Failed to load leaderboard: {error}
-        </div>
-      )}
+      <ErrorBanner messagePrefix="Failed to load leaderboard" error={error} />
 
       {/* Table header row — show when there are entries or during initial load */}
       {(entries.length > 0 || loading) && <TableHeader />}

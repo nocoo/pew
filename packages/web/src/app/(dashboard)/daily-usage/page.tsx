@@ -8,6 +8,7 @@ import {
   sourceLabel,
 } from "@/hooks/use-usage-data";
 import { useDeviceData } from "@/hooks/use-device-data";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { formatTokens, cn } from "@/lib/utils";
 import { usePricingMap, lookupPricing, estimateCost, formatCost } from "@/hooks/use-pricing";
 import type { PricingMap } from "@/hooks/use-pricing";
@@ -394,11 +395,7 @@ export default function DailyUsagePage() {
       </div>
 
       {/* Error */}
-      {error && (
-        <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
-          Failed to load usage data: {error}
-        </div>
-      )}
+      <ErrorBanner messagePrefix="Failed to load usage data" error={error} />
 
       {/* Loading */}
       {loading && <DailySkeleton />}

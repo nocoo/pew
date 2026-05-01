@@ -15,6 +15,7 @@ import {
   UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ErrorBanner } from "@/components/ui/error-banner";
 import { useAdmin } from "@/hooks/use-admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
@@ -760,11 +761,7 @@ export default function AdminOrganizationsPage() {
       <MessageBanner message={message} />
 
       {/* Error */}
-      {error && (
-        <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
-          Failed to load organizations: {error}
-        </div>
-      )}
+      <ErrorBanner messagePrefix="Failed to load organizations" error={error} />
 
       {/* Create form */}
       {showCreate && (
