@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useAdmin } from "@/hooks/use-admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import type {
@@ -29,24 +28,17 @@ function PageSkeleton() {
 }
 
 export default function ModelPricesPage() {
-  const router = useRouter();
-  const { isAdmin, loading: adminLoading } = useAdmin();
+  const { isAdmin } = useAdmin();
 
   const [data, setData] = useState<ModelsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!adminLoading && !isAdmin) {
-      router.replace("/");
-    }
-  }, [adminLoading, isAdmin, router]);
-
   const fetchModels = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/pricing/models");
+      const res = await fetch("/api/pricing/models");
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
@@ -61,11 +53,8 @@ export default function ModelPricesPage() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: standard React pattern
-    if (isAdmin) fetchModels();
-  }, [isAdmin, fetchModels]);
-
-  if (adminLoading) return <PageSkeleton />;
-  if (!isAdmin) return null;
+    fetchModels();
+  }, [fetchModels]);
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -87,7 +76,7 @@ export default function ModelPricesPage() {
       {data && (
         <>
           <PricingMetaBanner meta={data.meta} servedFrom={data.servedFrom}>
-            <ForceSyncButton onComplete={() => fetchModels()} />
+            {isAdmin && <ForceSyncButton onComplete={() => fetchModels()} />}
           </PricingMetaBanner>
           <PricingTable entries={data.entries} />
         </>

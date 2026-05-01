@@ -118,6 +118,14 @@ describe("sidebar navigation", () => {
       expect(projects!.href).toBe("/projects");
     });
 
+    it("Analytics group should include Model Prices at /model-prices for all logged-in users", () => {
+      const analyticsGroup = BASE_NAV_GROUPS.find((g) => g.label === "Analytics")!;
+      const modelPrices = analyticsGroup.items.find((i) => i.label === "Model Prices");
+      expect(modelPrices).toBeDefined();
+      expect(modelPrices!.href).toBe("/model-prices");
+      expect(modelPrices!.icon).toBe("Tag");
+    });
+
     it("Settings group Projects should link to /manage-projects with FolderKanban icon", () => {
       const settingsGroup = BASE_NAV_GROUPS.find((g) => g.label === "Settings")!;
       const projects = settingsGroup.items.find((i) => i.label === "Projects");
@@ -180,6 +188,11 @@ describe("sidebar navigation", () => {
       expect(storageItem).toBeDefined();
       expect(storageItem!.href).toBe("/admin/storage");
       expect(storageItem!.icon).toBe("Database");
+    });
+
+    it("should NOT include Model Prices (moved to Analytics group)", () => {
+      const labels = ADMIN_NAV_GROUP.items.map((i) => i.label);
+      expect(labels).not.toContain("Model Prices");
     });
   });
 });
@@ -261,10 +274,18 @@ describe("breadcrumbsFromPathname", () => {
   });
 
   it("should return breadcrumbs for nested admin routes with non-clickable Admin", () => {
-    const crumbs = breadcrumbsFromPathname("/admin/model-prices");
+    const crumbs = breadcrumbsFromPathname("/admin/seasons");
     expect(crumbs).toEqual([
       { label: "Home", href: "/dashboard" },
       { label: "Admin" },
+      { label: "Seasons" },
+    ]);
+  });
+
+  it("should return breadcrumbs for /model-prices (top-level, non-admin)", () => {
+    const crumbs = breadcrumbsFromPathname("/model-prices");
+    expect(crumbs).toEqual([
+      { label: "Home", href: "/dashboard" },
       { label: "Model Prices" },
     ]);
   });

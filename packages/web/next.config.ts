@@ -30,6 +30,16 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_APP_VERSION: rootPkg.version,
   },
+  async redirects() {
+    return [
+      {
+        // Model Prices moved out of /admin to a user-facing route.
+        source: "/admin/model-prices",
+        destination: "/model-prices",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {
