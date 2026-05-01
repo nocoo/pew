@@ -33,6 +33,18 @@ describe("DELETE /api/organizations/[orgId]/leave error handling", () => {
     vi.mocked(resolveUser).mockResolvedValue({ userId: "u1" });
   });
 
+  it("returns 401 when unauthenticated", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce(null);
+
+    const req = new Request("http://localhost/api/organizations/org1/leave", {
+      method: "DELETE",
+    });
+    const res = await DELETE(req, makeParams());
+
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ error: "Unauthorized" });
+  });
+
   it("returns 503 when table is missing", async () => {
     mockDbRead.getOrganizationById.mockRejectedValueOnce(
       new Error("no such table: organizations"),

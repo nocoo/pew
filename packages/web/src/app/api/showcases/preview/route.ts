@@ -9,6 +9,7 @@
 
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
+import { unauthorizedResponse } from "@/lib/api-responses";
 import { getDbRead } from "@/lib/db";
 import {
   normalizeGitHubUrl,
@@ -26,7 +27,7 @@ import {
 export async function POST(request: Request) {
   const user = await resolveUser(request);
   if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return unauthorizedResponse();
   }
 
   let body: Record<string, unknown>;

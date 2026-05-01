@@ -55,6 +55,15 @@ describe("POST /api/showcases/preview unexpected GitHub failures", () => {
     });
   });
 
+  it("returns 401 when unauthenticated", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce(null);
+
+    const res = await POST(makeRequest());
+
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ error: "Unauthorized" });
+  });
+
   it("returns 500 when metadata lookup throws a non-GitHubError", async () => {
     const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     vi.mocked(fetchGitHubMetadata).mockRejectedValueOnce(

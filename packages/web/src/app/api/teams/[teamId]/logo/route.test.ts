@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as dbModule from "@/lib/db";
-import { POST } from "./route";
+import { POST, DELETE } from "./route";
 import { createMockDbRead, createMockDbWrite } from "@/__tests__/test-utils";
 
 vi.mock("@/lib/db", () => ({
@@ -68,6 +68,27 @@ describe("POST /api/teams/[teamId]/logo route edge cases", () => {
       "https://cdn.example.com/teams/t1/new-logo.jpg",
     );
     vi.mocked(deleteTeamLogoByUrl).mockResolvedValue(undefined);
+  });
+
+  it("returns 401 when POST is unauthenticated", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce(null);
+
+    const res = await POST(makeUploadRequest("t1"), makeParams());
+
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ error: "Unauthorized" });
+  });
+
+  it("returns 401 when DELETE is unauthenticated", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce(null);
+
+    const req = new Request("http://localhost:7020/api/teams/t1/logo", {
+      method: "DELETE",
+    });
+    const res = await DELETE(req, makeParams());
+
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ error: "Unauthorized" });
   });
 
   it("returns 400 when multipart form parsing fails", async () => {

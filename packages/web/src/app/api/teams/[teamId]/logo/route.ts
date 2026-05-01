@@ -11,6 +11,7 @@
 import { NextResponse } from "next/server";
 import sharp from "sharp";
 import { resolveUser } from "@/lib/auth-helpers";
+import { unauthorizedResponse } from "@/lib/api-responses";
 import { getDbRead, getDbWrite } from "@/lib/db";
 import { putTeamLogo, deleteTeamLogoByUrl } from "@/lib/r2";
 
@@ -33,7 +34,7 @@ export async function POST(
 ) {
   const authResult = await resolveUser(request);
   if (!authResult) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return unauthorizedResponse();
   }
 
   const { teamId } = await params;
@@ -165,7 +166,7 @@ export async function DELETE(
 ) {
   const authResult = await resolveUser(request);
   if (!authResult) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return unauthorizedResponse();
   }
 
   const { teamId } = await params;

@@ -29,6 +29,16 @@ describe("GET /api/organizations/[orgId]/members error handling", () => {
     vi.mocked(resolveUser).mockResolvedValue({ userId: "u1" });
   });
 
+  it("returns 401 when unauthenticated", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce(null);
+
+    const req = makeGetRequest("/api/organizations/org1/members");
+    const res = await GET(req, makeParams());
+
+    expect(res.status).toBe(401);
+    expect(await res.json()).toEqual({ error: "Unauthorized" });
+  });
+
   it("returns 503 when table is missing", async () => {
     mockDbRead.firstOrNull.mockRejectedValueOnce(
       new Error("no such table: organizations"),
