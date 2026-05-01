@@ -11,6 +11,7 @@ import { modelColor, agentColor, withAlpha } from "@/lib/palette";
 import { ModelBreakdownChart } from "@/components/dashboard/model-breakdown-chart";
 import { SourceTrendChart } from "@/components/dashboard/source-trend-chart";
 import { ModelEvolutionChart } from "@/components/dashboard/model-evolution-chart";
+import { ModelInfoTooltip } from "@/components/dashboard/model-info-tooltip";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
 import { periodToDateRange, periodLabel, getLocalToday, fillDateRange } from "@/lib/date-helpers";
 import type { Period } from "@/lib/date-helpers";
@@ -193,6 +194,7 @@ export default function ModelsPage() {
                               style={{ backgroundColor: modelColor(group.model).color }}
                             />
                             <span className="text-sm font-mono font-medium text-foreground">{group.model}</span>
+                            <ModelInfoTooltip model={group.model} className="ml-0.5" />
                           </div>
                         </td>
                         <td className="px-4 py-3 hidden lg:table-cell">

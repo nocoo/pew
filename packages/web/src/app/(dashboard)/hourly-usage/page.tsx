@@ -17,6 +17,7 @@ import { HourlyAgentChart } from "@/components/dashboard/hourly-agent-chart";
 import { HourlyModelChart } from "@/components/dashboard/hourly-model-chart";
 import { HourlyDeviceChart } from "@/components/dashboard/hourly-device-chart";
 import { DashboardSegment } from "@/components/dashboard/dashboard-segment";
+import { ModelInfoTooltip } from "@/components/dashboard/model-info-tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatTokens } from "@/lib/utils";
 import { groupByDate, toHourlyByAgent, toHourlyByModel, toHourlyByDevice } from "@/lib/usage-helpers";
@@ -213,6 +214,7 @@ function DayRow({
               </span>
               <span className="mx-1.5 text-border">/</span>
               <span className="font-mono text-foreground/60">{row.model}</span>
+              <ModelInfoTooltip model={row.model} className="ml-1.5" />
             </td>
             <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground">
               {formatTokens(row.input)}

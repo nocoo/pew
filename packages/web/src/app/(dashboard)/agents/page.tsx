@@ -10,6 +10,7 @@ import type { AgentGroup } from "@/lib/usage-helpers";
 import { Skeleton } from "@/components/ui/skeleton";
 import { agentColor } from "@/lib/palette";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
+import { ModelInfoTooltip } from "@/components/dashboard/model-info-tooltip";
 import { periodToDateRange, periodLabel } from "@/lib/date-helpers";
 import type { Period } from "@/lib/date-helpers";
 
@@ -97,7 +98,10 @@ function AgentCard({ group, color }: { group: AgentGroup; color: string }) {
                     key={row.model}
                     className="border-b border-border/30 last:border-0 hover:bg-accent/30 transition-colors"
                   >
-                    <td className="px-4 py-2.5 text-xs font-mono text-foreground/80">{row.model}</td>
+                    <td className="px-4 py-2.5 text-xs font-mono text-foreground/80">
+                      <span className="align-middle">{row.model}</span>
+                      <ModelInfoTooltip model={row.model} className="ml-1.5" />
+                    </td>
                     <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground">{formatTokens(row.input)}</td>
                     <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground">{formatTokens(row.output)}</td>
                     <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground hidden md:table-cell">{formatTokens(row.cached)}</td>
