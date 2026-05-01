@@ -5,6 +5,40 @@
 ### Removed
 - Drop legacy `model_pricing` D1 table, admin Token Pricing CRUD UI (`/admin/pricing`) and its CRUD API (`/api/admin/pricing` route), worker-read admin-loader + `pricing.listModelPricing` / `pricing.getModelPricingByModelSource` RPCs, `origin: "admin"` pricing layer, and `pricing:all` KV cache (migration 021). The dynamic-pricing admin surface (`/admin/model-prices`, `/api/admin/pricing/models`, `/api/admin/pricing/rebuild`) is retained. Dynamic pricing pipeline (baseline + OpenRouter + models.dev → `pricing:dynamic`) is now the sole source of truth.
 
+## v2.23.0
+
+### Added
+- Unify model matching — shared normalization for tooltip + cost
+- Add provider icons and origin pills to model hover tooltip
+- Level 4 suffix-stripped model matching
+- Multi-dimension Daily Activity chart on Sessions page (commit B)
+- Refresh Peak Hours card on Sessions page (commit A)
+- Add model info hover card across dashboard lists (commit D)
+
+### Changed
+- Move Model Prices out of admin (commit C)
+- Clarify which admin pricing surface migration 021 removes
+- Collapse pricing core to dynamic-only (N1 step 2)
+- Mention sourceModels overlay in pricing.ts header matching-strategy
+
+### Fixed
+- Add invalidatePricingEntries() for force-sync cache busting
+- Add 5-minute TTL to pricing entries cache
+- Decouple deviceLoading from sessions page skeleton
+- Allow retry after transient pricing fetch error
+- Multi-level model matching for pricing tooltip
+- Compact inline sync status, no container stretch
+- Strip tilde prefix from OpenRouter model IDs
+- GitHub Copilot shows github icon, Bedrock maps to amazon
+- Align provider icons with manifest conventions
+- Scope (source, model) admin pricing overrides to sourceModels
+- Unify achievements cost calc through estimateCost (no double-count, cached fallback)
+
+### Removed
+- Drop model_pricing table and update docs (N1 step 4)
+- Remove admin pricing layer (N1 step 3)
+- Remove old Token Pricing UI/API/nav (N1 step 1)
+
 ## v2.22.0
 
 ### Added
