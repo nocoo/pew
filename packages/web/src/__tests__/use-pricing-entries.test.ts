@@ -99,4 +99,27 @@ describe("usePricingEntries — module cache behaviour", () => {
     expect(r1).toBe(r2);
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it("refetches after TTL expires (stale-while-revalidate)", async () => {
+    const fetchMock = mockFetchSuccess();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { __triggerLoadForTests } = await import("@/hooks/use-pricing-entries");
+
+    // Initial fetch
+    await __triggerLoadForTests();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // Advance time past the 5-minute TTL
+    vi.useFakeTimers();
+    vi.setSystemTime(Date.now() + 6 * 60 * 1000);
+
+    // Next call should trigger a refetch
+    const updatedFetch = mockFetchSuccess();
+    vi.stubGlobal("fetch", updatedFetch);
+    await __triggerLoadForTests();
+    expect(updatedFetch).toHaveBeenCalledTimes(1);
+
+    vi.useRealTimers();
+  });
 });

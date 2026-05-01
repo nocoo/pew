@@ -23,9 +23,12 @@ interface CacheState {
   data: PricingEntriesPayload | null;
   loading: boolean;
   error: string | null;
+  cachedAt: number;
 }
 
-let cache: CacheState = { data: null, loading: false, error: null };
+const STALE_MS = 5 * 60 * 1000;
+
+let cache: CacheState = { data: null, loading: false, error: null, cachedAt: 0 };
 let inflight: Promise<PricingEntriesPayload> | null = null;
 const subscribers = new Set<() => void>();
 
@@ -43,7 +46,7 @@ async function loadOnce(): Promise<PricingEntriesPayload> {
       const res = await fetch("/api/pricing/models");
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = (await res.json()) as PricingEntriesPayload;
-      cache = { data: json, loading: false, error: null };
+      cache = { data: json, loading: false, error: null, cachedAt: Date.now() };
       notify();
       return json;
     } catch (err) {
@@ -77,8 +80,8 @@ export function usePricingEntries(): UsePricingEntriesResult {
   useEffect(() => {
     const sub = () => force((n) => n + 1);
     subscribers.add(sub);
-    if (cache.data === null && !inflight) {
-      // Fire and forget; loadOnce notifies subscribers when done.
+    const isStale = cache.data !== null && Date.now() - cache.cachedAt > STALE_MS;
+    if ((cache.data === null || isStale) && !inflight) {
       void loadOnce().catch(() => {
         /* error already written to cache */
       });
@@ -102,14 +105,15 @@ export function usePricingEntries(): UsePricingEntriesResult {
 
 /** @internal Reset the module-level cache. Test use only. */
 export function __resetPricingEntriesCacheForTests(): void {
-  cache = { data: null, loading: false, error: null };
+  cache = { data: null, loading: false, error: null, cachedAt: 0 };
   inflight = null;
   subscribers.clear();
 }
 
 /** @internal Trigger a load mimicking the hook's guard. Test use only. */
 export async function __triggerLoadForTests(): Promise<PricingEntriesPayload> {
-  if (cache.data !== null) return cache.data;
+  const isStale = cache.data !== null && Date.now() - cache.cachedAt > STALE_MS;
+  if (cache.data !== null && !isStale) return cache.data;
   if (inflight) return inflight;
   return loadOnce();
 }
