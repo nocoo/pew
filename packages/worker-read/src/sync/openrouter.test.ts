@@ -92,17 +92,19 @@ describe("parseOpenRouter", () => {
     expect(mm!.provider).toBe("MiniMax");
   });
 
-  it("resolves tilde-prefixed slugs to OpenRouter", () => {
+  it("strips tilde prefix and resolves to actual provider", () => {
     const { entries } = parseOpenRouter(
       {
         data: [
-          { id: "~auto/best", pricing: { prompt: "0.000001", completion: "0.000002" } },
-          { id: "~openrouter/nitro", name: "Nitro", pricing: { prompt: "0.000003", completion: "0.000006" } },
+          { id: "~anthropic/claude-sonnet-latest", name: "Anthropic: Claude Sonnet Latest", pricing: { prompt: "0.000003", completion: "0.000015" } },
+          { id: "~openai/gpt-latest", name: "OpenAI: GPT Latest", pricing: { prompt: "0.000005", completion: "0.000015" } },
+          { id: "~google/gemini-pro-latest", name: "Google: Gemini Pro Latest", pricing: { prompt: "0.00000125", completion: "0.000005" } },
         ],
       },
       NOW,
     );
-    expect(entries[0]!.provider).toBe("OpenRouter");
-    expect(entries[1]!.provider).toBe("OpenRouter");
+    expect(entries[0]!.provider).toBe("Anthropic");
+    expect(entries[1]!.provider).toBe("OpenAI");
+    expect(entries[2]!.provider).toBe("Google");
   });
 });
