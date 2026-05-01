@@ -77,7 +77,7 @@ export function usePricingEntries(): UsePricingEntriesResult {
   useEffect(() => {
     const sub = () => force((n) => n + 1);
     subscribers.add(sub);
-    if (cache.data === null && !inflight && cache.error === null) {
+    if (cache.data === null && !inflight) {
       // Fire and forget; loadOnce notifies subscribers when done.
       void loadOnce().catch(() => {
         /* error already written to cache */
@@ -105,4 +105,16 @@ export function __resetPricingEntriesCacheForTests(): void {
   cache = { data: null, loading: false, error: null };
   inflight = null;
   subscribers.clear();
+}
+
+/** @internal Trigger a load mimicking the hook's guard. Test use only. */
+export async function __triggerLoadForTests(): Promise<PricingEntriesPayload> {
+  if (cache.data !== null) return cache.data;
+  if (inflight) return inflight;
+  return loadOnce();
+}
+
+/** @internal Read current cache state. Test use only. */
+export function __getCacheForTests(): CacheState {
+  return { ...cache };
 }
