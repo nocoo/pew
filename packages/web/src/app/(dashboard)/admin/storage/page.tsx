@@ -514,7 +514,7 @@ export default function AdminStoragePage() {
                   <div className="rounded-xl bg-secondary p-4">
                     <p className="text-xs text-muted-foreground">Duration</p>
                     <p className="text-xl font-semibold tabular-nums mt-1">
-                      {formatDuration(summary.total_duration_seconds)}
+                      {formatDuration(summary.total_duration_seconds, { precise: true })}
                     </p>
                   </div>
                 </div>

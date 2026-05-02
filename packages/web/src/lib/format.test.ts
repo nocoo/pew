@@ -86,4 +86,13 @@ describe("formatDuration", () => {
     expect(formatDuration(3700)).toBe("1h 1m");
     expect(formatDuration(90_061)).toBe("25h 1m");
   });
+
+  it("precise mode: shows seconds and zero as 0s", () => {
+    expect(formatDuration(0, { precise: true })).toBe("0s");
+    expect(formatDuration(30, { precise: true })).toBe("30s");
+    expect(formatDuration(59, { precise: true })).toBe("59s");
+    expect(formatDuration(60, { precise: true })).toBe("1m");
+    expect(formatDuration(90, { precise: true })).toBe("1m 30s");
+    expect(formatDuration(3661, { precise: true })).toBe("1h 1m");
+  });
 });

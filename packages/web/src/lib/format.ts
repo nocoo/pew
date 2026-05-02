@@ -34,24 +34,40 @@ export function formatCost(cost: number): string {
   return `$${cost.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
 }
 
+export interface FormatDurationOptions {
+  /** Show seconds explicitly and render zero as "0s" instead of "—". */
+  precise?: boolean;
+}
+
 /**
  * Format a duration in seconds as a compact human-readable string.
  *
- * Examples:
+ * Examples (default):
  * - 0       → "—"
  * - 30      → "< 1m"
  * - 150     → "2m"
  * - 3700    → "1h 1m"
- * - 86400   → "24h"
- * - 90061   → "25h 1m"
+ *
+ * Examples (precise: true):
+ * - 0       → "0s"
+ * - 30      → "30s"
+ * - 90      → "1m 30s"
  */
-export function formatDuration(seconds: number): string {
-  if (seconds <= 0) return "—";
-  if (seconds < 60) return "< 1m";
+export function formatDuration(seconds: number, opts?: FormatDurationOptions): string {
+  const precise = opts?.precise ?? false;
+
+  if (seconds <= 0) return precise ? "0s" : "—";
+  if (seconds < 60) return precise ? `${seconds}s` : "< 1m";
+
   const totalMinutes = Math.floor(seconds / 60);
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
-  if (hours === 0) return `${minutes}m`;
+  const remainderSec = seconds % 60;
+
+  if (hours === 0) {
+    if (precise && remainderSec > 0) return `${minutes}m ${remainderSec}s`;
+    return `${minutes}m`;
+  }
   if (minutes === 0) return `${hours}h`;
   return `${hours}h ${minutes}m`;
 }
