@@ -5,6 +5,33 @@
 ### Removed
 - Drop legacy `model_pricing` D1 table, admin Token Pricing CRUD UI (`/admin/pricing`) and its CRUD API (`/api/admin/pricing` route), worker-read admin-loader + `pricing.listModelPricing` / `pricing.getModelPricingByModelSource` RPCs, `origin: "admin"` pricing layer, and `pricing:all` KV cache (migration 021). The dynamic-pricing admin surface (`/admin/model-prices`, `/api/admin/pricing/models`, `/api/admin/pricing/rebuild`) is retained. Dynamic pricing pipeline (baseline + OpenRouter + models.dev → `pricing:dynamic`) is now the sole source of truth.
 
+## v2.23.1
+
+### Changed
+- Apply sumBy to session-helpers and cost-helpers
+- Introduce sumBy helper and apply to admin storage summary
+- Roll out loadMockedAuthHelpers across remaining 27 test files
+- Pilot loadMockedAuthHelpers helper for resolveUser accessor
+- Clean up parseBoundedInt JSDoc contract
+- Extract parseBoundedInt() pure parser (pilot, 2 routes)
+- Add forbiddenResponse() helper (pilot, 2 admin routes)
+- Extend unauthorizedResponse() to Group B routes
+- Extract unauthorizedResponse() helper (pilot, 7 routes)
+- Extract useTzOffset() hook for browser timezone offset
+- Extract ErrorBanner for top-level page error fallbacks
+- Extract StatCardSkeleton for 3-row dashboard stat cards
+- Extend ChartCardSkeleton to devices/projects/sessions/models
+- Pilot ChartCardSkeleton in dashboard-skeleton.tsx
+- Extract MessageBanner for inline success/error feedback
+- Extract RowListSkeleton for admin row-list pages
+- Consolidate display formatters into lib/format
+
+### Fixed
+- Add precise mode to formatDuration for admin storage
+
+### Removed
+- Remove unused chart-config constants
+
 ## v2.23.0
 
 ### Added
