@@ -32,10 +32,12 @@ interface UserSettings {
 export default function SettingsPage() {
   const { data: session } = useSession();
 
-  // User settings state
+  // User settings state — disable focus revalidation to prevent overwriting
+  // unsaved form edits when the user tabs away and back.
   const { data: settingsData, mutate: mutateSettings } = useSWR<UserSettings>(
     "/api/settings",
     fetcher,
+    { revalidateOnFocus: false },
   );
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [nickname, setNickname] = useState("");
