@@ -1,12 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useMemo } from "react";
+import useSWR from "swr";
 import type { SeasonStatus } from "@pew/core";
-import { throwApiError } from "@/lib/api-error";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+import { fetcher } from "@/lib/fetcher";
 
 export interface SeasonListItem {
   id: string;
@@ -24,10 +21,6 @@ interface SeasonsData {
   seasons: SeasonListItem[];
 }
 
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
-
 interface UseSeasonsOptions {
   status?: SeasonStatus;
 }
@@ -44,49 +37,26 @@ export function useSeasons(
   options: UseSeasonsOptions = {},
 ): UseSeasonsResult {
   const { status } = options;
-  const [data, setData] = useState<SeasonsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  // Track if initial load has completed to avoid stale closure issues
-  const hasLoadedRef = useRef(false);
-
-  const fetchData = useCallback(async () => {
-    if (!hasLoadedRef.current) {
-      setLoading(true);
-    } else {
-      setRefreshing(true);
-    }
-    setError(null);
-
-    try {
-      const params = new URLSearchParams();
-      if (status) params.set("status", status);
-
-      const qs = params.toString();
-      const url = qs ? `/api/seasons?${qs}` : "/api/seasons";
-      const res = await fetch(url);
-
-      if (!res.ok) {
-        await throwApiError(res);
-      }
-
-      const json = (await res.json()) as SeasonsData;
-      setData(json);
-      hasLoadedRef.current = true;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+  const url = useMemo(() => {
+    const params = new URLSearchParams();
+    if (status) params.set("status", status);
+    const qs = params.toString();
+    return qs ? `/api/seasons?${qs}` : "/api/seasons";
   }, [status]);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-    fetchData();
-  }, [fetchData]);
+  const { data, error, isLoading, isValidating, mutate } = useSWR<SeasonsData>(
+    url,
+    fetcher,
+  );
 
-  return { data, loading, refreshing, error, refetch: fetchData };
+  return {
+    data: data ?? null,
+    loading: isLoading,
+    refreshing: isValidating && !isLoading,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
+    refetch: () => {
+      void mutate();
+    },
+  };
 }

@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useState } from "react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
@@ -190,7 +192,11 @@ function TeamCard({
 // ---------------------------------------------------------------------------
 
 export default function TeamsPage() {
-  const [teams, setTeams] = useState<Team[]>([]);
+  const { data: teamsData, mutate: mutateTeams } = useSWR<{ teams: Team[] }>(
+    "/api/teams",
+    fetcher,
+  );
+  const teams = teamsData?.teams ?? [];
   const [showCreateTeam, setShowCreateTeam] = useState(false);
   const [newTeamName, setNewTeamName] = useState("");
   const [creatingTeam, setCreatingTeam] = useState(false);
@@ -201,26 +207,9 @@ export default function TeamsPage() {
   const { data: session } = useSession();
   const currentUserId = session?.user?.id ?? null;
 
-  // ---------------------------------------------------------------------------
-  // Fetch teams
-  // ---------------------------------------------------------------------------
-
-  const fetchTeams = useCallback(async () => {
-    try {
-      const res = await fetch("/api/teams");
-      if (res.ok) {
-        const data = await res.json();
-        setTeams(data.teams ?? []);
-      }
-    } catch {
-      // Silently fail
-    }
-  }, []);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-    fetchTeams();
-  }, [fetchTeams]);
+  const fetchTeams = useCallback(() => {
+    void mutateTeams();
+  }, [mutateTeams]);
 
   // ---------------------------------------------------------------------------
   // Create team

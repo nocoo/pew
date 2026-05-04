@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { formatTokens, formatTokensFull } from "@/lib/utils";
@@ -161,10 +163,27 @@ function CompareResultContent() {
   const [sourceFilter, setSourceFilter] = useState("");
   const [modelFilter, setModelFilter] = useState("");
 
-  // Data
-  const [data, setData] = useState<CompareResponse | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Data via SWR
+  const swrKey = useMemo(() => {
+    if (!isAdmin || userIds.length === 0) return null;
+    const params = new URLSearchParams({
+      userIds: userIds.join(","),
+      from: dateFrom,
+      to: dateTo,
+      tzOffset: String(new Date().getTimezoneOffset()),
+    });
+    if (sourceFilter) params.set("source", sourceFilter);
+    if (modelFilter) params.set("model", modelFilter);
+    return `/api/admin/usage/compare?${params}`;
+  }, [isAdmin, userIds, dateFrom, dateTo, sourceFilter, modelFilter]);
+
+  const { data, error: swrError, isLoading } = useSWR<CompareResponse>(swrKey, fetcher);
+  const loading = swrKey ? isLoading : false;
+  const error = swrError
+    ? swrError instanceof Error
+      ? swrError.message
+      : "Failed to load."
+    : null;
 
   // ---------------------------------------------------------------------------
   // Redirect non-admins or invalid params
@@ -181,52 +200,6 @@ function CompareResultContent() {
       router.replace("/admin/compare");
     }
   }, [adminLoading, userIds.length, router]);
-
-  // ---------------------------------------------------------------------------
-  // Fetch comparison data
-  // ---------------------------------------------------------------------------
-
-  const fetchData = useCallback(async () => {
-    if (userIds.length === 0) {
-      setData(null);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const params = new URLSearchParams({
-        userIds: userIds.join(","),
-        from: dateFrom,
-        to: dateTo,
-        tzOffset: String(new Date().getTimezoneOffset()),
-      });
-      if (sourceFilter) params.set("source", sourceFilter);
-      if (modelFilter) params.set("model", modelFilter);
-
-      const res = await fetch(`/api/admin/usage/compare?${params}`);
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        throw new Error(
-          (json as { error?: string }).error ?? `HTTP ${res.status}`
-        );
-      }
-
-      const json = (await res.json()) as CompareResponse;
-      setData(json);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load.");
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [userIds, dateFrom, dateTo, sourceFilter, modelFilter]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-    if (isAdmin && userIds.length > 0) fetchData();
-  }, [isAdmin, userIds.length, fetchData]);
 
   // ---------------------------------------------------------------------------
   // Chart data

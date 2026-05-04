@@ -4,7 +4,9 @@
 
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import {
   Eye,
   EyeOff,
@@ -69,113 +71,119 @@ const PAGE_SIZE = 50;
 type StatusFilter = "all" | "public" | "hidden";
 
 export function AdminShowcasesContent() {
-  const [data, setData] = useState<AdminShowcasesResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [offset, setOffset] = useState(0);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const { confirm, dialogProps } = useConfirm();
 
-  // Fetch data
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const queryString = (() => {
+    const params = new URLSearchParams();
+    params.set("limit", String(PAGE_SIZE));
+    params.set("offset", String(offset));
+    if (statusFilter === "public") params.set("is_public", "1");
+    if (statusFilter === "hidden") params.set("is_public", "0");
+    return params.toString();
+  })();
 
-    try {
-      const params = new URLSearchParams();
-      params.set("limit", String(PAGE_SIZE));
-      params.set("offset", String(offset));
-      if (statusFilter === "public") params.set("is_public", "1");
-      if (statusFilter === "hidden") params.set("is_public", "0");
+  const {
+    data,
+    error: swrError,
+    isLoading: loading,
+    mutate,
+  } = useSWR<AdminShowcasesResponse>(
+    `/api/admin/showcases?${queryString}`,
+    fetcher
+  );
+  const error = swrError
+    ? swrError instanceof Error
+      ? swrError.message
+      : "Unknown error"
+    : null;
 
-      const res = await fetch(`/api/admin/showcases?${params.toString()}`);
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error((body as { error?: string }).error ?? `HTTP ${res.status}`);
-      }
-
-      const json = (await res.json()) as AdminShowcasesResponse;
-      setData(json);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, [offset, statusFilter]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-    fetchData();
-  }, [fetchData]);
+  const fetchData = useCallback(() => mutate(), [mutate]);
 
   // Toggle visibility
-  const handleToggleVisibility = useCallback(async (id: string, currentPublic: boolean) => {
-    setActionLoading(id);
-    try {
-      const res = await fetch(`/api/showcases/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_public: !currentPublic }),
-      });
+  const handleToggleVisibility = useCallback(
+    async (id: string, currentPublic: boolean) => {
+      setActionLoading(id);
+      try {
+        const res = await fetch(`/api/showcases/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ is_public: !currentPublic }),
+        });
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error((body as { error?: string }).error ?? "Failed to update");
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(
+            (body as { error?: string }).error ?? "Failed to update"
+          );
+        }
+
+        // Optimistic update
+        await mutate(
+          (prev) =>
+            prev
+              ? {
+                  ...prev,
+                  showcases: prev.showcases.map((s) =>
+                    s.id === id ? { ...s, is_public: !currentPublic } : s
+                  ),
+                }
+              : prev,
+          { revalidate: false }
+        );
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Failed to update showcase");
+      } finally {
+        setActionLoading(null);
       }
-
-      // Optimistic update
-      setData((prev) =>
-        prev
-          ? {
-              ...prev,
-              showcases: prev.showcases.map((s) =>
-                s.id === id ? { ...s, is_public: !currentPublic } : s
-              ),
-            }
-          : null
-      );
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to update showcase");
-    } finally {
-      setActionLoading(null);
-    }
-  }, []);
+    },
+    [mutate]
+  );
 
   // Delete
-  const handleDelete = useCallback(async (id: string) => {
-    const confirmed = await confirm({
-      title: "Delete showcase?",
-      description: "Are you sure you want to delete this showcase? This action cannot be undone.",
-      confirmText: "Delete",
-      variant: "destructive",
-    });
-    if (!confirmed) return;
+  const handleDelete = useCallback(
+    async (id: string) => {
+      const confirmed = await confirm({
+        title: "Delete showcase?",
+        description:
+          "Are you sure you want to delete this showcase? This action cannot be undone.",
+        confirmText: "Delete",
+        variant: "destructive",
+      });
+      if (!confirmed) return;
 
-    setActionLoading(id);
-    try {
-      const res = await fetch(`/api/showcases/${id}`, { method: "DELETE" });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error((body as { error?: string }).error ?? "Failed to delete");
+      setActionLoading(id);
+      try {
+        const res = await fetch(`/api/showcases/${id}`, { method: "DELETE" });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(
+            (body as { error?: string }).error ?? "Failed to delete"
+          );
+        }
+
+        // Remove from list
+        await mutate(
+          (prev) =>
+            prev
+              ? {
+                  ...prev,
+                  showcases: prev.showcases.filter((s) => s.id !== id),
+                  total: prev.total - 1,
+                }
+              : prev,
+          { revalidate: false }
+        );
+      } catch (err) {
+        alert(err instanceof Error ? err.message : "Failed to delete showcase");
+      } finally {
+        setActionLoading(null);
       }
-
-      // Remove from list
-      setData((prev) =>
-        prev
-          ? {
-              ...prev,
-              showcases: prev.showcases.filter((s) => s.id !== id),
-              total: prev.total - 1,
-            }
-          : null
-      );
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to delete showcase");
-    } finally {
-      setActionLoading(null);
-    }
-  }, [confirm]);
+    },
+    [confirm, mutate]
+  );
 
   // Loading state
   if (loading && !data) {

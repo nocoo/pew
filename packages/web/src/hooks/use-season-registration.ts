@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
+import useSWR from "swr";
 import type { SeasonStatus } from "@pew/core";
 import { throwApiError } from "@/lib/api-error";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+import { fetcher } from "@/lib/fetcher";
 
 export interface AvailableSeason {
   id: string;
@@ -26,97 +24,76 @@ interface UseSeasonRegistrationOptions {
 }
 
 interface UseSeasonRegistrationResult {
-  /** Upcoming + active seasons with registration status */
   seasons: AvailableSeason[];
   loading: boolean;
   error: string | null;
-  /** Register team for a season */
   register: (seasonId: string) => Promise<boolean>;
-  /** Withdraw team from a season (upcoming only) */
   withdraw: (seasonId: string) => Promise<boolean>;
-  /** Re-fetch data */
   refetch: () => void;
 }
 
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
+interface SeasonsResponse {
+  seasons: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    start_date: string;
+    end_date: string;
+    status: SeasonStatus;
+    team_count: number;
+    allow_late_registration: boolean;
+    allow_late_withdrawal: boolean;
+  }>;
+}
+
+interface TeamResponse {
+  registered_season_ids?: string[];
+}
 
 export function useSeasonRegistration(
   options: UseSeasonRegistrationOptions,
 ): UseSeasonRegistrationResult {
   const { teamId } = options;
-  const [seasons, setSeasons] = useState<AvailableSeason[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  // -------------------------------------------------------------------------
-  // Fetch available seasons + registration status
-  // -------------------------------------------------------------------------
+  const {
+    data: seasonsData,
+    error: seasonsError,
+    isLoading: seasonsLoading,
+    mutate: mutateSeasons,
+  } = useSWR<SeasonsResponse>("/api/seasons", fetcher);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const {
+    data: teamData,
+    isLoading: teamLoading,
+    mutate: mutateTeam,
+  } = useSWR<TeamResponse>(`/api/teams/${teamId}`, fetcher);
 
-    try {
-      // Fetch all seasons and team details (which includes registered_season_ids)
-      const [seasonsRes, teamRes] = await Promise.all([
-        fetch("/api/seasons"),
-        fetch(`/api/teams/${teamId}`),
-      ]);
+  const [overrides, setOverrides] = useState<
+    Map<string, { is_registered: boolean; delta: number }>
+  >(new Map());
+  const [mutationError, setMutationError] = useState<string | null>(null);
 
-      if (!seasonsRes.ok) {
-        await throwApiError(seasonsRes);
-      }
-
-      const seasonsData = (await seasonsRes.json()) as {
-        seasons: Array<{
-          id: string;
-          name: string;
-          slug: string;
-          start_date: string;
-          end_date: string;
-          status: SeasonStatus;
-          team_count: number;
-          allow_late_registration: boolean;
-          allow_late_withdrawal: boolean;
-        }>;
-      };
-
-      // Get registered season IDs from team details
-      let registeredIds = new Set<string>();
-      if (teamRes.ok) {
-        const teamData = (await teamRes.json()) as {
-          registered_season_ids?: string[];
-        };
-        registeredIds = new Set(teamData.registered_season_ids ?? []);
-      }
-
-      // Filter to upcoming + active (active seasons may allow late
-      // registration/withdrawal depending on admin toggles)
-      const available = seasonsData.seasons
-        .filter((s) => s.status === "upcoming" || s.status === "active")
-        .map((s) => ({
+  const seasons = useMemo<AvailableSeason[]>(() => {
+    if (!seasonsData) return [];
+    const registeredIds = new Set(teamData?.registered_season_ids ?? []);
+    return seasonsData.seasons
+      .filter((s) => s.status === "upcoming" || s.status === "active")
+      .map((s) => {
+        const override = overrides.get(s.id);
+        const baseRegistered = registeredIds.has(s.id);
+        return {
           ...s,
-          is_registered: registeredIds.has(s.id),
-        }));
+          is_registered: override ? override.is_registered : baseRegistered,
+          team_count: s.team_count + (override?.delta ?? 0),
+        };
+      });
+  }, [seasonsData, teamData, overrides]);
 
-      setSeasons(available);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, [teamId]);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-    fetchData();
-  }, [fetchData]);
-
-  // -------------------------------------------------------------------------
-  // Register
-  // -------------------------------------------------------------------------
+  const refetch = useCallback(() => {
+    setOverrides(new Map());
+    void mutateSeasons();
+    void mutateTeam();
+  }, [mutateSeasons, mutateTeam]);
 
   const register = useCallback(
     async (seasonId: string): Promise<boolean> => {
@@ -126,31 +103,20 @@ export function useSeasonRegistration(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ team_id: teamId }),
         });
-
-        if (!res.ok) {
-          await throwApiError(res);
-        }
-
-        // Optimistic update
-        setSeasons((prev) =>
-          prev.map((s) =>
-            s.id === seasonId
-              ? { ...s, is_registered: true, team_count: s.team_count + 1 }
-              : s,
-          ),
-        );
+        if (!res.ok) await throwApiError(res);
+        setOverrides((prev) => {
+          const next = new Map(prev);
+          next.set(seasonId, { is_registered: true, delta: 1 });
+          return next;
+        });
         return true;
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Registration failed");
+        setMutationError(err instanceof Error ? err.message : "Registration failed");
         return false;
       }
     },
     [teamId],
   );
-
-  // -------------------------------------------------------------------------
-  // Withdraw
-  // -------------------------------------------------------------------------
 
   const withdraw = useCallback(
     async (seasonId: string): Promise<boolean> => {
@@ -160,27 +126,33 @@ export function useSeasonRegistration(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ team_id: teamId }),
         });
-
-        if (!res.ok) {
-          await throwApiError(res);
-        }
-
-        // Optimistic update
-        setSeasons((prev) =>
-          prev.map((s) =>
-            s.id === seasonId
-              ? { ...s, is_registered: false, team_count: Math.max(0, s.team_count - 1) }
-              : s,
-          ),
-        );
+        if (!res.ok) await throwApiError(res);
+        setOverrides((prev) => {
+          const next = new Map(prev);
+          next.set(seasonId, { is_registered: false, delta: -1 });
+          return next;
+        });
         return true;
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Withdrawal failed");
+        setMutationError(err instanceof Error ? err.message : "Withdrawal failed");
         return false;
       }
     },
     [teamId],
   );
 
-  return { seasons, loading, error, register, withdraw, refetch: fetchData };
+  return {
+    seasons,
+    loading: seasonsLoading || teamLoading,
+    error:
+      mutationError ??
+      (seasonsError
+        ? seasonsError instanceof Error
+          ? seasonsError.message
+          : String(seasonsError)
+        : null),
+    register,
+    withdraw,
+    refetch,
+  };
 }
