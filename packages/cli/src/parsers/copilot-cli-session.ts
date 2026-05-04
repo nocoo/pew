@@ -14,7 +14,9 @@
  * - lastMessageAt: timestamp of last "Sending request to the AI model" line
  *
  * Message counting:
- * - "Sending request to the AI model" lines → userMessages (each is a user prompt)
+ * - Telemetry events with "kind": "user_message" → userMessages (actual human inputs)
+ *   (NOT "Sending request to the AI model" which fires for every API call including
+ *    tool-call continuations, inflating counts 5-60x)
  * - assistantMessages = userMessages (1:1 request/response pattern assumed)
  * - totalMessages = userMessages + assistantMessages (per @pew/core SessionSnapshot spec)
  */
@@ -78,9 +80,16 @@ export async function collectCopilotCliSessions(
         }
       }
 
-      // Count AI requests and track last request timestamp
-      if (line.includes("Sending request to the AI model")) {
+      // Count real user messages from telemetry events.
+      // "Sending request to the AI model" fires for EVERY LLM API call
+      // (including tool-call continuations), inflating counts 5-60x.
+      // The telemetry "kind": "user_message" fires once per actual human input.
+      if (line.includes('"kind": "user_message"')) {
         userMessages++;
+      }
+
+      // Track last activity timestamp from API calls (for duration calc)
+      if (line.includes("Sending request to the AI model")) {
         if (timestamp) {
           lastRequestTimestamp = timestamp;
         }
