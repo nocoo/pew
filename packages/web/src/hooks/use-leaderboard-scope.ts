@@ -73,8 +73,10 @@ export function useLeaderboardScope(): UseLeaderboardScopeReturn {
   const scopeInitialized = isSessionLoading ? false : isAuthenticated ? orgsLoaded : true;
 
   // Derived, validated scope: drops back to global when stored id is no longer valid.
+  // When unauthenticated, always force global — localStorage may contain stale org/team scope.
   const scope = useMemo<ScopeSelection>(() => {
-    if (!scopeInitialized || !isAuthenticated) return rawScope;
+    if (!isAuthenticated) return { type: "global" };
+    if (!scopeInitialized) return rawScope;
     if (rawScope.type === "org" && rawScope.id) {
       const valid = organizations.some((o) => o.id === rawScope.id);
       return valid ? rawScope : { type: "global" };
