@@ -1,10 +1,6 @@
-/**
- * Upvote button with optimistic toggle.
- */
-
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +14,11 @@ interface UpvoteButtonProps {
   disabled?: boolean;
 }
 
+interface OverrideState {
+  count: number;
+  upvoted: boolean;
+}
+
 export function UpvoteButton({
   showcaseId,
   initialCount,
@@ -27,16 +28,20 @@ export function UpvoteButton({
   onUpvoteChange,
   disabled = false,
 }: UpvoteButtonProps) {
-  const [count, setCount] = useState(initialCount);
-  const [upvoted, setUpvoted] = useState(initialUpvoted === true);
+  const [override, setOverride] = useState<OverrideState | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Sync with parent when props change (e.g., after refetch)
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-    setCount(initialCount);
-    setUpvoted(initialUpvoted === true);
-  }, [initialCount, initialUpvoted]);
+  // Reset optimistic override when parent props change (update-state-during-render pattern)
+  const [prevInitialCount, setPrevInitialCount] = useState(initialCount);
+  const [prevInitialUpvoted, setPrevInitialUpvoted] = useState(initialUpvoted);
+  if (prevInitialCount !== initialCount || prevInitialUpvoted !== initialUpvoted) {
+    setPrevInitialCount(initialCount);
+    setPrevInitialUpvoted(initialUpvoted);
+    setOverride(null);
+  }
+
+  const count = override?.count ?? initialCount;
+  const upvoted = override?.upvoted ?? initialUpvoted === true;
 
   const handleClick = useCallback(async () => {
     if (!isLoggedIn) {
@@ -46,11 +51,10 @@ export function UpvoteButton({
 
     if (loading || disabled) return;
 
-    // Optimistic update
-    const prevCount = count;
-    const prevUpvoted = upvoted;
-    setUpvoted(!upvoted);
-    setCount(upvoted ? count - 1 : count + 1);
+    const prevOverride = override;
+    const nextUpvoted = !upvoted;
+    const nextCount = upvoted ? count - 1 : count + 1;
+    setOverride({ count: nextCount, upvoted: nextUpvoted });
     setLoading(true);
 
     try {
@@ -59,26 +63,19 @@ export function UpvoteButton({
       });
 
       if (!res.ok) {
-        // Rollback on error
-        setUpvoted(prevUpvoted);
-        setCount(prevCount);
+        setOverride(prevOverride);
         return;
       }
 
       const data = (await res.json()) as { upvoted: boolean; upvote_count: number };
-      // Sync with server state
-      setUpvoted(data.upvoted);
-      setCount(data.upvote_count);
-      // Notify parent to refetch for sorting
+      setOverride({ count: data.upvote_count, upvoted: data.upvoted });
       onUpvoteChange?.();
     } catch {
-      // Rollback on network error
-      setUpvoted(prevUpvoted);
-      setCount(prevCount);
+      setOverride(prevOverride);
     } finally {
       setLoading(false);
     }
-  }, [showcaseId, count, upvoted, loading, disabled, isLoggedIn, onLoginRequired, onUpvoteChange]);
+  }, [showcaseId, count, upvoted, override, loading, disabled, isLoggedIn, onLoginRequired, onUpvoteChange]);
 
   return (
     <button

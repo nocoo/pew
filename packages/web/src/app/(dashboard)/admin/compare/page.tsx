@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowUpDown,
@@ -44,6 +46,8 @@ type SortDir = "asc" | "desc";
 // ---------------------------------------------------------------------------
 // Skeleton
 // ---------------------------------------------------------------------------
+
+const EMPTY_USERS: StorageUserRow[] = [];
 
 function SelectionSkeleton() {
   return (
@@ -128,10 +132,17 @@ function ComparePageContent() {
   const searchParams = useSearchParams();
   const { isAdmin, loading: adminLoading } = useAdmin();
 
-  // Users data
-  const [users, setUsers] = useState<StorageUserRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data, error: swrError, isLoading } = useSWR<{
+    users: StorageUserRow[];
+    summary: StorageSummary;
+  }>(isAdmin ? "/api/admin/storage" : null, fetcher);
+  const users = data?.users ?? EMPTY_USERS;
+  const loading = isAdmin ? isLoading : false;
+  const error = swrError
+    ? swrError instanceof Error
+      ? swrError.message
+      : "Failed to load."
+    : null;
 
   // Selected users (restore from URL if present)
   const initialUserIds = useMemo(() => {
@@ -155,36 +166,6 @@ function ComparePageContent() {
       router.replace("/");
     }
   }, [adminLoading, isAdmin, router]);
-
-  // ---------------------------------------------------------------------------
-  // Fetch data
-  // ---------------------------------------------------------------------------
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/admin/storage");
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-      const json = (await res.json()) as {
-        users: StorageUserRow[];
-        summary: StorageSummary;
-      };
-      setUsers(json.users);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-    if (isAdmin) fetchData();
-  }, [isAdmin, fetchData]);
 
   // ---------------------------------------------------------------------------
   // Sort handler

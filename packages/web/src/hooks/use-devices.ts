@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback } from "react";
+import useSWR from "swr";
 import type { DevicesResponse } from "@pew/core";
 import { throwApiError } from "@/lib/api-error";
-
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
+import { fetcher } from "@/lib/fetcher";
 
 interface UseDevicesResult {
   data: DevicesResponse | null;
@@ -22,39 +20,11 @@ interface UseDevicesResult {
   ) => Promise<{ success: boolean; error?: string }>;
 }
 
-/**
- * Fetch device list from GET /api/devices and expose alias mutation.
- * Refetches full list after every successful mutation.
- */
 export function useDevices(): UseDevicesResult {
-  const [data, setData] = useState<DevicesResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/devices");
-
-      if (!res.ok) {
-        await throwApiError(res);
-      }
-
-      const json = (await res.json()) as DevicesResponse;
-      setData(json);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-    fetchData();
-  }, [fetchData]);
+  const { data, error, isLoading, mutate } = useSWR<DevicesResponse>(
+    "/api/devices",
+    fetcher,
+  );
 
   const updateAlias = useCallback(
     async (
@@ -72,8 +42,7 @@ export function useDevices(): UseDevicesResult {
           await throwApiError(res);
         }
 
-        // Refetch full list after mutation
-        await fetchData();
+        await mutate();
         return { success: true };
       } catch (err) {
         const errorMsg =
@@ -81,7 +50,7 @@ export function useDevices(): UseDevicesResult {
         return { success: false, error: errorMsg };
       }
     },
-    [fetchData]
+    [mutate]
   );
 
   const deleteDevice = useCallback(
@@ -99,8 +68,7 @@ export function useDevices(): UseDevicesResult {
           await throwApiError(res);
         }
 
-        // Refetch full list after deletion
-        await fetchData();
+        await mutate();
         return { success: true };
       } catch (err) {
         const errorMsg =
@@ -108,8 +76,17 @@ export function useDevices(): UseDevicesResult {
         return { success: false, error: errorMsg };
       }
     },
-    [fetchData]
+    [mutate]
   );
 
-  return { data, loading, error, refetch: fetchData, updateAlias, deleteDevice };
+  return {
+    data: data ?? null,
+    loading: isLoading,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
+    refetch: () => {
+      void mutate();
+    },
+    updateAlias,
+    deleteDevice,
+  };
 }

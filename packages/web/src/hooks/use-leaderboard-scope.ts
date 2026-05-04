@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import {
   loadScopeFromStorage,
   saveScopeToStorage,
@@ -9,10 +11,6 @@ import {
   type Organization,
   type Team,
 } from "@/lib/leaderboard-scope";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 export interface UseLeaderboardScopeReturn {
   /** Current scope selection */
@@ -37,106 +35,64 @@ export interface UseLeaderboardScopeReturn {
   orgId: string | null;
 }
 
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
+interface OrgsResponse {
+  organizations?: Organization[];
+}
 
-/**
- * Shared hook for leaderboard scope management.
- * Handles:
- * - Auth-gated scope initialization
- * - Organization/team fetching with orgsLoaded guard
- * - Scope validation (reset invalid stored scope)
- * - localStorage persistence
- */
+interface TeamsResponse {
+  teams?: Team[];
+}
+
 export function useLeaderboardScope(): UseLeaderboardScopeReturn {
   const { status } = useSession();
   const isAuthenticated = status === "authenticated";
   const isSessionLoading = status === "loading";
 
-  const [scope, setScopeState] = useState<ScopeSelection>({ type: "global" });
-  const [scopeInitialized, setScopeInitialized] = useState(false);
-  const [orgsLoaded, setOrgsLoaded] = useState(false);
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [teams, setTeams] = useState<Team[]>([]);
+  // Lazy initializer reads localStorage once on mount — no effect needed.
+  const [rawScope, setRawScope] = useState<ScopeSelection>(() => {
+    if (typeof window === "undefined") return { type: "global" };
+    return loadScopeFromStorage() ?? { type: "global" };
+  });
 
-  // Fetch user's organizations and teams
-  const fetchOrgsAndTeams = useCallback(async () => {
-    try {
-      const [orgsRes, teamsRes] = await Promise.all([
-        fetch("/api/organizations/mine"),
-        fetch("/api/teams"),
-      ]);
+  const orgsKey = isAuthenticated ? "/api/organizations/mine" : null;
+  const teamsKey = isAuthenticated ? "/api/teams" : null;
 
-      if (orgsRes.ok) {
-        const orgsJson = await orgsRes.json();
-        setOrganizations(orgsJson.organizations ?? []);
-      }
-      if (teamsRes.ok) {
-        const teamsJson = await teamsRes.json();
-        setTeams(teamsJson.teams ?? []);
-      }
-    } catch {
-      // Silently fail — scope dropdown optional
-    } finally {
-      setOrgsLoaded(true);
+  const { data: orgsData, isLoading: orgsLoading, error: orgsError } =
+    useSWR<OrgsResponse>(orgsKey, fetcher);
+  const { data: teamsData, isLoading: teamsLoading, error: teamsError } =
+    useSWR<TeamsResponse>(teamsKey, fetcher);
+
+  const organizations = useMemo(() => orgsData?.organizations ?? [], [orgsData]);
+  const teams = useMemo(() => teamsData?.teams ?? [], [teamsData]);
+
+  // orgsLoaded: authenticated → orgs + teams fetch settled (success or error); unauthenticated → immediately true
+  const orgsLoaded = isAuthenticated
+    ? (!orgsLoading && !teamsLoading) || Boolean(orgsError) || Boolean(teamsError)
+    : !isSessionLoading;
+
+  const scopeInitialized = isSessionLoading ? false : isAuthenticated ? orgsLoaded : true;
+
+  // Derived, validated scope: drops back to global when stored id is no longer valid.
+  // When unauthenticated, always force global — localStorage may contain stale org/team scope.
+  const scope = useMemo<ScopeSelection>(() => {
+    if (!isAuthenticated) return { type: "global" };
+    if (!scopeInitialized) return rawScope;
+    if (rawScope.type === "org" && rawScope.id) {
+      const valid = organizations.some((o) => o.id === rawScope.id);
+      return valid ? rawScope : { type: "global" };
     }
-  }, []);
-
-  // Initialize scope from localStorage and fetch orgs/teams
-  // Wait for session to resolve before deciding auth state
-  useEffect(() => {
-    // Still loading session - wait
-    if (isSessionLoading) {
-      return;
+    if (rawScope.type === "team" && rawScope.id) {
+      const valid = teams.some((t) => t.id === rawScope.id);
+      return valid ? rawScope : { type: "global" };
     }
+    return rawScope;
+  }, [rawScope, scopeInitialized, isAuthenticated, organizations, teams]);
 
-    // Unauthenticated - use global scope immediately
-    if (!isAuthenticated) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-      setScopeInitialized(true);
-      setOrgsLoaded(true);
-      return;
-    }
-
-    // Authenticated - fetch orgs/teams and restore scope
-    fetchOrgsAndTeams().then(() => {
-      const stored = loadScopeFromStorage();
-      if (stored) {
-        setScopeState(stored);
-      }
-      setScopeInitialized(true);
-    });
-  }, [isSessionLoading, isAuthenticated, fetchOrgsAndTeams]);
-
-  // Validate stored scope against available orgs/teams
-  // (intentionally calling setState in effect to correct invalid state after async load)
-  useEffect(() => {
-    if (!scopeInitialized) return;
-
-    if (scope.type === "org" && scope.id) {
-      const valid = organizations.some((o) => o.id === scope.id);
-      if (!valid) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-        setScopeState({ type: "global" });
-        saveScopeToStorage({ type: "global" });
-      }
-    } else if (scope.type === "team" && scope.id) {
-      const valid = teams.some((t) => t.id === scope.id);
-      if (!valid) {
-        setScopeState({ type: "global" });
-        saveScopeToStorage({ type: "global" });
-      }
-    }
-  }, [scopeInitialized, scope, organizations, teams]);
-
-  // Handle scope change with persistence
   const setScope = useCallback((newScope: ScopeSelection) => {
-    setScopeState(newScope);
+    setRawScope(newScope);
     saveScopeToStorage(newScope);
   }, []);
 
-  // Computed IDs for useLeaderboard
   const teamId = scope.type === "team" ? scope.id ?? null : null;
   const orgId = scope.type === "org" ? scope.id ?? null : null;
 

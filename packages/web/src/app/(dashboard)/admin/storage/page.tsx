@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import {
   ArrowUpDown,
   ArrowUp,
@@ -114,6 +116,9 @@ function describeCacheKey(key: string): { type: string; description: string } {
 // Skeleton
 // ---------------------------------------------------------------------------
 
+const EMPTY_USERS: StorageUserRow[] = [];
+const EMPTY_KEYS: string[] = [];
+
 function StorageSkeleton() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -221,11 +226,23 @@ export default function AdminStoragePage() {
   const router = useRouter();
   const { isAdmin, loading: adminLoading } = useAdmin();
 
-  // DB data
-  const [users, setUsers] = useState<StorageUserRow[]>([]);
-  const [summary, setSummary] = useState<StorageSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // DB data — SWR
+  const {
+    data: storageData,
+    error: storageError,
+    isLoading: storageLoading,
+  } = useSWR<{ users: StorageUserRow[]; summary: StorageSummary }>(
+    isAdmin ? "/api/admin/storage" : null,
+    fetcher
+  );
+  const users = storageData?.users ?? EMPTY_USERS;
+  const summary = storageData?.summary ?? null;
+  const loading = storageLoading;
+  const error = storageError
+    ? storageError instanceof Error
+      ? storageError.message
+      : "Failed to load."
+    : null;
 
   // Filter & sort
   const [search, setSearch] = useState("");
@@ -237,14 +254,31 @@ export default function AdminStoragePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogTab, setDialogTab] = useState<ProfileDialogTab>("total");
 
-  // Cache management
-  const [cacheKeys, setCacheKeys] = useState<string[]>([]);
-  const [cacheCount, setCacheCount] = useState(0);
-  const [cacheTruncated, setCacheTruncated] = useState(false);
-  const [cacheLoading, setCacheLoading] = useState(false);
+  // Cache management — SWR
+  const {
+    data: cacheData,
+    error: cacheSwrError,
+    isLoading: cacheLoading,
+    mutate: mutateCache,
+  } = useSWR<CacheListResponse>(
+    isAdmin ? "/api/admin/cache" : null,
+    fetcher
+  );
+  const cacheKeys = cacheData?.keys ?? EMPTY_KEYS;
+  const cacheCount = cacheData?.count ?? 0;
+  const cacheTruncated = cacheData?.truncated ?? false;
   const [cacheClearing, setCacheClearing] = useState(false);
   const [cacheDeletingKey, setCacheDeletingKey] = useState<string | null>(null);
-  const [cacheError, setCacheError] = useState<string | null>(null);
+  const [cacheMutationError, setCacheMutationError] = useState<string | null>(
+    null
+  );
+  const cacheError =
+    cacheMutationError ??
+    (cacheSwrError
+      ? cacheSwrError instanceof Error
+        ? cacheSwrError.message
+        : "Failed to load"
+      : null);
 
   const openProfileDialog = useCallback(
     (user: StorageUserRow, tab: ProfileDialogTab = "total") => {
@@ -260,41 +294,31 @@ export default function AdminStoragePage() {
   // ---------------------------------------------------------------------------
 
   const fetchCacheKeys = useCallback(async () => {
-    setCacheLoading(true);
-    setCacheError(null);
-    try {
-      const res = await fetch("/api/admin/cache");
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as CacheListResponse;
-      setCacheKeys(data.keys);
-      setCacheCount(data.count);
-      setCacheTruncated(data.truncated);
-    } catch (err) {
-      setCacheError(err instanceof Error ? err.message : "Failed to load");
-    } finally {
-      setCacheLoading(false);
-    }
-  }, []);
+    setCacheMutationError(null);
+    await mutateCache();
+  }, [mutateCache]);
 
   const handleClearCache = useCallback(async () => {
     if (!confirm("Clear all cache entries? This cannot be undone.")) return;
     setCacheClearing(true);
-    setCacheError(null);
+    setCacheMutationError(null);
     try {
       const res = await fetch("/api/admin/cache", { method: "DELETE" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as CacheClearResponse;
       // Refresh list after clearing
-      await fetchCacheKeys();
+      await mutateCache();
       alert(
         `Cleared ${data.deleted} cache entries${data.truncated ? " (more remain)" : ""}`
       );
     } catch (err) {
-      setCacheError(err instanceof Error ? err.message : "Failed to clear");
+      setCacheMutationError(
+        err instanceof Error ? err.message : "Failed to clear"
+      );
     } finally {
       setCacheClearing(false);
     }
-  }, [fetchCacheKeys]);
+  }, [mutateCache]);
 
   const handleInvalidateKey = useCallback(
     async (key: string) => {
@@ -306,16 +330,16 @@ export default function AdminStoragePage() {
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         // Refresh list
-        await fetchCacheKeys();
+        await mutateCache();
       } catch (err) {
-        setCacheError(
+        setCacheMutationError(
           err instanceof Error ? err.message : "Failed to invalidate"
         );
       } finally {
         setCacheDeletingKey(null);
       }
     },
-    [fetchCacheKeys]
+    [mutateCache]
   );
 
   // ---------------------------------------------------------------------------
@@ -327,40 +351,6 @@ export default function AdminStoragePage() {
       router.replace("/");
     }
   }, [adminLoading, isAdmin, router]);
-
-  // ---------------------------------------------------------------------------
-  // Fetch data
-  // ---------------------------------------------------------------------------
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/admin/storage");
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-      const json = (await res.json()) as {
-        users: StorageUserRow[];
-        summary: StorageSummary;
-      };
-      setUsers(json.users);
-      setSummary(json.summary);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (isAdmin) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-      fetchData();
-      fetchCacheKeys();
-    }
-  }, [isAdmin, fetchData, fetchCacheKeys]);
 
   // ---------------------------------------------------------------------------
   // Sort handler

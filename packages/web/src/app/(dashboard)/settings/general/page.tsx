@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import {
   User,
   ExternalLink,
@@ -30,13 +32,29 @@ interface UserSettings {
 export default function SettingsPage() {
   const { data: session } = useSession();
 
-  // User settings state
+  // User settings state — disable focus revalidation to prevent overwriting
+  // unsaved form edits when the user tabs away and back.
+  const { data: settingsData, mutate: mutateSettings } = useSWR<UserSettings>(
+    "/api/settings",
+    fetcher,
+    { revalidateOnFocus: false },
+  );
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [nickname, setNickname] = useState("");
   const [slug, setSlug] = useState("");
   const [isPublic, setIsPublic] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Sync SWR data to local form state once per arrival (render-time update pattern).
+  const [syncedSettings, setSyncedSettings] = useState<UserSettings | null>(null);
+  if (settingsData && settingsData !== syncedSettings) {
+    setSyncedSettings(settingsData);
+    setSettings(settingsData);
+    setNickname(settingsData.nickname ?? "");
+    setSlug(settingsData.slug ?? "");
+    setIsPublic(settingsData.is_public ?? false);
+  }
 
   // Delete account state
   const [deleteConfirmEmail, setDeleteConfirmEmail] = useState("");
@@ -52,30 +70,6 @@ export default function SettingsPage() {
   const [copiedUrl, setCopiedUrl] = useState(false);
   const profileIdentifier = slug || userId;
   const profileUrl = profileIdentifier ? `https://pew.md/u/${profileIdentifier}` : null;
-
-  // ---------------------------------------------------------------------------
-  // Fetch settings
-  // ---------------------------------------------------------------------------
-
-  const fetchSettings = useCallback(async () => {
-    try {
-      const res = await fetch("/api/settings");
-      if (res.ok) {
-        const data = await res.json();
-        setSettings(data);
-        setNickname(data.nickname ?? "");
-        setSlug(data.slug ?? "");
-        setIsPublic(data.is_public ?? false);
-      }
-    } catch {
-      // Silently fail on initial load
-    }
-  }, []);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-    fetchSettings();
-  }, [fetchSettings]);
 
   // ---------------------------------------------------------------------------
   // Save settings
@@ -112,7 +106,9 @@ export default function SettingsPage() {
       if (res.ok) {
         const data = await res.json();
         setSettings(data);
+        setSyncedSettings(data);
         setIsPublic(data.is_public ?? false);
+        void mutateSettings(data, { revalidate: false });
         setSaveMessage({ type: "success", text: "Settings saved." });
       } else {
         const data = await res.json().catch(() => ({}));

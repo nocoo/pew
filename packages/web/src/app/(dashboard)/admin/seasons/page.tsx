@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import {
   Plus,
   Pencil,
@@ -589,9 +591,21 @@ export default function AdminSeasonsPage() {
   const router = useRouter();
   const { isAdmin, loading: adminLoading } = useAdmin();
 
-  const [rows, setRows] = useState<SeasonRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: seasonData,
+    error: swrError,
+    isLoading: loading,
+    mutate: mutateRows,
+  } = useSWR<{ seasons: SeasonRow[] }>(
+    isAdmin ? "/api/admin/seasons" : null,
+    fetcher
+  );
+  const rows = seasonData?.seasons ?? [];
+  const error = swrError
+    ? swrError instanceof Error
+      ? swrError.message
+      : "Failed to load."
+    : null;
   const [message, setMessage] = useState<MessageBannerMsg | null>(null);
 
   // Create form toggle
@@ -628,28 +642,7 @@ export default function AdminSeasonsPage() {
   // Fetch rows
   // ---------------------------------------------------------------------------
 
-  const fetchRows = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/admin/seasons");
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-      const json = (await res.json()) as { seasons: SeasonRow[] };
-      setRows(json.seasons);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-    if (isAdmin) fetchRows();
-  }, [isAdmin, fetchRows]);
+  const fetchRows = useCallback(() => mutateRows(), [mutateRows]);
 
   // ---------------------------------------------------------------------------
   // Fetch registered teams for a season

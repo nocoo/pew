@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import {
   Plus,
   Pencil,
@@ -625,9 +627,21 @@ export default function AdminOrganizationsPage() {
   const router = useRouter();
   const { isAdmin, loading: adminLoading } = useAdmin();
 
-  const [rows, setRows] = useState<OrgRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: orgData,
+    error: swrError,
+    isLoading: loading,
+    mutate: mutateRows,
+  } = useSWR<{ organizations: OrgRow[] }>(
+    isAdmin ? "/api/admin/organizations" : null,
+    fetcher
+  );
+  const rows = orgData?.organizations ?? [];
+  const error = swrError
+    ? swrError instanceof Error
+      ? swrError.message
+      : "Failed to load."
+    : null;
   const [message, setMessage] = useState<MessageBannerMsg | null>(null);
 
   const [showCreate, setShowCreate] = useState(false);
@@ -644,25 +658,7 @@ export default function AdminOrganizationsPage() {
   }, [adminLoading, isAdmin, router]);
 
   // Fetch rows
-  const fetchRows = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/admin/organizations");
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = (await res.json()) as { organizations: OrgRow[] };
-      setRows(json.organizations);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-    if (isAdmin) fetchRows();
-  }, [isAdmin, fetchRows]);
+  const fetchRows = () => mutateRows();
 
   // Delete org
   const handleDelete = async (org: OrgRow) => {

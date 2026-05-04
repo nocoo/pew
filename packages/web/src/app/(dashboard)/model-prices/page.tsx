@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
 import { useAdmin } from "@/hooks/use-admin";
 import { invalidatePricingEntries } from "@/hooks/use-pricing-entries";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { Skeleton } from "@/components/ui/skeleton";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 import type {
   DynamicPricingEntryDto,
   DynamicPricingMetaDto,
@@ -32,31 +33,13 @@ function PageSkeleton() {
 export default function ModelPricesPage() {
   const { isAdmin } = useAdmin();
 
-  const [data, setData] = useState<ModelsResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchModels = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/pricing/models");
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-      const json = (await res.json()) as ModelsResponse;
-      setData(json);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: standard React pattern
-    fetchModels();
-  }, [fetchModels]);
+  const { data, error: swrError, isLoading: loading, mutate } =
+    useSWR<ModelsResponse>("/api/pricing/models", fetcher);
+  const error = swrError
+    ? swrError instanceof Error
+      ? swrError.message
+      : "Failed to load."
+    : null;
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -74,7 +57,7 @@ export default function ModelPricesPage() {
       {data && (
         <>
           <PricingMetaBanner meta={data.meta} servedFrom={data.servedFrom}>
-            {isAdmin && <ForceSyncButton onComplete={() => { fetchModels(); invalidatePricingEntries(); }} />}
+            {isAdmin && <ForceSyncButton onComplete={() => { void mutate(); invalidatePricingEntries(); }} />}
           </PricingMetaBanner>
           <PricingTable entries={data.entries} />
         </>

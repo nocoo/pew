@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useMemo } from "react";
+import useSWR from "swr";
 import type {
   UsageRow,
   UsageSummary,
@@ -14,10 +15,6 @@ import { useDerivedUsageData } from "@/hooks/use-derived-usage-data";
 import { useTzOffset } from "@/hooks/use-tz-offset";
 import type { BadgeIconType } from "@pew/core";
 import { throwApiError } from "@/lib/api-error";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 
 export interface UserProfileBadge {
   text: string;
@@ -42,20 +39,11 @@ export interface UserProfileData {
   summary: UsageSummary;
 }
 
-// ---------------------------------------------------------------------------
-// Hook
-// ---------------------------------------------------------------------------
-
 interface UseUserProfileOptions {
-  /** User slug (takes precedence over userId) */
   slug?: string;
-  /** Number of days to look back (default 30, max 365) */
   days?: number;
-  /** Start datetime (ISO 8601) - takes precedence over days */
   from?: string;
-  /** End datetime (ISO 8601) - requires from */
   to?: string;
-  /** Source filter (optional) */
   source?: string;
 }
 
@@ -72,82 +60,46 @@ interface UseUserProfileResult {
   refetch: () => void;
 }
 
+type ProfileResult =
+  | { kind: "ok"; data: UserProfileData }
+  | { kind: "not_found" };
+
+async function userProfileFetcher(url: string): Promise<ProfileResult> {
+  const res = await fetch(url);
+  if (res.status === 404) return { kind: "not_found" };
+  if (!res.ok) {
+    await throwApiError(res);
+  }
+  const data = (await res.json()) as UserProfileData;
+  return { kind: "ok", data };
+}
+
 export function useUserProfile(
   options: UseUserProfileOptions,
 ): UseUserProfileResult {
   const { slug, days = 30, from, to, source } = options;
-  const [data, setData] = useState<UserProfileData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [notFound, setNotFound] = useState(false);
 
-  const fetchData = useCallback(async (signal?: AbortSignal) => {
-    if (!slug) {
-      setLoading(false);
-      return;
+  const url = useMemo(() => {
+    if (!slug) return null;
+    const params = new URLSearchParams();
+    if (from && to) {
+      params.set("from", from);
+      params.set("to", to);
+    } else {
+      params.set("days", String(days));
     }
-
-    setLoading(true);
-    setError(null);
-    setNotFound(false);
-
-    try {
-      const params = new URLSearchParams();
-
-      // Use from/to if provided, otherwise use days
-      if (from && to) {
-        params.set("from", from);
-        params.set("to", to);
-      } else {
-        params.set("days", String(days));
-      }
-
-      if (source) params.set("source", source);
-
-      const res = await fetch(`/api/users/${slug}?${params.toString()}`, signal ? { signal } : undefined);
-
-      if (signal?.aborted) return;
-
-      if (res.status === 404) {
-        setNotFound(true);
-        return;
-      }
-
-      if (!res.ok) {
-        await throwApiError(res);
-      }
-
-      const json = (await res.json()) as UserProfileData;
-
-      if (signal?.aborted) return;
-
-      setData(json);
-    } catch (err) {
-      if (err instanceof Error && err.name === "AbortError") return;
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      if (!signal?.aborted) {
-        setLoading(false);
-      }
-    }
+    if (source) params.set("source", source);
+    return `/api/users/${slug}?${params.toString()}`;
   }, [slug, days, from, to, source]);
 
-  useEffect(() => {
-    const controller = new AbortController();
+  const { data: result, error, isLoading, mutate } = useSWR<ProfileResult>(
+    url,
+    userProfileFetcher,
+  );
 
-    // Reset data when slug changes to avoid showing stale user's data
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching effect: setState before/after fetch is the standard React pattern
-    setData(null);
-    setNotFound(false);
+  const data = result?.kind === "ok" ? result.data : null;
+  const notFound = result?.kind === "not_found";
 
-    fetchData(controller.signal);
-
-    return () => {
-      controller.abort();
-    };
-  }, [fetchData]);
-
-  // Memoize derived data to avoid recalculation on every render
   const tzOffset = useTzOffset();
   const { daily, sources, models } = useDerivedUsageData(data?.records ?? null, tzOffset);
   const heatmap = useMemo(() => toHeatmapData(daily), [daily]);
@@ -159,9 +111,11 @@ export function useUserProfile(
     sources,
     models,
     heatmap,
-    loading,
-    error,
+    loading: url ? isLoading : false,
+    error: error ? (error instanceof Error ? error.message : String(error)) : null,
     notFound,
-    refetch: () => fetchData(),
+    refetch: () => {
+      void mutate();
+    },
   };
 }
