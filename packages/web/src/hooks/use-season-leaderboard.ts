@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 import type { SeasonStatus } from "@pew/core";
 import { fetcher } from "@/lib/fetcher";
@@ -70,6 +70,18 @@ export function useSeasonLeaderboard(
   const fetchedTeamsRef = useRef<Set<string>>(new Set());
   const loadingTeamIdsRef = useRef<Set<string>>(new Set());
   const [loadingTeamIds, setLoadingTeamIds] = useState<Set<string>>(new Set());
+
+  // Reset lazy-member tracking when season changes.
+  // Without this, team IDs fetched in season A would be skipped in season B.
+  const [prevSeasonKey, setPrevSeasonKey] = useState(seasonIdOrSlug);
+  if (prevSeasonKey !== seasonIdOrSlug) {
+    setPrevSeasonKey(seasonIdOrSlug);
+    setLoadingTeamIds(new Set());
+  }
+  useEffect(() => {
+    fetchedTeamsRef.current = new Set();
+    loadingTeamIdsRef.current = new Set();
+  }, [seasonIdOrSlug]);
 
   const loadTeamMembers = useCallback(
     async (teamId: string) => {
