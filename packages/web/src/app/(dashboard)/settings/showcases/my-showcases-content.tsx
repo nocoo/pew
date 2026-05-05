@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 import { useShowcases, type Showcase } from "@/hooks/use-showcases";
 import { ShowcaseImage, ShowcaseFormModal } from "@/components/showcase";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
+import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
+import { toErrorMessage } from "@/lib/error-message";
 
 const PAGE_SIZE = 20;
 
@@ -19,6 +21,7 @@ export function MyShowcasesContent() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [editShowcase, setEditShowcase] = useState<Showcase | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleteMessage, setDeleteMessage] = useState<MessageBannerMsg | null>(null);
   const { confirm, dialogProps } = useConfirm();
 
   const handleDelete = useCallback(async (id: string) => {
@@ -30,6 +33,7 @@ export function MyShowcasesContent() {
     });
     if (!confirmed) return;
 
+    setDeleteMessage(null);
     setDeleting(id);
     try {
       const res = await fetch(`/api/showcases/${id}`, { method: "DELETE" });
@@ -39,7 +43,10 @@ export function MyShowcasesContent() {
       }
       refetch();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to delete showcase");
+      setDeleteMessage({
+        type: "error",
+        text: toErrorMessage(err, "Failed to delete showcase"),
+      });
     } finally {
       setDeleting(null);
     }
@@ -87,6 +94,9 @@ export function MyShowcasesContent() {
           Add Showcase
         </button>
       </div>
+
+      {/* Delete feedback */}
+      <MessageBanner message={deleteMessage} />
 
       {/* Empty state */}
       {showcases.length === 0 && (
