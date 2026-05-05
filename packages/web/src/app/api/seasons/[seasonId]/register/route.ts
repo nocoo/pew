@@ -150,6 +150,8 @@ export async function POST(
       throw batchErr;
     }
 
+    await dbRead.invalidateCacheKey("seasons:list");
+
     return NextResponse.json(
       {
         id,
@@ -262,6 +264,8 @@ export async function DELETE(
       "DELETE FROM season_teams WHERE season_id = ? AND team_id = ?",
       [seasonId, team_id]
     );
+
+    await dbRead.invalidateCacheKey("seasons:list");
 
     return NextResponse.json({ deleted: true });
   } catch (err) {
