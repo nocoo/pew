@@ -23,6 +23,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
 import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
+import { toErrorMessage } from "@/lib/error-message";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -154,7 +155,7 @@ function CreateOrgForm({
       const data = (await res.json()) as { name: string };
       onCreated(`Organization "${data.name}" created.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create.");
+      setError(toErrorMessage(err, "Failed to create."));
     } finally {
       setSubmitting(false);
     }
@@ -263,7 +264,7 @@ function EditOrgRow({
       }
       onSaved(`Organization "${name.trim()}" updated.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update.");
+      setError(toErrorMessage(err, "Failed to update."));
     } finally {
       setSubmitting(false);
     }
@@ -682,7 +683,7 @@ export default function AdminOrganizationsPage() {
     } catch (err) {
       setMessage({
         type: "error",
-        text: err instanceof Error ? err.message : "Failed to delete.",
+        text: toErrorMessage(err, "Failed to delete."),
       });
     }
   };
@@ -706,7 +707,7 @@ export default function AdminOrganizationsPage() {
     } catch (err) {
       setMessage({
         type: "error",
-        text: err instanceof Error ? err.message : "Failed to upload logo.",
+        text: toErrorMessage(err, "Failed to upload logo."),
       });
     } finally {
       setUploadingId(null);
