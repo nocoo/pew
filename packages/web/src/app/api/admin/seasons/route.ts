@@ -166,6 +166,8 @@ export async function POST(request: Request) {
       console.error("Auto-registration failed (non-fatal):", err);
     }
 
+    await dbRead.invalidateCacheKey("seasons:list");
+
     return NextResponse.json(
       {
         id,
