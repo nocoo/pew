@@ -5,6 +5,43 @@
 ### Removed
 - Drop legacy `model_pricing` D1 table, admin Token Pricing CRUD UI (`/admin/pricing`) and its CRUD API (`/api/admin/pricing` route), worker-read admin-loader + `pricing.listModelPricing` / `pricing.getModelPricingByModelSource` RPCs, `origin: "admin"` pricing layer, and `pricing:all` KV cache (migration 021). The dynamic-pricing admin surface (`/admin/model-prices`, `/api/admin/pricing/models`, `/api/admin/pricing/rebuild`) is retained. Dynamic pricing pipeline (baseline + OpenRouter + models.dev → `pricing:dynamic`) is now the sole source of truth.
 
+## v2.23.2
+
+### Changed
+- Add multicaCodexDirs to E2E status fixtures
+- Reuse toErrorMessage in Admin Organizations mutation catches
+- Reuse toErrorMessage in Admin Seasons mutation catches
+- Reuse toErrorMessage in Admin Invites mutation catches
+- Replace native confirm/alert in Admin Storage Clear All
+- Replace native alert in Admin Showcases with MessageBanner
+- Reuse message banner for settings save feedback
+- Centralize hook error messages
+- Reuse client timezone offset hook
+- Migrate model-prices page to swr — last set-state-in-effect disable
+- Migrate data-fetching hooks to swr
+- Migrate use-fetch-data to swr
+- Add swr and create shared fetcher
+- Add L3 leaderboard data rendering tests
+- Add L3 admin badges CRUD tests
+- Add L3 admin seasons CRUD tests
+- Add L3 dashboard data rendering tests
+
+### Fixed
+- Invalidate seasons:list KV cache after team register/withdraw
+- Invalidate seasons:list KV cache after admin update
+- Invalidate seasons:list KV cache after admin create
+- Prune stale in-memory rate limit keys
+- Prevent tooltip clipping by separating scroll and positioning containers
+- Disable SWR focus revalidation on settings form
+- Reset lazy-member refs when season changes in useSeasonLeaderboard
+- Force global scope when unauthenticated in useLeaderboardScope
+- Clear optimistic overrides and sticky mutation errors after swr migration
+- Replace Radix multi-Tooltip with single floating tooltip in heatmap
+
+### Removed
+- Replace native alert in My Showcases delete with MessageBanner
+- Migrate page-level fetches to swr and remove set-state-in-effect disables
+
 ## v2.23.1
 
 ### Changed
