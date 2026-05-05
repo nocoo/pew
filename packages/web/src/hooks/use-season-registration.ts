@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import useSWR from "swr";
 import type { SeasonStatus } from "@pew/core";
 import { throwApiError } from "@/lib/api-error";
+import { toErrorMessage } from "@/lib/error-message";
 import { fetcher } from "@/lib/fetcher";
 
 export interface AvailableSeason {
@@ -111,7 +112,7 @@ export function useSeasonRegistration(
         });
         return true;
       } catch (err) {
-        setMutationError(err instanceof Error ? err.message : "Registration failed");
+        setMutationError(toErrorMessage(err, "Registration failed"));
         return false;
       }
     },
@@ -134,7 +135,7 @@ export function useSeasonRegistration(
         });
         return true;
       } catch (err) {
-        setMutationError(err instanceof Error ? err.message : "Withdrawal failed");
+        setMutationError(toErrorMessage(err, "Withdrawal failed"));
         return false;
       }
     },

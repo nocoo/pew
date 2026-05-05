@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import useSWR from "swr";
 import { throwApiError } from "@/lib/api-error";
+import { toErrorMessage } from "@/lib/error-message";
 import { fetcher } from "@/lib/fetcher";
 
 export interface ProjectAliasInput {
@@ -116,7 +117,7 @@ export function useProjects(options?: UseProjectsOptions): UseProjectsResult {
         await mutate();
         return project;
       } catch (err) {
-        setMutationError(err instanceof Error ? err.message : "Unknown error");
+        setMutationError(toErrorMessage(err));
         return null;
       }
     },
@@ -146,7 +147,7 @@ export function useProjects(options?: UseProjectsOptions): UseProjectsResult {
         await mutate();
         return project;
       } catch (err) {
-        setMutationError(err instanceof Error ? err.message : "Unknown error");
+        setMutationError(toErrorMessage(err));
         return null;
       }
     },
@@ -162,7 +163,7 @@ export function useProjects(options?: UseProjectsOptions): UseProjectsResult {
         await mutate();
         return true;
       } catch (err) {
-        setMutationError(err instanceof Error ? err.message : "Unknown error");
+        setMutationError(toErrorMessage(err));
         return false;
       }
     },

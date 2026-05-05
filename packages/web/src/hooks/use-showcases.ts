@@ -7,6 +7,7 @@
 import { useCallback, useMemo, useState } from "react";
 import useSWR from "swr";
 import { throwApiError } from "@/lib/api-error";
+import { toErrorMessage } from "@/lib/error-message";
 import { fetcher } from "@/lib/fetcher";
 
 // ---------------------------------------------------------------------------
@@ -149,7 +150,7 @@ export function useShowcasePreview(): UseShowcasePreviewResult {
       setPreview(json);
       return json;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
+      const message = toErrorMessage(err);
       setError(message);
       return null;
     } finally {
