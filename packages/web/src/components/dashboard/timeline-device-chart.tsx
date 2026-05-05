@@ -12,6 +12,7 @@ import type { DeviceTimelinePoint, DeviceAggregate } from "@pew/core";
 import { cn, formatTokens } from "@/lib/utils";
 import { chartAxis, CHART_COLORS } from "@/lib/palette";
 import { deviceLabel } from "@/lib/device-helpers";
+import { useTzOffset } from "@/hooks/use-tz-offset";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 import {
   ChartTooltip,
@@ -107,6 +108,8 @@ export function TimelineDeviceChart({
   devices,
   className,
 }: TimelineDeviceChartProps) {
+  const tzOffset = useTzOffset();
+
   // Build device label map
   const deviceLabels = new Map<string, string>();
   for (const d of devices) {
@@ -117,7 +120,6 @@ export function TimelineDeviceChart({
   const chartData = (() => {
     if (!deviceTimeline?.length) return [];
 
-    const tzOffset = new Date().getTimezoneOffset();
     const SLOT_MS = 30 * 60_000;
 
     const bySlot = new Map<

@@ -47,7 +47,13 @@ type ChartTab = "tokens" | "cost";
 export default function DashboardPage() {
   const [period, setPeriod] = useState<Period>("all");
   const [chartTab, setChartTab] = useState<ChartTab>("tokens");
-  const { from, to } = periodToDateRange(period, new Date().getTimezoneOffset());
+
+  // Timezone offset for UTC→local date conversion (used by multiple helpers
+  // and by periodToDateRange below). Read once via the hook so every API
+  // query and local aggregation on this page sees the same offset.
+  const tzOffset = useTzOffset();
+
+  const { from, to } = periodToDateRange(period, tzOffset);
 
   const { data, daily, sources, models, loading, error } = useUsageData({
     from,
@@ -94,8 +100,6 @@ export default function DashboardPage() {
 
   const { pricingMap } = usePricingMap();
 
-  // Timezone offset for UTC→local date conversion (used by multiple helpers)
-  const tzOffset = useTzOffset();
   const today = useMemo(() => getLocalToday(tzOffset), [tzOffset]);
 
   // Fill date gaps + extend to today so charts always show up to the current day

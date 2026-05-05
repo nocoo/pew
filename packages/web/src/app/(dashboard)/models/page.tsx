@@ -77,7 +77,8 @@ function ModelsSkeleton() {
 
 export default function ModelsPage() {
   const [period, setPeriod] = useState<Period>("all");
-  const { from, to } = periodToDateRange(period, new Date().getTimezoneOffset());
+  const tzOffset = useTzOffset();
+  const { from, to } = periodToDateRange(period, tzOffset);
 
   const { data, models, loading, error } = useUsageData({
     from,
@@ -85,8 +86,6 @@ export default function ModelsPage() {
   });
 
   const { pricingMap } = usePricingMap();
-
-  const tzOffset = useTzOffset();
   const today = useMemo(() => getLocalToday(tzOffset), [tzOffset]);
 
   const modelGroups = useMemo(

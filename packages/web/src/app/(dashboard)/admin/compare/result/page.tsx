@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { formatTokens, formatTokensFull } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
+import { useTzOffset } from "@/hooks/use-tz-offset";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -162,6 +163,7 @@ function CompareResultContent() {
   const [dateTo, setDateTo] = useState(defaultTo);
   const [sourceFilter, setSourceFilter] = useState("");
   const [modelFilter, setModelFilter] = useState("");
+  const tzOffset = useTzOffset();
 
   // Data via SWR
   const swrKey = useMemo(() => {
@@ -170,12 +172,12 @@ function CompareResultContent() {
       userIds: userIds.join(","),
       from: dateFrom,
       to: dateTo,
-      tzOffset: String(new Date().getTimezoneOffset()),
+      tzOffset: String(tzOffset),
     });
     if (sourceFilter) params.set("source", sourceFilter);
     if (modelFilter) params.set("model", modelFilter);
     return `/api/admin/usage/compare?${params}`;
-  }, [isAdmin, userIds, dateFrom, dateTo, sourceFilter, modelFilter]);
+  }, [isAdmin, userIds, dateFrom, dateTo, sourceFilter, modelFilter, tzOffset]);
 
   const { data, error: swrError, isLoading } = useSWR<CompareResponse>(swrKey, fetcher);
   const loading = swrKey ? isLoading : false;

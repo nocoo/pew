@@ -64,7 +64,8 @@ function SessionsSkeleton() {
 
 export default function SessionsPage() {
   const [period, setPeriod] = useState<Period>("all");
-  const { from, to } = periodToDateRange(period, new Date().getTimezoneOffset());
+  const tzOffset = useTzOffset();
+  const { from, to } = periodToDateRange(period, tzOffset);
 
   const sessionData = useSessionData({
     from,
@@ -106,7 +107,6 @@ export default function SessionsPage() {
     [usageData],
   );
 
-  const tzOffset = useTzOffset();
   const today = useMemo(() => getLocalToday(tzOffset), [tzOffset]);
 
   const peakSlots = useMemo(
