@@ -185,6 +185,76 @@ describe("inMemoryRateLimiter", () => {
     expect(r.allowed).toBe(true);
     expect(r.current).toBe(1);
   });
+
+  it("global sweep prunes stale keys without affecting active ones", () => {
+    vi.useFakeTimers();
+    try {
+      // Seed many one-shot keys (simulate transient IPs)
+      for (let i = 0; i < 50; i++) {
+        inMemoryRateLimiter.check(`stale-${i}`, config);
+      }
+      expect(inMemoryRateLimiter.size()).toBe(50);
+
+      // Advance past the window so all seeded entries are stale
+      vi.advanceTimersByTime(61_000);
+
+      // An active key gets a fresh hit
+      inMemoryRateLimiter.check("active", config);
+
+      // Sweep is throttled to once per minute; advance another minute and
+      // touch any key to trigger it
+      vi.advanceTimersByTime(61_000);
+      const r = inMemoryRateLimiter.check("active", config);
+
+      // Active key still tracked; stale keys gone (active may have 1 or 2
+      // depending on whether its first hit fell out of the window)
+      expect(r.allowed).toBe(true);
+      expect(inMemoryRateLimiter.size()).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("retryAfter remains correct after sweep activity", () => {
+    vi.useFakeTimers();
+    try {
+      // Seed a stale key so a future sweep has work to do
+      inMemoryRateLimiter.check("stale", config);
+      vi.advanceTimersByTime(61_000);
+
+      // Fill an active key to its limit
+      inMemoryRateLimiter.check("k1", config);
+      inMemoryRateLimiter.check("k1", config);
+      const denied = inMemoryRateLimiter.check("k1", config);
+
+      expect(denied.allowed).toBe(false);
+      expect(denied.current).toBe(2);
+      expect(denied.limit).toBe(2);
+      expect(denied.retryAfter).toBeGreaterThan(0);
+      expect(denied.retryAfter).toBeLessThanOrEqual(60);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("drops a key entirely when its only timestamp expires and request is denied path is unaffected", () => {
+    vi.useFakeTimers();
+    try {
+      inMemoryRateLimiter.check("solo", config);
+      expect(inMemoryRateLimiter.size()).toBe(1);
+
+      vi.advanceTimersByTime(61_000);
+
+      // Re-check the same key after expiry — it should behave as fresh and
+      // remain a single tracked entry, not accumulate dead arrays
+      const r = inMemoryRateLimiter.check("solo", config);
+      expect(r.allowed).toBe(true);
+      expect(r.current).toBe(1);
+      expect(inMemoryRateLimiter.size()).toBe(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
