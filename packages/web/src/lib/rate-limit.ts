@@ -79,13 +79,31 @@ export async function checkShowcaseRateLimit(
  * Simple in-memory rate limiter using a sliding window of timestamps.
  * Suitable for single-instance deployments (e.g. Cloudflare Workers, single Node process).
  * State is lost on restart — this is acceptable for brute-force mitigation.
+ *
+ * Memory hygiene: an opportunistic sweep runs at most once per
+ * {@link SWEEP_INTERVAL_MS} during `check()` calls. The sweep walks every
+ * tracked key, prunes timestamps older than the longest window currently in
+ * use, and removes keys whose timestamp arrays end up empty. This bounds
+ * long-running memory growth without introducing timers (Workers-friendly).
  */
+const SWEEP_INTERVAL_MS = 60_000;
+
 class InMemoryRateLimiter {
   private windows = new Map<string, number[]>();
+  private lastSweepAt = 0;
+  /** Track the largest window we've ever seen so the sweep cutoff is safe. */
+  private maxWindowMs = 0;
 
   /** Clear all tracked windows (useful for testing). */
   reset(): void {
     this.windows.clear();
+    this.lastSweepAt = 0;
+    this.maxWindowMs = 0;
+  }
+
+  /** Number of tracked keys. Exposed for tests / observability. */
+  size(): number {
+    return this.windows.size;
   }
 
   /**
@@ -98,6 +116,10 @@ class InMemoryRateLimiter {
     const windowMs = config.windowSeconds * 1000;
     const cutoff = now - windowMs;
 
+    if (windowMs > this.maxWindowMs) {
+      this.maxWindowMs = windowMs;
+    }
+
     // Get existing timestamps and prune expired ones
     const timestamps = (this.windows.get(key) ?? []).filter((t) => t > cutoff);
 
@@ -106,7 +128,14 @@ class InMemoryRateLimiter {
       timestamps.push(now);
     }
 
-    this.windows.set(key, timestamps);
+    if (timestamps.length === 0) {
+      // Abandoned key after pruning — drop instead of storing []
+      this.windows.delete(key);
+    } else {
+      this.windows.set(key, timestamps);
+    }
+
+    this.maybeSweep(now);
 
     return {
       allowed,
@@ -116,6 +145,27 @@ class InMemoryRateLimiter {
         ? 0
         : Math.ceil(((timestamps[0] ?? now) + windowMs - now) / 1000),
     };
+  }
+
+  /**
+   * Sweep all tracked keys at most once per {@link SWEEP_INTERVAL_MS}, dropping
+   * entries whose timestamps are all older than the largest window seen.
+   * This catches keys that are touched once and then never again (the source
+   * of unbounded growth).
+   */
+  private maybeSweep(now: number): void {
+    if (now - this.lastSweepAt < SWEEP_INTERVAL_MS) return;
+    this.lastSweepAt = now;
+
+    const cutoff = now - this.maxWindowMs;
+    for (const [key, timestamps] of this.windows) {
+      const live = timestamps.filter((t) => t > cutoff);
+      if (live.length === 0) {
+        this.windows.delete(key);
+      } else if (live.length !== timestamps.length) {
+        this.windows.set(key, live);
+      }
+    }
   }
 }
 

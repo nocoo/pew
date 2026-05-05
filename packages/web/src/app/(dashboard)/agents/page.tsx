@@ -14,6 +14,7 @@ import { PeriodSelector } from "@/components/dashboard/period-selector";
 import { ModelInfoTooltip } from "@/components/dashboard/model-info-tooltip";
 import { periodToDateRange, periodLabel } from "@/lib/date-helpers";
 import type { Period } from "@/lib/date-helpers";
+import { useTzOffset } from "@/hooks/use-tz-offset";
 
 // ---------------------------------------------------------------------------
 // Agent card
@@ -149,7 +150,8 @@ function AgentsSkeleton() {
 
 export default function AgentsPage() {
   const [period, setPeriod] = useState<Period>("all");
-  const { from, to } = periodToDateRange(period, new Date().getTimezoneOffset());
+  const tzOffset = useTzOffset();
+  const { from, to } = periodToDateRange(period, tzOffset);
 
   const { data, loading, error } = useUsageData({
     from,

@@ -18,6 +18,9 @@ import {
 import { cn } from "@/lib/utils";
 import { formatTokens, formatTokensFull, formatDuration } from "@/lib/format";
 import { ErrorBanner } from "@/components/ui/error-banner";
+import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
+import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
+import { toErrorMessage } from "@/lib/error-message";
 import { useAdmin } from "@/hooks/use-admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -272,6 +275,8 @@ export default function AdminStoragePage() {
   const [cacheMutationError, setCacheMutationError] = useState<string | null>(
     null
   );
+  const [cacheMessage, setCacheMessage] = useState<MessageBannerMsg | null>(null);
+  const { confirm, dialogProps } = useConfirm();
   const cacheError =
     cacheMutationError ??
     (cacheSwrError
@@ -299,26 +304,33 @@ export default function AdminStoragePage() {
   }, [mutateCache]);
 
   const handleClearCache = useCallback(async () => {
-    if (!confirm("Clear all cache entries? This cannot be undone.")) return;
+    const confirmed = await confirm({
+      title: "Clear all cache entries?",
+      description: "This cannot be undone.",
+      confirmText: "Clear All",
+      variant: "destructive",
+    });
+    if (!confirmed) return;
+
     setCacheClearing(true);
     setCacheMutationError(null);
+    setCacheMessage(null);
     try {
       const res = await fetch("/api/admin/cache", { method: "DELETE" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as CacheClearResponse;
       // Refresh list after clearing
       await mutateCache();
-      alert(
-        `Cleared ${data.deleted} cache entries${data.truncated ? " (more remain)" : ""}`
-      );
+      setCacheMessage({
+        type: "success",
+        text: `Cleared ${data.deleted} cache entries${data.truncated ? " (more remain)" : ""}`,
+      });
     } catch (err) {
-      setCacheMutationError(
-        err instanceof Error ? err.message : "Failed to clear"
-      );
+      setCacheMutationError(toErrorMessage(err, "Failed to clear"));
     } finally {
       setCacheClearing(false);
     }
-  }, [mutateCache]);
+  }, [confirm, mutateCache]);
 
   const handleInvalidateKey = useCallback(
     async (key: string) => {
@@ -695,6 +707,13 @@ export default function AdminStoragePage() {
                 </div>
               )}
 
+              {/* Clear All feedback */}
+              {cacheMessage && (
+                <div className="shrink-0">
+                  <MessageBanner message={cacheMessage} />
+                </div>
+              )}
+
               {/* Summary cards */}
               <div className="grid grid-cols-2 gap-3 shrink-0">
                 <div className="rounded-xl bg-secondary p-4">
@@ -816,6 +835,9 @@ export default function AdminStoragePage() {
           defaultTab={dialogTab}
         />
       )}
+
+      {/* Confirm dialog */}
+      <ConfirmDialog {...dialogProps} />
     </TooltipProvider>
   );
 }

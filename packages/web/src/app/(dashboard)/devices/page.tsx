@@ -156,7 +156,8 @@ function StatGrid({ devices }: { devices: DeviceAggregate[] }) {
 export default function ByDevicePage() {
   const [period, setPeriod] = useState<Period>("all");
   const [selectedDevice, setSelectedDevice] = useState("");
-  const { from, to } = periodToDateRange(period, new Date().getTimezoneOffset());
+  const tzOffset = useTzOffset();
+  const { from, to } = periodToDateRange(period, tzOffset);
 
   const { data, loading, error } = useDeviceData({
     from,
@@ -165,7 +166,6 @@ export default function ByDevicePage() {
 
   const devices = useMemo(() => data?.devices ?? [], [data]);
 
-  const tzOffset = useTzOffset();
   const today = useMemo(() => getLocalToday(tzOffset), [tzOffset]);
 
   // Fill date gaps in device timeline so charts extend to today

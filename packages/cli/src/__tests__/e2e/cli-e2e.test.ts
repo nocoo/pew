@@ -321,6 +321,7 @@ describe("CLI E2E: status after sync", () => {
         geminiDir: join(dataDir, ".gemini"),
         openCodeMessageDir: join(dataDir, ".local", "share", "opencode", "storage", "message"),
         openclawDir: join(dataDir, ".openclaw"),
+        multicaCodexDirs: [],
       },
     });
     expect(result.trackedFiles).toBe(0);
@@ -362,6 +363,7 @@ describe("CLI E2E: status after sync", () => {
         geminiDir: join(dataDir, ".gemini"),
         openCodeMessageDir: join(dataDir, ".local", "share", "opencode", "storage", "message"),
         openclawDir: join(dataDir, ".openclaw"),
+        multicaCodexDirs: [],
       },
     });
     expect(result.trackedFiles).toBe(3); // 2 Claude + 1 Gemini

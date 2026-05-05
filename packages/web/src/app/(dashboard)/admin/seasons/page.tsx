@@ -27,6 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
 import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
+import { toErrorMessage } from "@/lib/error-message";
 import { formatSeasonDate } from "@/lib/seasons";
 import { utcToLocalDatetimeValue, localDatetimeValueToUtc } from "@/lib/date-helpers";
 import type { SeasonStatus } from "@pew/core";
@@ -253,7 +254,7 @@ function CreateSeasonForm({
       const data = (await res.json()) as { name: string };
       onCreated(`Season "${data.name}" created.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create.");
+      setError(toErrorMessage(err, "Failed to create."));
     } finally {
       setSubmitting(false);
     }
@@ -439,7 +440,7 @@ function EditSeasonRow({
       }
       onSaved(`Season "${name.trim()}" updated.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update.");
+      setError(toErrorMessage(err, "Failed to update."));
     } finally {
       setSubmitting(false);
     }
@@ -724,7 +725,7 @@ export default function AdminSeasonsPage() {
     } catch (err) {
       setMessage({
         type: "error",
-        text: err instanceof Error ? err.message : "Failed to create snapshot.",
+        text: toErrorMessage(err, "Failed to create snapshot."),
       });
     } finally {
       setSnapshotting(null);
@@ -758,7 +759,7 @@ export default function AdminSeasonsPage() {
     } catch (err) {
       setMessage({
         type: "error",
-        text: err instanceof Error ? err.message : "Failed to sync rosters.",
+        text: toErrorMessage(err, "Failed to sync rosters."),
       });
     } finally {
       setSyncing(null);

@@ -12,6 +12,7 @@ import type { DeviceTimelinePoint, DeviceAggregate } from "@pew/core";
 import { cn, formatTokens } from "@/lib/utils";
 import { chart, chartAxis, CHART_COLORS } from "@/lib/palette";
 import { deviceLabel } from "@/lib/device-helpers";
+import { useTzOffset } from "@/hooks/use-tz-offset";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 import {
   ChartTooltip,
@@ -174,6 +175,8 @@ export function RecentBarChart({
   onViewModeChange,
   className,
 }: RecentBarChartProps) {
+  const tzOffset = useTzOffset();
+
   // Build device label map
   const deviceLabels = new Map<string, string>();
   for (const d of devices ?? []) {
@@ -184,7 +187,6 @@ export function RecentBarChart({
   const deviceChartData = (() => {
     if (!deviceTimeline?.length) return [];
 
-    const tzOffset = new Date().getTimezoneOffset();
     const SLOT_MS = 30 * 60_000;
 
     // Group by slot

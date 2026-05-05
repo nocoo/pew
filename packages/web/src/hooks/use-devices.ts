@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import useSWR from "swr";
 import type { DevicesResponse } from "@pew/core";
 import { throwApiError } from "@/lib/api-error";
+import { toErrorMessage } from "@/lib/error-message";
 import { fetcher } from "@/lib/fetcher";
 
 interface UseDevicesResult {
@@ -45,8 +46,7 @@ export function useDevices(): UseDevicesResult {
         await mutate();
         return { success: true };
       } catch (err) {
-        const errorMsg =
-          err instanceof Error ? err.message : "Unknown error";
+        const errorMsg = toErrorMessage(err);
         return { success: false, error: errorMsg };
       }
     },
@@ -71,8 +71,7 @@ export function useDevices(): UseDevicesResult {
         await mutate();
         return { success: true };
       } catch (err) {
-        const errorMsg =
-          err instanceof Error ? err.message : "Unknown error";
+        const errorMsg = toErrorMessage(err);
         return { success: false, error: errorMsg };
       }
     },

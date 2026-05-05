@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
 import { Separator } from "@/components/ui/separator";
 
 // ---------------------------------------------------------------------------
@@ -44,7 +45,7 @@ export default function SettingsPage() {
   const [slug, setSlug] = useState("");
   const [isPublic, setIsPublic] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [saveMessage, setSaveMessage] = useState<MessageBannerMsg | null>(null);
 
   // Sync SWR data to local form state once per arrival (render-time update pattern).
   const [syncedSettings, setSyncedSettings] = useState<UserSettings | null>(null);
@@ -304,7 +305,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Save button */}
-          <div className="flex items-center gap-3">
+          <div className="space-y-3">
             <button
               onClick={handleSaveSettings}
               disabled={saving}
@@ -315,18 +316,7 @@ export default function SettingsPage() {
             >
               {saving ? "Saving..." : "Save Changes"}
             </button>
-            {saveMessage && (
-              <span
-                className={cn(
-                  "text-xs",
-                  saveMessage.type === "success"
-                    ? "text-success"
-                    : "text-destructive",
-                )}
-              >
-                {saveMessage.text}
-              </span>
-            )}
+            <MessageBanner message={saveMessage} />
           </div>
         </div>
       </section>

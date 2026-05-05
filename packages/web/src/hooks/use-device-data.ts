@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import type { ByDeviceResponse } from "@pew/core";
 import { useFetchData } from "@/hooks/use-fetch-data";
+import { useTzOffset } from "@/hooks/use-tz-offset";
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -32,17 +33,18 @@ export function useDeviceData(
   options: UseDeviceDataOptions = {}
 ): UseDeviceDataResult {
   const { from: fromDate, to: toDate, granularity } = options;
+  const tzOffset = useTzOffset();
 
   const url = useMemo(() => {
     const params = new URLSearchParams();
     if (fromDate) params.set("from", fromDate);
     if (toDate) params.set("to", toDate);
     if (granularity) params.set("granularity", granularity);
-    params.set("tzOffset", String(new Date().getTimezoneOffset()));
+    params.set("tzOffset", String(tzOffset));
 
     const qs = params.toString();
     return `/api/usage/by-device${qs ? `?${qs}` : ""}`;
-  }, [fromDate, toDate, granularity]);
+  }, [fromDate, toDate, granularity, tzOffset]);
 
   return useFetchData<ByDeviceResponse>(url);
 }

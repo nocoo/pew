@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
 import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
+import { toErrorMessage } from "@/lib/error-message";
 import type { InviteCodeRow } from "@/lib/rpc-types";
 
 // ---------------------------------------------------------------------------
@@ -212,7 +213,7 @@ export default function AdminInvitesPage() {
     } catch (err) {
       setMessage({
         type: "error",
-        text: err instanceof Error ? err.message : "Failed to update setting.",
+        text: toErrorMessage(err, "Failed to update setting."),
       });
     } finally {
       setTogglingRequireInvite(false);
@@ -252,7 +253,7 @@ export default function AdminInvitesPage() {
     } catch (err) {
       setMessage({
         type: "error",
-        text: err instanceof Error ? err.message : "Failed to generate.",
+        text: toErrorMessage(err, "Failed to generate."),
       });
     } finally {
       setGenerating(false);
@@ -293,7 +294,7 @@ export default function AdminInvitesPage() {
     } catch (err) {
       setMessage({
         type: "error",
-        text: err instanceof Error ? err.message : "Failed to delete.",
+        text: toErrorMessage(err, "Failed to delete."),
       });
     }
   };

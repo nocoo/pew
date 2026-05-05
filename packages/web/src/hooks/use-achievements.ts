@@ -2,6 +2,7 @@
 
 import type { AchievementTier, AchievementCategory } from "@/lib/achievement-helpers";
 import { useFetchData } from "@/hooks/use-fetch-data";
+import { useTzOffset } from "@/hooks/use-tz-offset";
 import { useCallback, useMemo } from "react";
 import useSWRInfinite from "swr/infinite";
 import { fetcher } from "@/lib/fetcher";
@@ -82,13 +83,13 @@ interface UseAchievementsOptions {
 
 export function useAchievements(options?: UseAchievementsOptions): UseAchievementsResult {
   const limit = options?.limit;
+  const tzOffset = useTzOffset();
 
   const url = useMemo(() => {
-    const tzOffset = new Date().getTimezoneOffset();
     const params = new URLSearchParams({ tzOffset: String(tzOffset) });
     if (limit) params.set("limit", String(limit));
     return `/api/achievements?${params}`;
-  }, [limit]);
+  }, [limit, tzOffset]);
 
   return useFetchData<AchievementData>(url);
 }

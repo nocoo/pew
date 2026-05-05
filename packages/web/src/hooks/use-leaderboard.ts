@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { BadgeIconType } from "@pew/core";
 import { throwApiError } from "@/lib/api-error";
+import { toErrorMessage } from "@/lib/error-message";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -183,7 +184,7 @@ export function useLeaderboard(
       } catch (err) {
         // Only set error if this request is still current
         if (requestId === requestIdRef.current) {
-          setError(err instanceof Error ? err.message : "Unknown error");
+          setError(toErrorMessage(err));
         }
       } finally {
         // Only clear loading state if this request is still current

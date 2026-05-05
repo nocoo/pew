@@ -5,6 +5,7 @@ import type {
   DynamicPricingEntryDto,
   DynamicPricingMetaDto,
 } from "@/lib/rpc-types";
+import { toErrorMessage } from "@/lib/error-message";
 
 // ---------------------------------------------------------------------------
 // Module-level singleton cache
@@ -50,7 +51,7 @@ async function loadOnce(): Promise<PricingEntriesPayload> {
       notify();
       return json;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Unknown error";
+      const message = toErrorMessage(err);
       cache = { ...cache, loading: false, error: message };
       notify();
       throw err;
