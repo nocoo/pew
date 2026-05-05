@@ -165,6 +165,8 @@ export async function PATCH(
       }
     }
 
+    await dbRead.invalidateCacheKey("seasons:list");
+
     // Return updated season
     const updated = await dbRead.getSeasonById(seasonId);
     if (!updated) {
