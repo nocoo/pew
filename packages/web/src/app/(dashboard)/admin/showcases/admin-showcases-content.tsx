@@ -23,6 +23,8 @@ import {
 import { cn } from "@/lib/utils";
 import { ShowcaseImage } from "@/components/showcase";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
+import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
+import { toErrorMessage } from "@/lib/error-message";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -74,6 +76,7 @@ export function AdminShowcasesContent() {
   const [offset, setOffset] = useState(0);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [message, setMessage] = useState<MessageBannerMsg | null>(null);
   const { confirm, dialogProps } = useConfirm();
 
   const queryString = (() => {
@@ -105,6 +108,7 @@ export function AdminShowcasesContent() {
   // Toggle visibility
   const handleToggleVisibility = useCallback(
     async (id: string, currentPublic: boolean) => {
+      setMessage(null);
       setActionLoading(id);
       try {
         const res = await fetch(`/api/showcases/${id}`, {
@@ -134,7 +138,10 @@ export function AdminShowcasesContent() {
           { revalidate: false }
         );
       } catch (err) {
-        alert(err instanceof Error ? err.message : "Failed to update showcase");
+        setMessage({
+          type: "error",
+          text: toErrorMessage(err, "Failed to update showcase"),
+        });
       } finally {
         setActionLoading(null);
       }
@@ -154,6 +161,7 @@ export function AdminShowcasesContent() {
       });
       if (!confirmed) return;
 
+      setMessage(null);
       setActionLoading(id);
       try {
         const res = await fetch(`/api/showcases/${id}`, { method: "DELETE" });
@@ -177,7 +185,10 @@ export function AdminShowcasesContent() {
           { revalidate: false }
         );
       } catch (err) {
-        alert(err instanceof Error ? err.message : "Failed to delete showcase");
+        setMessage({
+          type: "error",
+          text: toErrorMessage(err, "Failed to delete showcase"),
+        });
       } finally {
         setActionLoading(null);
       }
@@ -285,6 +296,9 @@ export function AdminShowcasesContent() {
           <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
         </button>
       </div>
+
+      {/* Action feedback */}
+      <MessageBanner message={message} />
 
       {/* Table */}
       {showcases.length === 0 ? (
