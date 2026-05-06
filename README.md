@@ -131,7 +131,7 @@ bun run dev
 | 层级 | 内容 | 工具 | 触发时机 |
 |------|------|------|----------|
 | L1 Unit | 业务逻辑、解析器、工具函数 | Vitest | pre-commit |
-| L2 API E2E | HTTP 端到端、Worker 集成 | bun:test | pre-push |
+| L2 API E2E | HTTP 端到端、Worker 集成 | Vitest | pre-push |
 | L3 BDD E2E | 浏览器端用户流程 | Playwright | pre-push |
 | G1 Static | TypeScript strict + ESLint `--max-warnings=0` | tsc + ESLint | pre-push |
 | G2 Security | 依赖审计 + 自定义安全规则 | scripts/run-security.ts | 手动 |
