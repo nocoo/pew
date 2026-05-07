@@ -224,7 +224,7 @@ export function computeCostPerToken(
 /** A single day's cache hit rate for the cache rate trend chart. */
 export interface DailyCacheRate {
   date: string;       // "2026-03-10"
-  cacheRate: number;  // cached_input_tokens / input_tokens * 100
+  cacheRate: number;  // cached_input_tokens / (cached_input_tokens + input_tokens) * 100
   cachedTokens: number;
   inputTokens: number;
 }
@@ -233,8 +233,10 @@ export interface DailyCacheRate {
  * Aggregate usage rows into daily cache hit rates.
  *
  * Groups rows by date (first 10 chars of `hour_start`), sums
- * `cached_input_tokens` and `input_tokens`, and computes the ratio.
- * Days with zero input tokens get `cacheRate = 0`.
+ * `cached_input_tokens` and `input_tokens`, and computes the hit rate as
+ * `cached / (cached + input)` — `input_tokens` stores uncached-only tokens
+ * (mutually exclusive with cached), so the denominator is the total input.
+ * Days with zero total input tokens get `cacheRate = 0`.
  * Returns sorted ascending by date.
  */
 export function toDailyCacheRates(rows: UsageRow[], tzOffset: number = 0): DailyCacheRate[] {
@@ -256,12 +258,15 @@ export function toDailyCacheRates(rows: UsageRow[], tzOffset: number = 0): Daily
 
   return Array.from(byDate.entries())
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, { cachedTokens, inputTokens }]) => ({
-      date,
-      cacheRate: inputTokens > 0 ? (cachedTokens / inputTokens) * 100 : 0,
-      cachedTokens,
-      inputTokens,
-    }));
+    .map(([date, { cachedTokens, inputTokens }]) => {
+      const totalInput = cachedTokens + inputTokens;
+      return {
+        date,
+        cacheRate: totalInput > 0 ? (cachedTokens / totalInput) * 100 : 0,
+        cachedTokens,
+        inputTokens,
+      };
+    });
 }
 
 // ---------------------------------------------------------------------------
