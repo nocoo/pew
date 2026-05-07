@@ -311,7 +311,7 @@ function computeTokensPerHour(
 ```ts
 interface DailyCacheRate {
   date: string;
-  cacheRate: number;         // cached_input_tokens / input_tokens * 100
+  cacheRate: number;         // cached_input_tokens / (cached_input_tokens + input_tokens) * 100
   cachedTokens: number;
   inputTokens: number;
 }
@@ -319,7 +319,7 @@ interface DailyCacheRate {
 function toDailyCacheRates(rows: UsageRow[]): DailyCacheRate[];
 ```
 
-**Algorithm**: Group by date, sum `cached_input_tokens` and `input_tokens` per day, compute ratio. Days with zero input tokens get `cacheRate = 0`.
+**Algorithm**: Group by date, sum `cached_input_tokens` and `input_tokens` per day, compute hit rate as `cached / (cached + uncached input)`. `input_tokens` stores uncached-only tokens (mutually exclusive with cached). Days with zero total input tokens get `cacheRate = 0`.
 
 **UI component** (`packages/web/src/components/dashboard/cache-rate-chart.tsx`):
 - Single `LineChart` (not area) with a horizontal reference line at the period average

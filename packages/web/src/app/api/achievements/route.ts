@@ -283,13 +283,13 @@ export async function GET(request: Request) {
       "night-owl": nightOwlHours,
       "early-bird": earlyBirdHours,
 
-      // Efficiency
-      "cache-master":
-        (usageAgg?.input_tokens ?? 0) > 0
-          ? ((usageAgg?.cached_input_tokens ?? 0) /
-              (usageAgg?.input_tokens ?? 1)) *
-            100
-          : 0,
+      // Efficiency — cache hit rate: cached / (cached + uncached input)
+      "cache-master": (() => {
+        const cached = usageAgg?.cached_input_tokens ?? 0;
+        const uncached = usageAgg?.input_tokens ?? 0;
+        const total = cached + uncached;
+        return total > 0 ? (cached / total) * 100 : 0;
+      })(),
       "quick-draw": sessionAgg?.quick_sessions ?? 0,
       marathon: sessionAgg?.marathon_sessions ?? 0,
 
@@ -524,20 +524,20 @@ export async function GET(request: Request) {
           bronzeThreshold
         );
       }
-      // Cache master — cache hit rate percentage
+      // Cache master — cache hit rate percentage: cached / (cached + uncached input)
       else if (def.id === "cache-master") {
         await queryEarnedBy(
           def,
           `SELECT u.id, u.name, u.image, u.slug,
-                  CASE WHEN SUM(ur.input_tokens) > 0
-                       THEN (SUM(ur.cached_input_tokens) * 100.0 / SUM(ur.input_tokens))
+                  CASE WHEN (SUM(ur.cached_input_tokens) + SUM(ur.input_tokens)) > 0
+                       THEN (SUM(ur.cached_input_tokens) * 100.0 / (SUM(ur.cached_input_tokens) + SUM(ur.input_tokens)))
                        ELSE 0 END AS value
            FROM users u JOIN usage_records ur ON ur.user_id = u.id
            WHERE u.is_public = 1 GROUP BY u.id HAVING value >= ? ORDER BY value DESC LIMIT ? OFFSET ?`,
           `SELECT COUNT(*) AS count FROM (
              SELECT u.id,
-                    CASE WHEN SUM(ur.input_tokens) > 0
-                         THEN (SUM(ur.cached_input_tokens) * 100.0 / SUM(ur.input_tokens))
+                    CASE WHEN (SUM(ur.cached_input_tokens) + SUM(ur.input_tokens)) > 0
+                         THEN (SUM(ur.cached_input_tokens) * 100.0 / (SUM(ur.cached_input_tokens) + SUM(ur.input_tokens)))
                          ELSE 0 END AS value
              FROM users u JOIN usage_records ur ON ur.user_id = u.id
              WHERE u.is_public = 1 GROUP BY u.id HAVING value >= ?

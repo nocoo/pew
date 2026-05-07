@@ -227,12 +227,13 @@ describe("extractAchievementValues", () => {
   it("extracts cache rate for cache-master", () => {
     const inputs = makeInputs({
       summary: makeSummary({
-        input_tokens: 1_000_000,
+        input_tokens: 500_000,
         cached_input_tokens: 500_000,
       }),
     });
     const values = extractAchievementValues(inputs);
 
+    // hit rate = cached / (cached + uncached input) = 500K / 1M = 50%
     expect(values["cache-master"]).toBe(50);
   });
 

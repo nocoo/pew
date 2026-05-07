@@ -397,16 +397,18 @@ describe("toDailyCacheRates", () => {
     expect(toDailyCacheRates([])).toEqual([]);
   });
 
-  it("computes 100% cache rate when all input is cached", () => {
+  it("computes ~100% cache rate when nearly all input is cached", () => {
+    // input_tokens stores uncached-only; cached_input_tokens is mutually exclusive.
+    // hit rate = cached / (cached + input)
     const rows = [
-      makeRow({ hour_start: "2026-03-10", input_tokens: 100_000, cached_input_tokens: 100_000 }),
+      makeRow({ hour_start: "2026-03-10", input_tokens: 0, cached_input_tokens: 100_000 }),
     ];
     const result = toDailyCacheRates(rows);
     expect(result).toHaveLength(1);
     expect(result[0]!.date).toBe("2026-03-10");
     expect(result[0]!.cacheRate).toBeCloseTo(100, 1);
     expect(result[0]!.cachedTokens).toBe(100_000);
-    expect(result[0]!.inputTokens).toBe(100_000);
+    expect(result[0]!.inputTokens).toBe(0);
   });
 
   it("computes 0% cache rate when nothing is cached", () => {
@@ -422,27 +424,27 @@ describe("toDailyCacheRates", () => {
 
   it("aggregates mixed days and sorts ascending", () => {
     const rows = [
-      makeRow({ hour_start: "2026-03-12", input_tokens: 100_000, cached_input_tokens: 80_000 }),
-      makeRow({ hour_start: "2026-03-10", input_tokens: 200_000, cached_input_tokens: 100_000 }),
-      makeRow({ hour_start: "2026-03-10", input_tokens: 100_000, cached_input_tokens: 50_000 }),
+      makeRow({ hour_start: "2026-03-12", input_tokens: 20_000, cached_input_tokens: 80_000 }),
+      makeRow({ hour_start: "2026-03-10", input_tokens: 100_000, cached_input_tokens: 100_000 }),
+      makeRow({ hour_start: "2026-03-10", input_tokens: 50_000, cached_input_tokens: 50_000 }),
       makeRow({ hour_start: "2026-03-11", input_tokens: 400_000, cached_input_tokens: 0 }),
     ];
     const result = toDailyCacheRates(rows);
     expect(result).toHaveLength(3);
-    // Mar 10: 300k input, 150k cached → 50%
+    // Mar 10: 150k uncached + 150k cached → 50%
     expect(result[0]!.date).toBe("2026-03-10");
     expect(result[0]!.cacheRate).toBeCloseTo(50, 1);
-    expect(result[0]!.inputTokens).toBe(300_000);
+    expect(result[0]!.inputTokens).toBe(150_000);
     expect(result[0]!.cachedTokens).toBe(150_000);
-    // Mar 11: 400k input, 0 cached → 0%
+    // Mar 11: 400k uncached + 0 cached → 0%
     expect(result[1]!.date).toBe("2026-03-11");
     expect(result[1]!.cacheRate).toBe(0);
-    // Mar 12: 100k input, 80k cached → 80%
+    // Mar 12: 20k uncached + 80k cached → 80%
     expect(result[2]!.date).toBe("2026-03-12");
     expect(result[2]!.cacheRate).toBeCloseTo(80, 1);
   });
 
-  it("returns 0% cache rate for days with zero input tokens", () => {
+  it("returns 0% cache rate for days with zero total input tokens", () => {
     const rows = [
       makeRow({ hour_start: "2026-03-10", input_tokens: 0, cached_input_tokens: 0 }),
     ];
@@ -456,14 +458,14 @@ describe("toDailyCacheRates", () => {
   it("shifts records across midnight with positive tzOffset (UTC-8)", () => {
     // 2026-03-11T03:00Z → 2026-03-10T19:00 PST → local date 2026-03-10
     const rows = [
-      makeRow({ hour_start: "2026-03-10T20:00:00Z", input_tokens: 100_000, cached_input_tokens: 60_000 }),
-      makeRow({ hour_start: "2026-03-11T03:00:00Z", input_tokens: 100_000, cached_input_tokens: 40_000 }),
+      makeRow({ hour_start: "2026-03-10T20:00:00Z", input_tokens: 40_000, cached_input_tokens: 60_000 }),
+      makeRow({ hour_start: "2026-03-11T03:00:00Z", input_tokens: 60_000, cached_input_tokens: 40_000 }),
     ];
     const result = toDailyCacheRates(rows, 480); // UTC-8
 
     expect(result).toHaveLength(1);
     expect(result[0]!.date).toBe("2026-03-10");
-    expect(result[0]!.inputTokens).toBe(200_000);
+    expect(result[0]!.inputTokens).toBe(100_000);
     expect(result[0]!.cachedTokens).toBe(100_000);
     expect(result[0]!.cacheRate).toBeCloseTo(50, 1);
   });
@@ -471,7 +473,7 @@ describe("toDailyCacheRates", () => {
   it("shifts records across midnight with negative tzOffset (UTC+9)", () => {
     // 2026-03-10T20:00Z → 2026-03-11T05:00 JST → local date 2026-03-11
     const rows = [
-      makeRow({ hour_start: "2026-03-10T20:00:00Z", input_tokens: 100_000, cached_input_tokens: 80_000 }),
+      makeRow({ hour_start: "2026-03-10T20:00:00Z", input_tokens: 20_000, cached_input_tokens: 80_000 }),
     ];
     const result = toDailyCacheRates(rows, -540); // UTC+9
 
