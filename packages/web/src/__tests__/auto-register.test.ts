@@ -302,4 +302,65 @@ describe("autoRegisterTeamsForSeason", () => {
     expect(mockDbWrite.execute.mock.calls[0]![0]).toContain("DELETE FROM season_team_members WHERE id IN");
     expect(mockDbWrite.execute.mock.calls[1]![0]).toContain("DELETE FROM season_teams WHERE id = ?");
   });
+
+  it("falls back to team.created_by when owner lookup returns null", async () => {
+    mockDbRead.firstOrNull
+      .mockResolvedValueOnce(mockUpcomingSeason())
+      .mockResolvedValueOnce(null) // no conflict
+      .mockResolvedValueOnce(null); // owner lookup empty → fallback path
+    mockDbRead.query
+      .mockResolvedValueOnce({
+        results: [{ id: "team-1", created_by: "fallback-creator" }],
+      })
+      .mockResolvedValueOnce({ results: [{ user_id: "u1" }] });
+    mockDbWrite.batch.mockResolvedValueOnce([]);
+
+    const result = await autoRegisterTeamsForSeason(mockDbRead, mockDbWrite, "season-1");
+    expect(result.registered).toBe(1);
+    const batchStatements = mockDbWrite.batch.mock.calls[0]![0] as Array<{
+      sql: string;
+      params: unknown[];
+    }>;
+    // season_teams INSERT's 4th param is registered_by; should be team.created_by.
+    expect(batchStatements[0]!.params[3]).toBe("fallback-creator");
+  });
+
+  it("skips season_team_members DELETE when team has zero members and batch fails", async () => {
+    mockDbRead.firstOrNull
+      .mockResolvedValueOnce(mockUpcomingSeason())
+      .mockResolvedValueOnce({ user_id: "owner-1" });
+    mockDbRead.query
+      .mockResolvedValueOnce({
+        results: [{ id: "team-empty", created_by: "owner-1" }],
+      })
+      .mockResolvedValueOnce({ results: [] });
+    mockDbWrite.batch.mockRejectedValueOnce(new Error("D1 batch failed"));
+    mockDbWrite.execute.mockResolvedValue({ changes: 1, duration: 0.01 });
+
+    const result = await autoRegisterTeamsForSeason(mockDbRead, mockDbWrite, "season-1");
+    expect(result.skipped).toBe(1);
+    expect(result.registered).toBe(0);
+    // Only the season_teams DELETE should fire — no member DELETE since memberIds is empty.
+    expect(mockDbWrite.execute).toHaveBeenCalledTimes(1);
+    expect(mockDbWrite.execute.mock.calls[0]![0]).toContain("DELETE FROM season_teams WHERE id = ?");
+  });
+
+  it("swallows cleanup errors after a batch failure", async () => {
+    mockDbRead.firstOrNull
+      .mockResolvedValueOnce(mockUpcomingSeason())
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ user_id: "owner-1" });
+    mockDbRead.query
+      .mockResolvedValueOnce({
+        results: [{ id: "team-1", created_by: "owner-1" }],
+      })
+      .mockResolvedValueOnce({ results: [{ user_id: "u1" }] });
+    mockDbWrite.batch.mockRejectedValueOnce(new Error("D1 batch failed"));
+    // First execute (member DELETE) throws; outer try/catch swallows it.
+    mockDbWrite.execute.mockRejectedValueOnce(new Error("cleanup failed"));
+
+    const result = await autoRegisterTeamsForSeason(mockDbRead, mockDbWrite, "season-1");
+    expect(result.skipped).toBe(1);
+    expect(result.registered).toBe(0);
+  });
 });
