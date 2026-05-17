@@ -214,6 +214,29 @@ describe("collectGeminiSessions", () => {
     expect(result[0].totalMessages).toBe(4);
   });
 
+  it("should treat messages with non-string type as neither user nor gemini", async () => {
+    // Exercises the `typeof msg.type === "string" ? msg.type : null` false branch.
+    const f = join(tmpDir, "non-string-type.json");
+    await writeFile(
+      f,
+      JSON.stringify({
+        sessionId: "ses-non-str-type",
+        messages: [
+          { type: 42, timestamp: "2026-03-07T10:00:00.000Z" },
+          { type: null, timestamp: "2026-03-07T10:01:00.000Z" },
+          { type: "user", timestamp: "2026-03-07T10:02:00.000Z" },
+        ],
+      }),
+    );
+    const result = await collectGeminiSessions(f);
+    expect(result).toHaveLength(1);
+    // Three valid object messages counted (all pass the object check).
+    expect(result[0].totalMessages).toBe(3);
+    // Only the last one is type="user" → 1 user, 0 assistant.
+    expect(result[0].userMessages).toBe(1);
+    expect(result[0].assistantMessages).toBe(0);
+  });
+
   it("should skip null/non-object messages in the array", async () => {
     const f = join(tmpDir, "session.json");
     await writeFile(
