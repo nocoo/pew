@@ -160,4 +160,66 @@ describe("openCodeSqliteSessionDriver", () => {
     await driver.run(prevCursor, ctx);
     expect(queriedWatermark).toBe(0);
   });
+
+  it("defaults lastProcessedIds to [] when missing from prevCursor (⌀ fallback)", async () => {
+    // Exercises the `prevCursor.lastProcessedIds ?? []` branch when the field is
+    // missing on a same-inode cursor (e.g. a cursor written by an older version).
+    const dbPath = join(tempDir, "opencode.db");
+    await writeFile(dbPath, "fake-sqlite-content");
+    const { ino: dbInode } = await import("node:fs/promises").then((fs) => fs.stat(dbPath));
+
+    const sessions: SessionRow[] = [
+      { id: "ses-1", project_id: null, title: "Test", time_created: 1735689600000, time_updated: 1735689700000 },
+    ];
+
+    const driver = createOpenCodeSqliteSessionDriver({
+      dbPath,
+      openSessionDb: () => ({
+        querySessions: () => sessions,
+        querySessionMessages: () => [
+          { session_id: "ses-1", role: "user", time_created: 1735689600000, data: JSON.stringify({ time: { created: 1735689600000 } }) },
+        ],
+        close: () => {},
+      }),
+    });
+
+    // Cursor without lastProcessedIds (older format).
+    const prevCursor = {
+      lastTimeUpdated: 1735689500000,
+      inode: dbInode,
+      updatedAt: "2026-01-01T00:00:00Z",
+    } as OpenCodeSqliteSessionCursor;
+
+    const result = await driver.run(prevCursor, ctx);
+    // No dedup IDs → the lone session is processed normally.
+    expect(result.snapshots).toHaveLength(1);
+  });
+
+  it("keeps prevCursor.lastTimeUpdated when querySessions returns no rows", async () => {
+    // Exercises the `rawSessions.length > 0 ? ... : lastTimeUpdated` false branch.
+    const dbPath = join(tempDir, "opencode.db");
+    await writeFile(dbPath, "fake-sqlite-content");
+    const { ino: dbInode } = await import("node:fs/promises").then((fs) => fs.stat(dbPath));
+
+    const driver = createOpenCodeSqliteSessionDriver({
+      dbPath,
+      openSessionDb: () => ({
+        querySessions: () => [], // no new sessions → rawSessions is empty
+        querySessionMessages: () => [],
+        close: () => {},
+      }),
+    });
+
+    const prevCursor: OpenCodeSqliteSessionCursor = {
+      lastTimeUpdated: 1735689600000,
+      lastProcessedIds: ["ses-a"],
+      inode: dbInode,
+      updatedAt: "2026-01-01T00:00:00Z",
+    };
+
+    const result = await driver.run(prevCursor, ctx);
+    expect(result.snapshots).toHaveLength(0);
+    // Cursor watermark falls back to the previous lastTimeUpdated.
+    expect(result.cursor.lastTimeUpdated).toBe(1735689600000);
+  });
 });
