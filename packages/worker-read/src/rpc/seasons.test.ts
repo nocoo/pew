@@ -476,6 +476,19 @@ describe("seasons RPC handlers", () => {
 
       expect(response.status).toBe(400);
     });
+
+    it("appends public-only filter to SQL when publicOnly is true", async () => {
+      db.all.mockResolvedValue({ results: [] });
+      const request: GetSeasonMemberSnapshotsRequest = {
+        method: "seasons.getMemberSnapshots",
+        seasonId: "s1",
+        publicOnly: true,
+      };
+      const response = await handleSeasonsRpc(request, db, kv);
+      expect(response.status).toBe(200);
+      const sql = db.prepare.mock.calls.at(-1)?.[0] as string;
+      expect(sql).toContain("u.is_public = 1");
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -572,6 +585,22 @@ describe("seasons RPC handlers", () => {
       const response = await handleSeasonsRpc(request, db, kv);
 
       expect(response.status).toBe(400);
+    });
+
+    it("appends public-only filter for getMemberTokens when publicOnly is true", async () => {
+      db.all.mockResolvedValue({ results: [] });
+      const request: GetSeasonMemberTokensRequest = {
+        method: "seasons.getMemberTokens",
+        seasonId: "s1",
+        teamIds: ["t1"],
+        fromDate: "2026-01-01T00:00:00.000Z",
+        toDate: "2026-04-01T00:00:00.000Z",
+        publicOnly: true,
+      };
+      const response = await handleSeasonsRpc(request, db, kv);
+      expect(response.status).toBe(200);
+      const sql = db.prepare.mock.calls.at(-1)?.[0] as string;
+      expect(sql).toContain("u.is_public = 1");
     });
   });
 
