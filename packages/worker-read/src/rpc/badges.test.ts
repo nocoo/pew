@@ -259,6 +259,52 @@ describe("badges RPC handlers", () => {
       expect(response.status).toBe(200);
       expect(body).toEqual({ result: { badges: {} } });
     });
+
+    it("groups multiple badges under the same user (skips duplicate init branch)", async () => {
+      const mockBadges = [
+        {
+          user_id: "u1",
+          id: "a1",
+          text: "MVP",
+          icon: "shield",
+          color_bg: "#3B82F6",
+          color_text: "#FFFFFF",
+          assigned_at: "2026-04-10T00:00:00Z",
+          expires_at: "2026-04-17T00:00:00Z",
+        },
+        {
+          user_id: "u1",
+          id: "a2",
+          text: "S1",
+          icon: "star",
+          color_bg: "#EAB308",
+          color_text: "#1F2937",
+          assigned_at: "2026-04-09T00:00:00Z",
+          expires_at: "2026-04-16T00:00:00Z",
+        },
+      ];
+      db.all.mockResolvedValue({ results: mockBadges });
+      const request: GetActiveBadgesForUsersRequest = {
+        method: "badges.getActiveForUsers",
+        userIds: ["u1"],
+      };
+      const response = await handleBadgesRpc(request, db);
+      const body = (await response.json()) as { result: { badges: Record<string, unknown[]> } };
+      expect(response.status).toBe(200);
+      expect(body.result.badges.u1).toHaveLength(2);
+    });
+
+    it("falls back to empty results when DB returns no results field", async () => {
+      db.all.mockResolvedValue({}); // result.results undefined → ?? fallback
+      const request: GetActiveBadgesForUsersRequest = {
+        method: "badges.getActiveForUsers",
+        userIds: ["u1"],
+      };
+      const response = await handleBadgesRpc(request, db);
+      const body = (await response.json()) as { result: { badges: Record<string, unknown[]> } };
+      expect(response.status).toBe(200);
+      expect(body.result.badges).toEqual({});
+    });
   });
 
   // -------------------------------------------------------------------------
