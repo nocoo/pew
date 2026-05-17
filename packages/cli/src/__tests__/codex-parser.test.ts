@@ -199,6 +199,20 @@ describe("parseCodexFile", () => {
     expect(result.deltas[0].model).toBe("gpt-5.4");
   });
 
+  it("ignores turn_context with non-string model and retains existing lastModel", async () => {
+    // Exercises the `typeof payload.model === "string" ? ... : null` false branch.
+    const filePath = join(tempDir, "rollout.jsonl");
+    const lines = [
+      sessionMeta({ model: "gpt-5.3-codex" }),
+      turnContext("gpt-5.4", { model: 42 }), // override to a non-string
+      tokenCount({ inputTokens: 500, outputTokens: 100 }, "2026-03-09T10:00:05.000Z"),
+    ];
+    await writeFile(filePath, lines.join("\n") + "\n");
+    const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
+    // turn_context with non-string model is ignored → session_meta model is retained.
+    expect(result.deltas[0].model).toBe("gpt-5.3-codex");
+  });
+
   it("should use lastModel when resuming mid-file with no new model info", async () => {
     const filePath = join(tempDir, "rollout.jsonl");
     const lines = [
