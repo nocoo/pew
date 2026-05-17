@@ -383,6 +383,21 @@ describe("pricing", () => {
       expect(p).toEqual({ input: 3, output: 15 });
     });
 
+    it("normalized-key match: query with dots resolves through normalizeForMatch fallback", () => {
+      // Exercise the `models[norm] return` branch in lookupPricing by constructing
+      // a PricingMap that ONLY has the normalized key (claude-opus-4-7), then
+      // querying with the dot form (claude-opus-4.7). The bare form has a dot
+      // (so models[bare] misses), but normalizeForMatch strips the dot and hits.
+      const map: import("@/lib/pricing").PricingMap = {
+        models: { "claude-opus-4-7": { input: 15, output: 75 } },
+        prefixes: [],
+        sourceDefaults: {},
+        fallback: DEFAULT_FALLBACK,
+      };
+      const p = lookupPricing(map, "claude-opus-4.7");
+      expect(p).toEqual({ input: 15, output: 75 });
+    });
+
     it("dot-hyphen: claude-opus-4-7 finds anthropic/claude-opus-4.7", () => {
       const map = buildPricingMap({
         dynamic: [dynEntry({ model: "anthropic/claude-opus-4.7", inputPerMillion: 15, outputPerMillion: 75 })],
