@@ -244,6 +244,30 @@ describe("computeCacheSavings", () => {
     expect(result.actualCachedCost).toBeCloseTo(0.184, 3);
     expect(result.netSavings).toBeCloseTo(0.916, 3);
   });
+
+  it("falls back to input * 0.1 when pricing.cached is null/undefined", () => {
+    // Use an unknown model + custom source defaults so we can control pricing.
+    // The defaults from getDefaultPricingMap include a cached price; here we
+    // override the fallback to remove cached, exercising the `?? input * 0.1` branch.
+    const custom: PricingMap = {
+      ...getDefaultPricingMap(),
+      fallback: { input: 5, output: 10 },
+    };
+    // Force fallback by using a totally unknown model + source.
+    const models = [
+      makeAggregate({
+        model: "totally-unknown-model-xyz",
+        source: "unknown-source",
+        input: 0,
+        output: 0,
+        cached: 1_000_000,
+      }),
+    ];
+    const result = computeCacheSavings(models, custom);
+    // savedDollars = 1M / 1M * $5 = $5; actualCachedCost = 1M / 1M * ($5 * 0.1) = $0.50
+    expect(result.savedDollars).toBeCloseTo(5, 2);
+    expect(result.actualCachedCost).toBeCloseTo(0.5, 2);
+  });
 });
 
 // ---------------------------------------------------------------------------

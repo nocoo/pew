@@ -108,6 +108,19 @@ describe("toModelEvolutionPoints", () => {
     expect(result[0]!.models["model-d"]).toBeUndefined();
   });
 
+  it("drops models beyond topN when includeOther is false", () => {
+    const rows = [
+      makeRow({ model: "model-a", hour_start: "2026-03-07", total_tokens: 5000 }),
+      makeRow({ model: "model-b", hour_start: "2026-03-07", total_tokens: 100 }),
+    ];
+    const result = toModelEvolutionPoints(rows, 1, 0, false);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.models["model-a"]).toBe(5000);
+    // model-b is below topN and includeOther=false → dropped, no "Other" key.
+    expect(result[0]!.models["Other"]).toBeUndefined();
+    expect(result[0]!.models["model-b"]).toBeUndefined();
+  });
+
   it("should default topN to 5", () => {
     const rows = [
       makeRow({ model: "m1", hour_start: "2026-03-07", total_tokens: 6000 }),
