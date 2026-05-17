@@ -114,6 +114,17 @@ describe("GET /api/admin/storage", () => {
     });
   });
 
+  it("returns 500 when a non-Error value is thrown (err instanceof Error false-branch)", async () => {
+    mockResolveAdmin.mockResolvedValue({ userId: "admin-1" });
+    // Throw a plain string — covers the `err instanceof Error ? ... : ""` false path.
+    mockDbRead.getAdminStorageStats.mockRejectedValue("some non-error value");
+
+    const response = await GET(createRequest());
+    expect(response.status).toBe(500);
+    const data = (await response.json()) as { error: string };
+    expect(data.error).toBe("Failed to load storage stats");
+  });
+
   it("should return 500 on unexpected error", async () => {
     mockResolveAdmin.mockResolvedValue({ userId: "admin-1" });
     mockDbRead.getAdminStorageStats.mockRejectedValue(new Error("Connection timeout"));
