@@ -167,6 +167,18 @@ describe("Users RPC handlers", () => {
       expect(body).toEqual({ result: mockUser });
     });
 
+    it("returns null when no user is found (row ⌀ fallback)", async () => {
+      db.bind.mockReturnValue({ first: vi.fn().mockResolvedValue(null) });
+      const request: GetUserByEmailRequest = {
+        method: "users.getByEmail",
+        email: "missing@example.com",
+      };
+      const response = await handleUsersRpc(request, db);
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body).toEqual({ result: null });
+    });
+
     it("should return 400 when email is missing", async () => {
       const request = { method: "users.getByEmail", email: "" } as GetUserByEmailRequest;
       const response = await handleUsersRpc(request, db);
@@ -418,6 +430,18 @@ describe("Users RPC handlers", () => {
       expect(body).toEqual({ result: { api_key: null } });
     });
 
+    it("returns null when no row exists for the user (row ?? null fallback)", async () => {
+      db.bind.mockReturnValue({ first: vi.fn().mockResolvedValue(null) });
+      const request: GetUserApiKeyRequest = {
+        method: "users.getApiKey",
+        userId: "usr_missing",
+      };
+      const response = await handleUsersRpc(request, db);
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body).toEqual({ result: null });
+    });
+
     it("should return 400 when userId is missing", async () => {
       const request = { method: "users.getApiKey", userId: "" } as GetUserApiKeyRequest;
       const response = await handleUsersRpc(request, db);
@@ -502,6 +526,18 @@ describe("Users RPC handlers", () => {
       };
       const response = await handleUsersRpc(request, db);
 
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body).toEqual({ result: [] });
+    });
+
+    it("returns [] when results is undefined in the DB response", async () => {
+      db.bind.mockReturnValue({ all: vi.fn().mockResolvedValue({}) });
+      const request: SearchUsersRequest = {
+        method: "users.search",
+        query: "none",
+      };
+      const response = await handleUsersRpc(request, db);
       expect(response.status).toBe(200);
       const body = await response.json();
       expect(body).toEqual({ result: [] });
