@@ -435,6 +435,47 @@ describe("upload-engine", () => {
     expect(calls).toHaveLength(3);
   });
 
+  it("falls back to 'Too Many Requests' when 429 body omits error field", async () => {
+    const { queue, config } = createTestEngine(dir);
+    const cm = new ConfigManager(dir);
+    await cm.save({ token: "pk_test" });
+    await queue.append(makeRecord(1));
+    const { fetchFn } = createMockFetch([
+      { status: 429, body: {} }, // no error field → exercises ?? fallback
+      { status: 429, body: {} },
+      { status: 429, body: {} },
+    ]);
+    const engine = createUploadEngine(config);
+    const result = await engine.execute({
+      stateDir: dir,
+      apiUrl: DEFAULT_HOST,
+      fetch: fetchFn,
+      maxRetries: 2,
+      retryDelayMs: 0,
+    });
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("Too Many Requests");
+  });
+
+  it("falls back to 'HTTP <status>' on 4xx when body omits error field", async () => {
+    const { queue, config } = createTestEngine(dir);
+    const cm = new ConfigManager(dir);
+    await cm.save({ token: "pk_test" });
+    await queue.append(makeRecord(1));
+    const { fetchFn } = createMockFetch([
+      { status: 400, body: {} }, // no error field on 4xx
+    ]);
+    const engine = createUploadEngine(config);
+    const result = await engine.execute({
+      stateDir: dir,
+      apiUrl: DEFAULT_HOST,
+      fetch: fetchFn,
+      retryDelayMs: 0,
+    });
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("HTTP 400");
+  });
+
   // ---- Network error ----
 
   it("should handle network errors gracefully", async () => {
