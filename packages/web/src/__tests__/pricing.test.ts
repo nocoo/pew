@@ -276,6 +276,30 @@ describe("pricing", () => {
       expect(map.models["claude-opus-4-7"]).toEqual({ input: 15, output: 75 });
     });
 
+    it("upgrade tie-breaks by input when output ties (registerOrUpgrade equal-output branch)", () => {
+      // Exercises the `pricing.output === existing.output && pricing.input > existing.input`
+      // tie-breaker branch in registerOrUpgrade.
+      const map = buildPricingMap({
+        dynamic: [
+          // Same output (10), but second entry has higher input.
+          dynEntry({ model: "openai/gpt-equal", inputPerMillion: 2, outputPerMillion: 10 }),
+          dynEntry({ model: "azure/gpt-equal", inputPerMillion: 5, outputPerMillion: 10 }),
+        ],
+      });
+      expect(map.models["gpt-equal"]).toEqual({ input: 5, output: 10 });
+    });
+
+    it("keeps existing entry when output ties but input is not higher (skip branch)", () => {
+      // Exercises the false branch of `pricing.input > existing.input` when output is equal.
+      const map = buildPricingMap({
+        dynamic: [
+          dynEntry({ model: "openai/gpt-equal2", inputPerMillion: 5, outputPerMillion: 10 }),
+          dynEntry({ model: "azure/gpt-equal2", inputPerMillion: 2, outputPerMillion: 10 }),
+        ],
+      });
+      expect(map.models["gpt-equal2"]).toEqual({ input: 5, output: 10 });
+    });
+
     it("most expensive wins when two entries share the same bare name", () => {
       const map = buildPricingMap({
         dynamic: [
