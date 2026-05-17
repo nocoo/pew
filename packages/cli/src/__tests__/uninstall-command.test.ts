@@ -68,6 +68,42 @@ describe("executeUninstall", () => {
     expect(result.codexBackup.changed).toBe(true);
   });
 
+  it("dry-run with partial sources preserves shared notify handler + codex backup", async () => {
+    const result = await executeUninstall({
+      stateDir: "/tmp/pew",
+      home: "/tmp",
+      dryRun: true,
+      sources: ["claude-code" as Source], // partial — not all sources
+      resolveNotifierPathsFn: createPaths,
+      getAllDriversFn: () => [
+        { source: "claude-code", displayName: "Claude Code" },
+        { source: "codex", displayName: "Codex" },
+      ] as Array<{ source: Source; displayName: string }>,
+    });
+    // Partial dry-run → "shared artifact kept" / "not selected" detail strings.
+    expect(result.notifyHandler.detail).toBe("shared artifact kept");
+    expect(result.codexBackup.detail).toBe("not selected");
+    expect(result.notifyHandler.changed).toBe(false);
+    expect(result.codexBackup.changed).toBe(false);
+  });
+
+  it("dry-run with only codex selected marks codex backup as dry-run", async () => {
+    const result = await executeUninstall({
+      stateDir: "/tmp/pew",
+      home: "/tmp",
+      dryRun: true,
+      sources: ["codex" as Source],
+      resolveNotifierPathsFn: createPaths,
+      getAllDriversFn: () => [
+        { source: "claude-code", displayName: "Claude Code" },
+        { source: "codex", displayName: "Codex" },
+      ] as Array<{ source: Source; displayName: string }>,
+    });
+    // shouldRemoveCodexBackup is true → dry-run; not fullUninstall → shared kept.
+    expect(result.codexBackup.detail).toBe("dry-run");
+    expect(result.notifyHandler.detail).toBe("shared artifact kept");
+  });
+
   it("does not write files during dry-run", async () => {
     const uninstallAllFn = vi.fn();
     const uninstallDriverFn = vi.fn();
