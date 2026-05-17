@@ -253,6 +253,74 @@ describe("usage RPC handlers", () => {
 
       expect(response.status).toBe(400);
     });
+
+    it("applies a non-zero tzOffset to daily aggregation (inlines offset into GROUP BY)", async () => {
+      db.all.mockResolvedValue({ results: [] });
+      const request: GetDeviceTimelineRequest = {
+        method: "usage.getDeviceTimeline",
+        userId: "u1",
+        fromDate: "2026-04-01T00:00:00.000Z",
+        toDate: "2026-04-02T00:00:00.000Z",
+        tzOffset: -480, // UTC-8
+      };
+      const response = await handleUsageRpc(request, db);
+      expect(response.status).toBe(200);
+      // The SQL should include the offset literal in GROUP BY.
+      const sqlCall = db.prepare.mock.calls.at(-1)?.[0] as string;
+      expect(sqlCall).toContain("480 minutes"); // -tzOffset = 480
+      // Bind should include the offset param first, then userId/from/to.
+      const bindArgs = db.bind.mock.calls.at(-1) as unknown[];
+      expect(bindArgs[0]).toBe("480");
+      expect(bindArgs[1]).toBe("u1");
+    });
+
+    it("clamps invalid tzOffset (NaN) to 0", async () => {
+      db.all.mockResolvedValue({ results: [] });
+      const request = {
+        method: "usage.getDeviceTimeline",
+        userId: "u1",
+        fromDate: "2026-04-01T00:00:00.000Z",
+        toDate: "2026-04-02T00:00:00.000Z",
+        tzOffset: Number.NaN,
+      } as GetDeviceTimelineRequest;
+      const response = await handleUsageRpc(request, db);
+      expect(response.status).toBe(200);
+      const sqlCall = db.prepare.mock.calls.at(-1)?.[0] as string;
+      // Falls back to non-tz path: no "minutes" literal.
+      expect(sqlCall).not.toContain("minutes");
+    });
+
+    it("clamps out-of-range tzOffset (|tz| > 840) to 0", async () => {
+      db.all.mockResolvedValue({ results: [] });
+      const request: GetDeviceTimelineRequest = {
+        method: "usage.getDeviceTimeline",
+        userId: "u1",
+        fromDate: "2026-04-01T00:00:00.000Z",
+        toDate: "2026-04-02T00:00:00.000Z",
+        tzOffset: 9999,
+      };
+      const response = await handleUsageRpc(request, db);
+      expect(response.status).toBe(200);
+      const sqlCall = db.prepare.mock.calls.at(-1)?.[0] as string;
+      expect(sqlCall).not.toContain("minutes");
+    });
+
+    it("supports half-hour granularity (no date() wrapping)", async () => {
+      db.all.mockResolvedValue({ results: [] });
+      const request: GetDeviceTimelineRequest = {
+        method: "usage.getDeviceTimeline",
+        userId: "u1",
+        fromDate: "2026-04-01T00:00:00.000Z",
+        toDate: "2026-04-02T00:00:00.000Z",
+        granularity: "half-hour",
+      };
+      const response = await handleUsageRpc(request, db);
+      expect(response.status).toBe(200);
+      const sqlCall = db.prepare.mock.calls.at(-1)?.[0] as string;
+      // non-day granularity selects ur.hour_start directly (no date() wrapper).
+      expect(sqlCall).toMatch(/ur\.hour_start\s+AS date/);
+      expect(sqlCall).not.toContain("date(ur.hour_start)");
+    });
   });
 
   // -------------------------------------------------------------------------
