@@ -198,4 +198,3 @@ After the initial milestone push, additional iterations landed:
 - Tests     : 4004 → 4087 (+83)
 - Experiments: 62 total (~94% acceptance rate)
 - Atomic commits: 50+ pushed to origin/main
-

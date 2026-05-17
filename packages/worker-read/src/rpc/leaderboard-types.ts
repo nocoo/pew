@@ -114,4 +114,3 @@ export type LeaderboardRpcRequest =
   | GetGlobalLeaderboardRequest
   | GetUserTeamsRequest
   | GetUserSessionStatsRequest;
-

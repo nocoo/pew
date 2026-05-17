@@ -154,4 +154,3 @@ export type UsersRpcRequest =
   | CheckSharedSeasonRequest
   | GetUserFirstSeenRequest
   | GetPublicUserBySlugOrIdRequest;
-
