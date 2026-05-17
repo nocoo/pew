@@ -61,10 +61,27 @@ describe("collectCopilotCliSessions", () => {
 2026-04-11T11:12:04.617Z [INFO] Starting Copilot CLI: 1.0.24
 2026-04-11T11:12:05.288Z [INFO] Welcome nocoo (via gh)!
 2026-04-11T11:12:07.123Z [INFO] Using default model: claude-sonnet-4.6
+2026-04-11T11:12:12.887Z [INFO] [Telemetry] cli.telemetry:
+{
+  "kind": "user_message",
+  "properties": { "event_id": "aaa" }
+}
 2026-04-11T11:12:28.633Z [INFO] --- Start of group: Sending request to the AI model ---
 2026-04-11T11:12:32.177Z [INFO] --- End of group ---
+2026-04-11T11:12:33.071Z [INFO] --- Start of group: Sending request to the AI model ---
+2026-04-11T11:12:34.119Z [INFO] --- End of group ---
+2026-04-11T11:12:35.712Z [INFO] [Telemetry] cli.telemetry:
+{
+  "kind": "user_message",
+  "properties": { "event_id": "bbb" }
+}
 2026-04-11T11:12:35.071Z [INFO] --- Start of group: Sending request to the AI model ---
 2026-04-11T11:12:40.119Z [INFO] --- End of group ---
+2026-04-11T11:12:40.712Z [INFO] [Telemetry] cli.telemetry:
+{
+  "kind": "user_message",
+  "properties": { "event_id": "ccc" }
+}
 2026-04-11T11:12:41.064Z [INFO] --- Start of group: Sending request to the AI model ---
 2026-04-11T11:12:44.641Z [INFO] --- End of group ---
 2026-04-11T11:13:03.142Z [INFO] Unregistering foreground session: 35c0aae8-83ce-4d63-b26c-8612f06cbbda
@@ -96,6 +113,11 @@ describe("collectCopilotCliSessions", () => {
       `2026-04-11T11:12:04.598Z [INFO] Session indexing debug: SESSION_INDEXING=false
 2026-04-11T11:12:04.615Z [INFO] Workspace initialized: abc12345-1234-5678-90ab-cdef01234567 (checkpoints: 0)
 2026-04-11T11:12:05.288Z [INFO] Welcome nocoo (via gh)!
+2026-04-11T11:12:12.000Z [INFO] [Telemetry] cli.telemetry:
+{
+  "kind": "user_message",
+  "properties": { "event_id": "aaa" }
+}
 2026-04-11T11:12:28.633Z [INFO] --- Start of group: Sending request to the AI model ---
 2026-04-11T11:12:32.177Z [INFO] --- End of group ---
 `,
@@ -112,20 +134,26 @@ describe("collectCopilotCliSessions", () => {
     let content = `2026-04-11T11:12:04.598Z [INFO] Workspace initialized: 12345678-1234-5678-1234-123456789abc (checkpoints: 0)
 2026-04-11T11:12:07.123Z [INFO] Using default model: gpt-4o
 `;
-    // Add 10 AI requests
-    for (let i = 0; i < 10; i++) {
-      const seconds = 12 + i;
+    // Add 5 user messages, each triggering 2 API requests (1 initial + 1 tool-call continuation)
+    for (let i = 0; i < 5; i++) {
+      const seconds = 12 + i * 2;
+      content += `2026-04-11T11:${seconds.toString().padStart(2, "0")}:00.000Z [INFO] [Telemetry] cli.telemetry:\n`;
+      content += `{\n  "kind": "user_message",\n  "properties": { "event_id": "evt-${i}" }\n}\n`;
       content += `2026-04-11T11:${seconds.toString().padStart(2, "0")}:28.633Z [INFO] --- Start of group: Sending request to the AI model ---\n`;
       content += `2026-04-11T11:${seconds.toString().padStart(2, "0")}:32.177Z [INFO] --- End of group ---\n`;
+      // Tool-call continuation (should NOT count as a user message)
+      content += `2026-04-11T11:${(seconds + 1).toString().padStart(2, "0")}:28.633Z [INFO] --- Start of group: Sending request to the AI model ---\n`;
+      content += `2026-04-11T11:${(seconds + 1).toString().padStart(2, "0")}:32.177Z [INFO] --- End of group ---\n`;
     }
     await writeFile(filePath, content);
 
     const result = await collectCopilotCliSessions(filePath);
 
     expect(result).toHaveLength(1);
-    expect(result[0].userMessages).toBe(10);
-    expect(result[0].assistantMessages).toBe(10);
-    expect(result[0].totalMessages).toBe(20); // user + assistant per spec
+    // 5 user messages, NOT 10 (tool-call continuations excluded)
+    expect(result[0].userMessages).toBe(5);
+    expect(result[0].assistantMessages).toBe(5);
+    expect(result[0].totalMessages).toBe(10); // user + assistant per spec
   });
 
   it("handles AI request line without a timestamp (falls back to firstTimestamp)", async () => {
