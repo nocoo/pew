@@ -279,6 +279,13 @@ function makeCostPoint(date: string, totalCost: number): DailyCostPoint {
 }
 
 describe("forecastMonthlyCost", () => {
+  it("defaults now to the current Date when not provided", () => {
+    // Empty data path triggers no math; we just want to exercise the
+    // `now ?? new Date()` default-parameter branch.
+    const result = forecastMonthlyCost([]);
+    expect(result).toBeNull();
+  });
+
   it("returns null for empty data", () => {
     const result = forecastMonthlyCost([], new Date("2026-03-15"));
     expect(result).toBeNull();
