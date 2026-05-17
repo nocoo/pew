@@ -104,3 +104,32 @@ Environment overrides: `PEW_G2_NO_CACHE=1`, `PEW_L1_NO_CACHE=1`, `PEW_G1A_NO_CAC
   1. Running independent tasks in parallel
   2. Skipping unnecessary checks (lockfile when no deps changed)
   3. Parallel TypeScript compilation across packages
+
+## File-size refactor backlog (>400 LOC, deferred from coverage session 2026-05-17)
+
+Coverage now sits at 95.07% branches / 99.41% lines (was 94.19/98.98 at session start). The 24
+oversized files / 41 oversized functions remain. Refactor proposals (atomic, test-preserving):
+
+- [ ] `packages/web/src/lib/usage-helpers.ts` (1237 LOC) — split by domain:
+      `usage-helpers/timeline.ts` (timeline aggregation),
+      `usage-helpers/hourly.ts` (24-hour buckets / `aggregateHourlyTokens`),
+      `usage-helpers/devices.ts` (device summary / cost details),
+      `usage-helpers/index.ts` (re-exports). Verify each consumer's import path migrates cleanly.
+- [ ] `packages/cli/src/commands/sync.ts` (763 LOC) — extract source-discovery,
+      cursor-migration, and per-source rescan logic into `sync/discovery.ts`,
+      `sync/cursor-upgrade.ts`, `sync/orchestrator.ts`. Keep `executeSync` as a thin glue layer.
+- [ ] `packages/worker-read/src/rpc/seasons.ts` (742 LOC) — one handler per file under
+      `rpc/seasons/{list,get,member-snapshots,team-tokens,session-stats,...}.ts` + index router.
+- [ ] `packages/worker-read/src/rpc/projects.ts` (657 LOC) — similar handler-per-file split.
+- [ ] `packages/web/src/lib/db.ts` (737 LOC) — separate `db-read.ts` (DbRead impls) and
+      `db-write.ts` (DbWrite impls); keep `db.ts` as the singleton factory façade.
+- [ ] `packages/web/src/app/api/achievements/[id]/members/route.ts` (661 LOC) — extract
+      validation helpers (`validate-paging.ts`) and query-builder (`members-query.ts`).
+- [ ] Functions >100 LOC (41) — most are giant handler bodies inside the files above; splitting
+      the file usually reduces these to <100 LOC each.
+
+### Coverage gaps that are dead/defensive code (don't chase)
+- `usage-helpers.ts` lines 1047/1143/1217: `if (bucket)` false-branch — `hourly` is a 24-element
+  pre-initialized array; `localDate.getUTCHours()` is always [0,23]; the false branch is
+  structurally unreachable.
+- `cli/commands/sync.ts` 137-138: exhaustiveness `never` check — provably unreachable.

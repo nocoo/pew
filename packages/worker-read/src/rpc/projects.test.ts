@@ -161,6 +161,23 @@ describe("projects RPC handlers", () => {
       expect(body).toEqual({ result: mockRefs });
     });
 
+    it("uses date-filtered SQL when from/to are provided", async () => {
+      db.all.mockResolvedValue({ results: [] });
+      const request: ListUnassignedRefsRequest = {
+        method: "projects.listUnassignedRefs",
+        userId: "u1",
+        from: "2026-01-01T00:00:00Z",
+        to: "2026-02-01T00:00:00Z",
+      };
+      await handleProjectsRpc(request, db);
+      const sql = db.prepare.mock.calls.at(-1)?.[0] as string;
+      // Date-bounded branch includes sr.started_at predicates.
+      expect(sql).toContain("started_at >= ?");
+      expect(sql).toContain("started_at < ?");
+      const bindArgs = db.bind.mock.calls.at(-1) as unknown[];
+      expect(bindArgs).toEqual(["u1", "2026-01-01T00:00:00Z", "2026-02-01T00:00:00Z"]);
+    });
+
     it("should return 400 when userId is missing", async () => {
       const request = {
         method: "projects.listUnassignedRefs",
