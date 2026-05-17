@@ -198,4 +198,58 @@ describe("mergePricingSources", () => {
     expect(r2.entries[0].aliases).toEqual(["claude-sonnet-4"]);
     expect(r1.entries[0]).not.toBe(original);
   });
+
+  it("appends to existing aliases instead of replacing them (cloneEntry path)", () => {
+    const baseline = [
+      entry("anthropic/claude-sonnet-4", "baseline", 3, 15, { aliases: ["sonnet-alias"] }),
+    ];
+    const r = mergePricingSources({
+      baseline,
+      openRouter: [],
+      modelsDev: [],
+      now: NOW,
+    });
+    // Original alias preserved; "claude-sonnet-4" appended via the
+    // `entry.aliases ? [...entry.aliases, bare] : [bare]` true-branch.
+    expect(r.entries[0].aliases).toContain("sonnet-alias");
+    expect(r.entries[0].aliases).toContain("claude-sonnet-4");
+  });
+
+  it("sorts entries by model when providers are identical (a.model > b.model branch)", () => {
+    // Same provider, different model names → exercises both ternary branches
+    // (a<b -> -1) and (a>b -> 1) for the model-level comparator.
+    const baseline = [
+      entry("anthropic/zebra", "baseline", 1, 1),
+      entry("anthropic/apple", "baseline", 1, 1),
+      entry("anthropic/banana", "baseline", 1, 1),
+    ];
+    const r = mergePricingSources({
+      baseline,
+      openRouter: [],
+      modelsDev: [],
+      now: NOW,
+    });
+    const models = r.entries.map((e) => e.model);
+    expect(models).toEqual([
+      "anthropic/apple",
+      "anthropic/banana",
+      "anthropic/zebra",
+    ]);
+  });
+
+  it("keeps existing entry when incoming is zero-priced but existing has only outputPerMillion > 0", () => {
+    // Exercises the OR short-circuit in shouldIgnoreIncoming():
+    //   existing.inputPerMillion === 0 → falls through to outputPerMillion > 0.
+    const baseline = [entry("anthropic/claude", "baseline", 0, 5)];
+    const openRouter = [entry("anthropic/claude", "openrouter", 0, 0)];
+    const r = mergePricingSources({
+      baseline,
+      openRouter,
+      modelsDev: [],
+      now: NOW,
+    });
+    // Incoming zero-priced ignored; baseline retained.
+    expect(r.entries[0].outputPerMillion).toBe(5);
+    expect(r.entries[0].origin).toBe("baseline");
+  });
 });
