@@ -34,6 +34,30 @@ describe("POST /api/auth/code", () => {
     inMemoryRateLimiter.reset();
   });
 
+  it("should return 429 when rate limit is exceeded", async () => {
+    mockResolveUser.mockResolvedValue({
+      userId: "user-123",
+      email: "test@example.com",
+    });
+    const mockDbWrite = createMockDbWrite();
+    mockDbWrite.execute.mockResolvedValue({ changes: 1 });
+    mockGetDbWrite.mockResolvedValue(mockDbWrite as unknown as DbWrite);
+
+    // Exhaust the limit (10 per hour) from the same IP.
+    const headers = { "x-forwarded-for": "203.0.113.42" };
+    const makeReq = () =>
+      new Request("http://localhost/api/auth/code", { method: "POST", headers });
+    for (let i = 0; i < 10; i++) {
+      const r = await POST(makeReq());
+      expect(r.status).toBeLessThan(400);
+    }
+    const blocked = await POST(makeReq());
+    expect(blocked.status).toBe(429);
+    const body = (await blocked.json()) as { error: string };
+    expect(body.error).toMatch(/Too many requests/);
+    expect(blocked.headers.get("Retry-After")).toBeTruthy();
+  });
+
   it("should return 401 when not authenticated", async () => {
     mockResolveUser.mockResolvedValue(null);
 
