@@ -163,4 +163,40 @@ describe("collectCopilotCliSessions", () => {
     // hit the `timestamp && !firstTimestamp` short-circuit (false branch).
     expect(result[0].startedAt).toBe("2026-04-11T10:00:00.000Z");
   });
+
+  it("ignores Workspace-initialized lines with malformed UUID (regex returns null)", async () => {
+    // Exercises the `if (match)` false branch for the Workspace-initialized regex.
+    const filePath = join(tempDir, "bad-uuid.log");
+    await writeFile(
+      filePath,
+      `2026-04-11T11:12:04.615Z [INFO] Workspace initialized: not-a-uuid (checkpoints: 0)
+2026-04-11T11:12:05.000Z [INFO] Workspace initialized: 35c0aae8-83ce-4d63-b26c-8612f06cbbda (checkpoints: 0)
+2026-04-11T11:12:07.123Z [INFO] Using default model: claude-sonnet-4.6
+2026-04-11T11:12:28.633Z [INFO] --- Start of group: Sending request to the AI model ---
+2026-04-11T11:12:32.177Z [INFO] --- End of group ---
+`,
+    );
+    const result = await collectCopilotCliSessions(filePath);
+    // The first line has no valid UUID → regex fails → sessionId remains unset
+    // until the second valid line. We still get a session out of it.
+    expect(result).toHaveLength(1);
+    expect(result[0].sessionKey).toContain("35c0aae8-83ce-4d63-b26c-8612f06cbbda");
+  });
+
+  it("ignores 'Using default model:' lines with no captured model token", async () => {
+    // Exercises the `if (match)` false branch for the Using-default-model regex.
+    // The regex requires a non-whitespace token after the colon; if absent, match is null.
+    const filePath = join(tempDir, "no-model-token.log");
+    await writeFile(
+      filePath,
+      `2026-04-11T11:12:04.615Z [INFO] Workspace initialized: 35c0aae8-83ce-4d63-b26c-8612f06cbbda (checkpoints: 0)
+2026-04-11T11:12:07.123Z [INFO] Using default model:
+2026-04-11T11:12:28.633Z [INFO] --- Start of group: Sending request to the AI model ---
+2026-04-11T11:12:32.177Z [INFO] --- End of group ---
+`,
+    );
+    const result = await collectCopilotCliSessions(filePath);
+    expect(result).toHaveLength(1);
+    expect(result[0].model).toBeNull();
+  });
 });
