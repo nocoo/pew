@@ -93,6 +93,7 @@ function parseCoverage(output: string): {
   lines: number;
   testsPassed: number;
   testsFailed: number;
+  coverageParsed: boolean;
 } {
   // Tests line: "Tests  4004 passed (4004)" or with failures
   const passMatch = output.match(/Tests[^\n]*?(\d+)\s+passed/);
@@ -103,16 +104,35 @@ function parseCoverage(output: string): {
   // "All files          |   98.29 |    94.19 |   98.67 |   98.98 |"
   const allFiles = output.split("\n").reverse().find((l) => /^All files\s*\|/.test(l));
   if (!allFiles) {
-    return { statements: 0, branches: 0, functions: 0, lines: 0, testsPassed, testsFailed };
+    return {
+      statements: 0,
+      branches: 0,
+      functions: 0,
+      lines: 0,
+      testsPassed,
+      testsFailed,
+      coverageParsed: false,
+    };
   }
   const parts = allFiles.split("|").map((s) => s.trim());
+  const statements = Number(parts[1]);
+  const branches = Number(parts[2]);
+  const functions = Number(parts[3]);
+  const lines = Number(parts[4]);
+  // Treat NaN/Infinity in any of the four numbers as a parse failure.
+  // (e.g. if Vitest changes its reporter format and the "All files" row
+  //  no longer has four percent columns in the expected slots.)
+  const coverageParsed = [statements, branches, functions, lines].every(
+    (n) => Number.isFinite(n),
+  );
   return {
-    statements: Number(parts[1]),
-    branches: Number(parts[2]),
-    functions: Number(parts[3]),
-    lines: Number(parts[4]),
+    statements,
+    branches,
+    functions,
+    lines,
     testsPassed,
     testsFailed,
+    coverageParsed,
   };
 }
 
@@ -145,8 +165,15 @@ console.log(`METRIC funcs_over_100=${cx.funcsOver100}`);
 console.log(`METRIC tests_passed=${cov.testsPassed}`);
 console.log(`METRIC tests_failed=${cov.testsFailed}`);
 
-// Exit non-zero if any tests failed OR coverage couldn't be parsed.
-if (cov.testsFailed > 0 || result.status !== 0) {
+// Exit non-zero if any tests failed, Vitest exited non-zero, OR the coverage
+// summary row couldn't be parsed (e.g. reporter format changed). Without this
+// guard, autoresearch would record an all-zero measurement as a successful run.
+if (cov.testsFailed > 0 || result.status !== 0 || !cov.coverageParsed) {
+  if (!cov.coverageParsed) {
+    console.error(
+      "[measure-coverage] failed to parse coverage summary row from Vitest output",
+    );
+  }
   process.exit(1);
 }
 process.exit(0);
