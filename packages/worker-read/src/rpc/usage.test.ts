@@ -97,6 +97,55 @@ describe("usage RPC handlers", () => {
       expect(response.status).toBe(200);
     });
 
+    it("day granularity + non-zero tzOffset inlines offset literal into GROUP BY", async () => {
+      db.all.mockResolvedValue({ results: [] });
+      const request: GetUsageRequest = {
+        method: "usage.get",
+        userId: "u1",
+        fromDate: "2026-04-01T00:00:00.000Z",
+        toDate: "2026-04-02T00:00:00.000Z",
+        granularity: "day",
+        tzOffset: -480,
+      };
+      await handleUsageRpc(request, db);
+      const sqlCall = db.prepare.mock.calls.at(-1)?.[0] as string;
+      expect(sqlCall).toContain("480 minutes");
+      const bindArgs = db.bind.mock.calls.at(-1) as unknown[];
+      expect(bindArgs[0]).toBe("480");
+    });
+
+    it("filters by source when provided", async () => {
+      db.all.mockResolvedValue({ results: [] });
+      const request: GetUsageRequest = {
+        method: "usage.get",
+        userId: "u1",
+        fromDate: "2026-04-01T00:00:00.000Z",
+        toDate: "2026-04-02T00:00:00.000Z",
+        source: "claude-code",
+      };
+      await handleUsageRpc(request, db);
+      const sqlCall = db.prepare.mock.calls.at(-1)?.[0] as string;
+      expect(sqlCall).toContain("source = ?");
+      const bindArgs = db.bind.mock.calls.at(-1) as unknown[];
+      expect(bindArgs).toContain("claude-code");
+    });
+
+    it("filters by deviceId when provided", async () => {
+      db.all.mockResolvedValue({ results: [] });
+      const request: GetUsageRequest = {
+        method: "usage.get",
+        userId: "u1",
+        fromDate: "2026-04-01T00:00:00.000Z",
+        toDate: "2026-04-02T00:00:00.000Z",
+        deviceId: "dev-1",
+      };
+      await handleUsageRpc(request, db);
+      const sqlCall = db.prepare.mock.calls.at(-1)?.[0] as string;
+      expect(sqlCall).toContain("device_id = ?");
+      const bindArgs = db.bind.mock.calls.at(-1) as unknown[];
+      expect(bindArgs).toContain("dev-1");
+    });
+
     it("should return 400 when params missing", async () => {
       const request = {
         method: "usage.get",
