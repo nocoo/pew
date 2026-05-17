@@ -13,6 +13,7 @@ import {
   fillDateRange,
   fillTimelineGaps,
   aggregateHourlyTokens,
+  fmtHour,
 } from "@/lib/date-helpers";
 import type { UsageRow } from "@/hooks/use-usage-data";
 
@@ -578,6 +579,25 @@ describe("fillTimelineGaps", () => {
 // ---------------------------------------------------------------------------
 // aggregateHourlyTokens
 // ---------------------------------------------------------------------------
+
+describe("fmtHour", () => {
+  it("0 → 12a (midnight)", () => {
+    expect(fmtHour(0)).toBe("12a");
+  });
+  it("12 → 12p (noon)", () => {
+    expect(fmtHour(12)).toBe("12p");
+  });
+  it("morning hours render as Xa", () => {
+    expect(fmtHour(1)).toBe("1a");
+    expect(fmtHour(9)).toBe("9a");
+    expect(fmtHour(11)).toBe("11a");
+  });
+  it("afternoon/evening hours render as Xp", () => {
+    expect(fmtHour(13)).toBe("1p");
+    expect(fmtHour(14)).toBe("2p");
+    expect(fmtHour(23)).toBe("11p");
+  });
+});
 
 describe("aggregateHourlyTokens", () => {
   it("returns 24-element zero array for empty input", () => {
