@@ -177,6 +177,16 @@ describe("auth RPC handlers", () => {
       expect(response.status).toBe(200);
       expect(body).toEqual({ result: null });
     });
+
+    it("returns 400 when id is missing/undefined", async () => {
+      const request = {
+        method: "auth.getInviteCodeById",
+      } as unknown as GetInviteCodeByIdRequest;
+      const response = await handleAuthRpc(request, db);
+      expect(response.status).toBe(400);
+      const body = (await response.json()) as { error: string };
+      expect(body.error).toContain("id is required");
+    });
   });
 
   // -------------------------------------------------------------------------
