@@ -202,6 +202,18 @@ describe("badges RPC handlers", () => {
       expect(response.status).toBe(200);
       expect(body).toEqual({ result: { badges: [] } });
     });
+
+    it("falls back to empty array when DB results field is undefined", async () => {
+      db.all.mockResolvedValue({}); // results undefined → ?? [] fallback
+      const request: GetActiveBadgesForUserRequest = {
+        method: "badges.getActiveForUser",
+        userId: "u1",
+      };
+      const response = await handleBadgesRpc(request, db);
+      const body = (await response.json()) as { result: { badges: unknown[] } };
+      expect(response.status).toBe(200);
+      expect(body.result.badges).toEqual([]);
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -312,6 +324,19 @@ describe("badges RPC handlers", () => {
   // -------------------------------------------------------------------------
 
   describe("badges.listAssignments", () => {
+    it("falls back to empty assignments when DB results undefined", async () => {
+      db.all.mockResolvedValue({}); // results undefined → (?? []) fallback
+      const request: ListAssignmentsRequest = {
+        method: "badges.listAssignments",
+        limit: 50,
+        offset: 0,
+      };
+      const response = await handleBadgesRpc(request, db);
+      const body = (await response.json()) as { result: { assignments: unknown[] } };
+      expect(response.status).toBe(200);
+      expect(body.result.assignments).toEqual([]);
+    });
+
     it("should list all assignments with derived status", async () => {
       const mockAssignments = [
         {
