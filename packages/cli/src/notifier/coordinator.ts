@@ -20,6 +20,7 @@ import {
   type LockFsOps,
   type ProcessOps,
 } from "./lockfile.js";
+import { deriveStatus, toErrorMessage, readLastSuccessAt, readSignalSize, appendSignal, truncateSignal } from "./coordinator-helpers.js";
 
 // ---------------------------------------------------------------------------
 // Fs abstraction (signal + run log operations)
@@ -300,27 +301,6 @@ async function runLockedCycles({
 // Status derivation + run log (unchanged from original)
 // ---------------------------------------------------------------------------
 
-function deriveStatus(result: CoordinatorRunResult): RunLogEntry["status"] {
-  if (result.skippedSync) return "skipped";
-
-  // Coordinator-level error with no cycles means the run itself failed
-  if (result.error != null && result.cycles.length === 0) return "error";
-  if (result.cycles.length === 0) return "skipped";
-
-  const hasError =
-    result.cycles.some(
-      (c) => c.tokenSyncError != null || c.sessionSyncError != null,
-    ) || result.error != null;
-
-  const hasSuccess = result.cycles.some(
-    (c) => c.tokenSync != null || c.sessionSync != null,
-  );
-
-  if (hasError && hasSuccess) return "partial";
-  if (hasError) return "error";
-  return "success";
-}
-
 async function writeRunLog(
   result: CoordinatorRunResult,
   startTime: number,
@@ -410,48 +390,6 @@ async function checkCooldown(
  * Read the last-success.json file (plain ISO timestamp string).
  * Returns null on any error (missing file, corrupted, etc.).
  */
-async function readLastSuccessAt(
-  stateDir: string,
-  fs: FsOps,
-): Promise<string | null> {
-  try {
-    const content = await fs.readFile(join(stateDir, "last-success.json"));
-    const trimmed = String(content).trim();
-    if (trimmed.length === 0) return null;
-    return trimmed;
-  } catch {
-    return null;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Signal file helpers (unchanged from original)
-// ---------------------------------------------------------------------------
-
-async function readSignalSize(stateDir: string, fs: FsOps): Promise<number> {
-  try {
-    const file = await fs.stat(join(stateDir, "notify.signal"));
-    return file.size;
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException | undefined)?.code === "ENOENT") {
-      return 0;
-    }
-    throw err;
-  }
-}
-
-async function appendSignal(stateDir: string, fs: FsOps): Promise<void> {
-  await fs.appendFile(join(stateDir, "notify.signal"), "\n");
-}
-
-async function truncateSignal(stateDir: string, fs: FsOps): Promise<void> {
-  await fs.writeFile(join(stateDir, "notify.signal"), "");
-}
-
 // ---------------------------------------------------------------------------
 // Utilities
 // ---------------------------------------------------------------------------
-
-function toErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
