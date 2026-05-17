@@ -284,6 +284,26 @@ describe("validateIngestRecord", () => {
     }
   });
 
+  it("should accept a valid optional device_id string", () => {
+    const rec = { ...validTokenRecord(), device_id: "dev-1" };
+    expect(validateIngestRecord(rec, 0).valid).toBe(true);
+  });
+
+  it("should reject empty-string device_id when provided", () => {
+    // Exercises the `device_id !== undefined && !isNonEmptyString(device_id)` branch.
+    const rec = { ...validTokenRecord(), device_id: "" };
+    const result = validateIngestRecord(rec, 0);
+    expect(result.valid).toBe(false);
+    if (!result.valid) {
+      expect(result.error).toContain("device_id");
+    }
+  });
+
+  it("should reject non-string device_id when provided", () => {
+    const rec = { ...validTokenRecord(), device_id: 42 };
+    expect(validateIngestRecord(rec, 0).valid).toBe(false);
+  });
+
   it("should reject float token values (fixes original bug)", () => {
     const rec = { ...validTokenRecord(), input_tokens: 1.5 };
     const result = validateIngestRecord(rec, 0);
