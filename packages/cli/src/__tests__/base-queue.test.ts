@@ -269,6 +269,18 @@ describe("BaseQueue", () => {
     expect(offset).toBe(0);
   });
 
+  it("defaults missing offset to 0 when state JSON omits the field", async () => {
+    // Cover the `state.offset ?? 0` branch in loadState() when the persisted
+    // JSON is well-formed but lacks an explicit offset field.
+    await writeFile(
+      join(tempDir, "test.state.json"),
+      JSON.stringify({ dirtyKeys: ["bucket-1"] }),
+    );
+    const queue = createQueue(tempDir);
+    const offset = await queue.loadOffset();
+    expect(offset).toBe(0);
+  });
+
   // ---- queuePath exposed ----
 
   it("should expose queuePath", () => {
