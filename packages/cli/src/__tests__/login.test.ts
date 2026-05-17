@@ -504,6 +504,41 @@ describe("executeLogin", () => {
       expect(result.alreadyLoggedIn).toBe(true);
     });
 
+    it("falls back to Server-returned status string when error field is absent", async () => {
+      // Exercise the `data.error ?? \`Server returned ${response.status}\`` ?‐branch.
+      const mockFetch = async () => {
+        return new Response(JSON.stringify({}), { status: 503 });
+      };
+      const result = await executeLogin({
+        configDir: tempDir,
+        apiUrl: "http://localhost:7020",
+        code: "ABCD-1234",
+        fetch: mockFetch as typeof globalThis.fetch,
+        openBrowser: async () => {
+          throw new Error("Should not open browser");
+        },
+      });
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("Server returned 503");
+    });
+
+    it("reports 'Network error' when fetch throws a non-Error value", async () => {
+      const mockFetch = async () => {
+        throw "raw string failure";
+      };
+      const result = await executeLogin({
+        configDir: tempDir,
+        apiUrl: "http://localhost:7020",
+        code: "ABCD-1234",
+        fetch: mockFetch as typeof globalThis.fetch,
+        openBrowser: async () => {
+          throw new Error("Should not open browser");
+        },
+      });
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("Network error");
+    });
+
     it("should allow code login with force=true even when already logged in", async () => {
       // Pre-save a config
       const { writeFile, mkdir } = await import("node:fs/promises");
