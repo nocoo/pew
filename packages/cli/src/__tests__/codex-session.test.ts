@@ -190,6 +190,43 @@ describe("collectCodexSessions", () => {
     expect(result[0].sessionKey).toMatch(/^codex:[a-f0-9]{16}$/);
   });
 
+  it("should fallback to sha256 of path when session_meta has non-string id", async () => {
+    // Exercises the `typeof payload.id === "string" && payload.id` false branch.
+    const f = join(tmpDir, "rollout-non-string-id.jsonl");
+    const lines = [
+      sessionMetaLine({ id: 12345 }),
+      eventMsgLine("user_message", "2026-03-07T10:00:00.000Z"),
+    ];
+    await writeFile(f, lines.join("\n") + "\n");
+    const result = await collectCodexSessions(f);
+    expect(result).toHaveLength(1);
+    expect(result[0].sessionKey).toMatch(/^codex:[a-f0-9]{16}$/);
+  });
+
+  it("should fallback to sha256 of path when session_meta has empty string id", async () => {
+    const f = join(tmpDir, "rollout-empty-id.jsonl");
+    const lines = [
+      sessionMetaLine({ id: "" }),
+      eventMsgLine("user_message", "2026-03-07T10:00:00.000Z"),
+    ];
+    await writeFile(f, lines.join("\n") + "\n");
+    const result = await collectCodexSessions(f);
+    expect(result).toHaveLength(1);
+    expect(result[0].sessionKey).toMatch(/^codex:[a-f0-9]{16}$/);
+  });
+
+  it("should set projectRef to null when cwd is empty string", async () => {
+    const f = join(tmpDir, "rollout-empty-cwd.jsonl");
+    const lines = [
+      sessionMetaLine({ cwd: "" }),
+      eventMsgLine("user_message", "2026-03-07T10:00:00.000Z"),
+    ];
+    await writeFile(f, lines.join("\n") + "\n");
+    const result = await collectCodexSessions(f);
+    expect(result).toHaveLength(1);
+    expect(result[0].projectRef).toBeNull();
+  });
+
   it("should hash projectRef from session_meta.payload.cwd", async () => {
     const f = join(tmpDir, "rollout-cwd.jsonl");
     const lines = [
