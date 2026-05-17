@@ -133,3 +133,40 @@ oversized files / 41 oversized functions remain. Refactor proposals (atomic, tes
   pre-initialized array; `localDate.getUTCHours()` is always [0,23]; the false branch is
   structurally unreachable.
 - `cli/commands/sync.ts` 137-138: exhaustiveness `never` check — provably unreachable.
+
+## Session 2026-05-17 results (Refactor + Coverage Push)
+
+### Achievements
+- **Branch coverage**: 94.19% → 95.49% (+1.30%, locked-in via threshold bump)
+- **Line coverage**: 98.98% → 99.48% (+0.50%)
+- **Statements**: 98.29% → 98.89% (+0.60%)
+- **Functions**: 98.67% → 98.93% (+0.26%)
+- **Files > 400 LOC**: 24 → 18 (-6 via extract-and-re-export refactors)
+- **Tests**: 4004 → 4086 (+82)
+- **Experiments**: 53 (51 keep + 2 discard, ~96% acceptance)
+
+### Vitest thresholds raised
+`vitest.config.ts` thresholds tightened (`branches: 90→95`) to prevent regression.
+
+### Refactors landed (extract pure helpers; re-export for back-compat)
+1. `cli/notifier/coordinator.ts`: 457 → 395 LOC (extracted `deriveStatus` + signal helpers to `coordinator-helpers.ts`)
+2. `cli/parsers/vscode-copilot.ts`: 406 → 305 LOC (extracted `normalizeModelId` + `estimateToolRoundTokens` + `estimateV3InputTokens` + `extractRequestMeta` + `RequestMeta` type to `vscode-copilot-helpers.ts`)
+3. `web/src/lib/date-helpers.ts`: 451 → 354 LOC (extracted `detectPeakHours` + `PeakSlot` + 12-hour formatters to `date-helpers-peaks.ts`)
+4. `worker-read/src/rpc/badges.ts`: 427 → 329 LOC (extracted types to `badges-types.ts` + `deriveAssignmentStatus` to `badges-helpers.ts`)
+5. `worker-read/src/rpc/achievements.ts`: 422 → 336 LOC (extracted types to `achievements-types.ts`)
+6. `cli/commands/session-sync.ts`: 408 → 359 LOC (extracted `toQueueRecord` + `sourceKey` to `session-sync-helpers.ts`)
+
+### Test-only wins (no production code touched)
+- `query-params.ts`: new test file (had no tests at all)
+- `fetcher.ts`: 0% → 100% (had no tests at all)
+- 30+ small "missing-branch" tests across rpc handlers, parsers, validation, login, upload-engine, etc.
+
+### Remaining file-size backlog
+13 files still > 400 LOC; biggest are `db-worker.ts` (1253), `usage-helpers.ts` (1237), `cli.ts` (958),
+`types.ts` (765), `sync.ts` (763), `rpc-types.ts` (762), `seasons.ts` (742), `db.ts` (737),
+plus 5 more 400-660 LOC files. These need bigger refactors (handler-per-file splits, multi-module
+extractions) and are queued as "高 effort" items.
+
+### Vitest exclusions
+- Added `**/__test-helpers__/**` to coverage exclude (test utility, not production code).
+
