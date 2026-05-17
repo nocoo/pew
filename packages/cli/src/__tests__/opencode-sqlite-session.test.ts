@@ -228,6 +228,68 @@ describe("collectOpenCodeSqliteSessions", () => {
     expect(result[0].model).toBe("gpt-4o");
   });
 
+  it("should ignore message time block when both created/completed coerce to falsy", () => {
+    // Exercises the `if (msgStart)` and `if (msgEnd)` false branches — a message
+    // whose `data.time` object exists but contains invalid (non-numeric) values.
+    const sessions = [sessionRow("ses_001", {
+      time_created: 1771120700000,
+      time_updated: 1771121000000,
+    })];
+    const messages: SessionMessageRow[] = [
+      {
+        session_id: "ses_001",
+        role: "assistant",
+        time_created: 0,
+        data: JSON.stringify({
+          role: "assistant",
+          time: { created: "not-a-number", completed: null },
+        }),
+      },
+    ];
+    const result = collectOpenCodeSqliteSessions(sessions, messages);
+    expect(result).toHaveLength(1);
+    // Falls back to session-level timestamps since message times were unusable.
+    expect(result[0].durationSeconds).toBe(300);
+  });
+
+  it("should skip sessions with no usable timestamps anywhere (!minEpochMs continue)", () => {
+    // Exercises the `if (!minEpochMs) continue;` branch — session and messages
+    // both lack valid timestamps.
+    const sessions = [sessionRow("ses_dead", {
+      time_created: 0,
+      time_updated: 0,
+    })];
+    const messages: SessionMessageRow[] = [
+      {
+        session_id: "ses_dead",
+        role: "user",
+        time_created: 0,
+        data: JSON.stringify({ role: "user" }),
+      },
+    ];
+    const result = collectOpenCodeSqliteSessions(sessions, messages);
+    expect(result).toHaveLength(0);
+  });
+
+  it("should fall back maxEpochMs to minEpochMs when session.time_updated is invalid", () => {
+    // Exercises the `coerceEpochMs(...) || minEpochMs` right-side fallback at line 118.
+    const sessions = [sessionRow("ses_only_start", {
+      time_created: 1771120700000,
+      time_updated: 0,
+    })];
+    const messages: SessionMessageRow[] = [
+      {
+        session_id: "ses_only_start",
+        role: "user",
+        time_created: 0,
+        data: JSON.stringify({ role: "user" }),
+      },
+    ];
+    const result = collectOpenCodeSqliteSessions(sessions, messages);
+    expect(result).toHaveLength(1);
+    expect(result[0].durationSeconds).toBe(0);
+  });
+
   it("should fallback to session table timestamps when messages lack time", () => {
     const sessions = [sessionRow("ses_001", {
       time_created: 1771120700000,
