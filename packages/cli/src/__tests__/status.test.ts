@@ -362,6 +362,53 @@ describe("executeStatus", () => {
     expect(result.lastSync).toBeNull();
   });
 
+  it("should classify kosmos / pmstudio / pi files and unknown fallback", async () => {
+    const cursorStore = new CursorStore(stateDir);
+    await cursorStore.save({
+      files: {
+        "/home/.config/kosmos-app/projects/x/session.jsonl": {
+          type: "byte-offset",
+          offset: 1,
+          inode: 101,
+          size: 1,
+          mtimeMs: 1,
+        },
+        "/home/.config/pm-studio-app/projects/y/session.jsonl": {
+          type: "byte-offset",
+          offset: 1,
+          inode: 102,
+          size: 1,
+          mtimeMs: 1,
+        },
+        "/home/.pi/agent/sessions/z/session.jsonl": {
+          type: "byte-offset",
+          offset: 1,
+          inode: 103,
+          size: 1,
+          mtimeMs: 1,
+        },
+        "/totally/unrelated/path/file.jsonl": {
+          type: "byte-offset",
+          offset: 1,
+          inode: 104,
+          size: 1,
+          mtimeMs: 1,
+        },
+      },
+      updatedAt: "2026-03-09T12:00:00.000Z",
+    });
+
+    const result = await executeStatus({
+      stateDir,
+      sourceDirs: defaultDirs,
+    });
+    expect(result.trackedFiles).toBe(4);
+    expect(result.sources["kosmos"]).toBe(1);
+    expect(result.sources["pmstudio"]).toBe(1);
+    expect(result.sources["pi"]).toBe(1);
+    expect(result.sources["unknown"]).toBe(1);
+  });
+
   it("should include notifier statuses when provided", async () => {
     const result = await executeStatus({
       stateDir,
