@@ -203,6 +203,24 @@ describe("live RPC handlers", () => {
   });
 
   // -------------------------------------------------------------------------
+  // live.ping
+  // -------------------------------------------------------------------------
+
+  describe("live.ping", () => {
+    it("returns { ok: true } and executes a SELECT 1 health probe", async () => {
+      db.first.mockResolvedValue({});
+      const request = { method: "live.ping" } as unknown as GetActiveSessionsRequest;
+      const response = await handleLiveRpc(request, db);
+      expect(response.status).toBe(200);
+      const body = (await response.json()) as { result: { ok: boolean } };
+      expect(body.result.ok).toBe(true);
+      // The handler should have prepared the canonical liveness probe.
+      const sql = db.prepare.mock.calls.at(-1)?.[0] as string;
+      expect(sql).toMatch(/SELECT\s+1/);
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // Unknown method
   // -------------------------------------------------------------------------
 
