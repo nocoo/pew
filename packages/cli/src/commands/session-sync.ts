@@ -16,17 +16,16 @@
 import { stat } from "node:fs/promises";
 import type {
   SessionSnapshot,
-  SessionQueueRecord,
   SessionFileCursor,
   OpenCodeSqliteSessionCursor,
-  Source,
 } from "@pew/core";
 import { SessionCursorStore } from "../storage/session-cursor-store.js";
 import { SessionQueue } from "../storage/session-queue.js";
 import type { OnCorruptLine } from "../storage/base-queue.js";
 import { deduplicateSessionRecords } from "./session-upload.js";
 import { createSessionDrivers } from "../drivers/registry.js";
-import { hashProjectRef } from "../utils/hash-project-ref.js";
+import { toQueueRecord, sourceKey } from "./session-sync-helpers.js";
+export { toQueueRecord, sourceKey } from "./session-sync-helpers.js";
 import type { FileFingerprint } from "../drivers/types.js";
 import type { SessionRow, SessionMessageRow } from "../parsers/opencode-sqlite-session.js";
 
@@ -124,56 +123,8 @@ export interface SessionSyncResult {
  * hex hash string. If a parser accidentally passes a non-hash value,
  * it gets hashed here as a safety net before any data leaves the device.
  *
- * Exported for unit testing of the hash-fallback branch.
+ * (Implementation moved to session-sync-helpers.ts.)
  */
-export function toQueueRecord(snap: SessionSnapshot): SessionQueueRecord {
-  // Validate project_ref: must be null or a 16-char hex string (from hashProjectRef).
-  // If it's something else, a parser forgot to hash — apply hashProjectRef as safety net.
-  let projectRef = snap.projectRef;
-  if (projectRef !== null && !/^[a-f0-9]{16}$/.test(projectRef)) {
-    projectRef = hashProjectRef(projectRef);
-  }
-
-  return {
-    session_key: snap.sessionKey,
-    source: snap.source,
-    kind: snap.kind,
-    started_at: snap.startedAt,
-    last_message_at: snap.lastMessageAt,
-    duration_seconds: snap.durationSeconds,
-    user_messages: snap.userMessages,
-    assistant_messages: snap.assistantMessages,
-    total_messages: snap.totalMessages,
-    project_ref: projectRef,
-    model: snap.model,
-    snapshot_at: snap.snapshotAt,
-  };
-}
-
-/** Map Source type to short result key (null if source has no session driver).
- *
- * Exported for unit testing.
- */
-export function sourceKey(source: Source): keyof SessionSyncResult["sources"] | null {
-  switch (source) {
-    case "claude-code": return "claude";
-    case "codex": return "codex";
-    case "copilot-cli": return "copilotCli";
-    case "gemini-cli": return "gemini";
-    case "kosmos": return "kosmos";
-    case "opencode": return "opencode";
-    case "openclaw": return "openclaw";
-    case "pi": return "pi";
-    case "pmstudio": return "pmstudio";
-    case "vscode-copilot": return null;
-    case "hermes": return null;
-    default: {
-      // Exhaustiveness check — if Source adds a new value, this will fail to compile
-      const _exhaustive: never = source;
-      throw new Error(`Unknown source: ${_exhaustive}`);
-    }
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Main orchestrator
