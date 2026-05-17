@@ -369,4 +369,50 @@ describe("executeUninstall", () => {
     expect(result.hooks[0]?.action).toBe("skip");
     expect(result.hooks[0]?.detail).toBe("string error");
   });
+
+  it("uses default resolveNotifierPaths + removeNotifyHandler when no overrides are provided", async () => {
+    // Exercises the `opts.resolveNotifierPathsFn ?? resolveNotifierPaths` and
+    // `opts.removeNotifyHandlerFn ?? removeNotifyHandler` default-fallback branches.
+    const { mkdtemp, rm } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const home = await mkdtemp(join(tmpdir(), "pew-uninstall-real-paths-"));
+    try {
+      const result = await executeUninstall({
+        stateDir: join(home, "pew"),
+        home,
+        sources: ["pi" as Source],
+        // No resolveNotifierPathsFn, no removeNotifyHandlerFn, no removeCodexBackupFn.
+        // These defaults will run against the real (clean) tmpdir filesystem.
+      });
+      // Partial uninstall (only pi) → notify handler is preserved with
+      // "shared artifact kept" message, regardless of default-fn implementation.
+      expect(result.notifyHandler.changed).toBe(false);
+      expect(result.notifyHandler.detail).toBe("shared artifact kept");
+    } finally {
+      await rm(home, { recursive: true, force: true });
+    }
+  });
+
+  it("uses default uninstallAll when full uninstall is requested without override", async () => {
+    // Exercises the `opts.uninstallAllFn ?? uninstallAll` default branch by
+    // *not* providing uninstallAllFn for a fullUninstall (all sources, default list).
+    const { mkdtemp, rm } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    const { join } = await import("node:path");
+    const home = await mkdtemp(join(tmpdir(), "pew-uninstall-real-all-"));
+    try {
+      const result = await executeUninstall({
+        stateDir: join(home, "pew"),
+        home,
+        // sources omitted → fullUninstall = true → default uninstallAll runs
+        // against the empty tmpdir, returning a no-op result per source.
+      });
+      // All sources discovered; results array is populated by the real uninstallAll.
+      expect(Array.isArray(result.hooks)).toBe(true);
+      expect(result.hooks.length).toBeGreaterThan(0);
+    } finally {
+      await rm(home, { recursive: true, force: true });
+    }
+  });
 });
