@@ -286,6 +286,38 @@ describe("collectPiSessions", () => {
     expect(snapshots[0].userMessages).toBe(1);
   });
 
+  it("keeps min/max bounds when later messages have earlier/equal timestamps", async () => {
+    // Exercises the false branches of `!minTimestamp || ts < min` and
+    // `!maxTimestamp || ts > max` in the pi-session parser.
+    const filePath = join(sessionDir, "out-of-order.jsonl");
+    const lines = [
+      JSON.stringify({ type: "session", id: "order-test", timestamp: "2026-04-07T10:30:00.000Z" }),
+      JSON.stringify({
+        type: "message",
+        id: "m1",
+        timestamp: "2026-04-07T10:30:00.000Z", // equal → ts<min false AND ts>max false
+        message: { role: "user", content: [] },
+      }),
+      JSON.stringify({
+        type: "message",
+        id: "m2",
+        timestamp: "2026-04-07T10:20:00.000Z", // earlier than max → ts>max false
+        message: { role: "user", content: [] },
+      }),
+      JSON.stringify({
+        type: "message",
+        id: "m3",
+        timestamp: "2026-04-07T10:40:00.000Z", // later than max → ts>max true
+        message: { role: "user", content: [] },
+      }),
+    ];
+    await writeFile(filePath, lines.join("\n") + "\n");
+    const snapshots = await collectPiSessions(filePath);
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0].startedAt).toBe("2026-04-07T10:20:00.000Z");
+    expect(snapshots[0].lastMessageAt).toBe("2026-04-07T10:40:00.000Z");
+  });
+
   it("handles message with non-string role", async () => {
     const filePath = join(sessionDir, "bad-role.jsonl");
     const lines = [
