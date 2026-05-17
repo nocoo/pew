@@ -170,3 +170,32 @@ extractions) and are queued as "高 effort" items.
 ### Vitest exclusions
 - Added `**/__test-helpers__/**` to coverage exclude (test utility, not production code).
 
+
+## Final session 2026-05-17 — Extended pass
+
+After the initial milestone push, additional iterations landed:
+- **Branches**: 95.49 → 95.50 (small additional coverage)
+- **files_over_400**: 18 → 15 (extracted types from users/teams/leaderboard rpc handlers)
+- **Tests**: 4083 → 4087
+
+### Additional refactors (extract types → `*-types.ts`, re-export with `export type *`)
+7. `worker-read/src/rpc/users.ts` (523 → 384 LOC)
+8. `worker-read/src/rpc/teams.ts` (509 → 385 LOC)
+9. `worker-read/src/rpc/leaderboard.ts` (504 → 398 LOC)
+
+### Attempted refactors that didn't fit
+- `worker-read/src/rpc/seasons.ts` (742 → 522 after types-only): handlers are too dense; needs further per-handler splits. Reverted.
+- `worker-read/src/rpc/projects.ts` (657 → 543 after types-only): same shape. Reverted.
+- `worker-read/src/index.ts` SQL validator extraction (496 → 355 + 153): branches dropped 0.05% due to per-file dilution. Reverted; targeted tests for the 4 uncovered branches turned out to already be covered by existing escape-quote / comment tests. Worth re-attempting after adding **new** uncovered-branch tests first.
+
+### Final scoreboard
+- Branches  : **94.19% → 95.50% (+1.31%)** ✅ threshold raised to ≥95
+- Lines     : 98.98% → 99.48% (+0.50%)
+- Statements: 98.29% → 98.89% (+0.60%)
+- Functions : 98.67% → 98.93% (+0.26%)
+- files_over_400 : **24 → 15 (-9, -38%)** ✅
+- funcs_over_100 : 41 (unchanged — these are inside the not-yet-split files)
+- Tests     : 4004 → 4087 (+83)
+- Experiments: 62 total (~94% acceptance rate)
+- Atomic commits: 50+ pushed to origin/main
+
