@@ -207,6 +207,35 @@ describe("collectOpenClawSessions", () => {
     expect(result[0].assistantMessages).toBe(1);
   });
 
+  it("should handle missing or non-object message field (defensive branch)", async () => {
+    // Exercises the `if (msg && typeof msg === "object")` false branch —
+    // a message-type entry whose `message` field is null/missing/non-object.
+    const f = join(tmpDir, "missing-message.jsonl");
+    const lines = [
+      JSON.stringify({
+        type: "message",
+        timestamp: "2026-03-07T10:00:00.000Z",
+        // message field absent entirely
+      }),
+      JSON.stringify({
+        type: "message",
+        timestamp: "2026-03-07T10:01:00.000Z",
+        message: null,
+      }),
+      JSON.stringify({
+        type: "message",
+        timestamp: "2026-03-07T10:02:00.000Z",
+        message: "not-an-object",
+      }),
+    ];
+    await writeFile(f, lines.join("\n") + "\n");
+    const result = await collectOpenClawSessions(f);
+    expect(result).toHaveLength(1);
+    // All three entries are counted as messages, but none contribute a model.
+    expect(result[0].assistantMessages).toBe(3);
+    expect(result[0].model).toBeNull();
+  });
+
   it("should handle non-string model in message", async () => {
     const f = join(tmpDir, "non-string-model.jsonl");
     const lines = [
