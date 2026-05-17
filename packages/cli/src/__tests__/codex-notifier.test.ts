@@ -311,6 +311,24 @@ describe("Codex notifier installer", () => {
     expect(backup.notify).toEqual(["café", "ABC"]);
   });
 
+  it("preserves backslash for \\U escape with invalid hex (regex test fails)", async () => {
+    // Exercises the `if (/^[0-9a-fA-F]{8}$/.test(hex))` false branch for the
+    // 8-digit Unicode escape — \\U00GGHHII has invalid hex characters.
+    await writeFile(
+      configPath,
+      'notify = ["bad\\U00GGHHII"]\n',
+      "utf8",
+    );
+    const result = await installCodexNotifier({
+      configPath,
+      notifyPath,
+      originalBackupPath,
+    });
+    const backup = JSON.parse(await readFile(originalBackupPath, "utf8"));
+    expect(result.changed).toBe(true);
+    expect(backup.notify[0]).toContain("bad");
+  });
+
   it("preserves backslash for \\U escapes whose code point exceeds 0x10FFFF", async () => {
     // Exercises the `if (codePoint <= 0x10FFFF)` false branch —
     // \\U11000000 is > 0x10FFFF (the Unicode max), so the literal backslash is kept.
