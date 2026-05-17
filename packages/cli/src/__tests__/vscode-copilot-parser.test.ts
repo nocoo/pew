@@ -116,6 +116,29 @@ describe("parseVscodeCopilotFile", () => {
   // Basic parsing
   // -----------------------------------------------------------------------
 
+  it("should skip empty lines in the JSONL stream (!line continue branch)", async () => {
+    // Exercises the `if (!line) continue;` branch in the JSONL reader.
+    const filePath = join(tempDir, "empty-lines.jsonl");
+    const lines = [
+      "", // empty line at start
+      snapshotLine(),
+      "", // empty in the middle
+      appendRequestLine(makeRequest("copilot/claude-opus-4.6", 1772780377684)),
+      appendResponseLine(0),
+      setResultLine(0, resultWithTokens(100, 50)),
+      "", // trailing empty
+    ];
+    await writeFile(filePath, lines.join("\n") + "\n");
+    const result = await parseVscodeCopilotFile({
+      filePath,
+      startOffset: 0,
+      requestMeta: {},
+      processedRequestIndices: [],
+    });
+    expect(result.deltas).toHaveLength(1);
+    expect(result.deltas[0].tokens.inputTokens).toBe(100);
+  });
+
   it("should parse a single request with tokens from kind=2 + kind=1", async () => {
     const filePath = join(tempDir, "session.jsonl");
     const lines = [
