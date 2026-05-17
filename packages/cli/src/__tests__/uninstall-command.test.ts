@@ -157,6 +157,31 @@ describe("executeUninstall", () => {
     expect(result.hooks[1]?.source).toBe("gemini-cli");
   });
 
+  it("invokes real driver lookup for a known source when uninstallDriverFn is not provided", async () => {
+    // Pi driver is the simplest built-in driver; it succeeds without filesystem side effects
+    // when run against a non-existent stateDir (returns skip-with-detail rather than throwing).
+    const result = await executeUninstall({
+      stateDir: "/tmp/pew",
+      home: "/tmp",
+      sources: ["pi" as Source],
+      resolveNotifierPathsFn: createPaths,
+      removeNotifyHandlerFn: vi.fn().mockResolvedValue({
+        changed: false,
+        path: "/tmp/pew/bin/notify.cjs",
+        detail: "not present",
+      }),
+      removeCodexBackupFn: vi.fn().mockResolvedValue({
+        changed: false,
+        path: "/tmp/pew/codex_notify_original.json",
+        detail: "not selected",
+      }),
+    });
+    expect(result.hooks).toHaveLength(1);
+    expect(result.hooks[0]?.source).toBe("pi");
+    // Whatever the pi driver returns is fine; the goal is to exercise the
+    // default-lookup branch (driver.uninstall path), not a specific outcome.
+  });
+
   it("returns skip for an unknown source when using the built-in driver lookup", async () => {
     const result = await executeUninstall({
       stateDir: "/tmp/pew",
