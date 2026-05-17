@@ -67,6 +67,28 @@ describe("buildNotifyHandler", () => {
 });
 
 describe("writeNotifyHandler", () => {
+  it("uses default fs / now when no overrides are provided (real filesystem)", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "pew-notify-default-"));
+    try {
+      const binDir = join(dir, "bin");
+      const result = await writeNotifyHandler({
+        binDir,
+        source: "// default-fs source\n",
+      });
+      expect(result.changed).toBe(true);
+      expect(result.path).toBe(join(binDir, "notify.cjs"));
+
+      // Re-running with the same source is a no-op.
+      const result2 = await writeNotifyHandler({
+        binDir,
+        source: "// default-fs source\n",
+      });
+      expect(result2.changed).toBe(false);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("creates the bin directory and writes the file on first install", async () => {
     const fs = {
       readFile: vi.fn(async () => {
@@ -160,6 +182,18 @@ describe("writeNotifyHandler", () => {
 });
 
 describe("removeNotifyHandler", () => {
+  it("uses default fs when no overrides are provided (ENOENT path)", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "pew-notify-remove-default-"));
+    try {
+      // notify.cjs does not exist → default unlink raises ENOENT, function returns changed:false.
+      const result = await removeNotifyHandler({
+        notifyPath: join(dir, "notify.cjs"),
+      });
+      expect(result.changed).toBe(false);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
   it("removes a generated notify.cjs file", async () => {
     const fs = {
       readFile: vi.fn(async () => "#!/usr/bin/env node\n// PEW_NOTIFY_HANDLER — Auto-generated\n"),
@@ -255,6 +289,28 @@ describe("resolvePewBin", () => {
       process.env.PATH = prevPath;
       await rm(tempDir, { recursive: true, force: true });
       await rm(argvDir, { recursive: true, force: true });
+    }
+  });
+
+  it("skips sibling lookup when process.argv[1] is not a string", async () => {
+    const prevArgv = process.argv.slice();
+    const prevPath = process.env.PATH;
+    const tempDir = await mkdtemp(join(tmpdir(), "pew-no-argv1-"));
+    try {
+      const binPath = join(tempDir, "pew");
+      await writeFile(binPath, "#!/bin/sh\nexit 0\n", "utf8");
+      await chmod(binPath, 0o755);
+      process.env.PATH = `${tempDir}:${prevPath ?? ""}`;
+      // Force argv[1] to be missing (only node binary present).
+      process.argv = [prevArgv[0] ?? "node"];
+
+      const resolved = await resolvePewBin();
+      // Falls through to PATH lookup since sibling branch is skipped.
+      expect(resolved).toBe(binPath);
+    } finally {
+      process.argv = prevArgv;
+      process.env.PATH = prevPath;
+      await rm(tempDir, { recursive: true, force: true });
     }
   });
 
