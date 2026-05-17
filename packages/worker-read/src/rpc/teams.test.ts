@@ -248,6 +248,18 @@ describe("teams RPC handlers", () => {
       expect(response.status).toBe(200);
       expect(body).toEqual({ result: mockMembers });
     });
+    it("re-throws when first attempt fails with a non-'no such column' error (err non-Error branch)", async () => {
+      // Make .all reject with a non-Error value to exercise the `err instanceof Error` false branch.
+      const failingAll = vi.fn().mockRejectedValue("unrelated DB failure (non-Error)");
+      db.bind.mockReturnValue({ all: failingAll });
+      const request: GetTeamMembersRequest = {
+        method: "teams.getMembers",
+        teamId: "t1",
+      };
+      await expect(handleTeamsRpc(request, db)).rejects.toBe(
+        "unrelated DB failure (non-Error)",
+      );
+    });
   });
 
   // -------------------------------------------------------------------------
