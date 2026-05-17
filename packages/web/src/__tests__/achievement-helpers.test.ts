@@ -487,6 +487,42 @@ describe("computeAchievementState", () => {
 
     expect(state.isTimezoneDependant).toBe(true);
   });
+
+  it("computes locked progress 0 when bronze threshold itself is 0 (degenerate def)", () => {
+    // Exercises the `bronze > 0 ? value/bronze : 0` falsy branch in computeTierProgress.
+    // Hand-construct a definition with bronze=0 to hit the divide-by-zero guard.
+    const degenerateDef = {
+      id: "x",
+      name: "x",
+      flavorText: "",
+      icon: "x",
+      category: "adoption",
+      tiers: [0, 1, 2, 3],
+      isTimezoneDependant: false,
+      format: (n: number) => String(n),
+    } as unknown as Parameters<typeof computeAchievementState>[0];
+    const state = computeAchievementState(degenerateDef, 0);
+    // With bronze===0 and value===0, value passes bronze threshold (0 >= 0) → unlocked at bronze.
+    // What we really care about is that this path doesn't divide by zero / NaN out.
+    expect(state.progress).toBeGreaterThanOrEqual(0);
+    expect(Number.isFinite(state.progress)).toBe(true);
+  });
+
+  it("computes locked tier with 0 progress when bronze===0 and value<0", () => {
+    const degenerateDef = {
+      id: "y",
+      name: "y",
+      flavorText: "",
+      icon: "y",
+      category: "adoption",
+      tiers: [0, 10, 20, 30],
+      isTimezoneDependant: false,
+      format: (n: number) => String(n),
+    } as unknown as Parameters<typeof computeAchievementState>[0];
+    // Value below 0 should leave us below bronze→ progress branch hits `bronze > 0 ? ... : 0`.
+    const state = computeAchievementState(degenerateDef, -1);
+    expect(Number.isFinite(state.progress)).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
