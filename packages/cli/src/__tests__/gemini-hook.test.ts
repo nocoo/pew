@@ -233,6 +233,48 @@ describe("Gemini hook installer", () => {
       expect(result.changed).toBe(false);
       expect(result.detail).toBe("Gemini hook not installed");
     });
+    it("skips uninstall when entry.hooks is not an array (defensive Array.isArray branch)", async () => {
+      // Exercises the `Array.isArray(entry.hooks) ? entry.hooks : null` false branch
+      // and the subsequent `if (!hooks) return entry;` in stripHook.
+      const fs = {
+        readFile: async () => JSON.stringify({
+          tools: { enableHooks: true },
+          hooks: {
+            SessionEnd: [
+              { matcher: "exit", hooks: "not-an-array" }, // hooks is a string → Array.isArray=false
+              { matcher: "exit", hooks: null },           // hooks is null → same
+            ],
+          },
+        }),
+        writeFile: async () => {},
+        mkdir: async () => {},
+      };
+      const result = await uninstallGeminiHook({ settingsPath, notifyPath, fs });
+      expect(result.action).toBe("skip");
+      expect(result.changed).toBe(false);
+      expect(result.detail).toBe("Gemini hook not installed");
+    });
+
+    it("skips uninstall when entry.hooks contains non-object items (filter keep-true branch)", async () => {
+      // Exercises the `if (!hook || typeof hook !== "object") return true;` branch
+      // in stripHook's filter — non-object hooks are preserved unchanged.
+      const fs = {
+        readFile: async () => JSON.stringify({
+          tools: { enableHooks: true },
+          hooks: {
+            SessionEnd: [
+              { matcher: "exit", hooks: [null, "not-a-hook", 42] },
+            ],
+          },
+        }),
+        writeFile: async () => {},
+        mkdir: async () => {},
+      };
+      const result = await uninstallGeminiHook({ settingsPath, notifyPath, fs });
+      expect(result.action).toBe("skip");
+      expect(result.changed).toBe(false);
+      expect(result.detail).toBe("Gemini hook not installed");
+    });
   });
 
   describe("status edge cases", () => {
