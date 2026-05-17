@@ -5,6 +5,91 @@
 ### Removed
 - Drop legacy `model_pricing` D1 table, admin Token Pricing CRUD UI (`/admin/pricing`) and its CRUD API (`/api/admin/pricing` route), worker-read admin-loader + `pricing.listModelPricing` / `pricing.getModelPricingByModelSource` RPCs, `origin: "admin"` pricing layer, and `pricing:all` KV cache (migration 021). The dynamic-pricing admin surface (`/admin/model-prices`, `/api/admin/pricing/models`, `/api/admin/pricing/rebuild`) is retained. Dynamic pricing pipeline (baseline + OpenRouter + models.dev → `pricing:dynamic`) is now the sole source of truth.
 
+## v2.23.3
+
+### Changed
+- Record run 188 for pi-session coverage commit
+- Strip trailing blank lines at EOF in 4 files
+- Exclude **/*-types.ts from coverage (pure type files)
+- Cover out-of-order timestamp min/max short-circuit branches
+- Cover invalid-hex \U escape regex-fail branch
+- Cover empty-line skip branch in JSONL parser
+- Cover invalid-msg-time + no-time-skip + max-fallback branches
+- Cover compareString null tie-break branches → 96.02%
+- Cover codePoint>0x10FFFF branch in TOML \U escape parser
+- Cover missing/null/non-object message field branch
+- Cover lastProcessedIds fallback + empty-sessions watermark branches
+- Cover stripHook non-array hooks + non-object filter branches
+- Cover lookupPricing normalized-key match (models[norm] branch)
+- Cover registerOrUpgrade equal-output and skip branches
+- Cover non-Error KV throw → String(err) fallback branch
+- Cover empty-line skip branch in JSONL reader
+- Cover regex-no-match branches for workspace UUID + model
+- Cover default-fn fallback branches (resolvePaths, removeNotify, uninstallAll)
+- Cover non-string msg.type branch
+- Cover 429 rate-limit + invalid-JSON-body branches
+- Cover midnight/noon/wrap branches in format12h via detectPeakHours
+- Cover non-object/non-string skip branches in estimateToolRoundTokens
+- Add direct unit tests for extracted helpers (16 tests)
+- Cover bronze===0 divide-by-zero guard branch
+- Final session scoreboard - 62 experiments, branches +1.31%, files>400 -9
+- Cover turn_context model bad-value branches
+- Extract types to leaderboard-types.ts (504→398 LOC)
+- Extract types to teams-types.ts (509→385 LOC)
+- Extract types to users-types.ts (523→384 LOC)
+- Record session summary - 94.19→95.49% branches, 6 file refactors
+- Cover undefined-results fallback in getActiveForUser + listAssignments
+- Cover non-Error rejection in getMembers fallback path
+- Extract toQueueRecord + sourceKey to helpers (408→359 LOC)
+- Cover top-level obj.usage fallback branch
+- Cover non-string turn_context.model branch
+- Cover forecastMonthlyCost default-now branch
+- Cover non-string/empty-string id + empty cwd branches
+- Cover missing-error fallback branches in 429/4xx responses
+- Cover optional device_id non-empty/non-string branches
+- Cover missing-error fallback + non-Error fetch reject branches
+- Extract types to achievements-types.ts (422→336 LOC)
+- Split types + helpers (427→329 LOC)
+- Extract detectPeakHours suite to date-helpers-peaks.ts (451→354 LOC)
+- Extract pure helpers to vscode-copilot-helpers.ts (406→305 LOC)
+- Extract pure helpers to coordinator-helpers.ts (457→395 LOC)
+- Cover provider/model tie-break sort branches
+- Exclude __test-helpers__ from coverage (parallel to __tests__)
+- Cover id-required validation branch in getInviteCodeById
+- Cover non-Error rejection in storage GET
+- Cover date-filtered branch in listUnassignedRefs
+- Cover 429 rate-limit branch on /api/auth/code POST
+- Cover null-row + undefined-results fallback branches
+- Raise branches threshold 90→95 to lock in the gain
+- Cover aliases-append + model-sort + OR-short-circuit branches → branches 95.00%
+- Cover publicOnly filter branches in member snapshots + tokens
+- Cover default fs/now branches and argv[1]-missing path in resolvePewBin
+- Cover same-user grouping + undefined-results fallback branches
+- Cover partial-dry-run shared-kept / not-selected detail branches
+- Cover usage.get tzOffset/source/deviceId filter branches
+- Add unit tests for 200/5xx/network-failure paths
+- Add coverage for live.ping handler
+- Cover owner-null fallback, empty-members compensate, cleanup-swallow branches
+- Cover state.offset default-fallback branch
+- Cover default driver-lookup branch with a real source (pi)
+- Cover fmtHour midnight/noon/am/pm branches
+- Cover currentUserId / orderBy / count-by-userId branches
+- Cover getDeviceTimeline tzOffset + half-hour granularity branches
+- Add unit tests for parseBoundedInt boundaries + null/default
+- Cover kosmos/pmstudio/pi/unknown source classification branches
+- Cover sort null/tie-break branches in pricing-table-helpers
+- Pass --ignore-scripts to bun install (Shai-Hulud defense)
+- Add overrides for fast-xml-builder (GHSA-5wm8-gmm8-39j9, GHSA-45c6-75p6-83cc)
+- Upgrade next to 16.2.6
+- Update test references from bun test to vitest
+
+### Fixed
+- Exit non-zero when coverage summary row can't be parsed
+
+### Removed
+- Cover delete-entire-plugins-block branch (only pew installed)
+- Cover includeOther=false drop + cached price fallback
+
 ## v2.23.2
 
 ### Changed
