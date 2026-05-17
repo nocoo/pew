@@ -321,6 +321,57 @@ describe("pricing-table-helpers", () => {
     });
   });
 
+  describe("compareString null tie-break branches via sortEntries", () => {
+    function rawEntry(
+      model: string,
+      provider: string | null,
+    ): DynamicPricingEntryDto {
+      return {
+        model,
+        provider,
+        displayName: null,
+        inputPerMillion: 1,
+        outputPerMillion: 2,
+        cachedPerMillion: null,
+        contextWindow: null,
+        origin: "baseline",
+        updatedAt: "2026-04-30T00:00:00.000Z",
+      };
+    }
+
+    it("compareString returns 1 when first provider is null (sort key=model with provider tiebreaker)", () => {
+      // Sort by model: same model → tiebreak by provider → compareString(null, "X") = 1.
+      const data = [
+        rawEntry("same-model", null), // a.provider null
+        rawEntry("same-model", "AnyProvider"), // b.provider non-null
+      ];
+      const sorted = sortEntries(data, "model", "asc");
+      // null provider sorted to end (returns 1).
+      expect(sorted.map((e) => e.provider)).toEqual(["AnyProvider", null]);
+    });
+
+    it("compareString returns -1 when second provider is null", () => {
+      const data = [
+        rawEntry("same-model", "AnyProvider"),
+        rawEntry("same-model", null),
+      ];
+      const sorted = sortEntries(data, "model", "asc");
+      // Non-null still comes first; null sorted to end via the -1 branch.
+      expect(sorted.map((e) => e.provider)).toEqual(["AnyProvider", null]);
+    });
+
+    it("compareString returns 0 when both providers are null (falls through to model)", () => {
+      // Same model, both providers null → compareString returns 0 → model tertiary sort.
+      const data = [
+        rawEntry("zzz-model", null),
+        rawEntry("aaa-model", null),
+      ];
+      // Sort by displayName (both null) → primary 0 → fall to provider compareString (both null → 0) → model.
+      const sorted = sortEntries(data, "displayName", "asc");
+      expect(sorted.map((e) => e.model)).toEqual(["aaa-model", "zzz-model"]);
+    });
+  });
+
   describe("OPENROUTER_FALLBACK_ICON", () => {
     it("provides openrouter icon as fallback constant", () => {
       expect(OPENROUTER_FALLBACK_ICON).toEqual({ src: "/icons/providers/openrouter.svg", invert: false });
