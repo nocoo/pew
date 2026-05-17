@@ -82,6 +82,85 @@ describe("pricing-table-helpers", () => {
       expect(sorted.map((e) => e.cachedPerMillion)).toEqual([5, 1, null]);
     });
 
+    it("non-numeric sort by displayName handles nulls + uses localeCompare", () => {
+      const data = [
+        entry({ model: "a", displayName: null }),
+        entry({ model: "b", displayName: "Bravo" }),
+        entry({ model: "c", displayName: "Alpha" }),
+      ];
+      const sorted = sortEntries(data, "displayName", "asc");
+      expect(sorted.map((e) => e.displayName)).toEqual(["Alpha", "Bravo", null]);
+      const desc = sortEntries(data, "displayName", "desc");
+      // Nulls always last, regardless of direction.
+      expect(desc.map((e) => e.displayName)).toEqual(["Bravo", "Alpha", null]);
+    });
+
+    it("non-numeric sort with both values null treats them as equal (primary=0)", () => {
+      const data = [
+        entry({ model: "a", provider: "Z", displayName: null }),
+        entry({ model: "b", provider: "A", displayName: null }),
+      ];
+      // Both displayName null → primary=0 → falls back to provider asc.
+      const sorted = sortEntries(data, "displayName", "asc");
+      expect(sorted.map((e) => e.provider)).toEqual(["A", "Z"]);
+    });
+
+    it("numeric sort with both values null falls through to secondary keys", () => {
+      const data = [
+        entry({ model: "b", provider: "B", cachedPerMillion: null }),
+        entry({ model: "a", provider: "A", cachedPerMillion: null }),
+      ];
+      const sorted = sortEntries(data, "cachedPerMillion", "asc");
+      // Both null → primary=0 → secondary [provider asc, model asc].
+      expect(sorted.map((e) => e.provider)).toEqual(["A", "B"]);
+    });
+
+    it("sorting by provider does not re-tie-break on provider (skips secondary)", () => {
+      const data = [
+        entry({ model: "z", provider: "OpenAI" }),
+        entry({ model: "a", provider: "OpenAI" }),
+      ];
+      // Same provider → key==="provider" branch skipped → falls through to model asc.
+      const sorted = sortEntries(data, "provider", "asc");
+      expect(sorted.map((e) => e.model)).toEqual(["a", "z"]);
+    });
+
+    it("sorting by model skips the model secondary tie-breaker (returns 0)", () => {
+      const data = [
+        entry({ model: "same", provider: "B" }),
+        entry({ model: "same", provider: "A" }),
+      ];
+      // primary key=model is equal → key!=="provider" branch runs and sorts by provider.
+      // key==="model" branch is skipped (no extra model compare) → returns 0 at end.
+      const sorted = sortEntries(data, "model", "asc");
+      expect(sorted.map((e) => e.provider)).toEqual(["A", "B"]);
+    });
+
+    it("identical entries on every key produce return-0 (final fallthrough)", () => {
+      const a = entry({ model: "x", provider: "P" });
+      const b = entry({ model: "x", provider: "P" });
+      const sorted = sortEntries([a, b], "model", "asc");
+      // Stable: order preserved.
+      expect(sorted).toHaveLength(2);
+    });
+
+    it("non-numeric sort: only one side null sorts null to end", () => {
+      const data = [
+        entry({ model: "a", displayName: null }),
+        entry({ model: "b", displayName: "X" }),
+      ];
+      expect(sortEntries(data, "displayName", "asc").map((e) => e.displayName)).toEqual([
+        "X",
+        null,
+      ]);
+      // Swap order, same expectation.
+      const swapped = [data[1]!, data[0]!];
+      expect(sortEntries(swapped, "displayName", "asc").map((e) => e.displayName)).toEqual([
+        "X",
+        null,
+      ]);
+    });
+
     it("does not mutate input", () => {
       const data = [
         entry({ model: "z" }),
@@ -159,6 +238,18 @@ describe("pricing-table-helpers", () => {
 
     it("fractional K renders with decimal", () => {
       expect(formatContext(1500)).toBe("1.5K");
+    });
+
+    it("exact 1K boundary renders as 1K", () => {
+      expect(formatContext(1000)).toBe("1K");
+    });
+
+    it("fractional M renders with decimal", () => {
+      expect(formatContext(1_500_000)).toBe("1.5M");
+    });
+
+    it("zero renders as raw 0", () => {
+      expect(formatContext(0)).toBe("0");
     });
 
     it("values < 1K render as raw number", () => {
