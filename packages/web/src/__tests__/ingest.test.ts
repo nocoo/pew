@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST } from "@/app/api/ingest/route";
 import { loadMockedAuthHelpers } from "./test-utils";
+import { inMemoryRateLimiter } from "@/lib/rate-limit";
 
 // Mock resolveUser from auth-helpers
 vi.mock("@/lib/auth-helpers", () => ({
@@ -61,6 +62,10 @@ function stubWorkerError(status = 500, error = "D1 batch failed") {
 describe("POST /api/ingest", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset the in-memory rate limiter between tests so the per-key buckets
+    // don't bleed across cases (otherwise a rate-limit test would also affect
+    // subsequent ones that share the same client IP).
+    inMemoryRateLimiter.reset();
   });
 
   describe("authentication", () => {
@@ -320,6 +325,66 @@ describe("POST /api/ingest", () => {
       const res = await POST(makeRequest([VALID_RECORD]));
 
       expect(res.status).toBe(401);
+    });
+  });
+
+  describe("validation edge cases", () => {
+    beforeEach(() => {
+      vi.mocked(resolveUser).mockResolvedValue({ userId: "u1", email: "x@y.z" });
+    });
+
+    it("returns 400 with 'Invalid JSON body' on malformed JSON", async () => {
+      // Hand-craft a Request with a non-JSON body so request.json() throws.
+      const req = new Request("http://localhost:7020/api/ingest", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Pew-Client-Version": VALID_VERSION,
+        },
+        body: "{this is not valid json",
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { error: string };
+      expect(body.error).toBe("Invalid JSON body");
+    });
+  });
+
+  describe("rate limiting", () => {
+    beforeEach(() => {
+      vi.mocked(resolveUser).mockResolvedValue({ userId: "u1", email: "x@y.z" });
+    });
+
+    it("returns 429 once the per-IP ingest budget is exhausted", async () => {
+      // INGEST_RATE_LIMIT is 300/minute. Send 300 requests from the same IP,
+      // then the 301st must be rate-limited. We stub the Worker fetch as 200 OK
+      // for the successful ones so the path through getDbWrite isn't required.
+      stubWorkerOk(1);
+      const sharedIp = "203.0.113.99";
+      const makeIpRequest = () =>
+        new Request("http://localhost:7020/api/ingest", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Pew-Client-Version": VALID_VERSION,
+            "x-forwarded-for": sharedIp,
+          },
+          body: JSON.stringify([VALID_RECORD]),
+        });
+
+      // Burn through the budget. We don't care about each response's body here,
+      // only that we eventually trip the 429 branch.
+      for (let i = 0; i < 300; i++) {
+        // Refresh the worker stub each time we expect a 200 path; once the limit
+        // hits, the handler short-circuits before fetch.
+        stubWorkerOk(1);
+        await POST(makeIpRequest());
+      }
+      const blocked = await POST(makeIpRequest());
+      expect(blocked.status).toBe(429);
+      expect(blocked.headers.get("Retry-After")).toBeTruthy();
+      const body = (await blocked.json()) as { error: string };
+      expect(body.error).toMatch(/Too many requests/);
     });
   });
 });
