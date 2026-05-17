@@ -114,6 +114,22 @@ describe("parseClaudeFile", () => {
     await rm(tempDir, { recursive: true, force: true });
   });
 
+  it("falls back to top-level obj.usage when message.usage is absent", async () => {
+    // Exercises the `msg?.usage || obj?.usage` right-hand branch.
+    const filePath = join(tempDir, "session-toplevel-usage.jsonl");
+    const line = JSON.stringify({
+      type: "assistant",
+      timestamp: "2026-03-07T10:15:30.000Z",
+      // No `message.usage` here — usage lives at the top level.
+      message: { id: "msg_top", role: "assistant", model: "glm-5", type: "message" },
+      usage: { input_tokens: 200, output_tokens: 50, cache_read_input_tokens: 10 },
+    });
+    await writeFile(filePath, line + "\n");
+    const result = await parseClaudeFile({ filePath, startOffset: 0 });
+    expect(result.deltas).toHaveLength(1);
+    expect(result.deltas[0].tokens.outputTokens).toBe(50);
+  });
+
   it("should parse a single assistant message with usage", async () => {
     const filePath = join(tempDir, "session.jsonl");
     await writeFile(filePath, claudeLine() + "\n");
