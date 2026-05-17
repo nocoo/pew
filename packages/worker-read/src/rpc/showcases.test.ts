@@ -360,6 +360,37 @@ describe("showcases RPC handlers", () => {
 
       expect(db.bind).toHaveBeenCalled();
     });
+
+    it("includes has_upvoted column when currentUserId is provided", async () => {
+      db.all.mockResolvedValue({ results: [] });
+      const request: ListShowcasesRequest = {
+        method: "showcases.list",
+        currentUserId: "viewer-1",
+        publicOnly: true,
+        limit: 5,
+        offset: 0,
+      };
+      await handleShowcasesRpc(request, db);
+      const sql = db.prepare.mock.calls.at(-1)?.[0] as string;
+      expect(sql).toContain("has_upvoted");
+      // currentUserId is the first bound param.
+      const bindArgs = db.bind.mock.calls.at(-1) as unknown[];
+      expect(bindArgs[0]).toBe("viewer-1");
+    });
+
+    it("orders by upvote_count when orderBy is set", async () => {
+      db.all.mockResolvedValue({ results: [] });
+      const request: ListShowcasesRequest = {
+        method: "showcases.list",
+        publicOnly: true,
+        orderBy: "upvote_count",
+        limit: 5,
+        offset: 0,
+      };
+      await handleShowcasesRpc(request, db);
+      const sql = db.prepare.mock.calls.at(-1)?.[0] as string;
+      expect(sql).toContain("ORDER BY upvote_count DESC");
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -392,6 +423,21 @@ describe("showcases RPC handlers", () => {
 
       expect(response.status).toBe(200);
       expect(body).toEqual({ result: 0 });
+    });
+
+    it("filters by userId in count query", async () => {
+      db.first.mockResolvedValue({ count: 7 });
+      const request: CountShowcasesRequest = {
+        method: "showcases.count",
+        userId: "u1",
+      };
+      const response = await handleShowcasesRpc(request, db);
+      const body = (await response.json()) as { result: number };
+      expect(body.result).toBe(7);
+      const sql = db.prepare.mock.calls.at(-1)?.[0] as string;
+      expect(sql).toContain("WHERE user_id = ?");
+      const bindArgs = db.bind.mock.calls.at(-1) as unknown[];
+      expect(bindArgs[0]).toBe("u1");
     });
   });
 
