@@ -252,6 +252,29 @@ describe("collectCodexSessions", () => {
     expect(result[0].projectRef).toBeNull();
   });
 
+  it("should ignore turn_context with non-string or whitespace-only model", async () => {
+    // Exercises the `typeof payload.model === "string" && payload.model.trim()` false branches.
+    const f = join(tmpDir, "rollout-bad-model.jsonl");
+    const lines = [
+      sessionMetaLine({ model: "gpt-5" }),
+      JSON.stringify({
+        timestamp: "2026-03-07T10:01:00.000Z",
+        type: "turn_context",
+        payload: { model: "   " }, // whitespace-only → trim() falsy
+      }),
+      JSON.stringify({
+        timestamp: "2026-03-07T10:02:00.000Z",
+        type: "turn_context",
+        payload: { model: 42 }, // non-string → typeof check fails
+      }),
+    ];
+    await writeFile(f, lines.join("\n") + "\n");
+    const result = await collectCodexSessions(f);
+    expect(result).toHaveLength(1);
+    // turn_context entries with bad model are ignored → session_meta model preserved.
+    expect(result[0].model).toBe("gpt-5");
+  });
+
   it("should prefer turn_context model over session_meta model", async () => {
     const f = join(tmpDir, "rollout-model.jsonl");
     const lines = [
