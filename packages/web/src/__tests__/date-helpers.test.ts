@@ -238,6 +238,27 @@ describe("detectPeakHours", () => {
     expect(result).toEqual([]);
   });
 
+  it("formats midnight slot as '12:00 AM – 12:30 AM' (hour===0 branch)", () => {
+    // 2026-03-09 Monday 00:00 UTC → exercises `hour === 0 ? 12 : ...` true branch of format12h.
+    const rows = [makeRow({ hour_start: "2026-03-09T00:00:00.000Z", total_tokens: 1 })];
+    const result = detectPeakHours(rows, 3, 0);
+    expect(result[0]!.timeSlot).toBe("12:00 AM – 12:30 AM");
+  });
+
+  it("formats noon slot as '12:00 PM – 12:30 PM' (hour===12 PM branch)", () => {
+    // 2026-03-09 Monday 12:00 UTC → exercises hour===12 boundary in format12h.
+    const rows = [makeRow({ hour_start: "2026-03-09T12:00:00.000Z", total_tokens: 1 })];
+    const result = detectPeakHours(rows, 3, 0);
+    expect(result[0]!.timeSlot).toBe("12:00 PM – 12:30 PM");
+  });
+
+  it("formats 23:30 half-hour slot crossing midnight as 11:30 PM – 12:00 AM", () => {
+    // exercises `(hour + 1) % 24` wrap when isHalf=true on hour=23.
+    const rows = [makeRow({ hour_start: "2026-03-09T23:30:00.000Z", total_tokens: 1 })];
+    const result = detectPeakHours(rows, 3, 0);
+    expect(result[0]!.timeSlot).toBe("11:30 PM – 12:00 AM");
+  });
+
   it("should return the single busiest slot for a single record (UTC)", () => {
     // 2026-03-09 is a Monday, 10:00 UTC
     const rows = [makeRow({ hour_start: "2026-03-09T10:00:00.000Z", total_tokens: 50_000 })];
