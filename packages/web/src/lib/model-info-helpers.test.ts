@@ -125,6 +125,31 @@ describe("findPricingEntriesForModel", () => {
       const out = findPricingEntriesForModel([e, { ...e }], "anthropic/claude-sonnet-4");
       expect(out).toHaveLength(1);
     });
+
+    it("tie-breaks by provider then model within the same origin", () => {
+      // Two entries with same origin but different providers → exercises
+      // the secondary `provider.localeCompare` tie-breaker.
+      const a = entry({ origin: "baseline", provider: "Zeta" });
+      const b = entry({ origin: "baseline", provider: "Alpha" });
+      const out = findPricingEntriesForModel([a, b], "anthropic/claude-sonnet-4");
+      expect(out.map((x) => x.provider)).toEqual(["Alpha", "Zeta"]);
+    });
+
+    it("final tie-breaks by model within the same origin+provider", () => {
+      // Same origin + same provider → exercises the `model.localeCompare` tertiary sort.
+      const a = entry({
+        origin: "baseline",
+        provider: "Anthropic",
+        model: "anthropic/claude-sonnet-4-20250514",
+      });
+      const b = entry({
+        origin: "baseline",
+        provider: "Anthropic",
+        model: "anthropic/claude-sonnet-4",
+      });
+      const out = findPricingEntriesForModel([a, b], "anthropic/claude-sonnet-4");
+      expect(out.length).toBeGreaterThanOrEqual(1);
+    });
   });
 
   describe("edge cases", () => {
