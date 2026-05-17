@@ -812,6 +812,28 @@ describe("parseVscodeCopilotFile", () => {
     expect(toolArgsTokens).toBe(0);
   });
 
+  it("estimateToolRoundTokens: ignores toolCall entries that aren't objects or lack string arguments", () => {
+    // Exercises the inner `tc && typeof tc === "object"` false branch + non-string `arguments` skip.
+    const rounds = [
+      { toolCalls: [null, "not-an-object", { arguments: 42 }, { arguments: "abcd" }] },
+    ];
+    const { toolArgsTokens } = estimateToolRoundTokens(rounds);
+    // Only the last entry ("abcd" = 4 chars / 4 = 1 token) counts.
+    expect(toolArgsTokens).toBe(1);
+  });
+
+  it("estimateToolRoundTokens: ignores thinking blocks with non-string text", () => {
+    // Exercises the `typeof text === "string"` false branch.
+    const rounds = [
+      { thinking: { text: 42 } },
+      { thinking: { text: null } },
+      { thinking: { text: "abcd" } },
+    ];
+    const { thinkingTokens } = estimateToolRoundTokens(rounds);
+    // Only the last entry counts.
+    expect(thinkingTokens).toBe(1);
+  });
+
   it("estimateToolRoundTokens: uses floor division", () => {
     // 7 chars / 4 = 1 (floor)
     const rounds = [{ toolCalls: [{ arguments: "abcdefg" }] }];
