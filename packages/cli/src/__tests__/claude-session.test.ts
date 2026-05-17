@@ -59,6 +59,22 @@ describe("collectClaudeSessions", () => {
     expect(result).toEqual([]);
   });
 
+  it("should skip empty lines in a JSONL file (line=='' branch)", async () => {
+    // Exercises the `if (!line) continue;` branch in the JSONL reader.
+    const f = join(tmpDir, "test-empty-lines.jsonl");
+    const lines = [
+      "", // empty line
+      userLine(),
+      "", // another empty line
+      line(),
+      "", // trailing empty before final newline
+    ];
+    await writeFile(f, lines.join("\n") + "\n");
+    const result = await collectClaudeSessions(f);
+    expect(result).toHaveLength(1);
+    expect(result[0].totalMessages).toBe(2);
+  });
+
   it("should collect a single session from one file", async () => {
     const f = join(tmpDir, "test.jsonl");
     const lines = [
