@@ -46,6 +46,11 @@ export default defineConfig({
         "**/bin.ts",
         "**/cli.ts",
         "**/types.ts",
+        // Pure type-definition siblings extracted from large RPC handler files
+        // (e.g. badges-types.ts, users-types.ts). They contain only `interface`
+        // and `type` declarations — no runtime code — and show as 0% in the
+        // coverage report, polluting the per-file view.
+        "**/*-types.ts",
         // bun:sqlite adapter — untestable in vitest (Node runtime).
         // All logic is exercised through DI in sync.test.ts / session-sync.test.ts.
         "**/opencode-sqlite-db.ts",
