@@ -151,6 +151,32 @@ describe("syncDynamicPricing", () => {
     expect(r.meta.lastErrors).toBeNull();
   });
 
+  it("KV put failure with non-Error throw → falls back to String(err) message", async () => {
+    // Exercises the `(err as Error).message ?? String(err)` ?? fallback for both
+    // the entries write and the meta re-write catches.
+    const failingKv = {
+      ...kv,
+      get: kv.get,
+      put: vi.fn(async (key: string) => {
+        if (key === KEY_DYNAMIC || key === KEY_DYNAMIC_META) {
+          throw "raw string failure";
+        }
+        kv.store.set(key, "");
+      }),
+      store: kv.store,
+    } as unknown as typeof kv;
+    const fetchImpl = mockFetch({
+      [OPENROUTER_URL]: { status: 200, body: OPENROUTER_OK },
+      [MODELS_DEV_URL]: { status: 200, body: MODELS_DEV_OK },
+    });
+    const r = await syncDynamicPricing({ db, kv: failingKv, fetchImpl }, NOW);
+    expect(r.ok).toBe(false);
+    const kvErrors = r.errors.filter((e) => e.source === "kv");
+    expect(kvErrors.length).toBeGreaterThan(0);
+    // String(err) of a bare string is just the string itself — verifies fallback path.
+    expect(kvErrors[0]?.message).toBe("raw string failure");
+  });
+
   it("KV put failure → ok=false, errors include source='kv', meta still returned", async () => {
     const failingKv = {
       ...kv,
