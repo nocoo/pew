@@ -297,4 +297,23 @@ describe("collectOpenClawSessions", () => {
     expect(result).toHaveLength(1);
     expect(result[0].totalMessages).toBe(2); // system + message (broken lines skipped)
   });
+
+  it("should keep min/max timestamps when later messages have earlier timestamps", async () => {
+    // Exercises the false branches of `!minTimestamp || ts < min` and
+    // `!maxTimestamp || ts > max` — second-and-later messages arrive
+    // out of order so the min/max bounds shouldn't change.
+    const f = join(tmpDir, "out-of-order.jsonl");
+    const lines = [
+      messageLine({ timestamp: "2026-03-07T10:30:00.000Z" }), // first sets both min+max
+      messageLine({ timestamp: "2026-03-07T10:30:00.000Z" }), // equal → hits ts<min false AND ts>max false
+      messageLine({ timestamp: "2026-03-07T10:20:00.000Z" }), // earlier than max → ts>max false
+      messageLine({ timestamp: "2026-03-07T10:40:00.000Z" }), // later than max → ts>max true
+    ];
+    await writeFile(f, lines.join("\n") + "\n");
+    const result = await collectOpenClawSessions(f);
+    expect(result).toHaveLength(1);
+    expect(result[0].startedAt).toBe("2026-03-07T10:20:00.000Z");
+    expect(result[0].lastMessageAt).toBe("2026-03-07T10:40:00.000Z");
+    expect(result[0].totalMessages).toBe(4);
+  });
 });
