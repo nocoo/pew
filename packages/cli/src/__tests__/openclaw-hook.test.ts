@@ -231,6 +231,48 @@ describe("OpenClaw hook installer", () => {
     expect(saved.plugins.load.paths).toEqual(["/tmp/keep"]);
   });
 
+  it("removes the entire `plugins` block when only the pew plugin existed", async () => {
+    // Exercises the `Object.keys(nextPlugins).length > 0` false branch —
+    // `else delete nextConfig.plugins;` is hit when pew was the only plugin.
+    const pluginDir = join(pluginBaseDir, "pew-session-sync");
+    await mkdir(pluginDir, { recursive: true });
+    await writeFile(join(pluginDir, "package.json"), "{}\n", "utf8");
+    await writeFile(
+      openclawConfigPath,
+      `${JSON.stringify(
+        {
+          plugins: {
+            entries: { "pew-session-sync": { enabled: true } },
+            load: { paths: [pluginDir] },
+            installs: {
+              "pew-session-sync": {
+                sourcePath: pluginDir,
+                installPath: pluginDir,
+              },
+            },
+          },
+          otherSetting: "keep-me",
+        },
+        null,
+        2,
+      )}\n`,
+      "utf8",
+    );
+
+    const result = await uninstallOpenClawHook({
+      pluginBaseDir,
+      notifyPath,
+      openclawConfigPath,
+    });
+    const saved = JSON.parse(await readFile(openclawConfigPath, "utf8"));
+
+    expect(result.changed).toBe(true);
+    // The `plugins` block should be entirely removed since nothing else was in it.
+    expect(saved.plugins).toBeUndefined();
+    // Unrelated config keys are preserved.
+    expect(saved.otherSetting).toBe("keep-me");
+  });
+
   it("skips uninstall when the config file is missing", async () => {
     const pluginDir = join(pluginBaseDir, "pew-session-sync");
     await mkdir(pluginDir, { recursive: true });
