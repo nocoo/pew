@@ -31,6 +31,6 @@ export class BaseCursorStore<T> {
   async save(state: T): Promise<void> {
     const dir = dirname(this.filePath);
     await mkdir(dir, { recursive: true, mode: SECURE_DIR_MODE });
-    await writeFile(this.filePath, JSON.stringify(state, null, 2) + "\n");
+    await writeFile(this.filePath, JSON.stringify(state) + "\n");
   }
 }

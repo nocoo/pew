@@ -635,11 +635,34 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   // Persist context state
   cursors.dirMtimes = ctx.dirMtimes;
 
-  // Update knownFilePaths: merge newly discovered files with existing set.
-  // This grows monotonically — files are never removed from knownFilePaths
-  // even if the physical file is deleted, because we only need to know
-  // "was this path ever scanned?" for cursor-loss detection.
-  const known: Record<string, true> = cursors.knownFilePaths ?? {};
+  // Prune stale entries from files and knownFilePaths.
+  //
+  // Both maps previously grew monotonically (never removing deleted files).
+  // Over time this causes cursors.json to bloat unboundedly — 100K+ entries
+  // and hundreds of MB are common for heavy users, eventually making
+  // JSON.parse so slow that `pew sync` hangs.
+  //
+  // Pruning is safe because:
+  // - `files`: cursors for files that no longer exist are never consulted
+  //   (the file won't appear in discovery, so the cursor is dead weight).
+  // - `knownFilePaths`: only used for cursor-loss detection during the
+  //   file-parse loop, which only iterates over *discovered* files.
+  //   A deleted file can't be discovered, so its knownFilePaths entry
+  //   is never checked.
+  //
+  // If a file temporarily disappears (e.g. unmounted volume) and returns
+  // later, it will be treated as a new file — but the existing replay
+  // detection + full-rescan mechanism already handles that case correctly.
+  const prunedFiles: typeof cursors.files = {};
+  for (const fp of discoveredFiles) {
+    if (cursors.files[fp]) {
+      prunedFiles[fp] = cursors.files[fp];
+    }
+  }
+  cursors.files = prunedFiles;
+
+  // Rebuild knownFilePaths from current discovery (replaces monotonic union)
+  const known: Record<string, true> = {};
   for (const fp of discoveredFiles) known[fp] = true;
   cursors.knownFilePaths = known;
 
