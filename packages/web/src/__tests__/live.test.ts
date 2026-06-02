@@ -15,9 +15,10 @@ vi.mock("@/lib/version", () => ({
   APP_VERSION: "1.2.3",
 }));
 
-const { getDbRead } = (await import("@/lib/db")) as unknown as {
+const { getDbRead: initialGetDbRead } = (await import("@/lib/db")) as unknown as {
   getDbRead: ReturnType<typeof vi.fn>;
 };
+let getDbRead: ReturnType<typeof vi.fn> = initialGetDbRead;
 
 function makeGetRequest(): Request {
   return new Request("http://localhost:7020/api/live", { method: "GET" });
@@ -48,7 +49,7 @@ describe("GET /api/live", () => {
     const freshDb = (await import("@/lib/db")) as unknown as {
       getDbRead: ReturnType<typeof vi.fn>;
     };
-    Object.assign(getDbRead, freshDb.getDbRead);
+    getDbRead = freshDb.getDbRead;
   });
 
   // -------------------------------------------------------------------------

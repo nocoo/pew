@@ -12,16 +12,11 @@ export default defineConfig({
   test: {
     globals: true,
     pool: "threads",
+    isolate: true,
     include: [
       "packages/*/src/**/*.test.{ts,tsx}",
       "scripts/**/*.test.{ts,tsx}",
     ],
-    poolOptions: {
-      threads: {
-        singleThread: false,
-        isolate: true,
-      },
-    },
     exclude: [
       "**/node_modules/**",
       "**/dist/**",
