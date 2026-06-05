@@ -5,6 +5,35 @@
 ### Removed
 - Drop legacy `model_pricing` D1 table, admin Token Pricing CRUD UI (`/admin/pricing`) and its CRUD API (`/api/admin/pricing` route), worker-read admin-loader + `pricing.listModelPricing` / `pricing.getModelPricingByModelSource` RPCs, `origin: "admin"` pricing layer, and `pricing:all` KV cache (migration 021). The dynamic-pricing admin surface (`/admin/model-prices`, `/api/admin/pricing/models`, `/api/admin/pricing/rebuild`) is retained. Dynamic pricing pipeline (baseline + OpenRouter + models.dev → `pricing:dynamic`) is now the sole source of truth.
 
+## v2.23.4
+
+### Changed
+- Bump wrangler to 4.98.0
+- Bump @cloudflare/workers-types to 4.20260605.1
+- Bump web tailwind-merge to 3.6.0
+- Bump web recharts to 3.8.1
+- Bump web nanoid to 5.1.11
+- Bump web @types/react + @types/react-dom
+- Bump web react / react-dom to 19.2.7
+- Bump tailwindcss + @tailwindcss/postcss to 4.3.0
+- Bump web @aws-sdk/client-s3 to 3.1063.0
+- Bump cli @nocoo/cli-base to 0.2.4
+- Bump fast-xml-parser to 5.8.0
+- Bump typescript-eslint to 8.60.1
+- Bump eslint to 10.4.1
+- Bump vitest + @vitest/coverage-v8 to 4.1.8
+- Bump @types/bun to 1.3.14
+- Bump @playwright/test to 1.60.0
+- Bump @next/eslint-plugin-next to 16.2.7
+- Bump vitest to 4.x (fixes GHSA-5xrq-8626-4rwp)
+- Upgrade next to 16.2.7
+
+### Fixed
+- Bump brace-expansion and ws (GHSA-jxxr-4gwj-5jf2, GHSA-58qx-3vcg-4xpx)
+
+### Removed
+- Remove unused vite osv-scanner ignores
+
 ## v2.23.3
 
 ### Changed
