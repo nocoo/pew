@@ -18,14 +18,14 @@
         "eslint-plugin-react-hooks": "7.1.1",
         "husky": "^9.1.7",
         "lint-staged": "^15.5.0",
-        "typescript": "^5.7.0",
+        "typescript": "^6.0.3",
         "typescript-eslint": "^8.60.1",
         "vitest": "^4.1.8",
       },
     },
     "packages/cli": {
       "name": "@nocoo/pew",
-      "version": "2.23.3",
+      "version": "2.23.4",
       "bin": {
         "pew": "dist/bin.js",
       },
@@ -39,14 +39,14 @@
     },
     "packages/core": {
       "name": "@pew/core",
-      "version": "2.23.3",
+      "version": "2.23.4",
       "devDependencies": {
         "@types/node": "^22.0.0",
       },
     },
     "packages/web": {
       "name": "@pew/web",
-      "version": "2.23.3",
+      "version": "2.23.4",
       "dependencies": {
         "@auth/core": "^0.34.3",
         "@aws-sdk/client-s3": "^3.1063.0",
@@ -73,26 +73,26 @@
         "@types/react-dom": "^19.2.3",
         "@types/sharp": "^0.32.0",
         "tailwindcss": "^4.3.0",
-        "typescript": "^5.9.0",
+        "typescript": "^6.0.3",
       },
     },
     "packages/worker": {
       "name": "@pew/worker",
-      "version": "2.23.3",
+      "version": "2.23.4",
       "devDependencies": {
         "@cloudflare/workers-types": "^4.20260605.1",
         "@pew/core": "workspace:*",
-        "typescript": "^5.9.0",
+        "typescript": "^6.0.3",
         "wrangler": "^4.98.0",
       },
     },
     "packages/worker-read": {
       "name": "@pew/worker-read",
-      "version": "2.23.3",
+      "version": "2.23.4",
       "devDependencies": {
         "@cloudflare/workers-types": "^4.20260605.1",
         "@pew/core": "workspace:*",
-        "typescript": "^5.9.0",
+        "typescript": "^6.0.3",
         "wrangler": "^4.98.0",
       },
     },
@@ -1188,7 +1188,7 @@
 
     "type-check": ["type-check@0.4.0", "", { "dependencies": { "prelude-ls": "^1.2.1" } }, "sha512-XleUoc9uwGXqjWwXaUTZAmzMcFZ5858QA2vvx1Ur5xIcixXIP+8LnFDgRplU30us6teqdlskFfu+ae4K79Ooew=="],
 
-    "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+    "typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
     "typescript-eslint": ["typescript-eslint@8.60.1", "", { "dependencies": { "@typescript-eslint/eslint-plugin": "8.60.1", "@typescript-eslint/parser": "8.60.1", "@typescript-eslint/typescript-estree": "8.60.1", "@typescript-eslint/utils": "8.60.1" }, "peerDependencies": { "eslint": "^8.57.0 || ^9.0.0 || ^10.0.0", "typescript": ">=4.8.4 <6.1.0" } }, "sha512-6m5hkkRAp8lKvhVpcprAIn5KkehQEh+47oHH2VGnExEh7dhNxXlg6GPAOIu6TxbVQxhebrJDvjl3020ooiWCMA=="],
 

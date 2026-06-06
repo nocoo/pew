@@ -9,9 +9,8 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "baseUrl": ".",
     "paths": {
-      "@pew/core": ["packages/core/dist/index.d.ts"]
+      "@pew/core": ["./packages/core/dist/index.d.ts"]
     },
     "declaration": true,
     "declarationMap": true,
