@@ -5,6 +5,16 @@
 ### Removed
 - Drop legacy `model_pricing` D1 table, admin Token Pricing CRUD UI (`/admin/pricing`) and its CRUD API (`/api/admin/pricing` route), worker-read admin-loader + `pricing.listModelPricing` / `pricing.getModelPricingByModelSource` RPCs, `origin: "admin"` pricing layer, and `pricing:all` KV cache (migration 021). The dynamic-pricing admin surface (`/admin/model-prices`, `/api/admin/pricing/models`, `/api/admin/pricing/rebuild`) is retained. Dynamic pricing pipeline (baseline + OpenRouter + models.dev → `pricing:dynamic`) is now the sole source of truth.
 
+## v2.23.5
+
+### Changed
+- Bump web lucide-react to 1.17.0
+- Bump web radix-ui to 1.5.0
+- Bump lint-staged to 17.0.7
+- Roll @cloudflare/workers-types to 4.20260606.1
+- Bump @types/node to 25.9.2
+- Bump typescript to 6.0.3
+
 ## v2.23.4
 
 ### Changed
