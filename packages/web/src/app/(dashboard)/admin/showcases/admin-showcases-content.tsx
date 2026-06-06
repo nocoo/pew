@@ -18,8 +18,8 @@ import {
   ChevronRight,
   Package,
   Users,
-  Github,
 } from "lucide-react";
+import { Github } from "@/components/icons/github";
 import { cn } from "@/lib/utils";
 import { ShowcaseImage } from "@/components/showcase";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";

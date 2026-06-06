@@ -5,7 +5,8 @@
 "use client";
 
 import Link from "next/link";
-import { ExternalLink, Github, Star, GitFork, Code, Scale } from "lucide-react";
+import { ExternalLink, Star, GitFork, Code, Scale } from "lucide-react";
+import { Github } from "@/components/icons/github";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ShowcaseImage } from "./showcase-image";
 import { UpvoteButton } from "./upvote-button";

@@ -2,7 +2,8 @@
 
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { Menu, Github, ShieldCheck } from "lucide-react";
+import { Menu, ShieldCheck } from "lucide-react";
+import { Github } from "@/components/icons/github";
 import { Sidebar } from "./sidebar";
 import { SidebarProvider, useSidebar } from "./sidebar-context";
 import { ThemeToggle } from "./theme-toggle";

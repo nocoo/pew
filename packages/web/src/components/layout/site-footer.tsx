@@ -1,4 +1,4 @@
-import { Github } from "lucide-react";
+import { Github } from "@/components/icons/github";
 
 const GITHUB_URL = "https://github.com/nocoo/pew";
 

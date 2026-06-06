@@ -1,4 +1,5 @@
-import { Github, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
+import { Github } from "@/components/icons/github";
 import { LandingContent } from "@/components/landing/landing-content";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { ThemeToggle } from "@/components/layout/theme-toggle";

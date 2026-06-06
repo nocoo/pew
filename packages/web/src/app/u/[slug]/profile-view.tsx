@@ -4,9 +4,9 @@ import Link from "next/link";
 import {
   Calendar,
   ArrowLeft,
-  Github,
   ShieldCheck,
 } from "lucide-react";
+import { Github } from "@/components/icons/github";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
