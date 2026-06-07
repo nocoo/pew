@@ -182,7 +182,25 @@ export async function discoverCodexFiles(
     }
   }
 
-  return results.sort();
+  // Deduplicate by inode — Multica codex-home/sessions/ dirs are often
+  // symlinks to ~/.codex/sessions/, producing hardlinked files that would
+  // otherwise be counted N times (once per Multica run directory).
+  const seenInodes = new Set<string>();
+  const deduped: string[] = [];
+  for (const filePath of results) {
+    try {
+      const st = await stat(filePath);
+      const key = `${st.dev}:${st.ino}`;
+      if (seenInodes.has(key)) continue;
+      seenInodes.add(key);
+      deduped.push(filePath);
+    } catch {
+      // If stat fails, keep the file (let downstream handle errors)
+      deduped.push(filePath);
+    }
+  }
+
+  return deduped.sort();
 }
 
 /**
