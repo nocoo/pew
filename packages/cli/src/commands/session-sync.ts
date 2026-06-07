@@ -148,6 +148,9 @@ export async function executeSessionSync(
   const filesScanned = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0 };
   const dbsScanned = { opencode: 0 };
 
+  // Collect all paths surfaced by discovery this run, for cursor pruning.
+  const discoveredFiles = new Set<string>();
+
   // Build driver sets from options
   const { fileDrivers, dbDrivers } = createSessionDrivers(opts);
 
@@ -179,6 +182,7 @@ export async function executeSessionSync(
 
     const files = await driver.discover(discoverOpts);
     filesScanned[key] += files.length;
+    for (const f of files) discoveredFiles.add(f);
 
     onProgress?.({
       source: driver.source,
@@ -340,6 +344,15 @@ export async function executeSessionSync(
   }
 
   // ---------- Save cursor state AFTER queue ----------
+  // Prune `cursors.files` to only paths surfaced by this run's discovery.
+  // Same rationale as token sync (see sync.ts): drops stale entries left
+  // over from deleted files or pre-dedup Multica symlink paths.
+  const prunedFiles: typeof cursors.files = {};
+  for (const fp of discoveredFiles) {
+    if (cursors.files[fp]) prunedFiles[fp] = cursors.files[fp];
+  }
+  cursors.files = prunedFiles;
+
   cursors.updatedAt = new Date().toISOString();
   await cursorStore.save(cursors);
 

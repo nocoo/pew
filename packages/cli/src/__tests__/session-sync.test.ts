@@ -1663,4 +1663,43 @@ describe("executeSessionSync", () => {
       cursorSpy.mockRestore();
     }
   });
+
+  it("should prune cursors.files entries for paths no longer in discovery", async () => {
+    // Same prune semantics as token sync: stale paths (e.g. pre-#154 Multica
+    // codex-home/sessions symlink paths, or rotated logs) must not linger in
+    // cursors.json forever.
+    const claudeDir = join(dataDir, ".claude", "projects", "proj-session-prune");
+    await mkdir(claudeDir, { recursive: true });
+    const realPath = join(claudeDir, "session.jsonl");
+    const content = [
+      claudeUserLine("2026-03-07T10:00:00.000Z"),
+      claudeAssistantLine("2026-03-07T10:05:00.000Z"),
+    ].join("\n") + "\n";
+    await writeFile(realPath, content);
+
+    await executeSessionSync({
+      stateDir,
+      claudeDir: join(dataDir, ".claude"),
+    });
+
+    const cursorsPath = join(stateDir, "session-cursors.json");
+    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    const stalePath = join(dataDir, "multica/run-7/codex-home/sessions/rollout-stale.jsonl");
+    cursorsData.files[stalePath] = {
+      inode: 999_999,
+      mtimeMs: 0,
+      size: 0,
+      updatedAt: "2026-03-07T10:00:00.000Z",
+    };
+    await writeFile(cursorsPath, JSON.stringify(cursorsData));
+
+    await executeSessionSync({
+      stateDir,
+      claudeDir: join(dataDir, ".claude"),
+    });
+
+    const after = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    expect(after.files[stalePath]).toBeUndefined();
+    expect(after.files[realPath]).toBeDefined();
+  });
 });
