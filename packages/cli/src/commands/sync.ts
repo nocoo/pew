@@ -10,6 +10,7 @@ import type {
 } from "@pew/core";
 import { CursorStore } from "../storage/cursor-store.js";
 import { LocalQueue } from "../storage/local-queue.js";
+import { pruneAliasCursors } from "../storage/prune-alias-cursors.js";
 import type { OnCorruptLine } from "../storage/base-queue.js";
 import type { QueryMessagesFn } from "../parsers/opencode-sqlite.js";
 import type { QuerySessionsFn } from "../parsers/hermes-sqlite.js";
@@ -642,6 +643,16 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   const known: Record<string, true> = cursors.knownFilePaths ?? {};
   for (const fp of discoveredFiles) known[fp] = true;
   cursors.knownFilePaths = known;
+
+  // Alias prune: drop cursor entries whose path is absent from this run's
+  // discovery but whose inode still matches a discovered file. See
+  // pruneAliasCursors() for the full rationale — the short version is
+  // that this collapses pre-#154 Multica codex-home/sessions symlink
+  // paths to their canonical equivalents without touching cursors
+  // for files that mtime-skip optimizations didn't surface.
+  const pruned = await pruneAliasCursors(cursors.files, discoveredFiles, cursors.knownFilePaths);
+  cursors.files = pruned.cursorFiles;
+  cursors.knownFilePaths = pruned.knownFilePaths ?? cursors.knownFilePaths;
 
   // ---------- Aggregate into half-hour buckets ----------
   onProgress?.({

@@ -21,6 +21,7 @@ import type {
 } from "@pew/core";
 import { SessionCursorStore } from "../storage/session-cursor-store.js";
 import { SessionQueue } from "../storage/session-queue.js";
+import { pruneAliasCursors } from "../storage/prune-alias-cursors.js";
 import type { OnCorruptLine } from "../storage/base-queue.js";
 import { deduplicateSessionRecords } from "./session-upload.js";
 import { createSessionDrivers } from "../drivers/registry.js";
@@ -148,6 +149,10 @@ export async function executeSessionSync(
   const filesScanned = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0 };
   const dbsScanned = { opencode: 0 };
 
+  // Paths surfaced by discovery this run; consumed by the alias-prune
+  // pass below.
+  const discoveredFiles = new Set<string>();
+
   // Build driver sets from options
   const { fileDrivers, dbDrivers } = createSessionDrivers(opts);
 
@@ -179,6 +184,7 @@ export async function executeSessionSync(
 
     const files = await driver.discover(discoverOpts);
     filesScanned[key] += files.length;
+    for (const f of files) discoveredFiles.add(f);
 
     onProgress?.({
       source: driver.source,
@@ -340,6 +346,14 @@ export async function executeSessionSync(
   }
 
   // ---------- Save cursor state AFTER queue ----------
+  // Alias prune: same narrow rule as token sync (see pruneAliasCursors).
+  // Drops cursor entries that are stale aliases (e.g. Multica codex-home
+  // symlink paths) but keeps every cursor whose inode is not currently
+  // reachable through the discovered file list — including files in
+  // mtime-skipped directories on sources that support that optimization.
+  const pruned = await pruneAliasCursors(cursors.files, discoveredFiles);
+  cursors.files = pruned.cursorFiles;
+
   cursors.updatedAt = new Date().toISOString();
   await cursorStore.save(cursors);
 

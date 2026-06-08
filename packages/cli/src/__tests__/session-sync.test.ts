@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtemp, rm, writeFile, mkdir, readFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile, mkdir, readFile, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { executeSessionSync } from "../commands/session-sync.js";
@@ -1662,5 +1662,48 @@ describe("executeSessionSync", () => {
       queueSpy.mockRestore();
       cursorSpy.mockRestore();
     }
+  });
+
+  it("should prune cursor entries that are symlink aliases of a discovered file", async () => {
+    // Same Multica-style scenario as the token sync path, applied to
+    // session cursors. The alias path's cursor must vanish; the
+    // canonical path's cursor must stay.
+    const claudeDir = join(dataDir, ".claude");
+    const realDir = join(claudeDir, "projects", "proj-real");
+    await mkdir(realDir, { recursive: true });
+    const realPath = join(realDir, "session.jsonl");
+    await writeFile(
+      realPath,
+      [
+        claudeUserLine("2026-03-07T10:00:00.000Z"),
+        claudeAssistantLine("2026-03-07T10:05:00.000Z"),
+      ].join("\n") + "\n",
+    );
+    const aliasPath = join(dataDir, "elsewhere", "session.jsonl");
+    await mkdir(join(dataDir, "elsewhere"), { recursive: true });
+    await symlink(realPath, aliasPath);
+
+    await executeSessionSync({
+      stateDir,
+      claudeDir,
+    });
+
+    const cursorsPath = join(stateDir, "session-cursors.json");
+    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    expect(cursorsData.files[realPath]).toBeDefined();
+
+    // Inject a stale alias cursor that older versions of pew would have written
+    // when discovery surfaced both paths.
+    cursorsData.files[aliasPath] = { ...cursorsData.files[realPath] };
+    await writeFile(cursorsPath, JSON.stringify(cursorsData));
+
+    await executeSessionSync({
+      stateDir,
+      claudeDir,
+    });
+
+    const after = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    expect(after.files[realPath]).toBeDefined();
+    expect(after.files[aliasPath]).toBeUndefined();
   });
 });

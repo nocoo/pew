@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtemp, rm, writeFile, mkdir, readFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile, mkdir, readFile, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { executeSync } from "../commands/sync.js";
@@ -2793,5 +2793,183 @@ describe("executeSync", () => {
 
     // Should see "Hermes SQLite (default)" in discover messages
     expect(events.some((e) => e.message?.includes("Hermes SQLite"))).toBe(true);
+  });
+
+  // ===== Alias prune: Multica-style symlink path collapses to canonical =====
+
+  it("should prune cursor entries whose path is a symlink alias of a discovered file", async () => {
+    // Reproduce the post-#154 cleanup scenario. cursors.json arrives with
+    // two entries pointing at the same physical file via different paths;
+    // discovery now returns only the canonical path. The alias-prune step
+    // must drop the stale path AND its knownFilePaths companion.
+    const realDir = join(dataDir, "codex-sessions");
+    const aliasDir = join(dataDir, "multica/run-7/codex-home/sessions");
+    await mkdir(realDir, { recursive: true });
+    await mkdir(join(dataDir, "multica/run-7/codex-home"), { recursive: true });
+    const realPath = join(realDir, "2026/03/07/rollout-canon.jsonl");
+    await mkdir(join(realDir, "2026/03/07"), { recursive: true });
+    await writeFile(
+      realPath,
+      JSON.stringify({
+        timestamp: "2026-03-07T10:15:00.000Z",
+        type: "token_count",
+        payload: {
+          info: {
+            model: "gpt-5",
+            total_token_usage: { input_tokens: 1000, cached_input_tokens: 0, output_tokens: 100, reasoning_output_tokens: 0 },
+          },
+        },
+      }) + "\n",
+    );
+    // The Multica codex-home/sessions/ symlink → real codex-sessions
+    await symlink(realDir, aliasDir);
+    const aliasPath = join(aliasDir, "2026/03/07/rollout-canon.jsonl");
+
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      codexSessionsDir: realDir,
+    });
+
+    // Inject the alias-path cursor that older versions would have written.
+    const cursorsPath = join(stateDir, "cursors.json");
+    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    cursorsData.files[aliasPath] = { ...cursorsData.files[realPath] };
+    cursorsData.knownFilePaths[aliasPath] = true;
+    await writeFile(cursorsPath, JSON.stringify(cursorsData));
+
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      codexSessionsDir: realDir,
+    });
+
+    const after = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    expect(after.files[realPath]).toBeDefined();
+    expect(after.files[aliasPath]).toBeUndefined();
+    expect(after.knownFilePaths[realPath]).toBe(true);
+    expect(after.knownFilePaths[aliasPath]).toBeUndefined();
+  });
+
+  // ===== Alias prune: must NOT break OpenCode mtime-skipped cursors =====
+
+  it("should not drop cursors for files in OpenCode mtime-skipped directories", async () => {
+    // Regression for the high-severity bug in the original prune attempt:
+    //   1. First sync establishes an OpenCode cursor.
+    //   2. Second sync (no file changes) sees the OpenCode session dir
+    //      mtime is unchanged, so discoverOpenCodeFiles skips the dir and
+    //      returns nothing for OpenCode. The cursor MUST survive.
+    //   3. Third sync adds a new message in that same dir. With cursors
+    //      intact, only the new message is counted as a delta. If the
+    //      cursor had been dropped, the original message would be replayed
+    //      and summed, inflating tokens.
+    //
+    // Claude is along for the ride so that initialCursorEmpty stays false
+    // and a hypothetical replay would actually hit the incremental SUM
+    // path — that's the corner the buggy version blew up on.
+    const claudeDir = join(dataDir, ".claude", "projects", "proj-companion");
+    await mkdir(claudeDir, { recursive: true });
+    await writeFile(
+      join(claudeDir, "session.jsonl"),
+      claudeLine("2026-03-07T10:00:00.000Z", 50, 5) + "\n",
+    );
+
+    const ocDir = join(dataDir, "opencode", "message", "ses_mtime_skip");
+    await mkdir(ocDir, { recursive: true });
+    await writeFile(
+      join(ocDir, "msg_001.json"),
+      opencodeMsg(1771120749059, 100, 50),
+    );
+
+    // Sync 1: establish both cursors.
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      claudeDir: join(dataDir, ".claude"),
+      openCodeMessageDir: join(dataDir, "opencode", "message"),
+    });
+
+    // Sync 2: nothing changed. OpenCode dir mtime stable → discovery
+    // returns no OpenCode files. Cursor must NOT be pruned.
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      claudeDir: join(dataDir, ".claude"),
+      openCodeMessageDir: join(dataDir, "opencode", "message"),
+    });
+
+    const midCursors = JSON.parse(
+      await readFile(join(stateDir, "cursors.json"), "utf-8"),
+    );
+    expect(midCursors.files[join(ocDir, "msg_001.json")]).toBeDefined();
+
+    // Sync 3: add a new message → driver discovers it incrementally,
+    // emits only the new delta. Totals should be 100+200=300 / 50+100=150.
+    await writeFile(
+      join(ocDir, "msg_002.json"),
+      opencodeMsg(1771120799059, 200, 100),
+    );
+
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      claudeDir: join(dataDir, ".claude"),
+      openCodeMessageDir: join(dataDir, "opencode", "message"),
+    });
+
+    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
+    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const opencodeTotals = records
+      .filter((r) => r.source === "opencode")
+      .reduce(
+        (acc, r) => ({ input: acc.input + r.input_tokens, output: acc.output + r.output_tokens }),
+        { input: 0, output: 0 },
+      );
+    expect(opencodeTotals.input).toBe(300);
+    expect(opencodeTotals.output).toBe(150);
+  });
+
+  // ===== Alias prune: cursor for a deleted file is preserved =====
+
+  it("should keep cursor entries whose physical file no longer exists", async () => {
+    // A path absent from discovery whose stat() also fails (deleted file)
+    // cannot prove an alias relationship — we keep the cursor so a future
+    // reappearance still goes through replay detection. The footprint
+    // wasted is bounded and harmless.
+    const claudeDir = join(dataDir, ".claude", "projects", "proj-keep-ghost");
+    await mkdir(claudeDir, { recursive: true });
+    await writeFile(
+      join(claudeDir, "session.jsonl"),
+      claudeLine("2026-03-07T10:00:00.000Z", 1, 1) + "\n",
+    );
+
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      claudeDir: join(dataDir, ".claude"),
+    });
+
+    const ghostPath = join(dataDir, "vanished/session.jsonl");
+    const cursorsPath = join(stateDir, "cursors.json");
+    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    cursorsData.files[ghostPath] = {
+      inode: 7_777_777,
+      mtimeMs: 0,
+      size: 0,
+      offset: 0,
+      updatedAt: "2026-03-07T09:00:00.000Z",
+    };
+    cursorsData.knownFilePaths[ghostPath] = true;
+    await writeFile(cursorsPath, JSON.stringify(cursorsData));
+
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      claudeDir: join(dataDir, ".claude"),
+    });
+
+    const after = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    expect(after.files[ghostPath]).toBeDefined();
+    expect(after.knownFilePaths[ghostPath]).toBe(true);
   });
 });
