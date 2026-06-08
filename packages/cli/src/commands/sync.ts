@@ -635,32 +635,11 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   // Persist context state
   cursors.dirMtimes = ctx.dirMtimes;
 
-  // Prune stale entries from `files` and `knownFilePaths`.
-  //
-  // Both maps previously grew monotonically: even when a physical file was
-  // deleted (e.g. log rotation) or replaced by a single canonical path
-  // (Multica codex-home/sessions/ symlink dedup, see discoverCodexFiles),
-  // its old cursor / known-path entry stayed forever. Real-world impact:
-  // cursors.json bloating to hundreds of MB and `pew sync` hanging.
-  //
-  // Pruning is safe because:
-  // - `files`: a cursor for a path not in current discovery is dead weight —
-  //   it can never be consulted again (the file-parse loop only iterates over
-  //   discovered paths). Worst case if the path returns later (e.g. unmounted
-  //   volume): treated as a new file, and the existing replay-detection +
-  //   full-rescan mechanism handles it.
-  // - `knownFilePaths`: only consulted during the file-parse loop for
-  //   cursor-loss detection. Same argument: undiscovered paths are unreachable.
-  //
-  // Server-side ingest is idempotent (ON CONFLICT upsert, see CLAUDE.md), so
-  // even a worst-case rescan never corrupts data.
-  const prunedFiles: typeof cursors.files = {};
-  for (const fp of discoveredFiles) {
-    if (cursors.files[fp]) prunedFiles[fp] = cursors.files[fp];
-  }
-  cursors.files = prunedFiles;
-
-  const known: Record<string, true> = {};
+  // Update knownFilePaths: merge newly discovered files with existing set.
+  // This grows monotonically — files are never removed from knownFilePaths
+  // even if the physical file is deleted, because we only need to know
+  // "was this path ever scanned?" for cursor-loss detection.
+  const known: Record<string, true> = cursors.knownFilePaths ?? {};
   for (const fp of discoveredFiles) known[fp] = true;
   cursors.knownFilePaths = known;
 
