@@ -216,4 +216,48 @@ describe("pruneAliasCursors", () => {
     // point is that protectedPrefixes did NOT exempt it.
     expect(result.removedMissing).toBe(1);
   });
+
+  it("protects cursor paths that use the Windows separator under a forward-slash prefix", async () => {
+    // Cross-platform regression: on Windows the orchestrator threads
+    // backslash paths through unchanged. If the prefix uses "/" but
+    // the cursor key uses "\\", the boundary probe must still match.
+    const winCursor = "C:\\Users\\me\\.local\\opencode\\message\\ses_1\\msg.json";
+    const cursors: Record<string, DummyCursor> = {
+      [winCursor]: { inode: 1, size: 0 },
+    };
+    const result = await pruneAliasCursors(cursors, new Set(), undefined, {
+      protectedPrefixes: ["C:\\Users\\me\\.local\\opencode\\message\\ses_1"],
+    });
+    expect(result.protected).toBe(1);
+    expect(result.removedMissing).toBe(0);
+    expect(result.cursorFiles[winCursor]).toBeDefined();
+  });
+
+  it("normalizes prefixes that already end with a trailing separator", async () => {
+    // Callers may pass "/foo/bar/" or "/foo/bar\\" — both must collapse
+    // to the same bare-dir form so probing adds exactly one separator.
+    const fakePath = join(tempDir, "foo/bar/inside.json");
+    const cursors: Record<string, DummyCursor> = {
+      [fakePath]: { inode: 1, size: 0 },
+    };
+    const result = await pruneAliasCursors(cursors, new Set(), undefined, {
+      protectedPrefixes: [join(tempDir, "foo/bar") + "/"],
+    });
+    expect(result.protected).toBe(1);
+    expect(result.cursorFiles[fakePath]).toBeDefined();
+  });
+
+  it("respects directory boundaries when both sides use the Windows separator", async () => {
+    // Sibling-name false-positive on Windows: C:\\a\\bar must NOT
+    // protect C:\\a\\barbaz\\file. Same rule as the POSIX boundary
+    // test above; the regression-class is identical.
+    const cursors: Record<string, DummyCursor> = {
+      ["C:\\a\\barbaz\\file.json"]: { inode: 1, size: 0 },
+    };
+    const result = await pruneAliasCursors(cursors, new Set(), undefined, {
+      protectedPrefixes: ["C:\\a\\bar"],
+    });
+    expect(result.protected).toBe(0);
+    expect(result.removedMissing).toBe(1);
+  });
 });

@@ -92,15 +92,25 @@ export async function pruneAliasCursors<TCursor>(
   knownFilePaths?: Readonly<Record<string, true>>,
   options?: PruneAliasOptions,
 ): Promise<PruneAliasResult<TCursor>> {
-  // Normalize each protected prefix to end with the separator so a
-  // prefix /a/b never matches /a/babbage. We accept both "/" and "\\"
-  // for cross-platform safety; the orchestrator always feeds us paths
-  // produced by node:path so this remains a defensive guard.
-  const prefixes = (options?.protectedPrefixes ?? []).map((p) =>
-    p.endsWith("/") || p.endsWith("\\") ? p : `${p}/`,
-  );
+  // Normalize each protected prefix into the bare directory form, then
+  // probe candidate cursor paths against BOTH `${prefix}/` and
+  // `${prefix}\` so a Windows host whose cursor keys use backslashes is
+  // not silently unprotected. node:path joins use the platform separator
+  // and the orchestrator threads paths through unchanged, so a single-
+  // separator check here would re-introduce the OpenCode 66K-file stat
+  // storm on Windows. The dual-suffix probe is also safe on POSIX where
+  // `\` is a legal filename character — it just never matches.
+  const prefixes = (options?.protectedPrefixes ?? []).map((p) => {
+    let trimmed = p;
+    while (trimmed.endsWith("/") || trimmed.endsWith("\\")) {
+      trimmed = trimmed.slice(0, -1);
+    }
+    return trimmed;
+  });
   const isProtected = (path: string): boolean =>
-    prefixes.some((prefix) => path.startsWith(prefix));
+    prefixes.some((prefix) =>
+      path.startsWith(`${prefix}/`) || path.startsWith(`${prefix}\\`),
+    );
 
   const liveInodes = new Set<string>();
   for (const fp of discoveredFiles) {
