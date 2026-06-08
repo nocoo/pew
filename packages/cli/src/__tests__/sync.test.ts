@@ -3035,7 +3035,87 @@ describe("executeSync", () => {
     expect(opencodeTotals.output).toBe(150);
   });
 
-  // ===== Prune must NOT stat() OpenCode files inside mtime-skipped dirs =====
+  // ===== Parse-throw must NOT leak a known-only entry =====
+
+  it("should not record a knownFilePaths entry for a file whose parser throws", async () => {
+    // Reviewer's path: parse loop discovers a file, parser throws,
+    // cursor is NOT written but the path used to land in knownFilePaths.
+    // On the next sync, with the file still present and the parser still
+    // throwing, the discovery loop would see no cursor + known-path-set
+    // membership and trip cursor-loss → full rescan. We pin the new
+    // behaviour by asserting knownFilePaths NEVER carries the bad path,
+    // and that a third sync (parser now succeeds) takes the genuinely-
+    // new path instead of the full-rescan path.
+    const claudeDir = join(dataDir, ".claude", "projects", "proj-throw");
+    await mkdir(claudeDir, { recursive: true });
+    const goodPath = join(claudeDir, "good.jsonl");
+    const badPath = join(claudeDir, "bad.jsonl");
+    await writeFile(goodPath, claudeLine("2026-03-07T10:00:00.000Z", 1000, 100) + "\n");
+    await writeFile(badPath, claudeLine("2026-03-07T10:05:00.000Z", 2000, 200) + "\n");
+
+    const claudeParser = await import("../parsers/claude.js");
+    const origParse = claudeParser.parseClaudeFile;
+    const spy = vi.spyOn(claudeParser, "parseClaudeFile").mockImplementation(
+      async (opts) => {
+        if (opts.filePath === badPath) {
+          throw new Error("Simulated parser explosion");
+        }
+        return origParse(opts);
+      },
+    );
+
+    try {
+      await executeSync({
+        stateDir,
+        deviceId: "dev-1",
+        claudeDir: join(dataDir, ".claude"),
+      });
+
+      const cursors1 = JSON.parse(await readFile(join(stateDir, "cursors.json"), "utf-8"));
+      expect(cursors1.files[goodPath]).toBeDefined();
+      expect(cursors1.files[badPath]).toBeUndefined();
+      expect(cursors1.knownFilePaths[goodPath]).toBe(true);
+      // The regression itself: bad path must NOT be in knownFilePaths.
+      expect(cursors1.knownFilePaths[badPath]).toBeUndefined();
+
+      // Capture progress events from the second sync (parser still
+      // broken). No "Cursor entry lost" warning should fire — that
+      // would prove we tripped the cursor-loss replay-detection branch
+      // and restarted as a full scan.
+      const events: Array<{ phase: string; message?: string }> = [];
+      await executeSync({
+        stateDir,
+        deviceId: "dev-1",
+        claudeDir: join(dataDir, ".claude"),
+        onProgress: (e) => events.push({ phase: e.phase, message: e.message }),
+      });
+      expect(
+        events.some((e) => e.message?.includes("Cursor entry lost")),
+      ).toBe(false);
+
+      const cursors2 = JSON.parse(await readFile(join(stateDir, "cursors.json"), "utf-8"));
+      expect(cursors2.knownFilePaths[badPath]).toBeUndefined();
+    } finally {
+      spy.mockRestore();
+    }
+
+    // Third sync: parser is healthy. The previously-bad file is treated
+    // as a genuinely new file (incremental SUM), not a replay-detected
+    // full rescan. Concretely: total Claude deltas across all syncs add
+    // up to 1000 (good, first sync) + 2000 (bad, third sync) = 3000.
+    const r3 = await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      claudeDir: join(dataDir, ".claude"),
+    });
+    expect(r3.sources.claude).toBe(1);
+    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
+    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const claudeTotal = records
+      .filter((r) => r.source === "claude-code")
+      .reduce((acc, r) => acc + r.input_tokens, 0);
+    expect(claudeTotal).toBe(3000);
+  });
 
   it("should leave OpenCode cursors inside mtime-skipped session dirs unevaluated", async () => {
     // Performance regression: without protectedPrefixes the prune pass

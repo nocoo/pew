@@ -34,6 +34,21 @@ export interface PruneAliasOptions {
    * remaining set is classified into alias / missing / keep.
    */
   protectedPrefixes?: ReadonlyArray<string>;
+
+  /**
+   * Optional superset of `discoveredFiles` for the "skip this cursor
+   * because the parse loop already revisited it" short-circuit. Defaults
+   * to `discoveredFiles` itself. Callers split the two when "discovery
+   * surfaced the path" and "the parse loop produced a cursor for the
+   * path" are not the same set — for example, the sync orchestrator
+   * passes `freshlyParsedPaths` as `discoveredFiles` (drives the
+   * liveInodes set used for alias detection) and a larger
+   * `inDiscoveryPaths` (also containing paths whose parse threw or
+   * whose stat failed mid-flight) so a mid-flight cursor is not
+   * accidentally classified missing/alias on the same run that
+   * discovered it.
+   */
+  inDiscoveryPaths?: ReadonlySet<string>;
 }
 
 /**
@@ -112,6 +127,12 @@ export async function pruneAliasCursors<TCursor>(
       path.startsWith(`${prefix}/`) || path.startsWith(`${prefix}\\`),
     );
 
+  // "In-discovery" guards against evicting a cursor that the parse
+  // loop already touched this run (whether or not it succeeded). The
+  // caller may pass a wider set than `discoveredFiles` itself; default
+  // to discoveredFiles for the common case where the two coincide.
+  const inDiscovery = options?.inDiscoveryPaths ?? discoveredFiles;
+
   const liveInodes = new Set<string>();
   for (const fp of discoveredFiles) {
     const st = await stat(fp).catch(() => null);
@@ -133,7 +154,7 @@ export async function pruneAliasCursors<TCursor>(
     for (const path of Object.keys(knownFilePaths)) candidatePaths.add(path);
   }
   for (const path of candidatePaths) {
-    if (discoveredFiles.has(path)) continue;
+    if (inDiscovery.has(path)) continue;
     if (isProtected(path)) {
       protectedCount++;
       continue;

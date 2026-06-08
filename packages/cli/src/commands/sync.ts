@@ -255,6 +255,13 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
 
   // Collect all discovered file paths (across all drivers) for knownFilePaths
   const discoveredFiles = new Set<string>();
+  // Subset of discoveredFiles where the parse loop could NOT confirm a
+  // valid cursor this run — either stat() failed before parse, or the
+  // parser itself threw. We track failures (not successes) because
+  // `shouldSkip` fast-skips already-up-to-date cursors without writing
+  // them, and those should also count as "cursor is correct as of now".
+  // discoveredFiles \ parseFailedPaths = cursor-valid paths for this run.
+  const parseFailedPaths = new Set<string>();
 
   // Build driver sets from options
   const { fileDrivers, dbDrivers } = createTokenDrivers(opts);
@@ -310,7 +317,14 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     for (let i = 0; i < files.length; i++) {
       const filePath = files[i];
       const st = await stat(filePath).catch(() => null);
-      if (!st) continue;
+      if (!st) {
+        // File vanished between discover and stat. Track as failed so the
+        // post-loop cursor bookkeeping treats it the same as a parse
+        // throw: do NOT mark it freshly-synced (would seed a known-only
+        // stale entry).
+        parseFailedPaths.add(filePath);
+        continue;
+      }
 
       const fingerprint: FileFingerprint = {
         inode: st.ino,
@@ -375,7 +389,13 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
           return null;
         },
       );
-      if (!result) continue;
+      if (!result) {
+        // Parser threw. Track as failed so we don't advertise this path
+        // as freshly-synced post-loop — that would leave a known-only
+        // stale entry that future cursor-loss detection would trip on.
+        parseFailedPaths.add(filePath);
+        continue;
+      }
 
       // Build and persist cursor (cast: driver returns concrete cursor type
       // but the generic loop types it as FileCursorBase)
@@ -636,13 +656,24 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   // Persist context state
   cursors.dirMtimes = ctx.dirMtimes;
 
-  // Merge newly discovered files into knownFilePaths first, then let the
-  // prune pass drop entries that are demonstrably unreachable (alias or
-  // stat-fails-missing). The merge has to happen here so a brand-new file
-  // observed for the first time this run isn't immediately classified as
-  // "cursor-lost for a known file" on a future replay-detection check.
+  // Cursor-valid set for this run: paths discovery surfaced that ALSO
+  // produced (or already had) a valid cursor — i.e. neither stat-failed
+  // nor parse-threw. This is the set whose inodes are safe to seed the
+  // alias-detection liveInodes with and whose entries are safe to record
+  // in knownFilePaths.
+  const cursorValidPaths = new Set<string>();
+  for (const fp of discoveredFiles) {
+    if (!parseFailedPaths.has(fp)) cursorValidPaths.add(fp);
+  }
+
+  // Merge into knownFilePaths only the paths that actually produced a
+  // cursor this run. Recording every *discovered* path would leak a
+  // known-only entry every time a parser throws after stat — sync.ts's
+  // cursor-loss detection (`!cursor && knownFilePaths[path]`) would
+  // then trigger a spurious full rescan the next time that path
+  // reappears in discovery.
   const knownMerged: Record<string, true> = { ...(cursors.knownFilePaths ?? {}) };
-  for (const fp of discoveredFiles) knownMerged[fp] = true;
+  for (const fp of cursorValidPaths) knownMerged[fp] = true;
   cursors.knownFilePaths = knownMerged;
 
   // Alias + missing prune. See pruneAliasCursors() for the full keep/drop
@@ -654,6 +685,14 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   //   - both leave OpenCode mtime-skipped cursors and inode-replacement
   //     replay detection alone.
   //
+  // The prune pass needs to know two related-but-different things:
+  //   1. Which paths' inodes should seed the liveInodes set for alias
+  //      detection — only cursorValidPaths, so a parse-failed path's
+  //      inode doesn't accidentally evict its own cursor as a "self alias".
+  //   2. Which paths the parse loop already touched and must NOT be
+  //      misclassified as alias/missing — the wider `discoveredFiles`,
+  //      so a mid-flight cursor whose parse threw is kept untouched.
+  //
   // OpenCode-specific: `ctx.mtimeSkippedDirs` lists session directories
   // the OpenCode driver intentionally did not enter this run because
   // their mtime was unchanged. Their per-message cursors are still
@@ -661,9 +700,12 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   // single message file (heavy installs have 66K+ message files).
   const pruned = await pruneAliasCursors(
     cursors.files,
-    discoveredFiles,
+    cursorValidPaths,
     cursors.knownFilePaths,
-    { protectedPrefixes: ctx.mtimeSkippedDirs },
+    {
+      protectedPrefixes: ctx.mtimeSkippedDirs,
+      inDiscoveryPaths: discoveredFiles,
+    },
   );
   cursors.files = pruned.cursorFiles;
   cursors.knownFilePaths = pruned.knownFilePaths ?? cursors.knownFilePaths;
