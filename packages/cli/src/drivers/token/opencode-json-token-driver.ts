@@ -42,6 +42,12 @@ export const openCodeJsonTokenDriver: FileTokenDriver<OpenCodeCursor> = {
     );
     // Store dirMtimes back into context for orchestrator persistence
     ctx.dirMtimes = discovery.dirMtimes;
+    // Expose skipped session-dir paths so the orchestrator's prune
+    // pass can leave their cursors alone (see SyncContext.mtimeSkippedDirs).
+    const prevSkipped = ctx.mtimeSkippedDirs ?? [];
+    ctx.mtimeSkippedDirs = prevSkipped.length === 0
+      ? discovery.skippedDirPaths
+      : [...prevSkipped, ...discovery.skippedDirPaths];
     return discovery.files;
   },
 

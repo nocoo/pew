@@ -653,7 +653,18 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   //     entries for rotated/deleted files (the PR #152 bloat case).
   //   - both leave OpenCode mtime-skipped cursors and inode-replacement
   //     replay detection alone.
-  const pruned = await pruneAliasCursors(cursors.files, discoveredFiles, cursors.knownFilePaths);
+  //
+  // OpenCode-specific: `ctx.mtimeSkippedDirs` lists session directories
+  // the OpenCode driver intentionally did not enter this run because
+  // their mtime was unchanged. Their per-message cursors are still
+  // valid; we protect them so the prune pass doesn't stat() every
+  // single message file (heavy installs have 66K+ message files).
+  const pruned = await pruneAliasCursors(
+    cursors.files,
+    discoveredFiles,
+    cursors.knownFilePaths,
+    { protectedPrefixes: ctx.mtimeSkippedDirs },
+  );
   cursors.files = pruned.cursorFiles;
   cursors.knownFilePaths = pruned.knownFilePaths ?? cursors.knownFilePaths;
 

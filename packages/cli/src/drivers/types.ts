@@ -50,6 +50,17 @@ export interface SyncContext {
    * Persisted to CursorState.dirMtimes by the orchestrator.
    */
   dirMtimes?: Record<string, number>;
+
+  /**
+   * Absolute paths of directories whose contents the OpenCode driver
+   * chose NOT to read this run because their mtime was unchanged.
+   * Read by the orchestrator's cursor-prune pass to exclude OpenCode
+   * cursors under these directories from per-file stat() probes —
+   * dropping them would replay tokens via the incremental SUM path,
+   * and stat()-ing each one would defeat the whole point of the
+   * mtime-skip optimization (66K+ message files in real installs).
+   */
+  mtimeSkippedDirs?: string[];
 }
 
 // ---------------------------------------------------------------------------

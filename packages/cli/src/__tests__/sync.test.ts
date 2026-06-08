@@ -3034,4 +3034,60 @@ describe("executeSync", () => {
     expect(opencodeTotals.input).toBe(300);
     expect(opencodeTotals.output).toBe(150);
   });
+
+  // ===== Prune must NOT stat() OpenCode files inside mtime-skipped dirs =====
+
+  it("should leave OpenCode cursors inside mtime-skipped session dirs unevaluated", async () => {
+    // Performance regression: without protectedPrefixes the prune pass
+    // would stat() every message file every empty sync, undoing the
+    // whole point of the OpenCode mtime-skip optimization (66K+ files
+    // on real installs).
+    //
+    // We prove "not evaluated" with a falsifiable construct: after the
+    // first sync establishes a real cursor for msg_a.json, we inject a
+    // FAKE cursor for a path inside the same session dir that does
+    // NOT exist on disk. If prune were to stat() entries inside the
+    // skipped dir, it would classify the fake path as missing and drop
+    // it. With protectedPrefixes in place, the fake entry survives —
+    // proving the prune pass never even called stat() on it.
+    const ocDir = join(dataDir, "opencode", "message", "ses_protect");
+    await mkdir(ocDir, { recursive: true });
+    const realPath = join(ocDir, "msg_a.json");
+    await writeFile(realPath, opencodeMsg(1771120749059, 10, 5));
+
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      openCodeMessageDir: join(dataDir, "opencode", "message"),
+    });
+
+    const cursorsPath = join(stateDir, "cursors.json");
+    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    const fakePathInsideSkipped = join(ocDir, "msg_does_not_exist.json");
+    cursorsData.files[fakePathInsideSkipped] = {
+      inode: 12_345_678,
+      mtimeMs: 0,
+      size: 0,
+      lastTotals: null,
+      messageKey: null,
+      updatedAt: "2026-03-07T09:00:00.000Z",
+    };
+    cursorsData.knownFilePaths[fakePathInsideSkipped] = true;
+    await writeFile(cursorsPath, JSON.stringify(cursorsData));
+
+    // Second sync: dir mtime unchanged → ses_protect is mtime-skipped →
+    // the fake cursor's path falls under a protectedPrefix → prune must
+    // not touch it.
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      openCodeMessageDir: join(dataDir, "opencode", "message"),
+    });
+
+    const after = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    expect(after.files[fakePathInsideSkipped]).toBeDefined();
+    expect(after.knownFilePaths[fakePathInsideSkipped]).toBe(true);
+    // The real cursor is still there too.
+    expect(after.files[realPath]).toBeDefined();
+  });
 });

@@ -68,6 +68,16 @@ export interface OpenCodeDiscoveryResult {
   dirMtimes: Record<string, number>;
   /** Number of directories skipped due to unchanged mtime */
   skippedDirs: number;
+  /**
+   * Absolute paths of session directories the driver chose NOT to read
+   * this run because their mtime was unchanged since the last sync.
+   * Cursors for files under any of these paths are still valid even
+   * though their files are absent from `files`. The orchestrator uses
+   * this set to keep cursor-prune away from the mtime-skip fast path
+   * (otherwise every empty sync would stat() every existing message
+   * file just to confirm it still exists).
+   */
+  skippedDirPaths: string[];
 }
 
 /**
@@ -86,13 +96,14 @@ export async function discoverOpenCodeFiles(
   const known = knownDirMtimes ?? {};
   const newDirMtimes: Record<string, number> = {};
   const files: string[] = [];
+  const skippedDirPaths: string[] = [];
   let skippedDirs = 0;
 
   let entries: import("node:fs").Dirent[];
   try {
     entries = await readdir(messageDir, { withFileTypes: true });
   } catch {
-    return { files: [], dirMtimes: {}, skippedDirs: 0 };
+    return { files: [], dirMtimes: {}, skippedDirs: 0, skippedDirPaths: [] };
   }
 
   for (const entry of entries) {
@@ -112,6 +123,7 @@ export async function discoverOpenCodeFiles(
     // Skip directory if mtime unchanged
     if (known[dirPath] === currentMtime) {
       skippedDirs++;
+      skippedDirPaths.push(dirPath);
       continue;
     }
 
@@ -130,7 +142,7 @@ export async function discoverOpenCodeFiles(
     }
   }
 
-  return { files: files.sort(), dirMtimes: newDirMtimes, skippedDirs };
+  return { files: files.sort(), dirMtimes: newDirMtimes, skippedDirs, skippedDirPaths };
 }
 
 /**

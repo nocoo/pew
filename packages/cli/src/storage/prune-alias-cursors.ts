@@ -13,6 +13,27 @@ export interface PruneAliasResult<TCursor> {
   removedAlias: number;
   /** Number of entries removed because the path no longer exists on disk. */
   removedMissing: number;
+  /**
+   * Number of entries the caller exempted from evaluation via `protectedPrefixes`.
+   * Informational; these entries are kept untouched.
+   */
+  protected: number;
+}
+
+/**
+ * Options for {@link pruneAliasCursors}.
+ */
+export interface PruneAliasOptions {
+  /**
+   * Directory paths whose cursor entries must NOT be considered for
+   * prune. A cursor is exempted when its key starts with `<prefix>/`.
+   * Use this for sources that intentionally skip evaluating their own
+   * files (e.g. OpenCode mtime-skip): without the exemption, prune
+   * would stat() every cursor under those dirs every sync and undo
+   * the optimization. Order: exempt entries are kept first, then the
+   * remaining set is classified into alias / missing / keep.
+   */
+  protectedPrefixes?: ReadonlyArray<string>;
 }
 
 /**
@@ -44,11 +65,14 @@ export interface PruneAliasResult<TCursor> {
  *     it and refresh the cursor in place).
  *
  *   - stat() succeeds but no discovered file shares the inode. This is
- *     the OpenCode mtime-skip case: discoverOpenCodeFiles intentionally
- *     omits files in unchanged directories, but those cursors are still
- *     valid. Dropping them would make the next message in such a
- *     directory replay from offset 0 and inflate via the incremental
- *     SUM path.
+ *     the OpenCode mtime-skip case for files whose dir we *did* enter
+ *     this run (but whose specific file wasn't discovered — rare).
+ *
+ *   - The path begins with one of `options.protectedPrefixes`. This is
+ *     how callers protect entire mtime-skipped directories from being
+ *     stat()'d per file: the OpenCode driver lists ~3K session dirs
+ *     once, then declares the unchanged ones protected so the prune
+ *     pass doesn't fan out to all 66K message files inside them.
  *
  * Trade-off intentionally accepted for (B): a path that temporarily
  * vanishes (unmounted volume, paused syncthing) loses its replay-detection
@@ -66,7 +90,18 @@ export async function pruneAliasCursors<TCursor>(
   cursorFiles: Readonly<Record<string, TCursor>>,
   discoveredFiles: ReadonlySet<string>,
   knownFilePaths?: Readonly<Record<string, true>>,
+  options?: PruneAliasOptions,
 ): Promise<PruneAliasResult<TCursor>> {
+  // Normalize each protected prefix to end with the separator so a
+  // prefix /a/b never matches /a/babbage. We accept both "/" and "\\"
+  // for cross-platform safety; the orchestrator always feeds us paths
+  // produced by node:path so this remains a defensive guard.
+  const prefixes = (options?.protectedPrefixes ?? []).map((p) =>
+    p.endsWith("/") || p.endsWith("\\") ? p : `${p}/`,
+  );
+  const isProtected = (path: string): boolean =>
+    prefixes.some((prefix) => path.startsWith(prefix));
+
   const liveInodes = new Set<string>();
   for (const fp of discoveredFiles) {
     const st = await stat(fp).catch(() => null);
@@ -75,8 +110,13 @@ export async function pruneAliasCursors<TCursor>(
 
   const aliasPaths = new Set<string>();
   const missingPaths = new Set<string>();
+  let protectedCount = 0;
   for (const path of Object.keys(cursorFiles)) {
     if (discoveredFiles.has(path)) continue;
+    if (isProtected(path)) {
+      protectedCount++;
+      continue;
+    }
     const st = await stat(path).catch(() => null);
     if (!st) {
       missingPaths.add(path);
@@ -107,5 +147,6 @@ export async function pruneAliasCursors<TCursor>(
     knownFilePaths: nextKnown,
     removedAlias: aliasPaths.size,
     removedMissing: missingPaths.size,
+    protected: protectedCount,
   };
 }

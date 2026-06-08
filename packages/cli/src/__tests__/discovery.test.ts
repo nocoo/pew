@@ -113,11 +113,13 @@ describe("discoverOpenCodeFiles", () => {
     const r1 = await discoverOpenCodeFiles(messageDir);
     expect(r1.files).toHaveLength(1);
     expect(r1.skippedDirs).toBe(0);
+    expect(r1.skippedDirPaths).toEqual([]);
 
     // Second discovery with known mtimes — skips unchanged dir
     const r2 = await discoverOpenCodeFiles(messageDir, r1.dirMtimes);
     expect(r2.files).toHaveLength(0);
     expect(r2.skippedDirs).toBe(1);
+    expect(r2.skippedDirPaths).toEqual([sesDir]);
   });
 
   it("should skip subdirectories that cannot be stat'd", async () => {

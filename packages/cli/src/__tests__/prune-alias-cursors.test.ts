@@ -163,4 +163,57 @@ describe("pruneAliasCursors", () => {
     expect(result.cursorFiles[aliasPath]).toBeUndefined();
     expect(result.cursorFiles[ghostPath]).toBeUndefined();
   });
+
+  it("does not stat() cursors whose path falls under a protected prefix (mtime-skip respect)", async () => {
+    // This is the OpenCode case: the driver intentionally did not enter
+    // a session dir this run because its mtime was unchanged. The
+    // orchestrator hands those dir paths over as protectedPrefixes, and
+    // prune must not stat() any cursor below them. We assert this with
+    // BOTH a fake path that would otherwise be classified missing AND
+    // a real path that would otherwise be classified alias — neither
+    // should be touched.
+    const sessionDir = join(tempDir, "opencode", "message", "ses_skipped");
+    await mkdir(sessionDir, { recursive: true });
+    const realProtected = join(sessionDir, "msg_001.json");
+    await writeFile(realProtected, "{}");
+
+    // A separate symlink alias of the same inode that lives under the
+    // protected dir. If the implementation ignored protectedPrefixes,
+    // this would be classified as an alias and dropped.
+    const aliasUnderProtected = join(sessionDir, "msg_001_alias.json");
+    await symlink(realProtected, aliasUnderProtected);
+
+    const ghostUnderProtected = join(sessionDir, "msg_deleted.json");
+
+    const cursors: Record<string, DummyCursor> = {
+      [realProtected]: { inode: 1, size: 0 },
+      [aliasUnderProtected]: { inode: 1, size: 0 },
+      [ghostUnderProtected]: { inode: 2, size: 0 },
+    };
+    // Discovery returns nothing (the dir was skipped).
+    const result = await pruneAliasCursors(cursors, new Set(), undefined, {
+      protectedPrefixes: [sessionDir],
+    });
+
+    expect(result.removedAlias).toBe(0);
+    expect(result.removedMissing).toBe(0);
+    expect(result.protected).toBe(3);
+    expect(result.cursorFiles[realProtected]).toBeDefined();
+    expect(result.cursorFiles[aliasUnderProtected]).toBeDefined();
+    expect(result.cursorFiles[ghostUnderProtected]).toBeDefined();
+  });
+
+  it("treats protectedPrefixes as directory boundaries (no false-positive prefix match)", async () => {
+    // /foo/bar must NOT protect /foo/barbaz/file.
+    const cursors: Record<string, DummyCursor> = {
+      [join(tempDir, "foo/barbaz/file.json")]: { inode: 1, size: 0 },
+    };
+    const result = await pruneAliasCursors(cursors, new Set(), undefined, {
+      protectedPrefixes: [join(tempDir, "foo/bar")],
+    });
+    expect(result.protected).toBe(0);
+    // The path doesn't exist on disk so it's classified missing — the
+    // point is that protectedPrefixes did NOT exempt it.
+    expect(result.removedMissing).toBe(1);
+  });
 });
