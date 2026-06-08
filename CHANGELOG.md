@@ -5,6 +5,23 @@
 ### Removed
 - Drop legacy `model_pricing` D1 table, admin Token Pricing CRUD UI (`/admin/pricing`) and its CRUD API (`/api/admin/pricing` route), worker-read admin-loader + `pricing.listModelPricing` / `pricing.getModelPricingByModelSource` RPCs, `origin: "admin"` pricing layer, and `pricing:all` KV cache (migration 021). The dynamic-pricing admin surface (`/admin/model-prices`, `/api/admin/pricing/models`, `/api/admin/pricing/rebuild`) is retained. Dynamic pricing pipeline (baseline + OpenRouter + models.dev → `pricing:dynamic`) is now the sole source of truth.
 
+## v2.23.6
+
+### Changed
+- Revert "fix(sync): prune stale cursors.files and knownFilePaths each sync"
+- Write cursor state as compact JSON
+- Roll @cloudflare/workers-types to 4.20260607.1
+
+### Fixed
+- Keep parse-failed paths out of knownFilePaths
+- Evict known-only stale entries from knownFilePaths
+- Make protectedPrefixes match cursor paths that use the Windows separator
+- Exempt OpenCode mtime-skipped dirs from cursor prune
+- Also prune cursors whose path no longer exists on disk
+- Prune cursor entries that are stale aliases of a discovered file
+- Prune stale cursors.files and knownFilePaths each sync
+- Deduplicate files by inode to prevent Multica symlink inflation
+
 ## v2.23.5
 
 ### Changed
