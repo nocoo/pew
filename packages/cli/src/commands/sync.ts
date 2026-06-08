@@ -661,8 +661,14 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   }
   cursors.files = prunedFiles;
 
-  // Rebuild knownFilePaths from current discovery (replaces monotonic union)
-  const known: Record<string, true> = {};
+  // Update knownFilePaths: merge newly discovered files with existing set.
+  // This MUST remain monotonic (grow-only) even though `files` is pruned.
+  // knownFilePaths answers "was this path ever scanned?" for cursor-loss
+  // detection: if a file temporarily disappears (pruned from `files`) and
+  // reappears, the entry here lets the cursor-loss guard (line ~354) fire
+  // a full rescan instead of silently re-parsing from offset 0 and
+  // double-counting tokens.
+  const known: Record<string, true> = cursors.knownFilePaths ?? {};
   for (const fp of discoveredFiles) known[fp] = true;
   cursors.knownFilePaths = known;
 
