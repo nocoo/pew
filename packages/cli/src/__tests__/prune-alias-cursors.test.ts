@@ -260,4 +260,66 @@ describe("pruneAliasCursors", () => {
     expect(result.protected).toBe(0);
     expect(result.removedMissing).toBe(1);
   });
+
+  it("evicts a known-only stale entry that has no matching cursors.files row", async () => {
+    // Reachable failure mode: a path slipped into knownFilePaths via
+    // the discover-time merge but never received a cursor (file vanished
+    // between discover and parse, or the parser threw). Without iterating
+    // the knownFilePaths key set, the prune pass would leave the entry
+    // behind forever — bloating the map and, on a future reappearance,
+    // tricking sync.ts's cursor-loss detection into a full rescan.
+    const ghostPath = join(tempDir, "vanished/session.jsonl");
+    const cursors: Record<string, DummyCursor> = {};
+    const knownFilePaths: Record<string, true> = { [ghostPath]: true };
+    const result = await pruneAliasCursors(cursors, new Set(), knownFilePaths);
+
+    expect(result.removedAlias).toBe(0);
+    expect(result.removedMissing).toBe(1);
+    expect(result.knownFilePaths?.[ghostPath]).toBeUndefined();
+  });
+
+  it("evicts a known-only alias entry where cursors.files has no row", async () => {
+    // Same mechanism, alias branch: a path that resolves (via symlink)
+    // to an inode already covered by a discovered file but where the
+    // cursor write was skipped. The entry in knownFilePaths must still
+    // be evicted so a later sync doesn't carry the dead key.
+    const realDir = join(tempDir, "real");
+    const linkDir = join(tempDir, "link");
+    await mkdir(realDir, { recursive: true });
+    const realPath = join(realDir, "file.jsonl");
+    await writeFile(realPath, "{}");
+    await symlink(realDir, linkDir);
+    const aliasPath = join(linkDir, "file.jsonl");
+
+    const cursors: Record<string, DummyCursor> = {};
+    const knownFilePaths: Record<string, true> = { [aliasPath]: true };
+    const result = await pruneAliasCursors(
+      cursors,
+      new Set([realPath]),
+      knownFilePaths,
+    );
+
+    expect(result.removedAlias).toBe(1);
+    expect(result.removedMissing).toBe(0);
+    expect(result.knownFilePaths?.[aliasPath]).toBeUndefined();
+  });
+
+  it("leaves a known-only entry alone when its path falls under a protected prefix", async () => {
+    // Known-only entries inside an OpenCode mtime-skipped dir must
+    // still respect the protectedPrefixes exemption, otherwise we'd
+    // turn known-only enumeration into the same 66K-file stat storm
+    // the prefix protection exists to prevent.
+    const ocDir = join(tempDir, "opencode", "ses_skip");
+    await mkdir(ocDir, { recursive: true });
+    const insideProtected = join(ocDir, "msg_unwritten.json");
+    const cursors: Record<string, DummyCursor> = {};
+    const knownFilePaths: Record<string, true> = { [insideProtected]: true };
+    const result = await pruneAliasCursors(cursors, new Set(), knownFilePaths, {
+      protectedPrefixes: [ocDir],
+    });
+
+    expect(result.protected).toBe(1);
+    expect(result.removedMissing).toBe(0);
+    expect(result.knownFilePaths?.[insideProtected]).toBe(true);
+  });
 });

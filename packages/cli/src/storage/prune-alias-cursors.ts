@@ -121,7 +121,18 @@ export async function pruneAliasCursors<TCursor>(
   const aliasPaths = new Set<string>();
   const missingPaths = new Set<string>();
   let protectedCount = 0;
-  for (const path of Object.keys(cursorFiles)) {
+  // Iterate the union of cursorFiles and knownFilePaths keys so we also
+  // catch "known-only" stale entries: paths that made it into
+  // knownFilePaths via the discovery merge but whose cursor write was
+  // skipped because the file vanished or the parser threw between
+  // discover and parse. Leaving them in knownFilePaths bloats the map
+  // and, if the path later reappears, triggers a spurious full rescan
+  // through the cursor-loss detection branch in sync.ts.
+  const candidatePaths = new Set<string>(Object.keys(cursorFiles));
+  if (knownFilePaths) {
+    for (const path of Object.keys(knownFilePaths)) candidatePaths.add(path);
+  }
+  for (const path of candidatePaths) {
     if (discoveredFiles.has(path)) continue;
     if (isProtected(path)) {
       protectedCount++;
