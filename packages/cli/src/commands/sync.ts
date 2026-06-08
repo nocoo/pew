@@ -636,20 +636,23 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   // Persist context state
   cursors.dirMtimes = ctx.dirMtimes;
 
-  // Update knownFilePaths: merge newly discovered files with existing set.
-  // This grows monotonically — files are never removed from knownFilePaths
-  // even if the physical file is deleted, because we only need to know
-  // "was this path ever scanned?" for cursor-loss detection.
-  const known: Record<string, true> = cursors.knownFilePaths ?? {};
-  for (const fp of discoveredFiles) known[fp] = true;
-  cursors.knownFilePaths = known;
+  // Merge newly discovered files into knownFilePaths first, then let the
+  // prune pass drop entries that are demonstrably unreachable (alias or
+  // stat-fails-missing). The merge has to happen here so a brand-new file
+  // observed for the first time this run isn't immediately classified as
+  // "cursor-lost for a known file" on a future replay-detection check.
+  const knownMerged: Record<string, true> = { ...(cursors.knownFilePaths ?? {}) };
+  for (const fp of discoveredFiles) knownMerged[fp] = true;
+  cursors.knownFilePaths = knownMerged;
 
-  // Alias prune: drop cursor entries whose path is absent from this run's
-  // discovery but whose inode still matches a discovered file. See
-  // pruneAliasCursors() for the full rationale — the short version is
-  // that this collapses pre-#154 Multica codex-home/sessions symlink
-  // paths to their canonical equivalents without touching cursors
-  // for files that mtime-skip optimizations didn't surface.
+  // Alias + missing prune. See pruneAliasCursors() for the full keep/drop
+  // rule and the rationale for each branch. Short version:
+  //   - alias removal collapses pre-#154 Multica codex-home/sessions
+  //     symlink paths to their canonical equivalents.
+  //   - missing removal stops cursors.json from growing unboundedly with
+  //     entries for rotated/deleted files (the PR #152 bloat case).
+  //   - both leave OpenCode mtime-skipped cursors and inode-replacement
+  //     replay detection alone.
   const pruned = await pruneAliasCursors(cursors.files, discoveredFiles, cursors.knownFilePaths);
   cursors.files = pruned.cursorFiles;
   cursors.knownFilePaths = pruned.knownFilePaths ?? cursors.knownFilePaths;

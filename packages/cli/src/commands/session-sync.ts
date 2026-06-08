@@ -346,11 +346,10 @@ export async function executeSessionSync(
   }
 
   // ---------- Save cursor state AFTER queue ----------
-  // Alias prune: same narrow rule as token sync (see pruneAliasCursors).
-  // Drops cursor entries that are stale aliases (e.g. Multica codex-home
-  // symlink paths) but keeps every cursor whose inode is not currently
-  // reachable through the discovered file list — including files in
-  // mtime-skipped directories on sources that support that optimization.
+  // Alias + missing prune. Same narrow rule as token sync (see
+  // pruneAliasCursors): drops cursor entries that are stale aliases of
+  // a discovered file OR whose underlying path no longer exists on disk,
+  // while leaving cursors for files in mtime-skipped directories alone.
   const pruned = await pruneAliasCursors(cursors.files, discoveredFiles);
   cursors.files = pruned.cursorFiles;
 

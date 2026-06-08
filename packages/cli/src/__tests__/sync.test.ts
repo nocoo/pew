@@ -2929,14 +2929,15 @@ describe("executeSync", () => {
     expect(opencodeTotals.output).toBe(150);
   });
 
-  // ===== Alias prune: cursor for a deleted file is preserved =====
+  // ===== Missing prune: cursor for a deleted file is removed =====
 
-  it("should keep cursor entries whose physical file no longer exists", async () => {
-    // A path absent from discovery whose stat() also fails (deleted file)
-    // cannot prove an alias relationship — we keep the cursor so a future
-    // reappearance still goes through replay detection. The footprint
-    // wasted is bounded and harmless.
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-keep-ghost");
+  it("should drop cursors and knownFilePaths entries for files that no longer exist on disk", async () => {
+    // PR #152's deleted-file bloat case. Heavy users accumulate
+    // cursors for hundreds of thousands of rotated/deleted files,
+    // pushing cursors.json into the hundreds of MB and making
+    // JSON.parse hang. Each sync's stat() identifies these and
+    // evicts them in lockstep from cursors.files and knownFilePaths.
+    const claudeDir = join(dataDir, ".claude", "projects", "proj-missing");
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
@@ -2969,7 +2970,68 @@ describe("executeSync", () => {
     });
 
     const after = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    expect(after.files[ghostPath]).toBeDefined();
-    expect(after.knownFilePaths[ghostPath]).toBe(true);
+    expect(after.files[ghostPath]).toBeUndefined();
+    expect(after.knownFilePaths[ghostPath]).toBeUndefined();
+    // The live cursor must still be present.
+    const livePath = join(claudeDir, "session.jsonl");
+    expect(after.files[livePath]).toBeDefined();
+    expect(after.knownFilePaths[livePath]).toBe(true);
+  });
+
+  // ===== Missing prune must not touch OpenCode mtime-skipped cursors =====
+
+  it("should not drop OpenCode cursors during the missing-prune pass when the file still exists", async () => {
+    // Double-check that adding the missing-prune branch did not regress
+    // the mtime-skip case. OpenCode dir mtime unchanged → discovery omits
+    // the file → stat() of the cursor path still succeeds (file is real)
+    // → no inode match in liveInodes → cursor MUST be kept. Then a new
+    // message in that dir produces only the incremental delta.
+    const claudeDir = join(dataDir, ".claude", "projects", "proj-keep-oc");
+    await mkdir(claudeDir, { recursive: true });
+    await writeFile(
+      join(claudeDir, "session.jsonl"),
+      claudeLine("2026-03-07T10:00:00.000Z", 50, 5) + "\n",
+    );
+    const ocDir = join(dataDir, "opencode", "message", "ses_mtime_skip2");
+    await mkdir(ocDir, { recursive: true });
+    await writeFile(
+      join(ocDir, "msg_001.json"),
+      opencodeMsg(1771120749059, 100, 50),
+    );
+
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      claudeDir: join(dataDir, ".claude"),
+      openCodeMessageDir: join(dataDir, "opencode", "message"),
+    });
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      claudeDir: join(dataDir, ".claude"),
+      openCodeMessageDir: join(dataDir, "opencode", "message"),
+    });
+
+    await writeFile(
+      join(ocDir, "msg_002.json"),
+      opencodeMsg(1771120799059, 200, 100),
+    );
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      claudeDir: join(dataDir, ".claude"),
+      openCodeMessageDir: join(dataDir, "opencode", "message"),
+    });
+
+    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
+    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    const opencodeTotals = records
+      .filter((r) => r.source === "opencode")
+      .reduce(
+        (acc, r) => ({ input: acc.input + r.input_tokens, output: acc.output + r.output_tokens }),
+        { input: 0, output: 0 },
+      );
+    expect(opencodeTotals.input).toBe(300);
+    expect(opencodeTotals.output).toBe(150);
   });
 });
