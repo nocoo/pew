@@ -263,13 +263,14 @@ function getQueryBuilder(achievementId: string): QueryBuilder | null {
         params: [threshold, threshold, limit, offset],
       });
 
-    // Efficiency — cache rate (earned_at not easily calculable, use NULL)
+    // Efficiency — cache rate (earned_at not easily calculable, use NULL).
+    // Hit rate = cached / (cached + uncached input).
     case "cache-master":
       return (threshold, limit, offset) => ({
         sql: `
           SELECT u.id, u.name, u.image, u.slug,
-                 CASE WHEN SUM(ur.input_tokens) > 0
-                      THEN (SUM(ur.cached_input_tokens) * 100.0 / SUM(ur.input_tokens))
+                 CASE WHEN (SUM(ur.cached_input_tokens) + SUM(ur.input_tokens)) > 0
+                      THEN (SUM(ur.cached_input_tokens) * 100.0 / (SUM(ur.cached_input_tokens) + SUM(ur.input_tokens)))
                       ELSE 0 END AS value,
                  NULL AS earned_at
           FROM users u

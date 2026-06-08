@@ -582,10 +582,11 @@ export function extractAchievementValues(
   // Veteran — unique active days (UTC-based)
   const activeDays = buckets.length;
 
-  // Cache Master — cache hit rate %
+  // Cache Master — cache hit rate % (cached / (cached + uncached input))
+  const totalInput = summary.cached_input_tokens + summary.input_tokens;
   const cacheRate =
-    summary.input_tokens > 0
-      ? (summary.cached_input_tokens / summary.input_tokens) * 100
+    totalInput > 0
+      ? (summary.cached_input_tokens / totalInput) * 100
       : 0;
 
   return {

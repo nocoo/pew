@@ -157,10 +157,12 @@ export async function GET(
       "weekend-warrior": 0, // Timezone-dependent, skip
       "night-owl": 0,
       "early-bird": 0,
-      "cache-master":
-        (usageAgg?.input_tokens ?? 0) > 0
-          ? ((usageAgg?.cached_input_tokens ?? 0) / (usageAgg?.input_tokens ?? 1)) * 100
-          : 0,
+      "cache-master": (() => {
+        const cached = usageAgg?.cached_input_tokens ?? 0;
+        const uncached = usageAgg?.input_tokens ?? 0;
+        const total = cached + uncached;
+        return total > 0 ? (cached / total) * 100 : 0;
+      })(),
       "quick-draw": sessionAgg?.quick_sessions ?? 0,
       marathon: sessionAgg?.marathon_sessions ?? 0,
       "big-spender": totalCost,

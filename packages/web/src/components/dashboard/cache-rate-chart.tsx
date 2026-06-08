@@ -43,8 +43,9 @@ function fmtDate(dateStr: string): string {
 function computeAverage(data: DailyCacheRate[]): number {
   const totalCached = data.reduce((sum, d) => sum + d.cachedTokens, 0);
   const totalInput = data.reduce((sum, d) => sum + d.inputTokens, 0);
-  if (totalInput === 0) return 0;
-  return (totalCached / totalInput) * 100;
+  const denom = totalCached + totalInput;
+  if (denom === 0) return 0;
+  return (totalCached / denom) * 100;
 }
 
 // ---------------------------------------------------------------------------
