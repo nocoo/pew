@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@auth/core": "^0.34.3",
-    "@aws-sdk/client-s3": "3.1065.0",
+    "@aws-sdk/client-s3": "3.1066.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.17.0",
@@ -29,7 +29,7 @@
   "devDependencies": {
     "@pew/core": "workspace:*",
     "@tailwindcss/postcss": "^4.3.0",
-    "@types/node": "^25.9.2",
+    "@types/node": "25.9.3",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@types/sharp": "^0.32.0",
