@@ -123,7 +123,6 @@ describe("isPublicRoute", () => {
     "/api/leaderboard?period=week",
     "/u/john",
     "/",
-    "/leaderboard",
   ])("should return true for public route: %s", (path) => {
     expect(isPublicRoute(path)).toBe(true);
   });
@@ -133,6 +132,10 @@ describe("isPublicRoute", () => {
     "/settings",
     "/login",
     "/api/usage",
+    "/leaderboard",
+    "/leaderboard/seasons",
+    "/leaderboard/seasons/2026-spring",
+    "/leaderboard/achievements",
   ])("should return false for protected route: %s", (path) => {
     expect(isPublicRoute(path)).toBe(false);
   });
@@ -163,8 +166,18 @@ describe("resolveProxyAction", () => {
     );
   });
 
-  it("should return 'next' for unauthenticated user on /leaderboard (public)", () => {
-    expect(resolveProxyAction("/leaderboard", false, false)).toBe("next");
+  it("should redirect unauthenticated user away from /leaderboard to login", () => {
+    expect(resolveProxyAction("/leaderboard", false, false)).toBe(
+      "redirect:/login",
+    );
+  });
+
+  it("should allow logged-in user on /leaderboard", () => {
+    expect(resolveProxyAction("/leaderboard", true, false)).toBe("next");
+  });
+
+  it("should allow unauthenticated user on /u/<slug> (public profile gated by is_public in API)", () => {
+    expect(resolveProxyAction("/u/john", false, false)).toBe("next");
   });
 
   it("should allow unauthenticated user on landing page (/)", () => {
