@@ -53,8 +53,7 @@ export function isPublicRoute(pathname: string): boolean {
     pathname.startsWith("/api/ingest") ||
     pathname.startsWith("/api/users/") ||
     pathname.startsWith("/api/leaderboard") ||
-    pathname.startsWith("/u/") ||
-    pathname.startsWith("/leaderboard")
+    pathname.startsWith("/u/")
   );
 }
 
