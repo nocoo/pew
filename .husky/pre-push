@@ -1,13 +1,24 @@
 #!/usr/bin/env sh
 
-# pre-push: L2 Integration/API + G2 Security (quality system)
+# pre-push: L2 Integration/API + L3 Browser E2E + G2 Security (quality system)
 # L1+G1 already enforced by pre-commit.
-# E2E and security gates are independent — run in parallel.
+# All three gates are independent — run in parallel.
+
+# L3 fail-fast guard: scripts/run-e2e-ui.ts loads packages/web/.env.local and
+# .env.test. Missing files surface as cryptic D1 errors deep inside the run;
+# stop early with a pointer to the README setup section instead.
+if [ ! -f packages/web/.env.local ] || [ ! -f packages/web/.env.test ]; then
+  echo "❌ pre-push FAILED: L3 Browser E2E needs packages/web/.env.local and packages/web/.env.test"
+  echo "   See README.md → 'E2E setup' section for the required env keys."
+  exit 1
+fi
 
 TMP_DIR=$(mktemp -d)
 E2E_OUT="$TMP_DIR/e2e.log"
+E2E_UI_OUT="$TMP_DIR/e2e_ui.log"
 G2_OUT="$TMP_DIR/g2.log"
 E2E_EXIT_FILE="$TMP_DIR/e2e_exit"
+E2E_UI_EXIT_FILE="$TMP_DIR/e2e_ui_exit"
 G2_EXIT_FILE="$TMP_DIR/g2_exit"
 
 # L2 Integration/API: real HTTP E2E against dev server on :17020
@@ -17,6 +28,13 @@ G2_EXIT_FILE="$TMP_DIR/g2_exit"
 ) &
 E2E_PID=$!
 
+# L3 Browser E2E: Playwright BDD against dev server on :27020
+(
+  bun run test:e2e:ui > "$E2E_UI_OUT" 2>&1
+  echo $? > "$E2E_UI_EXIT_FILE"
+) &
+E2E_UI_PID=$!
+
 # G2 Security: osv-scanner (dependency CVEs) + gitleaks (secret leak in commits)
 (
   bun run test:security > "$G2_OUT" 2>&1
@@ -25,13 +43,17 @@ E2E_PID=$!
 G2_PID=$!
 
 wait $E2E_PID
+wait $E2E_UI_PID
 wait $G2_PID
 
 E2E_EXIT=$(cat "$E2E_EXIT_FILE")
+E2E_UI_EXIT=$(cat "$E2E_UI_EXIT_FILE")
 G2_EXIT=$(cat "$G2_EXIT_FILE")
 
 echo "─── L2 Integration/API E2E ───"
 cat "$E2E_OUT"
+echo "─── L3 Browser E2E (Playwright) ───"
+cat "$E2E_UI_OUT"
 echo "─── G2 Security ───"
 cat "$G2_OUT"
 rm -rf "$TMP_DIR"
@@ -41,9 +63,14 @@ if [ "$E2E_EXIT" -ne 0 ]; then
   exit 1
 fi
 
+if [ "$E2E_UI_EXIT" -ne 0 ]; then
+  echo "❌ pre-push FAILED: Browser E2E tests did not pass."
+  exit 1
+fi
+
 if [ "$G2_EXIT" -ne 0 ]; then
   echo "❌ pre-push FAILED: G2 security gate."
   exit 1
 fi
 
-echo "✅ pre-push passed: L2 Integration/API + G2 Security"
+echo "✅ pre-push passed: L2 Integration/API + L3 Browser E2E + G2 Security"

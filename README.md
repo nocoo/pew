@@ -138,6 +138,45 @@ bun run dev
 
 覆盖率目标 90%（statements / branches / functions / lines），每次 commit 强制检查。
 
+## E2E setup
+
+L2 API E2E 和 L3 Browser E2E 都需要 Cloudflare D1 凭据。pre-push hook 会在
+缺少 `packages/web/.env.local` 或 `packages/web/.env.test` 时 fail-fast，提示
+开发者按下表创建文件。两个文件均不提交到仓库，由开发者本地维护，CI 由 GitHub
+Secrets 注入。
+
+### `packages/web/.env.local`（生产 D1 + Worker + Auth 凭据）
+
+| Key | 说明 |
+|-----|------|
+| `CF_ACCOUNT_ID` | Cloudflare 账号 ID |
+| `CF_D1_DATABASE_ID` | 生产 D1 database ID |
+| `CF_D1_API_TOKEN` | D1 REST API token |
+| `WORKER_INGEST_URL` | 生产 ingest Worker URL |
+| `WORKER_READ_URL` | 生产 read Worker URL |
+| `WORKER_SECRET` | ingest Worker 共享密钥 |
+| `WORKER_READ_SECRET` | read Worker 共享密钥 |
+| `AUTH_SECRET` | NextAuth 会话签名密钥 |
+
+### `packages/web/.env.test`（测试 D1 隔离，必须与生产不同）
+
+| Key | 说明 |
+|-----|------|
+| `CF_D1_DATABASE_ID_TEST` | 测试 D1 database ID（与生产不同） |
+| `WORKER_INGEST_URL_TEST` | 测试 ingest Worker URL（与生产不同） |
+| `WORKER_READ_URL_TEST` | 测试 read Worker URL（与生产不同） |
+
+`scripts/d1-test-guard.ts` 在 E2E 启动时强制校验：测试 DB ID ≠ 生产、测试
+Worker URL ≠ 生产、测试库有 `_test_marker` 表。三项任一失败立即终止。
+
+### 本机运行
+
+```bash
+bun run test:e2e        # L2 API E2E
+bun run test:e2e:ui     # L3 Browser E2E (Playwright)
+bun run test:e2e:bdd    # alias of test:e2e:ui
+```
+
 ## 文档
 
 | 文档 | 说明 |
