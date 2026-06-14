@@ -154,10 +154,7 @@ test.describe("Feature: Admin", () => {
         .filter({ hasText: badgeText })
         .filter({ has: page.getByRole("button", { name: "Archive" }) });
       await badgeRow.first().getByRole("button", { name: "Archive" }).click();
-      // Dialog locator uses [role="dialog"] CSS attribute selector because there is
-      // no Playwright role helper for arbitrary dialog matching here; same as the
-      // original spec.
-      const dialog = page.locator('[role="dialog"]');
+      const dialog = page.getByRole("dialog");
       await expect(dialog).toBeVisible();
       await dialog.getByRole("button", { name: "Archive" }).click();
 
