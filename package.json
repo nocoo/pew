@@ -54,7 +54,7 @@
     "esbuild": ">=0.28.1",
     "vite": "^7.3.5",
     "fast-xml-builder": ">=1.1.7",
-    "fast-xml-parser": "^5.9.0",
+    "fast-xml-parser": "^5.9.2",
     "flatted": "^3.4.2",
     "@babel/core": "^7.29.6",
     "picomatch": "^4.0.4",
@@ -62,7 +62,7 @@
     "yaml": "^2.8.3"
   },
   "dependencies": {
-    "fast-xml-parser": "^5.9.0",
+    "fast-xml-parser": "^5.9.2",
     "next": "16.2.9"
   }
 }
