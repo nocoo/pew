@@ -2,7 +2,8 @@ FROM oven/bun:1 AS base
 
 # --- Install dependencies ---
 # Include all workspace package.json files so bun.lock stays consistent.
-# --ignore-scripts skips optional native addon postinstall scripts.
+# Lifecycle scripts must run so platform-specific native addons (e.g. sharp's
+# @img/sharp-linux-x64 binding) are properly installed.
 FROM base AS deps
 WORKDIR /app
 COPY package.json bun.lock ./
@@ -11,7 +12,7 @@ COPY packages/cli/package.json packages/cli/
 COPY packages/web/package.json packages/web/
 COPY packages/worker/package.json packages/worker/
 COPY packages/worker-read/package.json packages/worker-read/
-RUN bun install --frozen-lockfile --ignore-scripts
+RUN bun install --frozen-lockfile
 
 # --- Build ---
 FROM base AS builder
