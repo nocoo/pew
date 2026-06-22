@@ -18,6 +18,16 @@ RUN bun install --frozen-lockfile
 FROM base AS builder
 WORKDIR /app
 
+# Install Node.js — required for `next build` on linux/amd64. Bun's runtime
+# resolver cannot load sharp's @img/sharp-linux-x64 native binding from
+# inside Next.js's Turbopack page-data collection workers under bun's
+# isolated install layout, so `bun next build` fails at page-data with
+# "Could not load the sharp module using the linux-x64 runtime". Real Node
+# resolves the same layout correctly.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends nodejs \
+  && rm -rf /var/lib/apt/lists/*
+
 # Railway injects service env vars as Docker build args.
 # Next.js needs these at build time for page data collection.
 ARG CF_ACCOUNT_ID
@@ -35,7 +45,11 @@ ENV AUTH_SECRET=$AUTH_SECRET
 
 COPY --from=deps /app ./
 COPY . .
-RUN bun run --filter @pew/core build && bun run --filter @pew/web build
+# Build @pew/core with bun (pure TS, no native deps).
+# Build @pew/web with real Node.js — see comment above.
+RUN bun run --filter @pew/core build \
+  && cd packages/web \
+  && /usr/bin/node ./node_modules/.bin/next build
 
 # --- Production image ---
 FROM node:22-slim AS runner
