@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@auth/core": "^0.34.3",
-    "@aws-sdk/client-s3": "3.1074.0",
+    "@aws-sdk/client-s3": "3.1075.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.21.0",
@@ -20,7 +20,7 @@
     "radix-ui": "^1.6.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "recharts": "^3.8.1",
+    "recharts": "^3.9.0",
     "sharp": "^0.35.2",
     "swr": "^2.4.2",
     "tailwind-merge": "^3.6.0",
