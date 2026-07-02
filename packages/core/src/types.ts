@@ -95,6 +95,23 @@ export interface ByteOffsetCursor extends FileCursorBase {
   offset: number;
 }
 
+/**
+ * Cursor for Claude Code JSONL files.
+ *
+ * Byte-offset resume + a bounded, JSON-serialized ring of the most recently
+ * emitted `message.id` values. The ring survives across sync runs so a later
+ * sync can suppress an appended duplicate line (Claude Code rewrites the
+ * same assistant message on streaming retries and subagent hand-offs).
+ * Bounded because a long-running session file must not grow the cursor
+ * without limit; duplicates cluster in the tail (last few dozen lines).
+ */
+export interface ClaudeCursor extends FileCursorBase {
+  /** Byte offset where we last stopped reading */
+  offset: number;
+  /** Recently-emitted `message.id` values, most-recent last, bounded */
+  seenIds: string[];
+}
+
 /** Cursor for Codex CLI (byte-offset + cumulative diff state) */
 export interface CodexCursor extends FileCursorBase {
   /** Byte offset where we last stopped reading */
@@ -174,6 +191,7 @@ export interface HermesSqliteCursor {
 /** Union of all cursor types, keyed by absolute file path */
 export type FileCursor =
   | ByteOffsetCursor
+  | ClaudeCursor
   | CodexCursor
   | GeminiCursor
   | KosmosCursor

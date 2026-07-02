@@ -124,6 +124,18 @@ export interface ByteOffsetResumeState {
 }
 
 /**
+ * Resume state for the Claude driver. Extends byte-offset with the
+ * bounded set of `message.id` values previously emitted for this file —
+ * seed into the per-sync-context Set so a duplicate id appended after
+ * the cursor is not counted again.
+ */
+export interface ClaudeResumeState {
+  readonly kind: "claude";
+  startOffset: number;
+  priorSeenIds: string[];
+}
+
+/**
  * Resume state for array-index JSON parsers (Gemini).
  */
 export interface ArrayIndexResumeState {
@@ -179,6 +191,7 @@ export interface KosmosResumeState {
  */
 export type ResumeState =
   | ByteOffsetResumeState
+  | ClaudeResumeState
   | ArrayIndexResumeState
   | OpenCodeJsonResumeState
   | CodexResumeState

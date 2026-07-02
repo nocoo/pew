@@ -16,6 +16,13 @@ export interface ParsedDelta {
 export interface ClaudeFileResult {
   deltas: ParsedDelta[];
   endOffset: number;
+  /**
+   * `message.id` values that produced an emitted delta on this parse call.
+   * Callers persist this into the cursor so a later sync's incremental read
+   * can suppress an appended duplicate line that would otherwise re-count
+   * the same assistant turn.
+   */
+  emittedIds: string[];
 }
 
 /**
@@ -59,12 +66,13 @@ export async function parseClaudeFile(opts: {
 }): Promise<ClaudeFileResult> {
   const { filePath, startOffset, seenMessageIds } = opts;
   const deltas: ParsedDelta[] = [];
+  const emittedIds: string[] = [];
 
   const st = await stat(filePath).catch(() => null);
-  if (!st || !st.isFile()) return { deltas, endOffset: startOffset };
+  if (!st || !st.isFile()) return { deltas, endOffset: startOffset, emittedIds };
 
   const endOffset = st.size;
-  if (startOffset >= endOffset) return { deltas, endOffset };
+  if (startOffset >= endOffset) return { deltas, endOffset, emittedIds };
 
   const stream = createReadStream(filePath, {
     encoding: "utf8",
@@ -103,19 +111,23 @@ export async function parseClaudeFile(opts: {
         typeof obj?.timestamp === "string" ? obj.timestamp : null;
       if (!timestamp) continue;
 
-      // Dedup by message.id. Absent id → always keep (cannot dedup safely).
-      if (seenMessageIds) {
-        const id = typeof msg?.id === "string" ? msg.id : null;
-        if (id) {
-          if (seenMessageIds.has(id)) continue;
-          seenMessageIds.add(id);
-        }
-      }
+      const id = typeof msg?.id === "string" ? msg.id : null;
 
-      // Normalize and filter zero deltas
+      // Dedup gate: an id already emitted in this sync-context is a duplicate
+      // that must be suppressed. Absent id → cannot dedup safely, always keep.
+      if (id && seenMessageIds?.has(id)) continue;
+
+      // Normalize and filter zero deltas. Do this BEFORE marking the id as
+      // seen — a zero-usage stub row must not occupy the id slot and cause
+      // the real usage row (same id, later in the file) to be dropped.
       const delta = normalizeClaudeUsage(usage);
       if (isAllZero(delta)) continue;
 
+      // Emit + record. Only real, non-zero deltas mark an id as seen.
+      if (id) {
+        seenMessageIds?.add(id);
+        emittedIds.push(id);
+      }
       deltas.push({
         source: "claude-code",
         model,
@@ -128,5 +140,5 @@ export async function parseClaudeFile(opts: {
     stream.destroy();
   }
 
-  return { deltas, endOffset };
+  return { deltas, endOffset, emittedIds };
 }

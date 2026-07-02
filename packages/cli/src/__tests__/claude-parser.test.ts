@@ -447,4 +447,41 @@ describe("parseClaudeFile — message.id dedup", () => {
     const result = await parseClaudeFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(2);
   });
+
+  it("does not let a zero-usage line occupy the id slot", async () => {
+    // Claude Code sometimes writes an assistant stub row with zero usage
+    // (opening frame of a stream, or a placeholder that gets rewritten).
+    // The subsequent line carrying the same message.id with the real usage
+    // MUST count — the parser must not mark the id as seen from the empty
+    // row and then silently drop the real one.
+    const filePath = join(tempDir, "session.jsonl");
+    const zeroLine = JSON.stringify({
+      type: "assistant",
+      timestamp: "2026-03-07T10:00:00.000Z",
+      message: {
+        id: "msg_dup",
+        model: "glm-5",
+        usage: { input_tokens: 0, output_tokens: 0 },
+      },
+    });
+    const realLine = JSON.stringify({
+      type: "assistant",
+      timestamp: "2026-03-07T10:00:01.000Z",
+      message: {
+        id: "msg_dup",
+        model: "glm-5",
+        usage: { input_tokens: 100, output_tokens: 50 },
+      },
+    });
+    await writeFile(filePath, zeroLine + "\n" + realLine + "\n");
+
+    const seen = new Set<string>();
+    const result = await parseClaudeFile({
+      filePath,
+      startOffset: 0,
+      seenMessageIds: seen,
+    });
+    expect(result.deltas).toHaveLength(1);
+    expect(result.deltas[0].tokens.outputTokens).toBe(50);
+  });
 });
