@@ -64,6 +64,6 @@
   },
   "dependencies": {
     "fast-xml-parser": "^5.9.3",
-    "next": "16.2.9"
+    "next": "16.2.10"
   }
 }
