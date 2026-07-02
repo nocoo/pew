@@ -49,7 +49,7 @@ export const geminiTokenDriver: FileTokenDriver<GeminiCursor> = {
     };
   },
 
-  async parse(filePath: string, resume: ResumeState): Promise<GeminiParseResult> {
+  async parse(filePath: string, resume: ResumeState, _ctx: SyncContext): Promise<GeminiParseResult> {
     const r = resume as ArrayIndexResumeState;
     const result = await parseGeminiFile({
       filePath,

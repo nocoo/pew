@@ -336,3 +336,115 @@ describe("parseClaudeFile", () => {
     expect(result.deltas).toHaveLength(1);
   });
 });
+
+describe("parseClaudeFile — message.id dedup", () => {
+  let tempDir: string;
+
+  beforeEach(async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "pew-claude-dedup-"));
+  });
+
+  afterEach(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it("dedups repeated message.id within a single file", async () => {
+    // Claude Code can write the same assistant message multiple times
+    // when a streaming request retries or a session is resumed. Same
+    // message.id at different byte offsets must count only once.
+    const filePath = join(tempDir, "session.jsonl");
+    const line1 = claudeLine({ timestamp: "2026-03-07T10:00:00.000Z" });
+    const line2 = claudeLine({ timestamp: "2026-03-07T10:00:00.001Z" });
+    // Both use the default id "msg_001" from claudeLine()
+    await writeFile(filePath, line1 + "\n" + line2 + "\n");
+
+    const seen = new Set<string>();
+    const result = await parseClaudeFile({
+      filePath,
+      startOffset: 0,
+      seenMessageIds: seen,
+    });
+    expect(result.deltas).toHaveLength(1);
+    expect(result.deltas[0].tokens.inputTokens).toBe(5100);
+    expect(seen.has("msg_001")).toBe(true);
+  });
+
+  it("counts distinct message.ids separately", async () => {
+    const filePath = join(tempDir, "session.jsonl");
+    const line1 = claudeLine({
+      timestamp: "2026-03-07T10:00:00.000Z",
+      message: {
+        id: "msg_A",
+        model: "glm-5",
+        usage: { input_tokens: 100, output_tokens: 50 },
+      },
+    });
+    const line2 = claudeLine({
+      timestamp: "2026-03-07T10:01:00.000Z",
+      message: {
+        id: "msg_B",
+        model: "glm-5",
+        usage: { input_tokens: 200, output_tokens: 100 },
+      },
+    });
+    await writeFile(filePath, line1 + "\n" + line2 + "\n");
+
+    const seen = new Set<string>();
+    const result = await parseClaudeFile({
+      filePath,
+      startOffset: 0,
+      seenMessageIds: seen,
+    });
+    expect(result.deltas).toHaveLength(2);
+    expect(seen.has("msg_A")).toBe(true);
+    expect(seen.has("msg_B")).toBe(true);
+  });
+
+  it("dedups across files when the same Set is shared", async () => {
+    const fileA = join(tempDir, "sessionA.jsonl");
+    const fileB = join(tempDir, "sessionB.jsonl");
+    await writeFile(fileA, claudeLine() + "\n");
+    await writeFile(fileB, claudeLine({ timestamp: "2026-03-07T11:00:00.000Z" }) + "\n");
+
+    const seen = new Set<string>();
+    const rA = await parseClaudeFile({ filePath: fileA, startOffset: 0, seenMessageIds: seen });
+    const rB = await parseClaudeFile({ filePath: fileB, startOffset: 0, seenMessageIds: seen });
+
+    expect(rA.deltas).toHaveLength(1);
+    expect(rB.deltas).toHaveLength(0); // dedup by shared Set
+  });
+
+  it("preserves lines missing message.id (no id → no dedup, always kept)", async () => {
+    const filePath = join(tempDir, "session.jsonl");
+    // Two lines that both lack message.id — neither should be dedup'd out.
+    const line = JSON.stringify({
+      type: "assistant",
+      timestamp: "2026-03-07T10:15:30.000Z",
+      message: {
+        model: "glm-5",
+        usage: { input_tokens: 100, output_tokens: 50 },
+      },
+    });
+    await writeFile(filePath, line + "\n" + line + "\n");
+
+    const seen = new Set<string>();
+    const result = await parseClaudeFile({
+      filePath,
+      startOffset: 0,
+      seenMessageIds: seen,
+    });
+    // Without an id we cannot dedup — both must be kept to avoid data loss.
+    expect(result.deltas).toHaveLength(2);
+  });
+
+  it("is backwards compatible when seenMessageIds is omitted", async () => {
+    // Pre-existing callers that don't pass a Set get the old behavior:
+    // every usage line counted, no dedup. This guarantees no other caller
+    // silently changes behavior when the new parameter is added.
+    const filePath = join(tempDir, "session.jsonl");
+    await writeFile(filePath, claudeLine() + "\n" + claudeLine() + "\n");
+
+    const result = await parseClaudeFile({ filePath, startOffset: 0 });
+    expect(result.deltas).toHaveLength(2);
+  });
+});

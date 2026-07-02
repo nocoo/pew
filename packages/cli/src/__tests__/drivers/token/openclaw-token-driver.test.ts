@@ -142,7 +142,7 @@ describe("openClawTokenDriver", () => {
       await writeFile(filePath, content);
 
       const resume = { kind: "byte-offset" as const, startOffset: 0 };
-      const result = await openClawTokenDriver.parse(filePath, resume);
+      const result = await openClawTokenDriver.parse(filePath, resume, ctx);
 
       expect(result.deltas).toHaveLength(1);
       expect(result.deltas[0].source).toBe("openclaw");

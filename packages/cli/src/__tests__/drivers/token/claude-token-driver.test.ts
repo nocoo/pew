@@ -12,6 +12,7 @@ function claudeLine(overrides: Record<string, unknown> = {}): string {
     type: "assistant",
     timestamp: "2026-03-07T10:15:30.000Z",
     message: {
+      id: "msg_001",
       model: "claude-sonnet-4-20250514",
       stop_reason: "end_turn",
       usage: {
@@ -153,7 +154,7 @@ describe("claudeTokenDriver", () => {
       await writeFile(filePath, content);
 
       const resume = { kind: "byte-offset" as const, startOffset: 0 };
-      const result = await claudeTokenDriver.parse(filePath, resume);
+      const result = await claudeTokenDriver.parse(filePath, resume, ctx);
 
       expect(result.deltas).toHaveLength(1);
       expect(result.deltas[0].source).toBe("claude-code");
@@ -173,15 +174,33 @@ describe("claudeTokenDriver", () => {
 
     it("resumes parsing from byte offset", async () => {
       const filePath = join(tempDir, "session.jsonl");
-      const line1 = claudeLine({ timestamp: "2026-03-07T10:00:00.000Z" });
-      const line2 = claudeLine({ timestamp: "2026-03-07T10:30:00.000Z" });
+      // Use distinct ids so the dedup layer doesn't collapse them —
+      // this test targets the byte-offset resume mechanic, not dedup.
+      const line1 = claudeLine({
+        timestamp: "2026-03-07T10:00:00.000Z",
+        message: {
+          id: "msg_resume_a",
+          model: "claude-sonnet-4-20250514",
+          usage: { input_tokens: 5000, output_tokens: 800 },
+        },
+      });
+      const line2 = claudeLine({
+        timestamp: "2026-03-07T10:30:00.000Z",
+        message: {
+          id: "msg_resume_b",
+          model: "claude-sonnet-4-20250514",
+          usage: { input_tokens: 5000, output_tokens: 800 },
+        },
+      });
       await writeFile(filePath, line1 + "\n" + line2 + "\n");
 
-      // Parse from start
+      // Fresh context so the resume test isn't affected by other tests'
+      // shared `ctx`. Byte-offset resume must work regardless of dedup state.
+      const localCtx: SyncContext = {};
       const result1 = await claudeTokenDriver.parse(filePath, {
         kind: "byte-offset",
         startOffset: 0,
-      });
+      }, localCtx);
       expect(result1.deltas).toHaveLength(2);
 
       // Build cursor with endOffset
@@ -191,8 +210,72 @@ describe("claudeTokenDriver", () => {
       const result2 = await claudeTokenDriver.parse(filePath, {
         kind: "byte-offset",
         startOffset: endOffset,
-      });
+      }, localCtx);
       expect(result2.deltas).toHaveLength(0);
+    });
+  });
+
+  describe("cross-file message.id dedup", () => {
+    it("dedups a repeated message.id across two files in one sync", async () => {
+      // Real-world case: Claude Code can persist the same assistant message
+      // to two different session files (e.g. a subagent parent shares
+      // sessionId+message.id with its child). Without cross-file dedup,
+      // both files count the same usage and inflate totals.
+      const projectsDir = join(tempDir, "projects", "proj1");
+      await mkdir(projectsDir, { recursive: true });
+      const fileA = join(projectsDir, "sessionA.jsonl");
+      const fileB = join(projectsDir, "sessionB.jsonl");
+      const shared = claudeLine(); // both use the default id "msg_001"
+      await writeFile(fileA, shared + "\n");
+      await writeFile(fileB, shared + "\n");
+
+      // Simulate the orchestrator flow: discover initializes ctx, then
+      // parse is called per file. The driver must dedup across those calls.
+      const freshCtx: SyncContext = {};
+      await claudeTokenDriver.discover({ claudeDir: tempDir }, freshCtx);
+
+      const rA = await claudeTokenDriver.parse(
+        fileA,
+        { kind: "byte-offset", startOffset: 0 },
+        freshCtx,
+      );
+      const rB = await claudeTokenDriver.parse(
+        fileB,
+        { kind: "byte-offset", startOffset: 0 },
+        freshCtx,
+      );
+      expect(rA.deltas).toHaveLength(1);
+      expect(rB.deltas).toHaveLength(0);
+    });
+
+    it("does not dedup across independent sync contexts", async () => {
+      // Two syncs (two different SyncContexts) must not share state —
+      // otherwise a long-running daemon would slowly lose valid deltas.
+      const projectsDir = join(tempDir, "projects", "proj1");
+      await mkdir(projectsDir, { recursive: true });
+      const fileA = join(projectsDir, "sessionA.jsonl");
+      await writeFile(fileA, claudeLine() + "\n");
+
+      const ctx1: SyncContext = {};
+      await claudeTokenDriver.discover({ claudeDir: tempDir }, ctx1);
+      const r1 = await claudeTokenDriver.parse(
+        fileA,
+        { kind: "byte-offset", startOffset: 0 },
+        ctx1,
+      );
+      expect(r1.deltas).toHaveLength(1);
+
+      const ctx2: SyncContext = {};
+      await claudeTokenDriver.discover({ claudeDir: tempDir }, ctx2);
+      const r2 = await claudeTokenDriver.parse(
+        fileA,
+        { kind: "byte-offset", startOffset: 0 },
+        ctx2,
+      );
+      // Different context → dedup Set is fresh → the same file's message
+      // counts again. Byte-offset skip in the real orchestrator prevents
+      // re-reading, but the parser itself must remain honest per-context.
+      expect(r2.deltas).toHaveLength(1);
     });
   });
 });

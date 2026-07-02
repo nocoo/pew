@@ -174,7 +174,7 @@ describe("piTokenDriver", () => {
       await writeFile(filePath, content);
 
       const resume = { kind: "byte-offset" as const, startOffset: 0 };
-      const result = await piTokenDriver.parse(filePath, resume);
+      const result = await piTokenDriver.parse(filePath, resume, ctx);
 
       expect(result.deltas.length).toBeGreaterThanOrEqual(1);
       expect(result.endOffset).toBeGreaterThan(0);
@@ -201,14 +201,14 @@ describe("piTokenDriver", () => {
       const result1 = await piTokenDriver.parse(filePath, {
         kind: "byte-offset",
         startOffset: 0,
-      });
+      }, ctx);
       expect(result1.deltas.length).toBeGreaterThanOrEqual(1);
 
       // Resume from end — no new data
       const result2 = await piTokenDriver.parse(filePath, {
         kind: "byte-offset",
         startOffset: result1.endOffset,
-      });
+      }, ctx);
       expect(result2.deltas).toHaveLength(0);
     });
   });

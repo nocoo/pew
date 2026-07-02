@@ -63,7 +63,7 @@ export const openCodeJsonTokenDriver: FileTokenDriver<OpenCodeCursor> = {
     };
   },
 
-  async parse(filePath: string, resume: ResumeState): Promise<OpenCodeJsonParseResult> {
+  async parse(filePath: string, resume: ResumeState, _ctx: SyncContext): Promise<OpenCodeJsonParseResult> {
     const r = resume as OpenCodeJsonResumeState;
     const result = await parseOpenCodeFile({ filePath, lastTotals: r.lastTotals });
     return {

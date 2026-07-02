@@ -61,7 +61,7 @@ export const vscodeCopilotTokenDriver: FileTokenDriver<VscodeCopilotCursor> = {
     };
   },
 
-  async parse(filePath: string, resume: ResumeState): Promise<VscodeCopilotParseResult> {
+  async parse(filePath: string, resume: ResumeState, _ctx: SyncContext): Promise<VscodeCopilotParseResult> {
     const r = resume as VscodeCopilotResumeState;
 
     // v3 JSON files: full parse with request ID dedup

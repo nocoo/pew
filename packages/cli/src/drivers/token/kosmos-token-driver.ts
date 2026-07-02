@@ -22,7 +22,7 @@ function createKosmosLikeTokenDriver(source: Source, dirKey: KosmosDataDirKey): 
       const knownMessageIds = cursor?.processedMessageIds ? new Set(cursor.processedMessageIds) : null;
       return { kind: "kosmos", knownMessageIds };
     },
-    async parse(filePath: string, resume: ResumeState): Promise<KosmosParseResult> {
+    async parse(filePath: string, resume: ResumeState, _ctx: SyncContext): Promise<KosmosParseResult> {
       const r = resume as KosmosResumeState;
       const result = await parseKosmosFile({ filePath, knownMessageIds: r.knownMessageIds, source });
       return { deltas: result.deltas, allMessageIds: result.allMessageIds };

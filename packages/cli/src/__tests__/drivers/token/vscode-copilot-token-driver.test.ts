@@ -222,7 +222,7 @@ describe("vscodeCopilotTokenDriver", () => {
         requestMeta: {},
         processedRequestIndices: [],
       };
-      const result = await vscodeCopilotTokenDriver.parse(filePath, resume);
+      const result = await vscodeCopilotTokenDriver.parse(filePath, resume, ctx);
 
       expect(result.deltas).toHaveLength(1);
       expect(result.deltas[0].source).toBe("vscode-copilot");
@@ -264,7 +264,7 @@ describe("vscodeCopilotTokenDriver", () => {
         startOffset: 0,
         requestMeta: {},
         processedRequestIndices: [],
-      });
+      }, ctx);
       expect(result1.deltas).toHaveLength(2);
 
       // Build cursor from first parse
@@ -276,7 +276,7 @@ describe("vscodeCopilotTokenDriver", () => {
         { ...cursor, inode: 1 },
         { inode: 1, mtimeMs: Date.now(), size: fullContent.length },
       );
-      const result2 = await vscodeCopilotTokenDriver.parse(filePath, resume2);
+      const result2 = await vscodeCopilotTokenDriver.parse(filePath, resume2, ctx);
       expect(result2.deltas).toHaveLength(0);
     });
 
@@ -310,7 +310,7 @@ describe("vscodeCopilotTokenDriver", () => {
         processedRequestIndices: [],
         processedRequestIds: new Set<string>(),
       };
-      const result = await vscodeCopilotTokenDriver.parse(filePath, resume);
+      const result = await vscodeCopilotTokenDriver.parse(filePath, resume, ctx);
 
       expect(result.deltas).toHaveLength(1);
       expect(result.deltas[0].source).toBe("vscode-copilot");

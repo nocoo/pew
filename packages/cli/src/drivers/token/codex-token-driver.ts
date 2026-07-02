@@ -50,7 +50,7 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
     };
   },
 
-  async parse(filePath: string, resume: ResumeState): Promise<CodexParseResult> {
+  async parse(filePath: string, resume: ResumeState, _ctx: SyncContext): Promise<CodexParseResult> {
     const r = resume as CodexResumeState;
     const result = await parseCodexFile({
       filePath,

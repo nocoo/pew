@@ -179,7 +179,7 @@ describe("geminiTokenDriver", () => {
         startIndex: -1,
         lastTotals: null,
       };
-      const result = await geminiTokenDriver.parse(filePath, resume);
+      const result = await geminiTokenDriver.parse(filePath, resume, ctx);
 
       // Gemini uses cumulative diff — should produce deltas
       expect(result.deltas.length).toBeGreaterThanOrEqual(1);

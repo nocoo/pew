@@ -151,7 +151,7 @@ describe("copilotCliTokenDriver", () => {
       await writeFile(filePath, content);
 
       const resume = { kind: "byte-offset" as const, startOffset: 0 };
-      const result = await copilotCliTokenDriver.parse(filePath, resume);
+      const result = await copilotCliTokenDriver.parse(filePath, resume, ctx);
 
       expect(result.deltas).toHaveLength(1);
       expect(result.deltas[0]!.source).toBe("copilot-cli");
@@ -177,7 +177,7 @@ describe("copilotCliTokenDriver", () => {
       const r1 = await copilotCliTokenDriver.parse(filePath, {
         kind: "byte-offset",
         startOffset: 0,
-      });
+      }, ctx);
       expect(r1.deltas).toHaveLength(1);
 
       const endOffset = (r1 as unknown as { endOffset: number }).endOffset;
@@ -188,7 +188,7 @@ describe("copilotCliTokenDriver", () => {
       const r2 = await copilotCliTokenDriver.parse(filePath, {
         kind: "byte-offset",
         startOffset: endOffset,
-      });
+      }, ctx);
       expect(r2.deltas).toHaveLength(1);
       expect(r2.deltas[0]!.tokens.inputTokens).toBe(2000);
     });

@@ -127,7 +127,7 @@ describe("kosmosTokenDriver", () => {
       await writeFile(filePath, content);
 
       const resume = { kind: "kosmos" as const, knownMessageIds: null };
-      const result = await kosmosTokenDriver.parse(filePath, resume);
+      const result = await kosmosTokenDriver.parse(filePath, resume, ctx);
 
       expect(result.deltas).toHaveLength(1);
       expect(result.deltas[0].source).toBe("kosmos");
@@ -161,7 +161,7 @@ describe("kosmosTokenDriver", () => {
       }));
 
       const resume = { kind: "kosmos" as const, knownMessageIds: new Set(prev.processedMessageIds) };
-      const result = await kosmosTokenDriver.parse(filePath, resume);
+      const result = await kosmosTokenDriver.parse(filePath, resume, ctx);
       const cursor = kosmosTokenDriver.buildCursor(fingerprint, result, prev);
 
       expect(cursor.processedMessageIds).toContain("msg-old");
@@ -214,7 +214,7 @@ describe("pmstudioTokenDriver", () => {
       }));
 
       const resume = { kind: "kosmos" as const, knownMessageIds: null };
-      const result = await pmstudioTokenDriver.parse(filePath, resume);
+      const result = await pmstudioTokenDriver.parse(filePath, resume, ctx);
       expect(result.deltas).toHaveLength(1);
       expect(result.deltas[0].source).toBe("pmstudio");
     });

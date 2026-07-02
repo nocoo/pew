@@ -44,7 +44,7 @@ export const openClawTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
     return { kind: "byte-offset", startOffset };
   },
 
-  async parse(filePath: string, resume: ResumeState): Promise<OpenClawParseResult> {
+  async parse(filePath: string, resume: ResumeState, _ctx: SyncContext): Promise<OpenClawParseResult> {
     const r = resume as ByteOffsetResumeState;
     const result = await parseOpenClawFile({ filePath, startOffset: r.startOffset });
     return { deltas: result.deltas, endOffset: result.endOffset };

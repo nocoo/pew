@@ -379,7 +379,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
 
       // Extract resume state and parse
       const resume = driver.resumeState(cursor, fingerprint);
-      const result = await driver.parse(filePath, resume).catch(
+      const result = await driver.parse(filePath, resume, ctx).catch(
         (err: unknown) => {
           onProgress?.({
             source: driver.source,

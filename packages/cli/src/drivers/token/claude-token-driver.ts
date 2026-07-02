@@ -3,7 +3,12 @@
  *
  * Strategy: Byte-offset JSONL streaming.
  * Skip gate: fileUnchanged() (inode + mtimeMs + size).
- * Parser: parseClaudeFile({ filePath, startOffset })
+ * Parser: parseClaudeFile({ filePath, startOffset, seenMessageIds })
+ *
+ * Dedup: within a single sync context, each `message.id` counts once.
+ * The Set lives on the SyncContext (as `seenClaudeMessageIds`) so that
+ * concurrent syncs (should any ever exist) keep their state isolated,
+ * and so the Set is dropped as soon as the context is dropped.
  */
 
 import type { ByteOffsetCursor } from "@pew/core";
@@ -29,7 +34,9 @@ export const claudeTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
   kind: "file",
   source: "claude-code",
 
-  async discover(opts: DiscoverOpts, _ctx: SyncContext): Promise<string[]> {
+  async discover(opts: DiscoverOpts, ctx: SyncContext): Promise<string[]> {
+    // Bind the per-context dedup Set here so parse() can consume it.
+    if (!ctx.seenClaudeMessageIds) ctx.seenClaudeMessageIds = new Set<string>();
     if (!opts.claudeDir) return [];
     return discoverClaudeFiles(opts.claudeDir);
   },
@@ -44,9 +51,13 @@ export const claudeTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
     return { kind: "byte-offset", startOffset };
   },
 
-  async parse(filePath: string, resume: ResumeState): Promise<ClaudeParseResult> {
+  async parse(filePath: string, resume: ResumeState, ctx: SyncContext): Promise<ClaudeParseResult> {
     const r = resume as ByteOffsetResumeState;
-    const result = await parseClaudeFile({ filePath, startOffset: r.startOffset });
+    const result = await parseClaudeFile({
+      filePath,
+      startOffset: r.startOffset,
+      seenMessageIds: ctx.seenClaudeMessageIds,
+    });
     return { deltas: result.deltas, endOffset: result.endOffset };
   },
 

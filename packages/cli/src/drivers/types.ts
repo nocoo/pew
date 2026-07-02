@@ -45,6 +45,14 @@ export interface SyncContext {
   messageKeys?: Set<string>;
 
   /**
+   * Per-sync dedup Set for the Claude Code driver — each `message.id`
+   * counts once. Initialized by the Claude driver's discover() and
+   * consumed by its parse(). Set-per-context isolation means parallel
+   * syncs (should any ever exist) never share dedup state.
+   */
+  seenClaudeMessageIds?: Set<string>;
+
+  /**
    * Directory mtime cache for OpenCode JSON discovery optimization.
    * Read/written by the OpenCode JSON token driver.
    * Persisted to CursorState.dirMtimes by the orchestrator.
@@ -217,7 +225,7 @@ export interface FileTokenDriver<TCursor extends FileCursorBase = FileCursorBase
   resumeState(cursor: TCursor | undefined, fingerprint: FileFingerprint): ResumeState;
 
   /** Parse file from resume point, return deltas + driver-specific state */
-  parse(filePath: string, resume: ResumeState): Promise<TokenParseResult>;
+  parse(filePath: string, resume: ResumeState, ctx: SyncContext): Promise<TokenParseResult>;
 
   /** Build cursor to persist after successful parse */
   buildCursor(fingerprint: FileFingerprint, result: TokenParseResult, prev?: TCursor): TCursor;

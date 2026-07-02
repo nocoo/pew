@@ -43,12 +43,21 @@ export function normalizeClaudeUsage(u: Record<string, unknown>): TokenDelta {
  *
  * Each assistant message with non-zero usage produces a standalone delta
  * (no running-total diffing needed — each usage block is absolute).
+ *
+ * If `seenMessageIds` is provided, lines whose `message.id` is already in the
+ * Set are skipped, and newly-seen ids are added to it. This is the caller's
+ * dedup contract: Claude Code can write the same assistant message multiple
+ * times (streaming retries, crash-resumes, subagent parent/child sharing),
+ * and each id must only count once per sync. Lines without a `message.id`
+ * are always kept (no id → no basis for dedup, and missing-id assistant
+ * messages are rare but real).
  */
 export async function parseClaudeFile(opts: {
   filePath: string;
   startOffset: number;
+  seenMessageIds?: Set<string>;
 }): Promise<ClaudeFileResult> {
-  const { filePath, startOffset } = opts;
+  const { filePath, startOffset, seenMessageIds } = opts;
   const deltas: ParsedDelta[] = [];
 
   const st = await stat(filePath).catch(() => null);
@@ -93,6 +102,15 @@ export async function parseClaudeFile(opts: {
       const timestamp =
         typeof obj?.timestamp === "string" ? obj.timestamp : null;
       if (!timestamp) continue;
+
+      // Dedup by message.id. Absent id → always keep (cannot dedup safely).
+      if (seenMessageIds) {
+        const id = typeof msg?.id === "string" ? msg.id : null;
+        if (id) {
+          if (seenMessageIds.has(id)) continue;
+          seenMessageIds.add(id);
+        }
+      }
 
       // Normalize and filter zero deltas
       const delta = normalizeClaudeUsage(usage);

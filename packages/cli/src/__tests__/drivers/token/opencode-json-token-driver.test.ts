@@ -146,8 +146,9 @@ describe("openCodeJsonTokenDriver", () => {
       const filePath = join(tempDir, "msg-001.json");
       await writeFile(filePath, openCodeMessage({}));
 
+      const ctx: SyncContext = {};
       const resume = { kind: "opencode-json" as const, lastTotals: null };
-      const result = await openCodeJsonTokenDriver.parse(filePath, resume);
+      const result = await openCodeJsonTokenDriver.parse(filePath, resume, ctx);
 
       // OpenCode returns at most 1 delta per file
       expect(result.deltas.length).toBeLessThanOrEqual(1);
@@ -172,8 +173,9 @@ describe("openCodeJsonTokenDriver", () => {
         tokens: null,
       }));
 
+      const ctx: SyncContext = {};
       const resume = { kind: "opencode-json" as const, lastTotals: null };
-      const result = await openCodeJsonTokenDriver.parse(filePath, resume);
+      const result = await openCodeJsonTokenDriver.parse(filePath, resume, ctx);
       expect(result.deltas).toEqual([]);
     });
   });

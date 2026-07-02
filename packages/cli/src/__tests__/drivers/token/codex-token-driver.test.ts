@@ -255,7 +255,7 @@ describe("codexTokenDriver", () => {
         lastTotals: null,
         lastModel: null,
       };
-      const result = await codexTokenDriver.parse(filePath, resume);
+      const result = await codexTokenDriver.parse(filePath, resume, ctx);
 
       // Codex uses cumulative diff — first absolute totals produce a delta
       expect(result.deltas.length).toBeGreaterThanOrEqual(1);

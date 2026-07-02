@@ -47,7 +47,7 @@ export const copilotCliTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
     return { kind: "byte-offset", startOffset };
   },
 
-  async parse(filePath: string, resume: ResumeState): Promise<CopilotCliParseResult> {
+  async parse(filePath: string, resume: ResumeState, _ctx: SyncContext): Promise<CopilotCliParseResult> {
     const r = resume as ByteOffsetResumeState;
     const result = await parseCopilotCliFile({ filePath, startOffset: r.startOffset });
     return { deltas: result.deltas, endOffset: result.endOffset };
