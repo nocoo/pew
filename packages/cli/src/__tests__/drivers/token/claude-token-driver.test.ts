@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile, mkdir, appendFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { claudeTokenDriver } from "../../../drivers/token/claude-token-driver.js";
-import type { ByteOffsetCursor, ClaudeCursor } from "@pew/core";
+import type { ByteOffsetCursor, ClaudeCursor, FileCursorBase } from "@pew/core";
 import type { SyncContext, FileFingerprint } from "../../../drivers/types.js";
 
 /** Helper: create a Claude-style JSONL line */
@@ -421,6 +421,60 @@ describe("claudeTokenDriver", () => {
       const resume = claudeTokenDriver.resumeState(staleCursor, freshFp);
       const r = await claudeTokenDriver.parse(filePath, resume, ctx);
       expect(r.deltas).toHaveLength(1); // NOT suppressed by stale seenIds
+    });
+
+    it("preload seeds ctx with seenIds from ALL cursors, including files that will be fast-skipped", async () => {
+      // Real-world case: file A recorded msg_cross in sync #1 and is
+      // unchanged in sync #2 (shouldSkip returns true, parse never runs
+      // for A). File B is a NEW file that also carries msg_cross (subagent
+      // parent/child sharing the same message.id). Without a preload pass,
+      // A's cursor.seenIds never reach the ctx Set and B's line double-counts.
+      //
+      // preload() runs once before the per-file skip/parse loop and lifts
+      // seenIds from every known cursor into ctx.seenClaudeMessageIds so
+      // dedup survives fast-skip.
+      expect(claudeTokenDriver.preload).toBeDefined();
+
+      const cursorA: ClaudeCursor = {
+        inode: 1,
+        mtimeMs: 1,
+        size: 100,
+        offset: 100,
+        seenIds: ["msg_cross"],
+        updatedAt: "2026-01-01T00:00:00Z",
+      };
+      const cursors: Record<string, FileCursorBase> = {
+        "/fake/A.jsonl": cursorA,
+      };
+      const ctx: SyncContext = {};
+      claudeTokenDriver.preload!(cursors, ctx);
+      expect(ctx.seenClaudeMessageIds?.has("msg_cross")).toBe(true);
+    });
+
+    it("preload is idempotent and merges into an existing Set", async () => {
+      const cursors: Record<string, FileCursorBase> = {
+        "/fake/A.jsonl": {
+          inode: 1,
+          mtimeMs: 1,
+          size: 100,
+          offset: 100,
+          seenIds: ["msg_A"],
+          updatedAt: "2026-01-01T00:00:00Z",
+        } as ClaudeCursor,
+        "/fake/B.jsonl": {
+          inode: 2,
+          mtimeMs: 2,
+          size: 100,
+          offset: 100,
+          seenIds: ["msg_B"],
+          updatedAt: "2026-01-01T00:00:00Z",
+        } as ClaudeCursor,
+      };
+      const ctx: SyncContext = { seenClaudeMessageIds: new Set(["preexisting"]) };
+      claudeTokenDriver.preload!(cursors, ctx);
+      expect(ctx.seenClaudeMessageIds?.has("msg_A")).toBe(true);
+      expect(ctx.seenClaudeMessageIds?.has("msg_B")).toBe(true);
+      expect(ctx.seenClaudeMessageIds?.has("preexisting")).toBe(true);
     });
   });
 });

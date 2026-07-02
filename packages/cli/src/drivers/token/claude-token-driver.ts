@@ -10,15 +10,18 @@
  *   lives on the SyncContext (`seenClaudeMessageIds`) so concurrent syncs
  *   never share state.
  * - Across syncs, the last `SEEN_ID_CAP` emitted ids per file are persisted
- *   on the cursor (`ClaudeCursor.seenIds`). resumeState() seeds them into
- *   the ctx Set so an appended duplicate line — Claude Code rewrites the
- *   same assistant message on streaming retries and subagent hand-offs —
- *   is suppressed on the next incremental sync. buildCursor() folds the
- *   new emissions into the ring, keeping the most-recent tail (that's
- *   where retry duplicates cluster on real installs).
+ *   on the cursor (`ClaudeCursor.seenIds`). preload() lifts every file's
+ *   ring into the ctx Set once, before the skip/parse loop, so files that
+ *   go through fast-skip still contribute to dedup — otherwise a shared
+ *   `message.id` (subagent parent/child, cross-file replay) appearing in a
+ *   newly appended file would double-count. resumeState() carries the same
+ *   ring inline as a defense-in-depth seed when parse() is invoked
+ *   standalone (e.g. tests, ad-hoc callers without a preload pass).
+ * - buildCursor() folds the new emissions back into the per-file ring,
+ *   keeping the most-recent tail. Reset when the file inode changes.
  */
 
-import type { ClaudeCursor } from "@pew/core";
+import type { ClaudeCursor, FileCursorBase } from "@pew/core";
 import { discoverClaudeFiles } from "../../discovery/sources.js";
 import { parseClaudeFile } from "../../parsers/claude.js";
 import { fileUnchanged } from "../../utils/file-changed.js";
@@ -55,6 +58,23 @@ export const claudeTokenDriver: FileTokenDriver<ClaudeCursor> = {
     if (!ctx.seenClaudeMessageIds) ctx.seenClaudeMessageIds = new Set<string>();
     if (!opts.claudeDir) return [];
     return discoverClaudeFiles(opts.claudeDir);
+  },
+
+  /**
+   * Lift every persisted `seenIds` ring into the per-run dedup Set before
+   * any file is fast-skipped. Without this, a file that stays unchanged
+   * between sync #1 and sync #2 never reaches parse() in sync #2, so its
+   * cursor's seenIds never enter the ctx Set — and a brand-new file that
+   * carries a shared `message.id` (subagent parent/child, cross-file
+   * replay) double-counts.
+   */
+  preload(cursors: Record<string, FileCursorBase>, ctx: SyncContext): void {
+    if (!ctx.seenClaudeMessageIds) ctx.seenClaudeMessageIds = new Set<string>();
+    for (const cursor of Object.values(cursors)) {
+      const ids = (cursor as Partial<ClaudeCursor>).seenIds;
+      if (!ids) continue;
+      for (const id of ids) ctx.seenClaudeMessageIds.add(id);
+    }
   },
 
   shouldSkip(cursor: ClaudeCursor | undefined, fingerprint: FileFingerprint): boolean {

@@ -299,6 +299,12 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     filesScanned[key] = files.length;
     for (const f of files) discoveredFiles.add(f);
 
+    // Optional pre-loop hook: let the driver lift persisted per-file state
+    // (dedup rings, etc.) into ctx before any file is fast-skipped. Without
+    // this, an unchanged file's cursor never contributes to cross-file
+    // dedup on this sync run.
+    driver.preload?.(cursors.files, ctx);
+
     // Build discover message with skipped dirs info from context
     const skippedDirs = driver.source === "opencode" && ctx.dirMtimes
       ? Object.keys(ctx.dirMtimes).length

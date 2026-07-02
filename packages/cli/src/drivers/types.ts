@@ -231,6 +231,14 @@ export interface FileTokenDriver<TCursor extends FileCursorBase = FileCursorBase
   /** Discover candidate files for this source */
   discover(opts: DiscoverOpts, ctx: SyncContext): Promise<string[]>;
 
+  /**
+   * Optional pre-loop hook. Called once with the full existing cursor map
+   * before any file's shouldSkip/parse runs, so a driver can lift persisted
+   * per-file state (e.g. dedup rings) into the SyncContext for the whole
+   * run — even for files that will be fast-skipped and never see parse().
+   */
+  preload?(cursors: Record<string, FileCursorBase>, ctx: SyncContext): void;
+
   /** Fast skip: has this file changed since last cursor? Uses fileUnchanged() internally. */
   shouldSkip(cursor: TCursor | undefined, fingerprint: FileFingerprint): boolean;
 
