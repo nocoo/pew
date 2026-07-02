@@ -3170,4 +3170,116 @@ describe("executeSync", () => {
     // The real cursor is still there too.
     expect(after.files[realPath]).toBeDefined();
   });
+
+  describe("legacy Claude cursor upgrade path", () => {
+    // A cursor written by an older pew version is ByteOffsetCursor-shaped:
+    // it has `offset` but no `seenIds` field. If the driver silently rescans
+    // from offset 0 inside incremental mode, the parser re-emits every past
+    // usage row and executeSync's SUM branch doubles those buckets in the
+    // local queue. The fix is to route legacy cursors through the same
+    // full-rescan path the orchestrator already uses for inode changes and
+    // lost cursors — that clears cursors, restarts, and takes the
+    // overwrite-not-append branch.
+    it("does not double-count into queue when a legacy Claude cursor is encountered", async () => {
+      const claudeRoot = join(dataDir, ".claude");
+      const projDir = join(claudeRoot, "projects", "p1");
+      await mkdir(projDir, { recursive: true });
+      const sessionPath = join(projDir, "A.jsonl");
+
+      // Historical row: one assistant message, already recorded.
+      const row = (id: string, ts: string) =>
+        JSON.stringify({
+          type: "assistant",
+          timestamp: ts,
+          message: {
+            id,
+            model: "glm-5",
+            usage: {
+              input_tokens: 100,
+              cache_creation_input_tokens: 0,
+              cache_read_input_tokens: 0,
+              output_tokens: 50,
+            },
+          },
+        });
+      await writeFile(sessionPath, row("msg_A", "2026-06-01T10:00:00.000Z") + "\n");
+
+      // Preseed a LEGACY cursor (no seenIds field) that says the file has
+      // been fully parsed to its current size. Also preseed knownFilePaths
+      // + knownDbSources so no other upgrade-rescan path kicks in.
+      const { stat } = await import("node:fs/promises");
+      const st = await stat(sessionPath);
+      await mkdir(stateDir, { recursive: true });
+      const cursorsPath = join(stateDir, "cursors.json");
+      await writeFile(
+        cursorsPath,
+        JSON.stringify({
+          version: 1,
+          files: {
+            [sessionPath]: {
+              inode: st.ino,
+              mtimeMs: st.mtimeMs,
+              size: st.size,
+              offset: st.size,
+              updatedAt: "2026-06-01T10:01:00.000Z",
+              // no seenIds — legacy shape
+            },
+          },
+          knownFilePaths: { [sessionPath]: true },
+          knownDbSources: {},
+          updatedAt: "2026-06-01T10:01:00.000Z",
+        }),
+      );
+
+      // Preseed queue with the historical bucket (already uploaded state).
+      const queuePath = join(stateDir, "queue.jsonl");
+      await writeFile(
+        queuePath,
+        JSON.stringify({
+          source: "claude-code",
+          model: "glm-5",
+          hour_start: "2026-06-01T10:00:00.000Z",
+          device_id: "dev-legacy",
+          input_tokens: 100,
+          cached_input_tokens: 0,
+          output_tokens: 50,
+          reasoning_output_tokens: 0,
+          total_tokens: 150,
+        }) + "\n",
+      );
+
+      // User upgrades. Then Claude Code appends a rewrite of msg_A past the
+      // recorded offset (streaming retry / resume — the id repeats, tokens
+      // are the same). This is where the bug bites.
+      const { appendFile } = await import("node:fs/promises");
+      await appendFile(
+        sessionPath,
+        row("msg_A", "2026-06-01T10:00:30.000Z") + "\n",
+      );
+
+      await executeSync({
+        stateDir,
+        deviceId: "dev-legacy",
+        claudeDir: claudeRoot,
+      });
+
+      // Read the queue back. The bucket must still be 100/50, not 200/100.
+      const queueRaw = await readFile(queuePath, "utf-8");
+      const rows: QueueRecord[] = queueRaw
+        .split("\n")
+        .filter(Boolean)
+        .map((l) => JSON.parse(l));
+      const claudeRow = rows.find((r) => r.source === "claude-code");
+      expect(claudeRow).toBeDefined();
+      expect(claudeRow!.input_tokens).toBe(100);
+      expect(claudeRow!.output_tokens).toBe(50);
+      expect(claudeRow!.total_tokens).toBe(150);
+
+      // Cursor should have been rewritten with the modern shape (seenIds present).
+      const updatedCursors = JSON.parse(await readFile(cursorsPath, "utf-8"));
+      expect(
+        updatedCursors.files[sessionPath].seenIds,
+      ).toBeDefined();
+    });
+  });
 });

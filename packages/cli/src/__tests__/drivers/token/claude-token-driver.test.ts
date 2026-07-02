@@ -482,41 +482,41 @@ describe("claudeTokenDriver", () => {
       expect(ctx.seenClaudeMessageIds?.has("preexisting")).toBe(true);
     });
 
-    it("forces a per-file full rescan when the cursor is legacy (no seenIds field)", async () => {
+    it("declares needsReplay=true for a legacy cursor (no seenIds field)", async () => {
       // Upgrade path: an existing install has ByteOffsetCursor-shaped
-      // entries in cursors.json with no `seenIds` field. The first post-
-      // upgrade sync cannot dedup against ids emitted before the upgrade
-      // (they're not in any Set). Solution: treat the missing field as a
-      // signal to re-scan the file from offset 0 so the parser rebuilds
-      // the full seenIds ring. The server's ON CONFLICT upsert makes this
-      // safe — same hour_bucket + same tokens → no inflation.
-      const filePath = join(tempDir, "session.jsonl");
-      await writeFile(filePath, claudeLine() + "\n");
-
-      // Legacy cursor: has offset but no `seenIds` key at all.
+      // entries in cursors.json with no `seenIds` field. Rescanning that
+      // file inside incremental mode would double-count into the SUM'd
+      // queue. The driver flags this via needsReplay(); the orchestrator
+      // then wipes cursors and restarts as a full scan (overwrite branch).
       const legacyCursor = {
         inode: 42,
         mtimeMs: 1709827200000,
         size: 200,
-        offset: 200, // says "already parsed through byte 200"
+        offset: 200,
         updatedAt: "2026-06-01T00:00:00Z",
+        // no seenIds — legacy shape
       } as unknown as ClaudeCursor;
-      const fp: FileFingerprint = {
-        inode: 42,
-        mtimeMs: 1709827200000,
-        size: 200, // unchanged since the legacy cursor was written
+      expect(claudeTokenDriver.needsReplay).toBeDefined();
+      expect(claudeTokenDriver.needsReplay!(legacyCursor)).toBe(true);
+
+      // shouldSkip / resumeState treat a legacy cursor like any other
+      // cursor; the replay decision is the orchestrator's, not theirs.
+      // (This keeps those two methods pure and predictable.)
+      const fp: FileFingerprint = { inode: 42, mtimeMs: 1709827200000, size: 200 };
+      expect(claudeTokenDriver.shouldSkip(legacyCursor, fp)).toBe(true);
+    });
+
+    it("does not flag modern or missing cursors as needsReplay", async () => {
+      expect(claudeTokenDriver.needsReplay!(undefined)).toBe(false);
+      const modern: ClaudeCursor = {
+        inode: 1,
+        mtimeMs: 1,
+        size: 1,
+        offset: 1,
+        seenIds: [],
+        updatedAt: "2026-06-01T00:00:00Z",
       };
-
-      // shouldSkip must NOT fast-skip a legacy cursor, otherwise the file
-      // never reaches parse() and the ring is never populated.
-      expect(claudeTokenDriver.shouldSkip(legacyCursor, fp)).toBe(false);
-
-      // resumeState must force startOffset=0 so the parser re-emits every
-      // id and buildCursor writes the full ring.
-      const resume = claudeTokenDriver.resumeState(legacyCursor, fp);
-      expect(resume.kind).toBe("claude");
-      expect((resume as { startOffset: number }).startOffset).toBe(0);
-      expect((resume as { priorSeenIds: string[] }).priorSeenIds).toEqual([]);
+      expect(claudeTokenDriver.needsReplay!(modern)).toBe(false);
     });
 
     it("preload treats legacy cursors (no seenIds) as contributing nothing", async () => {

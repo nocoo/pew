@@ -242,6 +242,15 @@ export interface FileTokenDriver<TCursor extends FileCursorBase = FileCursorBase
   /** Fast skip: has this file changed since last cursor? Uses fileUnchanged() internally. */
   shouldSkip(cursor: TCursor | undefined, fingerprint: FileFingerprint): boolean;
 
+  /**
+   * Optional: signal that this cursor needs a full-rescan restart of the
+   * whole sync instead of a per-file re-parse. Used for cursor-schema
+   * upgrades where a per-file rescan would double-count into the SUM'd
+   * incremental queue. The orchestrator, on the first hit, wipes cursors
+   * and re-runs the sync as a full scan (overwrite branch).
+   */
+  needsReplay?(cursor: TCursor | undefined): boolean;
+
   /** Extract incremental resume state from cursor (offset, lastIndex, etc.) */
   resumeState(cursor: TCursor | undefined, fingerprint: FileFingerprint): ResumeState;
 

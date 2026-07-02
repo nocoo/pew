@@ -356,12 +356,17 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       // 1. Inode change: file was replaced/rotated → driver replays from 0.
       // 2. Cursor entry lost: the cursor for a previously-scanned file was
       //    deleted or corrupted → driver treats it as new and reads from 0.
+      // 3. Driver-declared replay (needsReplay hook): e.g. a legacy cursor
+      //    shape that predates a dedup ring. If we let the driver rescan
+      //    the file from offset 0 while executeSync is still in incremental
+      //    mode, the parser re-emits every past row and the SUM branch
+      //    doubles those buckets in queue.jsonl.
       //
       // Condition 2 uses `knownFilePaths` to distinguish "cursor lost for a
       // known file" (replay risk) from "genuinely new file" (safe to SUM).
       //
-      // In both cases, SUM'ing a full replay with the existing queue would
-      // double-count. Abort and restart as full scan.
+      // In all three cases, SUM'ing a full replay with the existing queue
+      // would double-count. Abort and restart as full scan.
       if (!initialCursorEmpty) {
         if (cursor && cursor.inode !== fingerprint.inode) {
           replayDetected = true;
@@ -378,6 +383,15 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
             source: driver.source,
             phase: "warn",
             message: `Cursor entry lost for known file ${filePath} — restarting as full scan`,
+          });
+          break;
+        }
+        if (driver.needsReplay?.(cursor)) {
+          replayDetected = true;
+          onProgress?.({
+            source: driver.source,
+            phase: "warn",
+            message: `Legacy cursor for ${filePath} — restarting as full scan`,
           });
           break;
         }

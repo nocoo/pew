@@ -19,6 +19,12 @@
  *   standalone (e.g. tests, ad-hoc callers without a preload pass).
  * - buildCursor() folds the new emissions back into the per-file ring,
  *   keeping the most-recent tail. Reset when the file inode changes.
+ *
+ * Upgrade: cursors written by pre-ring versions are ByteOffsetCursor-shaped
+ * (they have `offset` but no `seenIds` field). needsReplay() flags them so
+ * the orchestrator restarts the whole sync as a full scan (overwrite queue,
+ * not append) — a per-file rescan inside incremental mode would double the
+ * queue value for that file's historical buckets.
  */
 
 import type { ClaudeCursor, FileCursorBase } from "@pew/core";
@@ -77,22 +83,15 @@ export const claudeTokenDriver: FileTokenDriver<ClaudeCursor> = {
     }
   },
 
+  needsReplay(cursor: ClaudeCursor | undefined): boolean {
+    return isLegacyCursor(cursor);
+  },
+
   shouldSkip(cursor: ClaudeCursor | undefined, fingerprint: FileFingerprint): boolean {
-    // A legacy cursor (byte-offset only, no seenIds field) predates the
-    // dedup ring. Fast-skipping it would leave the ring permanently empty
-    // and lets any id emitted before the upgrade re-count if the file
-    // ever gets an appended duplicate. Force one full rescan to seed the
-    // ring; subsequent syncs revert to normal fast-skip.
-    if (isLegacyCursor(cursor)) return false;
     return fileUnchanged(cursor, fingerprint);
   },
 
   resumeState(cursor: ClaudeCursor | undefined, fingerprint: FileFingerprint): ClaudeResumeState {
-    // Legacy cursor → treat as "no cursor" for offset purposes: rescan
-    // from byte 0 so buildCursor emits a fresh, full seenIds ring.
-    if (isLegacyCursor(cursor)) {
-      return { kind: "claude", startOffset: 0, priorSeenIds: [] };
-    }
     const sameInode = cursor && cursor.inode === fingerprint.inode;
     return {
       kind: "claude",
