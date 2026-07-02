@@ -78,10 +78,21 @@ export const claudeTokenDriver: FileTokenDriver<ClaudeCursor> = {
   },
 
   shouldSkip(cursor: ClaudeCursor | undefined, fingerprint: FileFingerprint): boolean {
+    // A legacy cursor (byte-offset only, no seenIds field) predates the
+    // dedup ring. Fast-skipping it would leave the ring permanently empty
+    // and lets any id emitted before the upgrade re-count if the file
+    // ever gets an appended duplicate. Force one full rescan to seed the
+    // ring; subsequent syncs revert to normal fast-skip.
+    if (isLegacyCursor(cursor)) return false;
     return fileUnchanged(cursor, fingerprint);
   },
 
   resumeState(cursor: ClaudeCursor | undefined, fingerprint: FileFingerprint): ClaudeResumeState {
+    // Legacy cursor → treat as "no cursor" for offset purposes: rescan
+    // from byte 0 so buildCursor emits a fresh, full seenIds ring.
+    if (isLegacyCursor(cursor)) {
+      return { kind: "claude", startOffset: 0, priorSeenIds: [] };
+    }
     const sameInode = cursor && cursor.inode === fingerprint.inode;
     return {
       kind: "claude",
@@ -156,4 +167,15 @@ function mergeBounded(prior: string[], next: string[], cap: number): string[] {
     if (dedupedReversed.length >= cap) break;
   }
   return dedupedReversed.reverse();
+}
+
+/**
+ * Detect a legacy cursor written before the dedup ring existed. Such
+ * cursors are ByteOffsetCursor-shaped: they have `offset` but the
+ * `seenIds` field is entirely absent (not just an empty array). A modern
+ * cursor with no recent ids has `seenIds: []`.
+ */
+function isLegacyCursor(cursor: ClaudeCursor | undefined): boolean {
+  if (!cursor) return false;
+  return !Object.prototype.hasOwnProperty.call(cursor, "seenIds");
 }

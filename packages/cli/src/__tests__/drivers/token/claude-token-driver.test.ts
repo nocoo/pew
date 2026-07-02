@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile, mkdir, appendFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { claudeTokenDriver } from "../../../drivers/token/claude-token-driver.js";
-import type { ByteOffsetCursor, ClaudeCursor, FileCursorBase } from "@pew/core";
+import type { ClaudeCursor, FileCursorBase } from "@pew/core";
 import type { SyncContext, FileFingerprint } from "../../../drivers/types.js";
 
 /** Helper: create a Claude-style JSONL line */
@@ -76,22 +76,24 @@ describe("claudeTokenDriver", () => {
     });
 
     it("returns true when file is unchanged", () => {
-      const cursor: ByteOffsetCursor = {
+      const cursor: ClaudeCursor = {
         inode: 100,
         mtimeMs: 1709827200000,
         size: 4096,
         offset: 500,
+        seenIds: [],
         updatedAt: "2026-01-01T00:00:00Z",
       };
       expect(claudeTokenDriver.shouldSkip(cursor, fingerprint)).toBe(true);
     });
 
     it("returns false when mtimeMs differs", () => {
-      const cursor: ByteOffsetCursor = {
+      const cursor: ClaudeCursor = {
         inode: 100,
         mtimeMs: 1709827100000,
         size: 4096,
         offset: 500,
+        seenIds: [],
         updatedAt: "2026-01-01T00:00:00Z",
       };
       expect(claudeTokenDriver.shouldSkip(cursor, fingerprint)).toBe(false);
@@ -111,11 +113,12 @@ describe("claudeTokenDriver", () => {
     });
 
     it("returns stored offset when inode matches", () => {
-      const cursor: ByteOffsetCursor = {
+      const cursor: ClaudeCursor = {
         inode: 100,
         mtimeMs: 1709827200000,
         size: 4096,
         offset: 500,
+        seenIds: [],
         updatedAt: "2026-01-01T00:00:00Z",
       };
       const state = claudeTokenDriver.resumeState(cursor, fingerprint);
@@ -123,11 +126,12 @@ describe("claudeTokenDriver", () => {
     });
 
     it("resets offset to 0 when inode differs", () => {
-      const cursor: ByteOffsetCursor = {
+      const cursor: ClaudeCursor = {
         inode: 999,
         mtimeMs: 1709827200000,
         size: 4096,
         offset: 500,
+        seenIds: [],
         updatedAt: "2026-01-01T00:00:00Z",
       };
       const state = claudeTokenDriver.resumeState(cursor, fingerprint);
@@ -135,11 +139,12 @@ describe("claudeTokenDriver", () => {
     });
 
     it("defaults offset to 0 when cursor.offset is undefined (old cursor format)", () => {
-      const cursor: ByteOffsetCursor = {
+      const cursor: ClaudeCursor = {
         inode: 100,
         mtimeMs: 1709827200000,
         size: 4096,
         offset: undefined as unknown as number,
+        seenIds: [],
         updatedAt: "2026-01-01T00:00:00Z",
       };
       const state = claudeTokenDriver.resumeState(cursor, fingerprint);
@@ -475,6 +480,80 @@ describe("claudeTokenDriver", () => {
       expect(ctx.seenClaudeMessageIds?.has("msg_A")).toBe(true);
       expect(ctx.seenClaudeMessageIds?.has("msg_B")).toBe(true);
       expect(ctx.seenClaudeMessageIds?.has("preexisting")).toBe(true);
+    });
+
+    it("forces a per-file full rescan when the cursor is legacy (no seenIds field)", async () => {
+      // Upgrade path: an existing install has ByteOffsetCursor-shaped
+      // entries in cursors.json with no `seenIds` field. The first post-
+      // upgrade sync cannot dedup against ids emitted before the upgrade
+      // (they're not in any Set). Solution: treat the missing field as a
+      // signal to re-scan the file from offset 0 so the parser rebuilds
+      // the full seenIds ring. The server's ON CONFLICT upsert makes this
+      // safe — same hour_bucket + same tokens → no inflation.
+      const filePath = join(tempDir, "session.jsonl");
+      await writeFile(filePath, claudeLine() + "\n");
+
+      // Legacy cursor: has offset but no `seenIds` key at all.
+      const legacyCursor = {
+        inode: 42,
+        mtimeMs: 1709827200000,
+        size: 200,
+        offset: 200, // says "already parsed through byte 200"
+        updatedAt: "2026-06-01T00:00:00Z",
+      } as unknown as ClaudeCursor;
+      const fp: FileFingerprint = {
+        inode: 42,
+        mtimeMs: 1709827200000,
+        size: 200, // unchanged since the legacy cursor was written
+      };
+
+      // shouldSkip must NOT fast-skip a legacy cursor, otherwise the file
+      // never reaches parse() and the ring is never populated.
+      expect(claudeTokenDriver.shouldSkip(legacyCursor, fp)).toBe(false);
+
+      // resumeState must force startOffset=0 so the parser re-emits every
+      // id and buildCursor writes the full ring.
+      const resume = claudeTokenDriver.resumeState(legacyCursor, fp);
+      expect(resume.kind).toBe("claude");
+      expect((resume as { startOffset: number }).startOffset).toBe(0);
+      expect((resume as { priorSeenIds: string[] }).priorSeenIds).toEqual([]);
+    });
+
+    it("preload treats legacy cursors (no seenIds) as contributing nothing", async () => {
+      // Legacy cursors don't crash preload and don't inject stale ids.
+      const cursors: Record<string, FileCursorBase> = {
+        "/fake/legacy.jsonl": {
+          inode: 5,
+          mtimeMs: 5,
+          size: 100,
+          offset: 100,
+          updatedAt: "2026-06-01T00:00:00Z",
+          // no seenIds field
+        } as unknown as ClaudeCursor,
+      };
+      const ctx: SyncContext = {};
+      claudeTokenDriver.preload!(cursors, ctx);
+      expect(ctx.seenClaudeMessageIds?.size ?? 0).toBe(0);
+    });
+
+    it("upgraded (non-legacy) cursor with empty seenIds still fast-skips normally", async () => {
+      // A cursor that has an explicit empty seenIds array is NOT legacy —
+      // it's a modern cursor for a file whose recent tail happened to have
+      // no dedupable ids. Fast-skip must still work when the file is unchanged.
+      const modernEmpty: ClaudeCursor = {
+        inode: 42,
+        mtimeMs: 1709827200000,
+        size: 200,
+        offset: 200,
+        seenIds: [], // explicitly empty, not missing
+        updatedAt: "2026-06-01T00:00:00Z",
+      };
+      const fp: FileFingerprint = {
+        inode: 42,
+        mtimeMs: 1709827200000,
+        size: 200,
+      };
+      expect(claudeTokenDriver.shouldSkip(modernEmpty, fp)).toBe(true);
     });
   });
 });
