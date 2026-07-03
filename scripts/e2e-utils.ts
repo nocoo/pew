@@ -62,7 +62,18 @@ function loadEnvFile(envPath: string, label: string): Record<string, string> {
       const eqIdx = trimmed.indexOf("=");
       if (eqIdx === -1) continue;
       const key = trimmed.slice(0, eqIdx).trim();
-      const value = trimmed.slice(eqIdx + 1).trim();
+      let value = trimmed.slice(eqIdx + 1).trim();
+      // Strip a matching pair of wrapping quotes so KEY="value" parses to
+      // `value`, matching how Next.js / bun / standard dotenv parsers
+      // behave. Otherwise a Bearer token carries literal `"` bytes and
+      // Cloudflare returns 401 despite the token itself being valid.
+      if (
+        value.length >= 2 &&
+        ((value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'")))
+      ) {
+        value = value.slice(1, -1);
+      }
       vars[key] = value;
     }
     return vars;
