@@ -5,6 +5,120 @@
 ### Removed
 - Drop legacy `model_pricing` D1 table, admin Token Pricing CRUD UI (`/admin/pricing`) and its CRUD API (`/api/admin/pricing` route), worker-read admin-loader + `pricing.listModelPricing` / `pricing.getModelPricingByModelSource` RPCs, `origin: "admin"` pricing layer, and `pricing:all` KV cache (migration 021). The dynamic-pricing admin surface (`/admin/model-prices`, `/api/admin/pricing/models`, `/api/admin/pricing/rebuild`) is retained. Dynamic pricing pipeline (baseline + OpenRouter + models.dev → `pricing:dynamic`) is now the sole source of truth.
 
+## v2.23.8
+
+### Added
+- Require login for /leaderboard, keep /u/<slug> public
+
+### Changed
+- Add root .npmrc for supply chain security baseline
+- Bump sharp ^0.35.2 → ^0.35.3
+- Bump next 16.2.9 → 16.2.10
+- Bump lucide-react ^1.22.0 → ^1.23.0
+- Bump @types/node 26.0.1 → 26.1.0
+- Bump @next/eslint-plugin-next 16.2.9 → 16.2.10
+- Bump @cloudflare/workers-types 4.20260630.1 → 4.20260701.1
+- Bump @aws-sdk/client-s3 3.1077.0 → 3.1078.0
+- Bump wrangler 4.105.0 → 4.106.0
+- Bump recharts ^3.9.0 → ^3.9.1
+- Bump radix-ui ^1.6.0 → ^1.6.1
+- Bump @cloudflare/workers-types 4.20260629.1 → 4.20260630.1
+- Bump @aws-sdk/client-s3 3.1076.0 → 3.1077.0
+- Bump typescript-eslint ^8.62.0 → ^8.62.1
+- Bump tailwindcss ^4.3.1 → ^4.3.2
+- Bump @tailwindcss/postcss ^4.3.1 → ^4.3.2
+- Bump @cloudflare/workers-types 4.20260628.1 → 4.20260629.1
+- Bump @aws-sdk/client-s3 3.1075.0 → 3.1076.0
+- Bump lucide-react ^1.21.0 → ^1.22.0
+- Bump @cloudflare/workers-types 4.20260626.1 → 4.20260628.1
+- Bump @cloudflare/workers-types 4.20260625.1 → 4.20260626.1
+- Bump eslint 10.5.0 → 10.6.0
+- Bump @cloudflare/workers-types 4.20260624.1 → 4.20260625.1
+- Bump wrangler 4.104.0 → 4.105.0
+- Bump nanoid 5.1.15 → 5.1.16
+- Bump @types/node 26.0.0 → 26.0.1
+- Bump @cloudflare/workers-types 4.20260623.1 → 4.20260624.1
+- Bump wrangler 4.103.0 → 4.104.0
+- Bump recharts 3.8.1 → 3.9.0
+- Bump @playwright/test 1.61.0 → 1.61.1
+- Bump @cloudflare/workers-types 4.20260621.1 → 4.20260623.1
+- Bump @aws-sdk/client-s3 3.1074.0 → 3.1075.0
+- Bump typescript-eslint 8.61.1 → 8.62.0
+- Bump swr 2.4.1 → 2.4.2
+- Bump @aws-sdk/client-s3 3.1073.0 → 3.1074.0
+- Bump @cloudflare/workers-types 4.20260620.1 → 4.20260621.1
+- Bump nanoid 5.1.14 → 5.1.15
+- Bump lint-staged 17.0.7 → 17.0.8
+- Bump @cloudflare/workers-types 4.20260619.1 → 4.20260620.1
+- Bump @types/node 25.9.3 → 26.0.0
+- Bump sharp 0.34.5 → 0.35.2
+- Bump wrangler 4.101.0 → 4.103.0
+- Bump @cloudflare/workers-types 4.20260617.1 → 4.20260619.1
+- Bump @aws-sdk/client-s3 3.1071.0 → 3.1073.0
+- Bump lucide-react 1.20.0 → 1.21.0
+- Bump nanoid 5.1.11 → 5.1.14
+- Bump fast-xml-parser 5.9.2 → 5.9.3
+- Normalize SHA-pin comment spacing to two spaces
+- Bump @aws-sdk/client-s3 3.1070.0 → 3.1071.0
+- Bump @cloudflare/workers-types 4.20260616.1 → 4.20260617.1
+- Bump fast-xml-parser 5.9.0 → 5.9.2
+- Pin base-ci to v2026.5 SHA (aec4adc)
+- Bump 4 dependencies (2026-06-17 scan) (#210)
+- Bump non-security dependencies to latest patch/minor
+- Trim BDD helper debt after migration
+- Stage 2 — finalize L3 BDD migration + wire L3 into pre-push
+- Phase 3.2 — migrate admin specs to BDD
+- Migrate teams/organizations to BDD
+- Migrate leaderboard/leaderboard-data to BDD
+- Migrate dashboard/dashboard-data/navigation to BDD
+- Migrate data-pages/devices/settings-projects to BDD
+- Migrate public to BDD
+- Migrate auth to BDD
+- Migrate smoke to BDD
+- Prepare BDD migration foundation
+- Refine L3 BDD migration plan
+- Bump @cloudflare/workers-types to 4.20260613.1
+- Add L3 BDD refactor plan
+- Upgrade base-ci to v2026.4
+- Bump web @aws-sdk/client-s3 to 3.1068.0
+- Bump @cloudflare/workers-types to 4.20260612.1
+- Bump web @tailwindcss/postcss to 4.3.1
+- Bump eslint to 10.5.0
+- Bump web lucide-react to 1.18.0
+- Bump web tailwindcss to 4.3.1
+- Add esbuild overrides to >=0.28.1 (security)
+- Revert "chore(deps): bump web sharp to 0.35.1"
+- Bump web @aws-sdk/client-s3 to 3.1067.0
+- Bump @cloudflare/workers-types to 4.20260611.1
+- Bump wrangler to 4.100.0
+- Bump web sharp to 0.35.1
+- Bump @types/node to 25.9.3
+- Bump @cloudflare/workers-types to 4.20260610.1
+- Bump web @aws-sdk/client-s3 to 3.1066.0
+- Bump wrangler to 4.99.0
+- Bump next to 16.2.9
+- Bump @next/eslint-plugin-next to 16.2.9
+- Bump @cloudflare/workers-types to 4.20260609.1
+- Bump web @aws-sdk/client-s3 to 3.1065.0
+- Upgrade next to 16.2.8
+- Bump typescript-eslint to 8.61.0
+- Bump web @aws-sdk/client-s3 to 3.1064.0
+- Bump @cloudflare/workers-types to 4.20260608.1
+
+### Fixed
+- Check needsReplay before shouldSkip in the driver loop
+- Route legacy Claude cursor through orchestrator's full-rescan path
+- Force full rescan for legacy Claude cursors missing seenIds
+- Preload Claude cursor seenIds so fast-skipped files still dedup
+- Plug two Claude Code dedup gaps that undercounted or double-counted
+- Dedup Claude Code assistant messages by message.id
+- Keep caret range for eslint
+- Keep caret ranges for swr and typescript-eslint
+- Build @pew/web with Node.js to load sharp on linux-x64
+- Drop --ignore-scripts so sharp installs linux-x64 binding
+- Override undici to 7.28.0 (GHSA-pr7r-676h-xcf6, GHSA-vmh5-mc38-953g)
+- Patch ws, vite, @babel/core CVEs via overrides
+
 ## v2.23.7
 
 ### Fixed
