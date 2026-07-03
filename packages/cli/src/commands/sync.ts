@@ -305,6 +305,29 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     // dedup on this sync run.
     driver.preload?.(cursors.files, ctx);
 
+    // Pre-loop replay scan: some cursor formats (e.g. legacy Claude entries
+    // without a seenIds ring) require a full-sync restart before ANY of
+    // this driver's files are touched. Checking inside the per-file loop
+    // would be too late — an unchanged legacy file hits fast-skip and
+    // never gets to needsReplay, but its stale cursor still poisons dedup
+    // for the driver's OTHER files during this run. Scan every cursor
+    // this driver owns; if any of them declares replay, restart cleanly.
+    if (!initialCursorEmpty && driver.needsReplay) {
+      for (const [path, cursor] of Object.entries(cursors.files)) {
+        if (!discoveredFiles.has(path) && !files.includes(path)) continue;
+        if (driver.needsReplay(cursor as FileCursorBase)) {
+          replayDetected = true;
+          onProgress?.({
+            source: driver.source,
+            phase: "warn",
+            message: `Legacy cursor for ${path} — restarting as full scan`,
+          });
+          break;
+        }
+      }
+      if (replayDetected) break;
+    }
+
     // Build discover message with skipped dirs info from context
     const skippedDirs = driver.source === "opencode" && ctx.dirMtimes
       ? Object.keys(ctx.dirMtimes).length
@@ -356,17 +379,16 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       // 1. Inode change: file was replaced/rotated → driver replays from 0.
       // 2. Cursor entry lost: the cursor for a previously-scanned file was
       //    deleted or corrupted → driver treats it as new and reads from 0.
-      // 3. Driver-declared replay (needsReplay hook): e.g. a legacy cursor
-      //    shape that predates a dedup ring. If we let the driver rescan
-      //    the file from offset 0 while executeSync is still in incremental
-      //    mode, the parser re-emits every past row and the SUM branch
-      //    doubles those buckets in queue.jsonl.
+      //
+      // (A third condition — driver-declared legacy replay — is checked
+      // BEFORE this loop, in the pre-loop replay scan above, because an
+      // unchanged legacy cursor would fast-skip and never reach here.)
       //
       // Condition 2 uses `knownFilePaths` to distinguish "cursor lost for a
       // known file" (replay risk) from "genuinely new file" (safe to SUM).
       //
-      // In all three cases, SUM'ing a full replay with the existing queue
-      // would double-count. Abort and restart as full scan.
+      // In both cases, SUM'ing a full replay with the existing queue would
+      // double-count. Abort and restart as full scan.
       if (!initialCursorEmpty) {
         if (cursor && cursor.inode !== fingerprint.inode) {
           replayDetected = true;
@@ -383,15 +405,6 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
             source: driver.source,
             phase: "warn",
             message: `Cursor entry lost for known file ${filePath} — restarting as full scan`,
-          });
-          break;
-        }
-        if (driver.needsReplay?.(cursor)) {
-          replayDetected = true;
-          onProgress?.({
-            source: driver.source,
-            phase: "warn",
-            message: `Legacy cursor for ${filePath} — restarting as full scan`,
           });
           break;
         }

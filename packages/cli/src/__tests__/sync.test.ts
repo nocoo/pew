@@ -3281,5 +3281,94 @@ describe("executeSync", () => {
         updatedCursors.files[sessionPath].seenIds,
       ).toBeDefined();
     });
+
+    it("does not double-count when a legacy cursor is unchanged and another file shares its message.id", async () => {
+      // Skip-order regression: the naive fix put needsReplay AFTER shouldSkip
+      // in the per-file loop. When A's bytes are unchanged, shouldSkip returns
+      // true and the legacy check is never reached. Then B (new file, same
+      // message.id) parses without A's seenIds in the context and re-emits,
+      // and executeSync's SUM branch doubles the queue bucket.
+      const claudeRoot = join(dataDir, ".claude");
+      const projDir = join(claudeRoot, "projects", "p1");
+      await mkdir(projDir, { recursive: true });
+      const A = join(projDir, "A.jsonl");
+      const B = join(projDir, "B.jsonl");
+      const row = (id: string, ts: string) =>
+        JSON.stringify({
+          type: "assistant",
+          timestamp: ts,
+          message: {
+            id,
+            model: "glm-5",
+            usage: {
+              input_tokens: 100,
+              cache_creation_input_tokens: 0,
+              cache_read_input_tokens: 0,
+              output_tokens: 50,
+            },
+          },
+        });
+      await writeFile(A, row("msg_cross", "2026-06-01T10:00:00.000Z") + "\n");
+
+      const { stat } = await import("node:fs/promises");
+      const stA = await stat(A);
+      await mkdir(stateDir, { recursive: true });
+      const cursorsPath = join(stateDir, "cursors.json");
+      await writeFile(
+        cursorsPath,
+        JSON.stringify({
+          version: 1,
+          files: {
+            [A]: {
+              inode: stA.ino,
+              mtimeMs: stA.mtimeMs,
+              size: stA.size,
+              offset: stA.size,
+              updatedAt: "2026-06-01T10:01:00.000Z",
+              // no seenIds — legacy
+            },
+          },
+          knownFilePaths: { [A]: true },
+          knownDbSources: {},
+          updatedAt: "2026-06-01T10:01:00.000Z",
+        }),
+      );
+      const queuePath = join(stateDir, "queue.jsonl");
+      await writeFile(
+        queuePath,
+        JSON.stringify({
+          source: "claude-code",
+          model: "glm-5",
+          hour_start: "2026-06-01T10:00:00.000Z",
+          device_id: "dev-legacy",
+          input_tokens: 100,
+          cached_input_tokens: 0,
+          output_tokens: 50,
+          reasoning_output_tokens: 0,
+          total_tokens: 150,
+        }) + "\n",
+      );
+
+      // A is unchanged. B is a new sibling file that carries the same
+      // message.id (subagent parent/child sharing).
+      await writeFile(B, row("msg_cross", "2026-06-01T10:00:30.000Z") + "\n");
+
+      await executeSync({
+        stateDir,
+        deviceId: "dev-legacy",
+        claudeDir: claudeRoot,
+      });
+
+      const queueRaw = await readFile(queuePath, "utf-8");
+      const rows: QueueRecord[] = queueRaw
+        .split("\n")
+        .filter(Boolean)
+        .map((l) => JSON.parse(l));
+      const claudeRow = rows.find((r) => r.source === "claude-code");
+      expect(claudeRow).toBeDefined();
+      expect(claudeRow!.input_tokens).toBe(100);
+      expect(claudeRow!.output_tokens).toBe(50);
+      expect(claudeRow!.total_tokens).toBe(150);
+    });
   });
 });
