@@ -4,6 +4,21 @@
 >
 > 本文档同时作为后续原子化清理提交的**基线快照**（baseline）。
 
+## 总体进度
+
+| 指标 | 基线 | 当前 | 状态 |
+|---|---|---|---|
+| G1 死代码 | 11 files / 19 exports / 40 types | 11 / 19 / 40 | ⏳ pending |
+| G2 依赖冗余 | 3 unused + 1 devDep | 3 + 1 | ⏳ pending |
+| **G3** 文档孤儿 | 6 / 51 | **0 / 52** | ✅ done (`1e82f5ba`) |
+| **G4** 脚本存活 | 6 dead | **0** | ✅ done (`00ac116a`) |
+| **G5** 顶层残留 | 3 autoresearch + logo.png | **0** autoresearch（logo.png 保留） | ✅ done (`d3c96414`) |
+| G6 巨型文件 | 5 (>1000 LOC) | 5 | ⏳ pending |
+| G7 migration 冲突 | 3 组 | 3 | ⏳ pending |
+| G8 债务标记 | 0.14 / kLOC | 0.14 | 📊 trend-only |
+| G9 测试反模式 | 24 eslint-disable, 1 ts-ignore, 5 .skip | 24 / 1 / 5 | 📊 trend-only |
+| G10 RPC 类型消费率 | 30+ unused | 30+ | ⏳ pending |
+
 ---
 
 ## 一、仓库现状速写（快照时间：见 git blame）
@@ -58,7 +73,7 @@ Knip 一次扫出：**11 unused files、19 unused exports、40 unused exported t
 - **注意**：`overrides` 里同样固定了 `fast-xml-parser` 版本，删除时需同步清理
 - **优化目标**：Unused deps = 0；Unlisted 视情况补声明
 
-### G3 · 文档孤儿率 (Doc Orphan Ratio)
+### G3 · 文档孤儿率 (Doc Orphan Ratio) — ✅ **DONE** (`1e82f5ba`, 2026-07-08)
 
 - **定义**：`docs/` 下未被任何 `.md/.ts/.tsx` 反向引用的文件数 / 总 doc 数
 - **基线**（basename grep，偏保守）：**6 个孤儿**
@@ -71,7 +86,7 @@ Knip 一次扫出：**11 unused files、19 unused exports、40 unused exported t
 - **额外观察**：`docs/` 存在多起编号冲突（多个 `06-*`、`07-*`、`08-*`、`16-*`、`36-*`；`40-dynamic-model-pricing.md` 与同名目录并存，还有 `40-l3-bdd-refactor.md`），说明命名规范缺失
 - **优化目标**：`docs/README.md` 扩展为强制目录索引；孤儿 = 0；编号唯一
 
-### G4 · 脚本存活率 (Script Aliveness)
+### G4 · 脚本存活率 (Script Aliveness) — ✅ **DONE** (`00ac116a`, 2026-07-08)
 
 - **定义**：`scripts/` 下未被 `package.json` / `.github/workflows` / `.husky` / 其他 `.md`、`.ts` 引用的脚本数
 - **基线**：**6 个 0-引用脚本**
@@ -83,7 +98,9 @@ Knip 一次扫出：**11 unused files、19 unused exports、40 unused exported t
   - `scripts/measure-coverage.ts`
 - **优化目标**：0；或将 benchmark 系合并到 `scripts/bench/` 单一入口
 
-### G5 · 顶层残留物 (Top-Level Artifact Freshness)
+### G5 · 顶层残留物 (Top-Level Artifact Freshness) — ✅ **DONE (autoresearch 部分)** (`d3c96414`, 2026-07-08)
+
+> 已清理三个 autoresearch 产物；`logo.png` 按用户指示保留（后续可考虑搬到 `assets/` 并加 pre-commit 大文件拦截）。
 
 - **本次可疑物**：
   - `autoresearch.jsonl`（117 KB，事件流日志入库）
