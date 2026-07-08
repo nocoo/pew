@@ -1,0 +1,14 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreBinaries": [
+    "lsof"
+  ],
+  "workspaces": {
+    "packages/web": {
+      "entry": [
+        "e2e/playwright.config.ts",
+        "e2e/**/*.spec.ts"
+      ]
+    }
+  }
+}
