@@ -3,7 +3,7 @@
 -- Allows users to generate short-lived codes on the web UI for headless CLI login.
 -- Codes expire after 5 minutes and can only be used once.
 --
--- Apply via: wrangler d1 execute pew-db --remote --file scripts/migrations/016-auth-codes.sql
+-- Apply via: wrangler d1 execute pew-db --remote --file scripts/migrations/016b-auth-codes.sql
 
 CREATE TABLE IF NOT EXISTS auth_codes (
   code       TEXT PRIMARY KEY,            -- Human-readable code (e.g. ABCD-1234)

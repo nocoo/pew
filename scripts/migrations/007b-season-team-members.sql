@@ -1,7 +1,7 @@
 -- ============================================================
 -- Frozen roster: members locked at registration time
 --
--- Environments that already ran 006-seasons.sql before this
+-- Environments that already ran 006b-seasons.sql before this
 -- table existed need this separate migration. The IF NOT EXISTS
 -- clause makes it safe to run on fresh databases too.
 -- ============================================================

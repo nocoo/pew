@@ -9,7 +9,7 @@
 | # | Commit | Description | Status |
 |---|--------|-------------|--------|
 | 1 | `docs: add season system plan` | This document | done |
-| 2 | `feat: add seasons and season_teams migration` | `006-seasons.sql` | done |
+| 2 | `feat: add seasons and season_teams migration` | `006b-seasons.sql` | done |
 | 3 | `feat: add season types to @pew/core` | Season-related type definitions | done |
 | 4 | `feat: add admin seasons CRUD API` | `GET/POST/PATCH /api/admin/seasons` | done |
 | 5 | `test: add L1 tests for admin seasons API` | Admin seasons CRUD unit tests | done |
@@ -55,7 +55,7 @@
 
 ## Database Schema
 
-### Migration: `006-seasons.sql`
+### Migration: `006b-seasons.sql`
 
 ```sql
 -- ============================================================
@@ -129,7 +129,7 @@ CREATE INDEX IF NOT EXISTS idx_member_snapshot_season ON season_member_snapshots
 CREATE INDEX IF NOT EXISTS idx_member_snapshot_team   ON season_member_snapshots(season_id, team_id);
 ```
 
-### Migration: `007-season-team-members.sql`
+### Migration: `007b-season-team-members.sql`
 
 ```sql
 -- ============================================================
@@ -548,8 +548,8 @@ This document.
 Create migration scripts for season-related tables.
 
 **Files changed:**
-- `scripts/migrations/006-seasons.sql` (new)
-- `scripts/migrations/007-season-team-members.sql` (new)
+- `scripts/migrations/006b-seasons.sql` (new)
+- `scripts/migrations/007b-season-team-members.sql` (new)
 
 **Tables created:**
 - `seasons` — season definitions (006)
@@ -937,8 +937,8 @@ After deployment:
 1. Deploy code (commits 2-17) — all `no such table` fallbacks ensure the app works before migration
 2. Run migrations (all required):
    ```bash
-   wrangler d1 execute pew-prod --file scripts/migrations/006-seasons.sql
-   wrangler d1 execute pew-prod --file scripts/migrations/007-season-team-members.sql
+   wrangler d1 execute pew-prod --file scripts/migrations/006b-seasons.sql
+   wrangler d1 execute pew-prod --file scripts/migrations/007b-season-team-members.sql
    wrangler d1 execute pew-prod --file scripts/migrations/008-snapshot-ready.sql
    ```
 3. Verify via admin page: create first season
