@@ -139,7 +139,7 @@ export function computeTierProgress(
 // Format functions
 // ---------------------------------------------------------------------------
 
-export function formatDays(n: number): string {
+function formatDays(n: number): string {
   return n === 1 ? "1 day" : `${n} days`;
 }
 
@@ -150,28 +150,28 @@ export function formatShortTokens(n: number): string {
   return `${(n / 1_000_000_000).toFixed(1)}B`;
 }
 
-export function formatDollars(n: number): string {
+function formatDollars(n: number): string {
   if (n < 1) return `$${n.toFixed(2)}`;
   return `$${Math.round(n)}`;
 }
 
-export function formatPercent(n: number): string {
+function formatPercent(n: number): string {
   return `${Math.round(n)}%`;
 }
 
-export function formatSessions(n: number): string {
+function formatSessions(n: number): string {
   return n === 1 ? "1 session" : `${n} sessions`;
 }
 
-export function formatHours(n: number): string {
+function formatHours(n: number): string {
   return n === 1 ? "1 hour" : `${n} hours`;
 }
 
-export function formatMessages(n: number): string {
+function formatMessages(n: number): string {
   return n === 1 ? "1 msg" : `${n} msgs`;
 }
 
-export function formatCount(n: number): string {
+function formatCount(n: number): string {
   return String(n);
 }
 

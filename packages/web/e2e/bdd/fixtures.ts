@@ -78,7 +78,7 @@ export type DashboardMockOptions = {
   pricing: unknown;
 };
 
-export const LEADERBOARD_FIXTURE = {
+const LEADERBOARD_FIXTURE = {
   period: "week",
   scope: "global",
   entries: [
