@@ -9,7 +9,7 @@
 | 指标 | 基线 | 当前 | 状态 |
 |---|---|---|---|
 | **G1** 死代码 | 11 files / 19 exports / 40 types | **0 / 0 / 0** | ✅ done (`bf8418fe`…`479dd6c7`) |
-| **G2** 依赖冗余 | 3 unused + 1 devDep | **0 + 0**，且 unlisted 已处理 | ✅ done (`ec8b2ac2`, `7fc42a43`, `5c1a1058`) |
+| **G2** 依赖冗余 | 3 unused + 1 devDep + 1 unlisted binary | **0 / 0 / 0**（含 knip.json 白名单） | ✅ done (`ec8b2ac2`, `7fc42a43`, `5c1a1058`, `a42b7647`) |
 | **G3** 文档孤儿 | 6 / 51 | **0 / 52** | ✅ done (`1e82f5ba`) |
 | **G4** 脚本存活 | 6 dead | **0** | ✅ done (`00ac116a`) |
 | **G5** 顶层残留 | 3 autoresearch + logo.png | **0** autoresearch（logo.png 保留） | ✅ done (`d3c96414`) |
@@ -217,3 +217,6 @@ hygiene-report.md
 | 2026-07-08 | G2 | 删 `packages/web` 下 `@auth/core`（next-auth 自带）+ `@types/sharp`（npm deprecated stub） | `ec8b2ac2` |
 | 2026-07-08 | G2 | 删根 `package.json` 里多余的 `dependencies` 块（`fast-xml-parser` / `next`）；`overrides` 保留作安全 pin | `7fc42a43` |
 | 2026-07-08 | G2 | 删 `packages/web/postcss.config.mjs` 里未声明的 `postcss-load-config` JSDoc 类型提示 | `5c1a1058` |
+| 2026-07-08 | G2 (补) | 新增 `knip.json`：白名单 `lsof` 系统命令 + 将 `playwright.config.ts` / `e2e/**/*.spec.ts` 声明为入口；`bunx knip` exit 0 | `a42b7647` |
+| 2026-07-08 | G3 (补) | 修 `docs/35-hermes-support.md` 自指 `./docs/35-...` 坏链 | `9f7c6441` |
+| 2026-07-08 | hygiene | 去除 `docs/README.md` 与 `packages/cli/src/drivers/types.ts` 中 EOF 多余空行，`git diff --check` 归零 | `13b061e1` |
