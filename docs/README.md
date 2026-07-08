@@ -49,4 +49,3 @@
 | 41 | [41-code-hygiene-metrics.md](41-code-hygiene-metrics.md) | Code hygiene metrics (G1–G10) baseline + cleanup roadmap | in-progress |
 
 > **Note:** Number 14 is intentionally vacant (original doc 14 was renumbered to 12 to fill a gap). Numbers 19, 36, and 40 have multiple entries (`Nb`, `Nc`) as history-preserving disambiguators.
-

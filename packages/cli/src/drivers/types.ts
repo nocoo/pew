@@ -354,4 +354,3 @@ export interface DbSessionDriver<TCursor = unknown> {
 // directly. Restore as:
 //   type TokenDriver = FileTokenDriver | DbTokenDriver;
 //   type SessionDriver = FileSessionDriver | DbSessionDriver;
-
