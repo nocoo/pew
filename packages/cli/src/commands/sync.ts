@@ -65,7 +65,7 @@ export interface SyncOptions {
 }
 
 /** Progress event for UI display */
-export interface ProgressEvent {
+interface ProgressEvent {
   source: string;
   phase: "discover" | "parse" | "aggregate" | "done" | "warn";
   current?: number;

@@ -10,7 +10,7 @@
 
 import type { DynamicPricingEntry } from "./types";
 
-export interface ModelsDevApiResponse {
+interface ModelsDevApiResponse {
   [providerId: string]: {
     models: {
       [modelId: string]: {

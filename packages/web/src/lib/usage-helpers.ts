@@ -32,7 +32,7 @@ export interface ModelGroup {
   pctOfTotal: number;
 }
 
-export interface ModelRow {
+interface ModelRow {
   model: string;
   input: number;
   output: number;

@@ -39,7 +39,7 @@ export interface UnassignedRef {
   models: string[];
 }
 
-export interface ProjectsData {
+interface ProjectsData {
   projects: Project[];
   unassigned: UnassignedRef[];
 }

@@ -36,7 +36,7 @@ export interface Achievement {
   totalEarned: number;
 }
 
-export interface AchievementSummary {
+interface AchievementSummary {
   totalUnlocked: number;
   totalAchievements: number;
   diamondCount: number;
@@ -45,7 +45,7 @@ export interface AchievementSummary {
   activeDays: number;
 }
 
-export interface AchievementData {
+interface AchievementData {
   achievements: Achievement[];
   summary: AchievementSummary;
 }
@@ -60,7 +60,7 @@ export interface AchievementMember {
   currentValue: number;
 }
 
-export interface AchievementMembersData {
+interface AchievementMembersData {
   members: AchievementMember[];
   cursor: string | null;
 }

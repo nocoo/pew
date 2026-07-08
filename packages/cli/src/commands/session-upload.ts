@@ -41,7 +41,7 @@ export interface SessionUploadOptions {
   onCorruptLine?: OnCorruptLine;
 }
 
-export type SessionUploadProgressEvent = UploadProgressEvent;
+type SessionUploadProgressEvent = UploadProgressEvent;
 export type SessionUploadResult = UploadResult;
 
 // ---------------------------------------------------------------------------

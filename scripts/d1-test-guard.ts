@@ -15,12 +15,9 @@
 // Types
 // ---------------------------------------------------------------------------
 
-export interface TestGuardResult {
-  /** Overridden env vars safe to use for E2E tests */
-  env: Record<string, string>;
-  testDbId: string;
-  prodDbId: string;
-}
+// TestGuardResult interface removed 2026-07-08 (G1 cleanup): no consumers.
+// The function returns an inline object literal; restore an explicit shape
+// here if it ever needs to be shared.
 
 // ---------------------------------------------------------------------------
 // Core validation

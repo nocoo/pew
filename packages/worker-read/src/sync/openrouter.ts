@@ -6,7 +6,7 @@
 
 import type { DynamicPricingEntry } from "./types";
 
-export interface OpenRouterApiResponse {
+interface OpenRouterApiResponse {
   data: Array<{
     id: string;
     name?: string;

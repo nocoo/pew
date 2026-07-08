@@ -14,7 +14,7 @@ import { fetcher } from "@/lib/fetcher";
 // Types
 // ---------------------------------------------------------------------------
 
-export interface ShowcaseUser {
+interface ShowcaseUser {
   id: string;
   name: string | null;
   nickname: string | null;
@@ -46,7 +46,7 @@ export interface Showcase {
   has_upvoted: boolean | null;
 }
 
-export interface ShowcasesResponse {
+interface ShowcasesResponse {
   showcases: Showcase[];
   total: number;
   limit: number;
@@ -102,7 +102,7 @@ export function useShowcases(options: UseShowcasesOptions = {}): UseShowcasesRes
 // Preview Hook
 // ---------------------------------------------------------------------------
 
-export interface ShowcasePreview {
+interface ShowcasePreview {
   repo_key: string;
   github_url: string;
   title: string;

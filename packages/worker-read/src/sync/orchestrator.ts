@@ -38,9 +38,9 @@ export const OPENROUTER_URL = "https://openrouter.ai/api/v1/models";
 export const MODELS_DEV_URL = "https://models.dev/api.json";
 const FETCH_TIMEOUT_MS = 20_000;
 
-export type SyncErrorSource = "openrouter" | "models.dev" | "kv";
+type SyncErrorSource = "openrouter" | "models.dev" | "kv";
 
-export interface SyncError {
+interface SyncError {
   source: SyncErrorSource;
   message: string;
 }

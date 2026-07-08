@@ -10,7 +10,7 @@ import type { D1Database } from "@cloudflare/workers-types";
 // Response Types
 // ---------------------------------------------------------------------------
 
-export interface ActiveSessionRow {
+interface ActiveSessionRow {
   id: string;
   user_id: string;
   name: string | null;
@@ -20,7 +20,7 @@ export interface ActiveSessionRow {
   last_activity_at: string;
 }
 
-export interface RecentActivityRow {
+interface RecentActivityRow {
   id: string;
   user_id: string;
   name: string | null;
@@ -31,7 +31,7 @@ export interface RecentActivityRow {
   created_at: string;
 }
 
-export interface LiveStatsRow {
+interface LiveStatsRow {
   active_sessions: number;
   tokens_last_hour: number;
   requests_last_hour: number;
@@ -63,7 +63,7 @@ export interface GetUserLiveStatsRequest {
   userId: string;
 }
 
-export interface PingRequest {
+interface PingRequest {
   method: "live.ping";
 }
 

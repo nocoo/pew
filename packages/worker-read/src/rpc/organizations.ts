@@ -10,7 +10,7 @@ import type { D1Database } from "@cloudflare/workers-types";
 // Response Types
 // ---------------------------------------------------------------------------
 
-export interface OrgRow {
+interface OrgRow {
   id: string;
   name: string;
   slug: string;
@@ -20,7 +20,7 @@ export interface OrgRow {
   updated_at: string;
 }
 
-export interface OrgWithCountRow {
+interface OrgWithCountRow {
   id: string;
   name: string;
   slug: string;
@@ -31,7 +31,7 @@ export interface OrgWithCountRow {
   member_count: number;
 }
 
-export interface OrgMemberRow {
+interface OrgMemberRow {
   user_id: string;
   name: string | null;
   image: string | null;
@@ -39,7 +39,7 @@ export interface OrgMemberRow {
   joined_at: string;
 }
 
-export interface OrgMemberAdminRow {
+interface OrgMemberAdminRow {
   user_id: string;
   name: string | null;
   email: string;

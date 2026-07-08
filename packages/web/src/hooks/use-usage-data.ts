@@ -19,7 +19,7 @@ export { toDailyPoints, toSourceAggregates, toHeatmapData, toModelAggregates, so
 // Types
 // ---------------------------------------------------------------------------
 
-export interface UsageData {
+interface UsageData {
   records: UsageRow[];
   summary: UsageSummary;
 }

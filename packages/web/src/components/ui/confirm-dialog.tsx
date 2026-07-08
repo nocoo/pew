@@ -149,7 +149,7 @@ const initialState: ConfirmState = {
   resolve: null,
 };
 
-export interface UseConfirmOptions {
+interface UseConfirmOptions {
   title: string;
   description: string;
   confirmText?: string;

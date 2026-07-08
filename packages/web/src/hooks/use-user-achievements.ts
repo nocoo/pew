@@ -19,14 +19,14 @@ export interface UserAchievement {
   unit: string;
 }
 
-export interface UserAchievementSummary {
+interface UserAchievementSummary {
   totalUnlocked: number;
   totalAchievements: number;
   diamondCount: number;
   currentStreak: number;
 }
 
-export interface UserAchievementData {
+interface UserAchievementData {
   achievements: UserAchievement[];
   summary: UserAchievementSummary;
 }

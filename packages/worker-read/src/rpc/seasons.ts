@@ -22,7 +22,7 @@ function cacheKeySeasonSnapshots(seasonId: string): string {
 // Response Types
 // ---------------------------------------------------------------------------
 
-export interface SeasonRow {
+interface SeasonRow {
   id: string;
   name: string;
   slug: string;
@@ -36,7 +36,7 @@ export interface SeasonRow {
   allow_late_withdrawal: number;
 }
 
-export interface SeasonDetailRow {
+interface SeasonDetailRow {
   id: string;
   name: string;
   slug: string;
@@ -50,7 +50,7 @@ export interface SeasonDetailRow {
   updated_at: string;
 }
 
-export interface SeasonTeamRegistrationRow {
+interface SeasonTeamRegistrationRow {
   id: string;
   season_id: string;
   team_id: string;
@@ -58,7 +58,7 @@ export interface SeasonTeamRegistrationRow {
   registered_at: string;
 }
 
-export interface SeasonSnapshotRow {
+interface SeasonSnapshotRow {
   team_id: string;
   team_name: string;
   team_slug: string;
@@ -70,7 +70,7 @@ export interface SeasonSnapshotRow {
   cached_input_tokens: number;
 }
 
-export interface SeasonMemberSnapshotRow {
+interface SeasonMemberSnapshotRow {
   team_id: string;
   user_id: string;
   slug: string | null;
@@ -84,7 +84,7 @@ export interface SeasonMemberSnapshotRow {
   cached_input_tokens: number;
 }
 
-export interface TeamTokenRow {
+interface TeamTokenRow {
   team_id: string;
   team_name: string;
   team_slug: string;
@@ -95,7 +95,7 @@ export interface TeamTokenRow {
   cached_input_tokens: number;
 }
 
-export interface MemberTokenRow {
+interface MemberTokenRow {
   team_id: string;
   user_id: string;
   slug: string | null;
@@ -109,13 +109,13 @@ export interface MemberTokenRow {
   cached_input_tokens: number;
 }
 
-export interface TeamSessionStatsRow {
+interface TeamSessionStatsRow {
   team_id: string;
   session_count: number;
   total_duration_seconds: number;
 }
 
-export interface MemberSessionStatsRow {
+interface MemberSessionStatsRow {
   team_id: string;
   user_id: string;
   session_count: number;
@@ -215,7 +215,7 @@ export interface AggregateMemberTokensRequest {
   teamIds: string[];
 }
 
-export interface TeamAggRow {
+interface TeamAggRow {
   team_id: string;
   total_tokens: number;
   input_tokens: number;
@@ -223,7 +223,7 @@ export interface TeamAggRow {
   cached_input_tokens: number;
 }
 
-export interface MemberAggRow {
+interface MemberAggRow {
   team_id: string;
   user_id: string;
   total_tokens: number;

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 // Types
 // ---------------------------------------------------------------------------
 
-export interface EmptyStateProps {
+interface EmptyStateProps {
   /** Icon displayed at the top */
   icon?: LucideIcon;
   /** Main headline */

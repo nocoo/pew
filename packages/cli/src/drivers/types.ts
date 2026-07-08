@@ -202,14 +202,9 @@ export type ResumeState =
 // Progress callback (passed through from orchestrator)
 // ---------------------------------------------------------------------------
 
-/** Progress callback compatible with both sync and session-sync */
-export type OnProgress = (event: {
-  source: string;
-  phase: string;
-  current?: number;
-  total?: number;
-  message?: string;
-}) => void;
+// OnProgress type removed 2026-07-08 (G1 cleanup): no consumers. Drivers use
+// per-driver progress signatures. Restore inline if a shared callback shape
+// is ever reintroduced.
 
 // ---------------------------------------------------------------------------
 // File-based token driver
@@ -353,8 +348,9 @@ export interface DbSessionDriver<TCursor = unknown> {
 // Union types for the registry
 // ---------------------------------------------------------------------------
 
-/** Any token driver (file or DB) */
-export type TokenDriver = FileTokenDriver | DbTokenDriver;
+// TokenDriver / SessionDriver union types removed 2026-07-08 (G1 cleanup):
+// no consumers. The registry uses the discriminated File*/Db* interfaces
+// directly. Restore as:
+//   type TokenDriver = FileTokenDriver | DbTokenDriver;
+//   type SessionDriver = FileSessionDriver | DbSessionDriver;
 
-/** Any session driver (file or DB) */
-export type SessionDriver = FileSessionDriver | DbSessionDriver;

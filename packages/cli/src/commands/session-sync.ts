@@ -73,7 +73,7 @@ export interface SessionSyncOptions {
 }
 
 /** Progress event for UI display */
-export interface SessionProgressEvent {
+interface SessionProgressEvent {
   source: string;
   phase: "discover" | "parse" | "dedup" | "done" | "warn";
   current?: number;

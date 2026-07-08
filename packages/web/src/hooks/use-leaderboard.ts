@@ -10,7 +10,7 @@ import { toErrorMessage } from "@/lib/error-message";
 // ---------------------------------------------------------------------------
 
 export type LeaderboardPeriod = "week" | "month" | "all";
-export type LeaderboardScope = "global" | "org" | "team";
+type LeaderboardScope = "global" | "org" | "team";
 
 export interface LeaderboardBadge {
   text: string;
@@ -37,7 +37,7 @@ export interface LeaderboardEntry {
   total_duration_seconds: number | null;
 }
 
-export interface LeaderboardData {
+interface LeaderboardData {
   period: string;
   scope: LeaderboardScope;
   scopeId?: string;

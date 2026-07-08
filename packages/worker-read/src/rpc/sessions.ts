@@ -10,7 +10,7 @@ import type { D1Database } from "@cloudflare/workers-types";
 // Response Types
 // ---------------------------------------------------------------------------
 
-export interface SessionRow {
+interface SessionRow {
   id: string;
   user_id: string;
   source: string;
@@ -22,7 +22,7 @@ export interface SessionRow {
   kind: string | null;
 }
 
-export interface SessionStatsRow {
+interface SessionStatsRow {
   total_sessions: number;
   total_duration_seconds: number;
   avg_duration_seconds: number;
@@ -30,7 +30,7 @@ export interface SessionStatsRow {
 }
 
 /** Session record with project info for /api/sessions */
-export interface SessionRecordRow {
+interface SessionRecordRow {
   session_key: string;
   source: string;
   kind: string;

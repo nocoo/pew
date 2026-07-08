@@ -10,12 +10,12 @@ import type { D1Database } from "@cloudflare/workers-types";
 // Response Types
 // ---------------------------------------------------------------------------
 
-export interface AppSettingRow {
+interface AppSettingRow {
   key: string;
   value: string;
 }
 
-export interface UserSettingRow {
+interface UserSettingRow {
   key: string;
   value: string;
 }

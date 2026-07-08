@@ -10,7 +10,7 @@ import type { D1Database } from "@cloudflare/workers-types";
 // Response Types
 // ---------------------------------------------------------------------------
 
-export interface DeviceRow {
+interface DeviceRow {
   device_id: string;
   alias: string | null;
   first_seen: string | null;

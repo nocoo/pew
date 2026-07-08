@@ -10,7 +10,7 @@ import type { D1Database } from "@cloudflare/workers-types";
 // Response Types
 // ---------------------------------------------------------------------------
 
-export interface ShowcaseRow {
+interface ShowcaseRow {
   id: string;
   user_id: string;
   repo_key: string;

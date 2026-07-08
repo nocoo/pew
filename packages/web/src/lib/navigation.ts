@@ -9,7 +9,7 @@
 // Types
 // ---------------------------------------------------------------------------
 
-export interface NavItemDef {
+interface NavItemDef {
   href: string;
   label: string;
   /** Lucide icon name for lookup in sidebar.tsx */

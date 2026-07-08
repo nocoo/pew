@@ -20,7 +20,7 @@ export interface ResetOptions {
   unlinkFn?: typeof unlink;
 }
 
-export interface ResetFileResult {
+interface ResetFileResult {
   file: string;
   deleted: boolean;
 }

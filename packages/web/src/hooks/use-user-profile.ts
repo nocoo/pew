@@ -16,14 +16,14 @@ import { useTzOffset } from "@/hooks/use-tz-offset";
 import type { BadgeIconType } from "@pew/core";
 import { throwApiError } from "@/lib/api-error";
 
-export interface UserProfileBadge {
+interface UserProfileBadge {
   text: string;
   icon: BadgeIconType;
   colorBg: string;
   colorText: string;
 }
 
-export interface UserProfileUser {
+interface UserProfileUser {
   name: string | null;
   nickname: string | null;
   image: string | null;
@@ -33,7 +33,7 @@ export interface UserProfileUser {
   badges?: UserProfileBadge[];
 }
 
-export interface UserProfileData {
+interface UserProfileData {
   user: UserProfileUser;
   records: UsageRow[];
   summary: UsageSummary;

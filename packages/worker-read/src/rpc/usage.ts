@@ -10,7 +10,7 @@ import type { D1Database } from "@cloudflare/workers-types";
 // Response Types
 // ---------------------------------------------------------------------------
 
-export interface UsageRow {
+interface UsageRow {
   source: string;
   model: string;
   hour_start: string;
@@ -21,7 +21,7 @@ export interface UsageRow {
   total_tokens: number;
 }
 
-export interface DeviceSummaryRow {
+interface DeviceSummaryRow {
   device_id: string;
   alias: string | null;
   first_seen: string;
@@ -35,7 +35,7 @@ export interface DeviceSummaryRow {
   models: string;
 }
 
-export interface CostDetailRow {
+interface CostDetailRow {
   device_id: string;
   source: string;
   model: string;
@@ -44,7 +44,7 @@ export interface CostDetailRow {
   cached_input_tokens: number;
 }
 
-export interface TimelineRow {
+interface TimelineRow {
   date: string;
   device_id: string;
   total_tokens: number;

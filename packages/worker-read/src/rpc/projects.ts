@@ -10,13 +10,13 @@ import type { D1Database } from "@cloudflare/workers-types";
 // Request/Response Types
 // ---------------------------------------------------------------------------
 
-export interface ProjectRow {
+interface ProjectRow {
   id: string;
   name: string;
   created_at: string;
 }
 
-export interface AliasStatsRow {
+interface AliasStatsRow {
   source: string;
   project_ref: string;
   project_id: string | null;
@@ -28,7 +28,7 @@ export interface AliasStatsRow {
   absolute_last_active: string | null;
 }
 
-export interface UnassignedRow {
+interface UnassignedRow {
   source: string;
   project_ref: string;
   session_count: number;
@@ -38,12 +38,12 @@ export interface UnassignedRow {
   models: string | null;
 }
 
-export interface TagRow {
+interface TagRow {
   project_id: string;
   tag: string;
 }
 
-export interface TimelineRow {
+interface TimelineRow {
   date: string;
   project_name: string;
   session_count: number;

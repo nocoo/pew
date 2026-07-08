@@ -28,7 +28,7 @@ export const DEFAULT_ADMIN_SHOWCASE_LIMIT = 50;
 /**
  * Base showcase row fields returned from database queries.
  */
-export interface ShowcaseRowBase {
+interface ShowcaseRowBase {
   id: string;
   user_id: string;
   repo_key: string;
@@ -52,19 +52,17 @@ export interface ShowcaseRowBase {
 }
 
 /**
- * Showcase row with joined user fields for public/user endpoints.
- * Includes optional `has_upvoted` for authenticated requests.
+ * ShowcaseRow (joined user fields + optional has_upvoted for authed users)
+ * removed 2026-07-08 (G1 cleanup): no consumers. If you re-add a public/
+ * user endpoint that needs it, restore as:
+ *   interface ShowcaseRow extends ShowcaseRowBase {
+ *     user_name: string | null;
+ *     user_nickname: string | null;
+ *     user_image: string | null;
+ *     user_slug: string | null;
+ *     has_upvoted?: number;
+ *   }
  */
-export interface ShowcaseRow extends ShowcaseRowBase {
-  // Joined user fields
-  user_name: string | null;
-  user_nickname: string | null;
-  user_image: string | null;
-  user_slug: string | null;
-  // Computed for authenticated users
-  has_upvoted?: number;
-}
-
 /**
  * Showcase row for admin endpoints.
  * Includes user email for moderation, excludes has_upvoted.

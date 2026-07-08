@@ -35,7 +35,7 @@ export interface SeasonMember {
   total_duration_seconds: number;
 }
 
-export interface SeasonLeaderboardData {
+interface SeasonLeaderboardData {
   season: {
     id: string;
     name: string;

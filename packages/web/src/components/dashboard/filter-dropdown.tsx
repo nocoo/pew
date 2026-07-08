@@ -6,7 +6,7 @@ import { ChevronDown } from "lucide-react";
 // Shared filter dropdown — visually consistent with PeriodSelector
 // ---------------------------------------------------------------------------
 
-export interface FilterOption {
+interface FilterOption {
   value: string;
   label: string;
 }

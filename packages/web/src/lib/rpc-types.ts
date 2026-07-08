@@ -384,7 +384,7 @@ export type { DynamicPricingOrigin } from "./pricing";
 
 export type DynamicPricingEntryDto = DynamicPricingEntry;
 
-export interface DynamicPricingErrorDto {
+interface DynamicPricingErrorDto {
   source: "openrouter" | "models.dev" | "kv";
   at: string;
   message: string;
@@ -404,9 +404,9 @@ export interface DynamicPricingMetaDto {
 // Returned from pricing.rebuildDynamicPricing — used by the "Force sync now" button.
 // ---------------------------------------------------------------------------
 
-export type SyncErrorSourceDto = "openrouter" | "models.dev" | "kv";
+type SyncErrorSourceDto = "openrouter" | "models.dev" | "kv";
 
-export interface SyncErrorDto {
+interface SyncErrorDto {
   source: SyncErrorSourceDto;
   message: string;
 }
@@ -529,16 +529,11 @@ export interface DeviceRow {
   model_count: number;
 }
 
-/** Device existence check result */
-export interface DeviceExistsResult {
-  exists: boolean;
-  device_id?: string;
-}
-
-/** Device usage record count */
-export interface DeviceRecordCount {
-  cnt: number;
-}
+// DeviceExistsResult and DeviceRecordCount removed 2026-07-08 (G1 cleanup):
+// no consumers. Both were designed but never wired up. Restore as
+//   interface DeviceExistsResult { exists: boolean; device_id?: string; }
+//   interface DeviceRecordCount { cnt: number; }
+// if a device-existence RPC ever ships.
 
 // ---------------------------------------------------------------------------
 // Auth domain types
