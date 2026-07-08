@@ -34,7 +34,7 @@ export interface RemoveNotifyHandlerOptions {
   fs?: RemoveNotifyHandlerFs;
 }
 
-export const NOTIFY_HANDLER_MARKER = "PEW_NOTIFY_HANDLER";
+const NOTIFY_HANDLER_MARKER = "PEW_NOTIFY_HANDLER";
 
 export function buildNotifyHandler(opts: BuildNotifyHandlerOptions): string {
   const { stateDir, pewBin } = opts;

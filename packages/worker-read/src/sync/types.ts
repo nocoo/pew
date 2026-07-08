@@ -31,8 +31,5 @@ export interface DynamicPricingMeta {
   }> | null;
 }
 
-export const PRICING_ORIGINS = [
-  "baseline",
-  "openrouter",
-  "models.dev",
-] as const;
+// PRICING_ORIGINS constant removed 2026-07-08 (G1 cleanup): had no consumers.
+// Restore with `["baseline", "openrouter", "models.dev"] as const` if needed.

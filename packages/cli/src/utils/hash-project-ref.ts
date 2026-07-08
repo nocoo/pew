@@ -14,7 +14,7 @@
 import { createHash } from "node:crypto";
 
 /** Length of the hex prefix used for project_ref hashes */
-export const PROJECT_REF_HASH_LENGTH = 16;
+const PROJECT_REF_HASH_LENGTH = 16;
 
 /**
  * Hash a project reference string.

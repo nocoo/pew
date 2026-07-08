@@ -188,7 +188,7 @@ export function createIngestHandler<T>(
  *
  * Non-numeric or missing segments are treated as 0.
  */
-export function compareSemver(a: string, b: string): -1 | 0 | 1 {
+function compareSemver(a: string, b: string): -1 | 0 | 1 {
   const pa = a.split(".").map(Number);
   const pb = b.split(".").map(Number);
   for (let i = 0; i < 3; i++) {

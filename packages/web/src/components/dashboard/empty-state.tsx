@@ -39,7 +39,7 @@ export interface EmptyStateProps {
  * - Optional CTA button
  * - Optional tips/steps list
  */
-export function EmptyState({
+function EmptyState({
   icon: Icon = Zap,
   title,
   description,

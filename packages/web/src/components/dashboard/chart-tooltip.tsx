@@ -93,7 +93,7 @@ export function ChartTooltipRow({
 /**
  * A subtle horizontal divider for separating sections in the tooltip.
  */
-export function ChartTooltipDivider() {
+function ChartTooltipDivider() {
   return <div className="my-1 border-b border-border/50" />;
 }
 

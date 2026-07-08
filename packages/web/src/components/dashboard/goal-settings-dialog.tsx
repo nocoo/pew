@@ -9,7 +9,7 @@ import { formatTokensFull } from "@/lib/utils";
 // Constants
 // ---------------------------------------------------------------------------
 
-export const GOAL_STORAGE_KEY = "pew-goal-thresholds";
+const GOAL_STORAGE_KEY = "pew-goal-thresholds";
 export const DEFAULT_LOWER = 50_000_000; // 50M tokens/day
 export const DEFAULT_UPPER = 200_000_000; // 200M tokens/day
 

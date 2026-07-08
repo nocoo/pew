@@ -32,7 +32,7 @@ export interface HeatmapCalendarProps {
 // Color scale (GitHub-style green, using CSS variables)
 // ---------------------------------------------------------------------------
 
-export const heatmapColorScales = {
+const heatmapColorScales = {
   green: [
     "hsl(var(--muted))",
     "hsl(var(--heatmap-green-1))",

@@ -8,7 +8,7 @@ import type { ProfileDialogTab } from "@/components/user-profile-dialog";
 // Constants (re-exported for consumers)
 // ---------------------------------------------------------------------------
 
-export const PERIODS: { value: LeaderboardPeriod; label: string; shortLabel: string }[] = [
+const PERIODS: { value: LeaderboardPeriod; label: string; shortLabel: string }[] = [
   { value: "week", label: "Last 7 Days", shortLabel: "7D" },
   { value: "month", label: "Last 30 Days", shortLabel: "30D" },
   { value: "all", label: "All Time", shortLabel: "All" },

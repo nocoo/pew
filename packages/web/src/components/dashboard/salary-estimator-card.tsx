@@ -577,7 +577,7 @@ interface SalaryEstimatorData {
   };
 }
 
-export function computeSalaryEstimatorData(
+function computeSalaryEstimatorData(
   dailyCosts: Array<{ date: string; totalCost: number }>
 ): SalaryEstimatorData {
   const today = new Date();
