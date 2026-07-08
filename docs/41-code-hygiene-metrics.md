@@ -54,7 +54,7 @@ Knip 一次扫出：**11 unused files、19 unused exports、40 unused exported t
 >
 > 验证：`bun run lint = green`，`bun run test = 4186/4186`，每次提交 pre-commit 均通过。删除 / 降级的代码均保留 revive-hint 注释。
 >
-> 剩余的 knip 告警：`packages/web/e2e/playwright.config.ts` — 实际被 `scripts/run-e2e-ui.ts` 以字符串方式引用。确认为 knip 误报，保留。
+> 剩余的 knip 告警：**无**。`packages/web/e2e/playwright.config.ts` + `e2e/**/*.spec.ts` 已在 `knip.json` (`a42b7647`) 中声明为入口；`bunx knip --reporter compact` exit 0、零输出。
 
 - **定义**：`(knip 判定的 unused files + unused exports 涉及行数) / 总 TS LOC`
 - **基线**：
@@ -75,7 +75,7 @@ Knip 一次扫出：**11 unused files、19 unused exports、40 unused exported t
 - **工具**：`bunx knip --reporter compact`
 - **优化目标**：把 knip 加进 `bun run lint`（与现有 `--max-warnings=0` 精神对齐），新增即 fail
 
-### G2 · 依赖冗余度 (Unused Dependency Count) — ✅ **DONE** (3 commits `ec8b2ac2`, `7fc42a43`, `5c1a1058`, 2026-07-08)
+### G2 · 依赖冗余度 (Unused Dependency Count) — ✅ **DONE** (4 commits `ec8b2ac2`, `7fc42a43`, `5c1a1058`, `a42b7647`, 2026-07-08)
 
 - **基线**：
   - Unused dependencies：`fast-xml-parser`、`next`（top-level）、`packages/web/@auth/core`
