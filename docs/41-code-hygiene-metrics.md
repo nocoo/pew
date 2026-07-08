@@ -9,7 +9,7 @@
 | 指标 | 基线 | 当前 | 状态 |
 |---|---|---|---|
 | **G1** 死代码 | 11 files / 19 exports / 40 types | **0 / 0 / 0** | ✅ done (`bf8418fe`…`479dd6c7`) |
-| G2 依赖冗余 | 3 unused + 1 devDep | 3 + 1 | ⏳ pending |
+| **G2** 依赖冗余 | 3 unused + 1 devDep | **0 + 0**，且 unlisted 已处理 | ✅ done (`ec8b2ac2`, `7fc42a43`, `5c1a1058`) |
 | **G3** 文档孤儿 | 6 / 51 | **0 / 52** | ✅ done (`1e82f5ba`) |
 | **G4** 脚本存活 | 6 dead | **0** | ✅ done (`00ac116a`) |
 | **G5** 顶层残留 | 3 autoresearch + logo.png | **0** autoresearch（logo.png 保留） | ✅ done (`d3c96414`) |
@@ -75,7 +75,7 @@ Knip 一次扫出：**11 unused files、19 unused exports、40 unused exported t
 - **工具**：`bunx knip --reporter compact`
 - **优化目标**：把 knip 加进 `bun run lint`（与现有 `--max-warnings=0` 精神对齐），新增即 fail
 
-### G2 · 依赖冗余度 (Unused Dependency Count)
+### G2 · 依赖冗余度 (Unused Dependency Count) — ✅ **DONE** (3 commits `ec8b2ac2`, `7fc42a43`, `5c1a1058`, 2026-07-08)
 
 - **基线**：
   - Unused dependencies：`fast-xml-parser`、`next`（top-level）、`packages/web/@auth/core`
@@ -214,3 +214,6 @@ hygiene-report.md
 | 2026-07-08 | G1 | 8 个 internal-only export 降级（bucket C: fixtures + achievement format helpers） | `d3a725f9` |
 | 2026-07-08 | G1 | 34 个 exported type 降级 / 删除（bucket D） | `b61d02e7` |
 | 2026-07-08 | G1 | 修 cli + worker-read RPC 的 barrels，去 15 个 dead type re-export，knip = 0 unused exports/types | `479dd6c7` |
+| 2026-07-08 | G2 | 删 `packages/web` 下 `@auth/core`（next-auth 自带）+ `@types/sharp`（npm deprecated stub） | `ec8b2ac2` |
+| 2026-07-08 | G2 | 删根 `package.json` 里多余的 `dependencies` 块（`fast-xml-parser` / `next`）；`overrides` 保留作安全 pin | `7fc42a43` |
+| 2026-07-08 | G2 | 删 `packages/web/postcss.config.mjs` 里未声明的 `postcss-load-config` JSDoc 类型提示 | `5c1a1058` |
