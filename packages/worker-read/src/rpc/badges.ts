@@ -18,11 +18,11 @@ import type {
   ListAssignmentsRequest,
   ListBadgesRequest,
 } from "./badges-types";
+// Public type surface. BadgesRpcRequest is consumed by worker-read/index.ts;
+// the Request-type re-exports below are consumed only by badges.test.ts.
+// (2026-07-08 G1 cleanup: dropped ActiveBadgeRow / AssignmentWithDetailsRow /
+// BadgeAssignmentRow / BadgeRow which had zero consumers.)
 export type {
-  ActiveBadgeRow,
-  AssignmentWithDetailsRow,
-  BadgeAssignmentRow,
-  BadgeRow,
   BadgesRpcRequest,
   CheckNonRevokedAssignmentRequest,
   GetActiveBadgesForUserRequest,

@@ -31,7 +31,8 @@ import {
   estimateToolRoundTokens,
   extractRequestMeta,
 } from "./vscode-copilot-helpers.js";
-export type { RequestMeta } from "./vscode-copilot-helpers.js";
+// RequestMeta re-export removed 2026-07-08 (G1 cleanup): consumers import
+// directly from `./vscode-copilot-helpers.js`.
 export {
   normalizeModelId,
   estimateToolRoundTokens,

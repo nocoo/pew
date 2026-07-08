@@ -10,7 +10,7 @@ import type { D1Database } from "@cloudflare/workers-types";
 // Response Types
 // ---------------------------------------------------------------------------
 
-export interface InviteCodeRow {
+interface InviteCodeRow {
   id: number;
   code: string;
   used_by: string | null;
@@ -22,19 +22,19 @@ export interface InviteCodeRow {
 }
 
 /** Minimal shape for existence check — includes used_by for consumption check */
-export interface InviteCodeSimple {
+interface InviteCodeSimple {
   id: number;
   used_by: string | null;
 }
 
 /** Shape for getInviteCodeById */
-export interface InviteCodeById {
+interface InviteCodeById {
   id: number;
   code: string;
   used_by: string | null;
 }
 
-export interface AuthCodeRow {
+interface AuthCodeRow {
   code: string;
   user_id: string;
   expires_at: string;

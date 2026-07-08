@@ -19,7 +19,7 @@ export interface BadgeRow {
   updated_at: string;
 }
 
-export interface BadgeAssignmentRow {
+interface BadgeAssignmentRow {
   id: string;
   badge_id: string;
   user_id: string;

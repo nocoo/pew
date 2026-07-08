@@ -27,13 +27,14 @@ import type {
   SessionAggregatesRow,
   UsageAggregatesRow,
 } from "./achievements-types";
+// Public type surface. AchievementsRpcRequest is consumed by
+// worker-read/index.ts; the Get*Request re-exports are consumed by
+// achievements.test.ts. (2026-07-08 G1 cleanup: dropped AchievementEarnerRow,
+// CostByModelSourceRow, DailyCostRow, DailyUsageRow, DiversityRow,
+// HourlyUsageRow, SessionAggregatesRow, UsageAggregatesRow — zero external
+// consumers. Restore from ./achievements-types if that changes.)
 export type {
-  AchievementEarnerRow,
   AchievementsRpcRequest,
-  CostByModelSourceRow,
-  DailyCostRow,
-  DailyUsageRow,
-  DiversityRow,
   GetAchievementEarnersCountRequest,
   GetAchievementEarnersRequest,
   GetCostByModelSourceRequest,
@@ -43,9 +44,6 @@ export type {
   GetHourlyUsageRequest,
   GetSessionAggregatesRequest,
   GetUsageAggregatesRequest,
-  HourlyUsageRow,
-  SessionAggregatesRow,
-  UsageAggregatesRow,
 } from "./achievements-types";
 
 // ---------------------------------------------------------------------------

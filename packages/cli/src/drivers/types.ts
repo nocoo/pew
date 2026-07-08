@@ -21,7 +21,8 @@ import type { FileFingerprint } from "../utils/file-changed.js";
 
 // Re-export for convenience — consumers import from drivers/types
 export type { FileFingerprint } from "../utils/file-changed.js";
-export type { ParsedDelta } from "../parsers/claude.js";
+// ParsedDelta re-export removed 2026-07-08 (G1 cleanup): every consumer
+// imports directly from `../parsers/claude.js`.
 
 // ---------------------------------------------------------------------------
 // SyncContext — shared state bag for cross-driver communication

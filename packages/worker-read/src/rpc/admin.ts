@@ -10,26 +10,18 @@ import type { D1Database } from "@cloudflare/workers-types";
 // Response Types
 // ---------------------------------------------------------------------------
 
-export interface AuditLogRow {
-  id: string;
-  user_id: string | null;
-  action: string;
-  resource_type: string;
-  resource_id: string | null;
-  details: string | null;
-  ip_address: string | null;
-  user_agent: string | null;
-  created_at: string;
-}
+// AuditLogRow interface removed 2026-07-08 (G1 cleanup): no consumers.
+// Restore with { id, user_id?, action, resource_type, resource_id?, details?,
+// ip_address?, user_agent?, created_at } fields when the audit-log RPC ships.
 
-export interface SystemStatsRow {
+interface SystemStatsRow {
   total_users: number;
   total_sessions: number;
   total_tokens: number;
   active_users_24h: number;
 }
 
-export interface AdminUserRow {
+interface AdminUserRow {
   id: string;
   name: string | null;
   email: string;
@@ -37,7 +29,7 @@ export interface AdminUserRow {
 }
 
 /** Per-user storage stats row */
-export interface StorageUserRow {
+interface StorageUserRow {
   user_id: string;
   slug: string | null;
   email: string | null;

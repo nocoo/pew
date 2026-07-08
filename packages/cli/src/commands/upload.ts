@@ -41,7 +41,10 @@ export interface UploadOptions {
   onCorruptLine?: OnCorruptLine;
 }
 
-export type { UploadResult, UploadProgressEvent };
+// Re-export line removed 2026-07-08 (G1 cleanup): both UploadResult and
+// UploadProgressEvent are consumed only via their true source
+// `./upload-engine.js`. Restore this line if callers want the shorter path.
+
 
 // ---------------------------------------------------------------------------
 // Pre-aggregation — merge QueueRecords with the same (source, model, hour_start)
