@@ -175,4 +175,6 @@ hygiene-report.md
 
 | 日期 | 指标 | 动作 | Commit |
 |---|---|---|---|
-| _(待填)_ | | | |
+| 2026-07-08 | G3 | `docs/README.md` 补全 6 个孤儿条目 + 修正 `37` 坏链（6/51 → 0/52） | `1e82f5ba` |
+| 2026-07-08 | G4 | 删除 6 个无引用脚本（benchmark-*.sh × 5 + measure-coverage.ts）（6 → 0） | `00ac116a` |
+| 2026-07-08 | G5 | 删除 3 个顶层 autoresearch 产物（.md / .ideas.md / .jsonl），共 -454 行；logo.png 保留 | `d3c96414` |
