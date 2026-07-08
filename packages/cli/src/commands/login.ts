@@ -8,7 +8,7 @@
  * Pew-specific: host resolution (dev vs prod) and accent color.
  */
 
-import { openBrowser, performLogin } from "@nocoo/cli-base";
+import { performLogin } from "@nocoo/cli-base";
 import { ConfigManager } from "../config/manager.js";
 
 // ---------------------------------------------------------------------------
@@ -167,5 +167,5 @@ async function executeCodeLogin(
   }
 }
 
-// Re-export for CLI default browser opener
-export { openBrowser };
+// Re-export removed 2026-07-08 (G1 cleanup): callers use `openBrowser` from
+// `@nocoo/cli-base` directly; this re-export had no consumers.

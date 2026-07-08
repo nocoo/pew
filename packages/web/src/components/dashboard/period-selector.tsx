@@ -5,7 +5,10 @@ import { PERIOD_OPTIONS } from "@/lib/date-helpers";
 import type { Period } from "@/lib/date-helpers";
 
 // Re-export for backward compatibility with existing imports
-export { periodToDateRange, periodLabel, PERIOD_OPTIONS } from "@/lib/date-helpers";
+// Re-export retained for periodToDateRange/periodLabel (used by sessions page).
+// PERIOD_OPTIONS dropped 2026-07-08 (G1 cleanup): unused via this bucket;
+// consumers get it directly from @/lib/date-helpers.
+export { periodToDateRange, periodLabel } from "@/lib/date-helpers";
 export type { Period } from "@/lib/date-helpers";
 
 // ---------------------------------------------------------------------------

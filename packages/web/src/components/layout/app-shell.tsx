@@ -12,7 +12,9 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { breadcrumbsFromPathname } from "@/lib/navigation";
 
 // Re-export for tests that already import from here
-export { ROUTE_LABELS, breadcrumbsFromPathname } from "@/lib/navigation";
+// Re-export removed 2026-07-08 (G1 cleanup): every consumer imports
+// `ROUTE_LABELS` / `breadcrumbsFromPathname` directly from `@/lib/navigation`.
+
 
 // ---------------------------------------------------------------------------
 // AppShell

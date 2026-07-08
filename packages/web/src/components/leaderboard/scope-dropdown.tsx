@@ -16,7 +16,9 @@ import type { ScopeSelection, Organization, Team } from "@/lib/leaderboard-scope
 
 // Re-export for existing consumers
 export type { ScopeSelection, Organization, Team } from "@/lib/leaderboard-scope";
-export { loadScopeFromStorage, saveScopeToStorage, SCOPE_STORAGE_KEY } from "@/lib/leaderboard-scope";
+// Re-export removed 2026-07-08 (G1 cleanup): tests and other callers import
+// these directly from `@/lib/leaderboard-scope`.
+
 
 // ---------------------------------------------------------------------------
 // DropdownItem
