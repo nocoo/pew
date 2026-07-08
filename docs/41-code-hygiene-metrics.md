@@ -8,7 +8,7 @@
 
 | 指标 | 基线 | 当前 | 状态 |
 |---|---|---|---|
-| G1 死代码 | 11 files / 19 exports / 40 types | 11 / 19 / 40 | ⏳ pending |
+| **G1** 死代码 | 11 files / 19 exports / 40 types | **0 / 0 / 0** | ✅ done (`bf8418fe`…`479dd6c7`) |
 | G2 依赖冗余 | 3 unused + 1 devDep | 3 + 1 | ⏳ pending |
 | **G3** 文档孤儿 | 6 / 51 | **0 / 52** | ✅ done (`1e82f5ba`) |
 | **G4** 脚本存活 | 6 dead | **0** | ✅ done (`00ac116a`) |
@@ -43,7 +43,18 @@ Knip 一次扫出：**11 unused files、19 unused exports、40 unused exported t
 
 指标遵循 `Gn` 编号，便于后续在 CI/dashboard 与代码里引用。
 
-### G1 · 死代码率 (Dead Code Ratio) — **首要指标**
+### G1 · 死代码率 (Dead Code Ratio) — ✅ **DONE** (8 commits `bf8418fe`…`479dd6c7`, 2026-07-08)
+
+> 共 8 个原子化提交，分四段：
+>
+> 1. **files** (`bf8418fe`, `eadf8ab9`, `8446dad9`) — 删 8 个真空文件。
+> 2. **re-exports (bucket A)** (`8e84e228`) — 去 5 个无消费者 barrel re-export，以及相关未使用 `import`。
+> 3. **internal-only exports (buckets B + C)** (`72b9151c`, `d3a725f9`) — 把 20 个只有模块内部使用的 `export` 降级为文件局部。
+> 4. **types (bucket D + D2)** (`b61d02e7`, `479dd6c7`) — 降级 / 删除 40 个无消费者的 exported types，同时重写 CLI + worker-read 中的四个 barrel 只保留实际被消费的类型。
+>
+> 验证：`bun run lint = green`，`bun run test = 4186/4186`，每次提交 pre-commit 均通过。删除 / 降级的代码均保留 revive-hint 注释。
+>
+> 剩余的 knip 告警：`packages/web/e2e/playwright.config.ts` — 实际被 `scripts/run-e2e-ui.ts` 以字符串方式引用。确认为 knip 误报，保留。
 
 - **定义**：`(knip 判定的 unused files + unused exports 涉及行数) / 总 TS LOC`
 - **基线**：
@@ -195,3 +206,11 @@ hygiene-report.md
 | 2026-07-08 | G3 | `docs/README.md` 补全 6 个孤儿条目 + 修正 `37` 坏链（6/51 → 0/52） | `1e82f5ba` |
 | 2026-07-08 | G4 | 删除 6 个无引用脚本（benchmark-*.sh × 5 + measure-coverage.ts）（6 → 0） | `00ac116a` |
 | 2026-07-08 | G5 | 删除 3 个顶层 autoresearch 产物（.md / .ideas.md / .jsonl），共 -454 行；logo.png 保留 | `d3c96414` |
+| 2026-07-08 | G1 | 删 3 个未用 dashboard 组件（-868 行） | `bf8418fe` |
+| 2026-07-08 | G1 | 删 3 个未用 shadcn/ui primitives + badges barrel（-197 行） | `eadf8ab9` |
+| 2026-07-08 | G1 | 删 2 个未引用脚本（bench-ut.ts / clear-d1-usage.ts，-213 行） | `8446dad9` |
+| 2026-07-08 | G1 | 删 5 个 dead re-export（bucket A: login/app-shell/scope-dropdown/showcase/period-selector） | `8e84e228` |
+| 2026-07-08 | G1 | 12 个 internal-only export 降级为文件局部（bucket B） | `72b9151c` |
+| 2026-07-08 | G1 | 8 个 internal-only export 降级（bucket C: fixtures + achievement format helpers） | `d3a725f9` |
+| 2026-07-08 | G1 | 34 个 exported type 降级 / 删除（bucket D） | `b61d02e7` |
+| 2026-07-08 | G1 | 修 cli + worker-read RPC 的 barrels，去 15 个 dead type re-export，knip = 0 unused exports/types | `479dd6c7` |
