@@ -962,7 +962,7 @@ M CHANGELOG.md
 ⚠️ **Model accuracy**: `/model` switching may cause misattribution (session-level only)  
 ⚠️ **No pricing**: Hermes token records don't calculate costs locally (server-side only)
 
-See [docs/35-hermes-support.md](./docs/35-hermes-support.md) for details.
+See [35-hermes-support.md](./35-hermes-support.md) for details.
 ```
 
 **Commit Message**:
