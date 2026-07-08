@@ -1,5 +1,7 @@
 # 41 · 代码卫生指标与清理路线
 
+> **Status: CLOSED (2026-07-08)** — 本轮清理已结案。G1 / G2 / G3 / G4 / G5 / G7 已完成；G6 / G10 作为计划内放弃项描述在此备档；G8 / G9 为 trend-only 指标。下次专项启动时另开一份 docs（建议直接拟为 `docs/42-...`）。
+>
 > 只读调研成文。目标：在**不改变业务逻辑**的前提下，让仓库的"东西"（代码、注释、脚本、文档、依赖、二进制资产）尽量少，且过时/无用之物能被**可观测、可门禁化**地及时移除。
 >
 > 本文档同时作为后续原子化清理提交的**基线快照**（baseline）。
@@ -13,11 +15,11 @@
 | **G3** 文档孤儿 | 6 / 51 | **0 / 52** | ✅ done (`1e82f5ba`) |
 | **G4** 脚本存活 | 6 dead | **0** | ✅ done (`00ac116a`) |
 | **G5** 顶层残留 | 3 autoresearch + logo.png | **0** autoresearch（logo.png 保留） | ✅ done (`d3c96414`) |
-| G6 巨型文件 | 5 (>1000 LOC) | 5 | ⏳ pending |
-| G7 migration 冲突 | 3 组 | 3 | ⏳ pending |
+| G6 巨型文件 | 5 (>1000 LOC) | 5 | 🛑 dropped (本轮放弃) |
+| **G7** migration 冲突 | 3 组 | **0** | ✅ done (`19261fc9`) |
 | G8 债务标记 | 0.14 / kLOC | 0.14 | 📊 trend-only |
 | G9 测试反模式 | 24 eslint-disable, 1 ts-ignore, 5 .skip | 24 / 1 / 5 | 📊 trend-only |
-| G10 RPC 类型消费率 | 30+ unused | 30+ | ⏳ pending |
+| G10 RPC 类型消费率 | 30+ unused (exported) | 172 / 183 exported 未被 web 消费 | 🛑 dropped (本轮放弃) |
 
 ---
 
@@ -121,7 +123,9 @@ Knip 一次扫出：**11 unused files、19 unused exports、40 unused exported t
 - **指标**：`git ls-files | xargs -I{} du -b {} | awk '$1>500000'` 的行数
 - **优化目标**：>500 KB 的非源码文件必须走白名单
 
-### G6 · 巨型文件数 (Large File Count)
+### G6 · 巨型文件数 (Large File Count) — 🛑 **DROPPED**
+
+> 本轮不处理。拆分巨型文件需要真正的设计变更与封面交互，不属于"不改变逻辑前提下去除多余"的圯履。已知候选名单保留在下方以供将来专项使用。
 
 - **定义**：单文件超过分层阈值（建议 web=800、cli=1000、test=1500）
 - **基线超阈**：
@@ -133,7 +137,7 @@ Knip 一次扫出：**11 unused files、19 unused exports、40 unused exported t
   - 测试类：`sync.test.ts` **3374**、`projects-api.test.ts` **1813**、`session-sync.test.ts` **1709**
 - **价值**：巨型文件是"过时代码藏身处"，也是 review 盲区
 
-### G7 · Migrations 命名冲突数
+### G7 · Migrations 命名冲突数 — ✅ **DONE** (`19261fc9`, 2026-07-08)
 
 - **基线**：`scripts/migrations/` 出现 **3 组编号冲突**：`006-*` ×3、`007-*` ×2、`008-*` ×2、`016-*` ×3
 - **优化目标**：0
@@ -152,7 +156,9 @@ Knip 一次扫出：**11 unused files、19 unused exports、40 unused exported t
 - **`eslint-disable`**：24 处（先做 baseline，只允许下降不允许上升）
 - **`@ts-ignore` / `@ts-expect-error`**：1 处（很好，锁死为 ≤1）
 
-### G10 · RPC 类型消费率（worker-read 专属病灶）
+### G10 · RPC 类型消费率（worker-read 专属病灶）— 🛑 **DROPPED**
+
+> 本轮不处理。G1 bucket D 已把 knip 能看见的部分清完（归零）；但从严格的"web 层消费率"角度，worker-read/src/rpc 内仍有 **172 / 183** 个 exported type/interface 只被本包内部（tests / handlers）使用、未被 `packages/web` import。把它们全部降为本模块局部需要一系列设计判断（哪些入 `rpc-types.ts` 契约、哪些真正 “仅限内部”），不属于本轮机械性清理范围。
 
 - 40 个 unused exported types 里有 **30+ 集中在 `packages/worker-read/src/rpc/*.ts`**
 - **指标定义**：`worker-read/src/rpc/**` 中 export 的 type，被 `packages/web` import 的比率
@@ -220,3 +226,4 @@ hygiene-report.md
 | 2026-07-08 | G2 (补) | 新增 `knip.json`：白名单 `lsof` 系统命令 + 将 `playwright.config.ts` / `e2e/**/*.spec.ts` 声明为入口；`bunx knip` exit 0 | `a42b7647` |
 | 2026-07-08 | G3 (补) | 修 `docs/35-hermes-support.md` 自指 `./docs/35-...` 坏链 | `9f7c6441` |
 | 2026-07-08 | hygiene | 去除 `docs/README.md` 与 `packages/cli/src/drivers/types.ts` 中 EOF 多余空行，`git diff --check` 归零 | `13b061e1` |
+| 2026-07-08 | G7 | scripts/migrations 中 006/007/008/016 四组重号改名为 `Nb/Nc` 后缀；cut 后前 4 字符已全部 unique | `19261fc9` |
