@@ -21,6 +21,7 @@
 | 17 | [17-projects.md](17-projects.md) | Two-layer project management | done |
 | 18 | [18-season-system.md](18-season-system.md) | 赛季系统 — team-based seasonal competition | in-progress |
 | 19 | [19-vscode-copilot-token-estimation.md](19-vscode-copilot-token-estimation.md) | VSCode Copilot token tracking research | done |
+| 19b | [19-leaderboard-agents-models.md](19-leaderboard-agents-models.md) | Leaderboard: Agents & Models tabs | draft |
 | 20 | [20-by-device.md](20-by-device.md) | Multi-device analytics & management pages | done |
 | 21 | [21-token-inflation-audit.md](21-token-inflation-audit.md) | Token inflation audit & fix plan | done |
 | 22 | [22-e2e-validation-record.md](22-e2e-validation-record.md) | E2E validation record (v1.6.0 inflation fixes) | done |
@@ -39,6 +40,13 @@
 | 35 | [35-hermes-support.md](35-hermes-support.md) | Hermes Agent token tracking (SQLite session-level diff) | done |
 | 36 | [36-kosmos-support-design.md](36-kosmos-support-design.md) | Kosmos / PM Studio token + session tracking | done |
 | 36b | [36-organization-system.md](36-organization-system.md) | Organization entity for interest-based grouping | done |
-| 37 | [37-github-actions-ci.md](37-github-actions-ci.md) | GitHub Actions CI — Phase 1 (no secrets) | in-progress |
+| 36c | [36-github-actions-ci.md](36-github-actions-ci.md) | GitHub Actions CI — Phase 1 (no secrets) | in-progress |
+| 37 | [37-worker-read-security-hardening.md](37-worker-read-security-hardening.md) | Worker-read security hardening | reference |
+| 38 | [38-cloudflare-kv-cache.md](38-cloudflare-kv-cache.md) | Edge caching for worker-read via Cloudflare KV | design |
+| 39 | [39-badge-system.md](39-badge-system.md) | Admin-assigned leaderboard badges (7-day spotlight) | design |
+| 40 | [40-dynamic-model-pricing.md](40-dynamic-model-pricing.md) | Dynamic model pricing (shipped) + [c1–c6 subdocs](40-dynamic-model-pricing/) | done |
+| 40b | [40-l3-bdd-refactor.md](40-l3-bdd-refactor.md) | L3 → BDD test refactor plan | reference |
+| 41 | [41-code-hygiene-metrics.md](41-code-hygiene-metrics.md) | Code hygiene metrics (G1–G10) baseline + cleanup roadmap | in-progress |
 
-> **Note:** Number 14 is intentionally vacant (original doc 14 was renumbered to 12 to fill a gap).
+> **Note:** Number 14 is intentionally vacant (original doc 14 was renumbered to 12 to fill a gap). Numbers 19, 36, and 40 have multiple entries (`Nb`, `Nc`) as history-preserving disambiguators.
+
