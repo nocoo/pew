@@ -357,22 +357,22 @@ Session driver 采用 mtime-based `SessionFileCursor`（同 kosmos / vscode-copi
 
 参考 doc 13（Phase 3 unified source drivers），添加 `"grok"` 需要动的**24 个文件**：
 
-### 5.1 Core types & constants（2 文件）
+### 5.1 Core types & constants(edit)
 
 - `packages/core/src/types.ts` — `Source` union 加 `"grok"`（第 12 个）
 - `packages/core/src/constants.ts` — `SOURCES` 数组加 `"grok"`
 
-### 5.2 CLI parsers（2 新文件）
+### 5.2 CLI parsers(new)
 
 - `packages/cli/src/parsers/grok.ts` — `parseGrokLogFile` + `normalizeGrokUsage`
 - `packages/cli/src/parsers/grok-session.ts` — `parseGrokSession`
 
-### 5.3 CLI drivers（2 新文件）
+### 5.3 CLI drivers(new)
 
 - `packages/cli/src/drivers/token/grok-token-driver.ts` — `FileTokenDriver<ByteOffsetCursor>`
 - `packages/cli/src/drivers/session/grok-session-driver.ts` — `FileSessionDriver<SessionFileCursor>`
 
-### 5.4 CLI wiring（7 文件，edit）
+### 5.4 CLI wiring(edit)
 
 - `packages/cli/src/drivers/registry.ts` — 注册两个 driver + `grokHome?: string` opt
 - `packages/cli/src/drivers/types.ts` — `DiscoverOpts` 加 `grokLogsPath` + `grokSessionsDir`
@@ -387,13 +387,13 @@ Session driver 采用 mtime-based `SessionFileCursor`（同 kosmos / vscode-copi
 - `packages/cli/src/commands/session-sync.ts` — 对应扩展
 - `packages/cli/src/commands/session-sync-helpers.ts` — `SessionSyncSourceKey` 联合类型 + 穷举 switch
 
-### 5.5 CLI entry / notify / status（3 文件，edit）
+### 5.5 CLI entry / notify / status(edit)
 
 - `packages/cli/src/cli.ts` — `isSource()` 数组、`SOURCE_LABELS`、sync/session summary 打印
 - `packages/cli/src/commands/notify.ts` — 传递 grok dirs
 - `packages/cli/src/commands/status.ts` — `SourceDirs.grokHome` + `classifySource()` 分支
 
-### 5.6 Web dashboard（9 文件，edit）
+### 5.6 Web dashboard(edit)
 
 - `packages/web/src/lib/palette.ts` — 加 `grok` → `chart-12`；同步扩展 `chart` 对象 / `CHART_TOKENS`
 - `packages/web/src/app/globals.css` — 加 `--chart-12` 变量（light + dark）
@@ -448,7 +448,7 @@ Codex 未来产生 reasoning 数据,页面成本估算仍**不会包含 reasonin
 | **By-device route:deviceDetails map** | `packages/web/src/app/api/usage/by-device/route.ts:162` | 输出加 `reasoning_output_tokens: row.reasoning_output_tokens`;`total_tokens` 从 `input+output+cached` 改为 `input+output+cached+reasoning`(避免 UI 层 reasoning 消失)|
 | **Device breakdown 类型** | `packages/web/src/lib/device-helpers.ts:193, 202` | `DeviceAgentBreakdownRow` 和 `DeviceModelBreakdownRow` 各加 `reasoning_output_tokens: number` |
 | **Device breakdown reducers** | `packages/web/src/lib/device-helpers.ts:toDeviceAgentBreakdown` 和 `toDeviceModelBreakdown` | 初始化和累加都加 `reasoning_output_tokens += d.reasoning_output_tokens` |
-| **Device 堆叠图 keys/labels** | `packages/web/src/components/dashboard/device-agent-chart.tsx:56-63, 176-188` + `device-model-chart.tsx` 同结构 | `orderedKeys` 数组从 `["input_tokens","output_tokens","cached_input_tokens"]` 扩为 `[..., "reasoning_output_tokens"]`;label 加 `reasoning_output_tokens: "Reasoning"`;新增一段 `<Bar dataKey="reasoning_output_tokens" ...>`。否则堆叠图各部分之和 < `total_tokens`,视觉上出现"缺口"。 |
+| **Device 堆叠图 keys/labels(3 个 chart 同结构)** | `packages/web/src/components/dashboard/device-agent-chart.tsx` + `device-model-chart.tsx` + `device-breakdown-chart.tsx`(每个都在 L54-63 附近声明 `labels` map + `orderedKeys` 数组,并在 render 里放 `<Bar dataKey=...>` 段) | 三个 chart 都要:`orderedKeys` 从 `["input_tokens","output_tokens","cached_input_tokens"]` 扩为 `[..., "reasoning_output_tokens"]`;label 加 `reasoning_output_tokens: "Reasoning"`;render 新增一段 `<Bar dataKey="reasoning_output_tokens" ...>`。否则堆叠段之和 < `total_tokens`,视觉上出现"缺口"。**注意**:三个文件必须一起改 — device-breakdown-chart 是"按设备总览",另两个是 agent/model 下钻,漏改任一都让相应视图缺 reasoning 段。 |
 | **By-device route:timeline map** | `packages/web/src/app/api/usage/by-device/route.ts:152` | 输出加 `reasoning_output_tokens: row.reasoning_output_tokens`(前提是 TimelineRow SQL 已加上)|
 | Worker-read SQL:achievements daily-cost | `packages/worker-read/src/rpc/achievements.ts:129` | SELECT 加 `SUM(reasoning_output_tokens)` |
 | Worker-read SQL:achievements per-model-source | `packages/worker-read/src/rpc/achievements.ts:222` | SELECT 加 `SUM(reasoning_output_tokens)` |
@@ -475,7 +475,7 @@ pricing.test.ts 只覆盖 estimator 本身,漏了任一上游聚合都不会让 
 | **estimator** | `packages/web/src/__tests__/pricing.test.ts` | `estimateCost(100, 200, 500, 50, pricing)` 的 `totalCost` 包含 `50/M * pricing.reasoning` |
 | **worker-read achievements SQL** | `packages/worker-read/src/rpc/achievements.test.ts` | seed 一行 `reasoning_output_tokens=50`,断言 `DailyCostRow`/`CostByModelSourceRow` 返回 `reasoning_output_tokens: 50` |
 | **worker-read by-device SQL(cost + timeline 两处)** | `packages/worker-read/src/rpc/usage.test.ts` | seed 一行 grok,`handleGetDeviceCostDetails` 返回的 CostDetailRow 含 `reasoning_output_tokens`;`handleGetDeviceTimeline` 返回的 TimelineRow 也含之 |
-| **web device breakdown reducers** | `packages/web/src/__tests__/device-helpers.test.ts` | 一组带 reasoning 的 DeviceCostDetail 输入,`toDeviceAgentBreakdown` 和 `toDeviceModelBreakdown` 结果里各 row 的 `reasoning_output_tokens` 正确累加;`total_tokens` 等于 input+output+cached+reasoning |
+| **web device breakdown reducers + 3 chart** | `packages/web/src/__tests__/device-helpers.test.ts` 覆盖 reducer;`packages/web/src/components/dashboard/__tests__/`(或 snapshot)覆盖 3 个 chart | 一组带 reasoning 的 DeviceCostDetail 输入,`toDeviceAgentBreakdown` 和 `toDeviceModelBreakdown` 结果里各 row 的 `reasoning_output_tokens` 正确累加;`total_tokens` 等于 input+output+cached+reasoning;三个 chart 的 `orderedKeys` 包含 `reasoning_output_tokens` |
 | **web usage-transforms** | `packages/web/src/__tests__/usage-transforms.test.ts`(新增或补) | `toModelAggregates([{...,reasoning_output_tokens:50}])` 结果 `models[0].reasoning === 50` |
 | **web usage-helpers reducer** | `packages/web/src/__tests__/usage-helpers.test.ts` | 每个 reducer(代表 3 处:per-model、per-hour、per-day)聚合后 `reasoningTokens` 累加正确 |
 | **web achievements route** | `packages/web/src/__tests__/achievements-route.test.ts` (or e2e) | mock RPC 返回带 reasoning 的行,`computeCost` 结果 delta 与不带 reasoning 差异 = `50/M * priceReasoning` |
@@ -518,7 +518,7 @@ labels 一起做。estimator 接受 reasoning(commit 0)+ propagation(commit 6)+ 
   (现有 tests **不会自动覆盖 grok**,只 hard-code claude-code/gemini-cli/opencode);
   同时 seedTestUser 必须补 `slug` + `is_public=1` 才能打通 `/api/users/<slug>` 路径。
 
-### 5.9 New tests（6 新文件）
+### 5.9 New tests(new)
 
 - `packages/cli/src/__tests__/grok-parser.test.ts`
 - `packages/cli/src/__tests__/grok-session.test.ts`
