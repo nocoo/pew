@@ -135,14 +135,23 @@ disjoint 约定:
 里,每个 `turn_started` 事件都带 `model_id`(本机实测 `{"ts":"...", "type":"turn_started",
 "turn_number":0, "model_id":"grok-4.5", ...}`)。
 
-**归因规则(按优先级)**:
-1. 为每个 sid 建 `turn_started` 时间轴:`[(ts, model_id), ...]`
-2. 对每条 `inference_done`,以 `ts` 找该 sid 时间轴上**最后一个 ts ≤ inference_done.ts** 的 turn,取其 `model_id`
-3. 时间轴查找失败(sid 无 events.jsonl / turn_started 缺失)→ fallback 到 `signals.json.primaryModelId`
-4. 都拿不到 → `"grok-unknown"`(不阻塞 emit,让数据先入库)
+**性能背景**:本机 18 秒的短 session 里 `events.jsonl` 就有 **1,448 行**(1,396 条
+`phase_changed`),而 `unified.jsonl` 全部只有 **110 行**。全量扫 events 对增量 sync
+成本过高。用两级 fast/slow path:
 
-因此 discovery 阶段需要同时扫 events.jsonl 和 signals.json,建立 `sid → turnTimeline[]` 和
-`sid → primaryModelId` 两级映射。
+**归因规则(按优先级)**:
+1. **Fast path**:读 `signals.json.modelsUsed`。若长度 = 1 → 直接用它唯一的 model_id
+   归因该 sid 所有 `inference_done`,**跳过 events.jsonl 扫描**。绝大部分 session
+   属于此情况。
+2. **Slow path(多模型)**:`modelsUsed.length > 1` 时才扫 `events.jsonl` 抽出
+   `turn_started` 建时间轴 `[(ts, model_id), ...]`。对每条 `inference_done`,以 `ts`
+   找该 sid 时间轴上**最后一个 ts ≤ inference_done.ts** 的 turn,取其 `model_id`。
+3. Fallback:events.jsonl 缺失/turn_started 全无 → 用 `signals.json.primaryModelId`。
+4. 都拿不到 → `"grok-unknown"`(不阻塞 emit,让数据先入库)。
+
+因此 discovery 阶段**总是**读 signals.json(小),**按需**读 events.jsonl(大)。
+建 `sid → { model?: string; timeline?: Array<{ts, modelId}>; primary: string | null }`
+一级映射即可。
 
 ### 1.5 核心事实（三家参考项目全都错在这里）
 
@@ -173,16 +182,19 @@ disjoint 约定:
 **解决**：完全**不读** `sessions/<sid>/updates.jsonl` 的 token 字段。只读 `logs/unified.jsonl` 里
 的 `msg == "shell.turn.inference_done"` 事件。
 
-### 挑战 2:Model 归因需要按时间轴匹配 turn,不能简单用 session 级 primaryModelId
+### 挑战 2:Model 归因需要按时间轴匹配 turn,同时不能拖慢 sync
 
 **问题**:`unified.jsonl` 只有 sid 没有 model。Grok 支持同一 session 内切换模型,
 简单用 `signals.json.primaryModelId` 会把切换前的 turns 全部错归到切换后的 model。
+但 events.jsonl 每 session 可能上千行(本机 1,448 行 vs unified 110 行),每次 sync
+全扫成本过高。
 
-**解决**:discovery 阶段扫 `~/.grok/sessions/**/events.jsonl` 拆出所有 `type=turn_started`
-事件,建立 `sid → [(ts, model_id), ...]` 时间轴。Parser 对每条 `inference_done` 查该 sid
-时间轴上**最后一个 ts ≤ inference_done.ts** 的 turn model_id。
-- 时间轴查不到 → fallback 到 `signals.json.primaryModelId`
-- 都缺 → `"grok-unknown"`(不阻塞 emit)
+**解决**:分两级读。见 §1.4 的 fast/slow path:
+1. **总是**读 `signals.json`(几十字节)。若 `modelsUsed.length === 1` → 该 sid 所有
+   inference_done 直接用它,**不读 events.jsonl**。
+2. `modelsUsed.length > 1` → 才扫 events.jsonl 抽 `turn_started` 建时间轴,按
+   `ts ≤ inference_done.ts` 查最后一次 turn 的 `model_id`。
+3. 全部缺失 → `"grok-unknown"`(不阻塞 emit)。
 
 ### 挑战 3：unified.jsonl append-only，增量策略
 
@@ -523,11 +535,12 @@ union 加 `"grok"`,这两处 switch 立刻编译失败。同理,driver 依赖 `D
 
 | Case | 期望 |
 |---|---|
-| sid 有 turn_started 时间轴,一次 inference_done 在 turn A 之后 | 用 turn A 的 model_id |
+| **Fast path**:`modelsUsed = ["grok-4.5"]`(单模型) | 用 `grok-4.5`,**不读 events.jsonl**(用 spy 断言未调用) |
+| **Slow path**:`modelsUsed = ["grok-4.5","grok-code"]`,一次 inference_done 在 turn A 之后 | 扫 events.jsonl,用 turn A 的 model_id |
 | session 内两次 turn_started 切换模型(A → B),中间夹一条 inference_done | 该 inference_done 归 A |
 | turn_started 缺失,但 signals.json 有 primaryModelId | 用 primaryModelId fallback |
-| turn_started 和 primaryModelId 都缺 | fallback "grok-unknown",不阻塞 emit |
-| inference_done.ts 早于任何 turn_started(理论异常) | fallback 到 primaryModelId,再不行 "grok-unknown" |
+| turn_started 和 primaryModelId 都缺 | fallback `"grok-unknown"`,不阻塞 emit |
+| inference_done.ts 早于任何 turn_started(理论异常) | fallback 到 primaryModelId,再不行 `"grok-unknown"` |
 
 ### 7.2 L1 Unit tests(source registry 扩展)
 
