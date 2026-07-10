@@ -241,22 +241,38 @@ export function normalizeGrokUsage(ctx: Record<string, unknown>): TokenDelta {
 ```typescript
 // packages/cli/src/parsers/grok.ts
 export async function parseGrokLogFile(opts: {
-  filePath: string;           // ~/.grok/logs/unified.jsonl
-  startOffset: number;        // byte offset cursor
-  sidToModel: Map<string, string>;  // built by discover()
+  filePath: string;                                       // ~/.grok/logs/unified.jsonl
+  startOffset: number;                                    // byte offset cursor
+  sidTurnTimeline: Map<string, Array<{ ts: string; modelId: string }>>;
+  sidPrimaryModel: Map<string, string>;
 }): Promise<GrokFileResult> {
-  // 1. Read from startOffset via createReadStream
-  // 2. For each line:
-  //    - JSON.parse (skip on error)
+  // 1. Read from startOffset via createReadStream (utf-8, byte-tracking)
+  // 2. Buffer bytes read; split on \n but NEVER emit or advance past a
+  //    trailing partial line. Track byte length of the trailing partial
+  //    (if last byte != \n) separately.
+  // 3. For each COMPLETE line only:
+  //    - JSON.parse (skip on error — but still count its bytes as consumed
+  //      so we don't loop forever on a corrupt but terminated line)
   //    - Filter: msg === "shell.turn.inference_done"
   //    - Filter: ctx has prompt_tokens or completion_tokens
-  //    - Look up model via sid → sidToModel; fallback "grok-unknown"
+  //    - Resolve model:
+  //        timeline = sidTurnTimeline.get(sid) — pick last entry with ts ≤ event.ts
+  //        else sidPrimaryModel.get(sid)
+  //        else "grok-unknown"
   //    - Normalize via normalizeGrokUsage
   //    - Skip if isAllZero(delta)
   //    - Push { source: "grok", model, timestamp: ts, tokens: delta }
-  // 3. Return { deltas, endOffset }
+  // 4. endOffset = startOffset + bytes of processed complete lines only.
+  //    Trailing partial-line bytes stay unread; next sync re-reads from
+  //    endOffset and picks up the completed line.
+  // 5. Return { deltas, endOffset }.
 }
 ```
+
+**关键**:endOffset **必须停在最后一个完整 `\n` 后**。若文件尾部有半行(grok CLI 正在写入),
+半行的字节数**不能**计入 endOffset;否则下次 sync 从中间 offset 读,那条 log line 的前半段
+永久丢失。相同 pattern 已在 pi/openclaw/copilot-cli 使用,copilot-cli 更严格(检测未闭合 JSON
+块 rewind 到 marker 前 — 见 retrospective 里 "off by one telemetry marker line" 教训)。
 
 ### 3.3 幂等性保证
 
@@ -447,14 +463,17 @@ Session driver 采用 mtime-based `SessionFileCursor`（同 kosmos / vscode-copi
 | 3 | summary.json 缺 `current_model_id` | `model = null` |
 | 4 | summary.json 损坏 | 返回 null,不抛异常 |
 
-**Byte-offset cursor（`grok-token-driver.test.ts`）**：
+**Byte-offset cursor(`grok-token-driver.test.ts`)**:
 
 | Case | 期望 |
 |---|---|
 | 首次 sync | 全文件 emit |
 | 二次 sync 文件不变 | 0 deltas |
-| 二次 sync 文件追加 | 只 emit 新增部分 |
+| 二次 sync 文件追加(完整行) | 只 emit 新增部分 |
+| **半行安全**:文件尾部是半条 line(无末尾 `\n`) | 半行**不**计入 endOffset,不 emit;二次 sync 追加剩余部分 + `\n`,该完整 line 被正确 emit **一次** |
+| **半行 → 追加 → 追加(pi/openclaw 已有的 round-trip 模式)** | Parser 从 raw offset 开始每次都能正确对齐到 line 边界 |
 | Inode 变化(log rotate) | 触发 replay,orchestrator 清 cursors 全量重扫 |
+| 尾部损坏(完整 line 但 JSON 错) | 该 line 跳过,offset **可以**推进(未 stall);后续完整 line 正常处理 |
 
 **Model 归因(`grok-parser.test.ts` 扩展)**:
 
