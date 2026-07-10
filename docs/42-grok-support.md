@@ -469,7 +469,8 @@ pricing.test.ts 只覆盖 estimator 本身,漏了任一上游聚合都不会让 
 | **web usage-transforms** | `packages/web/src/__tests__/usage-transforms.test.ts`(新增或补) | `toModelAggregates([{...,reasoning_output_tokens:50}])` 结果 `models[0].reasoning === 50` |
 | **web usage-helpers reducer** | `packages/web/src/__tests__/usage-helpers.test.ts` | 每个 reducer(11 处的代表 3 处:per-model、per-hour、per-day)聚合后 `reasoningTokens` 累加正确 |
 | **web achievements route** | `packages/web/src/__tests__/achievements-route.test.ts` (or e2e) | mock RPC 返回带 reasoning 的行,`computeCost` 结果 delta 与不带 reasoning 差异 = `50/M * priceReasoning` |
-| **e2e/api-e2e** | `packages/web/src/__tests__/e2e/api-e2e.test.ts` | ingest 一条 `reasoning_output_tokens=50` grok 行,GET `/api/users/<slug>?source=grok`(见 §7.3 setup)总成本含 reasoning |
+| **e2e/api-e2e — token 保留**(user route) | `packages/web/src/__tests__/e2e/api-e2e.test.ts` | ingest 一条 `reasoning_output_tokens=50` grok 行,GET `/api/users/${TEST_USER_SLUG}?source=grok` 返回的 token summary 里 `reasoning_output_tokens === 50`。**注意**:`/api/users/[slug]` route 只算 token summary,**不算 estimated_cost**,不能用来验成本传播 |
+| **e2e/api-e2e — cost 传播**(by-device) | 同上文件 | ingest 同一条 grok 行(含 `device_id`),GET `/api/usage/by-device?from=...&to=...`,断言 `devices[0].estimated_cost` 与"reasoning=0 时应有的 cost" 差异 ≥ `50/M * pricing.reasoning`(pricing 从 `DEFAULT_SOURCE_DEFAULTS` 查 grok 单价)。这是唯一能端到端验证 reasoning **进入成本估算**的 e2e 路径 |
 
 任一层未改会让**对应的层测试失败**,不会遗漏。
 
