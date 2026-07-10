@@ -113,6 +113,17 @@ export interface ClaudeCursor extends FileCursorBase {
   seenIds: string[];
 }
 
+/**
+ * Codex token accounting version for cursor migration.
+ *
+ * v1 (current): emitted deltas are disjoint —
+ *   input = max(0, raw.input - raw.cached), output = max(0, raw.output - raw.reasoning)
+ * Missing / older version on a cursor means prior syncs stored inclusive
+ * OpenAI fields; the codex driver flags needsReplay so the orchestrator
+ * full-rescans (overwrite queue, no SUM inflation).
+ */
+export const CODEX_ACCOUNTING_VERSION = 1 as const;
+
 /** Cursor for Codex CLI (byte-offset + cumulative diff state) */
 export interface CodexCursor extends FileCursorBase {
   /** Byte offset where we last stopped reading */
@@ -121,6 +132,11 @@ export interface CodexCursor extends FileCursorBase {
   lastTotals: TokenDelta | null;
   /** Last seen model identifier */
   lastModel: string | null;
+  /**
+   * Token accounting version stamped by the codex driver.
+   * Absent on cursors written before CODEX_ACCOUNTING_VERSION shipped.
+   */
+  accountingVersion?: number;
 }
 
 /** Cursor for Gemini (array-index-based JSON files) */
