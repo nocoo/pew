@@ -10,12 +10,13 @@
 // Source: Supported AI coding tools
 // ---------------------------------------------------------------------------
 
-/** The 11 supported AI coding tools */
+/** The 12 supported AI coding tools */
 export type Source =
   | "claude-code"
   | "codex"
   | "copilot-cli"
   | "gemini-cli"
+  | "grok"
   | "hermes"
   | "kosmos"
   | "opencode"

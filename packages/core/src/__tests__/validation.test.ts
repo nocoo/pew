@@ -30,6 +30,7 @@ describe("isValidSource", () => {
     expect(isValidSource("codex")).toBe(true);
     expect(isValidSource("copilot-cli")).toBe(true);
     expect(isValidSource("gemini-cli")).toBe(true);
+    expect(isValidSource("grok")).toBe(true);
     expect(isValidSource("hermes")).toBe(true);
     expect(isValidSource("kosmos")).toBe(true);
     expect(isValidSource("opencode")).toBe(true);
@@ -237,8 +238,8 @@ describe("validateIngestRecord", () => {
     }
   });
 
-  it("should accept all 10 sources", () => {
-    for (const source of ["claude-code", "codex", "copilot-cli", "gemini-cli", "hermes", "kosmos", "opencode", "openclaw", "pi", "pmstudio", "vscode-copilot"]) {
+  it("should accept all 12 sources", () => {
+    for (const source of ["claude-code", "codex", "copilot-cli", "gemini-cli", "grok", "hermes", "kosmos", "opencode", "openclaw", "pi", "pmstudio", "vscode-copilot"]) {
       const rec = { ...validTokenRecord(), source };
       expect(validateIngestRecord(rec, 0).valid).toBe(true);
     }

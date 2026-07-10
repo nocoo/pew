@@ -23,6 +23,7 @@ const defaultDirs: SourceDirs = {
   vscodeCopilotDirs: ["/home/.config/Code/User"],
   copilotCliLogsDir: "/home/.copilot/logs",
   multicaCodexDirs: [],
+  grokHome: "/home/.grok",
 };
 
 describe("executeStatus", () => {
