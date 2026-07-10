@@ -188,7 +188,10 @@ Parser 里查这个缓存。
 - `session_key = <sid>`（UUID v7 全局唯一）
 - `startedAt = summary.created_at`
 - `lastMessageAt = summary.last_active_at`
-- `totalMessages = summary.num_messages`
+- `totalMessages = summary.num_chat_messages`
+  ⚠️ **不能用 `summary.num_messages`** — 它等于 `updates.jsonl` 行数(本机实测 61,
+  包含 agent_thought_chunk / tool_call / phase_changed 等系统事件),真正的对话消息数是
+  `num_chat_messages`(本机 22)。
 - `assistantMessages = signals.json.assistantMessageCount`
 - `userMessages = signals.json.userMessageCount`
 - `model = summary.current_model_id`
@@ -415,7 +418,7 @@ Session driver 采用 mtime-based `SessionFileCursor`（同 kosmos / vscode-copi
 | Case | 输入 | 期望 |
 |---|---|---|
 | 1 | 完整 summary.json + signals.json | SessionSnapshot 各字段正确 |
-| 2 | signals.json 缺失 | snapshot 有 startedAt/model,messages 用 summary.num_messages fallback |
+| 2 | signals.json 缺失 | snapshot 有 startedAt/model,messages 用 summary.num_chat_messages fallback |
 | 3 | summary.json 缺 `current_model_id` | `model = null` |
 | 4 | summary.json 损坏 | 返回 null,不抛异常 |
 
