@@ -19,9 +19,13 @@
 
 ### ✅ 接受的限制
 
-1. **Grok CLI 不持久化 pricing 元数据**：本文档假设 pew 的 `pricing.ts` 会为 `xai` provider 独立维护单价表。
-2. **只读取 `logs/unified.jsonl`**，不读 `sessions/<sid>/updates.jsonl`。原因见"关键挑战 1"。
-3. **首次 sync 全量 emit**：cursor 丢失/首次跑 = 全文件解析，与其他 byte-offset source 行为一致。
+1. **Grok CLI 不持久化 pricing 元数据**:本文档假设 pew 的 `pricing.ts` 会为 `xai` provider
+   独立维护单价表。**前置工作**:`pricing.ts` 里 `estimateCost()` 当前只接收
+   `(input, output, cached)` 三参数,reasoning tokens 完全没入账。要正确估算 grok-4
+   系列成本,先把 `estimateCost` 扩展到接受 `reasoningTokens` + `pricing.reasoning`
+   单价(通常等价 output 单价),并同步扩展所有调用点(见 §5.6 pricing.ts)。
+2. **只读取 `logs/unified.jsonl`**,不读 `sessions/<sid>/updates.jsonl`。原因见"关键挑战 1"。
+3. **首次 sync 全量 emit**:cursor 丢失/首次跑 = 全文件解析,与其他 byte-offset source 行为一致。
    D1 端 `ON CONFLICT` upsert 保证零 inflation。
 
 ---
@@ -91,21 +95,26 @@ xAI 官方 CLI 编码代理，`grok` 可执行文件通常安装在 `~/.local/bi
 
 | 字段 | 语义 | 归一化到 |
 |---|---|---|
-| `prompt_tokens` | 本次 inference 的输入 token 总数（**含 cached 部分**） | 用于计算 non-cached input |
-| `cached_prompt_tokens` | 命中 prompt cache 的部分（xAI 有 prompt caching） | → `cachedInputTokens` |
+| `prompt_tokens` | 本次 inference 的输入 token 总数(**含 cached 部分**) | → `inputTokens`(**保留原值不减 cached**)|
+| `cached_prompt_tokens` | 命中 prompt cache 的部分(xAI 有 prompt caching) | → `cachedInputTokens` |
 | `completion_tokens` | 输出 token 数 | → `outputTokens` |
 | `reasoning_tokens` | 思维链输出 token 数 | → `reasoningOutputTokens` |
 | `sid` | session id | 归因 |
-| `ts` | 事件时间（ISO 8601） | hour bucket 归属 |
+| `ts` | 事件时间(ISO 8601) | hour bucket 归属 |
 
-**归一化公式**：
+**归一化公式**:
 
 ```
-inputTokens          = prompt_tokens - cached_prompt_tokens  // 真正计费的 input
+inputTokens          = prompt_tokens              // 保留 total,含 cached
 cachedInputTokens    = cached_prompt_tokens
 outputTokens         = completion_tokens
 reasoningOutputTokens = reasoning_tokens
 ```
+
+⚠️ **和 Claude Code parser 语义完全对齐** — pew 的存储约定是
+`inputTokens = total input`(**含 cached**),下游 `estimateCost()` 自己会做
+`nonCachedInput = inputTokens - cachedTokens` 的减法。之前草案里定义 `inputTokens =
+non-cached` 会导致 `pricing.ts:299` 二次减,把 25,315 普通输入 tokens 直接算成 0。
 
 与 Anthropic Claude Code 语义完全对齐（`inputTokens` 表示 non-cached input，
 `cachedInputTokens` 表示 cache hit 部分）。
@@ -214,11 +223,13 @@ reasoningOutputTokens = reasoning_tokens
 ```typescript
 // packages/cli/src/parsers/grok.ts
 export function normalizeGrokUsage(ctx: Record<string, unknown>): TokenDelta {
-  const prompt = toNonNegInt(ctx.prompt_tokens);
-  const cached = toNonNegInt(ctx.cached_prompt_tokens);
   return {
-    inputTokens: Math.max(0, prompt - cached),
-    cachedInputTokens: cached,
+    // Keep prompt_tokens raw (contains cached). estimateCost() subtracts
+    // cached when computing non-cached input cost — matches Claude parser
+    // convention. Storing (prompt - cached) here would cause pricing.ts
+    // to subtract twice and zero out real input.
+    inputTokens: toNonNegInt(ctx.prompt_tokens),
+    cachedInputTokens: toNonNegInt(ctx.cached_prompt_tokens),
     outputTokens: toNonNegInt(ctx.completion_tokens),
     reasoningOutputTokens: toNonNegInt(ctx.reasoning_tokens),
   };
@@ -343,7 +354,13 @@ Session driver 采用 mtime-based `SessionFileCursor`（同 kosmos / vscode-copi
 - `packages/web/src/lib/palette.ts` — 加 `grok` → `chart-12`；同步扩展 `chart` 对象 / `CHART_TOKENS`
 - `packages/web/src/app/globals.css` — 加 `--chart-12` 变量（light + dark）
 - `packages/web/src/lib/usage-transforms.ts` — `SOURCE_LABELS` 加 `{ grok: "Grok" }`
-- `packages/web/src/lib/pricing.ts` — `DEFAULT_SOURCE_DEFAULTS` 加 xAI 默认单价
+- `packages/web/src/lib/pricing.ts` — 两项改动:
+  (a) **扩展 `estimateCost()` 接受 `reasoningTokens` + `pricing.reasoning` 单价**,
+      同步更新 `ModelPricing` 类型、`pricing.test.ts` 的 5 处调用、6 处生产调用点
+      (`api/achievements/route.ts:66`、`api/users/[slug]/achievements/route.ts:51`、
+      `api/usage/by-device/route.ts:124`、`(dashboard)/daily-usage/page.tsx:61`、
+      `(dashboard)/hourly-usage/page.tsx:140`),reasoning 单价 fallback = output 单价。
+  (b) `DEFAULT_SOURCE_DEFAULTS` 加 grok 条目(默认 xAI 模型的 input/output/cached/reasoning 单价)。
 - `packages/web/src/app/api/{leaderboard,usage,sessions,projects,users/[slug]}/route.ts` +
   `packages/web/src/app/api/projects/[id]/route.ts` — 6 处 `VALID_SOURCES` 数组
 - `packages/web/src/app/leaderboard/agents/page.tsx` — `AGENTS` 常量
