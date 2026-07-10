@@ -18,10 +18,14 @@ export interface CopilotCliFileResult {
  * `[Telemetry] cli.telemetry:` followed by a multi-line JSON object.
  * We extract `assistant_usage` events which carry per-request token counts.
  *
- * Token fields:
- *   metrics.input_tokens      → inputTokens (total, includes cached)
- *   metrics.cache_read_tokens → cachedInputTokens
- *   metrics.output_tokens     → outputTokens
+ * Token fields (disjoint for estimateCost / total_tokens SUM):
+ *   metrics.input_tokens_uncached → inputTokens (preferred)
+ *   else max(0, input_tokens - cache_read_tokens)
+ *   metrics.cache_read_tokens     → cachedInputTokens
+ *   metrics.output_tokens         → outputTokens
+ *
+ * `input_tokens` from the telemetry is the total including cache hits;
+ * storing it alongside cache_read would double-count.
  */
 export async function parseCopilotCliFile(opts: {
   filePath: string;
@@ -167,16 +171,42 @@ function extractUsageDelta(
       ? props.model
       : "unknown";
 
-  const tokens: TokenDelta = {
-    inputTokens: toNonNegInt(metrics?.input_tokens),
-    cachedInputTokens: toNonNegInt(metrics?.cache_read_tokens),
-    outputTokens: toNonNegInt(metrics?.output_tokens),
-    reasoningOutputTokens: 0,
-  };
-
+  const tokens = normalizeCopilotCliUsage(metrics ?? {});
   if (isAllZero(tokens)) return null;
 
   return { source: "copilot-cli", model, timestamp, tokens };
+}
+
+/**
+ * Normalize Copilot CLI telemetry metrics to disjoint TokenDelta fields.
+ *
+ * Prefer `input_tokens_uncached` when present (modern logs). Fall back to
+ * max(0, input_tokens - cache_read_tokens) for older telemetry that only
+ * reports inclusive input_tokens.
+ */
+export function normalizeCopilotCliUsage(
+  metrics: Record<string, unknown>,
+): TokenDelta {
+  const cached = toNonNegInt(metrics.cache_read_tokens);
+  const inputUncached = metrics.input_tokens_uncached;
+  // Prefer explicit uncached field when present and numeric (including 0).
+  // Fall back when the key is absent or non-numeric (e.g. string garbage).
+  const hasUncached =
+    inputUncached !== undefined &&
+    inputUncached !== null &&
+    Number.isFinite(Number(inputUncached)) &&
+    Number(inputUncached) >= 0;
+
+  const inputTokens = hasUncached
+    ? toNonNegInt(inputUncached)
+    : Math.max(0, toNonNegInt(metrics.input_tokens) - cached);
+
+  return {
+    inputTokens,
+    cachedInputTokens: cached,
+    outputTokens: toNonNegInt(metrics.output_tokens),
+    reasoningOutputTokens: 0,
+  };
 }
 
 // ---------------------------------------------------------------------------
