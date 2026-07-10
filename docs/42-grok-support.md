@@ -502,8 +502,10 @@ labels 一起做。estimator 接受 reasoning(commit 0)+ propagation(commit 6)+ 
 
 **Web(2 处,不能忘)**:
 - `packages/web/src/__tests__/palette.test.ts:18` — `toHaveLength(11)` → 12,加 chart-12 断言
-- `packages/web/src/__tests__/e2e/api-e2e.test.ts` — 加一个 `it("accepts grok source records")` case
-  (现有 tests **不会自动覆盖 grok**,只 hard-code claude-code/gemini-cli/opencode)
+- `packages/web/src/__tests__/e2e/api-e2e.test.ts` — commit 6 加一个 `it("accepts and reads
+  back grok source records — every whitelist entry point")` case
+  (现有 tests **不会自动覆盖 grok**,只 hard-code claude-code/gemini-cli/opencode);
+  同时 seedTestUser 必须补 `slug` + `is_public=1` 才能打通 `/api/users/<slug>` 路径。
 
 ### 5.9 New tests（6 新文件）
 
@@ -607,8 +609,10 @@ union 加 `"grok"`,这两处 switch 立刻编译失败。同理,driver 依赖 `D
 - `packages/web/src/__tests__/palette.test.ts:18` — `toHaveLength(11)` → `toHaveLength(12)`,
   加 `chart-12` 断言、加 grok 对应 `agentColor()` 测试。
 - `packages/web/src/__tests__/e2e/api-e2e.test.ts` — 现有 ingest 测试**只写死** `claude-code` /
-  `gemini-cli` / `opencode` 三种 source,**不会自动覆盖 grok**。commit 5 里追加一个专门的
-  `it("accepts grok source records")` case,POST 一条 `source: "grok"` 记录并验证 201 + query 回读。
+  `gemini-cli` / `opencode` 三种 source,**不会自动覆盖 grok**。**commit 6**(不是 commit 5)
+  里追加 `it("accepts and reads back grok source records — every whitelist entry point")` case
+  (完整代码见 §7.3),并在 seedTestUser 里补 `slug` + `is_public=1`。commit 5 时 web 侧
+  `VALID_SOURCES` 还没更新,L2 会 400,所以必须放到 commit 6。
 
 ### 7.3 L2 Integration tests
 
@@ -620,53 +624,85 @@ union 加 `"grok"`,这两处 switch 立刻编译失败。同理,driver 依赖 `D
 只做 `SELECT * WHERE user=?`,即使某 route 忘了把 grok 加入 `VALID_SOURCES` 也依然 200,
 测试完全查不到问题。**每个 route 的白名单入口方式必须精确匹配**才能真触发校验。
 
-**Route → 白名单校验入口清单**(commit 5 test 必须每个都覆盖):
+**Route → 白名单校验入口清单**(commit 6 test 必须每个都覆盖 — 注意 commit 5 时 web 侧
+`VALID_SOURCES` 还没加 grok,L2 case 必须放 commit 6):
 
 | Route | 校验入口 | L2 打法 |
 |---|---|---|
-| `/api/ingest` | POST body 里的 `records[*].source` | `POST /api/ingest {records:[{source:"grok",...}]}` |
+| `/api/ingest` | POST body 是 **`IngestRecord[]` bare array**(不是 `{records:[...]}`)里的 `records[*].source` | `POST /api/ingest [{source:"grok",...}]` |
 | `/api/usage` | query `?source=` | `GET /api/usage?source=grok` |
 | `/api/sessions` | query `?source=` | `GET /api/sessions?source=grok` |
 | `/api/leaderboard` | query `?source=` | `GET /api/leaderboard?source=grok` |
-| `/api/users/<slug>` | query `?source=` | `GET /api/users/e2e-test-user?source=grok` |
-| **`/api/projects`** | **POST body 里的 `aliases[*].source`**(**不读** `?source=`) | `POST /api/projects {name:"p", aliases:[{source:"grok",project_ref:"repo"}]}` |
-| **`/api/projects/[id]`** | **PATCH body 里的 `aliasesToAdd[*].source` / `aliasesToRemove[*].source`**(**不读** `?source=`) | `PATCH /api/projects/<id> {aliasesToAdd:[{source:"grok",project_ref:"repo"}]}` |
+| `/api/users/<slug>` | query `?source=` | `GET /api/users/<slug>?source=grok`(前置:test user 必须有 slug + is_public=1) |
+| **`/api/projects`** | **POST body 里的 `aliases[*].source`**(**不读** `?source=`) | `POST /api/projects {name:"...", aliases:[{source:"grok",project_ref:"..."}]}` |
+| **`/api/projects/[id]`** | **PATCH body 里的 `add_aliases[*].source` / `remove_aliases[*].source`**(**不是** camelCase `aliasesToAdd`) | `PATCH /api/projects/<id> {add_aliases:[{source:"grok",project_ref:"..."}]}` |
 
-新增 case:
+**前置准备**(必须在 case 头部执行,否则某些 route 打不通):
+
+1. `TEST_USER_SLUG` 常量当前不存在;新增:`const TEST_USER_SLUG = "e2e-user-" + RUN_ID`(与
+   `TEST_USER_ID` 同 RUN_ID 挂钩,避免并发 CI 撞车)
+2. `seedTestUser()` 里的 INSERT 补两列:`slug=?, is_public=1`;并把 UPSERT 分支同步
+   (`ON CONFLICT (id) DO UPDATE SET email=excluded.email, slug=excluded.slug, is_public=1`)
+3. cleanup 里加 `DELETE FROM users WHERE id = ?` 保留(已有),但确认清空后 slug 不残留
+4. `/api/projects` route **不校验** alias project_ref 是否已有 session_records 或
+   usage_records 记录 —— 空 alias 会入库(reviewer 说需要"先有对应 session record" 那点
+   源于误解;实测 route 只校验 `typeof source/project_ref === "string"` + VALID_SOURCES);
+   L2 case 直接 POST 即可。
+
+新增 case(放 commit 6,不是 commit 5):
 ```typescript
 it("accepts and reads back grok source records — every whitelist entry point", async () => {
-  // 1. POST /api/ingest — ingest route's VALID_SOURCES
-  await POST("/api/ingest", { records: [makeRecord({
-    source: "grok", model: "grok-4.5",
-    input_tokens: 25315, cached_input_tokens: 63872,
-    output_tokens: 1682, reasoning_output_tokens: 111,
-  })]});
+  // 1. POST /api/ingest — bare-array body
+  const ingest = await fetch(`${BASE_URL}/api/ingest`, {
+    method: "POST",
+    headers: INGEST_HEADERS,
+    body: JSON.stringify([  // <-- bare array, NOT wrapped in {records:...}
+      makeRecord({
+        source: "grok",
+        model: "grok-4.5",
+        input_tokens: 25315,
+        cached_input_tokens: 63872,
+        output_tokens: 1682,
+        reasoning_output_tokens: 111,
+      }),
+    ]),
+  });
+  expect(ingest.status).toBe(200);
 
   // 2. Every ?source= route
   for (const path of [
     "/api/usage?source=grok",
     "/api/sessions?source=grok",
     "/api/leaderboard?source=grok",
-    `/api/users/${TEST_USER_SLUG}?source=grok`,
+    `/api/users/${TEST_USER_SLUG}?source=grok`,  // needs public slug (see prereq)
   ]) {
-    const r = await GET(path);
+    const r = await fetch(`${BASE_URL}${path}`);
     expect(r.status, path).toBe(200);
   }
 
   // 3. /api/projects — POST alias with source:"grok"
-  const create = await POST("/api/projects", {
-    name: "grok-e2e",
-    aliases: [{ source: "grok", project_ref: "e2e-repo" }],
+  const create = await fetch(`${BASE_URL}/api/projects`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: `grok-e2e-${RUN_ID}`,
+      aliases: [{ source: "grok", project_ref: `e2e-repo-${RUN_ID}` }],
+    }),
   });
   expect(create.status).toBe(201);
   const { project } = await create.json();
 
-  // 4. /api/projects/[id] — PATCH alias with source:"grok"
-  const patch = await PATCH(`/api/projects/${project.id}`, {
-    aliasesToAdd: [{ source: "grok", project_ref: "e2e-repo-2" }],
+  // 4. /api/projects/[id] — PATCH with add_aliases (snake_case!)
+  const patch = await fetch(`${BASE_URL}/api/projects/${project.id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      add_aliases: [{ source: "grok", project_ref: `e2e-repo-${RUN_ID}-2` }],
+    }),
   });
   expect(patch.status).toBe(200);
 });
+```
 ```
 
 若某个 route 的 `VALID_SOURCES` 数组漏了 `"grok"`,对应的 assert 会 400/`"Invalid source parameter"`,
