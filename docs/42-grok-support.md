@@ -433,26 +433,49 @@ Session driver 采用 mtime-based `SessionFileCursor`（同 kosmos / vscode-copi
 
 commit 0 让 `estimateCost()` 接受 `reasoningTokens`,但**上游根本没有 reasoning 数据可传**
 —— 现有多层聚合都只有 `input/output/cached`。修完 commit 0 后,如果 Grok 或 Claude 或
-Codex 未来产生 reasoning 数据,页面成本估算仍**不会包含 reasoning 部分**,除非同步扩展:
+Codex 未来产生 reasoning 数据,页面成本估算仍**不会包含 reasoning 部分**,除非同步扩展下面
+**11 处**(不完全列表可能仍有遗漏 — commit 6 CI 全绿 + pin-test 通过是唯一可信信号):
 
 | 层 | 文件 | 改动 |
 |---|---|---|
 | Core type | `packages/core/src/types.ts` | `DeviceCostDetail` 加 `reasoning_output_tokens: number` |
-| Worker-read SQL(by-device 细节)| `packages/worker-read/src/rpc/usage.ts:handleGetDeviceCostDetails` | SELECT 里 `SUM(ur.reasoning_output_tokens) AS reasoning_output_tokens` |
+| Worker-read SQL:by-device 细节 | `packages/worker-read/src/rpc/usage.ts:handleGetDeviceCostDetails` | SELECT 里 `SUM(ur.reasoning_output_tokens) AS reasoning_output_tokens` |
 | Worker-read row type | `packages/worker-read/src/rpc/usage.ts:CostDetailRow` | 加 `reasoning_output_tokens: number` |
-| Web type | `packages/web/src/lib/usage-transforms.ts:ModelAggregate` | 加 `reasoning: number` |
-| Web aggregator | `packages/web/src/lib/usage-transforms.ts:toModelAggregates` | 累加 `reasoning += r.reasoning_output_tokens`;初始化时读取 |
-| Web helpers 内聚合类型 | `packages/web/src/lib/usage-helpers.ts` 所有内部 `{ inputTokens, outputTokens, cachedTokens }` 结构(11 处 interface + reducer) | 加 `reasoningTokens` 字段,reducer `+=` 累加,`estimateCost` 调用传真值 |
-| Web cost-helpers | `packages/web/src/lib/cost-helpers.ts` 的 `m.input/m.output/m.cached` 调用点(3 处) | 传 `m.reasoning`(需 ModelAggregate 先加字段) |
-| Achievement cost row | `packages/web/src/lib/achievement-helpers.ts` | 相应字段扩展 |
+| **Worker-read SQL:achievements daily-cost** | `packages/worker-read/src/rpc/achievements.ts:129` | SELECT 加 `SUM(reasoning_output_tokens)` |
+| **Worker-read SQL:achievements per-model-source** | `packages/worker-read/src/rpc/achievements.ts:222` | SELECT 加 `SUM(reasoning_output_tokens)` |
+| **Worker-read type** | `packages/worker-read/src/rpc/achievements-types.ts:DailyCostRow` 和 `CostByModelSourceRow` | 两个 interface 各加 `reasoning_output_tokens: number` |
+| **Web RPC 镜像类型** | `packages/web/src/lib/rpc-types.ts:AchievementDailyCostRow` 和 `AchievementCostByModelSourceRow`(~L628 / L660) | 镜像加同名字段 |
+| **两个 achievement route computeCost** | `packages/web/src/app/api/achievements/route.ts:57` (`computeCost`) 与调用点 :196 :209;`packages/web/src/app/api/users/[slug]/achievements/route.ts:42` 与 :113 :130 | `computeCost` 签名加 `reasoningTokens`,调用点从聚合行读 `row.reasoning_output_tokens` 传入 |
+| Web `ModelAggregate` | `packages/web/src/lib/usage-transforms.ts:58` | 加 `reasoning: number` |
+| Web `toModelAggregates` | `packages/web/src/lib/usage-transforms.ts:145` | 累加 `reasoning += r.reasoning_output_tokens`;初始化 `reasoning: r.reasoning_output_tokens` |
+| Web helpers 内聚合结构 | `packages/web/src/lib/usage-helpers.ts` 所有内部 `{ inputTokens, outputTokens, cachedTokens }` interface + reducer(见 L27/48/59/70/153 等 11 处) | 各加 `reasoningTokens`,reducer `+=` 累加,`estimateCost` 调用传真值 |
+| Web `cost-helpers` | `packages/web/src/lib/cost-helpers.ts` 的 `m.input/m.output/m.cached` 调用点(L23 / L59 / L206) | 传 `m.reasoning`(需 ModelAggregate 先加字段) |
 
-**验证**:commit 6(reasoning propagation)完成后,`pricing.test.ts` 新增一个 case:
-Grok row `{input:100, cached:500, output:200, reasoning:50}`,期望 total cost 包含
-`50/M * pricing.reasoning`。若任一层漏改,断言会失败(reasoning=0)。
+**注**:之前草案里"Achievement cost row: `web/src/lib/achievement-helpers.ts`" 是错的
+— `achievement-helpers.ts` 只有 "reasoning-junkie" achievement 定义,不做 cost 计算。
+cost 逻辑在**两个 achievement route 的 `computeCost()`**,数据源在 **worker-read
+`achievements.ts` 两条 daily-cost SQL** 和它的镜像类型。
 
-**排期**:这是 commit 6(web dashboard)的一部分,不再是独立 commit;和 palette / labels
-一起做,因为 estimator 接受 reasoning(commit 0)+ propagation(commit 6)组合起来才让
-grok 成本正确。
+### 5.6b 层级测试(仅 pricing.test 不够)
+
+pricing.test.ts 只覆盖 estimator 本身,漏了任一上游聚合都不会让 pricing 单元测试失败
+(它输入什么就算什么)。commit 6 必须**每层单独 pin 测试**:
+
+| 层 | 测试文件 | 关键断言 |
+|---|---|---|
+| **estimator** | `packages/web/src/__tests__/pricing.test.ts` | `estimateCost(100, 200, 500, 50, pricing)` 的 `totalCost` 包含 `50/M * pricing.reasoning` |
+| **worker-read achievements SQL** | `packages/worker-read/src/rpc/achievements.test.ts` | seed 一行 `reasoning_output_tokens=50`,断言 `DailyCostRow`/`CostByModelSourceRow` 返回 `reasoning_output_tokens: 50` |
+| **worker-read by-device SQL** | `packages/worker-read/src/rpc/usage.test.ts` | seed 一行 grok,`handleGetDeviceCostDetails` 返回的 CostDetailRow 含 `reasoning_output_tokens` |
+| **web usage-transforms** | `packages/web/src/__tests__/usage-transforms.test.ts`(新增或补) | `toModelAggregates([{...,reasoning_output_tokens:50}])` 结果 `models[0].reasoning === 50` |
+| **web usage-helpers reducer** | `packages/web/src/__tests__/usage-helpers.test.ts` | 每个 reducer(11 处的代表 3 处:per-model、per-hour、per-day)聚合后 `reasoningTokens` 累加正确 |
+| **web achievements route** | `packages/web/src/__tests__/achievements-route.test.ts` (or e2e) | mock RPC 返回带 reasoning 的行,`computeCost` 结果 delta 与不带 reasoning 差异 = `50/M * priceReasoning` |
+| **e2e/api-e2e** | `packages/web/src/__tests__/e2e/api-e2e.test.ts` | ingest 一条 `reasoning_output_tokens=50` grok 行,GET `/api/users/<slug>?source=grok`(见 §7.3 setup)总成本含 reasoning |
+
+任一层未改会让**对应的层测试失败**,不会遗漏。
+
+**排期**:这一整套(propagation + 6 层 pin-test)是 commit 6 的一部分,和 palette /
+labels 一起做。estimator 接受 reasoning(commit 0)+ propagation(commit 6)+ 层测试
+组合起来才让 grok 成本正确。
 
 ### 5.7 Docs / onboarding(3 文件,edit)
 
@@ -511,7 +534,7 @@ union 加 `"grok"`,这两处 switch 立刻编译失败。同理,driver 依赖 `D
 | 3 | `feat(cli): add grok session parser (no wiring)` | `parsers/grok-session.ts` + `grok-session.test.ts`。同上。 | ✅ |
 | 4 | `feat(cli): add grok token+session drivers and register them` | `drivers/token/grok-token-driver.ts`、`drivers/session/grok-session-driver.ts`、`discovery/sources.ts` 新增 `discoverGrokLogFile()` + `discoverGrokSessionDirs()`、`drivers/registry.ts` 注册两个 driver + registry test 更新。driver 依赖 (2)/(3) 的 parser 和 (1) 的 DiscoverOpts,都已就位。 | ✅ |
 | 5 | `feat(cli): wire grok end-to-end through sync + status + notify` | `commands/sync.ts` / `session-sync.ts` / `notify.ts` / `status.ts` 里传入 `grokLogsPath` / `grokSessionsDir`,sync/session-sync/status test 追加 grok 覆盖。此时 CLI 端 grok source 完整可用。 | ✅ |
-| 6 | `feat(web): add grok to dashboard palette, labels, API validation, and propagate reasoning end-to-end` | 9 个 web 文件 + `palette.test.ts` 里 `toHaveLength(11) → 12` 和 `chart-12` 断言 + 相关 dashboard test。**同时完成 §5.6b reasoning propagation 链**:`DeviceCostDetail` / `ModelAggregate` 加字段;`worker-read/src/rpc/usage.ts:handleGetDeviceCostDetails` SQL 加 `SUM(reasoning_output_tokens)`;`usage-transforms.ts:toModelAggregates` / `usage-helpers.ts` 所有 aggregate reducer / `cost-helpers.ts` 3 处 estimateCost 传 `m.reasoning`。加断言 test:grok row `{100 in, 500 cached, 200 out, 50 reasoning}` 总成本包含 reasoning 部分。 | ✅ |
+| 6 | `feat(web): add grok to dashboard palette, labels, API validation, and propagate reasoning end-to-end` | 9 个 web 文件 + `palette.test.ts` 里 `toHaveLength(11) → 12` 和 `chart-12` 断言 + 相关 dashboard test。**同时完成 §5.6b 的 11 层 reasoning propagation**:`DeviceCostDetail` 类型 + `worker-read/src/rpc/usage.ts:handleGetDeviceCostDetails` SQL + `worker-read/src/rpc/achievements.ts` 两条 daily-cost SQL(L129, L222)+ `worker-read/src/rpc/achievements-types.ts` 两个 interface + `web/src/lib/rpc-types.ts` 镜像 + 两个 achievement route 的 `computeCost()` 签名和调用点 + `ModelAggregate` + `toModelAggregates` + `usage-helpers.ts` 11 处 reducer + `cost-helpers.ts` 3 处 estimateCost 调用。**同时加 §5.6b 的 6 层 pin-test**(estimator、worker-read achievements SQL、worker-read by-device SQL、usage-transforms、usage-helpers reducer、achievements route、e2e/api-e2e),任一层漏改立刻失败。 | ✅ |
 | 7 | `docs(42): mark grok support as implemented; update CLAUDE.md/README/PRIVACY` | 4 个文档 + doc 42 status → done + tool 数字 11 → 12。 | ✅ |
 
 每个 commit 单独运行:
@@ -684,7 +707,7 @@ commit 5 立刻停下。
 | Commit 3 | grok-session.ts parser + tests | 20 min |
 | Commit 4 | 两个 driver + discovery + registry + tests | 40 min |
 | Commit 5 | sync/notify/status end-to-end wiring + tests | 25 min |
-| Commit 6 | Web dashboard 9 文件 + reasoning propagation(DeviceCostDetail/ModelAggregate/usage-helpers/cost-helpers)+ worker-read SQL + palette/e2e test | 60 min |
+| Commit 6 | Web dashboard 9 文件 + reasoning propagation 11 层(core + worker-read x4 + web x6)+ 6 层 pin-test + palette/e2e | 90 min |
 | Commit 7 | Docs + PRIVACY + CLAUDE.md + doc 42 close | 15 min |
 | 全量 test + lint + golden 验证 | | 20 min |
 | **合计** | | **~4 h** |
