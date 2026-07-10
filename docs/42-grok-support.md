@@ -8,8 +8,8 @@
 
 ### ✅ 严格保证
 
-1. **完全隔离**：Grok parser 任何异常（读文件失败 / JSON 解析失败 / schema 变化）
-   最坏结果只是 Grok source 统计不到数据，绝不影响其他 10 个 source 的同步。
+1. **完全隔离**:Grok parser 任何异常(读文件失败 / JSON 解析失败 / schema 变化)
+   最坏结果只是 Grok source 统计不到数据,绝不影响其他 source 的同步。
 2. **原始文件只读**：只从 `~/.grok/logs/unified.jsonl` 读，不修改、不删除、不移动。
 3. **幂等上传**：`pew reset && pew sync` 任何时刻结果一致；同 `hour_bucket` upsert 到 D1，绝不 SUM。
 4. **精确 token 归因**：与 Anthropic / OpenCode 一致，保留 4 路 token（input / cached / output / reasoning），
@@ -434,7 +434,7 @@ Session driver 采用 mtime-based `SessionFileCursor`（同 kosmos / vscode-copi
 commit 0 让 `estimateCost()` 接受 `reasoningTokens`,但**上游根本没有 reasoning 数据可传**
 —— 现有多层聚合都只有 `input/output/cached`。修完 commit 0 后,如果 Grok 或 Claude 或
 Codex 未来产生 reasoning 数据,页面成本估算仍**不会包含 reasoning 部分**,除非同步扩展下面
-**11 处**(不完全列表可能仍有遗漏 — commit 6 CI 全绿 + pin-test 通过是唯一可信信号):
+的层(计数不确定,commit 6 CI 全绿 + pin-test 通过是唯一可信信号):
 
 | 层 | 文件 | 改动 |
 |---|---|---|
@@ -457,7 +457,7 @@ Codex 未来产生 reasoning 数据,页面成本估算仍**不会包含 reasonin
 | 两个 achievement route computeCost | `packages/web/src/app/api/achievements/route.ts:57` (`computeCost`) 与调用点 :196 :209;`packages/web/src/app/api/users/[slug]/achievements/route.ts:42` 与 :113 :130 | `computeCost` 签名加 `reasoningTokens`,调用点从聚合行读 `row.reasoning_output_tokens` 传入 |
 | Web `ModelAggregate` | `packages/web/src/lib/usage-transforms.ts:58` | 加 `reasoning: number` |
 | Web `toModelAggregates` | `packages/web/src/lib/usage-transforms.ts:145` | 累加 `reasoning += r.reasoning_output_tokens`;初始化 `reasoning: r.reasoning_output_tokens` |
-| Web helpers 内聚合结构 | `packages/web/src/lib/usage-helpers.ts` 所有内部 `{ inputTokens, outputTokens, cachedTokens }` interface + reducer(见 L27/48/59/70/153 等 11 处) | 各加 `reasoningTokens`,reducer `+=` 累加,`estimateCost` 调用传真值 |
+| Web helpers 内聚合结构 | `packages/web/src/lib/usage-helpers.ts` 所有内部 `{ inputTokens, outputTokens, cachedTokens }` interface + reducer(grep `cachedTokens` 定位) | 各加 `reasoningTokens`,reducer `+=` 累加,`estimateCost` 调用传真值 |
 | Web `cost-helpers` | `packages/web/src/lib/cost-helpers.ts` 的 `m.input/m.output/m.cached` 调用点(L23 / L59 / L206) | 传 `m.reasoning`(需 ModelAggregate 先加字段) |
 
 **注**:之前草案里"Achievement cost row: `web/src/lib/achievement-helpers.ts`" 是错的
@@ -477,14 +477,14 @@ pricing.test.ts 只覆盖 estimator 本身,漏了任一上游聚合都不会让 
 | **worker-read by-device SQL(cost + timeline 两处)** | `packages/worker-read/src/rpc/usage.test.ts` | seed 一行 grok,`handleGetDeviceCostDetails` 返回的 CostDetailRow 含 `reasoning_output_tokens`;`handleGetDeviceTimeline` 返回的 TimelineRow 也含之 |
 | **web device breakdown reducers** | `packages/web/src/__tests__/device-helpers.test.ts` | 一组带 reasoning 的 DeviceCostDetail 输入,`toDeviceAgentBreakdown` 和 `toDeviceModelBreakdown` 结果里各 row 的 `reasoning_output_tokens` 正确累加;`total_tokens` 等于 input+output+cached+reasoning |
 | **web usage-transforms** | `packages/web/src/__tests__/usage-transforms.test.ts`(新增或补) | `toModelAggregates([{...,reasoning_output_tokens:50}])` 结果 `models[0].reasoning === 50` |
-| **web usage-helpers reducer** | `packages/web/src/__tests__/usage-helpers.test.ts` | 每个 reducer(11 处的代表 3 处:per-model、per-hour、per-day)聚合后 `reasoningTokens` 累加正确 |
+| **web usage-helpers reducer** | `packages/web/src/__tests__/usage-helpers.test.ts` | 每个 reducer(代表 3 处:per-model、per-hour、per-day)聚合后 `reasoningTokens` 累加正确 |
 | **web achievements route** | `packages/web/src/__tests__/achievements-route.test.ts` (or e2e) | mock RPC 返回带 reasoning 的行,`computeCost` 结果 delta 与不带 reasoning 差异 = `50/M * priceReasoning` |
 | **e2e/api-e2e — token 保留**(user route) | `packages/web/src/__tests__/e2e/api-e2e.test.ts` | ingest 一条 `reasoning_output_tokens=50` grok 行,GET `/api/users/${TEST_USER_SLUG}?source=grok` 返回的 token summary 里 `reasoning_output_tokens === 50`。**注意**:`/api/users/[slug]` route 只算 token summary,**不算 estimated_cost**,不能用来验成本传播 |
 | **e2e/api-e2e — cost 传播**(by-device) | 同上文件 | ingest 同一条 grok 行(含 `device_id`),GET `/api/usage/by-device?from=...&to=...`,断言 `devices[0].estimated_cost` 与"reasoning=0 时应有的 cost" 差异 ≥ `50/M * pricing.reasoning`(pricing 从 `DEFAULT_SOURCE_DEFAULTS` 查 grok 单价)。这是唯一能端到端验证 reasoning **进入成本估算**的 e2e 路径 |
 
 任一层未改会让**对应的层测试失败**,不会遗漏。
 
-**排期**:这一整套(propagation + 6 层 pin-test)是 commit 6 的一部分,和 palette /
+**排期**:这一整套(propagation + pin-test)是 commit 6 的一部分,和 palette /
 labels 一起做。estimator 接受 reasoning(commit 0)+ propagation(commit 6)+ 层测试
 组合起来才让 grok 成本正确。
 
@@ -498,7 +498,7 @@ labels 一起做。estimator 接受 reasoning(commit 0)+ propagation(commit 6)+ 
 
 以下现有 test 里硬编码 11 source 断言的地方,必须同步扩展:
 
-**Core / CLI(11 处)**:
+**Core / CLI**:
 - `packages/core/src/__tests__/constants.test.ts` — SOURCES 数组断言
 - `packages/core/src/__tests__/types.test.ts`
 - `packages/core/src/__tests__/validation.test.ts`
@@ -542,12 +542,12 @@ union 加 `"grok"`,这两处 switch 立刻编译失败。同理,driver 依赖 `D
 | # | Commit | 内容 | 独立编译? |
 |---|---|---|---|
 | 0 | `fix(web): estimateCost inputCost uses inputTokens directly (no cache subtraction) + accept reasoningTokens` | 两处 pricing.ts 内部改动 + `pricing.test.ts` 更新预期(新增 cached>input 的 case 明确断言 input 不被砍)+ **全部 14 处**生产调用点扩展签名 `estimateCost(input, output, cached, reasoning, pricing)`(2 achievements route + 1 by-device route + 2 dashboard 页面 + 3 处 `cost-helpers.ts` + 6 处 `usage-helpers.ts`;reasoning 传 `0` 保原成本行为,直到 P1b 让上游真值可用)。**reasoning 参数必填**,防止遗漏 callsite。 | ✅ 独立 refactor,无 grok 引用 |
-| 1 | **`feat: add "grok" source foundation (types + all exhaustive switches + DiscoverOpts stub)`** | `core/types.ts` `Source` 加 grok + 加 `GrokCursor` 若需要;`core/constants.ts` `SOURCES` 加 grok;**同时**加 `sync.ts`/`session-sync.ts`/`session-sync-helpers.ts` 里 `sourceKey()` 的 `case "grok"`、`SyncResult.sources.grok`、`filesScanned.grok` 初始化;`drivers/types.ts` `DiscoverOpts` 加 `grokLogsPath?` + `grokSessionsDir?`;`utils/paths.ts` 加 grok 三个默认路径;`cli.ts` `isSource()` + `SOURCE_LABELS` + `SourceDirs`;所有 11 处 constants/types/validation test 断言更新。**尚无 driver 注册,尚无 parser** — foundation commit,typecheck + lint 全绿 | ✅ |
+| 1 | **`feat: add "grok" source foundation (types + all exhaustive switches + DiscoverOpts stub)`** | `core/types.ts` `Source` 加 grok + 加 `GrokCursor` 若需要;`core/constants.ts` `SOURCES` 加 grok;**同时**加 `sync.ts`/`session-sync.ts`/`session-sync-helpers.ts` 里 `sourceKey()` 的 `case "grok"`、`SyncResult.sources.grok`、`filesScanned.grok` 初始化;`drivers/types.ts` `DiscoverOpts` 加 `grokLogsPath?` + `grokSessionsDir?`;`utils/paths.ts` 加 grok 三个默认路径;`cli.ts` `isSource()` + `SOURCE_LABELS` + `SourceDirs`;所有列在 §5.8 里的 core/CLI test 断言更新。**尚无 driver 注册,尚无 parser** — foundation commit,typecheck + lint 全绿 | ✅ |
 | 2 | `feat(cli): add grok log parser and normalizer (no wiring)` | `parsers/grok.ts` + `grok-parser.test.ts`。**TDD 先测后码**。此时 parser 尚未被任何 driver 调用,纯函数库。 | ✅ |
 | 3 | `feat(cli): add grok session parser (no wiring)` | `parsers/grok-session.ts` + `grok-session.test.ts`。同上。 | ✅ |
 | 4 | `feat(cli): add grok token+session drivers and register them` | `drivers/token/grok-token-driver.ts`、`drivers/session/grok-session-driver.ts`、`discovery/sources.ts` 新增 `discoverGrokLogFile()` + `discoverGrokSessionDirs()`、`drivers/registry.ts` 注册两个 driver + registry test 更新。driver 依赖 (2)/(3) 的 parser 和 (1) 的 DiscoverOpts,都已就位。 | ✅ |
 | 5 | `feat(cli): wire grok end-to-end through sync + status + notify` | `commands/sync.ts` / `session-sync.ts` / `notify.ts` / `status.ts` 里传入 `grokLogsPath` / `grokSessionsDir`,sync/session-sync/status test 追加 grok 覆盖。此时 CLI 端 grok source 完整可用。 | ✅ |
-| 6 | `feat(web): add grok to dashboard palette, labels, API validation, and propagate reasoning end-to-end` | 9 个 web 文件 + `palette.test.ts` 里 `toHaveLength(11) → 12` 和 `chart-12` 断言 + 相关 dashboard test。**同时完成 §5.6b 的 17 层 reasoning propagation**:`DeviceCostDetail` + `DeviceTimelinePoint` 类型 + `worker-read/src/rpc/usage.ts` 三处 SQL(`handleGetDeviceCostDetails` + `handleGetDeviceTimeline` + summary 已有)+ `CostDetailRow` + `TimelineRow` interface + `worker-read/src/rpc/achievements.ts` 两条 daily-cost SQL(L129, L222)+ `achievements-types.ts` 两个 interface + `web/src/lib/rpc-types.ts` 镜像 + **`api/usage/by-device/route.ts:124, 152, 162` 三处**(`estimateCost` 传 reasoning + timeline map 输出 reasoning + deviceDetails map 输出 reasoning 且 `total_tokens` 加 reasoning)+ 两个 achievement route 的 `computeCost()` + `ModelAggregate` + `toModelAggregates` + `usage-helpers.ts` 11 处 reducer + `cost-helpers.ts` 3 处 estimateCost 调用。**同时加 §5.6b 的 7 层 pin-test**(estimator、worker-read achievements SQL、worker-read by-device 两个 SQL、usage-transforms、usage-helpers reducer、achievements route、e2e/api-e2e),任一层漏改立刻失败。 | ✅ |
+| 6 | `feat(web): add grok to dashboard palette, labels, API validation, and propagate reasoning end-to-end` | Web dashboard 文件(见 §5.6)+ `palette.test.ts` 里 `toHaveLength(11) → toHaveLength(12)` 和 `chart-12` 断言 + 相关 dashboard test。**同时完成 §5.6b 全部 reasoning propagation 层**(core 类型 + worker-read SQL/type + web RPC 镜像 + `api/usage/by-device/route.ts` 三处 + 两个 achievement route 的 `computeCost()` + `ModelAggregate` + `toModelAggregates` + `usage-helpers.ts` 所有 reducer + `cost-helpers.ts` 三处 estimateCost 调用 + `device-helpers.ts` 两个 breakdown row/reducer + 两个 device chart keys/labels)。**同时加 §5.6b 全部 pin-test**,任一层漏改立刻失败。 | ✅ |
 | 7 | `docs(42): mark grok support as implemented; update CLAUDE.md/README/PRIVACY` | 4 个文档 + doc 42 status → done + tool 数字 11 → 12。 | ✅ |
 
 每个 commit 单独运行:
@@ -745,7 +745,7 @@ it("accepts and reads back grok source records — every whitelist entry point",
 ```
 
 若某个 route 的 `VALID_SOURCES` 数组漏了 `"grok"`,对应的 assert 会 400/`"Invalid source parameter"`,
-commit 5 立刻停下。
+commit 6 立刻停下。
 
 ### 7.4 L3 Browser E2E
 
@@ -768,7 +768,7 @@ commit 5 立刻停下。
 
 **关键 case**: 故意破坏 `~/.grok/logs/unified.jsonl`(chmod 000 / 截断 / 塞乱码),
 运行 `pew sync`,验证:
-- 其他 10 个 source 全部正常同步
+- 其他 source 全部正常同步
 - grok source 报 warning 但不抛异常
 - 不 crash
 
@@ -777,12 +777,12 @@ commit 5 立刻停下。
 | 阶段 | 内容 | 预计 |
 |---|---|---|
 | Commit 0 | pricing.ts 去掉 nonCached 减法 + 加 reasoning + 14 callsite 迁移 + 更新 5 处 test 预期 | 40 min |
-| Commit 1 | Foundation:core types + 所有 exhaustive switch + DiscoverOpts + paths + status wiring + 11 处 test 断言 | 45 min |
+| Commit 1 | Foundation:core types + 所有 exhaustive switch + DiscoverOpts + paths + status wiring + 所有列在 §5.8 的 test 断言 | 45 min |
 | Commit 2 | grok.ts parser + tests | 35 min |
 | Commit 3 | grok-session.ts parser + tests | 20 min |
 | Commit 4 | 两个 driver + discovery + registry + tests | 40 min |
 | Commit 5 | sync/notify/status end-to-end wiring + tests | 25 min |
-| Commit 6 | Web dashboard 9 文件 + reasoning propagation 17 层(core x2 + worker-read x6 + web x9,含 by-device route 3 处)+ 7 层 pin-test + palette/e2e | 110 min |
+| Commit 6 | Web dashboard 文件 + §5.6b 全部 reasoning propagation 层(core + worker-read + web,含 by-device route 三处 + device breakdown)+ 全部 pin-test + palette/e2e | 110 min |
 | Commit 7 | Docs + PRIVACY + CLAUDE.md + doc 42 close | 15 min |
 | 全量 test + lint + golden 验证 | | 20 min |
 | **合计** | | **~4 h** |
