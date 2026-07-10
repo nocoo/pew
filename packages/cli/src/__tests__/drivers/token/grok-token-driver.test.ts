@@ -156,4 +156,32 @@ describe("grokTokenDriver", () => {
     );
     expect(result.deltas[0]!.model).toBe("grok-4.5");
   });
+
+  it("honours grokSessionsDir override via SyncContext (not only sibling path)", async () => {
+    // Put sessions far from the log so sibling fallback would miss them
+    const overrideSessions = join(root, "elsewhere", "sessions");
+    const sid = "sid-1";
+    const sessionDir = join(overrideSessions, "%2Ftmp", sid);
+    await mkdir(sessionDir, { recursive: true });
+    await writeFile(
+      join(sessionDir, "signals.json"),
+      JSON.stringify({ modelsUsed: ["grok-override"], primaryModelId: "grok-override" }),
+    );
+    await writeFile(logPath, inferenceLine("2026-07-10T00:01:00.000Z") + "\n");
+
+    const ctx: Record<string, unknown> = {};
+    await grokTokenDriver.discover(
+      { grokLogsPath: logPath, grokSessionsDir: overrideSessions },
+      ctx as never,
+    );
+    expect(ctx.grokSessionsDir).toBe(overrideSessions);
+
+    const fp = await fingerprint(logPath);
+    const result = await grokTokenDriver.parse(
+      logPath,
+      grokTokenDriver.resumeState(undefined, fp),
+      ctx as never,
+    );
+    expect(result.deltas[0]!.model).toBe("grok-override");
+  });
 });

@@ -107,12 +107,12 @@ xAI 官方 CLI 编码代理，`grok` 可执行文件通常安装在 `~/.local/bi
 | `sid` | session id | 归因 |
 | `ts` | 事件时间(ISO 8601) | hour bucket 归属 |
 
-**归一化公式**:
+**归一化公式**（字段全部互斥；`completion` 含 `reasoning`，实测 104/104 条）:
 
 ```
-inputTokens          = max(0, prompt_tokens - cached_prompt_tokens)   // non-cached
-cachedInputTokens    = cached_prompt_tokens
-outputTokens         = completion_tokens
+inputTokens           = max(0, prompt_tokens - cached_prompt_tokens)   // non-cached
+cachedInputTokens     = cached_prompt_tokens
+outputTokens          = max(0, completion_tokens - reasoning_tokens)   // non-reasoning
 reasoningOutputTokens = reasoning_tokens
 ```
 
@@ -568,7 +568,7 @@ union 加 `"grok"`,这两处 switch 立刻编译失败。同理,driver 依赖 `D
 | Case | 输入 | 期望 |
 |---|---|---|
 | 1 | `msg=shell.turn.inference_done` 单行 | 1 delta，字段映射正确 |
-| 2 | 3 行 `inference_done`（本机真实数据） | 3 deltas，总 in=25315 cached=63872 out=1682 rea=111 |
+| 2 | 3 行 `inference_done`（本机真实数据） | 3 deltas，总 in=25315 cached=63872 out=1571 rea=111（out=completion−reasoning） |
 | 3 | 非 `inference_done` 事件（phase_changed 等） | 0 deltas，正常跳过 |
 | 4 | 缺 `prompt_tokens` 字段 | 0 deltas（`isAllZero` 过滤） |
 | 5 | 缺 `cached_prompt_tokens`（旧 grok 版本） | `cached = 0`，`input = prompt_tokens` 全额 |

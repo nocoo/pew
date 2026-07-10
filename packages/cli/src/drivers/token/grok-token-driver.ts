@@ -30,8 +30,12 @@ export const grokTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
   kind: "file",
   source: "grok",
 
-  async discover(opts: DiscoverOpts, _ctx: SyncContext): Promise<string[]> {
+  async discover(opts: DiscoverOpts, ctx: SyncContext): Promise<string[]> {
     if (!opts.grokLogsPath) return [];
+    // Stash override so parse() can resolve models without hard-coding layout
+    if (opts.grokSessionsDir) {
+      ctx.grokSessionsDir = opts.grokSessionsDir;
+    }
     return discoverGrokLogFile(opts.grokLogsPath);
   },
 
@@ -45,10 +49,12 @@ export const grokTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
     return { kind: "byte-offset", startOffset };
   },
 
-  async parse(filePath: string, resume: ResumeState, _ctx: SyncContext): Promise<GrokParseResult> {
+  async parse(filePath: string, resume: ResumeState, ctx: SyncContext): Promise<GrokParseResult> {
     const r = resume as ByteOffsetResumeState;
-    // logs/unified.jsonl → sibling sessions/
-    const sessionsDir = join(dirname(filePath), "..", "sessions");
+    // Prefer explicit override (DiscoverOpts.grokSessionsDir via ctx);
+    // fall back to default layout: logs/unified.jsonl → sibling sessions/
+    const sessionsDir =
+      ctx.grokSessionsDir ?? join(dirname(filePath), "..", "sessions");
     const maps = await buildGrokModelMaps(sessionsDir);
     const result = await parseGrokLogFile({
       filePath,
