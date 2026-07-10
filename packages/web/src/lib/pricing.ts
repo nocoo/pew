@@ -59,6 +59,8 @@ export interface ModelPricing {
   output: number;
   /** Price per 1M cached input tokens (USD), defaults to input * 0.1 */
   cached?: number;
+  /** Price per 1M reasoning/output-thinking tokens (USD), defaults to output */
+  reasoning?: number;
 }
 
 /** Serialisable pricing map sent to clients via /api/pricing */
@@ -281,33 +283,41 @@ export interface CostBreakdown {
   inputCost: number;
   outputCost: number;
   cachedCost: number;
+  reasoningCost: number;
   totalCost: number;
 }
 
 /**
  * Calculate estimated cost for a set of tokens.
+ *
+ * `inputTokens` and `cachedTokens` are disjoint (every parser stores
+ * non-cached input separately from cache_read). Do NOT subtract cached
+ * from input — that would zero out real input under high cache hit rates.
+ *
+ * `reasoningTokens` is billed separately; unit price falls back to output.
  */
 export function estimateCost(
   inputTokens: number,
   outputTokens: number,
   cachedTokens: number,
+  reasoningTokens: number,
   pricing: ModelPricing
 ): CostBreakdown {
   const M = 1_000_000;
   const cachedPrice = pricing.cached ?? pricing.input * 0.1;
+  const reasoningPrice = pricing.reasoning ?? pricing.output;
 
-  // Non-cached input = total input minus cached portion
-  const nonCachedInput = Math.max(0, inputTokens - cachedTokens);
-
-  const inputCost = (nonCachedInput / M) * pricing.input;
+  const inputCost = (inputTokens / M) * pricing.input;
   const outputCost = (outputTokens / M) * pricing.output;
   const cachedCost = (cachedTokens / M) * cachedPrice;
+  const reasoningCost = (reasoningTokens / M) * reasoningPrice;
 
   return {
     inputCost,
     outputCost,
     cachedCost,
-    totalCost: inputCost + outputCost + cachedCost,
+    reasoningCost,
+    totalCost: inputCost + outputCost + cachedCost + reasoningCost,
   };
 }
 

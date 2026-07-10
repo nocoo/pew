@@ -50,14 +50,14 @@ describe("computeTotalCost", () => {
 
   it("computes cost for a single model using exact pricing match", () => {
     // claude-sonnet-4-20250514: input=$3/M, output=$15/M, cached=$0.3/M
-    // Non-cached input = 1M - 200k = 800k
-    // inputCost  = 800_000 / 1M * 3   = 2.4
-    // outputCost = 500_000 / 1M * 15   = 7.5
-    // cachedCost = 200_000 / 1M * 0.3  = 0.06
-    // total = 9.96
+    // input and cached are disjoint — charge both in full
+    // inputCost  = 1_000_000 / 1M * 3   = 3.0
+    // outputCost = 500_000 / 1M * 15     = 7.5
+    // cachedCost = 200_000 / 1M * 0.3    = 0.06
+    // total = 10.56
     const models = [makeAggregate()];
     const cost = computeTotalCost(models, makePricingMap());
-    expect(cost).toBeCloseTo(9.96, 2);
+    expect(cost).toBeCloseTo(10.56, 2);
   });
 
   it("sums costs across multiple models", () => {
@@ -99,17 +99,17 @@ describe("toDailyCostPoints", () => {
 
   it("computes cost for a single day with one row", () => {
     // claude-sonnet-4-20250514: input=$3/M, output=$15/M, cached=$0.3/M
-    // Non-cached input = 100k - 20k = 80k
-    // inputCost  = 80_000 / 1M * 3   = 0.24
-    // outputCost = 50_000 / 1M * 15   = 0.75
-    // cachedCost = 20_000 / 1M * 0.3  = 0.006
-    // totalCost = 0.996
+    // input and cached are disjoint — charge both in full
+    // inputCost  = 100_000 / 1M * 3   = 0.30
+    // outputCost = 50_000 / 1M * 15    = 0.75
+    // cachedCost = 20_000 / 1M * 0.3   = 0.006
+    // totalCost = 1.056
     const rows = [makeRow()];
     const result = toDailyCostPoints(rows, pm);
     expect(result).toHaveLength(1);
     expect(result[0]!.date).toBe("2026-03-10");
-    expect(result[0]!.totalCost).toBeCloseTo(0.996, 3);
-    expect(result[0]!.inputCost).toBeCloseTo(0.24, 3);
+    expect(result[0]!.totalCost).toBeCloseTo(1.056, 3);
+    expect(result[0]!.inputCost).toBeCloseTo(0.30, 3);
     expect(result[0]!.outputCost).toBeCloseTo(0.75, 3);
     expect(result[0]!.cachedCost).toBeCloseTo(0.006, 3);
   });
@@ -365,18 +365,16 @@ describe("computeCostPerToken", () => {
 
   it("computes cost-per-1K for a single model", () => {
     // claude-sonnet-4-20250514: input=$3/M, output=$15/M, cached=$0.3/M
-    // Non-cached input = 1M - 200k = 800k → 800k/1M * $3 = $2.40
-    // Output = 500k → 500k/1M * $15 = $7.50
-    // Cached = 200k → 200k/1M * $0.3 = $0.06
-    // totalCost = $9.96, totalTokens = 1_500_000, costPer1K = 9.96 / 1_500_000 * 1000 = 0.00664
+    // input 1M → $3; output 500k → $7.50; cached 200k → $0.06
+    // totalCost = $10.56, totalTokens = 1_500_000, costPer1K = 10.56 / 1_500_000 * 1000 = 0.00704
     const models = [makeAggregate()];
     const result = computeCostPerToken(models, pm);
     expect(result).toHaveLength(1);
     expect(result[0]!.model).toBe("claude-sonnet-4-20250514");
     expect(result[0]!.source).toBe("claude-code");
-    expect(result[0]!.totalCost).toBeCloseTo(9.96, 2);
+    expect(result[0]!.totalCost).toBeCloseTo(10.56, 2);
     expect(result[0]!.totalTokens).toBe(1_500_000);
-    expect(result[0]!.costPer1K).toBeCloseTo(0.00664, 4);
+    expect(result[0]!.costPer1K).toBeCloseTo(0.00704, 4);
   });
 
   it("sorts by costPer1K descending (most expensive first)", () => {
