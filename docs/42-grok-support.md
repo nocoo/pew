@@ -95,7 +95,7 @@ xAI 官方 CLI 编码代理，`grok` 可执行文件通常安装在 `~/.local/bi
 
 | 字段 | 语义 | 归一化到 |
 |---|---|---|
-| `prompt_tokens` | 本次 inference 的输入 token 总数(**含 cached 部分**) | → `inputTokens`(**保留原值不减 cached**)|
+| `prompt_tokens` | 本次 inference 的输入 token 总数(**含 cached 部分**) | 用于导出 non-cached input |
 | `cached_prompt_tokens` | 命中 prompt cache 的部分(xAI 有 prompt caching) | → `cachedInputTokens` |
 | `completion_tokens` | 输出 token 数 | → `outputTokens` |
 | `reasoning_tokens` | 思维链输出 token 数 | → `reasoningOutputTokens` |
@@ -105,16 +105,25 @@ xAI 官方 CLI 编码代理，`grok` 可执行文件通常安装在 `~/.local/bi
 **归一化公式**:
 
 ```
-inputTokens          = prompt_tokens              // 保留 total,含 cached
+inputTokens          = max(0, prompt_tokens - cached_prompt_tokens)   // non-cached
 cachedInputTokens    = cached_prompt_tokens
 outputTokens         = completion_tokens
 reasoningOutputTokens = reasoning_tokens
 ```
 
-⚠️ **和 Claude Code parser 语义完全对齐** — pew 的存储约定是
-`inputTokens = total input`(**含 cached**),下游 `estimateCost()` 自己会做
-`nonCachedInput = inputTokens - cachedTokens` 的减法。之前草案里定义 `inputTokens =
-non-cached` 会导致 `pricing.ts:299` 二次减,把 25,315 普通输入 tokens 直接算成 0。
+**关键约束 — `inputTokens` 和 `cachedInputTokens` 必须不重叠**。pew 全 source 遵守这个
+disjoint 约定:
+- Claude parser 存 `input + cache_creation`(不含 cache_read),`cachedInputTokens = cache_read`,
+  两者不重叠
+- 若我们存 `inputTokens = prompt_tokens`(含 cached)+ `cachedInputTokens = cached`,
+  则:
+  1. 聚合层(`usage-helpers.ts` 6 处、`cost-helpers.ts` 3 处、路由 5 处 `estimateCost`
+     调用)在把行加总时,`input + cached` 会**统计上双计**该部分 tokens(本机样本会从
+     实际的 90,980 变成 154,852)
+  2. `estimateCost()` 里现有的 `nonCached = input - cached` 减法是为"disjoint 输入 +
+     单一 API 语义 total = input + cached"设计的兜底,不能反向依赖它
+     去 undo parser 层的合并
+- 因此 grok parser **必须**存 disjoint 值:`inputTokens = prompt - cached`。
 
 与 Anthropic Claude Code 语义完全对齐（`inputTokens` 表示 non-cached input，
 `cachedInputTokens` 表示 cache hit 部分）。
@@ -223,13 +232,15 @@ non-cached` 会导致 `pricing.ts:299` 二次减,把 25,315 普通输入 tokens 
 ```typescript
 // packages/cli/src/parsers/grok.ts
 export function normalizeGrokUsage(ctx: Record<string, unknown>): TokenDelta {
+  const prompt = toNonNegInt(ctx.prompt_tokens);
+  const cached = toNonNegInt(ctx.cached_prompt_tokens);
   return {
-    // Keep prompt_tokens raw (contains cached). estimateCost() subtracts
-    // cached when computing non-cached input cost — matches Claude parser
-    // convention. Storing (prompt - cached) here would cause pricing.ts
-    // to subtract twice and zero out real input.
-    inputTokens: toNonNegInt(ctx.prompt_tokens),
-    cachedInputTokens: toNonNegInt(ctx.cached_prompt_tokens),
+    // Disjoint from cached — same convention as Claude parser stores
+    // (input_tokens + cache_creation_input_tokens, not counting cache_read).
+    // Storing prompt raw would double-count in aggregate queries that sum
+    // input + cached (see usage-helpers.ts / cost-helpers.ts).
+    inputTokens: Math.max(0, prompt - cached),
+    cachedInputTokens: cached,
     outputTokens: toNonNegInt(ctx.completion_tokens),
     reasoningOutputTokens: toNonNegInt(ctx.reasoning_tokens),
   };
