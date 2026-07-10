@@ -1796,6 +1796,7 @@ describe("executeSync", () => {
     });
 
     // Simulate old cursors.json: remove knownFilePaths field
+    // Keep accountingSchemaVersion so that check doesn't fire first.
     const cursorsPath = join(stateDir, "cursors.json");
     const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
     expect(cursorsData.knownFilePaths).toBeDefined();
@@ -1819,6 +1820,54 @@ describe("executeSync", () => {
     const updatedCursors = JSON.parse(await readFile(cursorsPath, "utf-8"));
     expect(updatedCursors.knownFilePaths).toBeDefined();
     expect(Object.keys(updatedCursors.knownFilePaths).length).toBeGreaterThan(0);
+  });
+
+  it("should trigger one-time full rescan when accountingSchemaVersion is missing", async () => {
+    // Covers codex/copilot-cli/grok inclusive→disjoint migration: one global
+    // schema stamp forces a full overwrite so historical buckets are not
+    // SUM-mixed with new disjoint deltas.
+    const claudeDir = join(dataDir, ".claude", "projects", "proj-acct-schema");
+    await mkdir(claudeDir, { recursive: true });
+    await writeFile(
+      join(claudeDir, "session.jsonl"),
+      claudeLine("2026-03-07T10:15:00.000Z", 3000, 300) + "\n",
+    );
+
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      claudeDir: join(dataDir, ".claude"),
+    });
+
+    const cursorsPath = join(stateDir, "cursors.json");
+    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    expect(cursorsData.accountingSchemaVersion).toBeDefined();
+    delete cursorsData.accountingSchemaVersion;
+    await writeFile(cursorsPath, JSON.stringify(cursorsData));
+
+    const events: Array<{ phase: string; message?: string }> = [];
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      claudeDir: join(dataDir, ".claude"),
+      onProgress: (e) => events.push(e),
+    });
+
+    expect(
+      events.some(
+        (e) =>
+          e.phase === "warn" &&
+          e.message?.includes("Token accounting schema"),
+      ),
+    ).toBe(true);
+
+    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
+    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    expect(records).toHaveLength(1);
+    expect(records[0]!.input_tokens).toBe(3000); // not doubled
+
+    const updated = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    expect(updated.accountingSchemaVersion).toBe(1);
   });
 
   it("should allow genuinely new files without triggering rescan", async () => {
@@ -2668,7 +2717,7 @@ describe("executeSync", () => {
     // First sync
     await executeSync({ stateDir, claudeDir: join(dataDir, ".claude") });
 
-    // Remove knownFilePaths from cursors
+    // Remove knownFilePaths from cursors (keep accountingSchemaVersion)
     const cursorsPath = join(stateDir, "cursors.json");
     const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
     delete cursorsData.knownFilePaths;
