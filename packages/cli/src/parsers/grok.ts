@@ -2,11 +2,16 @@
  * Grok CLI unified.jsonl token parser.
  *
  * True source: ~/.grok/logs/unified.jsonl events with
- * msg === "shell.turn.inference_done". Prompt tokens from xAI include the
- * cached portion, so we store disjoint input/cached like every other source.
+ * msg === "shell.turn.inference_done".
+ *
+ * xAI field nesting (verified against real logs):
+ *   - prompt_tokens includes cached_prompt_tokens
+ *   - completion_tokens includes reasoning_tokens
+ * Store all four fields as disjoint for SUM total_tokens / estimateCost.
  */
 
-import { open, readFile, readdir, stat } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { readFile, readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import type { Source, TokenDelta } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
@@ -23,17 +28,22 @@ export type GrokTurnTimeline = Array<{ ts: string; modelId: string }>;
 /**
  * Normalize Grok inference_done ctx to TokenDelta.
  *
- * prompt_tokens includes cached_prompt_tokens, so non-cached input is
- * max(0, prompt - cached). Fields are disjoint for aggregate/cost math.
+ * Disjoint convention (same as Claude/Codex after normalize):
+ *   inputTokens           = max(0, prompt - cached)
+ *   cachedInputTokens     = cached
+ *   outputTokens          = max(0, completion - reasoning)
+ *   reasoningOutputTokens = reasoning
  */
 export function normalizeGrokUsage(ctx: Record<string, unknown>): TokenDelta {
   const prompt = toNonNegInt(ctx.prompt_tokens);
   const cached = toNonNegInt(ctx.cached_prompt_tokens);
+  const completion = toNonNegInt(ctx.completion_tokens);
+  const reasoning = toNonNegInt(ctx.reasoning_tokens);
   return {
     inputTokens: Math.max(0, prompt - cached),
     cachedInputTokens: cached,
-    outputTokens: toNonNegInt(ctx.completion_tokens),
-    reasoningOutputTokens: toNonNegInt(ctx.reasoning_tokens),
+    outputTokens: Math.max(0, completion - reasoning),
+    reasoningOutputTokens: reasoning,
   };
 }
 
@@ -76,6 +86,7 @@ export function resolveGrokModel(opts: {
 /**
  * Parse Grok unified.jsonl incrementally from a byte offset.
  *
+ * Streamed by chunk (never loads the whole unread tail into one buffer).
  * Partial-line safe: endOffset stops after the last complete `\n`. A trailing
  * unterminated line is left unread for the next sync.
  */
@@ -97,81 +108,94 @@ export async function parseGrokLogFile(opts: {
   if (!st || !st.isFile()) return { deltas, endOffset: startOffset };
   if (startOffset >= st.size) return { deltas, endOffset: startOffset };
 
-  const length = st.size - startOffset;
-  const fh = await open(filePath, "r");
-  let buf: Buffer;
+  const stream = createReadStream(filePath, { start: startOffset });
+  // Carry incomplete trailing bytes across chunks (Uint8Array avoids Buffer generics)
+  let pending: Uint8Array = new Uint8Array(0);
+  // Bytes of complete lines (ending in \n) consumed relative to startOffset
+  let completeBytes = 0;
+
   try {
-    buf = Buffer.alloc(length);
-    const { bytesRead } = await fh.read(buf, 0, length, startOffset);
-    if (bytesRead < length) {
-      buf = buf.subarray(0, bytesRead);
+    for await (const chunk of stream) {
+      const piece: Uint8Array = Buffer.isBuffer(chunk)
+        ? chunk
+        : Buffer.from(chunk as string);
+      if (pending.length === 0) {
+        pending = piece;
+      } else {
+        const merged = new Uint8Array(pending.length + piece.length);
+        merged.set(pending, 0);
+        merged.set(piece, pending.length);
+        pending = merged;
+      }
+
+      let offset = 0;
+      while (offset < pending.length) {
+        const nl = pending.indexOf(0x0a, offset);
+        if (nl === -1) break;
+
+        const lineBuf = pending.subarray(offset, nl);
+        const lineBytes = nl - offset + 1; // include \n
+        completeBytes += lineBytes;
+        offset = nl + 1;
+
+        if (lineBuf.length === 0) continue;
+        const line = Buffer.from(lineBuf).toString("utf8");
+
+        let obj: Record<string, unknown>;
+        try {
+          obj = JSON.parse(line) as Record<string, unknown>;
+        } catch {
+          // Malformed but terminated line — skip and advance past it
+          continue;
+        }
+
+        if (obj.msg !== "shell.turn.inference_done") continue;
+
+        const ts = typeof obj.ts === "string" ? obj.ts : null;
+        if (!ts) continue;
+
+        const sid = typeof obj.sid === "string" ? obj.sid : "";
+        const ctx =
+          obj.ctx && typeof obj.ctx === "object"
+            ? (obj.ctx as Record<string, unknown>)
+            : null;
+        if (!ctx) continue;
+
+        // Require at least one token field present (missing both → skip)
+        if (
+          ctx.prompt_tokens === undefined &&
+          ctx.completion_tokens === undefined
+        ) {
+          continue;
+        }
+
+        const tokens = normalizeGrokUsage(ctx);
+        if (isAllZero(tokens)) continue;
+
+        const model = resolveGrokModel({
+          sid,
+          eventTs: ts,
+          sidTurnTimeline,
+          sidPrimaryModel,
+        });
+
+        deltas.push({
+          source: "grok" as Source,
+          model,
+          timestamp: ts,
+          tokens,
+        });
+      }
+
+      // Keep only the trailing partial line
+      pending = offset === 0 ? pending : pending.subarray(offset);
     }
   } finally {
-    await fh.close();
+    stream.destroy();
   }
 
-  // Only consume complete lines (ending in \n)
-  let end = buf.length;
-  if (end > 0 && buf[end - 1] !== 0x0a) {
-    const lastNl = buf.lastIndexOf(0x0a);
-    if (lastNl === -1) {
-      // No complete line in this range — leave cursor where it was
-      return { deltas, endOffset: startOffset };
-    }
-    end = lastNl + 1;
-  }
-
-  const text = buf.subarray(0, end).toString("utf8");
-  // split leaves a trailing empty string when text ends with \n
-  const lines = text.split("\n");
-
-  for (const line of lines) {
-    if (!line) continue;
-
-    let obj: Record<string, unknown>;
-    try {
-      obj = JSON.parse(line) as Record<string, unknown>;
-    } catch {
-      // Malformed but terminated line — skip and advance past it
-      continue;
-    }
-
-    if (obj.msg !== "shell.turn.inference_done") continue;
-
-    const ts = typeof obj.ts === "string" ? obj.ts : null;
-    if (!ts) continue;
-
-    const sid = typeof obj.sid === "string" ? obj.sid : "";
-    const ctx =
-      obj.ctx && typeof obj.ctx === "object"
-        ? (obj.ctx as Record<string, unknown>)
-        : null;
-    if (!ctx) continue;
-
-    // Require at least one token field present (missing both → skip)
-    if (ctx.prompt_tokens === undefined && ctx.completion_tokens === undefined) {
-      continue;
-    }
-
-    const tokens = normalizeGrokUsage(ctx);
-    if (isAllZero(tokens)) continue;
-
-    const model = resolveGrokModel({
-      sid,
-      eventTs: ts,
-      sidTurnTimeline,
-      sidPrimaryModel,
-    });
-
-    deltas.push({
-      source: "grok" as Source,
-      model,
-      timestamp: ts,
-      tokens,
-    });
-  }
-
-  return { deltas, endOffset: startOffset + end };
+  // Trailing partial line is NOT counted in endOffset
+  return { deltas, endOffset: startOffset + completeBytes };
 }
 
 // ---------------------------------------------------------------------------

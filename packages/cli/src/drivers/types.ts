@@ -70,6 +70,13 @@ export interface SyncContext {
    * mtime-skip optimization (66K+ message files in real installs).
    */
   mtimeSkippedDirs?: string[];
+
+  /**
+   * Grok sessions root set by the Grok token driver's discover().
+   * Honours DiscoverOpts.grokSessionsDir overrides; parse() falls back to
+   * a sibling of the log path when unset.
+   */
+  grokSessionsDir?: string;
 }
 
 // ---------------------------------------------------------------------------

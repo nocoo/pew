@@ -48,7 +48,7 @@ function inferenceLine(overrides: {
 }
 
 describe("normalizeGrokUsage", () => {
-  it("maps fields with disjoint input/cached", () => {
+  it("maps fields with disjoint input/cached and output/reasoning", () => {
     const delta = normalizeGrokUsage({
       prompt_tokens: 21601,
       cached_prompt_tokens: 11136,
@@ -58,7 +58,8 @@ describe("normalizeGrokUsage", () => {
     expect(delta).toEqual({
       inputTokens: 10465,
       cachedInputTokens: 11136,
-      outputTokens: 193,
+      // reasoning is a subset of completion
+      outputTokens: 145,
       reasoningOutputTokens: 48,
     });
   });
@@ -72,6 +73,17 @@ describe("normalizeGrokUsage", () => {
     });
     expect(delta.inputTokens).toBe(0);
     expect(delta.cachedInputTokens).toBe(200);
+  });
+
+  it("clamps when reasoning > completion", () => {
+    const delta = normalizeGrokUsage({
+      prompt_tokens: 10,
+      cached_prompt_tokens: 0,
+      completion_tokens: 5,
+      reasoning_tokens: 9,
+    });
+    expect(delta.outputTokens).toBe(0);
+    expect(delta.reasoningOutputTokens).toBe(9);
   });
 
   it("treats missing cached as 0 (full prompt is input)", () => {
@@ -113,7 +125,7 @@ describe("parseGrokLogFile", () => {
     expect(result.deltas[0]!.source).toBe("grok");
     expect(result.deltas[0]!.tokens.inputTokens).toBe(10465);
     expect(result.deltas[0]!.tokens.cachedInputTokens).toBe(11136);
-    expect(result.deltas[0]!.tokens.outputTokens).toBe(193);
+    expect(result.deltas[0]!.tokens.outputTokens).toBe(145); // 193 - 48
     expect(result.deltas[0]!.tokens.reasoningOutputTokens).toBe(48);
     expect(result.deltas[0]!.model).toBe("grok-unknown");
   });
@@ -157,7 +169,10 @@ describe("parseGrokLogFile", () => {
       }),
       { in: 0, cached: 0, out: 0, rea: 0 },
     );
-    expect(sum).toEqual({ in: 25315, cached: 63872, out: 1682, rea: 111 });
+    // output = completion - reasoning per event: (193-48)+(213-34)+(1276-29)=1571
+    expect(sum).toEqual({ in: 25315, cached: 63872, out: 1571, rea: 111 });
+    // total_tokens = prompt + completion (no double-count of reasoning)
+    expect(sum.in + sum.cached + sum.out + sum.rea).toBe(90869);
   });
 
   it("skips non-inference_done events", async () => {
