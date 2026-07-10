@@ -20,10 +20,13 @@
 ### ✅ 接受的限制
 
 1. **Grok CLI 不持久化 pricing 元数据**:本文档假设 pew 的 `pricing.ts` 会为 `xai` provider
-   独立维护单价表。**前置工作**:`pricing.ts` 里 `estimateCost()` 当前只接收
-   `(input, output, cached)` 三参数,reasoning tokens 完全没入账。要正确估算 grok-4
-   系列成本,先把 `estimateCost` 扩展到接受 `reasoningTokens` + `pricing.reasoning`
-   单价(通常等价 output 单价),并同步扩展所有调用点(见 §5.6 pricing.ts)。
+   独立维护单价表。**前置 fix(commit 0)**:`estimateCost()` 有两个既存问题需要一起改:
+   (a) 它对 input 做了 `nonCached = input - cached` 减法(见"1.3 归一化关键约束"),
+       在 grok 这种 cache 命中率高的场景下会把真实 input 砍成 0。改成直接
+       `inputCost = inputTokens * pricing.input`。
+   (b) 只接收 `(input, output, cached)` 三参数,reasoning tokens 完全没入账。加入
+       `reasoningTokens` + `pricing.reasoning`(单价 fallback = output 单价)。同步扩展所有
+       调用点(见 §5.6 pricing.ts + §5.7 reasoning propagation)。
 2. **只读取 `logs/unified.jsonl`**,不读 `sessions/<sid>/updates.jsonl`。原因见"关键挑战 1"。
 3. **首次 sync 全量 emit**:cursor 丢失/首次跑 = 全文件解析,与其他 byte-offset source 行为一致。
    D1 端 `ON CONFLICT` upsert 保证零 inflation。
@@ -113,20 +116,20 @@ reasoningOutputTokens = reasoning_tokens
 
 **关键约束 — `inputTokens` 和 `cachedInputTokens` 必须不重叠**。pew 全 source 遵守这个
 disjoint 约定:
-- Claude parser 存 `input + cache_creation`(不含 cache_read),`cachedInputTokens = cache_read`,
-  两者不重叠
-- 若我们存 `inputTokens = prompt_tokens`(含 cached)+ `cachedInputTokens = cached`,
-  则:
-  1. 聚合层(`usage-helpers.ts` 6 处、`cost-helpers.ts` 3 处、路由 5 处 `estimateCost`
-     调用)在把行加总时,`input + cached` 会**统计上双计**该部分 tokens(本机样本会从
-     实际的 90,980 变成 154,852)
-  2. `estimateCost()` 里现有的 `nonCached = input - cached` 减法是为"disjoint 输入 +
-     单一 API 语义 total = input + cached"设计的兜底,不能反向依赖它
-     去 undo parser 层的合并
-- 因此 grok parser **必须**存 disjoint 值:`inputTokens = prompt - cached`。
+- Claude parser 存 `input + cache_creation`(不含 cache_read),`cachedInputTokens = cache_read`
+- Gemini parser 存 `tokens.input`(源已是 non-cached),`cachedInputTokens = tokens.cached`
+- Codex 存 OpenAI `input_tokens`(源已是 non-cached),`cachedInputTokens = cached_input_tokens`
+- OpenCode 存 `input + cache.write`,`cachedInputTokens = cache.read`
+- Pi 存 `input + cacheWrite`,`cachedInputTokens = cacheRead`
+- Grok parser 遵循同一约定:`inputTokens = max(0, prompt - cached)`,`cachedInputTokens = cached`
 
-与 Anthropic Claude Code 语义完全对齐（`inputTokens` 表示 non-cached input，
-`cachedInputTokens` 表示 cache hit 部分）。
+**由此推论:`estimateCost()` 当前的 `nonCached = input - cached` 减法是错的**
+(`packages/web/src/lib/pricing.ts:299`)。既然 pew 存的 input 已经不含 cached,再减一次
+在 cache 命中率高的场景(Grok 本机 63,872 cached vs 25,315 non-cached)会把 input 减到负
+再被 `Math.max(0, ...)` 归零 —— 真实的 25,315 输入 tokens 被完全砍掉。**必须去掉这个减法,
+直接 `inputCost = inputTokens / M * pricing.input`**。这个修复对**所有 source** 都有正效果
+(pew 里从来没有一个 parser 存过 "input 含 cached" 的数据,减法从没起过作用,只在边缘场景
+把数据错砍)。
 
 ### 1.4 Model 归因
 
@@ -475,7 +478,7 @@ union 加 `"grok"`,这两处 switch 立刻编译失败。同理,driver 依赖 `D
 
 | # | Commit | 内容 | 独立编译? |
 |---|---|---|---|
-| 0 | `feat: extend estimateCost to accept reasoning tokens` | pricing.ts 扩展签名 + ModelPricing 类型 + `pricing.test.ts` 的 5 处调用 + **全部 14 处**生产调用点迁移(2 个 achievements route + 1 by-device route + 2 dashboard 页面 + 3 处 `cost-helpers.ts` + 6 处 `usage-helpers.ts`;reasoning 传 `0` 保原行为)。**新参数必填**,防止遗漏 callsite | ✅ pure refactor,无 grok 引用 |
+| 0 | `fix(web): estimateCost inputCost uses inputTokens directly (no cache subtraction) + accept reasoningTokens` | 两处 pricing.ts 内部改动 + `pricing.test.ts` 更新预期(新增 cached>input 的 case 明确断言 input 不被砍)+ **全部 14 处**生产调用点扩展签名 `estimateCost(input, output, cached, reasoning, pricing)`(2 achievements route + 1 by-device route + 2 dashboard 页面 + 3 处 `cost-helpers.ts` + 6 处 `usage-helpers.ts`;reasoning 传 `0` 保原成本行为,直到 P1b 让上游真值可用)。**reasoning 参数必填**,防止遗漏 callsite。 | ✅ 独立 refactor,无 grok 引用 |
 | 1 | **`feat: add "grok" source foundation (types + all exhaustive switches + DiscoverOpts stub)`** | `core/types.ts` `Source` 加 grok + 加 `GrokCursor` 若需要;`core/constants.ts` `SOURCES` 加 grok;**同时**加 `sync.ts`/`session-sync.ts`/`session-sync-helpers.ts` 里 `sourceKey()` 的 `case "grok"`、`SyncResult.sources.grok`、`filesScanned.grok` 初始化;`drivers/types.ts` `DiscoverOpts` 加 `grokLogsPath?` + `grokSessionsDir?`;`utils/paths.ts` 加 grok 三个默认路径;`cli.ts` `isSource()` + `SOURCE_LABELS` + `SourceDirs`;所有 11 处 constants/types/validation test 断言更新。**尚无 driver 注册,尚无 parser** — foundation commit,typecheck + lint 全绿 | ✅ |
 | 2 | `feat(cli): add grok log parser and normalizer (no wiring)` | `parsers/grok.ts` + `grok-parser.test.ts`。**TDD 先测后码**。此时 parser 尚未被任何 driver 调用,纯函数库。 | ✅ |
 | 3 | `feat(cli): add grok session parser (no wiring)` | `parsers/grok-session.ts` + `grok-session.test.ts`。同上。 | ✅ |
@@ -618,7 +621,7 @@ it("accepts and reads back grok source records", async () => {
 
 | 阶段 | 内容 | 预计 |
 |---|---|---|
-| Commit 0 | estimateCost 加 reasoning + callsite 迁移 | 25 min |
+| Commit 0 | pricing.ts 去掉 nonCached 减法 + 加 reasoning + 14 callsite 迁移 + 更新 5 处 test 预期 | 40 min |
 | Commit 1 | Foundation:core types + 所有 exhaustive switch + DiscoverOpts + paths + status wiring + 11 处 test 断言 | 45 min |
 | Commit 2 | grok.ts parser + tests | 35 min |
 | Commit 3 | grok-session.ts parser + tests | 20 min |
