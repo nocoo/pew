@@ -47,5 +47,6 @@
 | 40 | [40-dynamic-model-pricing.md](40-dynamic-model-pricing.md) | Dynamic model pricing (shipped) + [c1–c6 subdocs](40-dynamic-model-pricing/) | done |
 | 40b | [40-l3-bdd-refactor.md](40-l3-bdd-refactor.md) | L3 → BDD test refactor plan | reference |
 | 41 | [41-code-hygiene-metrics.md](41-code-hygiene-metrics.md) | Code hygiene metrics (G1–G10) baseline + cleanup roadmap | in-progress |
+| 42 | [42-grok-support.md](42-grok-support.md) | Grok CLI token support — `~/.grok/logs/unified.jsonl` parser | design |
 
 > **Note:** Number 14 is intentionally vacant (original doc 14 was renumbered to 12 to fill a gap). Numbers 19, 36, and 40 have multiple entries (`Nb`, `Nc`) as history-preserving disambiguators.
