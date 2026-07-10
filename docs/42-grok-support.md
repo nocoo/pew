@@ -558,11 +558,34 @@ union 加 `"grok"`,这两处 switch 立刻编译失败。同理,driver 依赖 `D
 
 **必须新增一个 grok source ingest case** — 现有 `packages/web/src/__tests__/e2e/api-e2e.test.ts`
 只覆盖 claude-code/gemini-cli/opencode。虽然 D1 schema 无需 migration,但 API 层
-`VALID_SOURCES` 白名单是每个 route 手动维护的,漏一个 route 就会 400。新增 case:
+`VALID_SOURCES` 白名单是每个 route 手动维护的,漏一个 route 就会 400。
+
+必须**用 `?source=grok` 显式查询**才能触发路由的白名单校验;不带 filter 的 GET
+只做 `SELECT * WHERE user=?`,即使某 route 忘了把 grok 加入 `VALID_SOURCES` 也依然 200,
+测试完全查不到问题。
+
+新增 case:
 ```typescript
-it("accepts grok source records", async () => {
-  // POST /api/ingest with makeRecord({ source: "grok", model: "grok-4.5" })
-  // Verify 201; GET /api/usage; expect the grok row to be visible.
+it("accepts and reads back grok source records", async () => {
+  // 1. POST /api/ingest — verify ingest route's VALID_SOURCES accepts grok
+  await POST("/api/ingest", { records: [makeRecord({
+    source: "grok", model: "grok-4.5",
+    input_tokens: 25315, cached_input_tokens: 63872,
+    output_tokens: 1682, reasoning_output_tokens: 111,
+  })]});
+
+  // 2. GET /api/usage?source=grok — verify query route's VALID_SOURCES
+  //    accepts grok (a bare GET would pass even if the route rejects grok).
+  const r = await GET("/api/usage?source=grok");
+  expect(r.status).toBe(200);
+  const body = await r.json();
+  expect(body.records.some(x => x.source === "grok")).toBe(true);
+
+  // 3. Repeat the filter test against each source-scoped route so we don't
+  //    silently ship one that missed the VALID_SOURCES update:
+  //    /api/usage?source=grok, /api/sessions?source=grok,
+  //    /api/leaderboard?source=grok, /api/projects?source=grok,
+  //    /api/users/<slug>?source=grok
 });
 ```
 
