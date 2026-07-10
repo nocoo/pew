@@ -595,32 +595,59 @@ union 加 `"grok"`,这两处 switch 立刻编译失败。同理,driver 依赖 `D
 
 必须**用 `?source=grok` 显式查询**才能触发路由的白名单校验;不带 filter 的 GET
 只做 `SELECT * WHERE user=?`,即使某 route 忘了把 grok 加入 `VALID_SOURCES` 也依然 200,
-测试完全查不到问题。
+测试完全查不到问题。**每个 route 的白名单入口方式必须精确匹配**才能真触发校验。
+
+**Route → 白名单校验入口清单**(commit 5 test 必须每个都覆盖):
+
+| Route | 校验入口 | L2 打法 |
+|---|---|---|
+| `/api/ingest` | POST body 里的 `records[*].source` | `POST /api/ingest {records:[{source:"grok",...}]}` |
+| `/api/usage` | query `?source=` | `GET /api/usage?source=grok` |
+| `/api/sessions` | query `?source=` | `GET /api/sessions?source=grok` |
+| `/api/leaderboard` | query `?source=` | `GET /api/leaderboard?source=grok` |
+| `/api/users/<slug>` | query `?source=` | `GET /api/users/e2e-test-user?source=grok` |
+| **`/api/projects`** | **POST body 里的 `aliases[*].source`**(**不读** `?source=`) | `POST /api/projects {name:"p", aliases:[{source:"grok",project_ref:"repo"}]}` |
+| **`/api/projects/[id]`** | **PATCH body 里的 `aliasesToAdd[*].source` / `aliasesToRemove[*].source`**(**不读** `?source=`) | `PATCH /api/projects/<id> {aliasesToAdd:[{source:"grok",project_ref:"repo"}]}` |
 
 新增 case:
 ```typescript
-it("accepts and reads back grok source records", async () => {
-  // 1. POST /api/ingest — verify ingest route's VALID_SOURCES accepts grok
+it("accepts and reads back grok source records — every whitelist entry point", async () => {
+  // 1. POST /api/ingest — ingest route's VALID_SOURCES
   await POST("/api/ingest", { records: [makeRecord({
     source: "grok", model: "grok-4.5",
     input_tokens: 25315, cached_input_tokens: 63872,
     output_tokens: 1682, reasoning_output_tokens: 111,
   })]});
 
-  // 2. GET /api/usage?source=grok — verify query route's VALID_SOURCES
-  //    accepts grok (a bare GET would pass even if the route rejects grok).
-  const r = await GET("/api/usage?source=grok");
-  expect(r.status).toBe(200);
-  const body = await r.json();
-  expect(body.records.some(x => x.source === "grok")).toBe(true);
+  // 2. Every ?source= route
+  for (const path of [
+    "/api/usage?source=grok",
+    "/api/sessions?source=grok",
+    "/api/leaderboard?source=grok",
+    `/api/users/${TEST_USER_SLUG}?source=grok`,
+  ]) {
+    const r = await GET(path);
+    expect(r.status, path).toBe(200);
+  }
 
-  // 3. Repeat the filter test against each source-scoped route so we don't
-  //    silently ship one that missed the VALID_SOURCES update:
-  //    /api/usage?source=grok, /api/sessions?source=grok,
-  //    /api/leaderboard?source=grok, /api/projects?source=grok,
-  //    /api/users/<slug>?source=grok
+  // 3. /api/projects — POST alias with source:"grok"
+  const create = await POST("/api/projects", {
+    name: "grok-e2e",
+    aliases: [{ source: "grok", project_ref: "e2e-repo" }],
+  });
+  expect(create.status).toBe(201);
+  const { project } = await create.json();
+
+  // 4. /api/projects/[id] — PATCH alias with source:"grok"
+  const patch = await PATCH(`/api/projects/${project.id}`, {
+    aliasesToAdd: [{ source: "grok", project_ref: "e2e-repo-2" }],
+  });
+  expect(patch.status).toBe(200);
 });
 ```
+
+若某个 route 的 `VALID_SOURCES` 数组漏了 `"grok"`,对应的 assert 会 400/`"Invalid source parameter"`,
+commit 5 立刻停下。
 
 ### 7.4 L3 Browser E2E
 
