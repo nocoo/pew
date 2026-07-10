@@ -107,8 +107,9 @@ describe("parseCopilotCliFile", () => {
     expect(delta.tokens.reasoningOutputTokens).toBe(0);
   });
 
-  it("extracts cached tokens correctly", async () => {
+  it("extracts cached tokens as disjoint (prefers input_tokens_uncached)", async () => {
     const filePath = join(tempDir, "process-cache.log");
+    // buildLogWithUsage emits input_tokens_uncached = input - cache_read
     const content = buildLogWithUsage({
       input_tokens: 66561,
       output_tokens: 491,
@@ -120,9 +121,35 @@ describe("parseCopilotCliFile", () => {
 
     expect(result.deltas).toHaveLength(1);
     const delta = result.deltas[0]!;
-    expect(delta.tokens.inputTokens).toBe(66561);
+    // uncached = 66561 - 55976 = 10585 (not full inclusive 66561)
+    expect(delta.tokens.inputTokens).toBe(10585);
     expect(delta.tokens.cachedInputTokens).toBe(55976);
     expect(delta.tokens.outputTokens).toBe(491);
+  });
+
+  it("falls back to input - cache when input_tokens_uncached is absent", async () => {
+    const filePath = join(tempDir, "process-no-uncached.log");
+    // Hand-built telemetry without input_tokens_uncached (legacy)
+    const content = [
+      `2026-03-16T10:40:00.959Z [INFO] [Telemetry] cli.telemetry:`,
+      `{`,
+      `  "kind": "assistant_usage",`,
+      `  "properties": { "model": "claude-opus-4.6" },`,
+      `  "metrics": {`,
+      `    "input_tokens": 1000,`,
+      `    "output_tokens": 50,`,
+      `    "cache_read_tokens": 400`,
+      `  },`,
+      `  "created_at": "2026-03-16T10:40:00.959Z"`,
+      `}`,
+      ``,
+    ].join("\n");
+    await writeFile(filePath, content);
+
+    const result = await parseCopilotCliFile({ filePath, startOffset: 0 });
+    expect(result.deltas).toHaveLength(1);
+    expect(result.deltas[0]!.tokens.inputTokens).toBe(600);
+    expect(result.deltas[0]!.tokens.cachedInputTokens).toBe(400);
   });
 
   it("extracts multiple usage blocks from one file", async () => {
