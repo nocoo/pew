@@ -290,6 +290,8 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     piSessionsDir: opts.piSessionsDir,
     vscodeCopilotDirs: opts.vscodeCopilotDirs,
     copilotCliLogsDir: opts.copilotCliLogsDir,
+    grokLogsPath: opts.grokLogsPath,
+    grokSessionsDir: opts.grokSessionsDir,
   };
 
   // ---------- Phase 1: File-based drivers (generic loop) ----------
