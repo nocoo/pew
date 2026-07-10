@@ -427,7 +427,32 @@ Session driver 采用 mtime-based `SessionFileCursor`（同 kosmos / vscode-copi
   `packages/web/src/app/api/projects/[id]/route.ts` — 6 处 `VALID_SOURCES` 数组
 - `packages/web/src/app/leaderboard/agents/page.tsx` — `AGENTS` 常量
 
-### 5.7 Docs / onboarding（3 文件，edit）
+### 5.6b Reasoning tokens 端到端传递(commit 0 之后必须做)
+
+commit 0 让 `estimateCost()` 接受 `reasoningTokens`,但**上游根本没有 reasoning 数据可传**
+—— 现有多层聚合都只有 `input/output/cached`。修完 commit 0 后,如果 Grok 或 Claude 或
+Codex 未来产生 reasoning 数据,页面成本估算仍**不会包含 reasoning 部分**,除非同步扩展:
+
+| 层 | 文件 | 改动 |
+|---|---|---|
+| Core type | `packages/core/src/types.ts` | `DeviceCostDetail` 加 `reasoning_output_tokens: number` |
+| Worker-read SQL(by-device 细节)| `packages/worker-read/src/rpc/usage.ts:handleGetDeviceCostDetails` | SELECT 里 `SUM(ur.reasoning_output_tokens) AS reasoning_output_tokens` |
+| Worker-read row type | `packages/worker-read/src/rpc/usage.ts:CostDetailRow` | 加 `reasoning_output_tokens: number` |
+| Web type | `packages/web/src/lib/usage-transforms.ts:ModelAggregate` | 加 `reasoning: number` |
+| Web aggregator | `packages/web/src/lib/usage-transforms.ts:toModelAggregates` | 累加 `reasoning += r.reasoning_output_tokens`;初始化时读取 |
+| Web helpers 内聚合类型 | `packages/web/src/lib/usage-helpers.ts` 所有内部 `{ inputTokens, outputTokens, cachedTokens }` 结构(11 处 interface + reducer) | 加 `reasoningTokens` 字段,reducer `+=` 累加,`estimateCost` 调用传真值 |
+| Web cost-helpers | `packages/web/src/lib/cost-helpers.ts` 的 `m.input/m.output/m.cached` 调用点(3 处) | 传 `m.reasoning`(需 ModelAggregate 先加字段) |
+| Achievement cost row | `packages/web/src/lib/achievement-helpers.ts` | 相应字段扩展 |
+
+**验证**:commit 6(reasoning propagation)完成后,`pricing.test.ts` 新增一个 case:
+Grok row `{input:100, cached:500, output:200, reasoning:50}`,期望 total cost 包含
+`50/M * pricing.reasoning`。若任一层漏改,断言会失败(reasoning=0)。
+
+**排期**:这是 commit 6(web dashboard)的一部分,不再是独立 commit;和 palette / labels
+一起做,因为 estimator 接受 reasoning(commit 0)+ propagation(commit 6)组合起来才让
+grok 成本正确。
+
+### 5.7 Docs / onboarding(3 文件,edit)
 
 - `CLAUDE.md` — "Supported AI Tools" 一行
 - `README.md` — ASCII banner + "11 种 → 12 种" 数量 + tool 列表
@@ -484,7 +509,7 @@ union 加 `"grok"`,这两处 switch 立刻编译失败。同理,driver 依赖 `D
 | 3 | `feat(cli): add grok session parser (no wiring)` | `parsers/grok-session.ts` + `grok-session.test.ts`。同上。 | ✅ |
 | 4 | `feat(cli): add grok token+session drivers and register them` | `drivers/token/grok-token-driver.ts`、`drivers/session/grok-session-driver.ts`、`discovery/sources.ts` 新增 `discoverGrokLogFile()` + `discoverGrokSessionDirs()`、`drivers/registry.ts` 注册两个 driver + registry test 更新。driver 依赖 (2)/(3) 的 parser 和 (1) 的 DiscoverOpts,都已就位。 | ✅ |
 | 5 | `feat(cli): wire grok end-to-end through sync + status + notify` | `commands/sync.ts` / `session-sync.ts` / `notify.ts` / `status.ts` 里传入 `grokLogsPath` / `grokSessionsDir`,sync/session-sync/status test 追加 grok 覆盖。此时 CLI 端 grok source 完整可用。 | ✅ |
-| 6 | `feat(web): add grok to dashboard palette, labels, API validation` | 9 个 web 文件 + `palette.test.ts` 里 `toHaveLength(11) → 12` 和 `chart-12` 断言 + 相关 dashboard test。 | ✅ |
+| 6 | `feat(web): add grok to dashboard palette, labels, API validation, and propagate reasoning end-to-end` | 9 个 web 文件 + `palette.test.ts` 里 `toHaveLength(11) → 12` 和 `chart-12` 断言 + 相关 dashboard test。**同时完成 §5.6b reasoning propagation 链**:`DeviceCostDetail` / `ModelAggregate` 加字段;`worker-read/src/rpc/usage.ts:handleGetDeviceCostDetails` SQL 加 `SUM(reasoning_output_tokens)`;`usage-transforms.ts:toModelAggregates` / `usage-helpers.ts` 所有 aggregate reducer / `cost-helpers.ts` 3 处 estimateCost 传 `m.reasoning`。加断言 test:grok row `{100 in, 500 cached, 200 out, 50 reasoning}` 总成本包含 reasoning 部分。 | ✅ |
 | 7 | `docs(42): mark grok support as implemented; update CLAUDE.md/README/PRIVACY` | 4 个文档 + doc 42 status → done + tool 数字 11 → 12。 | ✅ |
 
 每个 commit 单独运行:
@@ -627,7 +652,7 @@ it("accepts and reads back grok source records", async () => {
 | Commit 3 | grok-session.ts parser + tests | 20 min |
 | Commit 4 | 两个 driver + discovery + registry + tests | 40 min |
 | Commit 5 | sync/notify/status end-to-end wiring + tests | 25 min |
-| Commit 6 | Web dashboard 9 文件 + palette/e2e test | 30 min |
+| Commit 6 | Web dashboard 9 文件 + reasoning propagation(DeviceCostDetail/ModelAggregate/usage-helpers/cost-helpers)+ worker-read SQL + palette/e2e test | 60 min |
 | Commit 7 | Docs + PRIVACY + CLAUDE.md + doc 42 close | 15 min |
 | 全量 test + lint + golden 验证 | | 20 min |
 | **合计** | | **~4 h** |
