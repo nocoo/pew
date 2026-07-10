@@ -5,17 +5,12 @@
  * Skip gate: fileUnchanged() (inode + mtimeMs + size).
  * Parser: parseCodexFile({ filePath, startOffset, lastTotals, lastModel })
  *
- * Accounting migration: cursors without accountingVersion (or with a
- * lower version) trigger needsReplay → orchestrator clears all cursors
- * and full-scans, overwriting the queue so inclusive historical deltas
- * are not mixed with new disjoint ones.
+ * Token accounting migration (disjoint fields) is handled globally via
+ * CursorState.accountingSchemaVersion — not per-file needsReplay — so
+ * Claude/other cursors are never misclassified as legacy Codex.
  */
 
-import {
-  CODEX_ACCOUNTING_VERSION,
-  type CodexCursor,
-  type TokenDelta,
-} from "@pew/core";
+import type { CodexCursor, TokenDelta } from "@pew/core";
 import { discoverCodexFiles } from "../../discovery/sources.js";
 import { parseCodexFile } from "../../parsers/codex.js";
 import { fileUnchanged } from "../../utils/file-changed.js";
@@ -36,12 +31,6 @@ interface CodexParseResult extends TokenParseResult {
   lastModel: string | null;
 }
 
-/** True when cursor predates disjoint token accounting. */
-export function isLegacyCodexCursor(cursor: CodexCursor | undefined): boolean {
-  if (!cursor) return false;
-  return (cursor.accountingVersion ?? 0) < CODEX_ACCOUNTING_VERSION;
-}
-
 export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
   kind: "file",
   source: "codex",
@@ -49,14 +38,6 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
   async discover(opts: DiscoverOpts, _ctx: SyncContext): Promise<string[]> {
     if (!opts.codexSessionsDir) return [];
     return discoverCodexFiles(opts.codexSessionsDir, opts.multicaCodexDirs);
-  },
-
-  /**
-   * Flag pre-disjoint cursors so the orchestrator full-replays instead of
-   * SUM-mixing inclusive historical deltas with new disjoint ones.
-   */
-  needsReplay(cursor: CodexCursor | undefined): boolean {
-    return isLegacyCodexCursor(cursor);
   },
 
   shouldSkip(cursor: CodexCursor | undefined, fingerprint: FileFingerprint): boolean {
@@ -102,7 +83,6 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
       offset: r.endOffset,
       lastTotals: r.lastTotals,
       lastModel: r.lastModel,
-      accountingVersion: CODEX_ACCOUNTING_VERSION,
       updatedAt: new Date().toISOString(),
     };
   },

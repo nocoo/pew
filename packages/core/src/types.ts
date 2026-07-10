@@ -114,15 +114,16 @@ export interface ClaudeCursor extends FileCursorBase {
 }
 
 /**
- * Codex token accounting version for cursor migration.
+ * Global token accounting schema version (CursorState-level).
  *
- * v1 (current): emitted deltas are disjoint —
- *   input = max(0, raw.input - raw.cached), output = max(0, raw.output - raw.reasoning)
- * Missing / older version on a cursor means prior syncs stored inclusive
- * OpenAI fields; the codex driver flags needsReplay so the orchestrator
- * full-rescans (overwrite queue, no SUM inflation).
+ * Bump when emitted TokenDelta semantics change for any source so that
+ * historical inclusive buckets are not SUM-mixed with new disjoint ones.
+ *
+ * v1: disjoint fields across codex / copilot-cli / grok (and pricing).
+ *     - input/cached disjoint, output/reasoning disjoint where applicable
+ * Missing or lower version on CursorState → one-time full rescan.
  */
-export const CODEX_ACCOUNTING_VERSION = 1 as const;
+export const ACCOUNTING_SCHEMA_VERSION = 1 as const;
 
 /** Cursor for Codex CLI (byte-offset + cumulative diff state) */
 export interface CodexCursor extends FileCursorBase {
@@ -132,11 +133,6 @@ export interface CodexCursor extends FileCursorBase {
   lastTotals: TokenDelta | null;
   /** Last seen model identifier */
   lastModel: string | null;
-  /**
-   * Token accounting version stamped by the codex driver.
-   * Absent on cursors written before CODEX_ACCOUNTING_VERSION shipped.
-   */
-  accountingVersion?: number;
 }
 
 /** Cursor for Gemini (array-index-based JSON files) */
@@ -218,6 +214,11 @@ export type FileCursor =
 /** Top-level cursor store persisted to disk */
 export interface CursorState {
   version: 1;
+  /**
+   * Token accounting schema version (see ACCOUNTING_SCHEMA_VERSION).
+   * Absent on cursors.json written before schema stamping landed.
+   */
+  accountingSchemaVersion?: number;
   /** Per-file cursors, keyed by absolute file path */
   files: Record<string, FileCursor>;
   /** Directory-level mtimeMs cache for fast skip (OpenCode JSON optimization) */

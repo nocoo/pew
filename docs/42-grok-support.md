@@ -121,7 +121,10 @@ disjoint 约定:
 - Claude parser 存 `input + cache_creation`(不含 cache_read),`cachedInputTokens = cache_read`
 - Gemini parser 存 `tokens.input`(源已是 non-cached),`cachedInputTokens = tokens.cached`
 - Codex 存 OpenAI 包容字段的**互斥化**:`input = max(0, input - cached)`,`output = max(0, output - reasoning)`
-  (源 API 的 `cached ⊆ input`、`reasoning ⊆ output`;cursor 带 `accountingVersion` 触发旧数据全量 replay)
+  (源 API 的 `cached ⊆ input`、`reasoning ⊆ output`)
+- **全局口径迁移**:`CursorState.accountingSchemaVersion`(`ACCOUNTING_SCHEMA_VERSION`)。
+  codex / copilot-cli / grok 等口径变更时升版本 → 一次 wipe + full rescan(overwrite queue),
+  不依赖 per-file `needsReplay`(避免把 Claude cursor 误判成 Codex 旧 cursor)
 - OpenCode 存 `input + cache.write`,`cachedInputTokens = cache.read`
 - Pi 存 `input + cacheWrite`,`cachedInputTokens = cacheRead`
 - Copilot CLI 优先 `input_tokens_uncached`,否则 `max(0, input - cache_read)`

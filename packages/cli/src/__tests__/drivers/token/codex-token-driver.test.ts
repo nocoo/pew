@@ -2,11 +2,8 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import {
-  codexTokenDriver,
-  isLegacyCodexCursor,
-} from "../../../drivers/token/codex-token-driver.js";
-import { CODEX_ACCOUNTING_VERSION, type CodexCursor } from "@pew/core";
+import { codexTokenDriver } from "../../../drivers/token/codex-token-driver.js";
+import type { CodexCursor } from "@pew/core";
 import type { SyncContext, FileFingerprint } from "../../../drivers/types.js";
 
 /** Helper: create a Codex JSONL token_count event line */
@@ -245,39 +242,6 @@ describe("codexTokenDriver", () => {
     });
   });
 
-  describe("needsReplay / accountingVersion", () => {
-    it("flags cursors missing accountingVersion as legacy", () => {
-      const legacy: CodexCursor = {
-        inode: 1,
-        mtimeMs: 1,
-        size: 100,
-        offset: 50,
-        lastTotals: null,
-        lastModel: null,
-        updatedAt: "2026-01-01T00:00:00Z",
-        // no accountingVersion
-      };
-      expect(isLegacyCodexCursor(legacy)).toBe(true);
-      expect(codexTokenDriver.needsReplay!(legacy)).toBe(true);
-    });
-
-    it("does not flag modern cursors or missing cursors", () => {
-      expect(codexTokenDriver.needsReplay!(undefined)).toBe(false);
-      const modern: CodexCursor = {
-        inode: 1,
-        mtimeMs: 1,
-        size: 100,
-        offset: 50,
-        lastTotals: null,
-        lastModel: null,
-        accountingVersion: CODEX_ACCOUNTING_VERSION,
-        updatedAt: "2026-01-01T00:00:00Z",
-      };
-      expect(isLegacyCodexCursor(modern)).toBe(false);
-      expect(codexTokenDriver.needsReplay!(modern)).toBe(false);
-    });
-  });
-
   describe("parse + buildCursor", () => {
     it("parses Codex JSONL and builds cursor with endOffset + lastTotals", async () => {
       const filePath = join(tempDir, "rollout-abc.jsonl");
@@ -308,8 +272,9 @@ describe("codexTokenDriver", () => {
       expect(cursor.inode).toBe(500);
       expect(cursor.offset).toBeGreaterThan(0);
       expect(cursor.updatedAt).toBeDefined();
-      // Stamp current accounting version so next sync won't force replay
-      expect(cursor.accountingVersion).toBe(CODEX_ACCOUNTING_VERSION);
+      // Accounting migration is global (CursorState.accountingSchemaVersion),
+      // not per-file — codex driver does not set needsReplay.
+      expect(codexTokenDriver.needsReplay).toBeUndefined();
     });
   });
 });

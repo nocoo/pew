@@ -8,6 +8,7 @@ import type {
   Source,
   TokenDelta,
 } from "@pew/core";
+import { ACCOUNTING_SCHEMA_VERSION } from "@pew/core";
 import { CursorStore } from "../storage/cursor-store.js";
 import { LocalQueue } from "../storage/local-queue.js";
 import { pruneAliasCursors } from "../storage/prune-alias-cursors.js";
@@ -188,6 +189,30 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     !cursors.openCodeSqlite &&
     isHermesCursorsEmpty();
 
+  // Token accounting schema upgrade (global): when any source changes how
+  // TokenDeltas are normalized (e.g. inclusive → disjoint for codex /
+  // copilot-cli / grok), replaying only new bytes would SUM-mix old and new
+  // semantics. One-time wipe + full rescan overwrites the queue cleanly.
+  if (
+    !initialCursorEmpty &&
+    (cursors.accountingSchemaVersion ?? 0) < ACCOUNTING_SCHEMA_VERSION
+  ) {
+    onProgress?.({
+      source: "all",
+      phase: "warn",
+      message: `Token accounting schema v${ACCOUNTING_SCHEMA_VERSION} — one-time full rescan`,
+    });
+    await cursorStore.save({
+      version: 1,
+      accountingSchemaVersion: ACCOUNTING_SCHEMA_VERSION,
+      files: {},
+      knownFilePaths: {},
+      knownDbSources: {},
+      updatedAt: null,
+    });
+    return executeSync(opts);
+  }
+
   // Upgrade detection: cursors.json created before knownFilePaths was added
   // (pre-v1.6.0). We can't distinguish "cursor lost" from "new file" without
   // this field, so trigger a one-time full rescan to safely populate it.
@@ -199,6 +224,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     });
     await cursorStore.save({
       version: 1,
+      accountingSchemaVersion: ACCOUNTING_SCHEMA_VERSION,
       files: {},
       updatedAt: null,
     });
@@ -233,6 +259,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       });
       await cursorStore.save({
         version: 1,
+        accountingSchemaVersion: ACCOUNTING_SCHEMA_VERSION,
         files: {},
         updatedAt: null,
       });
@@ -319,11 +346,15 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     // this driver's files are touched. Checking inside the per-file loop
     // would be too late — an unchanged legacy file hits fast-skip and
     // never gets to needsReplay, but its stale cursor still poisons dedup
-    // for the driver's OTHER files during this run. Scan every cursor
-    // this driver owns; if any of them declares replay, restart cleanly.
+    // for the driver's OTHER files during this run.
+    //
+    // IMPORTANT: only inspect paths discovered by THIS driver (`files`).
+    // Using the global `discoveredFiles` set would pass Claude cursors to
+    // codex.needsReplay (and vice versa) and false-trigger full rescans.
     if (!initialCursorEmpty && driver.needsReplay) {
+      const ownedFiles = new Set(files);
       for (const [path, cursor] of Object.entries(cursors.files)) {
-        if (!discoveredFiles.has(path) && !files.includes(path)) continue;
+        if (!ownedFiles.has(path)) continue;
         if (driver.needsReplay(cursor as FileCursorBase)) {
           replayDetected = true;
           onProgress?.({
@@ -474,6 +505,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     });
     await cursorStore.save({
       version: 1,
+      accountingSchemaVersion: ACCOUNTING_SCHEMA_VERSION,
       files: {},
       updatedAt: null,
     });
@@ -625,6 +657,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       });
       await cursorStore.save({
         version: 1,
+        accountingSchemaVersion: ACCOUNTING_SCHEMA_VERSION,
         files: {},
         updatedAt: null,
       });
@@ -659,6 +692,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       });
       await cursorStore.save({
         version: 1,
+        accountingSchemaVersion: ACCOUNTING_SCHEMA_VERSION,
         files: {},
         updatedAt: null,
       });
@@ -853,6 +887,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   // → next sync re-scans from old cursor position → produces a superset
   // of the current records → overwrite queue → values ≥ true (minor
   // over-count for one sync cycle, recoverable via pew reset).
+  cursors.accountingSchemaVersion = ACCOUNTING_SCHEMA_VERSION;
   cursors.updatedAt = new Date().toISOString();
   await cursorStore.save(cursors);
 
