@@ -194,11 +194,13 @@ describe("SyncCursor types", () => {
         reasoningOutputTokens: 200,
       },
       lastModel: "gpt-5.4",
+      accountingVersion: 1,
       updatedAt: "2026-03-07T10:00:00Z",
     };
     expect(cursor.offset).toBe(8192);
     expect(cursor.lastTotals?.inputTokens).toBe(5000);
     expect(cursor.lastModel).toBe("gpt-5.4");
+    expect(cursor.accountingVersion).toBe(1);
   });
 
   it("should compose into CursorState", () => {
