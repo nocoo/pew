@@ -639,8 +639,15 @@ union 加 `"grok"`,这两处 switch 立刻编译失败。同理,driver 依赖 `D
 
 **前置准备**(必须在 case 头部执行,否则某些 route 打不通):
 
-1. `TEST_USER_SLUG` 常量当前不存在;新增:`const TEST_USER_SLUG = "e2e-user-" + RUN_ID`(与
-   `TEST_USER_ID` 同 RUN_ID 挂钩,避免并发 CI 撞车)
+1. `TEST_USER_SLUG` 常量当前不存在;新增。**注意**:`scripts/run-e2e.ts` 只透传 `E2E_TEST_USER_ID`
+   和 `E2E_TEST_USER_EMAIL` 到测试进程,**不透传 `RUN_ID`**。测试端从 `TEST_USER_ID` 派生
+   稳定后缀,避免并发 CI 撞车:
+   ```typescript
+   // TEST_USER_ID = "e2e-test-user-<8hex>", already established at test-file top
+   const RUN_SUFFIX = TEST_USER_ID.replace("e2e-test-user-", "");  // → "<8hex>"
+   const TEST_USER_SLUG = `e2e-user-${RUN_SUFFIX}`;
+   // reuse same suffix for project name / refs so cleanup can globby-match
+   ```
 2. `seedTestUser()` 里的 INSERT 补两列:`slug=?, is_public=1`;并把 UPSERT 分支同步
    (`ON CONFLICT (id) DO UPDATE SET email=excluded.email, slug=excluded.slug, is_public=1`)
 3. cleanup 里加 `DELETE FROM users WHERE id = ?` 保留(已有),但确认清空后 slug 不残留
@@ -676,8 +683,8 @@ it("accepts and reads back grok source records — every whitelist entry point",
   //    passes for both project_ref values used below. Uses direct D1 write
   //    (not /api/sessions ingest — sessions ingest has its own request shape;
   //    the seed helper follows the pattern already used for seedTestUser).
-  const projectRefCreate = `e2e-repo-${RUN_ID}`;
-  const projectRefPatch = `e2e-repo-${RUN_ID}-2`;
+  const projectRefCreate = `e2e-repo-${RUN_SUFFIX}`;
+  const projectRefPatch = `e2e-repo-${RUN_SUFFIX}-2`;
   for (const project_ref of [projectRefCreate, projectRefPatch]) {
     await getD1().execute(
       `INSERT INTO session_records (user_id, session_key, source, kind,
@@ -706,7 +713,7 @@ it("accepts and reads back grok source records — every whitelist entry point",
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      name: `grok-e2e-${RUN_ID}`,
+      name: `grok-e2e-${RUN_SUFFIX}`,
       aliases: [{ source: "grok", project_ref: projectRefCreate }],
     }),
   });
