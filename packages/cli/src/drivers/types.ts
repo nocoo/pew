@@ -95,6 +95,10 @@ export interface DiscoverOpts {
   piSessionsDir?: string;
   vscodeCopilotDirs?: string[];
   copilotCliLogsDir?: string;
+  /** Grok CLI unified log file (~/.grok/logs/unified.jsonl) */
+  grokLogsPath?: string;
+  /** Grok CLI sessions root (~/.grok/sessions) */
+  grokSessionsDir?: string;
 }
 
 // ---------------------------------------------------------------------------

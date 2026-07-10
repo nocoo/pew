@@ -18,6 +18,7 @@ export const SOURCES: readonly Source[] = Object.freeze([
   "codex",
   "copilot-cli",
   "gemini-cli",
+  "grok",
   "hermes",
   "kosmos",
   "opencode",

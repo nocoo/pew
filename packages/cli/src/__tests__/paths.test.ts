@@ -58,6 +58,9 @@ describe("resolveDefaultPaths", () => {
       join("/fakehome", ".local", "share", "opencode", "opencode.db"),
     );
     expect(paths.openclawDir).toBe(join("/fakehome", ".openclaw"));
+    expect(paths.grokHome).toBe(join("/fakehome", ".grok"));
+    expect(paths.grokLogsPath).toBe(join("/fakehome", ".grok", "logs", "unified.jsonl"));
+    expect(paths.grokSessionsDir).toBe(join("/fakehome", ".grok", "sessions"));
   });
 
   it("should use actual homedir when no argument passed", () => {
@@ -113,7 +116,7 @@ describe("resolveDefaultPaths", () => {
     expect(paths.hermesProfileDbPaths[0].dbKey).toBe("profiles/tomato");
   });
 
-  it("should return exactly 17 path properties", () => {
+  it("should return exactly 20 path properties", () => {
     const keys = [
       "stateDir",
       "binDir",
@@ -122,6 +125,9 @@ describe("resolveDefaultPaths", () => {
       "codexSessionsDir",
       "copilotCliLogsDir",
       "geminiDir",
+      "grokHome",
+      "grokLogsPath",
+      "grokSessionsDir",
       "hermesDbPath",
       "hermesProfileDbPaths",
       "kosmosDataDir",

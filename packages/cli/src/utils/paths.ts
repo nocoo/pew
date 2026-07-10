@@ -187,6 +187,12 @@ export function resolveDefaultPaths(home = homedir()) {
     openCodeDbPath: join(home, ".local", "share", "opencode", "opencode.db"),
     /** OpenClaw data: ~/.openclaw */
     openclawDir: join(home, ".openclaw"),
+    /** Grok CLI home: ~/.grok */
+    grokHome: join(home, ".grok"),
+    /** Grok CLI unified log: ~/.grok/logs/unified.jsonl */
+    grokLogsPath: join(home, ".grok", "logs", "unified.jsonl"),
+    /** Grok CLI sessions root: ~/.grok/sessions */
+    grokSessionsDir: join(home, ".grok", "sessions"),
     /** Pi session data: ~/.pi/agent/sessions */
     piSessionsDir: join(home, ".pi", "agent", "sessions"),
     /** VSCode Copilot base dirs (stable + insiders, platform-aware) */

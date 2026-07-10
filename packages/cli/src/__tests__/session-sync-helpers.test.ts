@@ -110,6 +110,7 @@ describe("sourceKey", () => {
     ["openclaw", "openclaw"],
     ["pi", "pi"],
     ["pmstudio", "pmstudio"],
+    ["grok", "grok"],
   ];
 
   for (const [src, key] of mapped) {

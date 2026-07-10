@@ -58,6 +58,10 @@ export interface SyncOptions {
   kosmosDataDir?: string;
   /** Override: PM Studio data directory (pm-studio-app) */
   pmstudioDataDir?: string;
+  /** Override: Grok CLI unified log path (~/.grok/logs/unified.jsonl) */
+  grokLogsPath?: string;
+  /** Override: Grok CLI sessions directory (~/.grok/sessions) */
+  grokSessionsDir?: string;
   /** Progress callback */
   onProgress?: (event: ProgressEvent) => void;
   /** Callback invoked when a corrupted JSONL line is found in the queue */
@@ -81,6 +85,7 @@ export interface SyncResult {
     claude: number;
     codex: number;
     gemini: number;
+    grok: number;
     kosmos: number;
     opencode: number;
     openclaw: number;
@@ -95,6 +100,7 @@ export interface SyncResult {
     claude: number;
     codex: number;
     gemini: number;
+    grok: number;
     kosmos: number;
     opencode: number;
     openclaw: number;
@@ -124,6 +130,7 @@ function sourceKey(source: Source): keyof SyncResult["sources"] {
   switch (source) {
     case "claude-code": return "claude";
     case "gemini-cli": return "gemini";
+    case "grok": return "grok";
     case "kosmos": return "kosmos";
     case "opencode": return "opencode";
     case "openclaw": return "openclaw";
@@ -249,8 +256,8 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   let replayDetected = false;
 
   const allDeltas: ParsedDelta[] = [];
-  const sourceCounts = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, hermes: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0, vscodeCopilot: 0 };
-  const filesScanned = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, hermes: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0, vscodeCopilot: 0 };
+  const sourceCounts = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, grok: 0, hermes: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0, vscodeCopilot: 0 };
+  const filesScanned = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, grok: 0, hermes: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0, vscodeCopilot: 0 };
   const dbsScanned = { opencode: 0, hermes: 0 };
 
   // Collect all discovered file paths (across all drivers) for knownFilePaths

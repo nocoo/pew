@@ -15,6 +15,7 @@ export type SessionSyncSourceKey =
   | "codex"
   | "copilotCli"
   | "gemini"
+  | "grok"
   | "kosmos"
   | "opencode"
   | "openclaw"
@@ -58,6 +59,7 @@ export function sourceKey(source: Source): SessionSyncSourceKey | null {
     case "codex": return "codex";
     case "copilot-cli": return "copilotCli";
     case "gemini-cli": return "gemini";
+    case "grok": return "grok";
     case "kosmos": return "kosmos";
     case "opencode": return "opencode";
     case "openclaw": return "openclaw";
