@@ -222,6 +222,7 @@ describe("usage RPC handlers", () => {
           input_tokens: 6000,
           output_tokens: 4000,
           cached_input_tokens: 1000,
+          reasoning_output_tokens: 50,
         },
       ];
       db.all.mockResolvedValue({ results: mockDetails });
@@ -237,6 +238,11 @@ describe("usage RPC handlers", () => {
 
       expect(response.status).toBe(200);
       expect(body).toEqual({ result: mockDetails });
+      const typed = body as { result: Array<{ reasoning_output_tokens: number }> };
+      expect(typed.result[0]!.reasoning_output_tokens).toBe(50);
+      // SQL must SUM reasoning so pin-test fails if the column is dropped
+      const preparedSql = String(db.prepare.mock.calls[0]?.[0] ?? "");
+      expect(preparedSql).toContain("reasoning_output_tokens");
     });
 
     it("should return 400 when params missing", async () => {

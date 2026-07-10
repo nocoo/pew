@@ -12,8 +12,8 @@ const v = (token: string) => `hsl(var(--${token}))`;
 export const withAlpha = (token: string, alpha: number) =>
   `hsl(var(--${token}) / ${alpha})`;
 
-// -- 11 sequential chart colors --
-// Spectrum: Violet → Magenta → Pink → Coral → Orange → Gold → Lime → Acid Lime → Teal → Sky → Indigo
+// -- 12 sequential chart colors --
+// Spectrum: Violet → Magenta → Pink → Coral → Orange → Gold → Lime → Acid Lime → Teal → Sky → Indigo → Rose
 
 export const chart = {
   violet:  v("chart-1"),  // Brand violet (= --primary)
@@ -27,13 +27,14 @@ export const chart = {
   teal:    v("chart-9"),  // Teal/Cyan — 9th color
   sky:     v("chart-10"), // Sky blue — 10th color
   indigo:  v("chart-11"), // Indigo — 11th color
+  rose:    v("chart-12"), // Rose — 12th color (Grok)
 } as const;
 
 /** Ordered array — use for pie / donut / bar where you need N colors by index. */
 export const CHART_COLORS = Object.values(chart);
 
 /** CSS variable names (without --) matching CHART_COLORS order — for withAlpha(). */
-export const CHART_TOKENS = Array.from({ length: 11 }, (_, i) => `chart-${i + 1}`) as readonly string[];
+export const CHART_TOKENS = Array.from({ length: 12 }, (_, i) => `chart-${i + 1}`) as readonly string[];
 
 // -- Semantic aliases --
 
@@ -69,6 +70,7 @@ const AGENT_COLOR_MAP: Record<string, ChartColor> = {
   "codex":         { color: chart.magenta, token: "chart-2" },
   "copilot-cli":   { color: chart.pink,    token: "chart-3" },
   "gemini-cli":    { color: chart.coral,   token: "chart-4" },
+  "grok":          { color: chart.rose,    token: "chart-12" },
   "hermes":        { color: chart.orange,  token: "chart-5" },
   "kosmos":        { color: chart.gold,    token: "chart-6" },
   "opencode":      { color: chart.lime,    token: "chart-7" },

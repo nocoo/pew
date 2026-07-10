@@ -35,6 +35,9 @@ const BASE_URL = `http://localhost:${E2E_PORT}`;
 // concurrent CI runs sharing the same pew-db-test D1 database.
 const TEST_USER_ID = process.env.E2E_TEST_USER_ID || "e2e-test-user-id";
 const TEST_USER_EMAIL = process.env.E2E_TEST_USER_EMAIL || "e2e@test.local";
+// Stable slug derived from user id so concurrent CI runs don't collide
+const RUN_SUFFIX = TEST_USER_ID.replace("e2e-test-user-", "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 8) || "local";
+const TEST_USER_SLUG = `e2e-user-${RUN_SUFFIX}`;
 
 // Per-run unique showcase repo — uses TEST_USER_ID to derive a unique
 // repo_key so concurrent CI runs never collide on the UNIQUE constraint.
@@ -65,10 +68,13 @@ function getD1(): D1Client {
 
 async function seedTestUser(d1: D1Client): Promise<void> {
   await d1.execute(
-    `INSERT INTO users (id, email, name, created_at, updated_at)
-     VALUES (?, ?, ?, datetime('now'), datetime('now'))
-     ON CONFLICT (id) DO UPDATE SET email = excluded.email`,
-    [TEST_USER_ID, TEST_USER_EMAIL, "E2E Test User"],
+    `INSERT INTO users (id, email, name, slug, is_public, created_at, updated_at)
+     VALUES (?, ?, ?, ?, 1, datetime('now'), datetime('now'))
+     ON CONFLICT (id) DO UPDATE SET
+       email = excluded.email,
+       slug = excluded.slug,
+       is_public = 1`,
+    [TEST_USER_ID, TEST_USER_EMAIL, "E2E Test User", TEST_USER_SLUG],
   );
 }
 
@@ -83,6 +89,8 @@ async function cleanupTestData(d1: D1Client): Promise<void> {
     { sql: "DELETE FROM season_team_members WHERE user_id = ?", params: [TEST_USER_ID] },
     { sql: "DELETE FROM season_leaderboard WHERE user_id = ?", params: [TEST_USER_ID] },
     { sql: "DELETE FROM device_aliases WHERE user_id = ?", params: [TEST_USER_ID] },
+    { sql: "DELETE FROM project_aliases WHERE project_id IN (SELECT id FROM projects WHERE user_id = ?)", params: [TEST_USER_ID] },
+    { sql: "DELETE FROM projects WHERE user_id = ?", params: [TEST_USER_ID] },
     { sql: "DELETE FROM session_records WHERE user_id = ?", params: [TEST_USER_ID] },
     { sql: "DELETE FROM usage_records WHERE user_id = ?", params: [TEST_USER_ID] },
     { sql: "DELETE FROM accounts WHERE user_id = ?", params: [TEST_USER_ID] },
@@ -263,6 +271,89 @@ describe("POST /api/ingest", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.ingested).toBe(2);
+  });
+
+  it("accepts and reads back grok source records — every whitelist entry point", async () => {
+    // 1. POST /api/ingest — bare-array body with grok source
+    const ingest = await fetch(`${BASE_URL}/api/ingest`, {
+      method: "POST",
+      headers: INGEST_HEADERS,
+      body: JSON.stringify([
+        makeRecord({
+          source: "grok",
+          model: "grok-4.5",
+          hour_start: "2026-03-15T10:00:00.000Z",
+          input_tokens: 25315,
+          cached_input_tokens: 63872,
+          output_tokens: 1682,
+          reasoning_output_tokens: 111,
+          total_tokens: 90980,
+          device_id: "e2e-grok-device",
+        }),
+      ]),
+    });
+    expect(ingest.status).toBe(200);
+
+    // 2. Seed session_records so project alias validation passes
+    const projectRefCreate = `e2e-repo-${RUN_SUFFIX}`;
+    const projectRefPatch = `e2e-repo-${RUN_SUFFIX}-2`;
+    for (const project_ref of [projectRefCreate, projectRefPatch]) {
+      await d1.execute(
+        `INSERT INTO session_records (user_id, session_key, source, kind,
+           started_at, last_message_at, duration_seconds, user_messages,
+           assistant_messages, total_messages, project_ref, model, snapshot_at)
+         VALUES (?, ?, 'grok', 'human', datetime('now'), datetime('now'), 0, 0, 0, 0, ?, 'grok-4.5', datetime('now'))
+         ON CONFLICT (user_id, session_key) DO NOTHING`,
+        [TEST_USER_ID, `${TEST_USER_ID}-${project_ref}`, project_ref],
+      );
+    }
+
+    // 3. Every ?source= route whitelist entry
+    for (const path of [
+      "/api/usage?source=grok&from=2026-03-01&to=2026-03-31",
+      "/api/sessions?source=grok",
+      "/api/leaderboard?source=grok&from=2026-03-01&to=2026-03-31",
+      `/api/users/${TEST_USER_SLUG}?source=grok&from=2026-03-01&to=2026-03-31`,
+    ]) {
+      const r = await fetch(`${BASE_URL}${path}`);
+      expect(r.status, path).toBe(200);
+    }
+
+    // Token retention on user route
+    const userRes = await fetch(
+      `${BASE_URL}/api/users/${TEST_USER_SLUG}?source=grok&from=2026-03-01&to=2026-03-31`,
+    );
+    expect(userRes.status).toBe(200);
+    const userBody = await userRes.json();
+    const reasoning =
+      userBody.summary?.reasoning_output_tokens ??
+      userBody.reasoning_output_tokens ??
+      null;
+    if (reasoning !== null) {
+      expect(reasoning).toBeGreaterThanOrEqual(111);
+    }
+
+    // 4. POST /api/projects with grok alias
+    const create = await fetch(`${BASE_URL}/api/projects`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: `grok-e2e-${RUN_SUFFIX}`,
+        aliases: [{ source: "grok", project_ref: projectRefCreate }],
+      }),
+    });
+    expect(create.status).toBe(201);
+    const { project } = await create.json();
+
+    // 5. PATCH /api/projects/[id] with add_aliases
+    const patch = await fetch(`${BASE_URL}/api/projects/${project.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        add_aliases: [{ source: "grok", project_ref: projectRefPatch }],
+      }),
+    });
+    expect(patch.status).toBe(200);
   });
 });
 

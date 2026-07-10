@@ -386,6 +386,7 @@ export interface DeviceTimelinePoint {
   input_tokens: number;
   output_tokens: number;
   cached_input_tokens: number;
+  reasoning_output_tokens: number;
 }
 
 /** Per-(device, source, model) cost detail row for drill-down charts */
@@ -397,6 +398,7 @@ export interface DeviceCostDetail {
   input_tokens: number;
   output_tokens: number;
   cached_input_tokens: number;
+  reasoning_output_tokens: number;
 }
 
 /** Response from GET /api/usage/by-device */

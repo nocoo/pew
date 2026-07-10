@@ -20,7 +20,7 @@ export function computeTotalCost(
   let total = 0;
   for (const m of models) {
     const pricing = lookupPricing(pricingMap, m.model, m.source);
-    const cost = estimateCost(m.input, m.output, m.cached, 0, pricing);
+    const cost = estimateCost(m.input, m.output, m.cached, m.reasoning ?? 0, pricing);
     total += cost.totalCost;
   }
   return total;
@@ -60,7 +60,7 @@ export function toDailyCostPoints(
       r.input_tokens,
       r.output_tokens,
       r.cached_input_tokens,
-      0,
+      r.reasoning_output_tokens ?? 0,
       pricing,
     );
 
@@ -204,7 +204,7 @@ export function computeCostPerToken(
     if (m.total === 0) continue;
 
     const pricing = lookupPricing(pricingMap, m.model, m.source);
-    const cost = estimateCost(m.input, m.output, m.cached, 0, pricing);
+    const cost = estimateCost(m.input, m.output, m.cached, m.reasoning ?? 0, pricing);
 
     results.push({
       model: m.model,

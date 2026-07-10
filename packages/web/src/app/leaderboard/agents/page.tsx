@@ -29,6 +29,7 @@ const AGENTS = [
   "codex",
   "copilot-cli",
   "gemini-cli",
+  "grok",
   "hermes",
   "kosmos",
   "opencode",

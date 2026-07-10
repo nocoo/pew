@@ -502,6 +502,7 @@ export interface UsageCostDetailRow {
   input_tokens: number;
   output_tokens: number;
   cached_input_tokens: number;
+  reasoning_output_tokens: number;
 }
 
 /** Timeline row for by-device charting */
@@ -512,6 +513,7 @@ export interface UsageDeviceTimelineRow {
   input_tokens: number;
   output_tokens: number;
   cached_input_tokens: number;
+  reasoning_output_tokens: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -632,6 +634,7 @@ export interface AchievementDailyCostRow {
   input_tokens: number;
   output_tokens: number;
   cached_input_tokens: number;
+  reasoning_output_tokens: number;
 }
 
 /** Diversity counts for achievements (tool-hoarder, model-tourist, device-nomad) */
@@ -663,6 +666,7 @@ export interface AchievementCostByModelSourceRow {
   input_tokens: number;
   output_tokens: number;
   cached_input_tokens: number;
+  reasoning_output_tokens: number;
 }
 
 /** Earner row for achievement leaderboards */

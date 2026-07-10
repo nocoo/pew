@@ -51,6 +51,7 @@ function makeAggregate(overrides: Partial<ModelAggregate> = {}): ModelAggregate 
     input: 1_000_000,
     output: 500_000,
     cached: 200_000,
+    reasoning: 0,
     total: 1_500_000,
     ...overrides,
   };

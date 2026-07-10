@@ -22,6 +22,7 @@ import {
 // Safe color references
 const colorOutput = CHART_COLORS[1] as string;
 const colorCached = CHART_COLORS[2] as string;
+const colorReasoning = CHART_COLORS[3] as string;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -56,11 +57,12 @@ function ModelTooltip({
     input_tokens: "Input",
     output_tokens: "Output",
     cached_input_tokens: "Cached",
+    reasoning_output_tokens: "Reasoning",
   };
 
   const rowData = payload[0]?.payload;
   const total = rowData?.total_tokens ?? 0;
-  const orderedKeys = ["input_tokens", "output_tokens", "cached_input_tokens"] as const;
+  const orderedKeys = ["input_tokens", "output_tokens", "cached_input_tokens", "reasoning_output_tokens"] as const;
 
   return (
     <ChartTooltip title={rowData?.model ?? label}>
@@ -131,6 +133,7 @@ export function DeviceModelChart({
             { key: "input", label: "Input", color: chart.violet },
             { key: "output", label: "Output", color: colorOutput },
             { key: "cached", label: "Cached", color: colorCached },
+            { key: "reasoning", label: "Reasoning", color: colorReasoning },
           ].map(({ key, label, color }) => (
             <div key={key} className="flex items-center gap-1.5">
               <div
@@ -188,6 +191,12 @@ export function DeviceModelChart({
               dataKey="cached_input_tokens"
               stackId="1"
               fill={colorCached}
+              radius={[0, 0, 0, 0]}
+            />
+            <Bar
+              dataKey="reasoning_output_tokens"
+              stackId="1"
+              fill={colorReasoning}
               radius={[0, 4, 4, 0]}
             />
           </BarChart>

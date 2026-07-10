@@ -62,7 +62,7 @@ function DayRow({ group, pricingMap }: { group: DailyGroup; pricingMap: PricingM
         r.input_tokens,
         r.output_tokens,
         r.cached_input_tokens,
-        0,
+        r.reasoning_output_tokens ?? 0,
         pricing
       );
 

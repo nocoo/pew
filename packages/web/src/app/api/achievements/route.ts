@@ -60,10 +60,11 @@ function computeCost(
   inputTokens: number,
   outputTokens: number,
   cachedTokens: number,
+  reasoningTokens: number,
   pricingMap: PricingMap
 ): number {
   const pricing = lookupPricing(pricingMap, model, source ?? undefined);
-  return estimateCost(inputTokens, outputTokens, cachedTokens, 0, pricing).totalCost;
+  return estimateCost(inputTokens, outputTokens, cachedTokens, reasoningTokens, pricing).totalCost;
 }
 
 /**
@@ -199,6 +200,7 @@ export async function GET(request: Request) {
         row.input_tokens,
         row.output_tokens,
         row.cached_input_tokens,
+        row.reasoning_output_tokens ?? 0,
         pricingMap
       );
       dailyCostMap.set(row.day, (dailyCostMap.get(row.day) ?? 0) + cost);
@@ -212,6 +214,7 @@ export async function GET(request: Request) {
         row.input_tokens,
         row.output_tokens,
         row.cached_input_tokens,
+        row.reasoning_output_tokens ?? 0,
         pricingMap
       );
     }

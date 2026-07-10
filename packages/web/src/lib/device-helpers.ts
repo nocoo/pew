@@ -195,6 +195,7 @@ export interface DeviceAgentBreakdownRow {
   input_tokens: number;
   output_tokens: number;
   cached_input_tokens: number;
+  reasoning_output_tokens: number;
   total_tokens: number;
 }
 
@@ -204,6 +205,7 @@ export interface DeviceModelBreakdownRow {
   input_tokens: number;
   output_tokens: number;
   cached_input_tokens: number;
+  reasoning_output_tokens: number;
   total_tokens: number;
 }
 
@@ -216,7 +218,14 @@ export function toDeviceAgentBreakdown(
 ): DeviceAgentBreakdownRow[] {
   const map = new Map<
     string,
-    { source: string; input_tokens: number; output_tokens: number; cached_input_tokens: number; total_tokens: number }
+    {
+      source: string;
+      input_tokens: number;
+      output_tokens: number;
+      cached_input_tokens: number;
+      reasoning_output_tokens: number;
+      total_tokens: number;
+    }
   >();
 
   for (const d of details) {
@@ -225,6 +234,7 @@ export function toDeviceAgentBreakdown(
       existing.input_tokens += d.input_tokens;
       existing.output_tokens += d.output_tokens;
       existing.cached_input_tokens += d.cached_input_tokens;
+      existing.reasoning_output_tokens += d.reasoning_output_tokens;
       existing.total_tokens += d.total_tokens;
     } else {
       map.set(d.source, {
@@ -232,6 +242,7 @@ export function toDeviceAgentBreakdown(
         input_tokens: d.input_tokens,
         output_tokens: d.output_tokens,
         cached_input_tokens: d.cached_input_tokens,
+        reasoning_output_tokens: d.reasoning_output_tokens,
         total_tokens: d.total_tokens,
       });
     }
@@ -249,7 +260,14 @@ export function toDeviceModelBreakdown(
 ): DeviceModelBreakdownRow[] {
   const map = new Map<
     string,
-    { model: string; input_tokens: number; output_tokens: number; cached_input_tokens: number; total_tokens: number }
+    {
+      model: string;
+      input_tokens: number;
+      output_tokens: number;
+      cached_input_tokens: number;
+      reasoning_output_tokens: number;
+      total_tokens: number;
+    }
   >();
 
   for (const d of details) {
@@ -258,6 +276,7 @@ export function toDeviceModelBreakdown(
       existing.input_tokens += d.input_tokens;
       existing.output_tokens += d.output_tokens;
       existing.cached_input_tokens += d.cached_input_tokens;
+      existing.reasoning_output_tokens += d.reasoning_output_tokens;
       existing.total_tokens += d.total_tokens;
     } else {
       map.set(d.model, {
@@ -265,6 +284,7 @@ export function toDeviceModelBreakdown(
         input_tokens: d.input_tokens,
         output_tokens: d.output_tokens,
         cached_input_tokens: d.cached_input_tokens,
+        reasoning_output_tokens: d.reasoning_output_tokens,
         total_tokens: d.total_tokens,
       });
     }

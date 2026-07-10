@@ -179,6 +179,25 @@ describe("toModelAggregates", () => {
     expect(result[1]!.input).toBe(300);
     expect(result[1]!.output).toBe(150);
     expect(result[1]!.cached).toBe(30);
+    expect(result[1]!.reasoning).toBe(0);
+  });
+
+  it("accumulates reasoning_output_tokens into reasoning", () => {
+    const records = [
+      makeRow({
+        source: "grok",
+        model: "grok-4.5",
+        input_tokens: 100,
+        output_tokens: 50,
+        cached_input_tokens: 20,
+        reasoning_output_tokens: 50,
+        total_tokens: 220,
+      }),
+    ];
+    const result = toModelAggregates(records);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.reasoning).toBe(50);
+    expect(result[0]!.source).toBe("grok");
   });
 
   it("should sort by total tokens descending", () => {
@@ -202,6 +221,7 @@ describe("sourceLabel", () => {
     expect(sourceLabel("claude-code")).toBe("Claude Code");
     expect(sourceLabel("codex")).toBe("Codex");
     expect(sourceLabel("gemini-cli")).toBe("Gemini CLI");
+    expect(sourceLabel("grok")).toBe("Grok");
     expect(sourceLabel("opencode")).toBe("OpenCode");
     expect(sourceLabel("openclaw")).toBe("OpenClaw");
     expect(sourceLabel("pi")).toBe("Pi");
