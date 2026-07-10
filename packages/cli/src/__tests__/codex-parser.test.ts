@@ -102,10 +102,12 @@ describe("parseCodexFile", () => {
     expect(result.deltas[0].source).toBe("codex");
     expect(result.deltas[0].model).toBe("gpt-5.4");
     expect(result.deltas[0].timestamp).toBe("2026-03-09T10:00:05.000Z");
+    // Emitted deltas are disjoint (cache ⊆ input, reasoning ⊆ output).
+    // lastTotals stays raw OpenAI-shaped for resume diffs.
     expect(result.deltas[0].tokens).toEqual({
-      inputTokens: 1000,
+      inputTokens: 800,
       cachedInputTokens: 200,
-      outputTokens: 300,
+      outputTokens: 250,
       reasoningOutputTokens: 50,
     });
     expect(result.lastTotals).toEqual({
@@ -353,11 +355,27 @@ describe("parseCodexFile", () => {
     await writeFile(filePath, lines.join("\n") + "\n");
 
     const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
+    // raw delta: in=1500 cached=500 out=400 rea=100
+    // disjoint: in=1000 cached=500 out=300 rea=100
     expect(result.deltas[1].tokens).toEqual({
-      inputTokens: 1500,
+      inputTokens: 1000,
       cachedInputTokens: 500,
-      outputTokens: 400,
+      outputTokens: 300,
       reasoningOutputTokens: 100,
+    });
+    // first event also normalized
+    expect(result.deltas[0].tokens).toEqual({
+      inputTokens: 700,
+      cachedInputTokens: 300,
+      outputTokens: 150,
+      reasoningOutputTokens: 50,
+    });
+    // cursor keeps raw inclusive totals
+    expect(result.lastTotals).toEqual({
+      inputTokens: 2500,
+      cachedInputTokens: 800,
+      outputTokens: 600,
+      reasoningOutputTokens: 150,
     });
   });
 

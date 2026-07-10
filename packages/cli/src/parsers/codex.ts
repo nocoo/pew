@@ -29,7 +29,7 @@ export interface CodexFileResult {
 }
 
 /**
- * Diff two cumulative TokenDelta values.
+ * Diff two cumulative TokenDelta values (raw OpenAI-shaped totals).
  * If any field goes negative (counter reset), treat the new value as absolute.
  */
 function diffTotals(current: TokenDelta, previous: TokenDelta): TokenDelta {
@@ -48,6 +48,27 @@ function diffTotals(current: TokenDelta, previous: TokenDelta): TokenDelta {
     cachedInputTokens: dCached,
     outputTokens: dOutput,
     reasoningOutputTokens: dReasoning,
+  };
+}
+
+/**
+ * Normalize raw Codex/OpenAI totals (or a raw delta of them) to disjoint fields.
+ *
+ * OpenAI reports inclusive counts:
+ *   total_tokens = input_tokens + output_tokens
+ *   cached_input_tokens ⊆ input_tokens
+ *   reasoning_output_tokens ⊆ output_tokens
+ *
+ * pew stores disjoint fields so SUM(total) and estimateCost never double-count.
+ * Cursor lastTotals must remain raw for correct resume diffs — only emitted
+ * deltas are normalized.
+ */
+export function normalizeCodexUsage(raw: TokenDelta): TokenDelta {
+  return {
+    inputTokens: Math.max(0, raw.inputTokens - raw.cachedInputTokens),
+    cachedInputTokens: raw.cachedInputTokens,
+    outputTokens: Math.max(0, raw.outputTokens - raw.reasoningOutputTokens),
+    reasoningOutputTokens: raw.reasoningOutputTokens,
   };
 }
 
@@ -120,6 +141,7 @@ export async function parseCodexFile(opts: {
         const usage = info.total_token_usage as Record<string, unknown> | undefined;
         if (!usage || typeof usage !== "object") continue;
 
+        // Keep raw inclusive totals for cursor resume + diffing
         const currentTotals: TokenDelta = {
           inputTokens: toNonNegInt(usage.input_tokens),
           cachedInputTokens: toNonNegInt(usage.cached_input_tokens),
@@ -127,17 +149,20 @@ export async function parseCodexFile(opts: {
           reasoningOutputTokens: toNonNegInt(usage.reasoning_output_tokens),
         };
 
-        // Compute delta
-        const delta = lastTotals ? diffTotals(currentTotals, lastTotals) : { ...currentTotals };
+        const rawDelta = lastTotals
+          ? diffTotals(currentTotals, lastTotals)
+          : { ...currentTotals };
         lastTotals = currentTotals;
 
-        if (isAllZero(delta)) continue;
+        // Emit disjoint fields so cost/total never double-count cache/reasoning
+        const tokens = normalizeCodexUsage(rawDelta);
+        if (isAllZero(tokens)) continue;
 
         deltas.push({
           source: "codex" as Source,
           model: lastModel || "unknown",
           timestamp,
-          tokens: delta,
+          tokens,
         });
       }
     }
