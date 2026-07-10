@@ -120,10 +120,13 @@ reasoningOutputTokens = reasoning_tokens
 disjoint 约定:
 - Claude parser 存 `input + cache_creation`(不含 cache_read),`cachedInputTokens = cache_read`
 - Gemini parser 存 `tokens.input`(源已是 non-cached),`cachedInputTokens = tokens.cached`
-- Codex 存 OpenAI `input_tokens`(源已是 non-cached),`cachedInputTokens = cached_input_tokens`
+- Codex 存 OpenAI 包容字段的**互斥化**:`input = max(0, input - cached)`,`output = max(0, output - reasoning)`
+  (源 API 的 `cached ⊆ input`、`reasoning ⊆ output`;cursor 带 `accountingVersion` 触发旧数据全量 replay)
 - OpenCode 存 `input + cache.write`,`cachedInputTokens = cache.read`
 - Pi 存 `input + cacheWrite`,`cachedInputTokens = cacheRead`
-- Grok parser 遵循同一约定:`inputTokens = max(0, prompt - cached)`,`cachedInputTokens = cached`
+- Copilot CLI 优先 `input_tokens_uncached`,否则 `max(0, input - cache_read)`
+- Grok parser 遵循同一约定:`inputTokens = max(0, prompt - cached)`,
+  `outputTokens = max(0, completion - reasoning)`
 
 **由此推论:`estimateCost()` 当前的 `nonCached = input - cached` 减法是错的**
 (`packages/web/src/lib/pricing.ts:299`)。既然 pew 存的 input 已经不含 cached,再减一次
@@ -764,7 +767,8 @@ commit 6 立刻停下。
 
 对比:
 - Pre-implementation: 0(pew 完全不支持 grok)
-- Post-implementation: **25315 + 63872 + 1682 + 111 = 90980 tokens**(本机 1 session)
+- Post-implementation: **25315 + 63872 + 1571 + 111 = 90869 tokens**
+  (本机 1 session;`output = completion − reasoning`,不再把 reasoning 双计)
 
 ### 7.6 隔离性验证
 
