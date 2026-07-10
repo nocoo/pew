@@ -11,6 +11,6 @@
     "@cloudflare/workers-types": "5.20260708.1",
     "@pew/core": "workspace:*",
     "typescript": "^6.0.3",
-    "wrangler": "4.107.1"
+    "wrangler": "4.110.0"
   }
 }
