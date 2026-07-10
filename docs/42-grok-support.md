@@ -143,12 +143,13 @@ disjoint 约定:
 成本过高。用两级 fast/slow path:
 
 **归因规则(按优先级)**:
-1. **Fast path**:读 `signals.json.modelsUsed`。若长度 = 1 → 直接用它唯一的 model_id
-   归因该 sid 所有 `inference_done`,**跳过 events.jsonl 扫描**。绝大部分 session
-   属于此情况。
-2. **Slow path(多模型)**:`modelsUsed.length > 1` 时才扫 `events.jsonl` 抽出
-   `turn_started` 建时间轴 `[(ts, model_id), ...]`。对每条 `inference_done`,以 `ts`
-   找该 sid 时间轴上**最后一个 ts ≤ inference_done.ts** 的 turn,取其 `model_id`。
+1. **Fast path**:读 `signals.json.modelsUsed`。**当且仅当 `Array.isArray(modelsUsed) &&
+   modelsUsed.length === 1`** → 直接用它唯一的 model_id 归因该 sid 所有 `inference_done`,
+   **跳过 events.jsonl 扫描**。绝大部分 session 属于此情况。
+2. **Slow path**:任何**非 length===1** 的情形(signals.json 缺失 / modelsUsed 为
+   `undefined` / 空数组 `[]` / 长度 > 1)→ 尝试扫 `events.jsonl` 抽出 `turn_started`
+   建时间轴 `[(ts, model_id), ...]`。对每条 `inference_done`,以 `ts` 找该 sid 时间轴上
+   **最后一个 ts ≤ inference_done.ts** 的 turn,取其 `model_id`。
 3. Fallback:events.jsonl 缺失/turn_started 全无 → 用 `signals.json.primaryModelId`。
 4. 都拿不到 → `"grok-unknown"`(不阻塞 emit,让数据先入库)。
 
@@ -193,11 +194,12 @@ disjoint 约定:
 全扫成本过高。
 
 **解决**:分两级读。见 §1.4 的 fast/slow path:
-1. **总是**读 `signals.json`(几十字节)。若 `modelsUsed.length === 1` → 该 sid 所有
-   inference_done 直接用它,**不读 events.jsonl**。
-2. `modelsUsed.length > 1` → 才扫 events.jsonl 抽 `turn_started` 建时间轴,按
-   `ts ≤ inference_done.ts` 查最后一次 turn 的 `model_id`。
-3. 全部缺失 → `"grok-unknown"`(不阻塞 emit)。
+1. **总是**尝试读 `signals.json`(几十字节)。**只有** `Array.isArray(modelsUsed) &&
+   modelsUsed.length === 1` 才走 fast path,该 sid 所有 inference_done 直接用它,
+   **不读 events.jsonl**。
+2. 其他所有情形(缺 signals.json / modelsUsed 未定义 / 空数组 / 长度 > 1)→ 扫 events.jsonl
+   抽 `turn_started` 建时间轴,按 `ts ≤ inference_done.ts` 查最后一次 turn 的 `model_id`。
+3. events 也没数据 → 用 `signals.json.primaryModelId`(如有)→ 都缺则 `"grok-unknown"`。
 
 ### 挑战 3：unified.jsonl append-only，增量策略
 
@@ -563,8 +565,11 @@ union 加 `"grok"`,这两处 switch 立刻编译失败。同理,driver 依赖 `D
 
 | Case | 期望 |
 |---|---|
-| **Fast path**:`modelsUsed = ["grok-4.5"]`(单模型) | 用 `grok-4.5`,**不读 events.jsonl**(用 spy 断言未调用) |
-| **Slow path**:`modelsUsed = ["grok-4.5","grok-code"]`,一次 inference_done 在 turn A 之后 | 扫 events.jsonl,用 turn A 的 model_id |
+| **Fast path**:`modelsUsed = ["grok-4.5"]`(长度 = 1) | 用 `grok-4.5`,**不读 events.jsonl**(用 spy 断言未调用) |
+| **Slow path — 多模型**:`modelsUsed = ["grok-4.5","grok-code"]`,一次 inference_done 在 turn A 之后 | 扫 events.jsonl,用 turn A 的 model_id |
+| **Slow path — 空数组**:`modelsUsed = []` | 必须扫 events.jsonl(spy 断言**已**调用),再 fallback 到 primaryModelId |
+| **Slow path — 字段缺失**:`signals.json` 完全没有 `modelsUsed` key | 同上,扫 events → fallback |
+| **Slow path — signals.json 缺失**:文件不存在 | 直接扫 events;若 events 也无数据 → `"grok-unknown"` |
 | session 内两次 turn_started 切换模型(A → B),中间夹一条 inference_done | 该 inference_done 归 A |
 | turn_started 缺失,但 signals.json 有 primaryModelId | 用 primaryModelId fallback |
 | turn_started 和 primaryModelId 都缺 | fallback `"grok-unknown"`,不阻塞 emit |
