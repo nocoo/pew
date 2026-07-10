@@ -61,6 +61,7 @@ export interface ModelAggregate {
   input: number;
   output: number;
   cached: number;
+  reasoning: number;
   total: number;
 }
 
@@ -152,6 +153,7 @@ export function toModelAggregates(records: UsageRow[]): ModelAggregate[] {
       existing.input += r.input_tokens;
       existing.output += r.output_tokens;
       existing.cached += r.cached_input_tokens;
+      existing.reasoning += r.reasoning_output_tokens;
       existing.total += r.total_tokens;
     } else {
       byModel.set(key, {
@@ -160,6 +162,7 @@ export function toModelAggregates(records: UsageRow[]): ModelAggregate[] {
         input: r.input_tokens,
         output: r.output_tokens,
         cached: r.cached_input_tokens,
+        reasoning: r.reasoning_output_tokens,
         total: r.total_tokens,
       });
     }
@@ -177,6 +180,7 @@ const SOURCE_LABELS: Record<string, string> = {
   codex: "Codex",
   "copilot-cli": "GitHub Copilot CLI",
   "gemini-cli": "Gemini CLI",
+  grok: "Grok",
   hermes: "Hermes Agent",
   kosmos: "Kosmos",
   opencode: "OpenCode",

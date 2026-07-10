@@ -16,6 +16,7 @@ const VALID_SOURCES = new Set([
   "codex",
   "copilot-cli",
   "gemini-cli",
+  "grok",
   "hermes",
   "kosmos",
   "opencode",

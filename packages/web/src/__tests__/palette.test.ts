@@ -15,14 +15,15 @@ import {
 } from "../lib/palette";
 
 describe("palette", () => {
-  it("should have 11 chart colors", () => {
-    expect(CHART_COLORS).toHaveLength(11);
+  it("should have 12 chart colors", () => {
+    expect(CHART_COLORS).toHaveLength(12);
   });
 
-  it("should have 11 chart tokens matching chart-1 through chart-11", () => {
-    expect(CHART_TOKENS).toHaveLength(11);
+  it("should have 12 chart tokens matching chart-1 through chart-12", () => {
+    expect(CHART_TOKENS).toHaveLength(12);
     expect(CHART_TOKENS[0]).toBe("chart-1");
     expect(CHART_TOKENS[10]).toBe("chart-11");
+    expect(CHART_TOKENS[11]).toBe("chart-12");
   });
 
   it("should produce hsl(var(--...)) format for chart colors", () => {
@@ -32,6 +33,7 @@ describe("palette", () => {
     expect(chart.teal).toBe("hsl(var(--chart-9))");
     expect(chart.sky).toBe("hsl(var(--chart-10))");
     expect(chart.indigo).toBe("hsl(var(--chart-11))");
+    expect(chart.rose).toBe("hsl(var(--chart-12))");
   });
 
   it("should export semantic aliases", () => {
@@ -57,11 +59,12 @@ describe("palette", () => {
   });
 
   describe("agentColor()", () => {
-    it("should return correct color for all 11 known agents (alphabetical)", () => {
+    it("should return correct color for all 12 known agents (alphabetical)", () => {
       expect(agentColor("claude-code")).toEqual({ color: chart.violet, token: "chart-1" });
       expect(agentColor("codex")).toEqual({ color: chart.magenta, token: "chart-2" });
       expect(agentColor("copilot-cli")).toEqual({ color: chart.pink, token: "chart-3" });
       expect(agentColor("gemini-cli")).toEqual({ color: chart.coral, token: "chart-4" });
+      expect(agentColor("grok")).toEqual({ color: chart.rose, token: "chart-12" });
       expect(agentColor("hermes")).toEqual({ color: chart.orange, token: "chart-5" });
       expect(agentColor("kosmos")).toEqual({ color: chart.gold, token: "chart-6" });
       expect(agentColor("opencode")).toEqual({ color: chart.lime, token: "chart-7" });

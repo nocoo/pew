@@ -125,7 +125,7 @@ export async function GET(request: Request) {
         row.input_tokens,
         row.output_tokens,
         row.cached_input_tokens,
-        0,
+        row.reasoning_output_tokens ?? 0,
         pricing
       );
       costByDevice.set(
@@ -157,19 +157,27 @@ export async function GET(request: Request) {
       input_tokens: row.input_tokens,
       output_tokens: row.output_tokens,
       cached_input_tokens: row.cached_input_tokens,
+      reasoning_output_tokens: row.reasoning_output_tokens ?? 0,
     }));
 
     // 7. Map cost detail rows for client-side drill-down charts
-    const deviceDetails = costRows.map((row) => ({
-      device_id: row.device_id,
-      source: row.source,
-      model: row.model,
-      total_tokens:
-        row.input_tokens + row.output_tokens + row.cached_input_tokens,
-      input_tokens: row.input_tokens,
-      output_tokens: row.output_tokens,
-      cached_input_tokens: row.cached_input_tokens,
-    }));
+    const deviceDetails = costRows.map((row) => {
+      const reasoning = row.reasoning_output_tokens ?? 0;
+      return {
+        device_id: row.device_id,
+        source: row.source,
+        model: row.model,
+        total_tokens:
+          row.input_tokens +
+          row.output_tokens +
+          row.cached_input_tokens +
+          reasoning,
+        input_tokens: row.input_tokens,
+        output_tokens: row.output_tokens,
+        cached_input_tokens: row.cached_input_tokens,
+        reasoning_output_tokens: reasoning,
+      };
+    });
 
     return NextResponse.json({ devices, timeline, deviceDetails });
   } catch (err) {

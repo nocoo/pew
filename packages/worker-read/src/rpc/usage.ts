@@ -42,6 +42,7 @@ interface CostDetailRow {
   input_tokens: number;
   output_tokens: number;
   cached_input_tokens: number;
+  reasoning_output_tokens: number;
 }
 
 interface TimelineRow {
@@ -51,6 +52,7 @@ interface TimelineRow {
   input_tokens: number;
   output_tokens: number;
   cached_input_tokens: number;
+  reasoning_output_tokens: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -234,7 +236,8 @@ async function handleGetDeviceCostDetails(
         ur.model,
         SUM(ur.input_tokens) AS input_tokens,
         SUM(ur.output_tokens) AS output_tokens,
-        SUM(ur.cached_input_tokens) AS cached_input_tokens
+        SUM(ur.cached_input_tokens) AS cached_input_tokens,
+        SUM(ur.reasoning_output_tokens) AS reasoning_output_tokens
       FROM usage_records ur
       WHERE ur.user_id = ?
         AND ur.hour_start >= ?
@@ -291,7 +294,8 @@ async function handleGetDeviceTimeline(
       SUM(ur.total_tokens) AS total_tokens,
       SUM(ur.input_tokens) AS input_tokens,
       SUM(ur.output_tokens) AS output_tokens,
-      SUM(ur.cached_input_tokens) AS cached_input_tokens
+      SUM(ur.cached_input_tokens) AS cached_input_tokens,
+      SUM(ur.reasoning_output_tokens) AS reasoning_output_tokens
     FROM usage_records ur
     WHERE ur.user_id = ?
       AND ur.hour_start >= ?

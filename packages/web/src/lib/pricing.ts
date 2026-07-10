@@ -99,6 +99,7 @@ export const DEFAULT_SOURCE_DEFAULTS: Record<string, ModelPricing> = {
   codex: { input: 2, output: 8, cached: 0.5 },
   "copilot-cli": { input: 3, output: 15, cached: 0.3 },
   "gemini-cli": { input: 1.25, output: 10, cached: 0.31 },
+  grok: { input: 3, output: 15, cached: 0.75, reasoning: 15 },
   hermes: { input: 3, output: 15, cached: 0.3 },
   kosmos: { input: 3, output: 15, cached: 0.3 },
   opencode: { input: 2, output: 8, cached: 0.5 },

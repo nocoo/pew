@@ -129,7 +129,8 @@ async function handleGetDailyCostBreakdown(
       `SELECT DATE(hour_start) AS day, model, source,
               SUM(input_tokens) AS input_tokens,
               SUM(output_tokens) AS output_tokens,
-              SUM(cached_input_tokens) AS cached_input_tokens
+              SUM(cached_input_tokens) AS cached_input_tokens,
+              SUM(reasoning_output_tokens) AS reasoning_output_tokens
        FROM usage_records
        WHERE user_id = ?
        GROUP BY DATE(hour_start), model, source`
@@ -222,7 +223,8 @@ async function handleGetCostByModelSource(
       `SELECT model, source,
               SUM(input_tokens) AS input_tokens,
               SUM(output_tokens) AS output_tokens,
-              SUM(cached_input_tokens) AS cached_input_tokens
+              SUM(cached_input_tokens) AS cached_input_tokens,
+              SUM(reasoning_output_tokens) AS reasoning_output_tokens
        FROM usage_records
        WHERE user_id = ?
        GROUP BY model, source`

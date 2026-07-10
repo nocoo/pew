@@ -98,9 +98,9 @@ describe("buildDeviceLabelMap", () => {
 describe("toDeviceTrendPoints", () => {
   it("should pivot timeline into date-keyed objects with device_id keys", () => {
     const timeline = [
-      { date: "2026-03-01", device_id: "dev-a", total_tokens: 1000, input_tokens: 600, output_tokens: 300, cached_input_tokens: 100 },
-      { date: "2026-03-01", device_id: "dev-b", total_tokens: 500, input_tokens: 300, output_tokens: 150, cached_input_tokens: 50 },
-      { date: "2026-03-02", device_id: "dev-a", total_tokens: 2000, input_tokens: 1200, output_tokens: 600, cached_input_tokens: 200 },
+      { date: "2026-03-01", device_id: "dev-a", total_tokens: 1000, input_tokens: 600, output_tokens: 300, cached_input_tokens: 100, reasoning_output_tokens: 0 },
+      { date: "2026-03-01", device_id: "dev-b", total_tokens: 500, input_tokens: 300, output_tokens: 150, cached_input_tokens: 50, reasoning_output_tokens: 0 },
+      { date: "2026-03-02", device_id: "dev-a", total_tokens: 2000, input_tokens: 1200, output_tokens: 600, cached_input_tokens: 200, reasoning_output_tokens: 0 },
     ];
 
     const result = toDeviceTrendPoints(timeline);
@@ -118,8 +118,8 @@ describe("toDeviceTrendPoints", () => {
   it("should zero-fill all devices on every date", () => {
     // dev-a active on day 1 only, dev-b active on day 2 only
     const timeline = [
-      { date: "2026-03-01", device_id: "dev-a", total_tokens: 1000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0 },
-      { date: "2026-03-02", device_id: "dev-b", total_tokens: 2000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0 },
+      { date: "2026-03-01", device_id: "dev-a", total_tokens: 1000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
+      { date: "2026-03-02", device_id: "dev-b", total_tokens: 2000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
     ];
 
     const result = toDeviceTrendPoints(timeline);
@@ -139,7 +139,7 @@ describe("toDeviceTrendPoints", () => {
 
   it("should use device_id as key, not display label", () => {
     const timeline = [
-      { date: "2026-03-01", device_id: "default", total_tokens: 100, input_tokens: 60, output_tokens: 30, cached_input_tokens: 10 },
+      { date: "2026-03-01", device_id: "default", total_tokens: 100, input_tokens: 60, output_tokens: 30, cached_input_tokens: 10, reasoning_output_tokens: 0 },
     ];
 
     const result = toDeviceTrendPoints(timeline);
@@ -155,8 +155,8 @@ describe("toDeviceTrendPoints", () => {
 describe("toDeviceSharePoints", () => {
   it("should convert to percentage-based points summing to 100", () => {
     const timeline = [
-      { date: "2026-03-01", device_id: "dev-a", total_tokens: 750, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0 },
-      { date: "2026-03-01", device_id: "dev-b", total_tokens: 250, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0 },
+      { date: "2026-03-01", device_id: "dev-a", total_tokens: 750, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
+      { date: "2026-03-01", device_id: "dev-b", total_tokens: 250, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
     ];
 
     const result = toDeviceSharePoints(timeline);
@@ -169,7 +169,7 @@ describe("toDeviceSharePoints", () => {
 
   it("should handle single device as 100%", () => {
     const timeline = [
-      { date: "2026-03-01", device_id: "dev-a", total_tokens: 500, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0 },
+      { date: "2026-03-01", device_id: "dev-a", total_tokens: 500, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
     ];
 
     const result = toDeviceSharePoints(timeline);
@@ -183,7 +183,7 @@ describe("toDeviceSharePoints", () => {
 
   it("should handle zero total tokens gracefully", () => {
     const timeline = [
-      { date: "2026-03-01", device_id: "dev-a", total_tokens: 0, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0 },
+      { date: "2026-03-01", device_id: "dev-a", total_tokens: 0, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
     ];
 
     const result = toDeviceSharePoints(timeline);
@@ -196,8 +196,8 @@ describe("toDeviceSharePoints", () => {
   it("should zero-fill missing devices to 0% on each date", () => {
     // dev-a active on day 1 only, dev-b active on day 2 only
     const timeline = [
-      { date: "2026-03-01", device_id: "dev-a", total_tokens: 1000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0 },
-      { date: "2026-03-02", device_id: "dev-b", total_tokens: 2000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0 },
+      { date: "2026-03-01", device_id: "dev-a", total_tokens: 1000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
+      { date: "2026-03-02", device_id: "dev-b", total_tokens: 2000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
     ];
 
     const result = toDeviceSharePoints(timeline);
@@ -214,9 +214,9 @@ describe("toDeviceSharePoints", () => {
   it("should guarantee percentages sum to exactly 100 (thirds case)", () => {
     // 3 devices with equal tokens — naive Math.round gives 33+33+33=99
     const timeline = [
-      { date: "2026-03-01", device_id: "dev-a", total_tokens: 1000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0 },
-      { date: "2026-03-01", device_id: "dev-b", total_tokens: 1000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0 },
-      { date: "2026-03-01", device_id: "dev-c", total_tokens: 1000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0 },
+      { date: "2026-03-01", device_id: "dev-a", total_tokens: 1000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
+      { date: "2026-03-01", device_id: "dev-b", total_tokens: 1000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
+      { date: "2026-03-01", device_id: "dev-c", total_tokens: 1000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
     ];
 
     const result = toDeviceSharePoints(timeline);
@@ -242,6 +242,7 @@ describe("toDeviceSharePoints", () => {
       input_tokens: 0,
       output_tokens: 0,
       cached_input_tokens: 0,
+  reasoning_output_tokens: 0,
     }));
 
     const result = toDeviceSharePoints(timeline);
@@ -261,8 +262,8 @@ describe("toDeviceSharePoints", () => {
     // Tokens: 1, 1, 1, 1, 1, 1, 1 = 7 total → each ~14.28%
     // But also test a more realistic uneven case
     const timeline = [
-      { date: "2026-03-01", device_id: "dev-a", total_tokens: 501, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0 },
-      { date: "2026-03-01", device_id: "dev-b", total_tokens: 499, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0 },
+      { date: "2026-03-01", device_id: "dev-a", total_tokens: 501, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
+      { date: "2026-03-01", device_id: "dev-b", total_tokens: 499, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0 },
     ];
 
     const result = toDeviceSharePoints(timeline);
@@ -278,12 +279,13 @@ describe("toDeviceSharePoints", () => {
 // toDeviceAgentBreakdown
 // ---------------------------------------------------------------------------
 
-const makeDetail = (overrides: Partial<{ source: string; model: string; input_tokens: number; output_tokens: number; cached_input_tokens: number; total_tokens: number; device_id: string; date: string }> = {}) => ({
+const makeDetail = (overrides: Partial<{ source: string; model: string; input_tokens: number; output_tokens: number; cached_input_tokens: number; reasoning_output_tokens: number; total_tokens: number; device_id: string; date: string }> = {}) => ({
   source: "claude",
   model: "sonnet",
   input_tokens: 100,
   output_tokens: 50,
   cached_input_tokens: 10,
+  reasoning_output_tokens: 0,
   total_tokens: 160,
   device_id: "dev-1",
   date: "2026-04-01",
@@ -321,6 +323,16 @@ describe("toDeviceAgentBreakdown", () => {
       makeDetail({ source: "mid-agent", total_tokens: 500 }),
     ]);
     expect(result.map((r) => r.source)).toEqual(["big-agent", "mid-agent", "small-agent"]);
+  });
+
+  it("accumulates reasoning_output_tokens", () => {
+    const result = toDeviceAgentBreakdown([
+      makeDetail({ source: "grok", reasoning_output_tokens: 50, total_tokens: 210 }),
+      makeDetail({ source: "grok", reasoning_output_tokens: 25, total_tokens: 185 }),
+    ]);
+    expect(result).toHaveLength(1);
+    expect(result[0]!.reasoning_output_tokens).toBe(75);
+    expect(result[0]!.total_tokens).toBe(395);
   });
 });
 
