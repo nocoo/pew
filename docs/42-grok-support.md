@@ -1,5 +1,7 @@
 # 42 — Grok CLI Token Support
 
+> **Status: implemented** (2026-07-10)
+>
 > 为 pew 增加第 12 个 source：xAI Grok CLI（`grok`）。
 > 通过读取 `~/.grok/logs/unified.jsonl` 里的 `shell.turn.inference_done` 事件，
 > 精确提取每次 inference 的 prompt / cached / completion / reasoning tokens。
