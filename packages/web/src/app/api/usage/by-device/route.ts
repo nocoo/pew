@@ -125,6 +125,7 @@ export async function GET(request: Request) {
         row.input_tokens,
         row.output_tokens,
         row.cached_input_tokens,
+        0,
         pricing
       );
       costByDevice.set(

@@ -91,56 +91,79 @@ describe("pricing", () => {
   describe("estimateCost", () => {
     it("should compute correct cost with no caching", () => {
       const pricing = { input: 3, output: 15 };
-      const result = estimateCost(1_000_000, 500_000, 0, pricing);
+      const result = estimateCost(1_000_000, 500_000, 0, 0, pricing);
 
       expect(result.inputCost).toBeCloseTo(3.0);
       expect(result.outputCost).toBeCloseTo(7.5);
       expect(result.cachedCost).toBe(0);
+      expect(result.reasoningCost).toBe(0);
       expect(result.totalCost).toBeCloseTo(10.5);
     });
 
-    it("should compute correct cost with caching", () => {
+    it("should compute correct cost with caching (input charged in full, disjoint from cached)", () => {
       const pricing = { input: 3, output: 15, cached: 0.3 };
-      // 1M input, 400K cached, 500K output
-      const result = estimateCost(1_000_000, 500_000, 400_000, pricing);
+      // 1M non-cached input, 400K cached, 500K output
+      const result = estimateCost(1_000_000, 500_000, 400_000, 0, pricing);
 
-      // Non-cached input = 600K → 600K/1M * 3 = 1.8
-      expect(result.inputCost).toBeCloseTo(1.8);
+      // input charged in full (already disjoint from cached) → 1M/1M * 3 = 3.0
+      expect(result.inputCost).toBeCloseTo(3.0);
       // Output = 500K/1M * 15 = 7.5
       expect(result.outputCost).toBeCloseTo(7.5);
       // Cached = 400K/1M * 0.3 = 0.12
       expect(result.cachedCost).toBeCloseTo(0.12);
-      expect(result.totalCost).toBeCloseTo(9.42);
+      expect(result.totalCost).toBeCloseTo(10.62);
     });
 
     it("should use input * 0.1 for cached when not specified", () => {
       const pricing = { input: 10, output: 40 };
-      const result = estimateCost(1_000_000, 0, 500_000, pricing);
+      const result = estimateCost(1_000_000, 0, 500_000, 0, pricing);
 
       // Cached price = 10 * 0.1 = 1
-      // Non-cached input = 500K/1M * 10 = 5
-      expect(result.inputCost).toBeCloseTo(5.0);
+      // input charged in full → 1M/1M * 10 = 10
+      expect(result.inputCost).toBeCloseTo(10.0);
       // Cached = 500K/1M * 1 = 0.5
       expect(result.cachedCost).toBeCloseTo(0.5);
     });
 
     it("should handle zero tokens", () => {
       const pricing = { input: 3, output: 15 };
-      const result = estimateCost(0, 0, 0, pricing);
+      const result = estimateCost(0, 0, 0, 0, pricing);
 
       expect(result.inputCost).toBe(0);
       expect(result.outputCost).toBe(0);
       expect(result.cachedCost).toBe(0);
+      expect(result.reasoningCost).toBe(0);
       expect(result.totalCost).toBe(0);
     });
 
-    it("should clamp non-cached input to zero when cached > input", () => {
+    it("should NOT subtract cached from input when cached > input", () => {
       const pricing = { input: 3, output: 15, cached: 0.3 };
-      // Edge case: cached > input (shouldn't happen but handle gracefully)
-      const result = estimateCost(100_000, 0, 200_000, pricing);
+      // Input is already non-cached (disjoint convention). Charge full input.
+      const result = estimateCost(100_000, 0, 200_000, 0, pricing);
 
-      expect(result.inputCost).toBe(0); // clamped to 0
+      expect(result.inputCost).toBeCloseTo(0.3); // 100K/1M * 3
       expect(result.cachedCost).toBeCloseTo(0.06); // 200K/1M * 0.3
+    });
+
+    it("should include reasoning tokens at pricing.reasoning (fallback = output)", () => {
+      const pricing = { input: 3, output: 15, cached: 0.3, reasoning: 15 };
+      const result = estimateCost(100, 200, 500, 50, pricing);
+
+      // 50/1M * 15
+      expect(result.reasoningCost).toBeCloseTo((50 / 1_000_000) * 15);
+      expect(result.totalCost).toBeCloseTo(
+        (100 / 1_000_000) * 3 +
+          (200 / 1_000_000) * 15 +
+          (500 / 1_000_000) * 0.3 +
+          (50 / 1_000_000) * 15,
+      );
+    });
+
+    it("should fall back reasoning price to output when reasoning not set", () => {
+      const pricing = { input: 3, output: 20 };
+      const result = estimateCost(0, 0, 0, 1_000_000, pricing);
+      expect(result.reasoningCost).toBeCloseTo(20);
+      expect(result.totalCost).toBeCloseTo(20);
     });
   });
 

@@ -48,7 +48,7 @@ function computeCost(
   pricingMap: PricingMap
 ): number {
   const pricing = lookupPricing(pricingMap, model, source ?? undefined);
-  return estimateCost(inputTokens, outputTokens, cachedTokens, pricing).totalCost;
+  return estimateCost(inputTokens, outputTokens, cachedTokens, 0, pricing).totalCost;
 }
 
 function computeStreak(activeDays: Set<string>, today: string): number {

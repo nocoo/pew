@@ -461,13 +461,9 @@ describe("GET /api/achievements", () => {
       expect(bigSpender.currentValue).toBeCloseTo(1000, 1);
     });
 
-    it("does not double-count cached tokens against input price", async () => {
-      // Regression: previously inputCost used the full inputTokens (incl. cached portion)
-      // and additionally charged cached price → cached tokens billed at input + cached.
-      // Canonical estimateCost subtracts cachedTokens from inputTokens before the input charge.
-      // Setup: dynamic entry input=$10/M, cached=$1/M; 1M input tokens of which all are cached.
-      // Expected (canonical): input charge = (1M − 1M)/1M × 10 = $0; cached = 1M/1M × 1 = $1 → $1.
-      // Buggy old behavior would yield: 1M × 10/1M + 1M × 1/1M = $11.
+    it("charges input and cached disjointly (all-cached rows use input=0)", async () => {
+      // Parsers store inputTokens and cachedTokens as disjoint. An all-cache-hit
+      // turn has input=0, cached=1M. Expected: only cached charge $1.
       const SENTINEL_MODEL = "double-count-sentinel";
       mockClient.getDynamicPricing.mockResolvedValue({
         entries: [
@@ -487,17 +483,17 @@ describe("GET /api/achievements", () => {
       });
 
       mockClient.getAchievementUsageAggregates.mockResolvedValue({
-        total_tokens: 1_000_000, input_tokens: 1_000_000, output_tokens: 0, cached_input_tokens: 1_000_000, reasoning_output_tokens: 0,
+        total_tokens: 1_000_000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 1_000_000, reasoning_output_tokens: 0,
       });
       mockClient.getAchievementDailyUsage.mockResolvedValue([]);
       mockClient.getAchievementDailyCostBreakdown.mockResolvedValue([
-        { day: "2026-04-03", model: SENTINEL_MODEL, source: null, input_tokens: 1_000_000, output_tokens: 0, cached_input_tokens: 1_000_000 },
+        { day: "2026-04-03", model: SENTINEL_MODEL, source: null, input_tokens: 0, output_tokens: 0, cached_input_tokens: 1_000_000 },
       ]);
       mockClient.getAchievementDiversityCounts.mockResolvedValue({ source_count: 0, model_count: 0, device_count: 0 });
       mockClient.getAchievementSessionAggregates.mockResolvedValue({ total_sessions: 0, quick_sessions: 0, marathon_sessions: 0, max_messages: 0, automated_sessions: 0 });
       mockClient.getAchievementHourlyUsage.mockResolvedValue([]);
       mockClient.getAchievementCostByModelSource.mockResolvedValue([
-        { model: SENTINEL_MODEL, source: null, input_tokens: 1_000_000, output_tokens: 0, cached_input_tokens: 1_000_000 },
+        { model: SENTINEL_MODEL, source: null, input_tokens: 0, output_tokens: 0, cached_input_tokens: 1_000_000 },
       ]);
       mockClient.getAchievementEarners.mockResolvedValue([]);
       mockClient.getAchievementEarnersCount.mockResolvedValue(0);
@@ -510,10 +506,8 @@ describe("GET /api/achievements", () => {
     });
 
     it("falls back to input × 0.1 when dynamic pricing has no cached price", async () => {
-      // Regression: previously when pricing.cached was null/undefined, cached cost was 0.
-      // Canonical estimateCost falls back to pricing.input * 0.1.
-      // Setup: dynamic entry input=$10/M, cached=null; 1M input tokens all cached.
-      // Expected: input charge $0 + cached charge = 1M/1M × (10 × 0.1) = $1. Old buggy: $0.
+      // Canonical estimateCost falls back to pricing.input * 0.1 when cached unset.
+      // All-cache-hit row: input=0, cached=1M → cached charge = 1M/1M × (10 × 0.1) = $1.
       const SENTINEL_MODEL = "cached-fallback-sentinel";
       mockClient.getDynamicPricing.mockResolvedValue({
         entries: [
@@ -533,17 +527,17 @@ describe("GET /api/achievements", () => {
       });
 
       mockClient.getAchievementUsageAggregates.mockResolvedValue({
-        total_tokens: 1_000_000, input_tokens: 1_000_000, output_tokens: 0, cached_input_tokens: 1_000_000, reasoning_output_tokens: 0,
+        total_tokens: 1_000_000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 1_000_000, reasoning_output_tokens: 0,
       });
       mockClient.getAchievementDailyUsage.mockResolvedValue([]);
       mockClient.getAchievementDailyCostBreakdown.mockResolvedValue([
-        { day: "2026-04-03", model: SENTINEL_MODEL, source: null, input_tokens: 1_000_000, output_tokens: 0, cached_input_tokens: 1_000_000 },
+        { day: "2026-04-03", model: SENTINEL_MODEL, source: null, input_tokens: 0, output_tokens: 0, cached_input_tokens: 1_000_000 },
       ]);
       mockClient.getAchievementDiversityCounts.mockResolvedValue({ source_count: 0, model_count: 0, device_count: 0 });
       mockClient.getAchievementSessionAggregates.mockResolvedValue({ total_sessions: 0, quick_sessions: 0, marathon_sessions: 0, max_messages: 0, automated_sessions: 0 });
       mockClient.getAchievementHourlyUsage.mockResolvedValue([]);
       mockClient.getAchievementCostByModelSource.mockResolvedValue([
-        { model: SENTINEL_MODEL, source: null, input_tokens: 1_000_000, output_tokens: 0, cached_input_tokens: 1_000_000 },
+        { model: SENTINEL_MODEL, source: null, input_tokens: 0, output_tokens: 0, cached_input_tokens: 1_000_000 },
       ]);
       mockClient.getAchievementEarners.mockResolvedValue([]);
       mockClient.getAchievementEarnersCount.mockResolvedValue(0);

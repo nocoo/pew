@@ -345,8 +345,8 @@ describe("GET /api/users/[slug]/achievements", () => {
       expect(res.status).toBe(200);
     });
 
-    it("does not double-count cached tokens against input price (big-spender)", async () => {
-      // Regression mirror of /api/achievements equivalent — both routes share canonical estimateCost.
+    it("charges input and cached disjointly (all-cached rows use input=0)", async () => {
+      // Regression mirror of /api/achievements — both routes share canonical estimateCost.
       const SENTINEL_MODEL = "double-count-sentinel-public";
       mockClient.getDynamicPricing.mockResolvedValue({
         entries: [
@@ -366,16 +366,16 @@ describe("GET /api/users/[slug]/achievements", () => {
       });
 
       mockClient.getAchievementUsageAggregates.mockResolvedValue({
-        total_tokens: 1_000_000, input_tokens: 1_000_000, output_tokens: 0, cached_input_tokens: 1_000_000, reasoning_output_tokens: 0,
+        total_tokens: 1_000_000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 1_000_000, reasoning_output_tokens: 0,
       });
       mockClient.getAchievementDailyUsage.mockResolvedValue([]);
       mockClient.getAchievementDailyCostBreakdown.mockResolvedValue([
-        { day: "2026-04-03", model: SENTINEL_MODEL, source: null, input_tokens: 1_000_000, output_tokens: 0, cached_input_tokens: 1_000_000 },
+        { day: "2026-04-03", model: SENTINEL_MODEL, source: null, input_tokens: 0, output_tokens: 0, cached_input_tokens: 1_000_000 },
       ]);
       mockClient.getAchievementDiversityCounts.mockResolvedValue({ source_count: 0, model_count: 0, device_count: 0 });
       mockClient.getAchievementSessionAggregates.mockResolvedValue({ total_sessions: 0, quick_sessions: 0, marathon_sessions: 0, max_messages: 0, automated_sessions: 0 });
       mockClient.getAchievementCostByModelSource.mockResolvedValue([
-        { model: SENTINEL_MODEL, source: null, input_tokens: 1_000_000, output_tokens: 0, cached_input_tokens: 1_000_000 },
+        { model: SENTINEL_MODEL, source: null, input_tokens: 0, output_tokens: 0, cached_input_tokens: 1_000_000 },
       ]);
 
       const res = await GET(
@@ -385,8 +385,7 @@ describe("GET /api/users/[slug]/achievements", () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       const bigSpender = body.achievements.find((a: { id: string }) => a.id === "big-spender");
-      // Canonical: input cost = (1M − 1M)/1M × 10 = 0; cached = 1M/1M × 1 = 1 → $1.
-      // Old buggy: 1M × 10/1M + 1M × 1/1M = $11.
+      // All-cache-hit: input=0, cached=1M → only cached charge $1.
       expect(bigSpender?.currentValue).toBeCloseTo(1, 5);
     });
 
@@ -410,16 +409,16 @@ describe("GET /api/users/[slug]/achievements", () => {
       });
 
       mockClient.getAchievementUsageAggregates.mockResolvedValue({
-        total_tokens: 1_000_000, input_tokens: 1_000_000, output_tokens: 0, cached_input_tokens: 1_000_000, reasoning_output_tokens: 0,
+        total_tokens: 1_000_000, input_tokens: 0, output_tokens: 0, cached_input_tokens: 1_000_000, reasoning_output_tokens: 0,
       });
       mockClient.getAchievementDailyUsage.mockResolvedValue([]);
       mockClient.getAchievementDailyCostBreakdown.mockResolvedValue([
-        { day: "2026-04-03", model: SENTINEL_MODEL, source: null, input_tokens: 1_000_000, output_tokens: 0, cached_input_tokens: 1_000_000 },
+        { day: "2026-04-03", model: SENTINEL_MODEL, source: null, input_tokens: 0, output_tokens: 0, cached_input_tokens: 1_000_000 },
       ]);
       mockClient.getAchievementDiversityCounts.mockResolvedValue({ source_count: 0, model_count: 0, device_count: 0 });
       mockClient.getAchievementSessionAggregates.mockResolvedValue({ total_sessions: 0, quick_sessions: 0, marathon_sessions: 0, max_messages: 0, automated_sessions: 0 });
       mockClient.getAchievementCostByModelSource.mockResolvedValue([
-        { model: SENTINEL_MODEL, source: null, input_tokens: 1_000_000, output_tokens: 0, cached_input_tokens: 1_000_000 },
+        { model: SENTINEL_MODEL, source: null, input_tokens: 0, output_tokens: 0, cached_input_tokens: 1_000_000 },
       ]);
 
       const res = await GET(
@@ -429,7 +428,7 @@ describe("GET /api/users/[slug]/achievements", () => {
       expect(res.status).toBe(200);
       const body = await res.json();
       const bigSpender = body.achievements.find((a: { id: string }) => a.id === "big-spender");
-      // Canonical fallback: cached = input × 0.1 → 1M/1M × 1 = $1. Old buggy: $0.
+      // Canonical fallback: cached = input × 0.1 → 1M/1M × 1 = $1.
       expect(bigSpender?.currentValue).toBeCloseTo(1, 5);
     });
   });

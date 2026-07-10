@@ -163,7 +163,7 @@ export function groupByModel(records: UsageRow[], pricingMap: PricingMap): Model
     grandTotal += r.total_tokens;
     const existing = byModel.get(r.model);
     const pricing = lookupPricing(pricingMap, r.model, r.source);
-    const cost = estimateCost(r.input_tokens, r.output_tokens, r.cached_input_tokens, pricing);
+    const cost = estimateCost(r.input_tokens, r.output_tokens, r.cached_input_tokens, 0, pricing);
 
     if (existing) {
       existing.sources.add(r.source);
@@ -232,7 +232,7 @@ export function groupByAgent(records: UsageRow[], pricingMap: PricingMap): Agent
         totalTokens += r.total_tokens;
 
         const pricing = lookupPricing(pricingMap, r.model, r.source);
-        const cost = estimateCost(r.input_tokens, r.output_tokens, r.cached_input_tokens, pricing);
+        const cost = estimateCost(r.input_tokens, r.output_tokens, r.cached_input_tokens, 0, pricing);
         estimatedCost += cost.totalCost;
 
         const existing = byModel.get(r.model);
@@ -307,6 +307,7 @@ export function groupByDate(records: UsageRow[], pricingMap: PricingMap, tzOffse
           r.input_tokens,
           r.output_tokens,
           r.cached_input_tokens,
+          0,
           pricing,
         );
         cost += c.totalCost;
@@ -430,6 +431,7 @@ export function compareWeekdayWeekend(
       r.input_tokens,
       r.output_tokens,
       r.cached_input_tokens,
+      0,
       pricing,
     );
     costByDate.set(localDate, (costByDate.get(localDate) ?? 0) + cost.totalCost);
@@ -540,6 +542,7 @@ export function computeMoMGrowth(
       r.input_tokens,
       r.output_tokens,
       r.cached_input_tokens,
+      0,
       pricing,
     );
 
@@ -660,6 +663,7 @@ export function computeWoWGrowth(
       r.input_tokens,
       r.output_tokens,
       r.cached_input_tokens,
+      0,
       pricing,
     );
 
