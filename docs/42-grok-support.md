@@ -383,10 +383,30 @@ Session driver 采用 mtime-based `SessionFileCursor`（同 kosmos / vscode-copi
 - `packages/web/src/lib/usage-transforms.ts` — `SOURCE_LABELS` 加 `{ grok: "Grok" }`
 - `packages/web/src/lib/pricing.ts` — 两项改动:
   (a) **扩展 `estimateCost()` 接受 `reasoningTokens` + `pricing.reasoning` 单价**,
-      同步更新 `ModelPricing` 类型、`pricing.test.ts` 的 5 处调用、6 处生产调用点
-      (`api/achievements/route.ts:66`、`api/users/[slug]/achievements/route.ts:51`、
-      `api/usage/by-device/route.ts:124`、`(dashboard)/daily-usage/page.tsx:61`、
-      `(dashboard)/hourly-usage/page.tsx:140`),reasoning 单价 fallback = output 单价。
+      同步更新 `ModelPricing` 类型、`pricing.test.ts` 的 5 处调用、以及**全部 14 处**
+      生产调用点(reasoning 单价 fallback = output 单价):
+
+      | 位置 | file:line | 说明 |
+      |---|---|---|
+      | Achievement 成本 | `api/achievements/route.ts:66` | user route |
+      | Achievement 成本 | `api/users/[slug]/achievements/route.ts:51` | slug route |
+      | By-device 成本 | `api/usage/by-device/route.ts:124` | device 聚合 |
+      | Daily usage | `(dashboard)/daily-usage/page.tsx:61` | 页面 |
+      | Hourly usage | `(dashboard)/hourly-usage/page.tsx:140` | 页面 |
+      | Model 成本 (per-model) | `lib/cost-helpers.ts:23` | `sumMostExpensiveModels` 类 |
+      | Model 成本 (per-source-model) | `lib/cost-helpers.ts:59` | 按 source × model |
+      | Cost per 1K | `lib/cost-helpers.ts:206` | 排序辅助 |
+      | Records 聚合 (map 分支) | `lib/usage-helpers.ts:166` | 主 aggregate |
+      | Records 聚合 (per-model 分支) | `lib/usage-helpers.ts:235` | model 展开 |
+      | Records 聚合 (per-source 分支) | `lib/usage-helpers.ts:306` | source 展开 |
+      | Records 聚合 (per-hour 分支) | `lib/usage-helpers.ts:429` | hour 展开 |
+      | Records 聚合 (per-day 分支) | `lib/usage-helpers.ts:539` | day 展开 |
+      | Records 聚合 (per-device 分支) | `lib/usage-helpers.ts:659` | device 展开 |
+
+      每处调用签名从 `estimateCost(input, output, cached, pricing)` →
+      `estimateCost(input, output, cached, reasoning, pricing)`。**新增参数必填**
+      (不设 optional,否则遗漏调用点会被 TS 静默通过 → 该页面/路由无 reasoning 计价)。
+      commit 0 里 grok 尚未接入,reasoning 传 `0` 保持行为等价。
   (b) `DEFAULT_SOURCE_DEFAULTS` 加 grok 条目(默认 xAI 模型的 input/output/cached/reasoning 单价)。
 - `packages/web/src/app/api/{leaderboard,usage,sessions,projects,users/[slug]}/route.ts` +
   `packages/web/src/app/api/projects/[id]/route.ts` — 6 处 `VALID_SOURCES` 数组
@@ -443,7 +463,7 @@ union 加 `"grok"`,这两处 switch 立刻编译失败。同理,driver 依赖 `D
 
 | # | Commit | 内容 | 独立编译? |
 |---|---|---|---|
-| 0 | `feat: extend estimateCost to accept reasoning tokens` | pricing.ts 扩展签名 + ModelPricing 类型 + 5 处 test + 6 处 callsite 迁移(reasoning=0 保原有行为) | ✅ pure refactor,无 grok 引用 |
+| 0 | `feat: extend estimateCost to accept reasoning tokens` | pricing.ts 扩展签名 + ModelPricing 类型 + `pricing.test.ts` 的 5 处调用 + **全部 14 处**生产调用点迁移(2 个 achievements route + 1 by-device route + 2 dashboard 页面 + 3 处 `cost-helpers.ts` + 6 处 `usage-helpers.ts`;reasoning 传 `0` 保原行为)。**新参数必填**,防止遗漏 callsite | ✅ pure refactor,无 grok 引用 |
 | 1 | **`feat: add "grok" source foundation (types + all exhaustive switches + DiscoverOpts stub)`** | `core/types.ts` `Source` 加 grok + 加 `GrokCursor` 若需要;`core/constants.ts` `SOURCES` 加 grok;**同时**加 `sync.ts`/`session-sync.ts`/`session-sync-helpers.ts` 里 `sourceKey()` 的 `case "grok"`、`SyncResult.sources.grok`、`filesScanned.grok` 初始化;`drivers/types.ts` `DiscoverOpts` 加 `grokLogsPath?` + `grokSessionsDir?`;`utils/paths.ts` 加 grok 三个默认路径;`cli.ts` `isSource()` + `SOURCE_LABELS` + `SourceDirs`;所有 11 处 constants/types/validation test 断言更新。**尚无 driver 注册,尚无 parser** — foundation commit,typecheck + lint 全绿 | ✅ |
 | 2 | `feat(cli): add grok log parser and normalizer (no wiring)` | `parsers/grok.ts` + `grok-parser.test.ts`。**TDD 先测后码**。此时 parser 尚未被任何 driver 调用,纯函数库。 | ✅ |
 | 3 | `feat(cli): add grok session parser (no wiring)` | `parsers/grok-session.ts` + `grok-session.test.ts`。同上。 | ✅ |
