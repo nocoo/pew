@@ -387,10 +387,11 @@ Session driver 采用 mtime-based `SessionFileCursor`（同 kosmos / vscode-copi
 - `README.md` — ASCII banner + "11 种 → 12 种" 数量 + tool 列表
 - `PRIVACY.md` — 添加 `~/.grok/` 到 raw-data-paths
 
-### 5.8 Testing 断言（11 文件，edit）
+### 5.8 Testing 断言(edit)
 
-以下现有 test 里硬编码 11 source 断言的地方，必须同步扩展：
+以下现有 test 里硬编码 11 source 断言的地方,必须同步扩展:
 
+**Core / CLI(11 处)**:
 - `packages/core/src/__tests__/constants.test.ts` — SOURCES 数组断言
 - `packages/core/src/__tests__/types.test.ts`
 - `packages/core/src/__tests__/validation.test.ts`
@@ -402,6 +403,11 @@ Session driver 采用 mtime-based `SessionFileCursor`（同 kosmos / vscode-copi
 - `packages/cli/src/__tests__/session-sync-helpers.test.ts`
 - `packages/cli/src/__tests__/status.test.ts`
 - `packages/cli/src/__tests__/cli.test.ts`
+
+**Web(2 处,不能忘)**:
+- `packages/web/src/__tests__/palette.test.ts:18` — `toHaveLength(11)` → 12,加 chart-12 断言
+- `packages/web/src/__tests__/e2e/api-e2e.test.ts` — 加一个 `it("accepts grok source records")` case
+  (现有 tests **不会自动覆盖 grok**,只 hard-code claude-code/gemini-cli/opencode)
 
 ### 5.9 New tests（6 新文件）
 
@@ -494,11 +500,27 @@ union 加 `"grok"`,这两处 switch 立刻编译失败。同理,driver 依赖 `D
 
 ### 7.2 L1 Unit tests(source registry 扩展)
 
-跨 11 个原有 test 文件同步扩展"12 sources"断言。每个 commit 5(wiring)必须让这些 test 全绿。
+跨 11 个原有 test 文件同步扩展 "12 sources" 断言(见 §5.8)。
+
+**额外必须同步的硬编码断言**(容易被忽略,加进 commit 6 web checklist):
+
+- `packages/web/src/__tests__/palette.test.ts:18` — `toHaveLength(11)` → `toHaveLength(12)`,
+  加 `chart-12` 断言、加 grok 对应 `agentColor()` 测试。
+- `packages/web/src/__tests__/e2e/api-e2e.test.ts` — 现有 ingest 测试**只写死** `claude-code` /
+  `gemini-cli` / `opencode` 三种 source,**不会自动覆盖 grok**。commit 5 里追加一个专门的
+  `it("accepts grok source records")` case,POST 一条 `source: "grok"` 记录并验证 201 + query 回读。
 
 ### 7.3 L2 Integration tests
 
-现有 `packages/web/src/__tests__/e2e/api-e2e.test.ts` 里的 ingest 测试自动覆盖 grok source(因为 D1 schema 没变,VALID_SOURCES 加了 grok 即可)。**无需新增 L2 case**。
+**必须新增一个 grok source ingest case** — 现有 `packages/web/src/__tests__/e2e/api-e2e.test.ts`
+只覆盖 claude-code/gemini-cli/opencode。虽然 D1 schema 无需 migration,但 API 层
+`VALID_SOURCES` 白名单是每个 route 手动维护的,漏一个 route 就会 400。新增 case:
+```typescript
+it("accepts grok source records", async () => {
+  // POST /api/ingest with makeRecord({ source: "grok", model: "grok-4.5" })
+  // Verify 201; GET /api/usage; expect the grok row to be visible.
+});
+```
 
 ### 7.4 L3 Browser E2E
 
