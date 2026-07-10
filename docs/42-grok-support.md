@@ -644,10 +644,13 @@ union 加 `"grok"`,这两处 switch 立刻编译失败。同理,driver 依赖 `D
 2. `seedTestUser()` 里的 INSERT 补两列:`slug=?, is_public=1`;并把 UPSERT 分支同步
    (`ON CONFLICT (id) DO UPDATE SET email=excluded.email, slug=excluded.slug, is_public=1`)
 3. cleanup 里加 `DELETE FROM users WHERE id = ?` 保留(已有),但确认清空后 slug 不残留
-4. `/api/projects` route **不校验** alias project_ref 是否已有 session_records 或
-   usage_records 记录 —— 空 alias 会入库(reviewer 说需要"先有对应 session record" 那点
-   源于误解;实测 route 只校验 `typeof source/project_ref === "string"` + VALID_SOURCES);
-   L2 case 直接 POST 即可。
+4. **`/api/projects` POST 和 PATCH 都会调用 `dbRead.sessionRecordExists(userId, alias.source,
+   alias.project_ref)`**(route.ts:288, [id]/route.ts:192)。任一 alias 找不到对应
+   `session_records` 行,整个请求返回 **400 "Some aliases do not match any session data"**。
+   L2 case **必须先** ingest 两条 grok session records(对应下面 POST/PATCH 用到的
+   `project_ref` 值),否则两个 project 请求都会 400。
+5. cleanup 顺序需保留:先删 project_aliases、projects,再删 session_records、
+   usage_records,最后 users(FK 顺序)。
 
 新增 case(放 commit 6,不是 commit 5):
 ```typescript
@@ -669,40 +672,58 @@ it("accepts and reads back grok source records — every whitelist entry point",
   });
   expect(ingest.status).toBe(200);
 
-  // 2. Every ?source= route
+  // 2. Seed two grok session_records so /api/projects sessionRecordExists()
+  //    passes for both project_ref values used below. Uses direct D1 write
+  //    (not /api/sessions ingest — sessions ingest has its own request shape;
+  //    the seed helper follows the pattern already used for seedTestUser).
+  const projectRefCreate = `e2e-repo-${RUN_ID}`;
+  const projectRefPatch = `e2e-repo-${RUN_ID}-2`;
+  for (const project_ref of [projectRefCreate, projectRefPatch]) {
+    await getD1().execute(
+      `INSERT INTO session_records (user_id, session_key, source, kind,
+         started_at, last_message_at, duration_seconds, user_messages,
+         assistant_messages, total_messages, project_ref, model, snapshot_at)
+       VALUES (?, ?, 'grok', 'human', datetime('now'), datetime('now'), 0, 0, 0, 0, ?, 'grok-4.5', datetime('now'))
+       ON CONFLICT (user_id, session_key) DO NOTHING`,
+      [TEST_USER_ID, `${TEST_USER_ID}-${project_ref}`, project_ref],
+    );
+  }
+
+  // 3. Every ?source= route (needs public slug from prereq 1-2)
   for (const path of [
     "/api/usage?source=grok",
     "/api/sessions?source=grok",
     "/api/leaderboard?source=grok",
-    `/api/users/${TEST_USER_SLUG}?source=grok`,  // needs public slug (see prereq)
+    `/api/users/${TEST_USER_SLUG}?source=grok`,
   ]) {
     const r = await fetch(`${BASE_URL}${path}`);
     expect(r.status, path).toBe(200);
   }
 
-  // 3. /api/projects — POST alias with source:"grok"
+  // 4. /api/projects — POST alias with source:"grok"
+  //    Session record from step 2 satisfies sessionRecordExists check.
   const create = await fetch(`${BASE_URL}/api/projects`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       name: `grok-e2e-${RUN_ID}`,
-      aliases: [{ source: "grok", project_ref: `e2e-repo-${RUN_ID}` }],
+      aliases: [{ source: "grok", project_ref: projectRefCreate }],
     }),
   });
   expect(create.status).toBe(201);
   const { project } = await create.json();
 
-  // 4. /api/projects/[id] — PATCH with add_aliases (snake_case!)
+  // 5. /api/projects/[id] — PATCH with add_aliases (snake_case!)
+  //    projectRefPatch was seeded in step 2.
   const patch = await fetch(`${BASE_URL}/api/projects/${project.id}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      add_aliases: [{ source: "grok", project_ref: `e2e-repo-${RUN_ID}-2` }],
+      add_aliases: [{ source: "grok", project_ref: projectRefPatch }],
     }),
   });
   expect(patch.status).toBe(200);
 });
-```
 ```
 
 若某个 route 的 `VALID_SOURCES` 数组漏了 `"grok"`,对应的 assert 会 400/`"Invalid source parameter"`,
