@@ -446,6 +446,9 @@ Codex 未来产生 reasoning 数据,页面成本估算仍**不会包含 reasonin
 | **Worker-read row type:by-device timeline** | `packages/worker-read/src/rpc/usage.ts:TimelineRow` | 加 `reasoning_output_tokens: number` |
 | **By-device route:estimateCost 调用** | `packages/web/src/app/api/usage/by-device/route.ts:124` | `estimateCost(row.input_tokens, row.output_tokens, row.cached_input_tokens, row.reasoning_output_tokens, pricing)` — 传新参 |
 | **By-device route:deviceDetails map** | `packages/web/src/app/api/usage/by-device/route.ts:162` | 输出加 `reasoning_output_tokens: row.reasoning_output_tokens`;`total_tokens` 从 `input+output+cached` 改为 `input+output+cached+reasoning`(避免 UI 层 reasoning 消失)|
+| **Device breakdown 类型** | `packages/web/src/lib/device-helpers.ts:193, 202` | `DeviceAgentBreakdownRow` 和 `DeviceModelBreakdownRow` 各加 `reasoning_output_tokens: number` |
+| **Device breakdown reducers** | `packages/web/src/lib/device-helpers.ts:toDeviceAgentBreakdown` 和 `toDeviceModelBreakdown` | 初始化和累加都加 `reasoning_output_tokens += d.reasoning_output_tokens` |
+| **Device 堆叠图 keys/labels** | `packages/web/src/components/dashboard/device-agent-chart.tsx:56-63, 176-188` + `device-model-chart.tsx` 同结构 | `orderedKeys` 数组从 `["input_tokens","output_tokens","cached_input_tokens"]` 扩为 `[..., "reasoning_output_tokens"]`;label 加 `reasoning_output_tokens: "Reasoning"`;新增一段 `<Bar dataKey="reasoning_output_tokens" ...>`。否则堆叠图各部分之和 < `total_tokens`,视觉上出现"缺口"。 |
 | **By-device route:timeline map** | `packages/web/src/app/api/usage/by-device/route.ts:152` | 输出加 `reasoning_output_tokens: row.reasoning_output_tokens`(前提是 TimelineRow SQL 已加上)|
 | Worker-read SQL:achievements daily-cost | `packages/worker-read/src/rpc/achievements.ts:129` | SELECT 加 `SUM(reasoning_output_tokens)` |
 | Worker-read SQL:achievements per-model-source | `packages/worker-read/src/rpc/achievements.ts:222` | SELECT 加 `SUM(reasoning_output_tokens)` |
@@ -472,6 +475,7 @@ pricing.test.ts 只覆盖 estimator 本身,漏了任一上游聚合都不会让 
 | **estimator** | `packages/web/src/__tests__/pricing.test.ts` | `estimateCost(100, 200, 500, 50, pricing)` 的 `totalCost` 包含 `50/M * pricing.reasoning` |
 | **worker-read achievements SQL** | `packages/worker-read/src/rpc/achievements.test.ts` | seed 一行 `reasoning_output_tokens=50`,断言 `DailyCostRow`/`CostByModelSourceRow` 返回 `reasoning_output_tokens: 50` |
 | **worker-read by-device SQL(cost + timeline 两处)** | `packages/worker-read/src/rpc/usage.test.ts` | seed 一行 grok,`handleGetDeviceCostDetails` 返回的 CostDetailRow 含 `reasoning_output_tokens`;`handleGetDeviceTimeline` 返回的 TimelineRow 也含之 |
+| **web device breakdown reducers** | `packages/web/src/__tests__/device-helpers.test.ts` | 一组带 reasoning 的 DeviceCostDetail 输入,`toDeviceAgentBreakdown` 和 `toDeviceModelBreakdown` 结果里各 row 的 `reasoning_output_tokens` 正确累加;`total_tokens` 等于 input+output+cached+reasoning |
 | **web usage-transforms** | `packages/web/src/__tests__/usage-transforms.test.ts`(新增或补) | `toModelAggregates([{...,reasoning_output_tokens:50}])` 结果 `models[0].reasoning === 50` |
 | **web usage-helpers reducer** | `packages/web/src/__tests__/usage-helpers.test.ts` | 每个 reducer(11 处的代表 3 处:per-model、per-hour、per-day)聚合后 `reasoningTokens` 累加正确 |
 | **web achievements route** | `packages/web/src/__tests__/achievements-route.test.ts` (or e2e) | mock RPC 返回带 reasoning 的行,`computeCost` 结果 delta 与不带 reasoning 差异 = `50/M * priceReasoning` |
