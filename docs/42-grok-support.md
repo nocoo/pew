@@ -270,7 +270,7 @@ export async function parseGrokSession(sessionDir: string): Promise<SessionSnaps
     durationSeconds: signals?.sessionDurationSeconds ?? 0,
     userMessages: signals?.userMessageCount ?? 0,
     assistantMessages: signals?.assistantMessageCount ?? 0,
-    totalMessages: summary.num_messages ?? 0,
+    totalMessages: summary.num_chat_messages ?? 0,   // NOT num_messages
     projectRef: summary.git_root_dir ?? summary.info.cwd ?? null,
     model: summary.current_model_id ?? null,
     snapshotAt: new Date().toISOString(),
