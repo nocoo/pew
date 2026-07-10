@@ -175,6 +175,8 @@ export async function executeSessionSync(
     openCodeDbPath: opts.openCodeDbPath,
     openclawDir: opts.openclawDir,
     piSessionsDir: opts.piSessionsDir,
+    grokLogsPath: opts.grokLogsPath,
+    grokSessionsDir: opts.grokSessionsDir,
   };
 
   // ---------- Phase 1: File-based drivers (generic loop) ----------

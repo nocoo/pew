@@ -54,6 +54,8 @@ export async function executeNotify(
           piSessionsDir: opts.piSessionsDir,
           vscodeCopilotDirs: opts.vscodeCopilotDirs,
           copilotCliLogsDir: opts.copilotCliLogsDir,
+          grokLogsPath: opts.grokLogsPath,
+          grokSessionsDir: opts.grokSessionsDir,
         });
         cycle.tokenSync = {
           totalDeltas: tokenResult.totalDeltas,
@@ -81,6 +83,8 @@ export async function executeNotify(
           openSessionDb: opts.openSessionDb,
           openclawDir: opts.openclawDir,
           piSessionsDir: opts.piSessionsDir,
+          grokLogsPath: opts.grokLogsPath,
+          grokSessionsDir: opts.grokSessionsDir,
         });
         cycle.sessionSync = {
           totalSnapshots: sessionResult.totalSnapshots,

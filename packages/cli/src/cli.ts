@@ -261,6 +261,8 @@ const syncCommand = defineCommand({
       piSessionsDir: paths.piSessionsDir,
       vscodeCopilotDirs: paths.vscodeCopilotDirs,
       copilotCliLogsDir: paths.copilotCliLogsDir,
+      grokLogsPath: paths.grokLogsPath,
+      grokSessionsDir: paths.grokSessionsDir,
       onCorruptLine: handleCorruptLine,
       onProgress(event) {
         logSyncProgress(event);
@@ -280,6 +282,7 @@ const syncCommand = defineCommand({
       if (result.sources.claude > 0) deltaParts.push(`Claude: ${result.sources.claude}`);
       if (result.sources.codex > 0) deltaParts.push(`Codex: ${result.sources.codex}`);
       if (result.sources.gemini > 0) deltaParts.push(`Gemini: ${result.sources.gemini}`);
+      if (result.sources.grok > 0) deltaParts.push(`Grok: ${result.sources.grok}`);
       if (result.sources.kosmos > 0) deltaParts.push(`Kosmos: ${result.sources.kosmos}`);
       if (result.sources.opencode > 0) deltaParts.push(`OpenCode: ${result.sources.opencode}`);
       if (result.sources.openclaw > 0) deltaParts.push(`OpenClaw: ${result.sources.openclaw}`);
@@ -315,6 +318,8 @@ const syncCommand = defineCommand({
       openSessionDb,
       openclawDir: paths.openclawDir,
       piSessionsDir: paths.piSessionsDir,
+      grokLogsPath: paths.grokLogsPath,
+      grokSessionsDir: paths.grokSessionsDir,
       onCorruptLine: handleCorruptLine,
       onProgress(event) {
         logSessionSyncProgress(event);
@@ -671,6 +676,8 @@ const notifyCommand = defineCommand({
       piSessionsDir: paths.piSessionsDir,
       vscodeCopilotDirs: paths.vscodeCopilotDirs,
       copilotCliLogsDir: paths.copilotCliLogsDir,
+      grokLogsPath: paths.grokLogsPath,
+      grokSessionsDir: paths.grokSessionsDir,
       version: CLI_VERSION,
     });
 
