@@ -228,6 +228,33 @@ export async function discoverCopilotCliFiles(
 }
 
 /**
+ * Discover Grok CLI unified log file.
+ * Path: ~/.grok/logs/unified.jsonl (single append-only file).
+ * Returns [path] if the file exists, else [].
+ */
+export async function discoverGrokLogFile(
+  logsPath: string,
+): Promise<string[]> {
+  try {
+    const st = await stat(logsPath);
+    if (st.isFile()) return [logsPath];
+  } catch {
+    // missing
+  }
+  return [];
+}
+
+/**
+ * Discover Grok CLI session summary files.
+ * Path pattern: ~/.grok/sessions/<enc-cwd>/<sid>/summary.json
+ */
+export async function discoverGrokSessionDirs(
+  sessionsDir: string,
+): Promise<string[]> {
+  return collectFiles(sessionsDir, (name) => name === "summary.json");
+}
+
+/**
  * Discover Kosmos chat session JSON files.
  *
  * Scans multiple data directories (kosmos-app + pm-studio-app) for

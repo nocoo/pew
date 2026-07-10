@@ -180,12 +180,21 @@ describe("createTokenDrivers", () => {
     expect(dbDrivers).toHaveLength(0);
   });
 
-  it("returns all 10 file drivers when all dirs including kosmos and pmstudio are set", () => {
+  it("includes grok file driver when grokLogsPath is set", () => {
+    const { fileDrivers } = createTokenDrivers({
+      grokLogsPath: "/tmp/.grok/logs/unified.jsonl",
+    });
+    expect(fileDrivers).toHaveLength(1);
+    expect(fileDrivers[0].source).toBe("grok");
+  });
+
+  it("returns all 11 file drivers when all dirs including kosmos, pmstudio and grok are set", () => {
     const { fileDrivers } = createTokenDrivers({
       claudeDir: "/tmp/claude",
       codexSessionsDir: "/tmp/codex",
       copilotCliLogsDir: "/tmp/copilot/logs",
       geminiDir: "/tmp/gemini",
+      grokLogsPath: "/tmp/.grok/logs/unified.jsonl",
       kosmosDataDir: "/tmp/kosmos",
       openCodeMessageDir: "/tmp/oc",
       openclawDir: "/tmp/openclaw",
@@ -193,7 +202,7 @@ describe("createTokenDrivers", () => {
       pmstudioDataDir: "/tmp/pmstudio",
       vscodeCopilotDirs: ["/tmp/vsc"],
     });
-    expect(fileDrivers).toHaveLength(10);
+    expect(fileDrivers).toHaveLength(11);
   });
 });
 
@@ -308,18 +317,27 @@ describe("createSessionDrivers", () => {
     expect(fileDrivers[0].source).toBe("pmstudio");
   });
 
-  it("returns all 9 file drivers when all dirs including kosmos and pmstudio are set", () => {
+  it("includes grok session driver when grokSessionsDir is set", () => {
+    const { fileDrivers } = createSessionDrivers({
+      grokSessionsDir: "/tmp/.grok/sessions",
+    });
+    expect(fileDrivers).toHaveLength(1);
+    expect(fileDrivers[0].source).toBe("grok");
+  });
+
+  it("returns all 10 file drivers when all dirs including kosmos, pmstudio and grok are set", () => {
     const { fileDrivers } = createSessionDrivers({
       claudeDir: "/tmp/claude",
       codexSessionsDir: "/tmp/codex",
       copilotCliLogsDir: "/tmp/copilot/logs",
       geminiDir: "/tmp/gemini",
+      grokSessionsDir: "/tmp/.grok/sessions",
       kosmosDataDir: "/tmp/kosmos",
       openCodeMessageDir: "/tmp/oc",
       openclawDir: "/tmp/openclaw",
       piSessionsDir: "/tmp/pi/sessions",
       pmstudioDataDir: "/tmp/pmstudio",
     });
-    expect(fileDrivers).toHaveLength(9);
+    expect(fileDrivers).toHaveLength(10);
   });
 });

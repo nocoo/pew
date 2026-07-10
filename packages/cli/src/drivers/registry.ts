@@ -27,6 +27,7 @@ import { vscodeCopilotTokenDriver } from "./token/vscode-copilot-token-driver.js
 import { copilotCliTokenDriver } from "./token/copilot-cli-token-driver.js";
 import { piTokenDriver } from "./token/pi-token-driver.js";
 import { kosmosTokenDriver, pmstudioTokenDriver } from "./token/kosmos-token-driver.js";
+import { grokTokenDriver } from "./token/grok-token-driver.js";
 import {
   createOpenCodeSqliteTokenDriver,
   type OpenCodeSqliteTokenDriverOpts,
@@ -45,6 +46,7 @@ import { openCodeJsonSessionDriver } from "./session/opencode-json-session-drive
 import { openClawSessionDriver } from "./session/openclaw-session-driver.js";
 import { piSessionDriver } from "./session/pi-session-driver.js";
 import { kosmosSessionDriver, pmstudioSessionDriver } from "./session/kosmos-session-driver.js";
+import { grokSessionDriver } from "./session/grok-session-driver.js";
 import {
   createOpenCodeSqliteSessionDriver,
   type OpenCodeSqliteSessionDriverOpts,
@@ -71,6 +73,8 @@ export interface TokenDriverRegistryOpts {
   piSessionsDir?: string;
   vscodeCopilotDirs?: string[];
   copilotCliLogsDir?: string;
+  /** Grok CLI unified log path (~/.grok/logs/unified.jsonl) */
+  grokLogsPath?: string;
   openCodeDbPath?: string;
   openMessageDb?: OpenCodeSqliteTokenDriverOpts["openMessageDb"];
   /** Default Hermes DB path (~/.hermes/state.db) */
@@ -108,6 +112,9 @@ export function createTokenDrivers(opts: TokenDriverRegistryOpts): TokenDriverSe
   }
   if (opts.geminiDir) {
     fileDrivers.push(geminiTokenDriver);
+  }
+  if (opts.grokLogsPath) {
+    fileDrivers.push(grokTokenDriver);
   }
   if (opts.kosmosDataDir) {
     fileDrivers.push(kosmosTokenDriver);
@@ -183,6 +190,8 @@ export interface SessionDriverRegistryOpts {
   codexSessionsDir?: string;
   copilotCliLogsDir?: string;
   piSessionsDir?: string;
+  /** Grok CLI sessions root (~/.grok/sessions) */
+  grokSessionsDir?: string;
   openCodeDbPath?: string;
   openSessionDb?: OpenCodeSqliteSessionDriverOpts["openSessionDb"];
 }
@@ -212,6 +221,9 @@ export function createSessionDrivers(opts: SessionDriverRegistryOpts): SessionDr
   }
   if (opts.geminiDir) {
     fileDrivers.push(geminiSessionDriver);
+  }
+  if (opts.grokSessionsDir) {
+    fileDrivers.push(grokSessionDriver);
   }
   if (opts.kosmosDataDir) {
     fileDrivers.push(kosmosSessionDriver);
