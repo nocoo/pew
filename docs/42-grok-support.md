@@ -416,22 +416,29 @@ Session driver 采用 mtime-based `SessionFileCursor`（同 kosmos / vscode-copi
 
 ## 六、原子化提交计划
 
-严格按 CLAUDE.md 里的"multi-file changes must be split into atomic commits"原则拆分，
-每个 commit 必须独立 buildable + testable：
+严格按 CLAUDE.md "multi-file changes must be split into atomic commits" 原则拆分,
+每个 commit 必须独立 buildable + testable。
 
-| # | Commit | 内容 |
-|---|---|---|
-| 1 | `feat(core): add "grok" to Source union` | `types.ts` + `constants.ts` 两个文件，共 4 行改动 |
-| 2 | `feat(cli): add grok log parser and normalizer` | `parsers/grok.ts` + parser 测试。**先写测试再写实现**。 |
-| 3 | `feat(cli): add grok session parser` | `parsers/grok-session.ts` + 测试 |
-| 4 | `feat(cli): add grok token and session drivers` | 两个 driver + driver 测试 |
-| 5 | `feat(cli): wire grok through discovery, paths, sync, status` | 7 个 wiring 文件 + 相应 test 断言更新 |
-| 6 | `feat(web): add grok to dashboard palette, labels, API validation` | 9 个 web 文件 |
-| 7 | `docs(42): mark grok support as implemented; update CLAUDE.md/README/PRIVACY` | 4 个文档 + 关闭本 doc |
+**依赖顺序背景**:pew 有两处 `sourceKey()` 用 TS `never` 做穷举检查
+(`sync.ts:125-142`、`session-sync-helpers.ts:55-73`)。任何独立 commit 只要往 `Source`
+union 加 `"grok"`,这两处 switch 立刻编译失败。同理,driver 依赖 `DiscoverOpts.grokLogsPath`
+必须在同一或更早 commit 存在。为此重排如下:
 
-每个 commit 单独运行：
-- `bun run test`：全绿
-- `bun run lint`：typecheck + eslint 全绿
+| # | Commit | 内容 | 独立编译? |
+|---|---|---|---|
+| 0 | `feat: extend estimateCost to accept reasoning tokens` | pricing.ts 扩展签名 + ModelPricing 类型 + 5 处 test + 6 处 callsite 迁移(reasoning=0 保原有行为) | ✅ pure refactor,无 grok 引用 |
+| 1 | **`feat: add "grok" source foundation (types + all exhaustive switches + DiscoverOpts stub)`** | `core/types.ts` `Source` 加 grok + 加 `GrokCursor` 若需要;`core/constants.ts` `SOURCES` 加 grok;**同时**加 `sync.ts`/`session-sync.ts`/`session-sync-helpers.ts` 里 `sourceKey()` 的 `case "grok"`、`SyncResult.sources.grok`、`filesScanned.grok` 初始化;`drivers/types.ts` `DiscoverOpts` 加 `grokLogsPath?` + `grokSessionsDir?`;`utils/paths.ts` 加 grok 三个默认路径;`cli.ts` `isSource()` + `SOURCE_LABELS` + `SourceDirs`;所有 11 处 constants/types/validation test 断言更新。**尚无 driver 注册,尚无 parser** — foundation commit,typecheck + lint 全绿 | ✅ |
+| 2 | `feat(cli): add grok log parser and normalizer (no wiring)` | `parsers/grok.ts` + `grok-parser.test.ts`。**TDD 先测后码**。此时 parser 尚未被任何 driver 调用,纯函数库。 | ✅ |
+| 3 | `feat(cli): add grok session parser (no wiring)` | `parsers/grok-session.ts` + `grok-session.test.ts`。同上。 | ✅ |
+| 4 | `feat(cli): add grok token+session drivers and register them` | `drivers/token/grok-token-driver.ts`、`drivers/session/grok-session-driver.ts`、`discovery/sources.ts` 新增 `discoverGrokLogFile()` + `discoverGrokSessionDirs()`、`drivers/registry.ts` 注册两个 driver + registry test 更新。driver 依赖 (2)/(3) 的 parser 和 (1) 的 DiscoverOpts,都已就位。 | ✅ |
+| 5 | `feat(cli): wire grok end-to-end through sync + status + notify` | `commands/sync.ts` / `session-sync.ts` / `notify.ts` / `status.ts` 里传入 `grokLogsPath` / `grokSessionsDir`,sync/session-sync/status test 追加 grok 覆盖。此时 CLI 端 grok source 完整可用。 | ✅ |
+| 6 | `feat(web): add grok to dashboard palette, labels, API validation` | 9 个 web 文件 + `palette.test.ts` 里 `toHaveLength(11) → 12` 和 `chart-12` 断言 + 相关 dashboard test。 | ✅ |
+| 7 | `docs(42): mark grok support as implemented; update CLAUDE.md/README/PRIVACY` | 4 个文档 + doc 42 status → done + tool 数字 11 → 12。 | ✅ |
+
+每个 commit 单独运行:
+- `bun run test`:全绿
+- `bun run lint`:typecheck + eslint 全绿
+- pre-commit L1/G1 hook 通过
 
 ---
 
@@ -522,15 +529,16 @@ Session driver 采用 mtime-based `SessionFileCursor`（同 kosmos / vscode-copi
 
 | 阶段 | 内容 | 预计 |
 |---|---|---|
-| Commit 1 | Core types | 5 min |
-| Commit 2 | Parser + tests | 30 min |
-| Commit 3 | Session parser + tests | 20 min |
-| Commit 4 | Drivers + tests | 30 min |
-| Commit 5 | Wiring (7 文件) + 11 处 test 断言 | 45 min |
-| Commit 6 | Web dashboard(9 文件) | 25 min |
-| Commit 7 | Docs + PRIVACY + CLAUDE.md | 10 min |
-| 全量 test + lint + golden 验证 | | 15 min |
-| **合计** | | **~3 h** |
+| Commit 0 | estimateCost 加 reasoning + callsite 迁移 | 25 min |
+| Commit 1 | Foundation:core types + 所有 exhaustive switch + DiscoverOpts + paths + status wiring + 11 处 test 断言 | 45 min |
+| Commit 2 | grok.ts parser + tests | 35 min |
+| Commit 3 | grok-session.ts parser + tests | 20 min |
+| Commit 4 | 两个 driver + discovery + registry + tests | 40 min |
+| Commit 5 | sync/notify/status end-to-end wiring + tests | 25 min |
+| Commit 6 | Web dashboard 9 文件 + palette/e2e test | 30 min |
+| Commit 7 | Docs + PRIVACY + CLAUDE.md + doc 42 close | 15 min |
+| 全量 test + lint + golden 验证 | | 20 min |
+| **合计** | | **~4 h** |
 
 ## 九、FAQ
 
