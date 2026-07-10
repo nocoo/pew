@@ -112,13 +112,19 @@ reasoningOutputTokens = reasoning_tokens
 
 ### 1.4 Model 归因
 
-`unified.jsonl` 里**没有 `model` 字段**。需要从 session 侧的 `signals.json`
-获取 `primaryModelId`（例如 `"grok-4.5"`）。因为一个 sid 对应一个 primary model，
-可以维护 sid → model 映射。
+`unified.jsonl` 里**没有 `model` 字段**。Grok 支持**同一 session 内切换模型**,所以不能
+简单用 session 级 `primaryModelId`。真正的模型信息在 **session 侧的 `events.jsonl`**
+里,每个 `turn_started` 事件都带 `model_id`(本机实测 `{"ts":"...", "type":"turn_started",
+"turn_number":0, "model_id":"grok-4.5", ...}`)。
 
-Fallback 策略：
-1. 从 sid 查最新 `signals.json` 的 `primaryModelId`
-2. 如果拿不到，用 `"grok-unknown"`（不阻塞 emit，让数据先入库）
+**归因规则(按优先级)**:
+1. 为每个 sid 建 `turn_started` 时间轴:`[(ts, model_id), ...]`
+2. 对每条 `inference_done`,以 `ts` 找该 sid 时间轴上**最后一个 ts ≤ inference_done.ts** 的 turn,取其 `model_id`
+3. 时间轴查找失败(sid 无 events.jsonl / turn_started 缺失)→ fallback 到 `signals.json.primaryModelId`
+4. 都拿不到 → `"grok-unknown"`(不阻塞 emit,让数据先入库)
+
+因此 discovery 阶段需要同时扫 events.jsonl 和 signals.json,建立 `sid → turnTimeline[]` 和
+`sid → primaryModelId` 两级映射。
 
 ### 1.5 核心事实（三家参考项目全都错在这里）
 
@@ -149,14 +155,16 @@ Fallback 策略：
 **解决**：完全**不读** `sessions/<sid>/updates.jsonl` 的 token 字段。只读 `logs/unified.jsonl` 里
 的 `msg == "shell.turn.inference_done"` 事件。
 
-### 挑战 2：Model 归因需要 sid → model 映射
+### 挑战 2:Model 归因需要按时间轴匹配 turn,不能简单用 session 级 primaryModelId
 
-**问题**：`unified.jsonl` 只有 sid 没有 model。
+**问题**:`unified.jsonl` 只有 sid 没有 model。Grok 支持同一 session 内切换模型,
+简单用 `signals.json.primaryModelId` 会把切换前的 turns 全部错归到切换后的 model。
 
-**解决**：discovery 阶段扫 `~/.grok/sessions/**/signals.json` 建立 sid → model 缓存。
-Parser 里查这个缓存。
-- 缓存 miss → `"grok-unknown"`
-- signals.json 无 primaryModelId → `"grok-unknown"`
+**解决**:discovery 阶段扫 `~/.grok/sessions/**/events.jsonl` 拆出所有 `type=turn_started`
+事件,建立 `sid → [(ts, model_id), ...]` 时间轴。Parser 对每条 `inference_done` 查该 sid
+时间轴上**最后一个 ts ≤ inference_done.ts** 的 turn model_id。
+- 时间轴查不到 → fallback 到 `signals.json.primaryModelId`
+- 都缺 → `"grok-unknown"`(不阻塞 emit)
 
 ### 挑战 3：unified.jsonl append-only，增量策略
 
@@ -435,9 +443,11 @@ Session driver 采用 mtime-based `SessionFileCursor`（同 kosmos / vscode-copi
 
 | Case | 期望 |
 |---|---|
-| sid 有对应 signals.json | 用其 primaryModelId |
-| sid 无 signals.json 或缺 primaryModelId | fallback "grok-unknown",不阻塞 emit |
-| signals.json 里 modelsUsed 有多个 | 用 primaryModelId,不猜测 |
+| sid 有 turn_started 时间轴,一次 inference_done 在 turn A 之后 | 用 turn A 的 model_id |
+| session 内两次 turn_started 切换模型(A → B),中间夹一条 inference_done | 该 inference_done 归 A |
+| turn_started 缺失,但 signals.json 有 primaryModelId | 用 primaryModelId fallback |
+| turn_started 和 primaryModelId 都缺 | fallback "grok-unknown",不阻塞 emit |
+| inference_done.ts 早于任何 turn_started(理论异常) | fallback 到 primaryModelId,再不行 "grok-unknown" |
 
 ### 7.2 L1 Unit tests(source registry 扩展)
 
