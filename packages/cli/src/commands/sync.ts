@@ -8,7 +8,14 @@ import type {
   Source,
   TokenDelta,
 } from "@pew/core";
-import { ACCOUNTING_SCHEMA_VERSION } from "@pew/core";
+
+/**
+ * Local copy of @pew/core's ACCOUNTING_SCHEMA_VERSION. @pew/core is a
+ * types-only package classified as devDependency, so runtime `import
+ * { ... }` from it breaks in published npm installs where devDeps are
+ * absent. Keep this in sync with packages/core/src/types.ts.
+ */
+const ACCOUNTING_SCHEMA_VERSION = 1;
 import { CursorStore } from "../storage/cursor-store.js";
 import { LocalQueue } from "../storage/local-queue.js";
 import { pruneAliasCursors } from "../storage/prune-alias-cursors.js";
