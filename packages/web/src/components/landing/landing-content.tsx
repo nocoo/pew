@@ -98,8 +98,8 @@ export function LandingContent() {
         The contribution graph for AI-native devs.
         Reads local logs from{" "}
         <span className="text-foreground">
-          Claude Code, Codex, Gemini CLI, GitHub Copilot CLI, Hermes, Kosmos, OpenCode, OpenClaw, Pi,
-          PM Studio, VS Code Copilot
+          Claude Code, Codex, Gemini CLI, GitHub Copilot CLI, Grok, Hermes, Kosmos, OpenClaw, OpenCode,
+          Pi, PM Studio, VS Code Copilot
         </span>{" "}
         — counts tokens, never conversations.
       </p>
@@ -132,7 +132,7 @@ export function LandingContent() {
           </span>
           <span>
             <Code>pew init</Code> — install auto-sync hooks{" "}
-            <span className="text-muted-foreground/60">(runs sync on every session end; Hermes, Kosmos &amp; PM Studio require manual plugin setup)</span>
+            <span className="text-muted-foreground/60">(runs sync on every session end; GitHub Copilot CLI, Grok, Hermes, Kosmos, PM Studio &amp; VS Code Copilot don&apos;t expose a hook and are synced on the next <Code>pew sync</Code>)</span>
           </span>
         </li>
         <li className="flex items-baseline gap-2">
