@@ -37,4 +37,4 @@ custom_domain = true
 
 [[env.test.kv_namespaces]]
 binding = "CACHE"
-id = "d5d3f97da82241da83ba91eea3cd3a6c"
+id = "7feb8680f4e14f9d8b4b8f655df347a9"
