@@ -5,6 +5,12 @@
 ### Removed
 - Drop legacy `model_pricing` D1 table, admin Token Pricing CRUD UI (`/admin/pricing`) and its CRUD API (`/api/admin/pricing` route), worker-read admin-loader + `pricing.listModelPricing` / `pricing.getModelPricingByModelSource` RPCs, `origin: "admin"` pricing layer, and `pricing:all` KV cache (migration 021). The dynamic-pricing admin surface (`/admin/model-prices`, `/api/admin/pricing/models`, `/api/admin/pricing/rebuild`) is retained. Dynamic pricing pipeline (baseline + OpenRouter + models.dev → `pricing:dynamic`) is now the sole source of truth.
 
+## v2.24.1
+
+### Fixed
+- CLI `pew sync` crashed on end-user npm installs with `ERR_MODULE_NOT_FOUND: Cannot find package '@pew/core'`. `sync.ts` had a runtime value import of `ACCOUNTING_SCHEMA_VERSION` from `@pew/core`, which is a types-only devDependency and therefore absent from `node_modules` in published installs. Inline the constant locally.
+- Enable `verbatimModuleSyntax` in `packages/cli/tsconfig.json` so future runtime value imports from devDependencies fail typecheck instead of only exploding at end-user runtime.
+
 ## v2.24.0
 
 ### Added
