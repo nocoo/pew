@@ -5,6 +5,99 @@
 ### Removed
 - Drop legacy `model_pricing` D1 table, admin Token Pricing CRUD UI (`/admin/pricing`) and its CRUD API (`/api/admin/pricing` route), worker-read admin-loader + `pricing.listModelPricing` / `pricing.getModelPricingByModelSource` RPCs, `origin: "admin"` pricing layer, and `pricing:all` KV cache (migration 021). The dynamic-pricing admin surface (`/admin/model-prices`, `/api/admin/pricing/models`, `/api/admin/pricing/rebuild`) is retained. Dynamic pricing pipeline (baseline + OpenRouter + models.dev → `pricing:dynamic`) is now the sole source of truth.
 
+## v2.24.0
+
+### Added
+- Add grok to dashboard + propagate reasoning end-to-end
+- Wire grok end-to-end through sync + status + notify
+- Add grok token+session drivers and register them
+- Add grok session parser (no wiring)
+- Add grok log parser and normalizer (no wiring)
+- Add "grok" source foundation (types + exhaustive switches + DiscoverOpts)
+
+### Changed
+- Fix Codex disjoint claim and golden total_tokens
+- Mark grok support as implemented; update CLAUDE/README/PRIVACY
+- 3rd stacked chart (device-breakdown) + strip remaining count headings
+- Device breakdown types/reducers/charts must gain reasoning
+- By-device route drops reasoning at 3 sites — add to §5.6b
+- Cost e2e via /api/usage/by-device; user route only asserts tokens
+- Derive RUN_SUFFIX from TEST_USER_ID; runner doesn't expose RUN_ID
+- Projects POST/PATCH DO check sessionRecordExists, seed sessions first
+- Fix five L2 example inaccuracies + move it to commit 6
+- Correct reasoning propagation list + require per-layer tests
+- Projects L2 must POST/PATCH alias, not GET ?source=
+- Fast path only for modelsUsed.length === 1; 0/undefined slow
+- Propagate reasoning end-to-end (new §5.6b + expand commit 6)
+- L2 case queries with ?source=grok on every filtered route
+- Fast path for single-model sessions, avoid events.jsonl scan
+- Enumerate all 14 estimateCost callsites, mandate required param
+- Restore inputTokens = prompt - cached (disjoint from cached)
+- Add palette.test + api-e2e.test to affected test list
+- Repartition atomic commits so each independently compiles
+- EndOffset must stop at last complete newline
+- Keep inputTokens raw (contains cached); add reasoning to estimator
+- Match model per-turn via events.jsonl timeline, not session-level
+- Finish num_messages → num_chat_messages migration
+- Use summary.num_chat_messages, not num_messages
+- Add Grok CLI token support design
+- Mark document as CLOSED; G7 done, G6/G10 dropped this round
+- Resolve migration filename collisions with b/c suffixes
+- Sync two stale statements with post-a42b7647 reality
+- Record three review follow-ups (G2/G3/hygiene)
+- Strip trailing blank line at EOF in 2 files
+- Fix self-referential broken link in 35-hermes-support.md
+- Add knip.json to close the loop (lsof + playwright.config)
+- Log G2 completion (3 atomic commits, knip deps/devDeps/unlisted all zero)
+- Log G1 completion (8 atomic commits, all knip unused-* now 0)
+- Trim final 15 dead re-exports (cli barrels + worker-read RPC barrels)
+- Demote 34 internal-only exported types + 2 dead constants
+- Demote 8 more internal-only exports (fixtures + achievement format helpers)
+- Demote 12 internal-only exports to file-local scope
+- Add progress overview table + mark G3/G4/G5 as done
+- Log G3/G4/G5 cleanup completion
+- Index 6 orphan docs + fix 37 broken link
+- Add code hygiene metrics baseline and cleanup roadmap
+- Bump @aws-sdk/client-s3 3.1080.0 → 3.1083.0
+- Bump @cloudflare/workers-types 5.20260706.1 → 5.20260708.1
+- Bump @types/node 26.1.0 → 26.1.1
+- Bump wrangler 4.107.0 → 4.107.1
+- Bump @aws-sdk/client-s3 3.1079.0 → 3.1080.0
+- Bump @cloudflare/workers-types 5.20260705.1 → 5.20260706.1
+- Bump radix-ui 1.6.1 → 1.6.2
+- Bump typescript-eslint 8.62.1 → 8.63.0
+- Bump vitest 4.1.9 → 4.1.10
+- Bump @cloudflare/workers-types 5.20260704.1 → 5.20260705.1
+- Bump recharts 3.9.1 → 3.9.2
+- Bump @cloudflare/workers-types 5.20260703.1 → 5.20260704.1
+- Bump @cloudflare/workers-types 4.20260702.1 → 5.20260703.1
+- Bump wrangler 4.106.0 → 4.107.0
+- Bump @cloudflare/workers-types 4.20260701.1 → 4.20260702.1
+- Bump @aws-sdk/client-s3 3.1078.0 → 3.1079.0
+- Reorganize CLAUDE.md — group retrospective, correct outdated bits
+
+### Fixed
+- Global accountingSchemaVersion + scope needsReplay to owned files
+- Auto-replay Codex cursors without accountingVersion
+- Copilot-cli stores disjoint input (prefer input_tokens_uncached)
+- Normalize Codex inclusive OpenAI totals to disjoint fields
+- Grok disjoint output/reasoning, stream parse, sessions override
+- EstimateCost charges input fully + accepts reasoningTokens
+- Strip wrapping quotes in .env parser
+
+### Removed
+- Remove brittle counts + fix stale refs
+- EstimateCost must drop nonCached subtraction (input goes to 0)
+- Drop postcss-load-config JSDoc type hint from postcss.config.mjs
+- Remove root-level dependencies fast-xml-parser + next
+- Drop unused @auth/core dep + deprecated @types/sharp devDep from packages/web
+- Drop 5 dead re-exports across cli + web
+- Remove 2 unreferenced one-off scripts
+- Remove 3 unused shadcn/ui components + empty badges barrel
+- Remove 3 unused dashboard components
+- Remove stale autoresearch top-level artifacts
+- Remove 6 unreferenced scripts
+
 ## v2.23.8
 
 ### Added
