@@ -344,7 +344,7 @@ describe("POST /api/ingest", () => {
       }),
     });
     expect(create.status).toBe(201);
-    const { project } = await create.json();
+    const project = await create.json();
 
     // 5. PATCH /api/projects/[id] with add_aliases
     const patch = await fetch(`${BASE_URL}/api/projects/${project.id}`, {
