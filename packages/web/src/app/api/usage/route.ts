@@ -34,6 +34,7 @@ const VALID_SOURCES = new Set([
   "pi",
   "pmstudio",
   "vscode-copilot",
+  "zcode",
 ]);
 
 const VALID_GRANULARITIES = new Set(["half-hour", "day"]);

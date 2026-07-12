@@ -24,6 +24,7 @@ const VALID_SOURCES = new Set([
   "pi",
   "pmstudio",
   "vscode-copilot",
+  "zcode",
 ]);
 
 const MAX_NAME_LENGTH = 100;

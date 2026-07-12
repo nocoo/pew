@@ -38,6 +38,7 @@ const VALID_SOURCES = new Set([
   "pi",
   "pmstudio",
   "vscode-copilot",
+  "zcode",
 ]);
 
 const MAX_DAYS = 365;
