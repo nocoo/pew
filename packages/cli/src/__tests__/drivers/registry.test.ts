@@ -110,6 +110,29 @@ describe("createTokenDrivers", () => {
     expect(dbDrivers).toHaveLength(0);
   });
 
+  it("includes zcode sqlite token driver when both zcodeDbPath and openZcodeDb are set", () => {
+    const mockOpener = vi.fn().mockReturnValue(null);
+    const { fileDrivers, dbDrivers } = createTokenDrivers({
+      zcodeDbPath: "/tmp/zcode.db",
+      openZcodeDb: mockOpener,
+    });
+    expect(fileDrivers).toHaveLength(0);
+    expect(dbDrivers).toHaveLength(1);
+    expect(dbDrivers[0].source).toBe("zcode");
+    expect(dbDrivers[0].kind).toBe("db");
+  });
+
+  it("excludes zcode sqlite token driver when only zcodeDbPath is set", () => {
+    const { dbDrivers } = createTokenDrivers({ zcodeDbPath: "/tmp/zcode.db" });
+    expect(dbDrivers).toHaveLength(0);
+  });
+
+  it("excludes zcode sqlite token driver when only openZcodeDb is set", () => {
+    const mockOpener = vi.fn().mockReturnValue(null);
+    const { dbDrivers } = createTokenDrivers({ openZcodeDb: mockOpener });
+    expect(dbDrivers).toHaveLength(0);
+  });
+
   it("returns file + db drivers together when both source types are available", () => {
     const mockOpener = vi.fn().mockReturnValue(null);
     const { fileDrivers, dbDrivers } = createTokenDrivers({
@@ -290,6 +313,40 @@ describe("createSessionDrivers", () => {
 
   it("excludes sqlite db session driver when only openCodeDbPath is set", () => {
     const { dbDrivers } = createSessionDrivers({ openCodeDbPath: "/tmp/opencode.db" });
+    expect(dbDrivers).toHaveLength(0);
+  });
+
+  it("includes zcode sqlite session driver when both zcodeDbPath and openZcodeSessionDb are set", () => {
+    const mockOpener = vi.fn().mockReturnValue(null);
+    const { fileDrivers, dbDrivers } = createSessionDrivers({
+      zcodeDbPath: "/tmp/zcode.db",
+      openZcodeSessionDb: mockOpener,
+    });
+    expect(fileDrivers).toHaveLength(0);
+    expect(dbDrivers).toHaveLength(1);
+    expect(dbDrivers[0].source).toBe("zcode");
+    expect(dbDrivers[0].kind).toBe("db");
+  });
+
+  it("excludes zcode sqlite session driver when only zcodeDbPath is set", () => {
+    const { dbDrivers } = createSessionDrivers({ zcodeDbPath: "/tmp/zcode.db" });
+    expect(dbDrivers).toHaveLength(0);
+  });
+
+  it("excludes zcode sqlite session driver when only openZcodeSessionDb is set", () => {
+    const mockOpener = vi.fn().mockReturnValue(null);
+    const { dbDrivers } = createSessionDrivers({ openZcodeSessionDb: mockOpener });
+    expect(dbDrivers).toHaveLength(0);
+  });
+
+  it("does NOT activate zcode session driver when only the token opener is provided", () => {
+    // Regression: session registry must judge openZcodeSessionDb, not openZcodeDb.
+    const tokenOpener = vi.fn().mockReturnValue(null);
+    const { dbDrivers } = createSessionDrivers({
+      zcodeDbPath: "/tmp/zcode.db",
+      // @ts-expect-error — probe: session registry must not honour the token opener key.
+      openZcodeDb: tokenOpener,
+    });
     expect(dbDrivers).toHaveLength(0);
   });
 
