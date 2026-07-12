@@ -58,8 +58,9 @@ Z.ai（智谱 / BigModel）官方推出的 agentic 编码代理，形态上是 E
   全量镜像，token 数据与 `model_usage` 完全一致
 - 通用应用日志落 `~/.zcode/cli/log/zcode-YYYY-MM-DD.jsonl`（无 token）
 
-本机版本：`zcode 0.15.2`（CLI）、GUI `zcode 3.3.4`。schema 版本记录在
-`schema_migration` 表的 `app_version` 字段。
+本机版本：`zcode 0.15.2`（CLI 二进制）、GUI `zcode 3.3.4`。SQLite migrations 记录在
+`schema_migration` 表的 `app_version` 字段，本机最新 migration 是 `app_version = 0.15.0`
+（CLI 二进制升级后 db schema 未必立刻迁移，二者独立）。
 
 ### 1.2 数据目录
 
@@ -360,9 +361,13 @@ SQL 用 `WHERE completed_at > ? OR (completed_at = ? AND id NOT IN (?))` 或
 
 - 参考 `packages/cli/src/drivers/registry.ts:164`：DB driver 由 `openXxxDbPath +
   openXxxDb`（一个 path + 一个 opener 函数）联合激活；`DbTokenDriver` 没有 `discover()`。
-- 参考 `packages/cli/src/cli.ts:224`：CLI 侧对 bun:sqlite native module 做**动态 import**
-  （catch import 失败以支持 Node.js 环境），把 opener 传给 `SyncOptions`。session 侧
-  同样在 cli.ts:636 附近有第二套动态 import。
+- 参考 `packages/cli/src/cli.ts:224` 与 `:636`：这两处是**入口划分**，不是 token/session
+  分工：
+  - **`cli.ts:224`** = 手动 `pew sync` 命令入口，动态 import `openMessageDb + openSessionDb
+    + openHermesDb` 三个 opener（既 usage 又 session），都传给 `executeSync`
+  - **`cli.ts:636`** = `pew notify` 命令入口，同样把 usage + session opener 全部装载，
+    传给 `executeNotify`，notify 内部各自转发给 executeSync / executeSessionSync
+  - 即两个入口，每个入口都要**同时**加载 usage + session opener（zcode 有两个 opener）
 
 **解决**：给 zcode 增加一整条 opener 注入链路，与 OpenCode / Hermes 对齐：
 
@@ -381,15 +386,29 @@ SQL 用 `WHERE completed_at > ? OR (completed_at = ? AND id NOT IN (?))` 或
    - `TokenDriverRegistryOpts` 加 `zcodeDbPath?` + `openZcodeDb?`；激活条件
      `if (opts.zcodeDbPath && opts.openZcodeDb) dbDrivers.push(createZcodeTokenDriver(...))`
    - `SessionDriverRegistryOpts` 同上
-6. `packages/cli/src/cli.ts` **两套动态 import**：
-   - cli.ts:224 段（token）：`let openZcodeDb = undefined; try { const mod = await
-     import("./parsers/zcode-sqlite-db.js"); openZcodeDb = mod.openZcodeUsageDb; }
-     catch { /* bun-only; skip on Node */ }`，然后传给 `SyncOptions`
-   - cli.ts:636 段（session）：同样再来一份
-   - 两处都做**预检查**：opener 存在但打开失败时 log warn "ZCode SQLite unavailable"
-     并跳过 driver，不阻塞其他 source
-7. `packages/cli/src/commands/notify.ts` `NotifyOptions` 同样透传 `zcodeDbPath +
-   openZcodeDb`（notify 内部会调 sync/session-sync）
+6. `packages/cli/src/cli.ts` **两个入口 × 每个入口两个 opener = 4 处动态 import**：
+   - cli.ts:224 段（手动 sync 入口）**加两个** try/import：
+     ```ts
+     let openZcodeDb: typeof import("./parsers/zcode-sqlite-db.js").openZcodeUsageDb | undefined;
+     let openZcodeSessionDb: typeof import("./parsers/zcode-sqlite-session-db.js").openZcodeSessionDb | undefined;
+     try {
+       const mod = await import("./parsers/zcode-sqlite-db.js");
+       openZcodeDb = mod.openZcodeUsageDb;
+     } catch { /* SQLite adapter not available on this runtime */ }
+     try {
+       const mod = await import("./parsers/zcode-sqlite-session-db.js");
+       openZcodeSessionDb = mod.openZcodeSessionDb;
+     } catch { /* SQLite adapter not available on this runtime */ }
+     ```
+     然后 `executeSync({ ..., zcodeDbPath: paths.zcodeDbPath, openZcodeDb, openZcodeSessionDb })`
+   - cli.ts:636 段（notify 入口）**镜像**上面两段 try/import，然后传给 `executeNotify`
+   - **注释别写"bun-only"**：pew 现有 `opencode-sqlite-db.ts` 支持 `bun:sqlite`（Bun）
+     + `node:sqlite`（Node ≥ 22.5）双 runtime。zcode adapter 复用同一实现，注释写
+     "SQLite adapter not available on this runtime"（老 Node.js < 22.5 才会走 catch）
+   - **预检查**：opener 存在但 `openZcodeDb(dbPath)` 返回 null（打开失败）→ log warn
+     "ZCode SQLite unavailable" 并跳过 driver，不阻塞其他 source
+7. `packages/cli/src/commands/notify.ts` `NotifyOptions` 同时加 `zcodeDbPath +
+   openZcodeDb + openZcodeSessionDb` 三个字段，转发给 executeSync / executeSessionSync
 8. `packages/cli/src/utils/paths.ts` 加 `zcodeDbPath = join(zcodeHome, "cli/db/db.sqlite")`
 
 **删除项**（明确不做）：
@@ -400,6 +419,40 @@ SQL 用 `WHERE completed_at > ? OR (completed_at = ? AND id NOT IN (?))` 或
 在 registry 里没有同时给 path + opener 的情况下，driver **不会被创建**——这也是本条
 review 的核心：完成 refactor 后必须验证"生产 CLI 实际能创建 ZCode driver"，而不是仅仅
 类型编译通过。
+
+### 挑战 8：warning 通道（`DbTokenResult.warnings`）
+
+**问题**（review 追加项）：§3.3 的 `normalizeZcodeUsage` 会 emit warn（`provider_total`
+不匹配），但当前 `DbTokenResult<TCursor>`（`packages/cli/src/drivers/types.ts:312`）
+没有 warning 传递字段——即便 parser 里收集了也没通道到 orchestrator。
+
+**解决**：给 core `DbTokenResult` / `DbSessionResult` 各加一个可选字段：
+
+```ts
+export interface DbTokenResult<TCursor> {
+  deltas: ParsedDelta[];
+  cursor: TCursor;
+  rowCount: number;
+  warnings?: string[];   // ← new
+}
+export interface DbSessionResult<TCursor> {
+  snapshots: SessionSnapshot[];
+  cursor: TCursor;
+  rowCount: number;
+  warnings?: string[];   // ← new (for future use)
+}
+```
+
+Orchestrator（sync.ts / session-sync.ts 里的 DB driver loop）遍历
+`result.warnings ?? []`，每条转成 `onProgress({ source: driver.source, phase: "warn",
+message: w })`。既有 OpenCode / Hermes driver 不返回 warnings → `?? []` 天然兼容，
+向后兼容 zero-cost。
+
+`SyncProgressEvent.phase` 需要加 `"warn"` 变体（如目前不存在）；`cli.ts` 里
+`logSyncProgress` 收到 `phase: "warn"` 时用 `log.warn(...)` 打印。
+
+**为什么放在 driver 结果里而不是全局 log**：一致的路径 = 便于测试断言（unit test 可直接
+检查 `result.warnings.length`），也便于未来把 warnings 挂到 `status` 输出。
 
 ---
 
@@ -435,7 +488,9 @@ SELECT
   mu.output_tokens,
   mu.reasoning_tokens,
   mu.cache_read_input_tokens,
-  mu.cache_creation_input_tokens
+  mu.cache_creation_input_tokens,
+  mu.provider_total_tokens,          -- 可能为 NULL（provider 未返回）
+  mu.computed_total_tokens           -- 客户端算的 total，总有值
 FROM model_usage mu
 WHERE mu.status IN ('completed', 'error', 'cancelled')
   AND mu.completed_at IS NOT NULL
@@ -447,18 +502,34 @@ ORDER BY mu.completed_at, mu.id;
   （token 已从 provider 返回），只要 `completed_at IS NOT NULL` 就属于终态。
 - 只排除 `status = 'running'` 的 in-flight turn，避免半个 usage 被落。
 - `completed_at >= ?` 与 `lastProcessedIds` 组合去重（同 OpenCode，防同毫秒漏行）。
+- `provider_total_tokens` 可为 NULL；`computed_total_tokens` 是 NOT NULL default 0，
+  归一化里 `reportedTotal = raw.providerTotalTokens ?? raw.computedTotalTokens`。
 
 ### 3.3 归一化代码
 
 ```ts
-export function normalizeZcodeUsage(raw: {
+export interface ZcodeUsageRow {
+  id: string;
+  sessionId: string;
+  turnId: string | null;
+  modelId: string;
+  providerId: string;
+  status: "completed" | "error" | "cancelled";
+  startedAt: number;                         // epoch ms
+  completedAt: number;                       // epoch ms (SQL 已过滤 NOT NULL)
   inputTokens: number;
   outputTokens: number;
   reasoningTokens: number;
   cacheReadInputTokens: number;
   cacheCreationInputTokens: number;
-  providerTotalTokens: number;   // 用于 §一挑战 6 的 reasoning ⊆ output 检验
-}): { tokens: TokenDelta; warn?: string } {
+  providerTotalTokens: number | null;        // provider 未返回时为 NULL
+  computedTotalTokens: number;               // NOT NULL default 0
+}
+
+export function normalizeZcodeUsage(raw: ZcodeUsageRow): {
+  tokens: TokenDelta;
+  warn?: string;
+} {
   const cacheRead = Math.max(0, raw.cacheReadInputTokens);
   const cacheWrite = Math.max(0, raw.cacheCreationInputTokens);
   const inputRaw = Math.max(0, raw.inputTokens);
@@ -471,7 +542,9 @@ export function normalizeZcodeUsage(raw: {
       ? Math.max(0, inputRaw - cacheRead)
       : cacheWrite;
 
-  // reasoning ⊆ output vs disjoint — check via provider_total.
+  // reasoning ⊆ output vs disjoint — check via provider_total (fallback to
+  // computed_total when provider omitted it).
+  const reportedTotal = raw.providerTotalTokens ?? raw.computedTotalTokens;
   const inclusiveOutput = inputRaw > 0
     ? inputRaw + outputRaw
     : (cacheWrite + cacheRead) + outputRaw;
@@ -479,17 +552,17 @@ export function normalizeZcodeUsage(raw: {
 
   let output: number;
   let warn: string | undefined;
-  if (raw.providerTotalTokens === inclusiveOutput) {
+  if (reportedTotal === inclusiveOutput) {
     // reasoning already inside output_tokens
     output = Math.max(0, outputRaw - reasoning);
-  } else if (raw.providerTotalTokens === disjointOutput) {
+  } else if (reportedTotal === disjointOutput) {
     // reasoning disjoint — keep output as-is
     output = outputRaw;
   } else {
     // Neither matches — fall back to observed CLI semantics (reasoning ⊆ output)
     // and surface the mismatch for future debugging.
     output = Math.max(0, outputRaw - reasoning);
-    warn = `zcode provider_total mismatch: got ${raw.providerTotalTokens}, ` +
+    warn = `zcode provider_total mismatch: got ${reportedTotal}, ` +
            `expected ${inclusiveOutput} (inclusive) or ${disjointOutput} (disjoint)`;
   }
 
@@ -506,16 +579,29 @@ export function normalizeZcodeUsage(raw: {
 ```
 
 调用方 log `warn` 时用 `once-per-run` 抑制，避免脏 provider_total 一次污染多行日志。
+warning 通过 `DbTokenResult.warnings?: string[]` 向上传（见 §二挑战 8）。
 
 ### 3.4 ParsedDelta 输出
 
 ```ts
-{
-  source: 'zcode',
-  model: row.modelId,
-  timestamp: new Date(row.completedAt).toISOString(),
-  tokens: normalizeZcodeUsage(row),
+const warnings: string[] = [];
+const seenWarn = new Set<string>();
+
+for (const row of rows) {
+  const normalized = normalizeZcodeUsage(row);
+  if (normalized.warn && !seenWarn.has(normalized.warn)) {
+    warnings.push(normalized.warn);
+    seenWarn.add(normalized.warn);
+  }
+  deltas.push({
+    source: "zcode",
+    model: row.modelId,
+    timestamp: new Date(row.completedAt).toISOString(),
+    tokens: normalized.tokens,   // ← 只取 tokens，不整个赋值
+  });
 }
+
+return { deltas, cursor: nextCursor, rowCount: rows.length, warnings };
 ```
 
 **不带 projectRef**（review P0#4 明确澄清）：
@@ -731,12 +817,12 @@ session driver 结构 100% 参考 `packages/cli/src/drivers/session/opencode-sql
 
 | # | Commit | 内容 | 独立编译? |
 |---|---|---|---|
-| 1 | **`feat: add "zcode" source foundation (types + exhaustive switches + opener injection stubs)`** | `core/types.ts` 加 `zcode` + 两个 cursor interface；`core/constants.ts` `SOURCES`；2 处真实 `sourceKey()` 加 `case "zcode"`；`SyncResult.sources.zcode` / `filesScanned.zcode` 初始化；`SyncOptions` / `SessionSyncOptions` / `NotifyOptions` / `TokenDriverRegistryOpts` / `SessionDriverRegistryOpts` 加 `zcodeDbPath?` + `openZcodeDb?` / `openZcodeSessionDb?`（stub，尚未激活）；`utils/paths.ts` 加 zcodeHome/zcodeDbPath；`cli.ts` `isSource()` + `SOURCE_LABELS`；core & CLI 相关 tests（constants/types/validation/paths）。**尚无 parser / driver / dispatch 改动** | ✅ |
-| 2 | `refactor(cli): abstract DB cursor dispatch in sync + session-sync orchestrators` | 引入 `dbCursorRouteMap` / display-name map，删掉 `isOpenCode / isHermes` 硬编码；行为对齐现状（zcode 分支存在但不激活，因为 driver 未注册）；driver loop 加 `try/catch`；补 OpenCode/Hermes 的 orchestrator 隔离测试 | ✅ 无功能变化，仅 refactor |
+| 1 | **`feat: add "zcode" source foundation (types + exhaustive switches + opener injection stubs + warnings channel)`** | `core/types.ts` 加 `zcode` + 两个 cursor interface；`core/constants.ts` `SOURCES`；2 处真实 `sourceKey()` 加 `case "zcode"`；`SyncResult.sources.zcode` / `filesScanned.zcode` 初始化；`SyncOptions` / `SessionSyncOptions` / `NotifyOptions` / `TokenDriverRegistryOpts` / `SessionDriverRegistryOpts` 加 `zcodeDbPath?` + `openZcodeDb?` / `openZcodeSessionDb?`（stub，尚未激活）；`drivers/types.ts` `DbTokenResult` / `DbSessionResult` 加 `warnings?: string[]`；`SyncProgressEvent.phase` 加 `"warn"` 变体；`utils/paths.ts` 加 zcodeHome/zcodeDbPath；`cli.ts` `isSource()` + `SOURCE_LABELS`；core & CLI 相关 tests（constants/types/validation/paths）。**尚无 parser / driver / dispatch 改动** | ✅ |
+| 2 | `refactor(cli): abstract DB cursor dispatch in sync + session-sync orchestrators + wire warnings channel` | 引入 `dbCursorRouteMap` / display-name map，删掉 `isOpenCode / isHermes` 硬编码；行为对齐现状（zcode 分支存在但不激活，因为 driver 未注册）；driver loop 加 `try/catch`；orchestrator 遍历 `result.warnings ?? []` 转成 `onProgress({ phase: "warn" })`；`cli.ts` `logSyncProgress` 收到 `phase: "warn"` 时 `log.warn(...)`；补 OpenCode/Hermes 的 orchestrator 隔离测试 | ✅ 无功能变化，仅 refactor |
 | 3 | `feat(cli): add zcode sqlite parser + normalizer (no wiring)` | `parsers/zcode-sqlite.ts` + `zcode-sqlite-db.ts` + `parsers/__tests__/zcode-sqlite.test.ts`。TDD 先测后码。包含 §一挑战 6 provider-total 三分支 | ✅ |
 | 4 | `feat(cli): add zcode sqlite session parser (no wiring)` | `parsers/zcode-session.ts` + `zcode-sqlite-session-db.ts` + test | ✅ |
 | 5 | `feat(cli): add zcode token+session drivers and register them` | `drivers/token/zcode-sqlite-token-driver.ts`、`drivers/session/zcode-sqlite-session-driver.ts`、`drivers/registry.ts` 加激活分支（`zcodeDbPath && openZcodeDb`）；registry test 覆盖两种"激活/未激活" | ✅ |
-| 6 | `feat(cli): wire zcode through sync + session-sync + notify` | `cli.ts` 两套动态 import（cli.ts:224 / :636）；progress formatter 支持 `zcode-sqlite`；token / session 两处完成摘要加 zcode 分量；SQLite unavailable 预检查 warn | ✅ |
+| 6 | `feat(cli): wire zcode through sync + session-sync + notify` | `cli.ts` **4 处**动态 import（cli.ts:224 usage + session；cli.ts:636 usage + session）；progress formatter 支持 `zcode-sqlite`；token / session 两处完成摘要加 zcode 分量；SQLite unavailable 预检查 warn；`normalizeZcodeUsage` 的 warn 通过 driver `warnings` 上抛 → cli 侧 log.warn | ✅ |
 | 7 | `feat(web): add zcode to dashboard palette + labels + pricing fallback + API allowlists` | `pricing.ts` fallback；`palette.ts` + globals.css chart-13 三处；`usage-transforms.ts` SOURCE_LABELS；`leaderboard/agents/page.tsx` AGENTS；6 处 API VALID_SOURCES；`palette.test.ts` 断言 | ✅ |
 | 8 | `docs(43): mark zcode support as implemented; update CLAUDE.md/README/landing/PRIVACY/docs-index` | 5 个文档（含 PRIVACY.md）+ doc 43 status → done + 12 → 13 | ✅ |
 
@@ -802,7 +888,7 @@ session driver 结构 100% 参考 `packages/cli/src/drivers/session/opencode-sql
 - `SOURCES` 长度 13
 - `isValidSource("zcode") === true`
 - `SOURCE_LABELS.zcode === "ZCode"`
-- `sourceKey("zcode") === "zcode"`（4 处 switch）
+- `sourceKey("zcode") === "zcode"`（2 处 switch：sync.ts:137 + session-sync-helpers.ts:56）
 - `constants.test.ts` / `types.test.ts` / `validation.test.ts` 三处枚举列表更新
 
 ### 7.4 L2 Integration tests（`api-e2e.test.ts` 加一条）
@@ -885,12 +971,14 @@ A：这两种终态 model call 已经从 provider 返回了 usage，属于已计
 状态是 in-flight 未终态。
 
 **Q7：future-proof — cache_creation 非零的一天到来时怎么办？**
-A：本机数据都是 0，Q1 已给出保守设计（合并进 cached）。若真出现非零：
+A：本机数据都是 0，§1.4 已给出保守设计（留在 input bucket，不合入 cached）。若真出现非零：
 1. 先看 zcode `computed_total_tokens` 公式是否改了
-2. 若 zcode 仍把 cache_creation 算进 `input_tokens`：pew 现有归一化天然正确
-3. 若 zcode 改成 disjoint（`total = input + output + cr + cc`）：pew 需要在 parser 里做
-   detect（`input_tokens < cr + cc` 说明 disjoint 模式）并切换算法。加一条 defensive
-   test 提前锁死这个不变式。
+2. 若 zcode 仍把 cache_creation 算进 `input_tokens`（当前 CLI 源码分支）：pew 现有归一化天然正确
+3. 若 zcode 改成 disjoint（`total = input + output + cr + cc`）：`normalizeZcodeUsage`
+   的 provider_total 三分支自动切到 "disjoint" 分支（`reportedTotal == disjointOutput`），
+   保留 output 不减 reasoning。加一条 defensive test 提前锁死这个不变式。
+   **不要**用 `input_tokens < cr + cc` 判断——inclusive 模式下 input 完全可能仍 > cache
+   之和（本机 4 行样本就是这种情况）。判断口径只能靠 `provider_total` 关系。
 
 **Q8：为什么不改 core 加第 5 个 token 字段（cache_creation）？**
 A：见 §1.4 决策。改 core 会引发 Core / Queue / D1 / RPC / Web / Worker 全链路 migration，
@@ -900,7 +988,7 @@ A：见 §1.4 决策。改 core 会引发 Core / Queue / D1 / RPC / Web / Worker
 
 ## 十、References
 
-- 本机 zcode CLI：`~/.zcode/cli/db/db.sqlite`（schema 0.15.2）
+- 本机 zcode CLI：`~/.zcode/cli/db/db.sqlite`（schema `app_version = 0.15.0`，CLI 二进制 0.15.2）
 - 本机 rollout 样本：`~/.zcode/cli/rollout/model-io-sess_1d50eb1b-*.jsonl`
 - 42-grok-support.md — 结构模板与 disjoint 归一先例
 - `packages/cli/src/parsers/codex.ts` `normalizeCodexUsage` — inclusive → disjoint 归一
