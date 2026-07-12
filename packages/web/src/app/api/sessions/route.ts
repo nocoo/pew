@@ -31,6 +31,7 @@ const VALID_SOURCES = new Set([
   "pi",
   "pmstudio",
   "vscode-copilot",
+  "zcode",
 ]);
 
 const VALID_KINDS = new Set(["human", "automated"]);

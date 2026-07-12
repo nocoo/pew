@@ -41,6 +41,7 @@ const VALID_SOURCES = new Set([
   "pi",
   "pmstudio",
   "vscode-copilot",
+  "zcode",
 ]);
 const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 20;

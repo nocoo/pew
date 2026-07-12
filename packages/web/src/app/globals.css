@@ -68,6 +68,7 @@
   --color-chart-10: hsl(var(--chart-10));
   --color-chart-11: hsl(var(--chart-11));
   --color-chart-12: hsl(var(--chart-12));
+  --color-chart-13: hsl(var(--chart-13));
   --color-chart-axis: hsl(var(--chart-axis));
   --color-chart-muted: hsl(var(--chart-muted));
 
@@ -189,6 +190,7 @@
   --chart-10: 200 80% 45%;
   --chart-11: 240 72% 52%;
   --chart-12: 345 78% 50%;
+  --chart-13: 175 78% 42%;
 
   /* Chart utility tokens */
   --chart-axis: 260 8% 32%;
@@ -271,6 +273,7 @@
   --chart-10: 200 85% 55%;
   --chart-11: 240 78% 62%;
   --chart-12: 345 82% 60%;
+  --chart-13: 175 82% 52%;
 
   /* Chart utility tokens */
   --chart-axis: 260 5% 55%;

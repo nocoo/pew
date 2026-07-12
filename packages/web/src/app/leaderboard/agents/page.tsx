@@ -37,6 +37,7 @@ const AGENTS = [
   "pi",
   "pmstudio",
   "vscode-copilot",
+  "zcode",
 ] as const;
 
 const AGENT_SET = new Set<string>(AGENTS);
