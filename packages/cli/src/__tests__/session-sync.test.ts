@@ -1535,7 +1535,7 @@ describe("executeSessionSync", () => {
     expect(parseEvents[0].message).toContain("Collected 1 sessions");
   });
 
-  it("should emit 'No new SQLite sessions found' progress when no new sessions", async () => {
+  it("should emit 'No new OpenCode SQLite sessions found' progress when no new sessions", async () => {
     const sessions = [
       { id: "ses_empty_sql", project_id: null, title: null, time_created: 1739600000000, time_updated: 1739600600000 },
     ];
@@ -1568,7 +1568,7 @@ describe("executeSessionSync", () => {
       (e) => e.source === "opencode-sqlite" && e.phase === "parse",
     );
     expect(parseEvents).toHaveLength(1);
-    expect(parseEvents[0].message).toBe("No new SQLite sessions found");
+    expect(parseEvents[0].message).toBe("No new OpenCode SQLite sessions found");
   });
 
   // ===== Claude parse error with onProgress =====

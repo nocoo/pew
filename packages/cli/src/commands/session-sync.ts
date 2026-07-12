@@ -18,6 +18,7 @@ import type {
   SessionSnapshot,
   SessionFileCursor,
   OpenCodeSqliteSessionCursor,
+  ZcodeSqliteSessionCursor,
 } from "@pew/core";
 import { SessionCursorStore } from "../storage/session-cursor-store.js";
 import { SessionQueue } from "../storage/session-queue.js";
@@ -263,7 +264,7 @@ export async function executeSessionSync(
 
   // ---------- Phase 2: DB-based drivers ----------
   // SQLite warning paths are handled at the orchestrator level:
-  // - "SQLite not available": registry doesn't create a driver (no openSessionDb)
+  // - "SQLite not available": registry doesn't create a driver (no opener)
   // - "Failed to open": factory returns null, pre-probed here to emit warning
   let activeDbDrivers = dbDrivers;
   if (opts.openCodeDbPath) {
@@ -281,6 +282,7 @@ export async function executeSessionSync(
           phase: "warn",
           message: `OpenCode SQLite database found at ${opts.openCodeDbPath} but SQLite is not available — SQLite session data will NOT be synced`,
         });
+        activeDbDrivers = activeDbDrivers.filter((d) => d.source !== "opencode");
       } else {
         // Case 2: Both provided — pre-probe if factory returns null
         const handle = opts.openSessionDb(opts.openCodeDbPath);
@@ -295,8 +297,35 @@ export async function executeSessionSync(
             phase: "warn",
             message: `Failed to open OpenCode SQLite database at ${opts.openCodeDbPath} — SQLite session data will NOT be synced`,
           });
-          // Skip DB drivers — factory returns null, driver would return empty anyway
-          activeDbDrivers = [];
+          activeDbDrivers = activeDbDrivers.filter((d) => d.source !== "opencode");
+        } else {
+          handle.close();
+        }
+      }
+    }
+  }
+
+  // ZCode session pre-check: only filter zcode session driver on failure.
+  // See docs/43-zcode-support.md §二挑战 7.
+  if (opts.zcodeDbPath) {
+    const dbStat = await stat(opts.zcodeDbPath).catch(() => null);
+    if (dbStat) {
+      if (!opts.openZcodeSessionDb) {
+        onProgress?.({
+          source: "zcode-sqlite",
+          phase: "warn",
+          message: `ZCode SQLite database found at ${opts.zcodeDbPath} but SQLite is not available — ZCode session data will NOT be synced`,
+        });
+        activeDbDrivers = activeDbDrivers.filter((d) => d.source !== "zcode");
+      } else {
+        const handle = opts.openZcodeSessionDb(opts.zcodeDbPath);
+        if (!handle) {
+          onProgress?.({
+            source: "zcode-sqlite",
+            phase: "warn",
+            message: `Failed to open ZCode SQLite database at ${opts.zcodeDbPath} — ZCode session data will NOT be synced`,
+          });
+          activeDbDrivers = activeDbDrivers.filter((d) => d.source !== "zcode");
         } else {
           handle.close();
         }
@@ -308,29 +337,68 @@ export async function executeSessionSync(
     const key = sourceKey(driver.source);
     if (!key) continue;
 
+    const isOpenCode = driver.source === "opencode";
+    const isZcode = driver.source === "zcode";
+    const displayName = isOpenCode
+      ? "OpenCode SQLite"
+      : isZcode
+        ? "ZCode SQLite"
+        : `${driver.source} SQLite`;
+    const displayTag = isZcode ? "zcode-sqlite" : "opencode-sqlite";
+
     onProgress?.({
-      source: "opencode-sqlite",
+      source: displayTag,
       phase: "discover",
-      message: "Checking OpenCode SQLite database for sessions...",
+      message: `Checking ${displayName} database for sessions...`,
     });
 
     // Count DB as 1 database scanned for the source
-    dbsScanned.opencode += 1;
+    if (isOpenCode) dbsScanned.opencode += 1;
+    else if (isZcode) dbsScanned.zcode += 1;
 
-    const prevCursor = cursors.openCodeSqlite as OpenCodeSqliteSessionCursor | undefined;
-    const result = await driver.run(prevCursor, {});
+    let prevCursor: unknown;
+    if (isOpenCode) {
+      prevCursor = cursors.openCodeSqlite;
+    } else if (isZcode) {
+      prevCursor = cursors.zcodeSqlite;
+    }
 
-    cursors.openCodeSqlite = result.cursor as OpenCodeSqliteSessionCursor;
+    let result;
+    try {
+      result = await driver.run(prevCursor, {});
+    } catch (err) {
+      onProgress?.({
+        source: displayTag,
+        phase: "warn",
+        message: `Skipping ${displayName}: ${err instanceof Error ? err.message : String(err)}`,
+      });
+      continue;
+    }
+
+    // Forward non-fatal warnings from the driver
+    for (const w of result.warnings ?? []) {
+      onProgress?.({
+        source: displayTag,
+        phase: "warn",
+        message: w,
+      });
+    }
+
+    if (isOpenCode) {
+      cursors.openCodeSqlite = result.cursor as OpenCodeSqliteSessionCursor;
+    } else if (isZcode) {
+      cursors.zcodeSqlite = result.cursor as ZcodeSqliteSessionCursor;
+    }
 
     allSnapshots.push(...result.snapshots);
     sourceCounts[key] += result.snapshots.length;
 
     onProgress?.({
-      source: "opencode-sqlite",
+      source: displayTag,
       phase: "parse",
       message: result.snapshots.length > 0
         ? `Collected ${result.snapshots.length} sessions from ${result.rowCount} SQLite session rows`
-        : "No new SQLite sessions found",
+        : `No new ${displayName} sessions found`,
     });
   }
 

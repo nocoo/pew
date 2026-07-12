@@ -257,7 +257,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   // If cursors are empty (first run / post-reset), {} is safe because
   // there's nothing to double-count.
   if (!cursors.knownDbSources) {
-    const dbCursorsExist = cursors.openCodeSqlite || !isHermesCursorsEmpty();
+    const dbCursorsExist = cursors.openCodeSqlite || !isHermesCursorsEmpty() || cursors.zcodeSqlite;
     if (dbCursorsExist) {
       cursors.knownDbSources = {};
       if (cursors.openCodeSqlite) cursors.knownDbSources.openCodeSqlite = true;
@@ -267,6 +267,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
           cursors.knownDbSources[`hermesSqlite:${dbKey}`] = true;
         }
       }
+      if (cursors.zcodeSqlite) cursors.knownDbSources.zcodeSqlite = true;
     } else if (!initialCursorEmpty) {
       onProgress?.({
         source: "all",
@@ -617,6 +618,34 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     }
   }
 
+  // ZCode pre-check: only filter zcode driver on failure; leave OpenCode /
+  // Hermes drivers intact. See docs/43-zcode-support.md §二挑战 7.
+  if (opts.zcodeDbPath) {
+    const dbStat = await stat(opts.zcodeDbPath).catch(() => null);
+    if (dbStat) {
+      if (!opts.openZcodeDb) {
+        onProgress?.({
+          source: "zcode-sqlite",
+          phase: "warn",
+          message: `ZCode SQLite database found at ${opts.zcodeDbPath} but SQLite is not available — ZCode token data will NOT be synced`,
+        });
+        activeDbDrivers = activeDbDrivers.filter((d) => d.source !== "zcode");
+      } else {
+        const handle = opts.openZcodeDb(opts.zcodeDbPath);
+        if (!handle) {
+          onProgress?.({
+            source: "zcode-sqlite",
+            phase: "warn",
+            message: `Failed to open ZCode SQLite database at ${opts.zcodeDbPath} — ZCode token data will NOT be synced`,
+          });
+          activeDbDrivers = activeDbDrivers.filter((d) => d.source !== "zcode");
+        } else {
+          handle.close();
+        }
+      }
+    }
+  }
+
   // Filter out Hermes drivers that failed pre-check
   activeDbDrivers = activeDbDrivers.filter((d) => {
     if (d.source !== "hermes") return true;
@@ -629,6 +658,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     const key = sourceKey(driver.source);
     const isOpenCode = driver.source === "opencode";
     const isHermes = driver.source === "hermes";
+    const isZcode = driver.source === "zcode";
 
     // For Hermes, extract dbKey from the driver instance
     const hermesDbKey = isHermes
@@ -640,7 +670,11 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       ? "OpenCode SQLite"
       : hermesDbKey
         ? `Hermes SQLite (${hermesDbKey})`
-        : "Hermes SQLite";
+        : isHermes
+          ? "Hermes SQLite"
+          : isZcode
+            ? "ZCode SQLite"
+            : `${driver.source} SQLite`;
 
     onProgress?.({
       source: driver.source,
@@ -655,6 +689,8 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     } else if (isHermes && hermesDbKey) {
       // Hermes uses Record<dbKey, HermesSqliteCursor>
       prevCursor = cursors.hermesSqlite?.[hermesDbKey];
+    } else if (isZcode) {
+      prevCursor = cursors.zcodeSqlite;
     }
 
     // Detect DB cursor loss (parallel to file-based knownFilePaths logic):
@@ -663,7 +699,11 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     // that with the existing queue would double-count. Trigger full rescan.
     const dbSourceKey = isOpenCode
       ? "openCodeSqlite"
-      : `hermesSqlite:${hermesDbKey}`;
+      : isHermes
+        ? `hermesSqlite:${hermesDbKey}`
+        : isZcode
+          ? "zcodeSqlite"
+          : `${driver.source}Sqlite`;
 
     if (!initialCursorEmpty && !prevCursor && cursors.knownDbSources?.[dbSourceKey]) {
       onProgress?.({
@@ -690,6 +730,17 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
         message: `Skipping ${displayName}: ${err instanceof Error ? err.message : String(err)}`,
       });
       continue; // Skip this DB source, continue with others
+    }
+
+    // Forward non-fatal warnings from the driver (e.g. zcode provider_total
+    // mismatch). Adapter never emits without a run() call, so this runs
+    // after the try/catch above.
+    for (const w of result.warnings ?? []) {
+      onProgress?.({
+        source: driver.source,
+        phase: "warn",
+        message: w,
+      });
     }
 
     // Detect DB inode change (same logic as file drivers)
@@ -724,6 +775,8 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
         cursors.hermesSqlite = {};
       }
       cursors.hermesSqlite[hermesDbKey] = result.cursor as HermesSqliteCursor;
+    } else if (isZcode) {
+      cursors.zcodeSqlite = result.cursor as CursorState["zcodeSqlite"];
     }
 
     // Track this DB source as "previously synced" for cursor-loss detection
@@ -733,7 +786,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
 
     allDeltas.push(...result.deltas);
     sourceCounts[key] += result.deltas.length;
-    if (key === "opencode" || key === "hermes") {
+    if (key === "opencode" || key === "hermes" || key === "zcode") {
       dbsScanned[key] += 1;
     }
 
