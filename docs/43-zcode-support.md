@@ -311,10 +311,11 @@ SQL 用 `WHERE completed_at > ? OR (completed_at = ? AND id NOT IN (?))` 或
 
 ### 挑战 5：Session 数据
 
-同一 `db.sqlite`。SessionSnapshot 字段来源：
+同一 `db.sqlite`。SessionSnapshot 字段来源（下面用 SQLite 列名标注；opener 层 `AS`
+成 camelCase 后暴露给 parser，见 §二挑战 7）：
 
-- `startedAt` = ISO(`session.time_created`)
-- `lastMessageAt` = ISO(`session.time_updated`)
+- `startedAt` = ISO(`session.time_created` → `timeCreated`)
+- `lastMessageAt` = ISO(`session.time_updated` → `timeUpdated`)
 - `durationSeconds` = `(time_updated - time_created) / 1000`
 - `totalMessages / userMessages / assistantMessages` = 从 `message` 表 count（用
   `json_extract(data, '$.role')`）
@@ -720,14 +721,18 @@ return { deltas, cursor: nextCursor, rowCount: rows.length, warnings };
 
 ### 4.1 SessionSnapshot 提取
 
+`session` 变量类型是 `ZcodeSessionRow`（camelCase 字段，见 §二挑战 7 中的 zcode-types.ts
+定义）；opener 在 SQL 查询处已经 `AS timeCreated` / `AS timeUpdated` 映射，parser
+拿到的是 camelCase 视图，不再见 snake_case。
+
 ```ts
 const snapshot: SessionSnapshot = {
   sessionKey: `zcode:${session.id}`,       // 稳定键；不掺 hostname / user id
   source: "zcode",
   kind: "human",                            // zcode CLI 是交互
-  startedAt: new Date(session.time_created).toISOString(),
-  lastMessageAt: new Date(session.time_updated).toISOString(),
-  durationSeconds: Math.max(0, Math.floor((session.time_updated - session.time_created) / 1000)),
+  startedAt: new Date(session.timeCreated).toISOString(),
+  lastMessageAt: new Date(session.timeUpdated).toISOString(),
+  durationSeconds: Math.max(0, Math.floor((session.timeUpdated - session.timeCreated) / 1000)),
   userMessages,                             // COUNT WHERE role='user'
   assistantMessages,                        // COUNT WHERE role='assistant'
   totalMessages,                            // COUNT(*)
@@ -990,14 +995,24 @@ session driver 结构 100% 参考 `packages/cli/src/drivers/session/opencode-sql
 
 **Driver 测试**（`zcode-sqlite-token-driver.test.ts` / `-session-driver.test.ts`）：
 
-| Case | 期望 |
-|---|---|
-| Registry opts 无 `zcodeDbPath` 或无 `openZcodeDb` | driver 不激活（`createTokenDrivers` 返回的集合里没有 zcode） |
-| `zcodeDbPath` 存在但 opener 打开失败（返回 null） | CLI 层 pre-check 输出 warn，driver 不加入集合；其他 driver 正常 |
-| `zcodeDbPath` 指向真实 db.sqlite + opener 成功 | cursor 语义与 OpenCode driver 一致 |
-| cursor 无 `zcodeSqlite` 字段（旧 pew 升级） | 首次全量 |
-| inode 变化 | 清 cursor + 全量重扫（走 opencode 同样路径） |
-| DB 打开抛异常 | driver 内部 catch，返回 empty result；orchestrator 循环不断 |
+Token driver 与 session driver 走**两条独立的激活链路**，测试需分别覆盖。异常处理
+责任是**orchestrator 层**（sync.ts / session-sync.ts 的 driver loop 里 `try/catch`），
+不是 driver 内部——保持与既有 OpenCode / Hermes driver 一致，driver 内部不吞异常。
+
+| # | Case | 期望 |
+|---|---|---|
+| 1a | Token registry：`opts.zcodeDbPath` 缺失 | token driver 不激活 |
+| 1b | Token registry：`opts.openZcodeDb` 缺失（opener 未装载） | token driver 不激活 |
+| 1c | Token registry：`zcodeDbPath && openZcodeDb` 都在 | token driver 激活 |
+| 2a | Session registry：`opts.zcodeDbPath` 缺失 | session driver 不激活 |
+| 2b | Session registry：`opts.openZcodeSessionDb` 缺失 | session driver 不激活；**注意**判的是 `openZcodeSessionDb`（session opener），**不是** `openZcodeDb`（token opener） |
+| 2c | Session registry：`zcodeDbPath && openZcodeSessionDb` 都在 | session driver 激活 |
+| 3 | 两个 opener 都在，`opts.openZcodeDb(path)` 返回 null | orchestrator 层 pre-check 发 warn（`source: "zcode-sqlite", phase: "warn"`），token driver 从 activeDbDrivers filter 掉；OpenCode / Hermes driver 不受影响 |
+| 4 | 两个 opener 都在，`opts.openZcodeSessionDb(path)` 返回 null | 同 (3)，但发生在 session-sync 侧；session driver 被过滤，token driver 不受影响 |
+| 5 | 真实 db.sqlite + opener 成功 | cursor 语义与 OpenCode driver 一致 |
+| 6 | cursor 无 `zcodeSqlite` 字段（旧 pew 升级） | 首次全量 |
+| 7 | inode 变化（driver 层 fs.stat().ino ≠ cursor.inode） | 清 cursor + 全量重扫 |
+| 8 | Driver `run()` 抛异常（例如 SQL 语法错） | **orchestrator loop 的 try/catch 捕获**，onProgress 发 `phase: "warn"`，其他 DB driver 继续跑；异常不冒到 executeSync 的 caller |
 
 ### 7.2 L1 Unit tests（orchestrator 抽象后）
 
