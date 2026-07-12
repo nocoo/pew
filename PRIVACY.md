@@ -70,7 +70,7 @@ Cursor files contain absolute file paths (needed to track read progress), but th
 
 ## Raw data is read-only
 
-pew **never modifies, deletes, or moves** your AI tool log files (`~/.claude/`, `~/.gemini/`, `~/.local/share/opencode/`, `~/.openclaw/`, `~/.grok/`). It only reads them.
+pew **never modifies, deletes, or moves** your AI tool log files (`~/.claude/`, `~/.gemini/`, `~/.local/share/opencode/`, `~/.openclaw/`, `~/.grok/`, `~/.zcode/`). It only reads them.
 
 ## Data storage
 

@@ -1,6 +1,6 @@
 # 43 — ZCode CLI Token Support
 
-> **Status: design** (2026-07-11, revised after review)
+> **Status: implemented** (2026-07-12)
 >
 > 为 pew 增加第 13 个 source：Z.ai ZCode CLI (`zcode`)。
 > 通过读取 `~/.zcode/cli/db/db.sqlite` 的 `model_usage` 表，
