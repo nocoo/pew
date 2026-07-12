@@ -61,6 +61,8 @@ describe("resolveDefaultPaths", () => {
     expect(paths.grokHome).toBe(join("/fakehome", ".grok"));
     expect(paths.grokLogsPath).toBe(join("/fakehome", ".grok", "logs", "unified.jsonl"));
     expect(paths.grokSessionsDir).toBe(join("/fakehome", ".grok", "sessions"));
+    expect(paths.zcodeHome).toBe(join("/fakehome", ".zcode"));
+    expect(paths.zcodeDbPath).toBe(join("/fakehome", ".zcode", "cli", "db", "db.sqlite"));
   });
 
   it("should use actual homedir when no argument passed", () => {
@@ -116,7 +118,7 @@ describe("resolveDefaultPaths", () => {
     expect(paths.hermesProfileDbPaths[0].dbKey).toBe("profiles/tomato");
   });
 
-  it("should return exactly 20 path properties", () => {
+  it("should return exactly 22 path properties", () => {
     const keys = [
       "stateDir",
       "binDir",
@@ -138,6 +140,8 @@ describe("resolveDefaultPaths", () => {
       "piSessionsDir",
       "pmstudioDataDir",
       "vscodeCopilotDirs",
+      "zcodeHome",
+      "zcodeDbPath",
     ];
     const paths = resolveDefaultPaths("/fakehome");
     expect(Object.keys(paths)).toHaveLength(keys.length);

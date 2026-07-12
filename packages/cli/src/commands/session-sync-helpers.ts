@@ -20,7 +20,8 @@ export type SessionSyncSourceKey =
   | "opencode"
   | "openclaw"
   | "pi"
-  | "pmstudio";
+  | "pmstudio"
+  | "zcode";
 
 /**
  * Convert a SessionSnapshot to a SessionQueueRecord for upload.
@@ -67,6 +68,7 @@ export function sourceKey(source: Source): SessionSyncSourceKey | null {
     case "pmstudio": return "pmstudio";
     case "vscode-copilot": return null;
     case "hermes": return null;
+    case "zcode": return "zcode";
     default: {
       // Exhaustiveness check — if Source adds a new value, this will fail to compile
       const _exhaustive: never = source;

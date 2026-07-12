@@ -193,6 +193,10 @@ export function resolveDefaultPaths(home = homedir()) {
     grokLogsPath: join(home, ".grok", "logs", "unified.jsonl"),
     /** Grok CLI sessions root: ~/.grok/sessions */
     grokSessionsDir: join(home, ".grok", "sessions"),
+    /** ZCode CLI home: ~/.zcode */
+    zcodeHome: join(home, ".zcode"),
+    /** ZCode CLI SQLite database: ~/.zcode/cli/db/db.sqlite */
+    zcodeDbPath: join(home, ".zcode", "cli", "db", "db.sqlite"),
     /** Pi session data: ~/.pi/agent/sessions */
     piSessionsDir: join(home, ".pi", "agent", "sessions"),
     /** VSCode Copilot base dirs (stable + insiders, platform-aware) */

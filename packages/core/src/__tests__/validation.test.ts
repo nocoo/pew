@@ -38,6 +38,7 @@ describe("isValidSource", () => {
     expect(isValidSource("pi")).toBe(true);
     expect(isValidSource("pmstudio")).toBe(true);
     expect(isValidSource("vscode-copilot")).toBe(true);
+    expect(isValidSource("zcode")).toBe(true);
   });
 
   it("should reject invalid sources", () => {
@@ -239,7 +240,7 @@ describe("validateIngestRecord", () => {
   });
 
   it("should accept all 12 sources", () => {
-    for (const source of ["claude-code", "codex", "copilot-cli", "gemini-cli", "grok", "hermes", "kosmos", "opencode", "openclaw", "pi", "pmstudio", "vscode-copilot"]) {
+    for (const source of ["claude-code", "codex", "copilot-cli", "gemini-cli", "grok", "hermes", "kosmos", "opencode", "openclaw", "pi", "pmstudio", "vscode-copilot", "zcode"]) {
       const rec = { ...validTokenRecord(), source };
       expect(validateIngestRecord(rec, 0).valid).toBe(true);
     }

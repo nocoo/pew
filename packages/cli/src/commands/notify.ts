@@ -18,6 +18,8 @@ export interface NotifyOptions extends SyncOptions {
   multicaCodexDirs?: string[];
   /** Factory for opening the OpenCode SQLite DB for sessions (DI for testability) */
   openSessionDb?: SessionSyncOptions["openSessionDb"];
+  /** Factory for opening the ZCode SQLite DB for sessions (DI for testability) */
+  openZcodeSessionDb?: SessionSyncOptions["openZcodeSessionDb"];
   /** CLI version string for run log */
   version?: string;
   coordinatedSyncFn?: typeof coordinatedSync;
@@ -56,6 +58,8 @@ export async function executeNotify(
           copilotCliLogsDir: opts.copilotCliLogsDir,
           grokLogsPath: opts.grokLogsPath,
           grokSessionsDir: opts.grokSessionsDir,
+          zcodeDbPath: opts.zcodeDbPath,
+          openZcodeDb: opts.openZcodeDb,
         });
         cycle.tokenSync = {
           totalDeltas: tokenResult.totalDeltas,
@@ -85,6 +89,8 @@ export async function executeNotify(
           piSessionsDir: opts.piSessionsDir,
           grokLogsPath: opts.grokLogsPath,
           grokSessionsDir: opts.grokSessionsDir,
+          zcodeDbPath: opts.zcodeDbPath,
+          openZcodeSessionDb: opts.openZcodeSessionDb,
         });
         cycle.sessionSync = {
           totalSnapshots: sessionResult.totalSnapshots,

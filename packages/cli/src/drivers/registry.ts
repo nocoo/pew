@@ -82,6 +82,10 @@ export interface TokenDriverRegistryOpts {
   /** Additional Hermes profile DBs (e.g. ~/.hermes/profiles/<name>/state.db) */
   hermesProfileDbPaths?: Array<{ dbPath: string; dbKey: string }>;
   openHermesDb?: HermesSqliteTokenDriverOpts["openHermesDb"];
+  /** ZCode CLI SQLite database path (~/.zcode/cli/db/db.sqlite) */
+  zcodeDbPath?: string;
+  /** Factory for opening the ZCode SQLite DB for tokens (DI for testability) */
+  openZcodeDb?: (dbPath: string) => import("../parsers/zcode-types.js").ZcodeUsageDb | null;
 }
 
 export interface TokenDriverSet {
@@ -194,6 +198,10 @@ export interface SessionDriverRegistryOpts {
   grokSessionsDir?: string;
   openCodeDbPath?: string;
   openSessionDb?: OpenCodeSqliteSessionDriverOpts["openSessionDb"];
+  /** ZCode CLI SQLite database path (~/.zcode/cli/db/db.sqlite) */
+  zcodeDbPath?: string;
+  /** Factory for opening the ZCode SQLite DB for sessions (DI for testability) */
+  openZcodeSessionDb?: (dbPath: string) => import("../parsers/zcode-types.js").ZcodeSessionDb | null;
 }
 
 export interface SessionDriverSet {
