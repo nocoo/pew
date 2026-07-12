@@ -22,6 +22,7 @@ import { pruneAliasCursors } from "../storage/prune-alias-cursors.js";
 import type { OnCorruptLine } from "../storage/base-queue.js";
 import type { QueryMessagesFn } from "../parsers/opencode-sqlite.js";
 import type { QuerySessionsFn } from "../parsers/hermes-sqlite.js";
+import type { ZcodeUsageDb } from "../parsers/zcode-types.js";
 import type { ParsedDelta } from "../parsers/claude.js";
 import { toUtcHalfHourStart, bucketKey, addTokens, emptyTokenDelta } from "../utils/buckets.js";
 import { createTokenDrivers } from "../drivers/registry.js";
@@ -70,6 +71,10 @@ export interface SyncOptions {
   grokLogsPath?: string;
   /** Override: Grok CLI sessions directory (~/.grok/sessions) */
   grokSessionsDir?: string;
+  /** Override: ZCode CLI SQLite database path (~/.zcode/cli/db/db.sqlite) */
+  zcodeDbPath?: string;
+  /** Factory for opening the ZCode SQLite DB for tokens (DI for testability) */
+  openZcodeDb?: (dbPath: string) => ZcodeUsageDb | null;
   /** Progress callback */
   onProgress?: (event: ProgressEvent) => void;
   /** Callback invoked when a corrupted JSONL line is found in the queue */
@@ -102,6 +107,7 @@ export interface SyncResult {
     vscodeCopilot: number;
     copilotCli: number;
     hermes: number;
+    zcode: number;
   };
   /** Total files scanned per source */
   filesScanned: {
@@ -117,11 +123,13 @@ export interface SyncResult {
     vscodeCopilot: number;
     copilotCli: number;
     hermes: number;
+    zcode: number;
   };
   /** Total SQLite databases scanned per source */
   dbsScanned: {
     opencode: number;
     hermes: number;
+    zcode: number;
   };
 }
 
@@ -148,6 +156,7 @@ function sourceKey(source: Source): keyof SyncResult["sources"] {
     case "vscode-copilot": return "vscodeCopilot";
     case "copilot-cli": return "copilotCli";
     case "hermes": return "hermes";
+    case "zcode": return "zcode";
     default: {
       // Exhaustiveness check — if Source adds a new value, this will fail to compile
       const _exhaustive: never = source;
@@ -290,9 +299,9 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   let replayDetected = false;
 
   const allDeltas: ParsedDelta[] = [];
-  const sourceCounts = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, grok: 0, hermes: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0, vscodeCopilot: 0 };
-  const filesScanned = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, grok: 0, hermes: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0, vscodeCopilot: 0 };
-  const dbsScanned = { opencode: 0, hermes: 0 };
+  const sourceCounts = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, grok: 0, hermes: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0, vscodeCopilot: 0, zcode: 0 };
+  const filesScanned = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, grok: 0, hermes: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0, vscodeCopilot: 0, zcode: 0 };
+  const dbsScanned = { opencode: 0, hermes: 0, zcode: 0 };
 
   // Collect all discovered file paths (across all drivers) for knownFilePaths
   const discoveredFiles = new Set<string>();

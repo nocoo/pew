@@ -314,6 +314,8 @@ export interface DbTokenResult<TCursor> {
   cursor: TCursor;
   /** Number of raw rows queried (for filesScanned/progress reporting) */
   rowCount: number;
+  /** Non-fatal advisories collected during run(); routed to onProgress by orchestrator. */
+  warnings?: string[];
 }
 
 /**
@@ -343,6 +345,8 @@ export interface DbSessionResult<TCursor> {
   cursor: TCursor;
   /** Number of raw rows queried */
   rowCount: number;
+  /** Non-fatal advisories collected during run(); routed to onProgress by orchestrator. */
+  warnings?: string[];
 }
 
 /**

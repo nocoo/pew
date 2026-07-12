@@ -12,8 +12,8 @@ import {
 } from "../constants.js";
 
 describe("SOURCES", () => {
-  it("should contain exactly 12 supported AI tools", () => {
-    expect(SOURCES).toHaveLength(12);
+  it("should contain exactly 13 supported AI tools", () => {
+    expect(SOURCES).toHaveLength(13);
     expect(SOURCES).toContain("claude-code");
     expect(SOURCES).toContain("codex");
     expect(SOURCES).toContain("copilot-cli");
@@ -26,6 +26,7 @@ describe("SOURCES", () => {
     expect(SOURCES).toContain("pi");
     expect(SOURCES).toContain("pmstudio");
     expect(SOURCES).toContain("vscode-copilot");
+    expect(SOURCES).toContain("zcode");
   });
 
   it("should be readonly and sorted alphabetically", () => {
@@ -44,6 +45,7 @@ describe("SOURCES", () => {
       "pi",
       "pmstudio",
       "vscode-copilot",
+      "zcode",
     ]);
   });
 });

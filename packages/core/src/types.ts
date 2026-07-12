@@ -10,7 +10,7 @@
 // Source: Supported AI coding tools
 // ---------------------------------------------------------------------------
 
-/** The 12 supported AI coding tools */
+/** The 13 supported AI coding tools */
 export type Source =
   | "claude-code"
   | "codex"
@@ -23,7 +23,8 @@ export type Source =
   | "openclaw"
   | "pi"
   | "pmstudio"
-  | "vscode-copilot";
+  | "vscode-copilot"
+  | "zcode";
 
 // ---------------------------------------------------------------------------
 // Token types
@@ -185,6 +186,18 @@ export interface OpenCodeSqliteCursor {
   updatedAt: string;
 }
 
+/** Cursor for ZCode CLI SQLite database (model_usage token pipeline) */
+export interface ZcodeSqliteCursor {
+  /** Max completed_at seen from model_usage table (epoch ms) */
+  lastCompletedAt: number;
+  /** IDs of model_usage rows at exactly lastCompletedAt (for >= dedup on next query) */
+  lastProcessedIds?: string[];
+  /** DB file inode (detect replacement/recreation) */
+  inode: number;
+  /** ISO 8601 timestamp of last update */
+  updatedAt: string;
+}
+
 /** Cursor for Hermes Agent SQLite database (session-level diff model) */
 export interface HermesSqliteCursor {
   /** Map of session_id → last known token totals */
@@ -225,6 +238,8 @@ export interface CursorState {
   dirMtimes?: Record<string, number>;
   /** OpenCode SQLite database cursor (separate from per-file cursors) */
   openCodeSqlite?: OpenCodeSqliteCursor;
+  /** ZCode SQLite database cursor (separate from per-file cursors) */
+  zcodeSqlite?: ZcodeSqliteCursor;
   /**
    * Set of file paths that have been scanned at least once (persisted as
    * `Record<string, true>` for JSON compatibility). Used to distinguish
@@ -364,6 +379,18 @@ export interface OpenCodeSqliteSessionCursor {
   updatedAt: string;
 }
 
+/** Cursor for ZCode CLI SQLite database (session pipeline) */
+export interface ZcodeSqliteSessionCursor {
+  /** Max time_updated seen from session table (epoch ms) */
+  lastTimeUpdated: number;
+  /** IDs of sessions at exactly lastTimeUpdated (for >= dedup on next query) */
+  lastProcessedIds?: string[];
+  /** DB file inode (detect replacement/recreation) */
+  inode: number;
+  /** ISO 8601 timestamp of last update */
+  updatedAt: string;
+}
+
 /** Top-level session cursor state */
 export interface SessionCursorState {
   version: 1;
@@ -371,6 +398,8 @@ export interface SessionCursorState {
   files: Record<string, SessionFileCursor>;
   /** OpenCode SQLite session cursor (separate from per-file cursors) */
   openCodeSqlite?: OpenCodeSqliteSessionCursor;
+  /** ZCode SQLite session cursor (separate from per-file cursors) */
+  zcodeSqlite?: ZcodeSqliteSessionCursor;
   /** ISO 8601 timestamp of last update */
   updatedAt: string | null;
 }

@@ -26,6 +26,7 @@ export const SOURCES: readonly Source[] = Object.freeze([
   "pi",
   "pmstudio",
   "vscode-copilot",
+  "zcode",
 ] as const);
 
 /** Set form for O(1) membership checks */

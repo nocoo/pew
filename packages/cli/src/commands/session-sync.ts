@@ -26,6 +26,7 @@ import type { OnCorruptLine } from "../storage/base-queue.js";
 import { deduplicateSessionRecords } from "./session-upload.js";
 import { createSessionDrivers } from "../drivers/registry.js";
 import { toQueueRecord, sourceKey } from "./session-sync-helpers.js";
+import type { ZcodeSessionDb } from "../parsers/zcode-types.js";
 export { toQueueRecord, sourceKey } from "./session-sync-helpers.js";
 import type { FileFingerprint } from "../drivers/types.js";
 import type { SessionRow, SessionMessageRow } from "../parsers/opencode-sqlite-session.js";
@@ -70,6 +71,10 @@ export interface SessionSyncOptions {
   grokLogsPath?: string;
   /** Override: Grok CLI sessions directory (~/.grok/sessions) */
   grokSessionsDir?: string;
+  /** Override: ZCode CLI SQLite database path (~/.zcode/cli/db/db.sqlite) */
+  zcodeDbPath?: string;
+  /** Factory for opening the ZCode SQLite DB for sessions (DI for testability) */
+  openZcodeSessionDb?: (dbPath: string) => ZcodeSessionDb | null;
   /** Progress callback */
   onProgress?: (event: SessionProgressEvent) => void;
   /** Callback invoked when a corrupted JSONL line is found in the queue */
@@ -100,6 +105,7 @@ export interface SessionSyncResult {
     openclaw: number;
     pi: number;
     pmstudio: number;
+    zcode: number;
   };
   /** Total files/directories scanned per source */
   filesScanned: {
@@ -113,10 +119,12 @@ export interface SessionSyncResult {
     openclaw: number;
     pi: number;
     pmstudio: number;
+    zcode: number;
   };
   /** Total SQLite databases scanned per source */
   dbsScanned: {
     opencode: number;
+    zcode: number;
   };
 }
 
@@ -151,9 +159,9 @@ export async function executeSessionSync(
   const cursors = await cursorStore.load();
 
   const allSnapshots: SessionSnapshot[] = [];
-  const sourceCounts = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, grok: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0 };
-  const filesScanned = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, grok: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0 };
-  const dbsScanned = { opencode: 0 };
+  const sourceCounts = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, grok: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0, zcode: 0 };
+  const filesScanned = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, grok: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0, zcode: 0 };
+  const dbsScanned = { opencode: 0, zcode: 0 };
 
   // Paths surfaced by discovery this run; consumed by the alias-prune
   // pass below.

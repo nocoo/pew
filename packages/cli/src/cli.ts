@@ -55,6 +55,7 @@ function isSource(value: string): value is Source {
     "vscode-copilot",
     "copilot-cli",
     "hermes",
+    "zcode",
   ].includes(value);
 }
 
@@ -162,6 +163,7 @@ const SOURCE_LABELS: Record<string, string> = {
   vscodeCopilot: "VSCode Copilot",
   copilotCli: "Copilot CLI",
   hermes: "Hermes",
+  zcode: "ZCode",
 };
 
 /**
