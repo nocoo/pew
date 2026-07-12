@@ -261,7 +261,9 @@ copilot-cli 已栽过的坑（见 `packages/cli/src/parsers/codex.ts` `normalize
 3. `knownDbSources` 里的 key 相应加 `"zcodeSqlite"`；`packages/cli/src/commands/sync.ts`
    的 backfill 段（sync.ts:250 起）增加 `if (cursors.zcodeSqlite) cursors.knownDbSources.zcodeSqlite = true`。
 4. cursor-loss / inode-replay：ZCode 走 opencode 相同的模式（inode 变化 → 清 cursor →
-   全量重扫）。sqlite 打开时读一下 `st.ino`，与 `cursor.inode` 比较。
+   全量重扫）。**driver 层**在 `run()` 里对 `zcodeDbPath` 做 `fs.stat`，用 `st.ino`
+   与 `cursor.inode` 比较；opener 不承担 inode 职责（handle interface 里没有
+   `readInode()`）。
 5. driver 级异常隔离：orchestrator 里 `for (const driver of activeDbDrivers)` 循环包
    `try/catch`，抛错的 driver 只影响自己那一 source，不阻塞其他 driver。**这是 review
    P0#1 明确要求的"session DB driver 级异常隔离"，同时也补齐 OpenCode/Hermes 一起**
@@ -378,29 +380,56 @@ SQL 用 `WHERE completed_at > ? OR (completed_at = ? AND id NOT IN (?))` 或
    - `packages/cli/src/parsers/zcode-sqlite-db.ts` 导出 `openZcodeUsageDb(dbPath): ZcodeUsageDb | null`
    - `packages/cli/src/parsers/zcode-sqlite-session-db.ts` 导出 `openZcodeSessionDb(dbPath): ZcodeSessionDb | null`
 2. **两个 handle interface（在 commit #1 就必须定义）**——否则 commit #1 里
-   `SyncOptions` / `SessionSyncOptions` 的 `openZcodeDb?: (dbPath: string) =>
-   ReturnType<typeof openZcodeUsageDb>` 引用会因函数还没导出而编译失败。commit #1
-   在 `packages/core/src/types.ts` 或 `packages/cli/src/drivers/types.ts` 里定义:
+   `SyncOptions` / `SessionSyncOptions` 里的 opener 类型引用会因 opener 函数还没导出
+   而编译失败。这些是**CLI 私有 schema**，不进 `@pew/core`（`@pew/core` 只放跨包
+   共享类型）。commit #1 在**新建**的 `packages/cli/src/parsers/zcode-types.ts` 里定义：
 
    ```ts
+   // packages/cli/src/parsers/zcode-types.ts (new in commit #1)
+   export interface ZcodeUsageRow {
+     id: string;
+     sessionId: string;
+     turnId: string | null;
+     modelId: string;
+     providerId: string;
+     status: "completed" | "error" | "cancelled";
+     startedAt: number;
+     completedAt: number;
+     inputTokens: number;
+     outputTokens: number;
+     reasoningTokens: number;
+     cacheReadInputTokens: number;
+     cacheCreationInputTokens: number;
+     providerTotalTokens: number | null;
+     computedTotalTokens: number;
+   }
+   export interface ZcodeSessionRow {
+     id: string;
+     directory: string;
+     title: string;
+     timeCreated: number;
+     timeUpdated: number;
+     taskType: string;
+   }
    export interface ZcodeUsageDb {
      queryUsageRows(startAtMs: number | null, skipIds: string[]): ZcodeUsageRow[];
-     readInode(): number;
      close(): void;
    }
    export interface ZcodeSessionDb {
      querySessions(startAtMs: number | null, skipIds: string[]): ZcodeSessionRow[];
      queryMessages(sessionId: string): { user: number; assistant: number; total: number };
      queryPrimaryModel(sessionId: string): string | null;
-     readInode(): number;
      close(): void;
    }
    ```
 
-   SyncOptions / SessionSyncOptions / RegistryOpts / NotifyOptions 全部按
-   **`openZcodeDb?: (dbPath: string) => ZcodeUsageDb | null`** 方式引用 handle
-   interface，独立于 opener 实现。commit #3/#4 时 opener 函数只需保证返回类型
-   实现 handle interface 即可，commit #1 已能独立 typecheck 通过。
+   注意：
+   - **不定义 `readInode()`**：inode 由 driver 自己 `fs.stat(dbPath).ino` 拿，与
+     OpenCode driver 一致（driver 层用 inode 做 replace-detect，不劳 opener 承担）。
+   - SyncOptions / SessionSyncOptions / RegistryOpts / NotifyOptions 从
+     `parsers/zcode-types.ts` 引用两个 handle interface；opener 实现（commit #3/#4
+     的 `openZcodeUsageDb / openZcodeSessionDb`）返回类型只需符合 interface 即可。
+     commit #1 独立可编译。
 3. `packages/cli/src/commands/sync.ts` `SyncOptions`（sync.ts:32 起）加：
    - `zcodeDbPath?: string`
    - `openZcodeDb?: (dbPath: string) => ZcodeUsageDb | null`
@@ -441,8 +470,20 @@ SQL 用 `WHERE completed_at > ? OR (completed_at = ? AND id NOT IN (?))` 或
    - **注释别写"bun-only"**：pew 现有 `opencode-sqlite-db.ts` 支持 `bun:sqlite`（Bun）
      + `node:sqlite`（Node ≥ 22.5）双 runtime。zcode adapter 复用同一实现，注释写
      "SQLite adapter not available on this runtime"（老 Node.js < 22.5 才会走 catch）
-   - **预检查**：opener 存在但 `openZcodeDb(dbPath)` 返回 null（打开失败）→ log warn
-     "ZCode SQLite unavailable" 并跳过 driver，不阻塞其他 source
+   - **预检查（token 侧）**：对齐 OpenCode 预检查（`sync.ts:530` 附近）。stat 到 db 文件
+     存在时，分两种情况兜底：
+     - 情况 A：`opts.zcodeDbPath` 有但 `opts.openZcodeDb` **缺失**（dynamic import
+       失败或未装载） → `onProgress({source:"zcode-sqlite", phase:"warn", message:
+       "ZCode SQLite database found at ${path} but SQLite adapter is not available —
+       SQLite token data will NOT be synced"})`，然后 `activeDbDrivers = activeDbDrivers
+       .filter(d => d.source !== "zcode")`，**只**过滤 zcode driver，不动 opencode /
+       hermes
+     - 情况 B：opener 存在但 `openZcodeDb(zcodeDbPath)` **返回 null**（DB corrupted /
+       schema 不认识） → 同样发 warn + 过滤 zcode driver
+   - **预检查（session 侧）**：orchestrator 是两条流水线（sync + session-sync），
+     session-sync 里也复制同样的两种兜底：判 `opts.openZcodeSessionDb` 缺失 / 返回
+     null，同样只过滤 zcode session driver，不影响其他 DB session driver
+   - 两侧预检查都发 `source: "zcode-sqlite"` 复合 tag（与 formatter 约定一致）
 7. `packages/cli/src/commands/notify.ts` `NotifyOptions` 同时加 `zcodeDbPath +
    openZcodeDb + openZcodeSessionDb` 三个字段，转发给 executeSync / executeSessionSync
 8. `packages/cli/src/utils/paths.ts` 加 `zcodeDbPath = join(zcodeHome, "cli/db/db.sqlite")`
@@ -544,10 +585,12 @@ ORDER BY mu.completed_at, mu.id;
 
 ### 3.3 归一化代码
 
-`ZcodeUsageRow` 是 opener handle 返回的行类型，与 handle interface 一起在 commit #1
-的 `packages/core/src/types.ts` 里定义（见 §二挑战 7 第 2 项），parser 与 driver 都消费它。
+`ZcodeUsageRow` 及 handle interface 都定义在 commit #1 新建的
+`packages/cli/src/parsers/zcode-types.ts`（**CLI 私有 schema**，不进 `@pew/core`；
+详见 §二挑战 7 第 2 项）。为方便阅读，这里再列一次：
 
 ```ts
+// 定义在 packages/cli/src/parsers/zcode-types.ts
 export interface ZcodeUsageRow {
   id: string;
   sessionId: string;
@@ -728,10 +771,16 @@ session driver 结构 100% 参考 `packages/cli/src/drivers/session/opencode-sql
 
 ### 5.2 CLI parsers（new）
 
-- `packages/cli/src/parsers/zcode-sqlite.ts` — SQL + `normalizeZcodeUsage` + 结果类型
-- `packages/cli/src/parsers/zcode-sqlite-db.ts` — bun:sqlite 封装（与 opencode-sqlite-db /
-  hermes-sqlite-db 同风格），DI 友好
-- `packages/cli/src/parsers/zcode-session.ts` — SessionSnapshot 提取
+- `packages/cli/src/parsers/zcode-types.ts` — **commit #1 就建**：CLI 私有 handle
+  interface (`ZcodeUsageDb / ZcodeSessionDb`) + 行类型 (`ZcodeUsageRow /
+  ZcodeSessionRow`)。让 commit #1 独立编译，同时不污染 `@pew/core`
+- `packages/cli/src/parsers/zcode-sqlite.ts` — SQL + `normalizeZcodeUsage` + parser
+  层：给定 handle 和 cursor，返回 `{deltas, cursor, warnings}`
+- `packages/cli/src/parsers/zcode-sqlite-db.ts` — `openZcodeUsageDb` 实现（bun:sqlite
+  / node:sqlite 封装，与 opencode-sqlite-db 同风格），返回 `ZcodeUsageDb | null`
+- `packages/cli/src/parsers/zcode-sqlite-session-db.ts` — `openZcodeSessionDb` 实现，
+  返回 `ZcodeSessionDb | null`
+- `packages/cli/src/parsers/zcode-session.ts` — SessionSnapshot 提取 parser
 
 ### 5.3 CLI drivers（new）
 
@@ -814,13 +863,24 @@ session driver 结构 100% 参考 `packages/cli/src/drivers/session/opencode-sql
       `executeNotify`，notify 内部再各自转发
     - 变量命名建议 `openZcodeDb / openZcodeSessionDb` 与 `openZcodeDb2 / openZcodeSessionDb2`
       区分两个入口，避免命名冲突（既有 `openMessageDb2` / `openHermesDb2` 沿用）
-  - **两个 progress formatter 都要改**（review 追加项）：
-    - `logSyncProgress`（cli.ts:90 起）里 cli.ts:102 的 DB source 判断：目前只识别
-      `event.source === "opencode-sqlite"`。改成"source 以 `-sqlite` 结尾"或者显式
-      alternation `"opencode-sqlite" | "zcode-sqlite"`
-    - `logSessionSyncProgress`（cli.ts:119 起）里 cli.ts:131 处的**同款**硬编码
-      `event.source === "opencode-sqlite"` 也要改。session 侧的 ZCode DB 消息一样
-      得进这条路径才能显示
+  - **两个 progress formatter 都要改，且要同时识别 `zcode` 与 `zcode-sqlite`**：
+    - 背景：orchestrator 现状里 driver loop 用 `onProgress({source: driver.source})` 上抛
+      （值就是 `"zcode"`），但既有的 SQLite **预检查段**（sync.ts:530 附近）另发一个
+      `source: "opencode-sqlite"` 复合 tag。目前 formatter 只依据后者做特殊 DB 消息
+      渲染——如果 formatter 只加 `"zcode-sqlite"`，driver 内部消息（tag `"zcode"`）
+      走不到这段 DB 渲染分支
+    - 选择 A（推荐）：formatter 抽象成"source 以 `-sqlite` 结尾 **或** 等于 `"opencode" | "zcode"`
+      等 DB source"；同时 orchestrator 里给 ZCode driver 的预检查段发 `source: "zcode-sqlite"`
+      保持复合 tag 传统（与 OpenCode 一致）
+    - 选择 B：统一让 ZCode DB 相关进度都用同一个 tag（比如都 `zcode-sqlite`）。这需要
+      orchestrator DB driver 段在 `onProgress` 时手工 `source: "zcode-sqlite"` 而非
+      `driver.source`。变更面稍小但破坏 driver.source 的一致性
+    - **本 PR 采纳 A**：`logSyncProgress`（cli.ts:90，`opencode-sqlite` 硬编码在 cli.ts:102）
+      与 `logSessionSyncProgress`（cli.ts:119，硬编码在 cli.ts:131）**两处**同款判断
+      都改成 alternation `"opencode-sqlite" | "zcode-sqlite" | "opencode" | "zcode"`
+      或"source 以 `-sqlite` 结尾 or === opencode/zcode"
+    - orchestrator 的 zcode DB **预检查**（新增，见下面）用复合 tag `zcode-sqlite`，
+      与 OpenCode 一致
   - **token 完成摘要**（cli.ts:247 附近）：`if (result.sources.zcode > 0)
     deltaParts.push(\`ZCode: ${result.sources.zcode}\`)`
   - **session 完成摘要**（cli.ts:337 附近，review P1#4 明确漏项）：加
@@ -879,12 +939,12 @@ session driver 结构 100% 参考 `packages/cli/src/drivers/session/opencode-sql
 
 | # | Commit | 内容 | 独立编译? |
 |---|---|---|---|
-| 1 | **`feat: add "zcode" source foundation (types + exhaustive switches + opener injection stubs + warnings channel)`** | `core/types.ts` 加 `zcode` + 两个 cursor interface + **两个 DB handle interface `ZcodeUsageDb / ZcodeSessionDb`**（含 `ZcodeUsageRow / ZcodeSessionRow` 行类型；使 commit #1 独立可编译）；`core/constants.ts` `SOURCES`；2 处真实 `sourceKey()` 加 `case "zcode"`；`SyncResult.sources.zcode` / `filesScanned.zcode` 初始化；`SyncOptions` / `SessionSyncOptions` / `NotifyOptions` / `TokenDriverRegistryOpts` / `SessionDriverRegistryOpts` 加 `zcodeDbPath?` + `openZcodeDb?: (p) => ZcodeUsageDb \| null` / `openZcodeSessionDb?: (p) => ZcodeSessionDb \| null`（stub，尚未激活）；`drivers/types.ts` `DbTokenResult` / `DbSessionResult` 加 `warnings?: string[]`（`SyncProgressEvent.phase` 已包含 `"warn"`，无需扩）；`utils/paths.ts` 加 zcodeHome/zcodeDbPath；`cli.ts` `isSource()` + `SOURCE_LABELS`；core & CLI 相关 tests（constants/types/validation/paths）。**尚无 opener 函数实现、无 driver、无 dispatch 改动** | ✅ handle interface 就位后 opener 类型引用能编译；opener 实现移到 commit #3/#4 |
+| 1 | **`feat: add "zcode" source foundation (types + exhaustive switches + opener injection stubs + warnings channel)`** | `core/types.ts` 加 `zcode` + 两个 cursor interface；`core/constants.ts` `SOURCES`；**新建 `packages/cli/src/parsers/zcode-types.ts`**（CLI 私有 handle interface `ZcodeUsageDb / ZcodeSessionDb` + 行类型 `ZcodeUsageRow / ZcodeSessionRow`，使 commit #1 独立可编译且不污染 `@pew/core`）；2 处真实 `sourceKey()` 加 `case "zcode"`；`SyncResult.sources.zcode` / `filesScanned.zcode` 初始化；`SyncOptions` / `SessionSyncOptions` / `NotifyOptions` / `TokenDriverRegistryOpts` / `SessionDriverRegistryOpts` 从 zcode-types 引用 handle interface 加 `zcodeDbPath?` + `openZcodeDb?: (p) => ZcodeUsageDb \| null` / `openZcodeSessionDb?: (p) => ZcodeSessionDb \| null`（stub，尚未激活）；`drivers/types.ts` `DbTokenResult` / `DbSessionResult` 加 `warnings?: string[]`（`SyncProgressEvent.phase` 已包含 `"warn"`，无需扩）；`utils/paths.ts` 加 zcodeHome/zcodeDbPath；`cli.ts` `isSource()` + `SOURCE_LABELS`；core & CLI 相关 tests（constants/types/validation/paths）。**尚无 opener 函数实现、无 driver、无 dispatch 改动** | ✅ handle interface 在 CLI 私有文件；opener 实现移到 commit #3/#4 |
 | 2 | `refactor(cli): abstract DB cursor dispatch in sync + session-sync orchestrators + wire warnings channel` | 引入 `dbCursorRouteMap` / display-name map，删掉 `isOpenCode / isHermes` 硬编码；行为对齐现状（zcode 分支存在但不激活，因为 driver 未注册）；driver loop 加 `try/catch`；orchestrator 遍历 `result.warnings ?? []` 转成 `onProgress({ phase: "warn" })`；`cli.ts` `logSyncProgress` 收到 `phase: "warn"` 时 `log.warn(...)`；补 OpenCode/Hermes 的 orchestrator 隔离测试 | ✅ 无功能变化，仅 refactor |
 | 3 | `feat(cli): add zcode sqlite parser + normalizer (no wiring)` | `parsers/zcode-sqlite.ts` + `zcode-sqlite-db.ts` + `parsers/__tests__/zcode-sqlite.test.ts`。TDD 先测后码。包含 §一挑战 6 provider-total 三分支 | ✅ |
 | 4 | `feat(cli): add zcode sqlite session parser (no wiring)` | `parsers/zcode-session.ts` + `zcode-sqlite-session-db.ts` + test | ✅ |
 | 5 | `feat(cli): add zcode token+session drivers and register them` | `drivers/token/zcode-sqlite-token-driver.ts`、`drivers/session/zcode-sqlite-session-driver.ts`、`drivers/registry.ts` 加**两条独立激活分支**（token: `zcodeDbPath && openZcodeDb`；session: `zcodeDbPath && openZcodeSessionDb`）；registry test 覆盖 4 种组合：(1) 两个 opener 都缺，(2) 只缺 token opener，(3) 只缺 session opener，(4) 两个都在 | ✅ |
-| 6 | `feat(cli): wire zcode through sync + session-sync + notify` | `cli.ts` **4 处**动态 import（cli.ts:224 usage + session；cli.ts:636 usage + session）；**两个** progress formatter 都改（`logSyncProgress` cli.ts:102 + `logSessionSyncProgress` cli.ts:131）支持 `zcode-sqlite`；token / session 两处完成摘要加 zcode 分量；SQLite unavailable 预检查 warn；`normalizeZcodeUsage` 的 warn 通过 driver `warnings` 上抛 → cli 侧 log.warn | ✅ |
+| 6 | `feat(cli): wire zcode through sync + session-sync + notify` | `cli.ts` **4 处**动态 import（cli.ts:224 usage + session；cli.ts:636 usage + session）；**两个** progress formatter 都改（`logSyncProgress` cli.ts:102 + `logSessionSyncProgress` cli.ts:131）识别 `zcode-sqlite` 与 `zcode`；token / session 两处完成摘要加 zcode 分量；**双侧 SQLite 预检查**（token 侧对齐 sync.ts:530；session 侧对齐 session-sync.ts 相同位置）覆盖 opener 缺失 + opener 返回 null 两种情况，`activeDbDrivers.filter(d => d.source !== "zcode")` 只过滤 zcode driver 不影响其他 DB；`normalizeZcodeUsage` 的 warn 通过 driver `warnings` 上抛 → cli 侧 log.warn | ✅ |
 | 7 | `feat(web): add zcode to dashboard palette + labels + pricing fallback + API allowlists` | `pricing.ts` fallback；`palette.ts` + globals.css chart-13 三处；`usage-transforms.ts` SOURCE_LABELS；`leaderboard/agents/page.tsx` AGENTS；6 处 API VALID_SOURCES；`palette.test.ts` 断言 | ✅ |
 | 8 | `docs(43): mark zcode support as implemented; update CLAUDE.md/README/landing/PRIVACY/docs-index` | 5 个文档（含 PRIVACY.md）+ doc 43 status → done + 12 → 13 | ✅ |
 
