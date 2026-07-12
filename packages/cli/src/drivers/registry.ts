@@ -36,6 +36,7 @@ import {
   createHermesSqliteTokenDriver,
   type HermesSqliteTokenDriverOpts,
 } from "./token/hermes-token-driver.js";
+import { createZcodeSqliteTokenDriver } from "./token/zcode-sqlite-token-driver.js";
 
 // -- Session driver singletons --
 import { claudeSessionDriver } from "./session/claude-session-driver.js";
@@ -51,6 +52,7 @@ import {
   createOpenCodeSqliteSessionDriver,
   type OpenCodeSqliteSessionDriverOpts,
 } from "./session/opencode-sqlite-session-driver.js";
+import { createZcodeSqliteSessionDriver } from "./session/zcode-sqlite-session-driver.js";
 
 // ---------------------------------------------------------------------------
 // Token driver registry options
@@ -173,6 +175,14 @@ export function createTokenDrivers(opts: TokenDriverRegistryOpts): TokenDriverSe
       }),
     );
   }
+  if (opts.zcodeDbPath && opts.openZcodeDb) {
+    dbDrivers.push(
+      createZcodeSqliteTokenDriver({
+        dbPath: opts.zcodeDbPath,
+        openZcodeDb: opts.openZcodeDb,
+      }),
+    );
+  }
 
   return { fileDrivers, dbDrivers };
 }
@@ -253,6 +263,14 @@ export function createSessionDrivers(opts: SessionDriverRegistryOpts): SessionDr
       createOpenCodeSqliteSessionDriver({
         dbPath: opts.openCodeDbPath,
         openSessionDb: opts.openSessionDb,
+      }),
+    );
+  }
+  if (opts.zcodeDbPath && opts.openZcodeSessionDb) {
+    dbDrivers.push(
+      createZcodeSqliteSessionDriver({
+        dbPath: opts.zcodeDbPath,
+        openZcodeSessionDb: opts.openZcodeSessionDb,
       }),
     );
   }
