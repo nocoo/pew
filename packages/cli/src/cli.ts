@@ -100,10 +100,14 @@ function logSyncProgress(event: {
     return;
   }
 
-  // SQLite-backed OpenCode sync emits descriptive messages instead of
-  // file counters. Surface them so the CLI shows DB activity explicitly.
+  // SQLite-backed sync (OpenCode + ZCode) emits descriptive messages instead
+  // of file counters. Surface them so the CLI shows DB activity explicitly.
+  // Recognise the DB compound tags used by pre-check as well as the raw
+  // driver.source values used inside the DB driver loop.
   if (
-    event.source === "opencode-sqlite" &&
+    (event.source === "opencode-sqlite" ||
+      event.source === "zcode-sqlite" ||
+      event.source === "zcode") &&
     event.message &&
     (event.phase === "discover" || event.phase === "parse")
   ) {
@@ -130,7 +134,9 @@ function logSessionSyncProgress(event: {
   }
 
   if (
-    event.source === "opencode-sqlite" &&
+    (event.source === "opencode-sqlite" ||
+      event.source === "zcode-sqlite" ||
+      event.source === "zcode") &&
     event.message &&
     (event.phase === "discover" || event.phase === "parse")
   ) {
@@ -226,18 +232,32 @@ const syncCommand = defineCommand({
     let openMessageDb: typeof import("./parsers/opencode-sqlite-db.js").openMessageDb | undefined;
     let openSessionDb: typeof import("./parsers/opencode-sqlite-db.js").openSessionDb | undefined;
     let openHermesDb: typeof import("./parsers/hermes-sqlite-db.js").openHermesDb | undefined;
+    let openZcodeDb: typeof import("./parsers/zcode-sqlite-db.js").openZcodeUsageDb | undefined;
+    let openZcodeSessionDb: typeof import("./parsers/zcode-sqlite-session-db.js").openZcodeSessionDb | undefined;
     try {
       const mod = await import("./parsers/opencode-sqlite-db.js");
       openMessageDb = mod.openMessageDb;
       openSessionDb = mod.openSessionDb;
     } catch {
-      // Native SQLite module not available — SQLite sync will be skipped
+      // SQLite adapter not available on this runtime
     }
     try {
       const hermesModule = await import("./parsers/hermes-sqlite-db.js");
       openHermesDb = hermesModule.openHermesDb;
     } catch {
-      // Native SQLite module not available — Hermes SQLite sync will be skipped
+      // SQLite adapter not available on this runtime
+    }
+    try {
+      const zcodeModule = await import("./parsers/zcode-sqlite-db.js");
+      openZcodeDb = zcodeModule.openZcodeUsageDb;
+    } catch {
+      // SQLite adapter not available on this runtime
+    }
+    try {
+      const zcodeSessionModule = await import("./parsers/zcode-sqlite-session-db.js");
+      openZcodeSessionDb = zcodeSessionModule.openZcodeSessionDb;
+    } catch {
+      // SQLite adapter not available on this runtime
     }
 
     // Ensure a stable device ID exists for multi-device dedup
@@ -293,6 +313,7 @@ const syncCommand = defineCommand({
       if (result.sources.vscodeCopilot > 0) deltaParts.push(`VSCode Copilot: ${result.sources.vscodeCopilot}`);
       if (result.sources.copilotCli > 0) deltaParts.push(`Copilot CLI: ${result.sources.copilotCli}`);
       if (result.sources.hermes > 0) deltaParts.push(`Hermes: ${result.sources.hermes}`);
+      if (result.sources.zcode > 0) deltaParts.push(`ZCode: ${result.sources.zcode}`);
       if (deltaParts.length > 0) {
         log.text(pc.dim(deltaParts.join("  ")));
       }
@@ -322,6 +343,8 @@ const syncCommand = defineCommand({
       piSessionsDir: paths.piSessionsDir,
       grokLogsPath: paths.grokLogsPath,
       grokSessionsDir: paths.grokSessionsDir,
+      zcodeDbPath: paths.zcodeDbPath,
+      openZcodeSessionDb,
       onCorruptLine: handleCorruptLine,
       onProgress(event) {
         logSessionSyncProgress(event);
@@ -346,6 +369,7 @@ const syncCommand = defineCommand({
       if (sessionResult.sources.openclaw > 0) sessParts.push(`OpenClaw: ${sessionResult.sources.openclaw}`);
       if (sessionResult.sources.pi > 0) sessParts.push(`Pi: ${sessionResult.sources.pi}`);
       if (sessionResult.sources.pmstudio > 0) sessParts.push(`PM Studio: ${sessionResult.sources.pmstudio}`);
+      if (sessionResult.sources.zcode > 0) sessParts.push(`ZCode: ${sessionResult.sources.zcode}`);
       if (sessParts.length > 0) {
         log.text(pc.dim(sessParts.join("  ")));
       }
@@ -638,18 +662,32 @@ const notifyCommand = defineCommand({
     let openMessageDb2: typeof import("./parsers/opencode-sqlite-db.js").openMessageDb | undefined;
     let openSessionDb2: typeof import("./parsers/opencode-sqlite-db.js").openSessionDb | undefined;
     let openHermesDb2: typeof import("./parsers/hermes-sqlite-db.js").openHermesDb | undefined;
+    let openZcodeDb2: typeof import("./parsers/zcode-sqlite-db.js").openZcodeUsageDb | undefined;
+    let openZcodeSessionDb2: typeof import("./parsers/zcode-sqlite-session-db.js").openZcodeSessionDb | undefined;
     try {
       const mod = await import("./parsers/opencode-sqlite-db.js");
       openMessageDb2 = mod.openMessageDb;
       openSessionDb2 = mod.openSessionDb;
     } catch {
-      // Native SQLite module not available — SQLite sync will be skipped
+      // SQLite adapter not available on this runtime
     }
     try {
       const hermesModule = await import("./parsers/hermes-sqlite-db.js");
       openHermesDb2 = hermesModule.openHermesDb;
     } catch {
-      // Native SQLite module not available — Hermes SQLite sync will be skipped
+      // SQLite adapter not available on this runtime
+    }
+    try {
+      const zcodeModule = await import("./parsers/zcode-sqlite-db.js");
+      openZcodeDb2 = zcodeModule.openZcodeUsageDb;
+    } catch {
+      // SQLite adapter not available on this runtime
+    }
+    try {
+      const zcodeSessionModule = await import("./parsers/zcode-sqlite-session-db.js");
+      openZcodeSessionDb2 = zcodeSessionModule.openZcodeSessionDb;
+    } catch {
+      // SQLite adapter not available on this runtime
     }
 
     // Ensure a stable device ID exists for multi-device dedup
@@ -680,6 +718,9 @@ const notifyCommand = defineCommand({
       copilotCliLogsDir: paths.copilotCliLogsDir,
       grokLogsPath: paths.grokLogsPath,
       grokSessionsDir: paths.grokSessionsDir,
+      zcodeDbPath: paths.zcodeDbPath,
+      openZcodeDb: openZcodeDb2,
+      openZcodeSessionDb: openZcodeSessionDb2,
       version: CLI_VERSION,
     });
 
