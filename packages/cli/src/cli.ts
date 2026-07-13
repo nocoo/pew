@@ -207,7 +207,7 @@ function formatScannedLine(
   return `Scanned: ${pc.dim(parts.join("  "))}`;
 }
 
-const syncCommand = defineCommand({
+export const syncCommand = defineCommand({
   meta: {
     name: "sync",
     description: "Parse local AI tool usage and upload to dashboard",
