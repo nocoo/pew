@@ -354,6 +354,24 @@ describe("parseZcodeSqlite", () => {
     expect(new Set(result.boundaryIds)).toEqual(new Set(["row_a", "row_b"]));
   });
 
+  it("Case 8b — out-of-order rows (max then older): boundaryIds keeps just the max", () => {
+    // Feed the parser rows in max-then-older order to cover the "neither
+    // > nor ===" fall-through in boundaryIds bookkeeping.
+    const rawDb = {
+      queryUsageRows() {
+        return [
+          { ...LOCAL_ROWS[0], id: "row_max", completedAt: 8000 },
+          { ...LOCAL_ROWS[1], id: "row_older", completedAt: 3000 },
+        ];
+      },
+      close() {},
+    };
+    const result = parseZcodeSqlite({ db: rawDb, lastCompletedAt: null });
+    expect(result.deltas).toHaveLength(2);
+    expect(result.maxCompletedAt).toBe(8000);
+    expect(result.boundaryIds).toEqual(["row_max"]);
+  });
+
   it("Case 12b — terminal-but-zero row: does NOT push a delta, cursor still advances", () => {
     const zeroRow: ZcodeUsageRow = {
       ...LOCAL_ROWS[0],

@@ -122,6 +122,13 @@ describe("parseZcodeSessions", () => {
     expect(result.snapshots[0].projectRef).toBe("/Users/x/proj");
   });
 
+  it("Case 4d — directory is undefined (missing column) → projectRef null (covers ?? '' branch)", () => {
+    const row = { ...LOCAL_SESSION, directory: undefined as unknown as string };
+    const db = mockDb([row]);
+    const result = parseZcodeSessions({ db, lastTimeUpdated: null, now });
+    expect(result.snapshots[0].projectRef).toBeNull();
+  });
+
   it("Case 5 — incremental: cursor at last time_updated → new session emitted only", () => {
     const older: ZcodeSessionRow = {
       ...LOCAL_SESSION,
@@ -162,6 +169,27 @@ describe("parseZcodeSessions", () => {
       new Set(["sess_a", "sess_b"]),
     );
     expect(result.maxTimeUpdated).toBe(BASE_TIME + 9999);
+  });
+
+  it("Case 6b — out-of-order rows: older row does NOT displace boundaryIds (covers < branch)", () => {
+    // mockDb sorts by ascending timeUpdated so we bypass it: hand the parser
+    // a raw db that returns rows in a max-then-older order to exercise the
+    // "neither > nor ===" fall-through in boundaryIds bookkeeping.
+    const rawDb = {
+      querySessions() {
+        return [
+          { ...LOCAL_SESSION, id: "sess_max", timeUpdated: BASE_TIME + 5000 },
+          { ...LOCAL_SESSION, id: "sess_older", timeUpdated: BASE_TIME + 1000 },
+        ];
+      },
+      queryMessages: () => ({ user: 0, assistant: 0, total: 0 }),
+      queryPrimaryModel: () => null,
+      close() {},
+    };
+    const result = parseZcodeSessions({ db: rawDb, lastTimeUpdated: null, now });
+    expect(result.snapshots).toHaveLength(2);
+    expect(result.maxTimeUpdated).toBe(BASE_TIME + 5000);
+    expect(result.boundaryIds).toEqual(["sess_max"]);
   });
 
   it("Case 7 — durationSeconds never negative when time_updated < time_created", () => {
