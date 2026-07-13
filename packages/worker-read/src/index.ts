@@ -40,7 +40,7 @@ import { syncDynamicPricing } from "./sync/orchestrator";
 // Version
 // ---------------------------------------------------------------------------
 
-export const WORKER_VERSION = "2.24.1";
+export const WORKER_VERSION = "2.25.0";
 
 // ---------------------------------------------------------------------------
 // Boot timestamp (for uptime calculation)

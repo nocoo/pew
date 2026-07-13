@@ -3420,4 +3420,310 @@ describe("executeSync", () => {
       expect(claudeRow!.total_tokens).toBe(150);
     });
   });
+
+  // ===== ZCode SQLite token driver integration =====
+
+  describe("ZCode SQLite integration", () => {
+    function makeZcodeDb(rows: Array<{
+      id: string;
+      sessionId: string;
+      modelId: string;
+      completedAt: number;
+      inputTokens: number;
+      outputTokens: number;
+      reasoningTokens: number;
+      cacheReadInputTokens: number;
+      cacheCreationInputTokens: number;
+      providerTotalTokens: number | null;
+      computedTotalTokens: number;
+    }>) {
+      return (_p: string) => ({
+        queryUsageRows(lastCompletedAt: number | null, skipIds: readonly string[]) {
+          const wm = lastCompletedAt ?? 0;
+          const skip = new Set(skipIds);
+          return rows
+            .filter((r) => r.completedAt >= wm && !skip.has(r.id))
+            .map((r) => ({
+              ...r,
+              turnId: null,
+              providerId: "builtin:bigmodel-coding-plan",
+              status: "completed" as const,
+              startedAt: r.completedAt - 1000,
+            }));
+        },
+        close() {},
+      });
+    }
+
+    it("syncs ZCode SQLite tokens end-to-end and updates dbsScanned", async () => {
+      const dbDir = join(dataDir, ".zcode-tmp");
+      await mkdir(dbDir, { recursive: true });
+      const dbPath = join(dbDir, "db.sqlite");
+      await writeFile(dbPath, "dummy");
+
+      const result = await executeSync({
+        stateDir,
+        deviceId: "dev-t",
+        zcodeDbPath: dbPath,
+        openZcodeDb: makeZcodeDb([
+          {
+            id: "z1",
+            sessionId: "s1",
+            modelId: "GLM-5.2",
+            completedAt: 1783646250000,
+            inputTokens: 11933,
+            outputTokens: 170,
+            reasoningTokens: 0,
+            cacheReadInputTokens: 7360,
+            cacheCreationInputTokens: 0,
+            providerTotalTokens: 12103,
+            computedTotalTokens: 12103,
+          },
+        ]),
+      });
+
+      expect(result.sources.zcode).toBe(1);
+      expect(result.dbsScanned.zcode).toBe(1);
+      expect(result.totalDeltas).toBe(1);
+    });
+
+    it("skips ZCode token driver + emits warn when opener is absent", async () => {
+      const dbDir = join(dataDir, ".zcode-tmp");
+      await mkdir(dbDir, { recursive: true });
+      const dbPath = join(dbDir, "db.sqlite");
+      await writeFile(dbPath, "dummy");
+
+      const warns: string[] = [];
+      const result = await executeSync({
+        stateDir,
+        deviceId: "dev-t",
+        zcodeDbPath: dbPath,
+        // openZcodeDb missing
+        onProgress(event) {
+          if (event.phase === "warn" && event.message) warns.push(event.message);
+        },
+      });
+      expect(result.sources.zcode).toBe(0);
+      expect(warns.some((w) => /ZCode SQLite database found/.test(w))).toBe(true);
+    });
+
+    it("skips ZCode token driver + emits warn when opener returns null", async () => {
+      const dbDir = join(dataDir, ".zcode-tmp");
+      await mkdir(dbDir, { recursive: true });
+      const dbPath = join(dbDir, "db.sqlite");
+      await writeFile(dbPath, "dummy");
+
+      const warns: string[] = [];
+      const result = await executeSync({
+        stateDir,
+        deviceId: "dev-t",
+        zcodeDbPath: dbPath,
+        openZcodeDb: () => null,
+        onProgress(event) {
+          if (event.phase === "warn" && event.message) warns.push(event.message);
+        },
+      });
+      expect(result.sources.zcode).toBe(0);
+      expect(warns.some((w) => /Failed to open ZCode SQLite/.test(w))).toBe(true);
+    });
+
+    it("forwards zcode parser warnings through the DbTokenResult.warnings channel", async () => {
+      const dbDir = join(dataDir, ".zcode-tmp");
+      await mkdir(dbDir, { recursive: true });
+      const dbPath = join(dbDir, "db.sqlite");
+      await writeFile(dbPath, "dummy");
+
+      const warns: string[] = [];
+      await executeSync({
+        stateDir,
+        deviceId: "dev-t",
+        zcodeDbPath: dbPath,
+        openZcodeDb: makeZcodeDb([
+          {
+            id: "bad",
+            sessionId: "s1",
+            modelId: "GLM-5.2",
+            completedAt: 1783646250000,
+            inputTokens: 1000,
+            outputTokens: 200,
+            reasoningTokens: 50,
+            cacheReadInputTokens: 0,
+            cacheCreationInputTokens: 0,
+            providerTotalTokens: 9999, // matches neither inclusive nor disjoint
+            computedTotalTokens: 9999,
+          },
+        ]),
+        onProgress(event) {
+          if (event.phase === "warn" && event.message) warns.push(event.message);
+        },
+      });
+      expect(warns.some((w) => /provider_total mismatch/.test(w))).toBe(true);
+    });
+
+    it("triggers full rescan when zcode cursor is lost but knownDbSources.zcodeSqlite is set", async () => {
+      const dbDir = join(dataDir, ".zcode-tmp");
+      await mkdir(dbDir, { recursive: true });
+      const dbPath = join(dbDir, "db.sqlite");
+      await writeFile(dbPath, "dummy");
+
+      // Seed a cursors.json that claims zcode was previously synced (has
+      // knownDbSources.zcodeSqlite) but no zcodeSqlite cursor entry.
+      // Also add a claude file cursor so `initialCursorEmpty` is false —
+      // that's the guard that lets the cursor-loss branch fire.
+      await mkdir(stateDir, { recursive: true });
+      await writeFile(
+        join(stateDir, "cursors.json"),
+        JSON.stringify({
+          version: 1,
+          accountingSchemaVersion: 1,
+          files: {
+            "/nonexistent/claude.jsonl": {
+              inode: 999999,
+              mtimeMs: 0,
+              size: 0,
+              offset: 0,
+              seenIds: [],
+            },
+          },
+          knownFilePaths: { "/nonexistent/claude.jsonl": true },
+          knownDbSources: { zcodeSqlite: true },
+          updatedAt: null,
+        }),
+      );
+
+      const warns: string[] = [];
+      await executeSync({
+        stateDir,
+        deviceId: "dev-t",
+        zcodeDbPath: dbPath,
+        openZcodeDb: makeZcodeDb([]),
+        onProgress(event) {
+          if (event.phase === "warn" && event.message) warns.push(event.message);
+        },
+      });
+      // The cursor-loss detector fires per DB driver with a "restarting as
+      // full scan" warn; sync.ts then recurses with an empty cursors state.
+      expect(
+        warns.some((w) => /ZCode SQLite.*restarting as full scan/.test(w)),
+      ).toBe(true);
+    });
+
+    it("backfills knownDbSources.zcodeSqlite from an existing cursor on upgrade path", async () => {
+      const dbDir = join(dataDir, ".zcode-tmp");
+      await mkdir(dbDir, { recursive: true });
+      const dbPath = join(dbDir, "db.sqlite");
+      await writeFile(dbPath, "dummy");
+
+      // Simulate an older cursors.json that has a zcodeSqlite cursor but
+      // no knownDbSources map at all — the backfill branch must seed it
+      // with { zcodeSqlite: true } instead of triggering a full rescan.
+      await mkdir(stateDir, { recursive: true });
+      await writeFile(
+        join(stateDir, "cursors.json"),
+        JSON.stringify({
+          version: 1,
+          accountingSchemaVersion: 1,
+          files: {},
+          zcodeSqlite: {
+            lastCompletedAt: 1000,
+            lastProcessedIds: ["z0"],
+            inode: 1234,
+            updatedAt: new Date().toISOString(),
+          },
+          updatedAt: null,
+        }),
+      );
+
+      await executeSync({
+        stateDir,
+        deviceId: "dev-t",
+        zcodeDbPath: dbPath,
+        openZcodeDb: makeZcodeDb([
+          {
+            id: "z1",
+            sessionId: "s1",
+            modelId: "GLM-5.2",
+            completedAt: 2000,
+            inputTokens: 500,
+            outputTokens: 100,
+            reasoningTokens: 0,
+            cacheReadInputTokens: 0,
+            cacheCreationInputTokens: 0,
+            providerTotalTokens: 600,
+            computedTotalTokens: 600,
+          },
+        ]),
+      });
+
+      const after = JSON.parse(
+        await readFile(join(stateDir, "cursors.json"), "utf-8"),
+      ) as { knownDbSources?: Record<string, true> };
+      expect(after.knownDbSources?.zcodeSqlite).toBe(true);
+    });
+
+    it("triggers zcode inode-replay full rescan when the DB file's inode has changed", async () => {
+      const dbDir = join(dataDir, ".zcode-tmp");
+      await mkdir(dbDir, { recursive: true });
+      const dbPath = join(dbDir, "db.sqlite");
+      await writeFile(dbPath, "dummy");
+
+      // Prime cursors with a zcodeSqlite record whose inode is DEFINITELY
+      // different from the real dbPath's inode. sync.ts sees the mismatch
+      // and forces a full rescan (line 749-ish, "inode changed" branch).
+      await mkdir(stateDir, { recursive: true });
+      await writeFile(
+        join(stateDir, "cursors.json"),
+        JSON.stringify({
+          version: 1,
+          accountingSchemaVersion: 1,
+          files: {
+            "/nonexistent/claude.jsonl": {
+              inode: 999999,
+              mtimeMs: 0,
+              size: 0,
+              offset: 0,
+              seenIds: [],
+            },
+          },
+          knownFilePaths: { "/nonexistent/claude.jsonl": true },
+          knownDbSources: { zcodeSqlite: true },
+          zcodeSqlite: {
+            lastCompletedAt: 100,
+            lastProcessedIds: [],
+            inode: 424242, // bogus inode
+            updatedAt: new Date().toISOString(),
+          },
+          updatedAt: null,
+        }),
+      );
+
+      const warns: string[] = [];
+      await executeSync({
+        stateDir,
+        deviceId: "dev-t",
+        zcodeDbPath: dbPath,
+        openZcodeDb: makeZcodeDb([
+          {
+            id: "z_new",
+            sessionId: "s1",
+            modelId: "GLM-5.2",
+            completedAt: 5000,
+            inputTokens: 100,
+            outputTokens: 20,
+            reasoningTokens: 0,
+            cacheReadInputTokens: 0,
+            cacheCreationInputTokens: 0,
+            providerTotalTokens: 120,
+            computedTotalTokens: 120,
+          },
+        ]),
+        onProgress(event) {
+          if (event.phase === "warn" && event.message) warns.push(event.message);
+        },
+      });
+      expect(warns.some((w) => /ZCode SQLite.*inode changed/.test(w))).toBe(
+        true,
+      );
+    });
+  });
 });
