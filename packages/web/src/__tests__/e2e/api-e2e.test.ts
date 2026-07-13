@@ -356,6 +356,90 @@ describe("POST /api/ingest", () => {
     });
     expect(patch.status).toBe(200);
   });
+
+  it("accepts and reads back zcode source records — every whitelist entry point", async () => {
+    // 1. POST /api/ingest — bare-array body with zcode source
+    const ingest = await fetch(`${BASE_URL}/api/ingest`, {
+      method: "POST",
+      headers: INGEST_HEADERS,
+      body: JSON.stringify([
+        makeRecord({
+          source: "zcode",
+          model: "GLM-5.2",
+          hour_start: "2026-07-10T01:00:00.000Z",
+          // Local-machine 4-row aggregate (docs/43-zcode-support.md §1.4).
+          input_tokens: 11242,
+          cached_input_tokens: 52992,
+          output_tokens: 1329,
+          reasoning_output_tokens: 0,
+          total_tokens: 65563,
+          device_id: "e2e-zcode-device",
+        }),
+      ]),
+    });
+    expect(ingest.status).toBe(200);
+
+    // 2. Seed session_records so project alias validation passes
+    const projectRefCreate = `e2e-repo-zcode-${RUN_SUFFIX}`;
+    const projectRefPatch = `e2e-repo-zcode-${RUN_SUFFIX}-2`;
+    for (const project_ref of [projectRefCreate, projectRefPatch]) {
+      await d1.execute(
+        `INSERT INTO session_records (user_id, session_key, source, kind,
+           started_at, last_message_at, duration_seconds, user_messages,
+           assistant_messages, total_messages, project_ref, model, snapshot_at)
+         VALUES (?, ?, 'zcode', 'human', datetime('now'), datetime('now'), 0, 0, 0, 0, ?, 'GLM-5.2', datetime('now'))
+         ON CONFLICT (user_id, session_key) DO NOTHING`,
+        [TEST_USER_ID, `${TEST_USER_ID}-${project_ref}`, project_ref],
+      );
+    }
+
+    // 3. Every ?source= query allowlist route
+    for (const path of [
+      "/api/usage?source=zcode&from=2026-07-01&to=2026-07-31",
+      "/api/sessions?source=zcode",
+      "/api/leaderboard?source=zcode&from=2026-07-01&to=2026-07-31",
+      `/api/users/${TEST_USER_SLUG}?source=zcode&from=2026-07-01&to=2026-07-31`,
+    ]) {
+      const r = await fetch(`${BASE_URL}${path}`);
+      expect(r.status, path).toBe(200);
+    }
+
+    // Token retention on user route
+    const userRes = await fetch(
+      `${BASE_URL}/api/users/${TEST_USER_SLUG}?source=zcode&from=2026-07-01&to=2026-07-31`,
+    );
+    expect(userRes.status).toBe(200);
+    const userBody = await userRes.json();
+    const cached =
+      userBody.summary?.cached_input_tokens ??
+      userBody.cached_input_tokens ??
+      null;
+    if (cached !== null) {
+      expect(cached).toBeGreaterThanOrEqual(52992);
+    }
+
+    // 4. POST /api/projects with zcode alias in body (body allowlist)
+    const create = await fetch(`${BASE_URL}/api/projects`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: `zcode-e2e-${RUN_SUFFIX}`,
+        aliases: [{ source: "zcode", project_ref: projectRefCreate }],
+      }),
+    });
+    expect(create.status).toBe(201);
+    const project = await create.json();
+
+    // 5. PATCH /api/projects/[id] with add_aliases (body allowlist)
+    const patch = await fetch(`${BASE_URL}/api/projects/${project.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        add_aliases: [{ source: "zcode", project_ref: projectRefPatch }],
+      }),
+    });
+    expect(patch.status).toBe(200);
+  });
 });
 
 // ===========================================================================
