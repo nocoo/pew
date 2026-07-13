@@ -112,6 +112,16 @@ describe("parseZcodeSessions", () => {
     expect(result.snapshots[0].projectRef).toBeNull();
   });
 
+  it("Case 4c — leading/trailing whitespace in directory is trimmed off", () => {
+    const row: ZcodeSessionRow = {
+      ...LOCAL_SESSION,
+      directory: "  /Users/x/proj  ",
+    };
+    const db = mockDb([row]);
+    const result = parseZcodeSessions({ db, lastTimeUpdated: null, now });
+    expect(result.snapshots[0].projectRef).toBe("/Users/x/proj");
+  });
+
   it("Case 5 — incremental: cursor at last time_updated → new session emitted only", () => {
     const older: ZcodeSessionRow = {
       ...LOCAL_SESSION,

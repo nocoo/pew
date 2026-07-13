@@ -191,6 +191,59 @@ describe("createZcodeSqliteTokenDriver", () => {
       driver.run(undefined, { messageKeys: new Set() }),
     ).rejects.toThrow("boom");
   });
+
+  it("merges same-ms boundary IDs across 3 syncs: A → A+B → A+B+A' (regression)", async () => {
+    // Every row shares completedAt = 2000. Between syncs we add new rows
+    // (still at the same ms). The driver must keep every prior boundary ID
+    // so we never re-emit a row that was already handled.
+    const state: ZcodeUsageRow[] = [{ ...localRow, id: "A", completedAt: 2000 }];
+    const handleState: ZcodeUsageDb = {
+      queryUsageRows(lastCompletedAt, skipIds) {
+        const watermark = lastCompletedAt ?? 0;
+        const skip = new Set(skipIds);
+        return state.filter(
+          (r) => r.completedAt >= watermark && !skip.has(r.id),
+        );
+      },
+      close() {},
+    };
+    const driver = createZcodeSqliteTokenDriver({
+      dbPath,
+      openZcodeDb: () => handleState,
+    });
+
+    // Sync 1: only A. Cursor learns wm=2000, ids=[A].
+    const r1 = await driver.run(undefined, { messageKeys: new Set() });
+    expect(r1.deltas).toHaveLength(1);
+    expect(r1.cursor.lastCompletedAt).toBe(2000);
+    expect(r1.cursor.lastProcessedIds).toEqual(["A"]);
+
+    // Sync 2: B appears at the same completedAt. Only B must emit; cursor
+    // must remember BOTH A and B so A won't come back if it reappears.
+    state.push({ ...localRow, id: "B", completedAt: 2000 });
+    const r2 = await driver.run(r1.cursor, { messageKeys: new Set() });
+    expect(r2.deltas.map((d) => d.tokens.inputTokens)).toHaveLength(1);
+    expect(r2.cursor.lastCompletedAt).toBe(2000);
+    expect(new Set(r2.cursor.lastProcessedIds)).toEqual(new Set(["A", "B"]));
+
+    // Sync 3: A' (a fresh same-ms row) appears. A / B stay put — cursor
+    // must repel both. A' must emit exactly once and be remembered.
+    state.push({ ...localRow, id: "A_prime", completedAt: 2000 });
+    const r3 = await driver.run(r2.cursor, { messageKeys: new Set() });
+    expect(r3.deltas).toHaveLength(1);
+    expect(r3.cursor.lastCompletedAt).toBe(2000);
+    expect(new Set(r3.cursor.lastProcessedIds)).toEqual(
+      new Set(["A", "B", "A_prime"]),
+    );
+
+    // Sync 4 (idempotency): nothing new. All three IDs stay in the cursor.
+    const r4 = await driver.run(r3.cursor, { messageKeys: new Set() });
+    expect(r4.deltas).toHaveLength(0);
+    expect(r4.cursor.lastCompletedAt).toBe(2000);
+    expect(new Set(r4.cursor.lastProcessedIds)).toEqual(
+      new Set(["A", "B", "A_prime"]),
+    );
+  });
 });
 
 describe("createZcodeSqliteSessionDriver", () => {
@@ -251,5 +304,45 @@ describe("createZcodeSqliteSessionDriver", () => {
     await driver2.run(staleCursor, { messageKeys: new Set() });
     expect(capturedArgs[0][0]).toBeNull();
     expect(capturedArgs[0][1]).toEqual([]);
+  });
+
+  it("merges same-ms boundary session IDs across 3 syncs (regression)", async () => {
+    const rows: ZcodeSessionRow[] = [
+      { ...sessionRow, id: "S_a", timeUpdated: 2000 },
+    ];
+    const handle: ZcodeSessionDb = {
+      querySessions(lastTimeUpdated, skipIds) {
+        const watermark = lastTimeUpdated ?? 0;
+        const skip = new Set(skipIds);
+        return rows.filter(
+          (r) => r.timeUpdated >= watermark && !skip.has(r.id),
+        );
+      },
+      queryMessages: () => ({ user: 1, assistant: 4, total: 5 }),
+      queryPrimaryModel: () => "GLM-5.2",
+      close() {},
+    };
+    const driver = createZcodeSqliteSessionDriver({
+      dbPath,
+      openZcodeSessionDb: () => handle,
+    });
+
+    const r1 = await driver.run(undefined, { messageKeys: new Set() });
+    expect(r1.cursor.lastTimeUpdated).toBe(2000);
+    expect(r1.cursor.lastProcessedIds).toEqual(["S_a"]);
+
+    rows.push({ ...sessionRow, id: "S_b", timeUpdated: 2000 });
+    const r2 = await driver.run(r1.cursor, { messageKeys: new Set() });
+    expect(r2.snapshots).toHaveLength(1);
+    expect(new Set(r2.cursor.lastProcessedIds)).toEqual(
+      new Set(["S_a", "S_b"]),
+    );
+
+    rows.push({ ...sessionRow, id: "S_c_prime", timeUpdated: 2000 });
+    const r3 = await driver.run(r2.cursor, { messageKeys: new Set() });
+    expect(r3.snapshots).toHaveLength(1);
+    expect(new Set(r3.cursor.lastProcessedIds)).toEqual(
+      new Set(["S_a", "S_b", "S_c_prime"]),
+    );
   });
 });

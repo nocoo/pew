@@ -106,6 +106,7 @@ function logSyncProgress(event: {
   // driver.source values used inside the DB driver loop.
   if (
     (event.source === "opencode-sqlite" ||
+      event.source === "opencode" ||
       event.source === "zcode-sqlite" ||
       event.source === "zcode") &&
     event.message &&
@@ -135,6 +136,7 @@ function logSessionSyncProgress(event: {
 
   if (
     (event.source === "opencode-sqlite" ||
+      event.source === "opencode" ||
       event.source === "zcode-sqlite" ||
       event.source === "zcode") &&
     event.message &&
@@ -285,6 +287,8 @@ const syncCommand = defineCommand({
       copilotCliLogsDir: paths.copilotCliLogsDir,
       grokLogsPath: paths.grokLogsPath,
       grokSessionsDir: paths.grokSessionsDir,
+      zcodeDbPath: paths.zcodeDbPath,
+      openZcodeDb,
       onCorruptLine: handleCorruptLine,
       onProgress(event) {
         logSyncProgress(event);
