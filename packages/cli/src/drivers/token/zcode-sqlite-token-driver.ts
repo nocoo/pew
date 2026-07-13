@@ -75,14 +75,31 @@ export function createZcodeSqliteTokenDriver(
         });
 
         // Cursor advancement:
-        //   - if the batch had rows, use its (maxCompletedAt, boundaryIds)
-        //   - otherwise keep the previous watermark
-        const nextCompletedAt =
+        //   - watermark advanced       → adopt fresh (maxCompletedAt, boundaryIds)
+        //   - watermark unchanged      → merge new boundary IDs into priorIds
+        //     (fresh batch queried by `completed_at >= lastCompletedAt` will
+        //     re-include the same-millisecond rows; we must remember all of
+        //     them, not just this cycle's new ones, to keep dedup working
+        //     across subsequent syncs)
+        //   - no rows returned         → keep both watermark and priorIds
+        let nextCompletedAt: number;
+        let nextIds: string[];
+        if (result.maxCompletedAt > lastCompletedAt) {
+          nextCompletedAt = result.maxCompletedAt;
+          nextIds = result.boundaryIds;
+        } else if (
+          result.maxCompletedAt === lastCompletedAt &&
           result.maxCompletedAt > 0
-            ? result.maxCompletedAt
-            : lastCompletedAt;
-        const nextIds =
-          result.maxCompletedAt > 0 ? result.boundaryIds : priorIds;
+        ) {
+          // Same-ms boundary augmented with newly-seen IDs.
+          nextCompletedAt = lastCompletedAt;
+          const merged = new Set(priorIds);
+          for (const id of result.boundaryIds) merged.add(id);
+          nextIds = [...merged];
+        } else {
+          nextCompletedAt = lastCompletedAt;
+          nextIds = priorIds.slice();
+        }
 
         return {
           deltas: result.deltas,

@@ -46,9 +46,8 @@ function toSnapshot(
     0,
     Math.floor((row.timeUpdated - row.timeCreated) / 1000),
   );
-  const projectRef = row.directory && row.directory.trim().length > 0
-    ? row.directory
-    : null;
+  const trimmedDirectory = row.directory?.trim() ?? "";
+  const projectRef = trimmedDirectory.length > 0 ? trimmedDirectory : null;
   return {
     sessionKey: `zcode:${row.id}`,
     source: "zcode",

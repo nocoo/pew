@@ -72,10 +72,28 @@ export function createZcodeSqliteSessionDriver(
           lastProcessedIds: priorIds,
         });
 
-        const nextTimeUpdated =
-          result.maxTimeUpdated > 0 ? result.maxTimeUpdated : lastTimeUpdated;
-        const nextIds =
-          result.maxTimeUpdated > 0 ? result.boundaryIds : priorIds;
+        // Cursor advancement (mirrors token driver — see doc §二挑战 4):
+        //   - watermark advanced  → adopt fresh (maxTimeUpdated, boundaryIds)
+        //   - watermark unchanged → merge priorIds ∪ boundaryIds so
+        //     next-cycle skipIds keeps repelling all same-ms rows
+        //   - no rows returned    → keep both watermark and priorIds
+        let nextTimeUpdated: number;
+        let nextIds: string[];
+        if (result.maxTimeUpdated > lastTimeUpdated) {
+          nextTimeUpdated = result.maxTimeUpdated;
+          nextIds = result.boundaryIds;
+        } else if (
+          result.maxTimeUpdated === lastTimeUpdated &&
+          result.maxTimeUpdated > 0
+        ) {
+          nextTimeUpdated = lastTimeUpdated;
+          const merged = new Set(priorIds);
+          for (const id of result.boundaryIds) merged.add(id);
+          nextIds = [...merged];
+        } else {
+          nextTimeUpdated = lastTimeUpdated;
+          nextIds = priorIds.slice();
+        }
 
         return {
           snapshots: result.snapshots,
