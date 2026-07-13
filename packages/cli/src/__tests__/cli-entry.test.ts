@@ -67,7 +67,6 @@ vi.mock("../commands/session-upload.js", () => ({
 }));
 vi.mock("../config/manager.js", () => ({
   ConfigManager: class {
-    constructor(_dir: string, _dev?: boolean) {}
     async ensureDeviceId() {
       return ensureDeviceIdMock();
     }
