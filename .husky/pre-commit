@@ -43,6 +43,10 @@ LINT_EXIT_FILE="$TMP_DIR/lint_exit"
 TEST_PID=$!
 
 TS_STAGED=$(echo "$STAGED_FILES" | grep -E '\.(ts|tsx)$' || true)
+# Biome runs on the full set of extensions its lint-staged matcher covers,
+# so gate the lint-staged invocation on that same set — not just TS/TSX.
+# Otherwise a staged .js / .jsx / .json edit would bypass Biome silently.
+BIOME_STAGED=$(echo "$STAGED_FILES" | grep -E '\.(ts|tsx|js|jsx|json)$' || true)
 
 if [ -n "$TSC_AFFECTING" ]; then
   (
@@ -56,7 +60,7 @@ else
   TSC_PID=""
 fi
 
-if [ -n "$TS_STAGED" ]; then
+if [ -n "$BIOME_STAGED" ]; then
   (
     # G1b Static Analysis: Biome strict (staged files only, via lint-staged)
     bunx lint-staged 2>&1

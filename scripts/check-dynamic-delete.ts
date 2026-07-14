@@ -30,13 +30,23 @@ import { parseSync } from "oxc-parser";
 
 const REPO_ROOT = join(import.meta.dir, "..");
 
-const ROOTS = [
-  join(REPO_ROOT, "packages", "core", "src"),
-  join(REPO_ROOT, "packages", "cli", "src"),
-  join(REPO_ROOT, "packages", "web", "src"),
-  join(REPO_ROOT, "packages", "worker", "src"),
-  join(REPO_ROOT, "packages", "worker-read", "src"),
-];
+// Whole-repo scan; the linter that used to run this gate (eslint strict)
+// ran against everything, so we mirror that scope. Sub-tree excludes are
+// applied inside walk().
+const ROOTS = [REPO_ROOT];
+const SKIP_DIRS = new Set([
+  "node_modules",
+  "dist",
+  ".next",
+  ".next-e2e",
+  ".next-e2e-ui",
+  "coverage",
+  "__golden__",
+  ".git",
+  ".husky",
+  ".claude",
+  ".wrangler",
+]);
 
 // Whitelist: `${repoRelPath}:${line}` → reason. Line is 1-indexed and
 // points at the `delete` statement itself. Per-line, so a new violation in
@@ -171,14 +181,7 @@ async function main(): Promise<void> {
       const full = join(dir, name);
       const s = await stat(full);
       if (s.isDirectory()) {
-        if (
-          name === "node_modules" ||
-          name === "coverage" ||
-          name === ".next" ||
-          name === "__golden__"
-        ) {
-          continue;
-        }
+        if (SKIP_DIRS.has(name)) continue;
         await walk(full);
       } else if (/\.(tsx|ts)$/.test(name)) {
         scannedCount++;

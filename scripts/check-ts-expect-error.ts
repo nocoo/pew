@@ -1,12 +1,14 @@
 #!/usr/bin/env bun
 /**
- * Static guard: every `@ts-expect-error` must carry a description of
+ * Static guard: (1) every `@ts-expect-error` carries a description of
  * at least MIN_LENGTH characters (matching tseslint `ban-ts-comment`'s
- * `minimumDescriptionLength` default).
+ * `minimumDescriptionLength` default); (2) `@ts-nocheck` is banned
+ * outright — it disables ALL type-checking for the whole file and is
+ * a strictly weaker escape hatch than a targeted expect-error.
  *
- * tseslint's `ban-ts-comment` (strict tier) enforces this. biome 2.5's
- * `noTsIgnore` blocks the ts-ignore directive outright but doesn't require
- * descriptions on `@ts-expect-error`.
+ * tseslint's `ban-ts-comment` (strict tier) enforces both. biome 2.5's
+ * `noTsIgnore` blocks the ts-ignore directive but leaves both of the
+ * above untouched. This script closes that gap.
  *
  * Uses `oxc-parser`, which surfaces every source-file comment
  * (line + block) with precise position info — the TypeScript 7
@@ -21,20 +23,30 @@ import { parseSync } from "oxc-parser";
 
 const REPO_ROOT = join(import.meta.dir, "..");
 
-const ROOTS = [
-  join(REPO_ROOT, "packages", "core", "src"),
-  join(REPO_ROOT, "packages", "cli", "src"),
-  join(REPO_ROOT, "packages", "web", "src"),
-  join(REPO_ROOT, "packages", "worker", "src"),
-  join(REPO_ROOT, "packages", "worker-read", "src"),
-];
+// Whole-repo scan; the linter that used to run this gate (eslint strict)
+// ran against everything, so we mirror that scope. Sub-tree excludes are
+// applied inside walk().
+const ROOTS = [REPO_ROOT];
+const SKIP_DIRS = new Set([
+  "node_modules",
+  "dist",
+  ".next",
+  ".next-e2e",
+  ".next-e2e-ui",
+  "coverage",
+  "__golden__",
+  ".git",
+  ".husky",
+  ".claude",
+  ".wrangler",
+]);
 
 const MIN_LENGTH = 10;
 
 interface Violation {
   path: string;
   line: number;
-  reason: "missing" | "too_short";
+  reason: "missing" | "too_short" | "ts_nocheck";
   found: string;
 }
 
@@ -64,10 +76,26 @@ function scanFile(path: string, src: string): Violation[] {
   }
   const comments = (r.comments ?? []) as unknown as OxcComment[];
 
+  // Only pragma-style directives count: after `//` or `/*`, the very first
+  // non-whitespace token must be `@ts-<name>` (with `*` allowed as a JSDoc
+  // continuation marker). Prose mentions like "@ts-nocheck is banned" in
+  // longer comments are NOT the compiler pragma and must not be flagged.
+  const NOCHECK_RE = /^\s*\*?\s*@ts-nocheck\b/;
+  const EXPECT_RE = /^\s*\*?\s*@ts-expect-error\b(.*)$/s;
+
   for (const c of comments) {
-    const idx = c.value.indexOf("@ts-expect-error");
-    if (idx === -1) continue;
-    let rest = c.value.slice(idx + "@ts-expect-error".length);
+    if (NOCHECK_RE.test(c.value)) {
+      violations.push({
+        path,
+        line: posToLine(src, c.start),
+        reason: "ts_nocheck",
+        found: c.value.trim(),
+      });
+      continue;
+    }
+    const m = EXPECT_RE.exec(c.value);
+    if (!m) continue;
+    let rest = m[1] ?? "";
     if (c.type === "Block") rest = rest.replace(/\n\s*\*?/g, " ");
     rest = rest.replace(/^\s*[-–—:]?\s*/, "").trim();
     if (rest.length === 0) {
@@ -105,14 +133,7 @@ async function main(): Promise<void> {
       const full = join(dir, name);
       const s = await stat(full);
       if (s.isDirectory()) {
-        if (
-          name === "node_modules" ||
-          name === "coverage" ||
-          name === ".next" ||
-          name === "__golden__"
-        ) {
-          continue;
-        }
+        if (SKIP_DIRS.has(name)) continue;
         await walk(full);
       } else if (/\.(tsx|ts)$/.test(name)) {
         scannedCount++;
@@ -134,22 +155,27 @@ async function main(): Promise<void> {
 
   if (violations.length === 0) {
     console.log(
-      `✓ every @ts-expect-error carries a ≥${MIN_LENGTH}-char explanation (${scannedCount} files scanned)`,
+      `✓ no @ts-nocheck; every @ts-expect-error carries a ≥${MIN_LENGTH}-char explanation (${scannedCount} files scanned)`,
     );
     process.exit(0);
   }
 
   console.error(
-    `✗ @ts-expect-error violations (${violations.length}, min ${MIN_LENGTH} chars):\n`,
+    `✗ ts directive violations (${violations.length}):\n`,
   );
   for (const v of violations) {
     console.error(`  ${v.path}:${v.line}  [${v.reason}]`);
     if (v.reason === "too_short") {
       console.error(`    found: "${v.found}" (${v.found.length} chars)`);
+    } else if (v.reason === "ts_nocheck") {
+      console.error(`    @ts-nocheck disables all type-checking for the whole file — use targeted @ts-expect-error instead`);
     }
   }
   console.error(
-    `\n  Add a short reason: \`// @ts-expect-error - <why, ≥${MIN_LENGTH} chars>\``,
+    `\n  For @ts-expect-error, add a short reason: \`// @ts-expect-error - <why, ≥${MIN_LENGTH} chars>\``,
+  );
+  console.error(
+    "  @ts-nocheck is banned outright.",
   );
   process.exit(1);
 }
