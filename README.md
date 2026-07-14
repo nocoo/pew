@@ -121,7 +121,7 @@ bun run dev
 | `bun run dev` | 启动 Web 开发服务器 |
 | `bun run test` | 运行单元测试 (Vitest) |
 | `bun run test:coverage` | 单元测试 + V8 覆盖率（≥ 90% 阈值） |
-| `bun run lint` | TypeScript 类型检查 (5 packages) + ESLint |
+| `bun run lint` | TypeScript 类型检查 (5 packages) + Biome + 自研 gate（dynamic-delete / ts-expect-error） |
 | `bun run test:e2e` | L2 API E2E 测试 (port 17020) |
 | `bun run test:e2e:ui` | L3 BDD E2E 测试 via Playwright (port 27020) |
 | `bun run test:security` | 安全扫描 |
@@ -134,7 +134,7 @@ bun run dev
 | L1 Unit | 业务逻辑、解析器、工具函数 | Vitest | pre-commit |
 | L2 API E2E | HTTP 端到端、Worker 集成 | Vitest | pre-push |
 | L3 BDD E2E | 浏览器端用户流程 | Playwright | pre-push |
-| G1 Static | TypeScript strict + ESLint `--max-warnings=0` | tsc + ESLint | pre-push |
+| G1 Static | TypeScript 7 strict + Biome `--error-on-warnings` + 自研 gate | tsc + Biome + oxc-parser | pre-commit |
 | G2 Security | 依赖审计 + 自定义安全规则 | scripts/run-security.ts | 手动 |
 
 覆盖率目标 90%（statements / branches / functions / lines），每次 commit 强制检查。

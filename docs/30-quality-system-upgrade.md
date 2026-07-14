@@ -1,6 +1,10 @@
 # 30 — Quality System Upgrade (L1+L2+L3+G1+G2)
 
 > Upgrade from legacy "four-layer test architecture" to "quality system: three test layers + two gates".
+>
+> **Historical status**: implemented in early 2026. All ESLint references
+> below reflect the state at that upgrade; the linter itself was later
+> replaced by Biome — see [doc 44](./44-biome-migration-ts7.md).
 
 ## Background
 

@@ -9,7 +9,7 @@ pew 已有完善的本地质量系统（doc 30-31），但缺少 CI 门禁：
 | 层级 | 作用 | 本地触发 | CI 状态 |
 |------|------|----------|---------|
 | L1 | 单元测试 + 90% 覆盖率 | pre-commit | ❌ |
-| G1 | tsc + ESLint (0 warnings) | pre-commit | ❌ |
+| G1 | tsc + Biome (0 warnings, doc 44) | pre-commit | ❌ |
 | L2 | API E2E (真实 HTTP) | pre-push | ❌ |
 | G2 | osv-scanner + gitleaks | pre-push | ❌ |
 | L3 | Playwright UI E2E | 手动 | ❌ |
