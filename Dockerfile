@@ -24,9 +24,15 @@ WORKDIR /app
 # isolated install layout, so `bun next build` fails at page-data with
 # "Could not load the sharp module using the linux-x64 runtime". Real Node
 # resolves the same layout correctly.
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends nodejs \
-  && rm -rf /var/lib/apt/lists/*
+#
+# Node 22 is required by nanoid@^6 (`engines: ^22 || ^24 || >=26`); Debian
+# trixie's `nodejs` package tracks Node 20 and would fail nanoid's engines
+# check at install time and — since we opt out of engines enforcement — at
+# runtime as well. Pull the Node 22 binaries from the official `node:22-slim`
+# image instead of the distro package to stay on a supported line.
+COPY --from=node:22-slim /usr/local/bin/node /usr/local/bin/node
+COPY --from=node:22-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s /usr/local/bin/node /usr/bin/node
 
 # Railway injects service env vars as Docker build args.
 # Next.js needs these at build time for page data collection.
