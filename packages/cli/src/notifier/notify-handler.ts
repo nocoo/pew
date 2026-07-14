@@ -1,7 +1,8 @@
 import { access, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { constants } from "node:fs";
+import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
@@ -9,6 +10,12 @@ const execFileAsync = promisify(execFile);
 export interface BuildNotifyHandlerOptions {
   stateDir: string;
   pewBin: string;
+  /**
+   * Platform to canonicalize `stateDir` for INSTANCE_ID. Windows is
+   * case-insensitive at the filesystem level so we lowercase there;
+   * POSIX stays as-is (§4.1). Defaults to `process.platform`.
+   */
+  platform?: NodeJS.Platform;
 }
 
 interface WriteNotifyHandlerFs {
@@ -35,23 +42,51 @@ export interface RemoveNotifyHandlerOptions {
 }
 
 const NOTIFY_HANDLER_MARKER = "PEW_NOTIFY_HANDLER";
+const ADMISSION_WINDOW_MS = 2_000;
+const CHAIN_MAX_LENGTH = 2_048;
+
+/**
+ * Compute the stable per-installation identity used by chain guard.
+ * See docs/45 §4.1 for canonicalization rules.
+ */
+export function computeInstanceId(
+  stateDir: string,
+  platform: NodeJS.Platform = process.platform,
+): string {
+  const resolved = resolve(stateDir);
+  const canonical = platform === "win32" ? resolved.toLowerCase() : resolved;
+  return createHash("sha256").update(canonical).digest("hex").slice(0, 16);
+}
 
 export function buildNotifyHandler(opts: BuildNotifyHandlerOptions): string {
   const { stateDir, pewBin } = opts;
+  const platform = opts.platform ?? process.platform;
+  const instanceId = computeInstanceId(stateDir, platform);
 
   return `#!/usr/bin/env node
 // ${NOTIFY_HANDLER_MARKER} — Auto-generated, do not edit
+// See docs/45-codex-notifier-cycle-containment.md.
 "use strict";
 
-const { appendFileSync, readFileSync, mkdirSync, existsSync } = require("node:fs");
+const { appendFileSync, readFileSync, mkdirSync, writeFileSync, unlinkSync, existsSync, readdirSync } = require("node:fs");
 const { join, resolve } = require("node:path");
 const { spawn } = require("node:child_process");
 const { homedir } = require("node:os");
 
 const STATE_DIR = ${JSON.stringify(stateDir)};
 const PEW_BIN = ${JSON.stringify(pewBin)};
+const INSTANCE_ID = ${JSON.stringify(instanceId)};
+const ADMISSION_WINDOW_MS = ${ADMISSION_WINDOW_MS};
+const CHAIN_MAX_LENGTH = ${CHAIN_MAX_LENGTH};
 const SELF_PATH = resolve(__filename);
 const HOME_DIR = homedir();
+const ADMISSION_DIR = join(STATE_DIR, "notify-admission");
+const DIAGNOSTIC_PATH = join(STATE_DIR, "last-notify-guard.json");
+
+// Injectable clock — production is Date.now(); tests set globalThis.__pewNow
+// to a fixed / two-step function via vm.Context. Both callers ultimately
+// exercise the same code paths.
+const now = () => (typeof globalThis.__pewNow === "function" ? globalThis.__pewNow() : Date.now());
 
 const rawArgs = process.argv.slice(2);
 let source = "";
@@ -63,50 +98,162 @@ for (let i = 0; i < rawArgs.length; i++) {
     i += 1;
     continue;
   }
-  if (arg.startsWith("--source=")) {
+  if (typeof arg === "string" && arg.startsWith("--source=")) {
     source = arg.slice("--source=".length) || source;
     continue;
   }
   payloadArgs.push(arg);
 }
 
+// -----------------------------------------------------------------------
+// §4.1 chain guard — inspect PEW_NOTIFY_CHAIN before any spawn.
+// -----------------------------------------------------------------------
+const chainRaw = typeof process.env.PEW_NOTIFY_CHAIN === "string" ? process.env.PEW_NOTIFY_CHAIN : "";
+if (chainRaw.length > CHAIN_MAX_LENGTH) {
+  writeDiagnostic({ reason: "chain_too_long", chainLen: chainRaw.length });
+  process.exit(0);
+}
+const chainIds = chainRaw ? chainRaw.split(",").filter(Boolean) : [];
+if (chainIds.includes(INSTANCE_ID)) {
+  writeDiagnostic({ reason: "chain_reentry", chainLen: chainRaw.length });
+  process.exit(0);
+}
+
+// -----------------------------------------------------------------------
+// §4.3 handler ordering:
+//   append notify.signal → sample now → compute bucket →
+//   sync-gate wx → post-create expiry check → forward-gate wx (Codex).
+// -----------------------------------------------------------------------
 try {
   mkdirSync(STATE_DIR, { recursive: true, mode: 0o700 });
   appendFileSync(join(STATE_DIR, "notify.signal"), "\\n", "utf8");
 } catch (_) {}
 
-const bin = existsSync(PEW_BIN) ? PEW_BIN : "npx";
-const args = bin === PEW_BIN
-  ? ["notify", "--source=" + source, ...payloadArgs]
-  : ["@nocoo/pew", "notify", "--source=" + source, ...payloadArgs];
+const t0 = now();
+const bucket = Math.floor(t0 / ADMISSION_WINDOW_MS);
+const notBefore = (bucket + 1) * ADMISSION_WINDOW_MS;
 
 try {
-  const child = spawn(bin, args, {
-    detached: true,
-    stdio: "ignore",
-    env: { ...process.env },
-  });
-  child.unref();
+  mkdirSync(ADMISSION_DIR, { recursive: true, mode: 0o700 });
 } catch (_) {}
 
+// -----------------------------------------------------------------------
+// sync gate — shared across sources.
+// -----------------------------------------------------------------------
+const syncGate = join(ADMISSION_DIR, "sync-" + bucket + ".lock");
+const syncOwnership = tryAcquire(syncGate);
+if (syncOwnership === "owner") {
+  spawnPewWorker();
+}
+
+// -----------------------------------------------------------------------
+// forward gate — Codex only. Compete independently of sync gate outcome.
+// -----------------------------------------------------------------------
 if (source === "codex") {
+  const forwardGate = join(ADMISSION_DIR, "forward-codex-" + bucket + ".lock");
+  const forwardOwnership = tryAcquire(forwardGate);
+  if (forwardOwnership === "owner") {
+    forwardSavedOriginal();
+  }
+}
+
+process.exit(0);
+
+// =======================================================================
+// Helpers
+// =======================================================================
+
+/**
+ * Attempt exclusive-create of a bucket gate. Returns:
+ *   "owner"  → this handler owns the gate (post-expiry check passed)
+ *   "loser"  → gate already existed or bucket has advanced
+ *   "error"  → any other errno; diagnostic already written
+ */
+function tryAcquire(gatePath) {
+  try {
+    writeFileSync(gatePath, "", { flag: "wx" });
+  } catch (err) {
+    const code = err && err.code;
+    if (code === "EEXIST") return "loser";
+    writeDiagnostic({
+      reason: "gate_error",
+      gate: gatePath,
+      errno: code || "unknown",
+    });
+    return "error";
+  }
+  // §4.3 post-create expiry check: re-sample the clock. If bucket has
+  // advanced, the gate file we just created might occupy a slot that was
+  // already claimed and cleaned up. Do not spawn for the stale bucket.
+  const t1 = now();
+  if (Math.floor(t1 / ADMISSION_WINDOW_MS) !== bucket) {
+    writeDiagnostic({
+      reason: "gate_expired",
+      gate: gatePath,
+      sampled: t0,
+      recheck: t1,
+    });
+    return "loser";
+  }
+  return "owner";
+}
+
+function spawnPewWorker() {
+  const bin = existsSync(PEW_BIN) ? PEW_BIN : "npx";
+  const args = bin === PEW_BIN
+    ? ["notify", "--source=" + source, "--not-before=" + notBefore, ...payloadArgs]
+    : ["@nocoo/pew", "notify", "--source=" + source, "--not-before=" + notBefore, ...payloadArgs];
+  const nextChain = chainIds.concat(INSTANCE_ID).join(",");
+  try {
+    const child = spawn(bin, args, {
+      detached: true,
+      stdio: "ignore",
+      env: Object.assign({}, process.env, { PEW_NOTIFY_CHAIN: nextChain }),
+    });
+    if (child && typeof child.unref === "function") child.unref();
+  } catch (err) {
+    writeDiagnostic({
+      reason: "pew_worker_spawn_error",
+      errno: (err && err.code) || "unknown",
+      message: (err && err.message) || String(err),
+    });
+  }
+}
+
+function forwardSavedOriginal() {
+  let cmd = null;
   try {
     const original = JSON.parse(
       readFileSync(join(STATE_DIR, "codex_notify_original.json"), "utf8"),
     );
-    const cmd = Array.isArray(original && original.notify) ? original.notify : null;
-    if (cmd && cmd.length > 0 && !isSelfNotify(cmd)) {
-      const child = spawn(cmd[0], cmd.slice(1), {
-        detached: true,
-        stdio: "ignore",
-        env: { ...process.env },
-      });
-      child.unref();
-    }
-  } catch (_) {}
+    cmd = Array.isArray(original && original.notify) ? original.notify : null;
+  } catch (err) {
+    // Backup missing or malformed: forward slot consumed but zero spawn.
+    // This is the §4.5 fail-closed for the forward gate.
+    writeDiagnostic({
+      reason: "backup_unreadable",
+      errno: (err && err.code) || "unknown",
+    });
+    return;
+  }
+  if (!cmd || cmd.length === 0) return;
+  if (isSelfNotify(cmd)) return;
+  const nextChain = chainIds.concat(INSTANCE_ID).join(",");
+  try {
+    const child = spawn(cmd[0], cmd.slice(1), {
+      detached: true,
+      stdio: "ignore",
+      env: Object.assign({}, process.env, { PEW_NOTIFY_CHAIN: nextChain }),
+    });
+    if (child && typeof child.unref === "function") child.unref();
+  } catch (err) {
+    writeDiagnostic({
+      reason: "forward_spawn_error",
+      errno: (err && err.code) || "unknown",
+      message: (err && err.message) || String(err),
+    });
+  }
 }
-
-process.exit(0);
 
 function isSelfNotify(cmd) {
   return cmd.some((part) => {
@@ -117,6 +264,25 @@ function isSelfNotify(cmd) {
       : resolve(part);
     return resolved === SELF_PATH;
   });
+}
+
+/**
+ * Overwrite-only diagnostic. §5.1: writing may itself fail with the same
+ * underlying errno as gate creation; we swallow that and never re-raise —
+ * the spawn decision has already been made.
+ */
+function writeDiagnostic(payload) {
+  try {
+    mkdirSync(STATE_DIR, { recursive: true, mode: 0o700 });
+    writeFileSync(
+      DIAGNOSTIC_PATH,
+      JSON.stringify({
+        at: new Date(t0 || Date.now()).toISOString(),
+        instanceId: INSTANCE_ID,
+        ...payload,
+      }, null, 2),
+    );
+  } catch (_) {}
 }
 `;
 }
