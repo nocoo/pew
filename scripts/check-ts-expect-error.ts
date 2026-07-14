@@ -21,11 +21,15 @@ import { readdir, stat } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { parseSync } from "oxc-parser";
 
-const REPO_ROOT = join(import.meta.dir, "..");
+const REPO_ROOT = process.env.PEW_GATE_ROOT ?? join(import.meta.dir, "..");
 
 // Whole-repo scan; the linter that used to run this gate (eslint strict)
 // ran against everything, so we mirror that scope. Sub-tree excludes are
 // applied inside walk().
+//
+// pre-commit sets PEW_GATE_ROOT to a temp dir populated via
+// `git checkout-index` so the gate scans the INDEX snapshot rather than
+// the working tree — see .husky/pre-commit.
 const ROOTS = [REPO_ROOT];
 const SKIP_DIRS = new Set([
   "node_modules",
@@ -76,12 +80,14 @@ function scanFile(path: string, src: string): Violation[] {
   }
   const comments = (r.comments ?? []) as unknown as OxcComment[];
 
-  // Only pragma-style directives count: after `//` or `/*`, the very first
-  // non-whitespace token must be `@ts-<name>` (with `*` allowed as a JSDoc
-  // continuation marker). Prose mentions like "@ts-nocheck is banned" in
-  // longer comments are NOT the compiler pragma and must not be flagged.
-  const NOCHECK_RE = /^\s*\*?\s*@ts-nocheck\b/;
-  const EXPECT_RE = /^\s*\*?\s*@ts-expect-error\b(.*)$/s;
+  // Only pragma-style directives count: after `//`, `///` or `/*`, the very
+  // first non-whitespace token must be `@ts-<name>`. `*` is allowed as a
+  // JSDoc continuation marker; a leading `/` covers oxc-parser's quirk of
+  // representing `/// @ts-nocheck` as a Line comment whose value starts
+  // with `/` (the third slash). Prose mentions like "@ts-nocheck is
+  // banned" in longer comments must NOT false-positive.
+  const NOCHECK_RE = /^\s*[/*]?\s*@ts-nocheck\b/;
+  const EXPECT_RE = /^\s*[/*]?\s*@ts-expect-error\b(.*)$/s;
 
   for (const c of comments) {
     if (NOCHECK_RE.test(c.value)) {

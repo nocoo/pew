@@ -30,7 +30,7 @@
     "prepare": "husky"
   },
   "lint-staged": {
-    "*.{ts,tsx,js,jsx,json}": [
+    "*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,json}": [
       "biome check --no-errors-on-unmatched --error-on-warnings --max-diagnostics=500 --staged"
     ]
   },

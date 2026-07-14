@@ -28,11 +28,15 @@ import { readdir, stat } from "node:fs/promises";
 import { join, relative } from "node:path";
 import { parseSync } from "oxc-parser";
 
-const REPO_ROOT = join(import.meta.dir, "..");
+const REPO_ROOT = process.env.PEW_GATE_ROOT ?? join(import.meta.dir, "..");
 
 // Whole-repo scan; the linter that used to run this gate (eslint strict)
 // ran against everything, so we mirror that scope. Sub-tree excludes are
 // applied inside walk().
+//
+// pre-commit sets PEW_GATE_ROOT to a temp dir populated via
+// `git checkout-index` so the gate scans the INDEX snapshot rather than
+// the working tree — see .husky/pre-commit.
 const ROOTS = [REPO_ROOT];
 const SKIP_DIRS = new Set([
   "node_modules",

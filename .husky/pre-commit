@@ -18,10 +18,13 @@ if [ -n "$PKG_CHANGES" ]; then
   fi
 fi
 
-# Detect whether code (TS/TSX or config affecting build) is being touched.
+# Detect whether code (TS/TSX/JSX or config affecting build) is being touched.
 # Docs-only / autoresearch-only commits skip the heavy gates entirely.
-CODE_CHANGES=$(echo "$STAGED_FILES" | grep -E '\.(ts|tsx|js|mjs|cjs|json)$' || true)
-TSC_AFFECTING=$(echo "$STAGED_FILES" | grep -E '\.(ts|tsx)$|tsconfig.*\.json$' || true)
+# Keep this superset in sync with the BIOME_STAGED / TS_STAGED matchers below
+# and with the lint-staged glob in package.json — Biome, the custom gates
+# and lint-staged all lint the same file-type set.
+CODE_CHANGES=$(echo "$STAGED_FILES" | grep -E '\.(ts|tsx|mts|cts|js|jsx|mjs|cjs|json)$' || true)
+TSC_AFFECTING=$(echo "$STAGED_FILES" | grep -E '\.(ts|tsx|mts|cts)$|tsconfig.*\.json$' || true)
 
 if [ -z "$CODE_CHANGES" ]; then
   echo "⏭️  pre-commit: no code changes staged — skipping L1/G1a/G1b gates"
@@ -42,11 +45,11 @@ LINT_EXIT_FILE="$TMP_DIR/lint_exit"
 ) &
 TEST_PID=$!
 
-TS_STAGED=$(echo "$STAGED_FILES" | grep -E '\.(ts|tsx)$' || true)
+TS_STAGED=$(echo "$STAGED_FILES" | grep -E '\.(ts|tsx|mts|cts)$' || true)
 # Biome runs on the full set of extensions its lint-staged matcher covers,
 # so gate the lint-staged invocation on that same set — not just TS/TSX.
 # Otherwise a staged .js / .jsx / .json edit would bypass Biome silently.
-BIOME_STAGED=$(echo "$STAGED_FILES" | grep -E '\.(ts|tsx|js|jsx|json)$' || true)
+BIOME_STAGED=$(echo "$STAGED_FILES" | grep -E '\.(ts|tsx|mts|cts|js|jsx|mjs|cjs|json)$' || true)
 
 if [ -n "$TSC_AFFECTING" ]; then
   (
@@ -99,19 +102,34 @@ if [ "$LINT_EXIT" -ne 0 ]; then
 fi
 
 # G1c Static Analysis: custom gates (dynamic-delete + @ts-expect-error).
-# Only run when TS/TSX files are staged; the gates parse each file once
-# so they add ~500 ms total.
+# The gates scan a tree of files, so run them against the INDEX snapshot,
+# not the working tree — otherwise a violation in staged content that has
+# been fixed in the working copy would slip through.
+#
+# `git checkout-index --prefix=... -a` materialises every tracked file at
+# its INDEX version under a temp dir; the gates are then pointed at that
+# dir via PEW_GATE_ROOT. Untracked files are intentionally excluded — they
+# are not part of the commit under review. Temp dir is removed on any exit.
 if [ -n "$TS_STAGED" ]; then
-  bun run gate:dynamic-delete
+  GATE_ROOT=$(mktemp -d -t pew-precommit-gate.XXXXXXXX)
+  trap 'rm -rf "$GATE_ROOT"' EXIT INT TERM
+  # `checkout-index` needs a trailing slash on --prefix and expects the
+  # directory to exist.
+  git checkout-index --prefix="$GATE_ROOT/" -a
+  # Copy .git so bun / oxc-parser doesn't try to walk anything unusual —
+  # not strictly required (the gates SKIP_DIRS filter out .git anyway) but
+  # documents intent.
+
+  PEW_GATE_ROOT="$GATE_ROOT" bun run gate:dynamic-delete
   GATE_DD_EXIT=$?
   if [ "$GATE_DD_EXIT" -ne 0 ]; then
-    echo "❌ pre-commit FAILED: dynamic delete gate."
+    echo "❌ pre-commit FAILED: dynamic delete gate (scanned index snapshot)."
     exit 1
   fi
-  bun run gate:ts-expect-error
+  PEW_GATE_ROOT="$GATE_ROOT" bun run gate:ts-expect-error
   GATE_TS_EXIT=$?
   if [ "$GATE_TS_EXIT" -ne 0 ]; then
-    echo "❌ pre-commit FAILED: @ts-expect-error gate."
+    echo "❌ pre-commit FAILED: @ts-expect-error gate (scanned index snapshot)."
     exit 1
   fi
 fi
