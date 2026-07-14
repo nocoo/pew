@@ -660,11 +660,14 @@ runtime containment 是 P0；同时做两项低成本防止再次持久化明显
 
 ### 10.1 必过
 
-- 同 bucket 100 次并发调用：Pew worker = 1，original callback ≤1；
+- 同 bucket 100 次并发调用：Pew worker = 1，Codex saved-original = 1（backup 存在）或 0（缺失/损坏）；
 - `Pew → A → Pew` 且环境保留：第一次回入即零 spawn；
 - 环境丢弃但立即回入：当前 bucket 零 spawn；
-- gate 非 `EEXIST` 错误：零 spawn、固定诊断；
-- 最大正常 debounce latency < `ADMISSION_WINDOW_MS + 250 ms`（不含 sync）；
+- gate 非 `EEXIST` 错误：零 spawn；handler 尝试写诊断（诊断本身 best-effort，不
+  作为断言依据）；
+- **fake-clock** 断言：worker 计算得到的 `delay = notBefore − now` 满足 `0 ≤ delay ≤ W`；
+  不使用真实 wall-clock 做 CI gate，避免 CI runner 抖动导致 flaky。真实 wall-clock
+  数据只在非阻塞 benchmark 报告，不参与 pass/fail 判定；
 - Linux/macOS/Windows 的 32-process exclusive-create 均恰好一个 winner；
 - Windows Codex command 不包含 `/usr/bin/env`，路径空格 smoke test 通过；
 - legacy Pew command 升级不会写入 original backup；
