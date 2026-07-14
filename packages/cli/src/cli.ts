@@ -41,6 +41,17 @@ function isDevMode(): boolean {
 function handleCorruptLine(line: string, _error: unknown): void {
   log.warn(`${pc.yellow("Skipping corrupt queue line:")} ${pc.dim(line.slice(0, 80))}${line.length > 80 ? "…" : ""}`);}
 
+/**
+ * Parse `--not-before=<epoch-ms>` from the notify.cjs handler. Returns
+ * undefined on empty / malformed input so legacy callers (older
+ * handlers, manual invocations) keep the fire-immediately behavior.
+ */
+function parseNotBefore(raw: string | undefined): number | undefined {
+  if (typeof raw !== "string" || raw.length === 0) return undefined;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 0 ? n : undefined;
+}
+
 function isSource(value: string): value is Source {
   return [
     "claude-code",
@@ -651,6 +662,12 @@ const notifyCommand = defineCommand({
       description: "Optional file path hint from the hook",
       required: false,
     },
+    "not-before": {
+      type: "string",
+      description:
+        "Internal: epoch ms (from notify.cjs handler); worker sleeps until this instant before entering coordinatedSync — see doc 45 §4.4",
+      required: false,
+    },
   },
   async run({ args }) {
     if (!args.source || !isSource(args.source)) {
@@ -701,6 +718,7 @@ const notifyCommand = defineCommand({
     const result = await executeNotify({
       source: args.source,
       fileHint: args.file ?? null,
+      notBefore: parseNotBefore(args["not-before"]),
       stateDir: paths.stateDir,
       deviceId: notifyDeviceId,
       claudeDir: paths.claudeDir,

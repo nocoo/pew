@@ -1,4 +1,4 @@
-import { writeFile, readFile, unlink } from "node:fs/promises";
+import { readdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { CoordinatorRunResult, Source, SyncCycleResult, SyncTrigger } from "@pew/core";
 import { executeSync, type SyncOptions } from "./sync.js";
@@ -11,6 +11,10 @@ import {
   type CoordinatorOptions,
 } from "../notifier/coordinator.js";
 
+const ADMISSION_WINDOW_MS = 2_000;
+const GATE_GRACE_BUCKETS = 2;
+const GATE_FILENAME_RE = /^(?:sync|forward-codex)-(\d+)\.lock$/;
+
 export interface NotifyOptions extends SyncOptions {
   source: Source;
   fileHint?: string | null;
@@ -22,6 +26,19 @@ export interface NotifyOptions extends SyncOptions {
   openZcodeSessionDb?: SessionSyncOptions["openZcodeSessionDb"];
   /** CLI version string for run log */
   version?: string;
+  /**
+   * Handler-supplied bucket-end timestamp (epoch ms). Worker sleeps until
+   * this instant to close the §4.4 lost-wakeup window. Absent for legacy
+   * callers who don't run through the new handler; those keep the old
+   * fire-immediately behavior.
+   */
+  notBefore?: number;
+  /** DI: clock, defaults to Date.now — tests inject fixed / stepped clocks. */
+  nowFn?: () => number;
+  /** DI: sleep, defaults to setTimeout-based — tests short-circuit. */
+  delayFn?: (ms: number) => Promise<void>;
+  /** DI: hook fired after admission-dir cleanup, before coordinatedSync. */
+  onCleanupDone?: () => void;
   coordinatedSyncFn?: typeof coordinatedSync;
   executeSyncFn?: (triggers: SyncTrigger[]) => Promise<SyncCycleResult>;
 }
@@ -119,6 +136,21 @@ export async function executeNotify(
     cooldownMs: 300_000, // 5 minutes — skip sync if last success was recent
   };
 
+  // §4.4: wait until the current bucket has closed, THEN clean expired
+  // gate files, THEN enter coordinatedSync(). Cleanup precedes sync so
+  // that a lengthy sync.lock wait doesn't let the residual gate count
+  // drift up (see doc 45 §10.2 residual ≤ 4).
+  const nowFn = opts.nowFn ?? Date.now;
+  const delayFn =
+    opts.delayFn ??
+    ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
+  if (typeof opts.notBefore === "number") {
+    const delayMs = Math.max(0, opts.notBefore - nowFn());
+    await delayFn(delayMs);
+  }
+  await cleanupExpiredGates(opts.stateDir, nowFn());
+  opts.onCleanupDone?.();
+
   const result = await coordinatedSyncFn(trigger, coordinatorOptions);
 
   // --- Trailing-edge guarantee ---
@@ -139,6 +171,47 @@ export async function executeNotify(
   }
 
   return result;
+}
+
+/**
+ * Remove `sync-<bucket>.lock` and `forward-codex-<bucket>.lock` files
+ * whose bucket number is strictly older than
+ * `current_bucket - GATE_GRACE_BUCKETS`. Keeps the current + previous
+ * bucket on disk so a paused handler resuming after grace still trips
+ * EEXIST (see doc 45 §4.4 + §4.3 post-create expiry check).
+ *
+ * Scans only `notify-admission/`. Missing directory or errno on
+ * unlink is treated as best-effort — cleanup failure never affects
+ * correctness (the next worker retries).
+ */
+async function cleanupExpiredGates(
+  stateDir: string,
+  now: number,
+): Promise<void> {
+  const admissionDir = join(stateDir, "notify-admission");
+  const currentBucket = Math.floor(now / ADMISSION_WINDOW_MS);
+  const cutoff = currentBucket - GATE_GRACE_BUCKETS;
+
+  let entries: string[];
+  try {
+    entries = await readdir(admissionDir);
+  } catch {
+    return;
+  }
+
+  await Promise.all(
+    entries.map(async (name) => {
+      const match = GATE_FILENAME_RE.exec(name);
+      if (!match) return;
+      const bucket = Number(match[1]);
+      if (!Number.isFinite(bucket) || bucket > cutoff) return;
+      try {
+        await unlink(join(admissionDir, name));
+      } catch {
+        // Best-effort — a next worker will retry.
+      }
+    }),
+  );
 }
 
 /**
