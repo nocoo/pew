@@ -121,7 +121,7 @@ Pew handler
 
 ### 3.1 必须满足的安全不变量
 
-1. 检测到 Pew re-entry 或超过最大 hop 时，本次调用产生**零子进程**。
+1. 检测到 Pew re-entry 或 chain 长度超上限时，本次调用产生**零子进程**。
 2. 同一个 admission window、同一个 Pew state directory 中，最多一个 handler
    成为 owner。
 3. 正常并发 loser 只记录 sync pending signal，产生**零子进程**，包括不转发
@@ -156,11 +156,19 @@ Pew handler
 `stateDir` 计算短 SHA-256：
 
 ```text
-INSTANCE_ID = sha256(normalize(stateDir)).slice(0, 16)
+INSTANCE_ID = sha256(canonicalize(stateDir)).slice(0, 16)
 ```
 
-Windows 规范化至少包含 `resolve()`、分隔符统一和大小写归一。相同 stateDir 下的
-Pew 升级保持同一 ID；不同安装路径得到不同 ID。
+`canonicalize()` 定义：
+
+- POSIX：`path.resolve(stateDir)`
+- Windows：`path.resolve(stateDir).toLowerCase()`
+
+Windows 上 NTFS/ReFS 默认大小写不敏感，`C:\Users\Foo` 与 `c:\users\foo` 是同一
+物理路径；`path.resolve()` 不做 case-fold，因此必须显式 lowercase，否则同一
+stateDir 从不同大小写路径 launch 时会得到不同 INSTANCE_ID，chain guard 失效。
+POSIX 大小写敏感，不做 lowercase。相同 stateDir 下的 Pew 升级保持同一 ID；不同
+安装路径得到不同 ID。
 
 handler 读取内部环境变量：
 
@@ -171,15 +179,19 @@ PEW_NOTIFY_CHAIN=<id1>,<id2>,...
 约束：
 
 - chain 已包含当前 ID：视为 re-entry，零 signal、零 spawn；
-- chain hop 数达到 `MAX_HOPS`：零 signal、零 spawn；
-- 推荐 `MAX_HOPS = 8`；
-- 输入长度必须有硬上限，例如 2048 bytes，超限 fail-closed；
+- chain 字符串输入长度硬上限 2048 bytes，超限 fail-closed（零 signal、零 spawn）；
 - 转发 original 时复制环境并追加当前 ID；
 - 不给第三方命令追加私有 argv；
 - Pew worker 不依赖 chain 值做 sync correctness 判断。
 
+**不引入独立的 `MAX_HOPS` 限额。** 只要环境被第三方保留，`chain.includes(INSTANCE_ID)`
+已经能在第一次回入时终止任何返回 Pew 的环；环境被丢弃时任何 hop 计数同样失效，
+由 §4.2 的 bucket gate 处理。多引入一个阈值只会增加决策面（当前 window 内合理的
+`A → B → Pew → C → Pew` 也会被误伤）和测试面，收益为零。2048-byte chain 长度
+上限本身已经是有效的 defense-in-depth 上界。
+
 异常路径写一个固定覆盖式诊断 `last-notify-guard.json`，内容包含 reason、时间、
-hop count 和当前 instance ID。禁止按 invocation 追加新诊断文件。
+chain 长度和当前 instance ID。禁止按 invocation 追加新诊断文件。
 
 ### 4.2 原子时间 bucket gate
 
@@ -225,7 +237,7 @@ bucket 边界附近最多可能产生两个相邻 bucket 的 winner。现有 `sy
 ```text
 parse source / payload
   │
-  ├── validate chain length + max hops
+  ├── validate chain length (≤ 2048 bytes) + chain-contains-self
   ├── chain contains self? ──────────────── yes → bounded diagnostic → exit
   │
   ├── append notify.signal
@@ -362,7 +374,7 @@ function main({
 | bucket 边界两侧 | 最多两个 owner；无同 bucket 双 winner |
 | direct self chain | signal 0；child spawn 0 |
 | `Pew → A → Pew`，A 保留 env | 第二次 Pew child spawn 0 |
-| `MAX_HOPS` | child spawn 0；固定诊断被覆盖写入 |
+| chain 长度超 2048 bytes | child spawn 0；固定诊断被覆盖写入 |
 | chain 超长/格式异常 | fail-closed；child spawn 0 |
 | gate `EEXIST` | 正常 coalesce，无错误日志风暴 |
 | gate `EACCES` / `EIO` | fail-closed；child spawn 0；固定诊断 |
