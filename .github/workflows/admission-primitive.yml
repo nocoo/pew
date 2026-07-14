@@ -1,0 +1,49 @@
+name: Admission primitive (cross-OS)
+
+# Isolated workflow: only the admission-primitive test file runs across
+# Linux / macOS / Windows so we can verify the fs.writeFileSync wx
+# semantics work on all three platforms. Full L1 stays on ubuntu-only
+# (see ci.yml) because Windows runner minutes are ~10× cost and we
+# don't promise the full suite there — only the gate atomicity.
+#
+# See docs/45-codex-notifier-cycle-containment.md §6.2 + §7.1.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/cli/src/__tests__/admission-primitive.test.ts"
+      - "packages/cli/src/__tests__/fixtures/admission-worker.mts"
+      - "packages/cli/src/notifier/notify-handler.ts"
+      - ".github/workflows/admission-primitive.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "packages/cli/src/__tests__/admission-primitive.test.ts"
+      - "packages/cli/src/__tests__/fixtures/admission-worker.mts"
+      - "packages/cli/src/notifier/notify-handler.ts"
+      - ".github/workflows/admission-primitive.yml"
+  workflow_dispatch:
+
+jobs:
+  admission:
+    name: "wx primitive — ${{ matrix.os }}"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.11"
+
+      - run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Run admission primitive test only
+        # Focused invocation: only this one file. We do not run full L1
+        # on Windows/macOS matrix (see workflow header for rationale).
+        run: bunx vitest run packages/cli/src/__tests__/admission-primitive.test.ts
