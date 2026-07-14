@@ -94,4 +94,22 @@ if [ "$LINT_EXIT" -ne 0 ]; then
   exit 1
 fi
 
+# G1c Static Analysis: custom gates (dynamic-delete + @ts-expect-error).
+# Only run when TS/TSX files are staged; the gates parse each file once
+# so they add ~500 ms total.
+if [ -n "$TS_STAGED" ]; then
+  bun run gate:dynamic-delete
+  GATE_DD_EXIT=$?
+  if [ "$GATE_DD_EXIT" -ne 0 ]; then
+    echo "❌ pre-commit FAILED: dynamic delete gate."
+    exit 1
+  fi
+  bun run gate:ts-expect-error
+  GATE_TS_EXIT=$?
+  if [ "$GATE_TS_EXIT" -ne 0 ]; then
+    echo "❌ pre-commit FAILED: @ts-expect-error gate."
+    exit 1
+  fi
+fi
+
 echo "✅ pre-commit passed: G0 Lockfile + L1 Unit ≥90% + G1 Static Analysis"
