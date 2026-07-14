@@ -261,13 +261,21 @@ signal**——上层无 spawn、无 worker，谁也不会消费本次事件。fa
 
 - 不需要 handler → worker 的复杂 ownership handoff；
 - 不受 PID reuse 和 `process.kill(pid, 0)` 平台差异影响；
-- gate path 永不复用，不存在旧 owner 误删新 owner 的 token/TOCTOU 问题；
+- 每个 bucket 号只在时钟前进到该 bucket 窗口时才被使用，配合下面的过期采样和
+  grace-period cleanup（§4.3、§4.4），单个 handler invocation 期间 gate path 的
+  拥有权语义仍然确定；
 - winner 崩溃只抑制当前 2 秒，不会永久锁死；
 - 同一 bucket 的并发行为可以用确定时钟精确测试。
 
+**注意 gate path 并非绝对"永不复用"**：worker 完成 sync 后清理 gate 文件、handler
+恢复运行时时钟可能已经跨过 bucket 边界，纯粹依靠"文件存在与否"会引入 TOCTOU
+（见 §4.3 过期采样与 §4.4 grace-period 说明）。设计上通过两个额外机制补齐：
+gate 创建成功后立刻再采一次时钟确认 bucket 未过期；worker 保留刚结束 bucket 的
+gate 文件到 grace 期后再删。
+
 bucket 边界附近最多可能产生两个相邻 bucket 的 winner。现有 `sync.lock` 继续负责
-串行实际 sync；本方案负责把创建率从“每个事件一个 worker”限制为“每窗口最多
-一个 worker”。
+串行实际 sync；本方案负责把创建率从"每个事件一个 worker"限制为"每窗口最多
+一个 worker"。
 
 ### 4.3 handler 的严格操作顺序
 
@@ -302,18 +310,37 @@ parse source / payload
   ├── bucket = floor(now / W)
   │
   ├── exclusive-create sync-<bucket>.lock      ← 全 source 共享
-  │     ├── success ─→ spawn exactly one Pew worker (with notBefore)
+  │     ├── success ─→ post-create expiry check (see below)
+  │     │              └─ 未过期 → spawn exactly one Pew worker (with notBefore)
+  │     │                 已过期 → skip Pew worker
   │     ├── EEXIST  ─→ (fall through to forward gate)
   │     └── other error → best-effort diagnostic; skip Pew worker
   │
   ├── if source == "codex" and has valid saved-original:
   │     exclusive-create forward-codex-<bucket>.lock ← Codex only
-  │       ├── success ─→ spawn saved-original once with updated chain env
+  │       ├── success ─→ post-create expiry check (see below)
+  │       │              └─ 未过期 → spawn saved-original once with updated chain env
+  │       │                 已过期 → skip forwarding
   │       ├── EEXIST  ─→ skip forwarding (already forwarded this bucket)
   │       └── other error → best-effort diagnostic; skip forwarding
   │
   └── exit
 ```
+
+**post-create expiry check**：`wx create` 成功后立即再采样一次时钟
+`now2 = injected clock`，若 `floor(now2 / W) !== bucket`，说明本次调用曾在
+`bucket = floor(now / W)` 之后被暂停，跨过了 bucket 边界；这时刚 create 成功的
+`bucket` gate 文件可能是**上一 bucket 的 worker 已经清理后重新出现的同名文件**，
+不能凭它拥有本 bucket 的 spawn 权。此时该 gate 对应的 spawn = 0；handler
+继续走 exit 流程（signal 已经在 §4.3 开头 append，下一 bucket 的 worker 会消费
+它）。若 `now2` 与 `now` 同 bucket，即为真 owner，正常 spawn。
+
+第二次采样只增加一次注入时钟读取，无系统调用；即使被暂停也只是把跨 bucket 场景
+识别得更准。此机制与 §4.4 的 grace-period cleanup 协同：worker 不立即删除刚结束
+bucket 的 gate，而是延后到 gate 号"已过期两个 window 以上"时再统一清理（见 §4.4）；
+这样过期采样命中前，gate 文件在磁盘上还在，`wx create` 会先拿到 `EEXIST`，
+根本不会走到 expiry check 分支。expiry check 是防御 grace-period 与调度暂停时间
+量级同数的极端情况的兜底。
 
 两把 gate 的竞争彼此独立：Codex handler 即使在 sync gate 上是 loser，仍需要尝试
 forward gate；非 Codex handler 只参与 sync gate。任何 handler 单次调用最多 spawn
@@ -360,16 +387,23 @@ delay     = max(0, notBefore - now)
 
 1. worker 运行现有 `coordinatedSync()`；
 2. sync 期间的新 signal 继续由 coordinator follow-up 机制消费；
-3. worker best-effort 删除自己 owner 的 `sync-<bucket>.lock`（若 Codex forward
-   gate 也是本 handler 的话一同尝试，但更常见的是由 forward-owner handler 立即
-   最短生命内退出，gate 文件由后续 worker 统一 cleanup）；
-4. worker 顺带扫 `<stateDir>/notify-admission/` 目录，删除所有 `sync-*.lock` 与
-   `forward-codex-*.lock` 中 bucket 号早于当前 bucket 的文件；loser 与 forward
-   handler 都不扫描目录。
+3. **不立即删除自己的 gate 文件**。设 `GATE_GRACE_BUCKETS = 2`：worker 只清理
+   `bucket ≤ current_bucket − GATE_GRACE_BUCKETS` 的 `sync-*.lock` 与
+   `forward-codex-*.lock`。刚结束 bucket 与相邻 bucket 的 gate 文件保留在磁盘上，
+   使任何"曾在旧 bucket 内采样、随后被暂停"的 handler 恢复运行时仍会拿到
+   `EEXIST` 而非空目录，避免同 bucket 二次 winner。
+4. §4.3 的 post-create expiry check 是 grace-period 之外的兜底：即使 handler 被
+   暂停的时长超过 `GATE_GRACE_BUCKETS × W`，恢复后 `wx create` 成功也会因为
+   `now2` 落在新 bucket 而放弃对旧 bucket 的 spawn 权，仍不会出现两个同 bucket
+   owner。
 
-选择"扫全目录删所有旧 bucket"而不是"只删前一 bucket"是刻意的：跨多个 bucket 的
-崩溃残留（例如 worker 启动即 crash 若干次）在"只删前一 bucket"策略下永远不会被
-清理，会随时间无界积累。`notify-admission/` 是本方案私有的小目录，扫描 cost
+worker cleanup 与 handler 的 post-create expiry check 两个机制**必须共存**：单靠
+grace-period 抵御不了任意长的调度暂停；单靠 expiry check 又要求 handler 每次都
+多做一次时钟读取加分支判断——两个机制正交，一起构成完整的 TOCTOU 防御。
+
+选择"扫全目录删所有过期 bucket"而不是"只删前一 bucket"是刻意的：跨多个 bucket
+的崩溃残留（例如 worker 启动即 crash 若干次）在"只删前一 bucket"策略下永远不会
+被清理，会随时间无界积累。`notify-admission/` 是本方案私有的小目录，扫描 cost
 O(残留数)，即使残留几十上百个也只是一次 `readdir` + 若干 `unlink`，远低于一次
 sync；且只 worker 做，loser 依然零目录扫描。清理失败不影响 correctness，下一个
 worker 会重试。绝不扫 state directory 其余部分。
