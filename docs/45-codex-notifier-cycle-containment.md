@@ -531,25 +531,36 @@ function main({
 
 | Case | 必须断言 |
 |---|---|
-| 100 次调用、同一 bucket（固定 now=T） | signal append 100；Pew spawn 1；original spawn = 1（backup 存在且非 self） |
-| 100 次调用、同一 bucket、original backup 缺失/损坏 | Pew spawn 1；original spawn = 0 |
-| 不同 source 同一 bucket | 全局 coalesce；Pew spawn 1 |
-| 下一 bucket（now=T+W+1） | 允许一个新 owner |
-| bucket 边界两侧 | 最多两个 owner；无同 bucket 双 winner |
+| 100 次调用、同一 bucket（固定 now=T） | signal append 100；Pew spawn 1；Codex saved-original spawn = 1（backup 存在且非 self） |
+| 100 次调用、同一 bucket、original backup 缺失/损坏 | Pew spawn 1；saved-original spawn = 0 |
+| 不同 source 同一 bucket、Claude 先到、Codex 后到 | Pew spawn 1（Claude 赢 sync gate）；saved-original spawn = 1（Codex 独立赢 forward gate） |
+| 不同 source 同一 bucket、Codex 先到、Claude 后到 | Pew spawn 1（Codex 赢 sync gate）；saved-original spawn = 1（Codex 同时赢 forward gate） |
+| sync gate EEXIST + forward gate success | Pew spawn = 0；saved-original spawn = 1 |
+| sync gate success + forward gate 非-EEXIST 错误 | Pew spawn = 1；saved-original spawn = 0；尝试写诊断 |
+| sync gate 非-EEXIST 错误 + forward gate success | Pew spawn = 0；saved-original spawn = 1；尝试写诊断 |
+| 两个 gate 都 EEXIST | Pew spawn 0；saved-original spawn 0 |
+| 两个 gate 都非-EEXIST 错误 | Pew spawn 0；saved-original spawn 0；尝试写诊断（诊断文件可能因同一底层错误而未写出，测试断言"尝试写"即可，不断言文件存在） |
+| 下一 bucket（now=T+W+1） | 允许一个新 sync owner + 一个新 forward owner |
+| bucket 边界两侧 | 最多两个相邻 bucket 各自一个 sync/forward owner；无同 bucket 双 winner |
+| post-create expiry check：采样 bucket B 后 handler 暂停，B 的 worker 完成但 grace-period 未删（正常路径 EEXIST） | Pew spawn 0；handler 走 EEXIST loser |
+| post-create expiry check：暂停时间超 `GATE_GRACE_BUCKETS × W`，B gate 已被清理，handler 恢复后 wx create 成功但 `now2` 已进入新 bucket | Pew spawn 0；不 spawn 旧 bucket 的 worker；signal 由下一 bucket 消费 |
 | direct self chain | signal 0；child spawn 0 |
 | `Pew → A → Pew`，A 保留 env | 第二次 Pew child spawn 0 |
-| chain 长度超 2048 bytes | child spawn 0；固定诊断被覆盖写入 |
+| chain 长度超 2048 bytes | child spawn 0；尝试写诊断 |
 | chain 超长/格式异常 | fail-closed；child spawn 0 |
-| gate `EEXIST` | 正常 coalesce，无错误日志风暴 |
-| gate `EACCES` / `EIO` / `EPERM` / `EBUSY` | fail-closed；child spawn 0；固定诊断 |
-| original backup 缺失/损坏（单次调用） | Pew worker 只有一个；original spawn = 0 |
-| Pew worker spawn 抛错 | 不尝试第二个 worker 补偿；固定诊断；同 bucket 后续 loser 仍零 spawn；下一 bucket 恢复 |
+| gate `EEXIST` | 正常 loser 路径，无错误日志风暴 |
+| gate `EACCES` / `EIO` / `EPERM` / `EBUSY` | 该 gate 对应 spawn = 0；另一 gate 独立参与竞争；尝试写诊断（诊断本身 best-effort，测试断言"handler 调用了 diagnostic 写入路径"，不要求文件持久化） |
+| Pew worker spawn 抛错 | 不尝试第二个 worker 补偿；尝试写诊断；同 bucket 后续 loser 仍零 Pew spawn；下一 bucket 恢复 |
+| saved-original spawn 抛错 | 不尝试第二次 forward 补偿；同 bucket 后续 Codex handler 撞 forward gate EEXIST 或过期检查，仍零 forward spawn；下一 bucket 恢复 |
 | gate cleanup 失败 | sync 结果不受影响；后续 bucket 仍可运行 |
 | Windows 路径大小写/分隔符 | 相同 stateDir 生成相同 instance ID（`resolve()` 后 lowercase） |
 | 路径/参数含空格 | spawn 使用 argv array，不经过 shell |
 
-对每条断言，测试都必须**精确**报告 spawn 次数：`original spawn = 1` 或 `= 0`，
-不允许 `≤ 1`——模糊上界让实现和测试同时漂移。
+对每条断言，测试都必须**精确**报告两个 gate 各自的 spawn 次数：`Pew spawn = 1`
+或 `= 0`、`saved-original spawn = 1` 或 `= 0`，不允许 `≤ 1`——模糊上界让实现和
+测试同时漂移。诊断文件不做存在性断言，只断言 handler **调用**了 diagnostic 写入
+路径（例如通过注入的 `fs.writeFileSync` spy 观察到一次尝试），因为 `EACCES` /
+`EROFS` / `EIO` 场景下诊断写入与 gate 创建可能同因失败。
 
 ### 6.2 真实文件系统并发测试
 
