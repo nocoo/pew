@@ -393,15 +393,22 @@ delay     = max(0, notBefore - now)
 转发给 original wrapper。worker 是 detached、handler 已经 exit，因此这 `< W` 秒
 延迟不阻塞 Codex 本身，只影响 dashboard 数据新鲜度。
 
-窗口结束后：
+窗口结束后（worker 已经在 `notBefore` 后被唤醒）：
 
-1. worker 运行现有 `coordinatedSync()`；
-2. sync 期间的新 signal 继续由 coordinator follow-up 机制消费；
-3. **不立即删除自己的 gate 文件**。设 `GATE_GRACE_BUCKETS = 2`：worker 只清理
-   `bucket ≤ current_bucket − GATE_GRACE_BUCKETS` 的 `sync-*.lock` 与
-   `forward-codex-*.lock`。刚结束 bucket 与相邻 bucket 的 gate 文件保留在磁盘上，
+1. **先 cleanup，再 sync**。cleanup 与 sync 结果完全无关，且 `coordinatedSync()`
+   可能等待 `sync.lock` 长达数十秒（既有的串行 sync 语义不变）；如果放到 sync
+   之后，等待锁期间每 `W` 秒就有一个新 bucket 的 winner 产生新 gate 文件，正常
+   目录里也可能积攒十几个 gate，§10.2 声称的"稳态 ≤ 4"就成了纸面。cleanup 只是
+   一次 `readdir` + 若干 `unlink`，放在 sync 前既不会拖延 sync 也不影响 sync 结果，
+   还能把稳态 gate 数控制在 `2 × GATE_GRACE_BUCKETS = 4` 上下。
+2. 设 `GATE_GRACE_BUCKETS = 2`：worker 只清理 `bucket ≤ current_bucket −
+   GATE_GRACE_BUCKETS` 的 `sync-*.lock` 与 `forward-codex-*.lock`。**不立即删除
+   自己的 gate 文件**。刚结束 bucket 与相邻 bucket 的 gate 文件保留在磁盘上，
    使任何"曾在旧 bucket 内采样、随后被暂停"的 handler 恢复运行时仍会拿到
    `EEXIST` 而非空目录，避免同 bucket 二次 winner。
+3. cleanup 结束后 worker 运行现有 `coordinatedSync()`。sync 期间的新 signal 继续
+   由 coordinator follow-up 机制消费；期间产生的新 bucket 的 gate 文件属于新一轮
+   winner 的责任，不由本 worker 处理。
 4. §4.3 的 post-create expiry check 是 grace-period 之外的兜底：即使 handler 被
    暂停的时长超过 `GATE_GRACE_BUCKETS × W`，恢复后 `wx create` 成功也会因为
    `now2` 落在新 bucket 而放弃对旧 bucket 的 spawn 权，仍不会出现两个同 bucket
@@ -750,8 +757,11 @@ runtime containment 是 P0；同时做两项低成本防止再次持久化明显
 - 同一 bucket child spawn 数 ≤ 2（一个 Pew worker + 最多一个 Codex saved-original）；
 - 两个 gate 均为 loser 的 handler child spawn 数 = 0；
 - chain re-entry child spawn 数 = 0；
-- gate 正常残留数量目标 ≤ 4（`sync-<bucket>.lock` × 2 + `forward-codex-<bucket>.lock` × 2，
-  跨相邻 bucket），崩溃残留由后续 worker 清理；
+- gate 稳态残留 ≤ 4（`sync-<bucket>.lock` × 2 + `forward-codex-<bucket>.lock` × 2，
+  跨相邻两个 bucket）。此上界依赖 §4.4 的 cleanup 顺序：worker 唤醒后**先** cleanup
+  再进入 `coordinatedSync()`，保证等待 `sync.lock` 的时间不会拖延 cleanup。
+  Sync 执行期间新 bucket 的 gate 由后续 worker 处理，不计入本 worker 的稳态目标。
+  崩溃残留由后续 worker 清理；
 - 诊断文件固定为一个覆盖文件（`last-notify-guard.json`），且诊断写入本身是
   best-effort（写失败不改变 spawn 决策）。
 
