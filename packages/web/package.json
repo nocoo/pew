@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 7020",
-    "build": "next build",
+    "build": "tsc --noEmit && next build",
     "start": "next start --port 7020",
     "typecheck": "tsc --noEmit"
   },
@@ -31,7 +31,7 @@
     "@types/node": "26.1.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "tailwindcss": "^4.3.2",
-    "typescript": "^6.0.3"
+    "@typescript/native-preview": "7.0.0-dev.20260707.2",
+    "tailwindcss": "^4.3.2"
   }
 }

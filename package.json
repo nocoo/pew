@@ -42,7 +42,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^17.0.8",
     "oxc-parser": "0.139.0",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   },
   "overrides": {
