@@ -216,9 +216,18 @@ writeFileSync(gate, "", { flag: "wx" });
 
 判定：
 
-- 成功：本窗口唯一 owner；
-- `EEXIST`：已有 owner，正常 coalesce；
-- 其他错误：fail-closed，写固定诊断，零 spawn。
+- 成功：本窗口唯一 owner。
+- `EEXIST`：已有 owner，正常 coalesce（loser 路径）。
+- 其他任何 errno（`EPERM` / `EACCES` / `EBUSY` / `EIO` / `EROFS` / ...）：
+  一律 fail-closed，写固定诊断，零 spawn。
+
+**只有 `EEXIST` 能证明"已有 owner"。** 其他错误意味着权限不足、杀毒软件短暂锁、
+文件系统只读、磁盘故障等运行时异常状态；此时把请求当作正常 coalesce 会**默默丢
+signal**——上层无 spawn、无 worker，谁也不会消费本次事件。fail-closed 至少能通过
+`last-notify-guard.json` 让下一次成功的 handler 看到证据。
+
+（后续 §4.4 gate cleanup 阶段的 `EPERM` / `EBUSY` 才是 best-effort 忽略，见那节。
+两处的错误语义不能互相借用。）
 
 选择 time bucket 而不是 PID active lock 的原因：
 
