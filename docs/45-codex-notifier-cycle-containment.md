@@ -1,11 +1,24 @@
 # 45 — Codex notifier forwarding-cycle containment
 
-> **Status: proposed / awaiting review** (2026-07-14)
+> **Status: implemented** (2026-07-15)
 >
 > 针对 GitHub [Issue #318](https://github.com/nocoo/pew/issues/318) 中
 > `Pew → third-party wrapper → Pew` 持久化转发环，定义一个刻意收敛的首版
 > 防护方案。目标不是理解任意第三方 notifier 的内部图，而是保证 Pew 即使接入
 > 错误或不透明的 wrapper，也不会无界创建 Node/Bun 子进程。
+>
+> **Implementation trail on main (2026-07-15)**：
+>
+> | Commit | 内容 |
+> |---|---|
+> | `742f6a24` fix(notifier): pre-spawn chain guard + dual bucket admission | notify.cjs 重写：INSTANCE_ID + PEW_NOTIFY_CHAIN；两把 wx gate；post-create expiry check；saved-original 竞争后再读 backup；14 个 VM harness runtime tests |
+> | `95d86b47` fix(notifier): worker debounces to bucket end, cleans up before sync | notify 命令新增 `--not-before`；worker 先 delay 到 bucket 结束、再 cleanup `notify-admission/` 中早于 `current - GATE_GRACE_BUCKETS` 的 gate、最后进 coordinatedSync；5 个 debounce/cleanup 单测 |
+> | `d868b7ff` fix(codex): ownership hardening + runtime-path command | codex-notifier 改用注入的 runtimePath（默认 `process.execPath`）；install ownership_conflict；uninstall cycle validation + 保留 backup；legacy `/usr/bin/env node` 识别；7 个 hardening 单测 |
+> | `eeef54c2` test(notifier): cross-process wx primitive + Windows CI matrix | 32-worker 真跨进程 wx 单测；`admission-primitive.yml` ubuntu/macos/windows 只跑该 test file |
+>
+> **实测常量**：`ADMISSION_WINDOW_MS = 2_000`，`GATE_GRACE_BUCKETS = 2`，
+> `CHAIN_MAX_LENGTH = 2_048`。L1 从 4305 → 4332 tests (+27)。所有 pre-commit /
+> pre-push gate 全绿。
 
 ## 一、结论与产品决策
 
