@@ -187,7 +187,7 @@ async function main(): Promise<void> {
       if (s.isDirectory()) {
         if (SKIP_DIRS.has(name)) continue;
         await walk(full);
-      } else if (/\.(tsx|ts)$/.test(name)) {
+      } else if (/\.(tsx|ts|mts|cts)$/.test(name)) {
         scannedCount++;
         const src = readFileSync(full, "utf-8");
         const repoRel = relative(REPO_ROOT, full);

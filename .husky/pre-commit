@@ -112,13 +112,21 @@ fi
 # are not part of the commit under review. Temp dir is removed on any exit.
 if [ -n "$TS_STAGED" ]; then
   GATE_ROOT=$(mktemp -d -t pew-precommit-gate.XXXXXXXX)
+  MKTEMP_EXIT=$?
+  if [ "$MKTEMP_EXIT" -ne 0 ] || [ -z "$GATE_ROOT" ] || [ ! -d "$GATE_ROOT" ]; then
+    echo "❌ pre-commit FAILED: could not create temp dir for gate index snapshot (mktemp exit=$MKTEMP_EXIT)."
+    exit 1
+  fi
   trap 'rm -rf "$GATE_ROOT"' EXIT INT TERM
   # `checkout-index` needs a trailing slash on --prefix and expects the
-  # directory to exist.
+  # directory to exist. Fail-closed if the snapshot didn't materialise —
+  # a partial checkout would let the gate scan a subset and false-pass.
   git checkout-index --prefix="$GATE_ROOT/" -a
-  # Copy .git so bun / oxc-parser doesn't try to walk anything unusual —
-  # not strictly required (the gates SKIP_DIRS filter out .git anyway) but
-  # documents intent.
+  CHECKOUT_EXIT=$?
+  if [ "$CHECKOUT_EXIT" -ne 0 ]; then
+    echo "❌ pre-commit FAILED: git checkout-index for gate snapshot (exit=$CHECKOUT_EXIT)."
+    exit 1
+  fi
 
   PEW_GATE_ROOT="$GATE_ROOT" bun run gate:dynamic-delete
   GATE_DD_EXIT=$?
