@@ -414,23 +414,31 @@ function main({
 
 ### 6.1 L1 单元测试矩阵
 
+同一 bucket 下的并发测试**必须固定注入同一个 `now = T`**（`main({ now })` 的
+形参），不允许依赖真实 timer；否则 test 会 flaky 且不能证明"同 bucket 内合并"这
+个具体不变量。跨 bucket 的测试改成显式两次注入 `now = T` 和 `now = T + W + 1`。
+
 | Case | 必须断言 |
 |---|---|
-| 100 次调用、同一 bucket | signal append 100；Pew spawn 1；original spawn ≤1 |
+| 100 次调用、同一 bucket（固定 now=T） | signal append 100；Pew spawn 1；original spawn = 1（backup 存在且非 self） |
+| 100 次调用、同一 bucket、original backup 缺失/损坏 | Pew spawn 1；original spawn = 0 |
 | 不同 source 同一 bucket | 全局 coalesce；Pew spawn 1 |
-| 下一 bucket | 允许一个新 owner |
+| 下一 bucket（now=T+W+1） | 允许一个新 owner |
 | bucket 边界两侧 | 最多两个 owner；无同 bucket 双 winner |
 | direct self chain | signal 0；child spawn 0 |
 | `Pew → A → Pew`，A 保留 env | 第二次 Pew child spawn 0 |
 | chain 长度超 2048 bytes | child spawn 0；固定诊断被覆盖写入 |
 | chain 超长/格式异常 | fail-closed；child spawn 0 |
 | gate `EEXIST` | 正常 coalesce，无错误日志风暴 |
-| gate `EACCES` / `EIO` | fail-closed；child spawn 0；固定诊断 |
-| original backup 缺失/损坏 | Pew worker仍只有一个；original spawn 0 |
-| Pew worker spawn 抛错 | 不尝试用第二个 worker补偿；固定诊断 |
-| gate cleanup 失败 | sync 结果不受影响；后续 bucket仍可运行 |
-| Windows 路径大小写/分隔符 | 相同 stateDir 生成相同 instance ID |
+| gate `EACCES` / `EIO` / `EPERM` / `EBUSY` | fail-closed；child spawn 0；固定诊断 |
+| original backup 缺失/损坏（单次调用） | Pew worker 只有一个；original spawn = 0 |
+| Pew worker spawn 抛错 | 不尝试第二个 worker 补偿；固定诊断；同 bucket 后续 loser 仍零 spawn；下一 bucket 恢复 |
+| gate cleanup 失败 | sync 结果不受影响；后续 bucket 仍可运行 |
+| Windows 路径大小写/分隔符 | 相同 stateDir 生成相同 instance ID（`resolve()` 后 lowercase） |
 | 路径/参数含空格 | spawn 使用 argv array，不经过 shell |
+
+对每条断言，测试都必须**精确**报告 spawn 次数：`original spawn = 1` 或 `= 0`，
+不允许 `≤ 1`——模糊上界让实现和测试同时漂移。
 
 ### 6.2 真实文件系统并发测试
 
@@ -444,8 +452,11 @@ function main({
 6. 测试结束清理临时目录。
 
 该测试必须进入 GitHub Actions 的 `ubuntu-latest`、`macos-latest`、
-`windows-latest` 小矩阵。它只验证本地文件系统 primitive，不启动真实 Pew sync，
-不会接触用户 HOME 或 Codex 配置。
+`windows-latest` 小矩阵。Windows job **只运行这个 admission-primitive 测试文件**
+（vitest `-t` 或独立 config 隔离，不挂完整 L1）——Windows runner 单分钟成本高，
+且我们不承诺完整 L1 在 Windows 下通过，只承诺 admission gate 的跨平台原子性。它
+只验证本地文件系统 primitive，不启动真实 Pew sync，不会接触用户 HOME 或 Codex
+配置。
 
 ### 6.3 回归测试
 
