@@ -58,7 +58,7 @@ fi
 
 if [ -n "$TS_STAGED" ]; then
   (
-    # G1b Static Analysis: ESLint strict (staged files only, via lint-staged)
+    # G1b Static Analysis: Biome strict (staged files only, via lint-staged)
     bunx lint-staged 2>&1
     echo $? > "$LINT_EXIT_FILE"
   ) &
@@ -90,7 +90,7 @@ if [ "$TSC_EXIT" -ne 0 ]; then
 fi
 
 if [ "$LINT_EXIT" -ne 0 ]; then
-  echo "❌ pre-commit FAILED: ESLint errors in staged files."
+  echo "❌ pre-commit FAILED: Biome errors in staged files."
   exit 1
 fi
 
