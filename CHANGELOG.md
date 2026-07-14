@@ -5,6 +5,44 @@
 ### Removed
 - Drop legacy `model_pricing` D1 table, admin Token Pricing CRUD UI (`/admin/pricing`) and its CRUD API (`/api/admin/pricing` route), worker-read admin-loader + `pricing.listModelPricing` / `pricing.getModelPricingByModelSource` RPCs, `origin: "admin"` pricing layer, and `pricing:all` KV cache (migration 021). The dynamic-pricing admin surface (`/admin/model-prices`, `/api/admin/pricing/models`, `/api/admin/pricing/rebuild`) is retained. Dynamic pricing pipeline (baseline + OpenRouter + models.dev → `pricing:dynamic`) is now the sole source of truth.
 
+## v2.26.0
+
+### Added
+- Add dynamic-delete + ts-expect-error custom gates
+- Add zcode to dashboard palette + labels + pricing fallback + API allowlists
+- Wire zcode through sync + session-sync + notify
+- Add zcode token + session drivers and register them
+- Add zcode sqlite session parser + adapter
+- Add zcode sqlite parser + normalizer + adapter
+- Add 'zcode' source foundation (types + exhaustive switches + opener injection stubs + warnings channel)
+
+### Changed
+- Mark biome migration + ts7 upgrade implemented
+- Rename residual ESLint labels to Biome in pre-commit
+- Upgrade to typescript 7.0.2 stable + native-preview marker
+- Switch from eslint to biome + translate all suppressions
+- CLI-entry regression, session adapter round-trip, Web L2 zcode E2E
+- Mark zcode support implemented; update CLAUDE.md / README / landing / PRIVACY / docs-index
+- Route DB dispatch through source-aware branches + wire warnings channel
+- 8th revision — SQL AS mapping, output branches, ProgressEvent name, 4+2 allowlist
+- 7th revision — camelCase row access, orchestrator catch responsibility
+- 6th revision — progress source dual-tag, pre-check both sides, CLI-private types
+- 5th revision — session registry activation, cli.ts:131 formatter, commit#1 independence
+- 4th revision — manual entry splits sync/session-sync, isAllZero, warn dedup
+- 3rd revision — provider_total in SQL, ParsedDelta shape, warning channel
+- 2nd revision — opener injection, cache_creation, reasoning, PRIVACY
+- Rewrite per review — orchestrator, cursors, cache_creation, scope
+- Add ZCode CLI token support design
+- Bump @cloudflare/workers-types to 5.20260711.1
+- Enumerate all 12 sources incl. Grok in landing + README (alphabetical)
+
+### Fixed
+- Scan .mts/.cts + fail-closed on gate snapshot errors
+- Close three more review-flagged gaps in the gate wiring
+- Close review-flagged gaps in the biome/ts7 migration
+- Drop useless ctor in cli-entry.test ConfigManager mock
+- Zcode manual-sync token forwarding, same-ms cursor merge, projectRef trim, opencode formatter tag
+
 ## v2.25.0
 
 ### Added
