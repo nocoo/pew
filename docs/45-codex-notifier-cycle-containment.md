@@ -122,11 +122,18 @@ Pew handler
 ### 3.1 必须满足的安全不变量
 
 1. 检测到 Pew re-entry 或 chain 长度超上限时，本次调用产生**零子进程**。
-2. 同一个 admission window、同一个 Pew state directory 中，最多一个 handler
-   成为 owner。
-3. 正常并发 loser 只记录 sync pending signal，产生**零子进程**，包括不转发
-   saved-original。
-4. gate 的 `EEXIST` 表示正常合并；`EACCES`、`EIO` 等其他错误必须 fail-closed。
+2. 每个 admission window、每个 Pew state directory 中：
+   - 至多一个 handler 成为 **sync gate owner**（负责创建 Pew worker）；
+   - 至多一个 handler 成为 **Codex forward gate owner**（负责调用 saved-original）。
+   两个 gate 的胜负相互独立：同一个 Codex handler 可以在 sync gate 输、forward gate
+   赢，或反之。
+3. 每个 gate 的 loser 不做对应 spawn：
+   - sync gate loser：**不**创建 Pew worker；
+   - forward gate loser：**不**调用 saved-original；
+   - 两个 gate 都 loser 的 handler：**总 child spawn = 0**（含不转发 saved-original）。
+4. gate 的 `EEXIST` 表示"该 gate 已有 owner"，走该 gate 的 loser 路径；`EACCES`、
+   `EIO` 等其他错误必须**对该 gate** fail-closed（该 gate 对应 spawn = 0），
+   另一 gate 仍独立参与竞争与判定。
 5. admission 不依赖 PID、Unix signal、`flock` 或 shell。
 6. worker 启动失败或崩溃最多影响当前短窗口；下一窗口可自动恢复。
 7. gate artifact 必须有界清理，不能把进程风暴换成 inode 风暴。
@@ -663,8 +670,9 @@ runtime containment 是 P0；同时做两项低成本防止再次持久化明显
 - 同 bucket 100 次并发调用：Pew worker = 1，Codex saved-original = 1（backup 存在）或 0（缺失/损坏）；
 - `Pew → A → Pew` 且环境保留：第一次回入即零 spawn；
 - 环境丢弃但立即回入：当前 bucket 零 spawn；
-- gate 非 `EEXIST` 错误：零 spawn；handler 尝试写诊断（诊断本身 best-effort，不
-  作为断言依据）；
+- gate 非 `EEXIST` 错误：**该 gate 对应 spawn = 0**（sync gate error → 无 Pew worker；
+  forward gate error → 无 saved-original），另一 gate 独立参与竞争与判定；handler
+  尝试写诊断（诊断本身 best-effort，不作为断言依据）；
 - **fake-clock** 断言：worker 计算得到的 `delay = notBefore − now` 满足 `0 ≤ delay ≤ W`；
   不使用真实 wall-clock 做 CI gate，避免 CI runner 抖动导致 flaky。真实 wall-clock
   数据只在非阻塞 benchmark 报告，不参与 pass/fail 判定；
