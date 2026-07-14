@@ -31,10 +31,10 @@ Issue 中的 Wrapper A 已匿名，无法独立核实它的实现及现场指标
 > Pew notifier 是**可合并的同步意图**，不是逐事件可靠消息队列。同一个短窗口内
 > 的多个 notify 可以收敛成一个 Pew worker 和一次 sync。
 
-需要在实施前确认一个兼容性决策：saved-original notifier 是否也允许“每批最多
-转发一次”。本方案推荐**允许**，因为只有让 admission gate 同时保护 Pew worker
-和 original forwarding，才能以最小实现保证循环回入时零子进程。如果 original
-必须逐事件交付，就需要独立的持久化回调队列，不属于本轮极简方案。
+saved-original notifier 的转发语义被明确定为**每 admission batch 最多一次**——
+不是"因为 Pew 自己 coalesce 所以第三方也 coalesce"，而是因为极简的 containment
+要求 gate 必须同时覆盖 Pew worker spawn 和 original forwarding，见 §4.5。任何
+"逐事件保证"在没有独立 acknowledged queue 的前提下都只是名义上的。
 
 ## 二、问题原理
 
@@ -315,21 +315,32 @@ worker 会重试。绝不扫 state directory 其余部分。
 
 ### 4.5 saved-original 转发语义
 
-推荐语义：同一个 admission batch 最多转发 saved-original 一次。
+**语义：同一个 admission batch 最多转发 saved-original 一次。**
 
-优点：
+真正的理由不是"Pew 的 sync 是 coalesce 的，因此第三方也必须 coalesce"——那不成
+立，两个流的传递语义没有强制耦合关系。真正的理由是：极简且**不依赖第三方
+运行时行为**的 containment 要求 gate 必须**同时**覆盖 Pew worker spawn 和
+original forwarding。如果 loser 仍然转发 original：
 
-- 与 Pew sync 的 coalescing 产品目标一致；
-- gate loser 真正做到零 spawn；
-- `Pew → A → Pew` 返回当前 bucket 时直接被 admission 拦截；
-- A 保留环境时，chain guard 在 admission 之前立即终止。
+- `Pew → A → Pew` 且 A 保留环境时，chain guard 能拦；
+- 但 A 丢弃环境时，loser 的 original spawn 会重新进入 A，进入下一 bucket 后再次
+  回到 Pew，进程创建率虽然被拉低到 `1/W`，实际链**仍然是无界的**——只是慢一点；
+- 更糟：任何"handler 在 gate 后仍做外部 spawn"的实现都增加"可漏掉的一半保护"，
+  破坏 §3.1 不变量 3（loser 零子进程）。
 
-代价：如果第三方 notifier 把每个 Codex completion 当作必须逐条交付的事件，同一
-窗口内可能只收到一次。当前 Pew 本身没有 acknowledged per-event queue，因此不能
-一边宣称 coalescing，一边承诺第三方逐事件可靠性。
+把 original forwarding 也纳入同一个 admission gate 是唯一能保证：
+- 单一原子决策点：`wx create` 成功⇔本 handler 有权 spawn；
+- loser 零 spawn 是**总数零**，不区分是 Pew 的还是别人的；
+- gate 出错时的 fail-closed 语义对两个 spawn 同时生效。
 
-**Review blocker：**如果产品决定 saved-original 必须逐事件调用，本方案不能直接
-实施；需要为 original callbacks 建立独立、有界、acknowledged queue。
+代价：第三方 notifier 如果把每次 Codex completion 当作必须逐条送达的事件，同一
+`ADMISSION_WINDOW_MS` 内可能只被调用一次。这是本方案有意接受的产品语义变更，
+因为在没有独立 acknowledged per-event queue 的前提下（§3.2 明确不做），任何
+"逐事件保证"都只是名义上的。
+
+不为 saved-original 提供 escape hatch（例如 `--forward-every-event` 或类似 flag）：
+逃生开关会把 loser 路径重新引入 spawn，等同于取消本节的保证。若确实有 wrapper
+必须逐事件，独立的 acknowledged queue 是唯一正确解，另立方案，不属于本轮。
 
 ### 4.6 环境被第三方丢弃时的残余风险
 
