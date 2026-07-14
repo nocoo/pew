@@ -264,26 +264,54 @@ Pew sync worker 被合并，仍然无法 containment handler/A-worker 进程。
 
 ### 4.4 窗口末尾执行一次 sync
 
-为了让当前 bucket 内较晚到达的 signal 不因 owner worker 过早退出而滞留，owner
-worker 应在 bucket 结束后再进入 `coordinatedSync()`：
+`notBefore` 不是性能优化，它关掉一个 **lost-wakeup 窗口**。
+
+具体路径（无 notBefore 时）：
+
+```text
+t0             winner handler admitted, spawn worker
+t0 + Δ1        worker runs coordinatedSync()
+t0 + Δ2        worker 完成 sync，check signal size = 0，退出
+t0 + Δ3        loser handler 进入
+                 append notify.signal
+                 exclusive-create gate → EEXIST → 立即 exit
+                 （因为同 bucket 还没结束，仍是 loser）
+                 → 无人再消费本次 append 的 signal
+```
+
+`t0 + Δ3 < (bucket + 1) * W`，即使 loser 也在同一个 bucket 里，它 append 的 signal
+永远没有 owner。coordinator 的 follow-up trailing 机制只在同一个 worker 的生命
+周期内工作，一旦 worker 已确认 signal=0 后退出，就没有 follow-up 可挂。下一个
+worker 要等下一个 bucket 才产生。
+
+owner worker 因此必须**等到 bucket 结束**再进入 `coordinatedSync()`：
 
 ```text
 notBefore = (bucket + 1) * ADMISSION_WINDOW_MS
-delay = max(0, notBefore - now)
+delay     = max(0, notBefore - now)
 ```
 
-`notBefore` 只传给 Pew 自己的 worker，推荐放在内部环境变量或显式内部 option，
-不得转发给 original wrapper。最大新增延迟小于 2 秒。
+保证 sync 前所有同 bucket 的 signal 都已经 append，避免上面的丢失。跨 bucket 到达
+的事件本来就是下一个 bucket 的 owner 的责任。
+
+`notBefore` 只传给 Pew 自己的 worker，放在内部环境变量或显式内部 option，不得
+转发给 original wrapper。worker 是 detached、handler 已经 exit，因此这 `< W` 秒
+延迟不阻塞 Codex 本身，只影响 dashboard 数据新鲜度。
 
 窗口结束后：
 
 1. worker 运行现有 `coordinatedSync()`；
 2. sync 期间的新 signal 继续由 coordinator follow-up 机制消费；
 3. worker best-effort 删除自己的唯一 bucket gate；
-4. winner 偶尔清理明显过期的 bucket 文件，loser 不扫描目录。
+4. worker 顺带扫 `<stateDir>/notify-admission/` 目录，删除所有早于当前 bucket 的
+   `.lock` 文件；loser 不扫描目录。
 
-清理失败不影响 correctness；后续 winner 可批量删除早于当前 bucket 若干窗口的
-文件。只允许扫描 `notify-admission/` 小目录，不得扫描整个 state directory。
+选择"扫全目录删所有旧 bucket"而不是"只删前一 bucket"是刻意的：跨多个 bucket 的
+崩溃残留（例如 worker 启动即 crash 若干次）在"只删前一 bucket"策略下永远不会被
+清理，会随时间无界积累。`notify-admission/` 是本方案私有的小目录，扫描 cost
+O(残留数)，即使残留几十上百个也只是一次 `readdir` + 若干 `unlink`，远低于一次
+sync；且只 worker 做，loser 依然零目录扫描。清理失败不影响 correctness，下一个
+worker 会重试。绝不扫 state directory 其余部分。
 
 ### 4.5 saved-original 转发语义
 
