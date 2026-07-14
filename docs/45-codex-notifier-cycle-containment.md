@@ -323,13 +323,18 @@ worker 会重试。绝不扫 state directory 其余部分。
 original forwarding。如果 loser 仍然转发 original：
 
 - `Pew → A → Pew` 且 A 保留环境时，chain guard 能拦；
-- 但 A 丢弃环境时，loser 的 original spawn 会重新进入 A，进入下一 bucket 后再次
-  回到 Pew，进程创建率虽然被拉低到 `1/W`，实际链**仍然是无界的**——只是慢一点；
+- 但 A 丢弃环境时，loser handler 转发到 A，A 立即回到 Pew handler，仍落在同一
+  bucket 内。这个新的 Pew handler 撞 gate 拿到 `EEXIST`，走 loser 路径……只要 A 的
+  回环延迟低于 `W`，这条链在**同一个 bucket 内**就能持续高速运转：Pew worker
+  创建率被限制到 `1/W`，但 handler 和 A 侧的进程数与创建率**不受任何限制**，
+  Issue #318 描述的正是这种 handler 层进程风暴，只是 Pew worker 换成了别人的
+  worker，问题没有解决；
 - 更糟：任何"handler 在 gate 后仍做外部 spawn"的实现都增加"可漏掉的一半保护"，
   破坏 §3.1 不变量 3（loser 零子进程）。
 
 把 original forwarding 也纳入同一个 admission gate 是唯一能保证：
-- 单一原子决策点：`wx create` 成功⇔本 handler 有权 spawn；
+
+- 单一原子决策点：`wx create` 成功 ⇔ 本 handler 有权 spawn；
 - loser 零 spawn 是**总数零**，不区分是 Pew 的还是别人的；
 - gate 出错时的 fail-closed 语义对两个 spawn 同时生效。
 
