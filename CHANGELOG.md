@@ -8,40 +8,37 @@
 ## v2.26.0
 
 ### Added
-- Add dynamic-delete + ts-expect-error custom gates
-- Add zcode to dashboard palette + labels + pricing fallback + API allowlists
-- Wire zcode through sync + session-sync + notify
-- Add zcode token + session drivers and register them
-- Add zcode sqlite session parser + adapter
-- Add zcode sqlite parser + normalizer + adapter
-- Add 'zcode' source foundation (types + exhaustive switches + opener injection stubs + warnings channel)
+- Add dynamic-delete + ts-expect-error custom gates (oxc-parser based;
+  scans the index snapshot in pre-commit; rejects `@ts-nocheck` outright
+  and requires ≥10-char reason on every `@ts-expect-error`; per-line
+  ALLOWED_SITES whitelist for dynamic-delete instead of per-file)
 
 ### Changed
-- Mark biome migration + ts7 upgrade implemented
-- Rename residual ESLint labels to Biome in pre-commit
-- Upgrade to typescript 7.0.2 stable + native-preview marker
-- Switch from eslint to biome + translate all suppressions
-- CLI-entry regression, session adapter round-trip, Web L2 zcode E2E
-- Mark zcode support implemented; update CLAUDE.md / README / landing / PRIVACY / docs-index
-- Route DB dispatch through source-aware branches + wire warnings channel
-- 8th revision — SQL AS mapping, output branches, ProgressEvent name, 4+2 allowlist
-- 7th revision — camelCase row access, orchestrator catch responsibility
-- 6th revision — progress source dual-tag, pre-check both sides, CLI-private types
-- 5th revision — session registry activation, cli.ts:131 formatter, commit#1 independence
-- 4th revision — manual entry splits sync/session-sync, isAllZero, warn dedup
-- 3rd revision — provider_total in SQL, ParsedDelta shape, warning channel
-- 2nd revision — opener injection, cache_creation, reasoning, PRIVACY
-- Rewrite per review — orchestrator, cursors, cache_creation, scope
-- Add ZCode CLI token support design
-- Bump @cloudflare/workers-types to 5.20260711.1
-- Enumerate all 12 sources incl. Grok in landing + README (alphabetical)
+- Switch from ESLint / typescript-eslint to Biome 2.5.3 (doc 44). Full
+  suppression set translated to `// biome-ignore` with reasons; five
+  workspaces gain `typecheck` scripts so `bun run --filter '*'` no
+  longer silently skips core/cli; lint-staged / pre-commit use Biome.
+  Whole-repo effect: `bun pm ls --all` 640 → 550, `rg -c eslint` 25 → 0,
+  `rg -c typescript-eslint` 11 → 0.
+- Upgrade TypeScript 6.0.3 → **7.0.2 stable**. Install
+  `@typescript/native-preview@7.0.0-dev.20260707.2` into packages/web so
+  Next 16 skips its internal typecheck; `web/build` = `tsc --noEmit &&
+  next build`. Remove `typescript` devDep from web/worker/worker-read
+  (root supplies).
+- Rename residual ESLint labels to Biome in pre-commit output.
 
 ### Fixed
-- Scan .mts/.cts + fail-closed on gate snapshot errors
-- Close three more review-flagged gaps in the gate wiring
-- Close review-flagged gaps in the biome/ts7 migration
-- Drop useless ctor in cli-entry.test ConfigManager mock
-- Zcode manual-sync token forwarding, same-ms cursor merge, projectRef trim, opencode formatter tag
+- pre-commit lint-staged glob + extension matchers now include
+  `mts` / `cts` / `mjs` / `cjs` / `jsx`; JSX-only or `.mjs`-only staged
+  diffs no longer bypass Biome.
+- Gates scan the INDEX snapshot via `git checkout-index --prefix=<tmp>/`
+  so a staged violation cannot be laundered by fixing the working copy.
+- Gates fail-closed on mktemp / `git checkout-index` non-zero exit.
+- Gate file-extension filter widened to `.(ts|tsx|mts|cts)` — previously
+  `.mts` / `.cts` were listed in the hook but silently skipped.
+- pragma detector handles the oxc-parser quirk of representing
+  `/// @ts-nocheck` as a Line comment whose value starts with `/`.
+
 
 ## v2.25.0
 
