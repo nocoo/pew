@@ -358,8 +358,12 @@ describe("notify-handler self-notify — Windows case-insensitive (doc 45 §4.1 
   it("recognises a lowercase drive-letter self path as self on win32", () => {
     // Compile the handler for a Windows-style state dir. The generated
     // handler bakes IS_WIN via process.platform inside the sandbox; we
-    // exercise that branch by launching with platform=win32 and passing
-    // a backup command whose notify.cjs path uses a different case.
+    // exercise that branch by launching with platform=win32 AND injecting
+    // `node:path`'s win32 namespace so path.resolve / path.join produce
+    // real Windows paths on this Linux/macOS host too. Without the
+    // win32 namespace, host resolve() would leave 'C:\\...' unchanged as
+    // a relative path, yielding mixed separators that mask the actual
+    // case-fold logic (the test would pass for the wrong reason).
     const src = buildNotifyHandler({
       stateDir: "C:\\pew\\state",
       pewBin: "C:\\pew\\bin\\pew.cmd",
@@ -367,15 +371,19 @@ describe("notify-handler self-notify — Windows case-insensitive (doc 45 §4.1 
     });
     const script = new vm.Script(src.replace(/^#!.*\n/, ""));
     const files = new Map<string, string>();
-    // Pre-seed the backup with a saved-original that points at the same
-    // notify.cjs path but with different case — should be recognised as
-    // self and NOT spawned.
+    // Handler uses path.join(STATE_DIR, "codex_notify_original.json").
+    // Under path.win32 that produces the Windows-style path below.
+    const backupPath = "C:\\pew\\state\\codex_notify_original.json";
+    // Saved-original points at the same notify.cjs but with different
+    // case — the outcome we care about is that the self-check folds
+    // the case and refuses to forward.
     files.set(
-      "C:\\pew\\state\\codex_notify_original.json",
+      backupPath,
       JSON.stringify({
         notify: ["C:\\PEW\\STATE\\bin\\notify.cjs", "--source=codex"],
       }),
     );
+    const reads: string[] = [];
     const spawns: Array<{ cmd: string }> = [];
     const sandboxGlobals: Record<string, unknown> = {
       require(mod: string) {
@@ -383,6 +391,7 @@ describe("notify-handler self-notify — Windows case-insensitive (doc 45 §4.1 
           return {
             appendFileSync: () => {},
             readFileSync: (p: string) => {
+              reads.push(p);
               const v = files.get(p);
               if (v === undefined) {
                 const e = new Error("ENOENT") as NodeJS.ErrnoException;
@@ -413,7 +422,13 @@ describe("notify-handler self-notify — Windows case-insensitive (doc 45 §4.1 
             },
           };
         }
-        if (mod === "node:path") return require("node:path");
+        if (mod === "node:path") {
+          // CRITICAL: use path.win32 so the sandbox's join/resolve match
+          // real Windows semantics. Otherwise this test only proves
+          // "backup unreadable → zero forward" which is the wrong reason.
+          const pathMod = require("node:path") as typeof import("node:path");
+          return pathMod.win32;
+        }
         if (mod === "node:os") return { homedir: () => "C:\\Users\\Test" };
         if (mod === "node:crypto") return require("node:crypto");
         throw new Error(`unstubbed ${mod}`);
@@ -448,9 +463,17 @@ describe("notify-handler self-notify — Windows case-insensitive (doc 45 §4.1 
     } catch (err) {
       if (!(err instanceof Error) || !err.message.startsWith("__exit_")) throw err;
     }
-    // The saved-original points at the same notify.cjs (case-folded on
-    // Windows), so no third-party spawn should happen. The Pew worker
-    // spawn is a separate branch — filter for the non-self forward.
+    // Prove the codepath actually executed: the backup was read.
+    // (If reads is empty the test would silently pass for the wrong
+    // reason — e.g. gate/backup path mismatch, ENOENT on backup, or
+    // early exit — none of which exercise the case-fold branch.)
+    const backupReads = reads.filter(
+      (p) => p === "C:\\pew\\state\\codex_notify_original.json",
+    );
+    expect(backupReads).toHaveLength(1);
+    // With the backup actually parsed, the case-folded self check must
+    // treat the saved-original as self and refuse to forward. The Pew
+    // worker spawn (pew.cmd / pew / npx) is a separate branch.
     const foreign = spawns.filter(
       (s) =>
         !s.cmd.endsWith("pew.cmd") &&
