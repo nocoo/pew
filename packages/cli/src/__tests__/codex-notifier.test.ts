@@ -31,12 +31,13 @@ describe("Codex notifier installer", () => {
       configPath,
       notifyPath,
       originalBackupPath,
+      runtimePath: "/usr/local/bin/node",
     });
     const updated = await readFile(configPath, "utf8");
 
     expect(result.changed).toBe(true);
     expect(updated).toContain(
-      'notify = ["/usr/bin/env", "node", "/tmp/pew/bin/notify.cjs", "--source=codex"]',
+      'notify = ["/usr/local/bin/node", "/tmp/pew/bin/notify.cjs", "--source=codex"]',
     );
   });
 
@@ -58,6 +59,7 @@ describe("Codex notifier installer", () => {
       configPath,
       notifyPath,
       originalBackupPath,
+      runtimePath: "/usr/local/bin/node",
     });
     const backup = JSON.parse(await readFile(originalBackupPath, "utf8"));
 
@@ -72,7 +74,7 @@ describe("Codex notifier installer", () => {
   it("is idempotent when the pew notify is already installed", async () => {
     await writeFile(
       configPath,
-      'notify = ["/usr/bin/env", "node", "/tmp/pew/bin/notify.cjs", "--source=codex"]\n',
+      'notify = ["/usr/local/bin/node", "/tmp/pew/bin/notify.cjs", "--source=codex"]\n',
       "utf8",
     );
 
@@ -80,6 +82,7 @@ describe("Codex notifier installer", () => {
       configPath,
       notifyPath,
       originalBackupPath,
+      runtimePath: "/usr/local/bin/node",
     });
 
     expect(result.changed).toBe(false);
@@ -90,6 +93,7 @@ describe("Codex notifier installer", () => {
       configPath,
       notifyPath,
       originalBackupPath,
+      runtimePath: "/usr/local/bin/node",
     });
 
     expect(result.action).toBe("skip");
@@ -99,7 +103,7 @@ describe("Codex notifier installer", () => {
   it("restores the original notify from backup on uninstall", async () => {
     await writeFile(
       configPath,
-      'notify = ["/usr/bin/env", "node", "/tmp/pew/bin/notify.cjs", "--source=codex"]\n',
+      'notify = ["/usr/local/bin/node", "/tmp/pew/bin/notify.cjs", "--source=codex"]\n',
       "utf8",
     );
     await writeFile(
@@ -114,6 +118,7 @@ describe("Codex notifier installer", () => {
       configPath,
       notifyPath,
       originalBackupPath,
+      runtimePath: "/usr/local/bin/node",
     });
     const updated = await readFile(configPath, "utf8");
 
