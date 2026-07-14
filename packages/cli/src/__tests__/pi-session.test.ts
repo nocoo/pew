@@ -67,7 +67,7 @@ describe("collectPiSessions", () => {
         },
       }),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const snapshots = await collectPiSessions(filePath);
     expect(snapshots).toHaveLength(1);
@@ -91,12 +91,12 @@ describe("collectPiSessions", () => {
 
   it("returns empty for file without session header", async () => {
     const filePath = join(sessionDir, "no-header.jsonl");
-    await writeFile(filePath, JSON.stringify({
+    await writeFile(filePath, `${JSON.stringify({
       type: "message",
       id: "msg1",
       timestamp: "2026-04-07T04:42:25.000Z",
       message: { role: "user", content: [] },
-    }) + "\n");
+    })}\n`);
 
     const snapshots = await collectPiSessions(filePath);
     expect(snapshots).toHaveLength(0);
@@ -129,7 +129,7 @@ describe("collectPiSessions", () => {
         message: { role: "assistant", model: "test-model", content: [] },
       }),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const snapshots = await collectPiSessions(filePath);
     expect(snapshots).toHaveLength(1);
@@ -149,7 +149,7 @@ describe("collectPiSessions", () => {
         message: { role: "user", content: [] },
       }),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const snapshots = await collectPiSessions(filePath);
     expect(snapshots).toHaveLength(1);
@@ -168,7 +168,7 @@ describe("collectPiSessions", () => {
         message: { role: "user", content: [] },
       }),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const snapshots = await collectPiSessions(filePath);
     expect(snapshots).toHaveLength(1);
@@ -187,7 +187,7 @@ describe("collectPiSessions", () => {
         message: { role: "user", content: [] },
       }),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     // No session ID → returns empty
     const snapshots = await collectPiSessions(filePath);
@@ -201,7 +201,7 @@ describe("collectPiSessions", () => {
       JSON.stringify({ type: "message", id: "msg1", message: { role: "user", content: [] } }),
       JSON.stringify({ type: "message", id: "msg2", timestamp: 12345, message: { role: "assistant", model: "test", content: [] } }),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const snapshots = await collectPiSessions(filePath);
     expect(snapshots).toHaveLength(1);
@@ -220,7 +220,7 @@ describe("collectPiSessions", () => {
         message: { role: "assistant", model: 123, content: [] },
       }),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const snapshots = await collectPiSessions(filePath);
     expect(snapshots).toHaveLength(1);
@@ -238,7 +238,7 @@ describe("collectPiSessions", () => {
         message: { role: "assistant", model: "  ", content: [] },
       }),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const snapshots = await collectPiSessions(filePath);
     expect(snapshots).toHaveLength(1);
@@ -259,7 +259,7 @@ describe("collectPiSessions", () => {
         message: { role: "user", content: [] },
       }),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const snapshots = await collectPiSessions(filePath);
     expect(snapshots).toHaveLength(1);
@@ -279,7 +279,7 @@ describe("collectPiSessions", () => {
         message: { role: "user", content: [] },
       }),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const snapshots = await collectPiSessions(filePath);
     expect(snapshots).toHaveLength(1);
@@ -311,7 +311,7 @@ describe("collectPiSessions", () => {
         message: { role: "user", content: [] },
       }),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
     const snapshots = await collectPiSessions(filePath);
     expect(snapshots).toHaveLength(1);
     expect(snapshots[0].startedAt).toBe("2026-04-07T10:20:00.000Z");
@@ -329,7 +329,7 @@ describe("collectPiSessions", () => {
         message: { role: 999, content: [] },
       }),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const snapshots = await collectPiSessions(filePath);
     expect(snapshots).toHaveLength(1);

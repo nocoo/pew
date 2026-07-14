@@ -49,10 +49,12 @@ function ContentSkeleton() {
     <div className="space-y-4">
       {/* Stats skeleton — 2 rows of 3 */}
       {Array.from({ length: 2 }).map((_, row) => (
-        <StatGrid key={row} columns={3}>
+        // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+        <StatGrid key={`row-${row}`} columns={3}>
           {Array.from({ length: 3 }).map((_, i) => (
             <div
-              key={i}
+              // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+              key={`slot-${i}`}
               className="rounded-card bg-secondary p-4 md:p-5 space-y-2"
             >
               <Skeleton className="h-4 w-16" />
@@ -198,7 +200,7 @@ export function ProfileContent({
       {tabs.length > 1 && (
         <div className="flex gap-1 rounded-lg bg-secondary p-1 mb-5">
           {tabs.map((t) => (
-            <button
+            <button type="button"
               key={t.id}
               onClick={() => setTab(t.id)}
               className={cn(

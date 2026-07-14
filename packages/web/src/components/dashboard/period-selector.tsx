@@ -24,7 +24,7 @@ export function PeriodSelector({ value, onChange }: PeriodSelectorProps) {
   return (
     <div className="flex items-center gap-1 rounded-lg bg-secondary p-1">
       {PERIOD_OPTIONS.map((opt) => (
-        <button
+        <button type="button"
           key={opt.value}
           onClick={() => onChange(opt.value)}
           className={cn(

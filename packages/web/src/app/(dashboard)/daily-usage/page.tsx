@@ -190,7 +190,8 @@ function DonutSkeleton() {
         {/* Legend */}
         <div className="flex-1 space-y-1">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-1.5">
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+            <div key={`slot-${i}`} className="flex items-center gap-1.5">
               <Skeleton className="h-2 w-2 rounded-full shrink-0" />
               <Skeleton className="h-3 flex-1" />
               <Skeleton className="h-3 w-8 shrink-0" />
@@ -232,7 +233,8 @@ function DailySkeleton() {
               </thead>
               <tbody>
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="border-b border-border/50">
+                  // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+                  <tr key={`slot-${i}`} className="border-b border-border/50">
                     <td className="px-4 py-3"><Skeleton className="h-4 w-20" /></td>
                     <td className="px-4 py-3"><Skeleton className="h-4 w-12 ml-auto" /></td>
                     <td className="px-4 py-3"><Skeleton className="h-4 w-12 ml-auto" /></td>
@@ -370,7 +372,7 @@ export default function DailyUsagePage() {
         </div>
         {/* Month pagination */}
         <div className="flex items-center gap-2">
-          <button
+          <button type="button"
             onClick={goToPrevMonth}
             className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             aria-label="Previous month"
@@ -380,7 +382,7 @@ export default function DailyUsagePage() {
           <span className="min-w-[140px] text-center text-sm font-medium">
             {formatMonth(year, month)}
           </span>
-          <button
+          <button type="button"
             onClick={goToNextMonth}
             disabled={isCurrentMonth}
             className={cn(
@@ -404,8 +406,7 @@ export default function DailyUsagePage() {
 
       {/* Content */}
       {!loading && data && (
-        <>
-          {data.summary.total_tokens > 0 ? (
+        data.summary.total_tokens > 0 ? (
             <div className="grid gap-4 md:gap-6 xl:grid-cols-4">
               {/* Left column: Daily charts + Detail table (3/4) */}
               <div className="xl:col-span-3 space-y-4 md:space-y-6">
@@ -497,8 +498,7 @@ export default function DailyUsagePage() {
             <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
               No usage data for {formatMonth(year, month)}.
             </div>
-          )}
-        </>
+          )
       )}
     </div>
   );

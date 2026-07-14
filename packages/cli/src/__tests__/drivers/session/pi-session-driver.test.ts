@@ -56,7 +56,7 @@ describe("piSessionDriver", () => {
       await mkdir(sessDir, { recursive: true });
       await writeFile(
         join(sessDir, "session.jsonl"),
-        piSessionLine() + "\n" + piAssistantLine() + "\n",
+        `${piSessionLine()}\n${piAssistantLine()}\n`,
       );
 
       const files = await piSessionDriver.discover({ piSessionsDir: tempDir });
@@ -108,7 +108,7 @@ describe("piSessionDriver", () => {
       const filePath = join(sessDir, "session.jsonl");
       await writeFile(
         filePath,
-        piSessionLine() + "\n" + piAssistantLine() + "\n",
+        `${piSessionLine()}\n${piAssistantLine()}\n`,
       );
 
       const result = await piSessionDriver.parse(filePath);

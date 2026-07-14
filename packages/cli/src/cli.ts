@@ -487,7 +487,7 @@ function buildOpenBrowserFn(
       log.text(pc.bold("SSH session detected — browser login is unavailable."));
       log.blank();
       log.text(pc.bold("Recommended: use the one-time code flow"));
-      log.text(`  1. Open ${pc.cyan(host + "/manage-devices")} in your local browser`);
+      log.text(`  1. Open ${pc.cyan(`${host}/manage-devices`)} in your local browser`);
       log.text(`  2. Click ${pc.bold("CLI Login Code")} to generate a code`);
       log.text(`  3. Run: ${pc.cyan("pew login --code XXXX-XXXX")}`);
       log.blank();
@@ -518,7 +518,7 @@ function buildOpenBrowserFn(
       setTimeout(() => {
         log.blank();
         log.text(pc.bold("Tip: On a headless server? Use the code flow instead:"));
-        log.text(`  1. Open ${pc.cyan(host + "/manage-devices")} in your browser`);
+        log.text(`  1. Open ${pc.cyan(`${host}/manage-devices`)} in your browser`);
         log.text(`  2. Click ${pc.bold("CLI Login Code")} to generate a code`);
         log.text(`  3. Run: ${pc.cyan("pew login --code XXXX-XXXX")}`);
         log.blank();
@@ -863,7 +863,7 @@ async function runUpload(stateDir: string, apiUrl: string, dev: boolean): Promis
     onCorruptLine: handleCorruptLine,
     onProgress(event) {
       if (event.phase === "uploading") {
-        log.text(pc.dim(`Batch ${event.batch}/${event.totalBatches}`) + ` (${event.message})`);
+        log.text(`${pc.dim(`Batch ${event.batch}/${event.totalBatches}`)} (${event.message})`);
       }
     },
   });
@@ -905,7 +905,7 @@ async function runSessionUpload(stateDir: string, apiUrl: string, dev: boolean):
     onCorruptLine: handleCorruptLine,
     onProgress(event) {
       if (event.phase === "uploading") {
-        log.text(pc.dim(`Batch ${event.batch}/${event.totalBatches}`) + ` (${event.message})`);
+        log.text(`${pc.dim(`Batch ${event.batch}/${event.totalBatches}`)} (${event.message})`);
       }
     },
   });

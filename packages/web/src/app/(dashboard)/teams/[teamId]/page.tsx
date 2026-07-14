@@ -136,7 +136,7 @@ function SeasonRow({
           {season.is_registered ? (
             // Can withdraw from upcoming seasons, or active seasons with late withdrawal enabled
             season.status === "upcoming" || (season.status === "active" && season.allow_late_withdrawal) ? (
-              <button
+              <button type="button"
                 onClick={() => onWithdraw(season.id)}
                 disabled={isBusy}
                 className={cn(
@@ -155,7 +155,7 @@ function SeasonRow({
               </button>
             ) : null
           ) : season.status === "upcoming" || (season.status === "active" && season.allow_late_registration) ? (
-            <button
+            <button type="button"
               onClick={() => onRegister(season.id)}
               disabled={isBusy}
               className={cn(
@@ -617,7 +617,7 @@ export default function TeamDetailPage() {
   if (error || !team) {
     return (
       <div className="max-w-3xl space-y-8">
-        <button
+        <button type="button"
           onClick={() => router.push("/teams")}
           className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
@@ -641,7 +641,7 @@ export default function TeamDetailPage() {
   return (
     <div className="max-w-3xl space-y-8">
       {/* Back link */}
-      <button
+      <button type="button"
         onClick={() => router.push("/teams")}
         className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
@@ -659,7 +659,7 @@ export default function TeamDetailPage() {
           <div className="relative shrink-0 group">
             <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-accent text-muted-foreground overflow-hidden">
               {team.logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- external team logos
+                // biome-ignore lint/performance/noImgElement: user-supplied image URL, not amenable to next/image domain allowlist -- external team logos
                 <img
                   src={team.logoUrl}
                   alt={`${team.name} logo`}
@@ -672,7 +672,7 @@ export default function TeamDetailPage() {
             {/* Logo edit overlay (owner only, hover to show) */}
             {isOwner && (
               <>
-                <button
+                <button type="button"
                   onClick={() => logoInputRef.current?.click()}
                   disabled={uploadingLogo}
                   className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -685,7 +685,7 @@ export default function TeamDetailPage() {
                   )}
                 </button>
                 {team.logoUrl && (
-                  <button
+                  <button type="button"
                     onClick={handleRemoveLogo}
                     className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-white opacity-0 group-hover:opacity-100 transition-opacity"
                     title="Remove logo"
@@ -731,7 +731,7 @@ export default function TeamDetailPage() {
                   {team.name}
                 </h1>
                 {isOwner && (
-                  <button
+                  <button type="button"
                     onClick={startEditing}
                     className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/50 group-hover/name:text-muted-foreground hover:!text-foreground hover:bg-accent transition-colors shrink-0"
                     title="Rename team"
@@ -750,7 +750,7 @@ export default function TeamDetailPage() {
 
           {/* Invite button (owner only) */}
           {isOwner && (
-            <button
+            <button type="button"
               onClick={() => openInviteDialog(team.name, team.invite_code)}
               className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
             >
@@ -773,7 +773,7 @@ export default function TeamDetailPage() {
               key={member.userId}
               className="flex items-center gap-3 rounded-lg bg-secondary px-4 py-2.5"
             >
-              <button
+              <button type="button"
                 onClick={() => handleMemberClick(member)}
                 className="flex flex-1 items-center gap-3 text-left transition-colors hover:opacity-80 cursor-pointer min-w-0"
               >
@@ -792,7 +792,7 @@ export default function TeamDetailPage() {
                   Owner
                 </span>
               ) : isOwner ? (
-                <button
+                <button type="button"
                   onClick={(e) => handleKick(e, member)}
                   className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
                   title={`Remove ${member.name ?? "member"}`}
@@ -849,7 +849,7 @@ export default function TeamDetailPage() {
                 ? "You cannot delete this team while other members remain. Remove all members first, or leave the team."
                 : "Leave this team. You can rejoin if you have a valid invite code."}
           </p>
-          <button
+          <button type="button"
             onClick={handleLeaveOrDelete}
             className={cn(
               "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",

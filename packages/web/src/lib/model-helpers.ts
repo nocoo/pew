@@ -15,7 +15,7 @@ export function shortModel(model: string): string {
   const cleaned = model
     .replace(/^models\//, "")
     .replace(/-\d{8}$/, "");
-  return cleaned.length > 24 ? cleaned.slice(0, 22) + "..." : cleaned;
+  return cleaned.length > 24 ? `${cleaned.slice(0, 22)}...` : cleaned;
 }
 
 // ---------------------------------------------------------------------------
@@ -42,7 +42,7 @@ export interface ModelEra {
 export function toModelEvolutionPoints(
   rows: UsageRow[],
   topN = 5,
-  tzOffset: number = 0,
+  tzOffset = 0,
   includeOther = true,
 ): ModelEra[] {
   if (rows.length === 0) return [];

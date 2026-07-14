@@ -591,7 +591,7 @@ export async function GET(
   let limit = DEFAULT_LIMIT;
   if (limitParam) {
     const parsed = parseInt(limitParam, 10);
-    if (isNaN(parsed) || parsed < 1 || parsed > MAX_LIMIT) {
+    if (Number.isNaN(parsed) || parsed < 1 || parsed > MAX_LIMIT) {
       return NextResponse.json(
         { error: `limit must be 1-${MAX_LIMIT}` },
         { status: 400 },
@@ -603,7 +603,7 @@ export async function GET(
   let offset = 0;
   if (cursorParam) {
     const parsed = parseInt(cursorParam, 10);
-    if (isNaN(parsed) || parsed < 0) {
+    if (Number.isNaN(parsed) || parsed < 0) {
       return NextResponse.json(
         { error: "Invalid cursor" },
         { status: 400 },

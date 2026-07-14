@@ -21,7 +21,7 @@ const DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?Z$/;
 function isValidDatetime(s: string): boolean {
   if (!DATETIME_RE.test(s)) return false;
   const d = new Date(s);
-  return !isNaN(d.getTime());
+  return !Number.isNaN(d.getTime());
 }
 
 // ---------------------------------------------------------------------------

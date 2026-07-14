@@ -95,7 +95,7 @@ describe("parseCodexFile", () => {
       responseItem("user"),
       tokenCount({ inputTokens: 1000, cachedInputTokens: 200, outputTokens: 300, reasoningOutputTokens: 50 }, "2026-03-09T10:00:05.000Z"),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
     expect(result.deltas).toHaveLength(1);
@@ -127,7 +127,7 @@ describe("parseCodexFile", () => {
       tokenCount({ inputTokens: 2500, outputTokens: 500 }, "2026-03-09T10:00:10.000Z"),
       tokenCount({ inputTokens: 4000, outputTokens: 800 }, "2026-03-09T10:00:15.000Z"),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
     expect(result.deltas).toHaveLength(3);
@@ -152,7 +152,7 @@ describe("parseCodexFile", () => {
       tokenCount({ inputTokens: 1000, outputTokens: 200 }, "2026-03-09T10:00:05.000Z"),
       tokenCount({ inputTokens: 2500, outputTokens: 500 }, "2026-03-09T10:00:10.000Z"),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const r1 = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
     expect(r1.deltas).toHaveLength(2);
@@ -161,7 +161,7 @@ describe("parseCodexFile", () => {
     const newLines = [
       tokenCount({ inputTokens: 4000, outputTokens: 800 }, "2026-03-09T10:00:15.000Z"),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n" + newLines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n${newLines.join("\n")}\n`);
 
     const r2 = await parseCodexFile({
       filePath,
@@ -181,7 +181,7 @@ describe("parseCodexFile", () => {
       sessionMeta({ model: "gpt-5.3-codex" }),
       tokenCount({ inputTokens: 500, outputTokens: 100 }, "2026-03-09T10:00:05.000Z"),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
     expect(result.deltas).toHaveLength(1);
@@ -195,7 +195,7 @@ describe("parseCodexFile", () => {
       turnContext("gpt-5.4"),
       tokenCount({ inputTokens: 500, outputTokens: 100 }, "2026-03-09T10:00:05.000Z"),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
     expect(result.deltas[0].model).toBe("gpt-5.4");
@@ -209,7 +209,7 @@ describe("parseCodexFile", () => {
       turnContext("gpt-5.4", { model: 42 }), // override to a non-string
       tokenCount({ inputTokens: 500, outputTokens: 100 }, "2026-03-09T10:00:05.000Z"),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
     const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
     // turn_context with non-string model is ignored → session_meta model is retained.
     expect(result.deltas[0].model).toBe("gpt-5.3-codex");
@@ -220,7 +220,7 @@ describe("parseCodexFile", () => {
     const lines = [
       tokenCount({ inputTokens: 5000, outputTokens: 1000 }, "2026-03-09T10:00:15.000Z"),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseCodexFile({
       filePath,
@@ -238,7 +238,7 @@ describe("parseCodexFile", () => {
     const lines = [
       tokenCount({ inputTokens: 500, outputTokens: 100 }, "2026-03-09T10:00:05.000Z"),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
     expect(result.deltas).toHaveLength(1);
@@ -255,7 +255,7 @@ describe("parseCodexFile", () => {
       // New totals → non-zero delta
       tokenCount({ inputTokens: 2000, outputTokens: 400 }, "2026-03-09T10:00:10.000Z"),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
     expect(result.deltas).toHaveLength(2);
@@ -279,7 +279,7 @@ describe("parseCodexFile", () => {
       turnContext("gpt-5.4"),
       tokenCount({ inputTokens: 500, outputTokens: 100 }, "2026-03-09T10:00:05.000Z"),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
     expect(result.deltas).toHaveLength(1);
@@ -298,7 +298,7 @@ describe("parseCodexFile", () => {
       }),
       tokenCount({ inputTokens: 500, outputTokens: 100 }, "2026-03-09T10:00:05.000Z"),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
     expect(result.deltas).toHaveLength(1);
@@ -311,7 +311,7 @@ describe("parseCodexFile", () => {
       // Simulating a counter reset: new totals lower than previous
       tokenCount({ inputTokens: 100, outputTokens: 50 }, "2026-03-09T10:00:05.000Z"),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseCodexFile({
       filePath,
@@ -327,7 +327,7 @@ describe("parseCodexFile", () => {
 
   it("should return no deltas when file is at startOffset already", async () => {
     const filePath = join(tempDir, "rollout.jsonl");
-    await writeFile(filePath, tokenCount({ inputTokens: 500, outputTokens: 100 }) + "\n");
+    await writeFile(filePath, `${tokenCount({ inputTokens: 500, outputTokens: 100 })}\n`);
 
     const r1 = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
     const r2 = await parseCodexFile({
@@ -352,7 +352,7 @@ describe("parseCodexFile", () => {
         "2026-03-09T10:00:10.000Z",
       ),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
     // raw delta: in=1500 cached=500 out=400 rea=100
@@ -396,7 +396,7 @@ describe("parseCodexFile", () => {
       turnContext("o3"),
       tokenCount({ inputTokens: 2000, outputTokens: 500 }, "2026-03-09T10:01:00.000Z"),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
     expect(result.deltas).toHaveLength(2);
@@ -422,7 +422,7 @@ describe("parseCodexFile", () => {
       // Valid token_count with timestamp
       tokenCount({ inputTokens: 1000, outputTokens: 200 }, "2026-03-09T10:00:05.000Z"),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
     expect(result.deltas).toHaveLength(1);
@@ -443,7 +443,7 @@ describe("parseCodexFile", () => {
       }),
       tokenCount({ inputTokens: 500, outputTokens: 100 }, "2026-03-09T10:00:10.000Z"),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
     expect(result.deltas).toHaveLength(1);
@@ -467,7 +467,7 @@ describe("parseCodexFile", () => {
       }),
       tokenCount({ inputTokens: 500, outputTokens: 100 }, "2026-03-09T10:00:10.000Z"),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
     expect(result.deltas).toHaveLength(1);
@@ -482,7 +482,7 @@ describe("parseCodexFile", () => {
       turnContext("   "), // whitespace only, trims to empty
       tokenCount({ inputTokens: 500, outputTokens: 100 }, "2026-03-09T10:00:05.000Z"),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
     expect(result.deltas).toHaveLength(1);
@@ -497,7 +497,7 @@ describe("parseCodexFile", () => {
       tokenCount({ inputTokens: 500, outputTokens: 100 }, "2026-03-09T10:00:05.000Z"),
       "", // another empty line
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
     expect(result.deltas).toHaveLength(1);
@@ -514,7 +514,7 @@ describe("parseCodexFile", () => {
       JSON.stringify({ timestamp: "2026-03-09T10:00:04.000Z" }), // no type field
       tokenCount({ inputTokens: 500, outputTokens: 100 }, "2026-03-09T10:00:05.000Z"),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseCodexFile({ filePath, startOffset: 0, lastTotals: null, lastModel: null });
     expect(result.deltas).toHaveLength(1);

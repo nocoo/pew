@@ -12,7 +12,8 @@ export function LeaderboardSkeleton({ count = 10 }: { count?: number }) {
     <div className="space-y-2">
       {Array.from({ length: count }).map((_, i) => (
         <div
-          key={i}
+          // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+          key={`slot-${i}`}
           className={cn("flex items-center gap-3", ROW_CLASSES)}
         >
           {/* Rank */}

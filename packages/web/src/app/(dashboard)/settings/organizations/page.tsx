@@ -208,10 +208,19 @@ export default function OrganizationsPage() {
               const isPending = pendingAction === org.id;
 
               return (
+                // biome-ignore lint/a11y/useSemanticElements: list row acts as a link/button; using a real <button> would break the inline layout (avatar + name + role badges + hover chrome) and require reworking the Flex row.
                 <div
                   key={org.id}
+                  role="button"
+                  tabIndex={0}
                   className="flex items-center gap-4 p-4 hover:bg-accent/50 transition-colors cursor-pointer"
                   onClick={() => openMembersModal(org)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openMembersModal(org);
+                    }
+                  }}
                 >
                   {/* Logo */}
                   <Avatar className="h-10 w-10">
@@ -232,7 +241,7 @@ export default function OrganizationsPage() {
                   </div>
 
                   {/* Join/Leave button */}
-                  <button
+                  <button type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (isPending) return;
@@ -271,13 +280,26 @@ export default function OrganizationsPage() {
 
       {/* Members Modal */}
       {membersModalOrg && (
+        // biome-ignore lint/a11y/useSemanticElements: modal backdrop overlay — a real <button> would interfere with the child dialog's own interaction/focus semantics.
         <div
+          role="button"
+          tabIndex={0}
+          aria-label="Close members modal"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
           onClick={closeMembersModal}
+          onKeyDown={(e) => {
+            if (e.key === "Escape" || e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              closeMembersModal();
+            }
+          }}
         >
           <div
+            role="dialog"
+            aria-modal="true"
             className="w-full max-w-md mx-4 rounded-xl bg-background border border-border shadow-xl max-h-[80vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-center gap-3 p-4 border-b border-border">
@@ -297,11 +319,11 @@ export default function OrganizationsPage() {
                   {membersModalOrg.memberCount} {membersModalOrg.memberCount === 1 ? "member" : "members"}
                 </p>
               </div>
-              <button
+              <button type="button"
                 onClick={closeMembersModal}
                 className="text-muted-foreground hover:text-foreground transition-colors"
               >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>

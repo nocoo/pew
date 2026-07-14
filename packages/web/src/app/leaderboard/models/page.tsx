@@ -78,7 +78,7 @@ function ModelsLeaderboardContent() {
   // Accept any non-empty model param — backend will return empty if no match,
   // allowing deep-links to DB-extended models not in the static dropdown
   const urlModel = searchParams.get("model");
-  const selectedModel = urlModel && urlModel.trim() ? urlModel : DEFAULT_MODEL;
+  const selectedModel = urlModel?.trim() ? urlModel : DEFAULT_MODEL;
 
   const [period, setPeriod] = useState<LeaderboardPeriod>("week");
 

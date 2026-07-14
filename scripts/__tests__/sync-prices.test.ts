@@ -62,7 +62,7 @@ describe("runSync", () => {
   it("regression check reports removedModels when prior baseline has extras", async () => {
     writeFileSync(
       outputPath,
-      JSON.stringify(
+      `${JSON.stringify(
         [
           {
             model: "deprecated/model",
@@ -78,7 +78,7 @@ describe("runSync", () => {
         ],
         null,
         2
-      ) + "\n"
+      )}\n`
     );
     const r = await runSync({
       dryRun: true,
@@ -148,7 +148,7 @@ describe("main (dry-run path)", () => {
     const out = tempFile();
     writeFileSync(
       out,
-      JSON.stringify(
+      `${JSON.stringify(
         [
           {
             model: "ghost/model",
@@ -164,7 +164,7 @@ describe("main (dry-run path)", () => {
         ],
         null,
         2
-      ) + "\n"
+      )}\n`
     );
     const code = await main(["--dry-run", "--fixture", FIXTURE_DIR, "--output", out]);
     expect(code).toBe(2);
@@ -175,7 +175,7 @@ describe("main (dry-run path)", () => {
     const out = tempFile();
     writeFileSync(
       out,
-      JSON.stringify(
+      `${JSON.stringify(
         [
           {
             model: "ghost/model",
@@ -191,7 +191,7 @@ describe("main (dry-run path)", () => {
         ],
         null,
         2
-      ) + "\n"
+      )}\n`
     );
     const logs: string[] = [];
     const origLog = console.log;
@@ -241,7 +241,7 @@ describe("main (dry-run path)", () => {
     const out = tempFile();
     writeFileSync(
       out,
-      JSON.stringify(
+      `${JSON.stringify(
         [
           {
             model: "gpt-4o",
@@ -257,7 +257,7 @@ describe("main (dry-run path)", () => {
         ],
         null,
         2
-      ) + "\n"
+      )}\n`
     );
     const r = await runSync({
       dryRun: true,

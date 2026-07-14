@@ -50,7 +50,7 @@ function makeRequest(
     "Content-Type": "application/json",
   };
   if (token !== undefined) {
-    headers["Authorization"] = `Bearer ${token}`;
+    headers.Authorization = `Bearer ${token}`;
   }
   return new Request(url, {
     method,

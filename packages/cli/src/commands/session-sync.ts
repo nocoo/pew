@@ -363,7 +363,7 @@ export async function executeSessionSync(
       prevCursor = cursors.zcodeSqlite;
     }
 
-    let result;
+    let result: Awaited<ReturnType<typeof driver.run>>;
     try {
       result = await driver.run(prevCursor, {});
     } catch (err) {

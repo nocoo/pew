@@ -81,7 +81,7 @@ export function ShowcasesContent({ isLoggedIn }: ShowcasesContentProps) {
           <span className="text-sm text-muted-foreground">
             {total} {total === 1 ? "showcase" : "showcases"}
           </span>
-          <button
+          <button type="button"
             onClick={() => refetch()}
             disabled={refreshing}
             className={cn(
@@ -95,7 +95,7 @@ export function ShowcasesContent({ isLoggedIn }: ShowcasesContentProps) {
         </div>
 
         {isLoggedIn && (
-          <button
+          <button type="button"
             onClick={() => setShowModal(true)}
             className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
@@ -112,7 +112,7 @@ export function ShowcasesContent({ isLoggedIn }: ShowcasesContentProps) {
             No showcases yet. Be the first to share a project!
           </p>
           {isLoggedIn && (
-            <button
+            <button type="button"
               onClick={() => setShowModal(true)}
               className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
             >
@@ -140,7 +140,7 @@ export function ShowcasesContent({ isLoggedIn }: ShowcasesContentProps) {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 pt-4">
-          <button
+          <button type="button"
             onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
             disabled={offset === 0}
             className={cn(
@@ -157,7 +157,7 @@ export function ShowcasesContent({ isLoggedIn }: ShowcasesContentProps) {
             Page {currentPage} of {totalPages}
           </span>
 
-          <button
+          <button type="button"
             onClick={() => setOffset(offset + PAGE_SIZE)}
             disabled={currentPage >= totalPages}
             className={cn(

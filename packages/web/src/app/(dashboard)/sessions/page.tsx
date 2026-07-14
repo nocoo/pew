@@ -35,14 +35,16 @@ function SessionsSkeleton() {
       {/* 4-col stat grid (SessionOverview) */}
       <StatGrid columns={4}>
         {Array.from({ length: 4 }).map((_, i) => (
-          <StatCardSkeleton key={i} />
+          // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+          <StatCardSkeleton key={`slot-${i}`} />
         ))}
       </StatGrid>
 
       {/* 2-col efficiency row */}
       <StatGrid columns={2}>
         {Array.from({ length: 2 }).map((_, i) => (
-          <StatCardSkeleton key={i} />
+          // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+          <StatCardSkeleton key={`slot-${i}`} />
         ))}
       </StatGrid>
 

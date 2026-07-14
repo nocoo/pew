@@ -142,7 +142,8 @@ export function TopAchievement({
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full rounded-xl" />
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+            <Skeleton key={`slot-${i}`} className="h-16 w-full rounded-xl" />
           ))}
         </div>
       </div>

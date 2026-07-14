@@ -4,7 +4,7 @@
 
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useId } from "react";
 import { Dialog } from "radix-ui";
 import { X, Loader2, ExternalLink, AlertCircle, Star, GitFork, Code, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -75,6 +75,9 @@ export function ShowcaseFormModal({
   const [githubUrl, setGithubUrl] = useState("");
   const [tagline, setTagline] = useState("");
   const [isPublic, setIsPublic] = useState(true);
+  const uid = useId();
+  const githubUrlId = `${uid}-github-url`;
+  const taglineId = `${uid}-tagline`;
 
   // Preview state (for add mode)
   const { preview, loading: previewLoading, error: previewError, fetchPreview, reset: resetPreview } = useShowcasePreview();
@@ -226,7 +229,7 @@ export function ShowcaseFormModal({
         <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-lg max-h-[90vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl bg-card p-6 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95">
           {/* Close button */}
           <Dialog.Close asChild>
-            <button className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+            <button type="button" className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
               <X className="h-4 w-4" />
             </button>
           </Dialog.Close>
@@ -252,11 +255,12 @@ export function ShowcaseFormModal({
           {/* GitHub URL input (add mode only) */}
           {!editMode && (
             <div className="mb-4">
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+              <label htmlFor={githubUrlId} className="block text-xs font-medium text-muted-foreground mb-1.5">
                 GitHub Repository URL
               </label>
               <div className="flex gap-2">
                 <input
+                  id={githubUrlId}
                   type="url"
                   value={githubUrl}
                   onChange={(e) => setGithubUrl(e.target.value)}
@@ -264,7 +268,7 @@ export function ShowcaseFormModal({
                   className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
                   disabled={submitting}
                 />
-                <button
+                <button type="button"
                   onClick={handlePreview}
                   disabled={!githubUrl.trim() || previewLoading || submitting}
                   className={cn(
@@ -368,7 +372,7 @@ export function ShowcaseFormModal({
                   <p className="text-[10px] text-muted-foreground">
                     Title and description are synced from GitHub.
                   </p>
-                  <button
+                  <button type="button"
                     onClick={handleRefresh}
                     disabled={refreshing || submitting}
                     className={cn(
@@ -393,10 +397,11 @@ export function ShowcaseFormModal({
           {/* Tagline input */}
           {(editMode || displayData) && (
             <div className="mb-4">
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+              <label htmlFor={taglineId} className="block text-xs font-medium text-muted-foreground mb-1.5">
                 Your Recommendation (optional)
               </label>
               <textarea
+                id={taglineId}
                 value={tagline}
                 onChange={(e) => setTagline(e.target.value)}
                 placeholder="Why do you recommend this project?"
@@ -415,9 +420,9 @@ export function ShowcaseFormModal({
           {editMode && (
             <div className="mb-5 flex items-center justify-between">
               <div>
-                <label className="block text-xs font-medium text-foreground">
+                <span className="block text-xs font-medium text-foreground">
                   Public
-                </label>
+                </span>
                 <p className="text-[10px] text-muted-foreground">
                   Show this showcase on the public leaderboard.
                 </p>
@@ -447,14 +452,14 @@ export function ShowcaseFormModal({
           {/* Actions */}
           <div className="flex justify-end gap-2">
             <Dialog.Close asChild>
-              <button
+              <button type="button"
                 disabled={submitting}
                 className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
             </Dialog.Close>
-            <button
+            <button type="button"
               onClick={handleSubmit}
               disabled={!canSubmit}
               className={cn(

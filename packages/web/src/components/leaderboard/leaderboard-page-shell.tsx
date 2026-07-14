@@ -100,7 +100,7 @@ export function LeaderboardPageShell({
           ))}
           {/* Load more button — hide when reached max or no more data */}
           {hasMore && entries.length < MAX_ENTRIES && (
-            <button
+            <button type="button"
               onClick={loadMore}
               disabled={loadingMore}
               className={`w-full ${ROW_CLASSES} text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50`}

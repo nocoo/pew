@@ -93,7 +93,7 @@ export async function POST(request: Request) {
         // Check for collision
         const existing = await dbRead.checkInviteCodeExists(code);
         if (!existing) break;
-        // eslint-disable-next-line no-constant-condition -- retry loop for unique code generation
+        // biome-ignore lint/correctness/noConstantCondition: retry-until-unique loop bounded by the attempts guard above
       } while (true);
 
       await dbWrite.execute(

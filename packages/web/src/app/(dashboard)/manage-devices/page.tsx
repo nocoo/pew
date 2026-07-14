@@ -84,7 +84,8 @@ function DeviceCard({
   };
 
   function relativeTime(iso: string): string {
-    // eslint-disable-next-line react-hooks/purity -- Date.now() for relative time display is intentionally impure
+    // NOTE: react-hooks/purity had no biome equivalent, monitored via review.
+    // Date.now() for relative time display is intentionally impure.
     const diff = Date.now() - new Date(iso).getTime();
     const mins = Math.floor(diff / 60000);
     if (mins < 1) return "just now";
@@ -118,7 +119,6 @@ function DeviceCard({
                 onBlur={handleSave}
                 onKeyDown={handleKeyDown}
                 maxLength={50}
-                autoFocus
                 disabled={saving}
                 placeholder={isDefault ? "Legacy Device" : shortDeviceId(device.device_id)}
                 className={cn(
@@ -132,7 +132,7 @@ function DeviceCard({
               )}
             </div>
           ) : (
-            <button
+            <button type="button"
               onClick={handleStartEdit}
               className="text-sm font-medium text-foreground hover:text-foreground/80 transition-colors text-left"
               title="Click to rename"
@@ -220,7 +220,7 @@ function DeviceCard({
           {confirmDelete ? (
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">Delete this device?</span>
-              <button
+              <button type="button"
                 onClick={handleDelete}
                 disabled={deleting}
                 className={cn(
@@ -230,7 +230,7 @@ function DeviceCard({
               >
                 {deleting ? "Deleting..." : "Confirm"}
               </button>
-              <button
+              <button type="button"
                 onClick={() => setConfirmDelete(false)}
                 disabled={deleting}
                 className="rounded-lg bg-accent px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-accent/80 transition-colors"
@@ -239,7 +239,7 @@ function DeviceCard({
               </button>
             </div>
           ) : (
-            <button
+            <button type="button"
               onClick={() => setConfirmDelete(true)}
               className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
             >
@@ -350,7 +350,7 @@ function AuthCodeModal({
               </Dialog.Title>
             </div>
             <Dialog.Close asChild>
-              <button
+              <button type="button"
                 className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 aria-label="Close"
               >
@@ -415,7 +415,7 @@ function AuthCodeModal({
               </div>
 
               {/* Regenerate button */}
-              <button
+              <button type="button"
                 onClick={handleGenerateAuthCode}
                 disabled={generatingCode}
                 className={cn(
@@ -427,7 +427,7 @@ function AuthCodeModal({
               </button>
             </div>
           ) : (
-            <button
+            <button type="button"
               onClick={handleGenerateAuthCode}
               disabled={generatingCode}
               className={cn(
@@ -489,7 +489,7 @@ export default function ManageDevicesPage() {
             Manage your synced devices and set aliases.
           </p>
         </div>
-        <button
+        <button type="button"
           onClick={() => setShowAuthCodeModal(true)}
           className="flex items-center gap-2 rounded-lg bg-secondary border border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
         >

@@ -38,7 +38,8 @@ function DevicesSkeleton() {
       {/* Stat grid (3 cols) */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="rounded-card bg-secondary p-4 space-y-2">
+          // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+          <div key={`slot-${i}`} className="rounded-card bg-secondary p-4 space-y-2">
             <Skeleton className="h-3 w-20" />
             <Skeleton className="h-7 w-24" />
           </div>
@@ -48,7 +49,8 @@ function DevicesSkeleton() {
       {/* 2-col chart grid (Trend + Share) */}
       <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         {Array.from({ length: 2 }).map((_, i) => (
-          <ChartCardSkeleton key={i} titleWidth="w-24" chartHeight="h-[240px] md:h-[280px]" />
+          // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+          <ChartCardSkeleton key={`slot-${i}`} titleWidth="w-24" chartHeight="h-[240px] md:h-[280px]" />
         ))}
       </div>
 
@@ -73,7 +75,8 @@ function DevicesSkeleton() {
           </thead>
           <tbody>
             {Array.from({ length: 4 }).map((_, i) => (
-              <tr key={i} className="border-b border-border/50 last:border-0">
+              // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+              <tr key={`slot-${i}`} className="border-b border-border/50 last:border-0">
                 <td className="px-4 py-3"><Skeleton className="h-4 w-28" /></td>
                 <td className="px-4 py-3 hidden lg:table-cell"><Skeleton className="h-4 w-16" /></td>
                 <td className="px-4 py-3 hidden xl:table-cell"><Skeleton className="h-4 w-16" /></td>
@@ -98,13 +101,15 @@ function DevicesSkeleton() {
         </div>
         <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
           {Array.from({ length: 2 }).map((_, i) => (
-            <ChartCardSkeleton key={i} titleWidth="w-20" chartHeight="h-[200px]" />
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+            <ChartCardSkeleton key={`slot-${i}`} titleWidth="w-20" chartHeight="h-[200px]" />
           ))}
         </div>
         {/* Trend charts skeleton row */}
         <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
           {Array.from({ length: 2 }).map((_, i) => (
-            <ChartCardSkeleton key={i} titleWidth="w-24" chartHeight="h-[240px] md:h-[280px]" />
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+            <ChartCardSkeleton key={`slot-${i}`} titleWidth="w-24" chartHeight="h-[240px] md:h-[280px]" />
           ))}
         </div>
       </div>
@@ -272,8 +277,7 @@ export default function ByDevicePage() {
 
       {/* Content */}
       {!loading && data && (
-        <>
-          {devices.length === 0 ? (
+        devices.length === 0 ? (
             <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
               No device data yet. Sync from multiple devices to compare usage.
             </div>
@@ -463,8 +467,7 @@ export default function ByDevicePage() {
                 </div>
               </DashboardSegment>
             </>
-          )}
-        </>
+          )
       )}
     </div>
   );

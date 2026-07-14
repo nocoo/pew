@@ -306,7 +306,7 @@ export default function SettingsPage() {
 
           {/* Save button */}
           <div className="space-y-3">
-            <button
+            <button type="button"
               onClick={handleSaveSettings}
               disabled={saving}
               className={cn(
@@ -355,7 +355,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button
+            <button type="button"
               onClick={handleDeleteAccount}
               disabled={deleting || deleteConfirmEmail.toLowerCase() !== userEmail.toLowerCase()}
               className={cn(

@@ -241,7 +241,7 @@ describe("pruneAliasCursors", () => {
       [fakePath]: { inode: 1, size: 0 },
     };
     const result = await pruneAliasCursors(cursors, new Set(), undefined, {
-      protectedPrefixes: [join(tempDir, "foo/bar") + "/"],
+      protectedPrefixes: [`${join(tempDir, "foo/bar")}/`],
     });
     expect(result.protected).toBe(1);
     expect(result.cursorFiles[fakePath]).toBeDefined();
@@ -252,7 +252,7 @@ describe("pruneAliasCursors", () => {
     // protect C:\\a\\barbaz\\file. Same rule as the POSIX boundary
     // test above; the regression-class is identical.
     const cursors: Record<string, DummyCursor> = {
-      ["C:\\a\\barbaz\\file.json"]: { inode: 1, size: 0 },
+      "C:\\a\\barbaz\\file.json": { inode: 1, size: 0 },
     };
     const result = await pruneAliasCursors(cursors, new Set(), undefined, {
       protectedPrefixes: ["C:\\a\\bar"],

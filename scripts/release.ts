@@ -21,9 +21,9 @@
  * Adapted from zhe/scripts/release.ts for monorepo use.
  */
 
-import { spawn } from "child_process";
-import { resolve as pathResolve } from "path";
-import { readFileSync, writeFileSync } from "fs";
+import { spawn } from "node:child_process";
+import { resolve as pathResolve } from "node:path";
+import { readFileSync, writeFileSync } from "node:fs";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -361,10 +361,10 @@ function updateChangelog(newSection: string): void {
   let updated: string;
   if (idx === -1) {
     // No existing entries — append after header
-    updated = content.trimEnd() + "\n\n" + newSection + "\n";
+    updated = `${content.trimEnd()}\n\n${newSection}\n`;
   } else {
     updated =
-      content.slice(0, idx) + newSection + "\n\n" + content.slice(idx);
+      `${content.slice(0, idx) + newSection}\n\n${content.slice(idx)}`;
   }
 
   writeFileSync(CHANGELOG_MD, updated);
@@ -663,7 +663,7 @@ async function main(): Promise<void> {
   }
 
   // Summary
-  console.log("\n" + "=".repeat(50));
+  console.log(`\n${"=".repeat(50)}`);
   console.log(`✅ Released v${newVersion}`);
   console.log(`   📋 Commit:  chore: bump version to ${newVersion}`);
   console.log(`   🏷️  Tag:     v${newVersion}`);

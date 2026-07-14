@@ -110,10 +110,10 @@ describe("CLI E2E: sync pipeline", () => {
   it("should sync Claude data end-to-end and verify disk output", async () => {
     const claudeDir = join(dataDir, ".claude", "projects", "proj-e2e");
     await mkdir(claudeDir, { recursive: true });
-    const content = [
+    const content = `${[
       claudeLine("2026-03-07T10:05:00.000Z", 1000, 100),
       claudeLine("2026-03-07T10:20:00.000Z", 2000, 200),
-    ].join("\n") + "\n";
+    ].join("\n")}\n`;
     await writeFile(join(claudeDir, "session.jsonl"), content);
 
     const result = await executeSync({
@@ -149,7 +149,7 @@ describe("CLI E2E: sync pipeline", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 5000, 800) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
     );
 
     // Gemini
@@ -173,7 +173,7 @@ describe("CLI E2E: sync pipeline", () => {
     await mkdir(ocwDir, { recursive: true });
     await writeFile(
       join(ocwDir, "session.jsonl"),
-      openclawLine("2026-03-07T16:00:00.000Z", 4000, 500) + "\n",
+      `${openclawLine("2026-03-07T16:00:00.000Z", 4000, 500)}\n`,
     );
 
     const result = await executeSync({
@@ -205,7 +205,7 @@ describe("CLI E2E: sync pipeline", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 5000, 800) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
     );
 
     const r1 = await executeSync({
@@ -233,7 +233,7 @@ describe("CLI E2E: sync pipeline", () => {
     await mkdir(claudeDir, { recursive: true });
     const filePath = join(claudeDir, "session.jsonl");
 
-    await writeFile(filePath, claudeLine("2026-03-07T10:15:00.000Z", 5000, 800) + "\n");
+    await writeFile(filePath, `${claudeLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`);
 
     const r1 = await executeSync({
       stateDir,
@@ -243,7 +243,7 @@ describe("CLI E2E: sync pipeline", () => {
 
     // Append new data
     const { appendFile } = await import("node:fs/promises");
-    await appendFile(filePath, claudeLine("2026-03-07T10:45:00.000Z", 3000, 400) + "\n");
+    await appendFile(filePath, `${claudeLine("2026-03-07T10:45:00.000Z", 3000, 400)}\n`);
 
     const r2 = await executeSync({
       stateDir,
@@ -273,7 +273,7 @@ describe("CLI E2E: sync pipeline", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
 
     const events: Array<{ source: string; phase: string }> = [];
@@ -337,7 +337,7 @@ describe("CLI E2E: status after sync", () => {
       await mkdir(dir, { recursive: true });
       await writeFile(
         join(dir, "session.jsonl"),
-        claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+        `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
       );
     }
 
@@ -399,7 +399,7 @@ describe("CLI E2E: queue record schema validation", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 5000, 800) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
     );
 
     const geminiDir = join(dataDir, ".gemini", "tmp", "proj-b", "chats");
@@ -413,7 +413,7 @@ describe("CLI E2E: queue record schema validation", () => {
     await mkdir(ocwDir, { recursive: true });
     await writeFile(
       join(ocwDir, "session.jsonl"),
-      openclawLine("2026-03-07T16:00:00.000Z", 4000, 500) + "\n",
+      `${openclawLine("2026-03-07T16:00:00.000Z", 4000, 500)}\n`,
     );
 
     await executeSync({

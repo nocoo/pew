@@ -133,7 +133,6 @@ export async function uninstallGeminiHook(
   if (nextEntries.length > 0) {
     nextHooks[EVENT_NAME] = nextEntries;
   } else {
-    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- 卸载 hook 时清理配置 key
     delete nextHooks[EVENT_NAME];
   }
 

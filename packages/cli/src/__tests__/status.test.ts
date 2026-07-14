@@ -160,9 +160,9 @@ describe("executeStatus", () => {
     expect(result.trackedFiles).toBe(8);
     expect(result.sources["claude-code"]).toBe(2);
     expect(result.sources["gemini-cli"]).toBe(1);
-    expect(result.sources["opencode"]).toBe(1);
-    expect(result.sources["openclaw"]).toBe(1);
-    expect(result.sources["codex"]).toBe(1);
+    expect(result.sources.opencode).toBe(1);
+    expect(result.sources.openclaw).toBe(1);
+    expect(result.sources.codex).toBe(1);
     expect(result.sources["vscode-copilot"]).toBe(1);
     expect(result.sources["copilot-cli"]).toBe(1);
   });
@@ -190,8 +190,8 @@ describe("executeStatus", () => {
       sourceDirs: { ...defaultDirs, codexSessionsDir: customCodexDir },
     });
     expect(result.trackedFiles).toBe(1);
-    expect(result.sources["codex"]).toBe(1);
-    expect(result.sources["unknown"]).toBeUndefined();
+    expect(result.sources.codex).toBe(1);
+    expect(result.sources.unknown).toBeUndefined();
   });
 
   it("should classify copilot-cli files correctly", async () => {
@@ -222,7 +222,7 @@ describe("executeStatus", () => {
     });
     expect(result.trackedFiles).toBe(2);
     expect(result.sources["copilot-cli"]).toBe(2);
-    expect(result.sources["unknown"]).toBeUndefined();
+    expect(result.sources.unknown).toBeUndefined();
   });
 
   it("should classify vscode-copilot files correctly", async () => {
@@ -246,7 +246,7 @@ describe("executeStatus", () => {
     });
     expect(result.trackedFiles).toBe(1);
     expect(result.sources["vscode-copilot"]).toBe(1);
-    expect(result.sources["unknown"]).toBeUndefined();
+    expect(result.sources.unknown).toBeUndefined();
   });
 
   it("should classify Multica Codex files as codex", async () => {
@@ -281,8 +281,8 @@ describe("executeStatus", () => {
       sourceDirs: { ...defaultDirs, multicaCodexDirs: multicaDirs },
     });
     expect(result.trackedFiles).toBe(2);
-    expect(result.sources["codex"]).toBe(2);
-    expect(result.sources["unknown"]).toBeUndefined();
+    expect(result.sources.codex).toBe(2);
+    expect(result.sources.unknown).toBeUndefined();
   });
 
   it("should count pending records from queue", async () => {
@@ -404,10 +404,10 @@ describe("executeStatus", () => {
       sourceDirs: defaultDirs,
     });
     expect(result.trackedFiles).toBe(4);
-    expect(result.sources["kosmos"]).toBe(1);
-    expect(result.sources["pmstudio"]).toBe(1);
-    expect(result.sources["pi"]).toBe(1);
-    expect(result.sources["unknown"]).toBe(1);
+    expect(result.sources.kosmos).toBe(1);
+    expect(result.sources.pmstudio).toBe(1);
+    expect(result.sources.pi).toBe(1);
+    expect(result.sources.unknown).toBe(1);
   });
 
   it("should include notifier statuses when provided", async () => {

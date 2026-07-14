@@ -720,7 +720,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       return executeSync(opts);
     }
 
-    let result;
+    let result: Awaited<ReturnType<typeof driver.run>>;
     try {
       result = await driver.run(prevCursor, ctx);
     } catch (err) {

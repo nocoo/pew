@@ -7,7 +7,7 @@ import type { ByteOffsetCursor } from "@pew/core";
 import type { SyncContext, FileFingerprint } from "../../../drivers/types.js";
 
 function buildUsageBlock(input_tokens = 1000, output_tokens = 100): string {
-  return [
+  return `${[
     `2026-03-16T10:40:00.959Z [INFO] [Telemetry] cli.telemetry:`,
     `{`,
     `  "kind": "assistant_usage",`,
@@ -21,7 +21,7 @@ function buildUsageBlock(input_tokens = 1000, output_tokens = 100): string {
     `  "created_at": "2026-03-16T10:40:00.959Z"`,
     `}`,
     `2026-03-16T10:40:00.960Z [DEBUG] Done`,
-  ].join("\n") + "\n";
+  ].join("\n")}\n`;
 }
 
 describe("copilotCliTokenDriver", () => {

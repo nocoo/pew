@@ -134,6 +134,7 @@ function AchievementRing({
   return (
     <div className="relative inline-flex items-center justify-center shrink-0">
       <svg
+        aria-hidden="true"
         width={RING_SIZE}
         height={RING_SIZE}
         viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
@@ -233,7 +234,8 @@ function AchievementsSkeleton() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-3 rounded-lg p-3 bg-muted/20">
+        // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+        <div key={`slot-${i}`} className="flex items-center gap-3 rounded-lg p-3 bg-muted/20">
           <Skeleton className="h-10 w-10 rounded-full" />
           <div className="flex-1 space-y-2">
             <Skeleton className="h-4 w-24" />

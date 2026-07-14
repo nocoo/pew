@@ -1,0 +1,129 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.5.3/schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"ignoreUnknown": true,
+		"includes": [
+			"**",
+			"!**/node_modules",
+			"!**/dist",
+			"!**/.next",
+			"!**/.next-e2e",
+			"!**/.next-e2e-ui",
+			"!**/coverage",
+			"!**/data",
+			"!**/*.min.js",
+			"!**/__golden__",
+			"!**/public",
+			"!packages/web/next-env.d.ts"
+		]
+	},
+	"formatter": { "enabled": false },
+	"assist": { "enabled": false },
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended",
+			"style": {
+				"useImportType": "error",
+				"useNodejsImportProtocol": "error",
+				"useAsConstAssertion": "error",
+				"useLiteralEnumMembers": "error",
+				"useEnumInitializers": "error",
+				"useArrayLiterals": "error",
+				"useUnifiedTypeSignatures": "error",
+				"noNamespace": "error",
+				"noInferrableTypes": "error",
+				"noNonNullAssertion": "error"
+			},
+			"suspicious": {
+				"noExplicitAny": "error",
+				"noConfusingVoidType": "error",
+				"noExtraNonNullAssertion": "error",
+				"noMisleadingInstantiator": "error",
+				"noUnsafeDeclarationMerging": "error",
+				"noRedeclare": "error",
+				"noPrototypeBuiltins": "error",
+				"noSelfCompare": "error",
+				"noConfusingLabels": "error",
+				"noEmptyBlockStatements": "error",
+				"noEmptyInterface": "error",
+				"noNonNullAssertedOptionalChain": "error",
+				"useAwait": "off",
+				"noTsIgnore": "error",
+				"useAdjacentOverloadSignatures": "error"
+			},
+			"complexity": {
+				"noBannedTypes": "error",
+				"noStaticOnlyClass": "error",
+				"noUselessTypeConstraint": "error",
+				"noUselessEmptyExport": "error",
+				"noUselessConstructor": "error",
+				"noUselessThisAlias": "error",
+				"useOptionalChain": "error",
+				"useLiteralKeys": "error",
+				"useRegexLiterals": "error"
+			},
+			"correctness": {
+				"noUnusedVariables": {
+					"level": "error",
+					"options": { "ignoreRestSiblings": true }
+				},
+				"noUnusedImports": "error",
+				"noUnusedFunctionParameters": {
+					"level": "error",
+					"options": { "ignoreRestSiblings": true }
+				},
+				"noEmptyPattern": "error",
+				"useExhaustiveDependencies": "error",
+				"useHookAtTopLevel": "error",
+				"useYield": "error",
+				"noInvalidUseBeforeDeclaration": "error"
+			},
+			"security": {
+				"noDangerouslySetInnerHtml": "error"
+			},
+			"performance": {
+				"noImgElement": "error"
+			},
+			"a11y": {
+				"useButtonType": "error",
+				"useSemanticElements": "error",
+				"noSvgWithoutTitle": "error",
+				"useAriaPropsSupportedByRole": "error"
+			}
+		}
+	},
+	"javascript": {
+		"globals": ["Bun"]
+	},
+	"css": {
+		"parser": {
+			"cssModules": true,
+			"tailwindDirectives": true
+		}
+	},
+	"overrides": [
+		{
+			"includes": ["**/*.test.ts", "**/*.test.tsx", "**/__tests__/**"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noExplicitAny": "off",
+						"noEmptyBlockStatements": "off",
+						"noSkippedTests": "error",
+						"noFocusedTests": "error"
+					},
+					"style": {
+						"useImportType": "off",
+						"noNonNullAssertion": "off"
+					}
+				}
+			}
+		}
+	]
+}

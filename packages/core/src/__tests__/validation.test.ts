@@ -172,7 +172,7 @@ describe("isNonEmptyString", () => {
   it("should enforce max length", () => {
     const longString = "x".repeat(MAX_STRING_LENGTH);
     expect(isNonEmptyString(longString)).toBe(true);
-    expect(isNonEmptyString(longString + "x")).toBe(false);
+    expect(isNonEmptyString(`${longString}x`)).toBe(false);
   });
 
   it("should accept custom max length", () => {

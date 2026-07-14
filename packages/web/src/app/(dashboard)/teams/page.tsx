@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useId, useState } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import Link from "next/link";
@@ -43,7 +43,7 @@ function TeamLogo({ team }: { team: Team }) {
   return (
     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent text-muted-foreground overflow-hidden">
       {hasLogo ? (
-        // eslint-disable-next-line @next/next/no-img-element -- external team logos
+        // biome-ignore lint/performance/noImgElement: user-supplied image URL, not amenable to next/image domain allowlist -- external team logos
         <img
           src={team.logoUrl as string}
           alt={`${team.name} logo`}
@@ -134,7 +134,7 @@ function TeamCard({
         <div className="flex items-center gap-1 shrink-0">
           {/* Invite button (owner only) */}
           {isOwner && (
-            <button
+            <button type="button"
               onClick={() => openInviteDialog(team.name, team.invite_code)}
               className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title="Invite members"
@@ -145,7 +145,7 @@ function TeamCard({
           )}
           {/* Leave/delete button — hidden for owner when other members exist */}
           {!(isOwner && hasOtherMembers) && (
-            <button
+            <button type="button"
               onClick={handleLeave}
               className={cn(
                 "flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
@@ -204,6 +204,9 @@ export default function TeamsPage() {
   const [inviteCode, setInviteCode] = useState("");
   const [joiningTeam, setJoiningTeam] = useState(false);
   const [teamMessage, setTeamMessage] = useState<MessageBannerMsg | null>(null);
+  const uid = useId();
+  const newTeamNameId = `${uid}-new-team-name`;
+  const inviteCodeId = `${uid}-invite-code`;
   const { data: session } = useSession();
   const currentUserId = session?.user?.id ?? null;
 
@@ -303,7 +306,7 @@ export default function TeamsPage() {
             Your Teams
           </h2>
           <div className="flex gap-2">
-            <button
+            <button type="button"
               onClick={() => {
                 setShowJoinTeam(!showJoinTeam);
                 setShowCreateTeam(false);
@@ -313,7 +316,7 @@ export default function TeamsPage() {
               <LogIn className="h-3.5 w-3.5" strokeWidth={1.5} />
               Join
             </button>
-            <button
+            <button type="button"
               onClick={() => {
                 setShowCreateTeam(!showCreateTeam);
                 setShowJoinTeam(false);
@@ -332,11 +335,12 @@ export default function TeamsPage() {
         {/* Create team form */}
         {showCreateTeam && (
           <div className="rounded-xl bg-secondary p-4 mb-3">
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+            <label htmlFor={newTeamNameId} className="block text-xs font-medium text-muted-foreground mb-1.5">
               Team Name
             </label>
             <div className="flex gap-2">
               <input
+                id={newTeamNameId}
                 type="text"
                 value={newTeamName}
                 onChange={(e) => setNewTeamName(e.target.value)}
@@ -345,7 +349,7 @@ export default function TeamsPage() {
                 className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow min-w-0"
                 onKeyDown={(e) => e.key === "Enter" && handleCreateTeam()}
               />
-              <button
+              <button type="button"
                 onClick={handleCreateTeam}
                 disabled={creatingTeam || !newTeamName.trim()}
                 className={cn(
@@ -363,11 +367,12 @@ export default function TeamsPage() {
         {/* Join team form */}
         {showJoinTeam && (
           <div className="rounded-xl bg-secondary p-4 mb-3">
-            <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+            <label htmlFor={inviteCodeId} className="block text-xs font-medium text-muted-foreground mb-1.5">
               Invite Code
             </label>
             <div className="flex gap-2">
               <input
+                id={inviteCodeId}
                 type="text"
                 value={inviteCode}
                 onChange={(e) => setInviteCode(e.target.value)}
@@ -376,7 +381,7 @@ export default function TeamsPage() {
                 className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow min-w-0"
                 onKeyDown={(e) => e.key === "Enter" && handleJoinTeam()}
               />
-              <button
+              <button type="button"
                 onClick={handleJoinTeam}
                 disabled={joiningTeam || !inviteCode.trim()}
                 className={cn(

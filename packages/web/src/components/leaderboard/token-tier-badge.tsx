@@ -59,7 +59,7 @@ function resolveTier(totalTokens: number): TierInfo | null {
   if (totalTokens < 1_000) return null;
 
   const digits = Math.floor(Math.log10(totalTokens)) + 1;
-  const leading = Math.floor(totalTokens / Math.pow(10, digits - 1));
+  const leading = Math.floor(totalTokens / 10 ** (digits - 1));
   const magnitudeName = MAGNITUDE_NAMES[digits] ?? `${digits}-digit`;
 
   return {

@@ -64,7 +64,7 @@ export async function installPiHook(
     // File doesn't exist — will install
   }
 
-  if (existing && existing.includes(MARKER)) {
+  if (existing?.includes(MARKER)) {
     // Already installed — check if content matches
     if (existing === content) {
       return {

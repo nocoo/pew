@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { type BadgeIconType } from "@pew/core";
+import type { BadgeIconType } from "@pew/core";
 import {
   Shield,
   Star,

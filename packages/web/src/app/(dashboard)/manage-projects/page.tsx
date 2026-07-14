@@ -71,7 +71,6 @@ function CreateProjectForm({
         onChange={(e) => setName(e.target.value)}
         placeholder="Project name"
         maxLength={100}
-        autoFocus
         className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
       />
       <button
@@ -119,7 +118,7 @@ function AssignDropdown({
               Existing projects
             </p>
             {projects.map((p) => (
-              <button
+              <button type="button"
                 key={p.id}
                 onClick={() => {
                   onAssignExisting(p.id);
@@ -134,7 +133,7 @@ function AssignDropdown({
             <Separator className="my-1" />
           </>
         )}
-        <button
+        <button type="button"
           onClick={() => {
             onCreateNew();
             onClose();
@@ -193,13 +192,12 @@ function ProjectCard({
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 maxLength={100}
-                autoFocus
                 onBlur={handleRename}
                 className="flex-1 rounded-lg border border-border bg-background px-2 py-1 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring/20"
               />
             </form>
           ) : (
-            <button
+            <button type="button"
               onClick={() => {
                 setEditName(project.name);
                 setEditing(true);
@@ -239,7 +237,7 @@ function ProjectCard({
         {/* Delete */}
         {confirming ? (
           <div className="flex items-center gap-1.5">
-            <button
+            <button type="button"
               onClick={() => {
                 onDelete();
                 setConfirming(false);
@@ -248,7 +246,7 @@ function ProjectCard({
             >
               Delete
             </button>
-            <button
+            <button type="button"
               onClick={() => setConfirming(false)}
               className="rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
             >
@@ -256,7 +254,7 @@ function ProjectCard({
             </button>
           </div>
         ) : (
-          <button
+          <button type="button"
             onClick={() => setConfirming(true)}
             className="rounded-md p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
             title="Delete project"
@@ -286,7 +284,7 @@ function ProjectCard({
               <code className="font-mono text-foreground break-all">
                 {alias.project_ref}
               </code>
-              <button
+              <button type="button"
                 onClick={() => onRemoveAlias(alias)}
                 className="ml-0.5 text-muted-foreground/50 hover:text-destructive transition-colors"
                 title="Remove alias"
@@ -445,7 +443,7 @@ export default function ProjectsPage() {
               Your Projects
             </h2>
             {!showCreate && (
-              <button
+              <button type="button"
                 onClick={() => {
                   setCreateForAlias(null);
                   setShowCreate(true);
@@ -593,7 +591,7 @@ export default function ProjectsPage() {
                         </td>
                         <td className="px-4 py-2.5 text-right whitespace-nowrap">
                           <div className="relative inline-block">
-                            <button
+                            <button type="button"
                               onClick={() =>
                                 setOpenDropdownKey(
                                   openDropdownKey === key ? null : key,

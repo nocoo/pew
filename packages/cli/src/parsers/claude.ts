@@ -69,7 +69,7 @@ export async function parseClaudeFile(opts: {
   const emittedIds: string[] = [];
 
   const st = await stat(filePath).catch(() => null);
-  if (!st || !st.isFile()) return { deltas, endOffset: startOffset, emittedIds };
+  if (!st?.isFile()) return { deltas, endOffset: startOffset, emittedIds };
 
   const endOffset = st.size;
   if (startOffset >= endOffset) return { deltas, endOffset, emittedIds };
@@ -83,7 +83,7 @@ export async function parseClaudeFile(opts: {
   try {
     for await (const line of rl) {
       // Fast-path: skip lines that can't contain usage data
-      if (!line || !line.includes('"usage"')) continue;
+      if (!line?.includes('"usage"')) continue;
 
       let obj: Record<string, unknown>;
       try {

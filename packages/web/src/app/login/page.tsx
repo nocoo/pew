@@ -14,7 +14,8 @@ function Barcode() {
     <div className="flex items-stretch gap-[1.5px] h-full">
       {bars.map((w, i) => (
         <div
-          key={i}
+          // biome-ignore lint/suspicious/noArrayIndexKey: compile-time constant tuple; positional key is authoritative.
+          key={`bar-${i}`}
           className="rounded-[0.5px] bg-primary-foreground"
           style={{ width: `${w * 1.5}px`, opacity: i % 3 === 0 ? 0.9 : 0.5 }}
         />
@@ -50,7 +51,7 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
   const rawCallback = searchParams.get("callbackUrl");
-  const callbackUrl = rawCallback && rawCallback.startsWith("/") && !rawCallback.startsWith("//") ? rawCallback : "/dashboard";
+  const callbackUrl = rawCallback?.startsWith("/") && !rawCallback.startsWith("//") ? rawCallback : "/dashboard";
   const year = new Date().getFullYear();
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
 
@@ -207,14 +208,13 @@ function LoginContent() {
                       }
                     }}
                     className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-center text-sm font-mono tracking-widest text-foreground placeholder:text-muted-foreground/50 placeholder:tracking-normal placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-ring"
-                    autoFocus
                   />
                   {inviteError && (
                     <div className="w-full rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive text-center">
                       {inviteError}
                     </div>
                   )}
-                  <button
+                  <button type="button"
                     onClick={handleInviteSubmit}
                     disabled={inviteCode.trim().length === 0 || verifying}
                     className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-secondary px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
@@ -227,7 +227,7 @@ function LoginContent() {
             ) : (
               <>
                 {/* Google Sign-in button */}
-                <button
+                <button type="button"
                   onClick={handleGoogleLogin}
                   className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-secondary px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent cursor-pointer"
                 >

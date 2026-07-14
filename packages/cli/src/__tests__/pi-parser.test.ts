@@ -106,7 +106,7 @@ describe("parsePiFile", () => {
         },
       }),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parsePiFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(1);
@@ -153,7 +153,7 @@ describe("parsePiFile", () => {
         modelId: "claude-sonnet-4",
       }),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parsePiFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(0);
@@ -185,7 +185,7 @@ describe("parsePiFile", () => {
         usage: { input: 5, output: 200, cacheRead: 500, cacheWrite: 2000 },
       },
     });
-    await writeFile(filePath, line1 + "\n" + line2 + "\n");
+    await writeFile(filePath, `${line1}\n${line2}\n`);
 
     // First parse — get both
     const result1 = await parsePiFile({ filePath, startOffset: 0 });
@@ -214,7 +214,7 @@ describe("parsePiFile", () => {
         usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
       },
     });
-    await writeFile(filePath, line + "\n");
+    await writeFile(filePath, `${line}\n`);
 
     const result = await parsePiFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(0);
@@ -233,7 +233,7 @@ describe("parsePiFile", () => {
         usage: { input: 3, output: 100, cacheRead: 0, cacheWrite: 1000 },
       },
     });
-    await writeFile(filePath, line + "\n");
+    await writeFile(filePath, `${line}\n`);
 
     const result = await parsePiFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(0);
@@ -279,7 +279,7 @@ describe("parsePiFile", () => {
         },
       },
     ];
-    await writeFile(filePath, messages.map((m) => JSON.stringify(m)).join("\n") + "\n");
+    await writeFile(filePath, `${messages.map((m) => JSON.stringify(m)).join("\n")}\n`);
 
     const result = await parsePiFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(3);
@@ -319,7 +319,7 @@ describe("parsePiFile", () => {
         usage: { input: 3, output: 100, cacheRead: 0, cacheWrite: 1000 },
       },
     });
-    await writeFile(filePath, "not valid json\n" + validLine + "\n");
+    await writeFile(filePath, `not valid json\n${validLine}\n`);
 
     const result = await parsePiFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(1);
@@ -339,7 +339,7 @@ describe("parsePiFile", () => {
         usage: { input: 3, output: 100, cacheRead: 0, cacheWrite: 1000 },
       },
     });
-    await writeFile(filePath, line + "\n");
+    await writeFile(filePath, `${line}\n`);
 
     const result = await parsePiFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(0);
@@ -358,7 +358,7 @@ describe("parsePiFile", () => {
         usage: "not an object",
       },
     });
-    await writeFile(filePath, line + "\n");
+    await writeFile(filePath, `${line}\n`);
 
     const result = await parsePiFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(0);
@@ -377,7 +377,7 @@ describe("parsePiFile", () => {
         usage: { input: 3, output: 100, cacheRead: 0, cacheWrite: 1000 },
       },
     });
-    await writeFile(filePath, line + "\n");
+    await writeFile(filePath, `${line}\n`);
 
     const result = await parsePiFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(0);
@@ -396,7 +396,7 @@ describe("parsePiFile", () => {
         usage: { input: 3, output: 100, cacheRead: 0, cacheWrite: 1000 },
       },
     });
-    await writeFile(filePath, line + "\n");
+    await writeFile(filePath, `${line}\n`);
 
     const result = await parsePiFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(0);
@@ -410,7 +410,7 @@ describe("parsePiFile", () => {
       timestamp: "2026-04-07T04:42:45.000Z",
       usage: { input: 3, output: 100 },
     });
-    await writeFile(filePath, line + "\n");
+    await writeFile(filePath, `${line}\n`);
 
     const result = await parsePiFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(0);
@@ -424,7 +424,7 @@ describe("parsePiFile", () => {
       timestamp: "2026-04-07T04:42:45.000Z",
       usage: { input: 3, output: 100 },
     });
-    await writeFile(filePath, line + "\n");
+    await writeFile(filePath, `${line}\n`);
 
     const result = await parsePiFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(0);

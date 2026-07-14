@@ -115,7 +115,7 @@ function ModelPricingRow({
             const icon = providerIconPath(entry.provider) ?? (entry.origin === "openrouter" ? OPENROUTER_FALLBACK_ICON : null);
             if (!icon) return null;
             return (
-              // eslint-disable-next-line @next/next/no-img-element
+              // biome-ignore lint/performance/noImgElement: user-supplied image URL, not amenable to next/image domain allowlist
               <img
                 src={icon.src}
                 alt=""

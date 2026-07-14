@@ -106,7 +106,7 @@ export async function parseVscodeCopilotFile(
   }
 
   const st = await stat(filePath).catch(() => null);
-  if (!st || !st.isFile()) {
+  if (!st?.isFile()) {
     return {
       deltas,
       endOffset: startOffset,

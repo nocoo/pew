@@ -19,7 +19,7 @@ function makeRequest(body: unknown, token?: string, clientVersion?: string): Req
     "Content-Type": "application/json",
   };
   if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+    headers.Authorization = `Bearer ${token}`;
   }
   if (clientVersion) {
     headers["X-Pew-Client-Version"] = clientVersion;
@@ -218,7 +218,7 @@ describe("POST /api/ingest", () => {
       const [, fetchInit] = mockFetch.mock.calls[0]!;
       expect(fetchInit.method).toBe("POST");
       expect(fetchInit.headers["Content-Type"]).toBe("application/json");
-      expect(fetchInit.headers["Authorization"]).toContain("Bearer ");
+      expect(fetchInit.headers.Authorization).toContain("Bearer ");
 
       const sentBody = JSON.parse(fetchInit.body as string);
       expect(sentBody.userId).toBe("u1");

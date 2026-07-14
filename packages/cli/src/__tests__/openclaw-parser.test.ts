@@ -36,7 +36,7 @@ describe("parseOpenClawFile", () => {
 
   it("should parse a message with usage", async () => {
     const filePath = join(tempDir, "session.jsonl");
-    await writeFile(filePath, openclawLine() + "\n");
+    await writeFile(filePath, `${openclawLine()}\n`);
 
     const result = await parseOpenClawFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(1);
@@ -56,7 +56,7 @@ describe("parseOpenClawFile", () => {
       openclawLine(),
       JSON.stringify({ type: "tool", name: "bash" }),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseOpenClawFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(1);
@@ -69,7 +69,7 @@ describe("parseOpenClawFile", () => {
       "not valid json but has \"usage\" and totalTokens",
       openclawLine(),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseOpenClawFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(1);
@@ -79,7 +79,7 @@ describe("parseOpenClawFile", () => {
     const filePath = join(tempDir, "session.jsonl");
     const line1 = openclawLine({ timestamp: "2026-03-07T10:00:00.000Z" });
     const line2 = openclawLine({ timestamp: "2026-03-07T10:30:00.000Z" });
-    await writeFile(filePath, line1 + "\n" + line2 + "\n");
+    await writeFile(filePath, `${line1}\n${line2}\n`);
 
     const r1 = await parseOpenClawFile({ filePath, startOffset: 0 });
     expect(r1.deltas).toHaveLength(2);
@@ -107,7 +107,7 @@ describe("parseOpenClawFile", () => {
         usage: { input: 0, cacheRead: 0, cacheWrite: 0, output: 0, totalTokens: 0 },
       },
     });
-    await writeFile(filePath, zeroLine + "\n");
+    await writeFile(filePath, `${zeroLine}\n`);
 
     const result = await parseOpenClawFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(0);
@@ -122,7 +122,7 @@ describe("parseOpenClawFile", () => {
         usage: { input: 100, output: 50, totalTokens: 150 },
       },
     });
-    await writeFile(filePath, noTs + "\n" + openclawLine() + "\n");
+    await writeFile(filePath, `${noTs}\n${openclawLine()}\n`);
 
     const result = await parseOpenClawFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(1);
@@ -130,7 +130,7 @@ describe("parseOpenClawFile", () => {
 
   it("should handle malformed JSON gracefully", async () => {
     const filePath = join(tempDir, "session.jsonl");
-    await writeFile(filePath, "broken{{{ json\n" + openclawLine() + "\n");
+    await writeFile(filePath, `broken{{{ json\n${openclawLine()}\n`);
 
     const result = await parseOpenClawFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(1);
@@ -140,7 +140,7 @@ describe("parseOpenClawFile", () => {
     const filePath = join(tempDir, "session.jsonl");
     // Line has "usage" and "totalTokens" text but is not valid JSON
     const badLine = '{"type":"message","usage":"broken","totalTokens":invalid}';
-    await writeFile(filePath, badLine + "\n" + openclawLine() + "\n");
+    await writeFile(filePath, `${badLine}\n${openclawLine()}\n`);
 
     const result = await parseOpenClawFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(1);
@@ -155,7 +155,7 @@ describe("parseOpenClawFile", () => {
       message: null,
       usage: { totalTokens: 100 },
     });
-    await writeFile(filePath, noMsgWithKeywords + "\n" + openclawLine() + "\n");
+    await writeFile(filePath, `${noMsgWithKeywords}\n${openclawLine()}\n`);
 
     const result = await parseOpenClawFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(1); // only the valid line
@@ -169,7 +169,7 @@ describe("parseOpenClawFile", () => {
       message: { model: "test", totalTokens: 100 },
       usage: { totalTokens: 100 }, // top-level to pass fast-path
     });
-    await writeFile(filePath, noUsage + "\n" + openclawLine() + "\n");
+    await writeFile(filePath, `${noUsage}\n${openclawLine()}\n`);
 
     const result = await parseOpenClawFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(1);
@@ -191,7 +191,7 @@ describe("parseOpenClawFile", () => {
         },
       },
     });
-    await writeFile(filePath, noModel + "\n");
+    await writeFile(filePath, `${noModel}\n`);
 
     const result = await parseOpenClawFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(1);

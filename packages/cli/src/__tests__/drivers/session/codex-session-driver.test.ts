@@ -41,7 +41,7 @@ describe("codexSessionDriver", () => {
     it("discovers rollout JSONL files under codexSessionsDir", async () => {
       const dateDir = join(tempDir, "2026", "03", "07");
       await mkdir(dateDir, { recursive: true });
-      await writeFile(join(dateDir, "rollout-uuid.jsonl"), codexLine() + "\n");
+      await writeFile(join(dateDir, "rollout-uuid.jsonl"), `${codexLine()}\n`);
       await writeFile(join(dateDir, "other-file.txt"), "ignore");
 
       const files = await codexSessionDriver.discover({ codexSessionsDir: tempDir });
@@ -55,7 +55,7 @@ describe("codexSessionDriver", () => {
       await mkdir(primaryDir, { recursive: true });
       await writeFile(
         join(primaryDir, "rollout-primary.jsonl"),
-        codexLine() + "\n",
+        `${codexLine()}\n`,
       );
 
       // Multica extra dirs
@@ -65,11 +65,11 @@ describe("codexSessionDriver", () => {
       await mkdir(multicaDir2, { recursive: true });
       await writeFile(
         join(multicaDir1, "rollout-multica1.jsonl"),
-        codexLine() + "\n",
+        `${codexLine()}\n`,
       );
       await writeFile(
         join(multicaDir2, "rollout-multica2.jsonl"),
-        codexLine() + "\n",
+        `${codexLine()}\n`,
       );
 
       const files = await codexSessionDriver.discover({
@@ -85,7 +85,7 @@ describe("codexSessionDriver", () => {
     it("works with empty multicaCodexDirs array", async () => {
       const dateDir = join(tempDir, "2026", "03", "07");
       await mkdir(dateDir, { recursive: true });
-      await writeFile(join(dateDir, "rollout-uuid.jsonl"), codexLine() + "\n");
+      await writeFile(join(dateDir, "rollout-uuid.jsonl"), `${codexLine()}\n`);
 
       const files = await codexSessionDriver.discover({
         codexSessionsDir: tempDir,

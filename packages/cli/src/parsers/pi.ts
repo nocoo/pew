@@ -53,7 +53,7 @@ export async function parsePiFile(opts: {
   const deltas: ParsedDelta[] = [];
 
   const st = await stat(filePath).catch(() => null);
-  if (!st || !st.isFile()) return { deltas, endOffset: startOffset };
+  if (!st?.isFile()) return { deltas, endOffset: startOffset };
 
   const endOffset = st.size;
   if (startOffset >= endOffset) return { deltas, endOffset };
@@ -67,7 +67,7 @@ export async function parsePiFile(opts: {
   try {
     for await (const line of rl) {
       // Fast-path: skip lines that can't contain usage data
-      if (!line || !line.includes('"usage"')) continue;
+      if (!line?.includes('"usage"')) continue;
 
       let obj: Record<string, unknown>;
       try {
@@ -80,7 +80,7 @@ export async function parsePiFile(opts: {
       if (obj?.type !== "message") continue;
 
       const msg = obj.message as Record<string, unknown> | undefined;
-      if (!msg || msg.role !== "assistant") continue;
+      if (msg?.role !== "assistant") continue;
 
       // Extract usage
       const usage = msg.usage as Record<string, unknown> | undefined;

@@ -59,7 +59,7 @@ function makeRequest(
   };
   const secret = options?.secret === undefined ? SECRET : options.secret;
   if (secret !== null) {
-    headers["Authorization"] = `Bearer ${secret}`;
+    headers.Authorization = `Bearer ${secret}`;
   }
   return new Request(`https://pew-ingest.workers.dev${path}`, {
     method,

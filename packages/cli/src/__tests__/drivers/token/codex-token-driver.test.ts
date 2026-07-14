@@ -36,7 +36,7 @@ function codexTokenLine(opts: {
 }
 
 /** Helper: create a Codex session_meta line with model */
-function codexSessionMeta(model: string = "o3-mini"): string {
+function codexSessionMeta(model = "o3-mini"): string {
   return JSON.stringify({
     type: "session_meta",
     timestamp: "2026-03-07T10:00:00.000Z",
@@ -72,7 +72,7 @@ describe("codexTokenDriver", () => {
       await mkdir(dayDir, { recursive: true });
       await writeFile(
         join(dayDir, "rollout-abc123.jsonl"),
-        codexSessionMeta() + "\n" + codexTokenLine() + "\n",
+        `${codexSessionMeta()}\n${codexTokenLine()}\n`,
       );
 
       const files = await codexTokenDriver.discover(
@@ -89,7 +89,7 @@ describe("codexTokenDriver", () => {
       await mkdir(primaryDir, { recursive: true });
       await writeFile(
         join(primaryDir, "rollout-primary.jsonl"),
-        codexSessionMeta() + "\n" + codexTokenLine() + "\n",
+        `${codexSessionMeta()}\n${codexTokenLine()}\n`,
       );
 
       // Multica extra dirs
@@ -99,11 +99,11 @@ describe("codexTokenDriver", () => {
       await mkdir(multicaDir2, { recursive: true });
       await writeFile(
         join(multicaDir1, "rollout-multica1.jsonl"),
-        codexSessionMeta() + "\n" + codexTokenLine() + "\n",
+        `${codexSessionMeta()}\n${codexTokenLine()}\n`,
       );
       await writeFile(
         join(multicaDir2, "rollout-multica2.jsonl"),
-        codexSessionMeta() + "\n" + codexTokenLine() + "\n",
+        `${codexSessionMeta()}\n${codexTokenLine()}\n`,
       );
 
       const files = await codexTokenDriver.discover(
@@ -124,7 +124,7 @@ describe("codexTokenDriver", () => {
       await mkdir(dayDir, { recursive: true });
       await writeFile(
         join(dayDir, "rollout-abc123.jsonl"),
-        codexSessionMeta() + "\n" + codexTokenLine() + "\n",
+        `${codexSessionMeta()}\n${codexTokenLine()}\n`,
       );
 
       const files = await codexTokenDriver.discover(
@@ -246,7 +246,7 @@ describe("codexTokenDriver", () => {
     it("parses Codex JSONL and builds cursor with endOffset + lastTotals", async () => {
       const filePath = join(tempDir, "rollout-abc.jsonl");
       const content =
-        codexSessionMeta("o3-mini") + "\n" + codexTokenLine({ input: 1000, output: 200 }) + "\n";
+        `${codexSessionMeta("o3-mini")}\n${codexTokenLine({ input: 1000, output: 200 })}\n`;
       await writeFile(filePath, content);
 
       const resume = {

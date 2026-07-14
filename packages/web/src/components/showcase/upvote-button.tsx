@@ -78,7 +78,7 @@ export function UpvoteButton({
   }, [showcaseId, count, upvoted, override, loading, disabled, isLoggedIn, onLoginRequired, onUpvoteChange]);
 
   return (
-    <button
+    <button type="button"
       onClick={handleClick}
       disabled={loading || disabled}
       className={cn(

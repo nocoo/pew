@@ -261,7 +261,7 @@ export function AdminShowcasesContent() {
           {/* Status filter */}
           <div className="flex items-center gap-1 rounded-lg bg-secondary p-1">
             {(["all", "public", "hidden"] as const).map((opt) => (
-              <button
+              <button type="button"
                 key={opt}
                 onClick={() => {
                   setStatusFilter(opt);
@@ -284,7 +284,7 @@ export function AdminShowcasesContent() {
           </span>
         </div>
 
-        <button
+        <button type="button"
           onClick={() => fetchData()}
           disabled={loading}
           className={cn(
@@ -373,7 +373,7 @@ export function AdminShowcasesContent() {
                     <td className="px-4 py-3 hidden md:table-cell">
                       <div className="flex items-center gap-2">
                         {showcase.user.image ? (
-                          // eslint-disable-next-line @next/next/no-img-element
+                          // biome-ignore lint/performance/noImgElement: user-supplied image URL, not amenable to next/image domain allowlist
                           <img
                             src={showcase.user.image}
                             alt={displayName}
@@ -423,7 +423,7 @@ export function AdminShowcasesContent() {
                     {/* Actions */}
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
-                        <button
+                        <button type="button"
                           onClick={() => handleToggleVisibility(showcase.id, showcase.is_public)}
                           disabled={isLoading}
                           className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
@@ -435,7 +435,7 @@ export function AdminShowcasesContent() {
                             <Eye className="h-3.5 w-3.5" strokeWidth={1.5} />
                           )}
                         </button>
-                        <button
+                        <button type="button"
                           onClick={() => handleDelete(showcase.id)}
                           disabled={isLoading}
                           className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
@@ -456,7 +456,7 @@ export function AdminShowcasesContent() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 pt-2">
-          <button
+          <button type="button"
             onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
             disabled={offset === 0 || loading}
             className={cn(
@@ -473,7 +473,7 @@ export function AdminShowcasesContent() {
             Page {currentPage} of {totalPages}
           </span>
 
-          <button
+          <button type="button"
             onClick={() => setOffset(offset + PAGE_SIZE)}
             disabled={currentPage >= totalPages || loading}
             className={cn(

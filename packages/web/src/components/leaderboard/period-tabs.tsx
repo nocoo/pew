@@ -35,7 +35,7 @@ export function PeriodTabs({
   return (
     <div className="flex gap-1 rounded-lg bg-secondary p-1 flex-1">
       {PERIODS.map((p) => (
-        <button
+        <button type="button"
           key={p.value}
           onClick={() => onChange(p.value)}
           className={cn(

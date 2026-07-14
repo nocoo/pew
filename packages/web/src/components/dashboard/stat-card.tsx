@@ -69,7 +69,11 @@ export function StatCard({
         const isPos = t.value > 0;
         const isNeg = t.value < 0;
         return (
-          <div key={i} className="flex items-center gap-1 text-xs">
+          <div
+            // biome-ignore lint/suspicious/noArrayIndexKey: `allTrends` is a small fixed-shape prop array (up to two trend rows) with no reorder path; positional key is authoritative.
+            key={`${t.label ?? ""}:${t.value}:${i}`}
+            className="flex items-center gap-1 text-xs"
+          >
             <span
               className={cn(
                 "font-medium",

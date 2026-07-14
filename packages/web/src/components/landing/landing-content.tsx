@@ -20,7 +20,7 @@ function InstallCommand() {
   };
 
   return (
-    <button
+    <button type="button"
       onClick={handleCopy}
       aria-label={`Copy install command: ${command}`}
       className="group flex w-full items-center gap-3 rounded-lg bg-foreground/[0.04] px-5 py-3.5 font-mono text-base transition-[background-color] duration-200 hover:bg-foreground/[0.08] cursor-pointer"

@@ -52,7 +52,7 @@ describe("openClawTokenDriver", () => {
     it("discovers JSONL files under openclawDir", async () => {
       const sessionsDir = join(tempDir, "agents", "agent1", "sessions");
       await mkdir(sessionsDir, { recursive: true });
-      await writeFile(join(sessionsDir, "session.jsonl"), openClawLine() + "\n");
+      await writeFile(join(sessionsDir, "session.jsonl"), `${openClawLine()}\n`);
 
       const files = await openClawTokenDriver.discover(
         { openclawDir: tempDir },
@@ -138,7 +138,7 @@ describe("openClawTokenDriver", () => {
   describe("parse + buildCursor", () => {
     it("parses OpenClaw JSONL and builds cursor with endOffset", async () => {
       const filePath = join(tempDir, "session.jsonl");
-      const content = openClawLine() + "\n";
+      const content = `${openClawLine()}\n`;
       await writeFile(filePath, content);
 
       const resume = { kind: "byte-offset" as const, startOffset: 0 };

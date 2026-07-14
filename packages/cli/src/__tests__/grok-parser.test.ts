@@ -119,7 +119,7 @@ describe("parseGrokLogFile", () => {
   });
 
   it("parses a single inference_done line", async () => {
-    await writeFile(logPath, inferenceLine() + "\n");
+    await writeFile(logPath, `${inferenceLine()}\n`);
     const result = await parseGrokLogFile({ filePath: logPath, startOffset: 0 });
     expect(result.deltas).toHaveLength(1);
     expect(result.deltas[0]!.source).toBe("grok");
@@ -157,7 +157,7 @@ describe("parseGrokLogFile", () => {
         loop: 3,
       }),
     ];
-    await writeFile(logPath, lines.join("\n") + "\n");
+    await writeFile(logPath, `${lines.join("\n")}\n`);
     const result = await parseGrokLogFile({ filePath: logPath, startOffset: 0 });
     expect(result.deltas).toHaveLength(3);
     const sum = result.deltas.reduce(
@@ -181,7 +181,7 @@ describe("parseGrokLogFile", () => {
       msg: "phase_changed",
       ctx: {},
     });
-    await writeFile(logPath, noise + "\n" + inferenceLine() + "\n");
+    await writeFile(logPath, `${noise}\n${inferenceLine()}\n`);
     const result = await parseGrokLogFile({ filePath: logPath, startOffset: 0 });
     expect(result.deltas).toHaveLength(1);
   });
@@ -189,7 +189,7 @@ describe("parseGrokLogFile", () => {
   it("skips when both prompt and completion are missing", async () => {
     await writeFile(
       logPath,
-      inferenceLine({ omitPrompt: true, omitCompletion: true }) + "\n",
+      `${inferenceLine({ omitPrompt: true, omitCompletion: true })}\n`,
     );
     const result = await parseGrokLogFile({ filePath: logPath, startOffset: 0 });
     expect(result.deltas).toHaveLength(0);
@@ -208,7 +208,7 @@ describe("parseGrokLogFile", () => {
   });
 
   it("skips malformed JSON without blocking later lines", async () => {
-    await writeFile(logPath, "{not json\n" + inferenceLine() + "\n");
+    await writeFile(logPath, `{not json\n${inferenceLine()}\n`);
     const result = await parseGrokLogFile({ filePath: logPath, startOffset: 0 });
     expect(result.deltas).toHaveLength(1);
   });
@@ -216,23 +216,23 @@ describe("parseGrokLogFile", () => {
   it("emits every attempt (retries are real API calls)", async () => {
     await writeFile(
       logPath,
-      [
+      `${[
         inferenceLine({ attempts: 1, loop: 1, ts: "2026-07-10T00:01:00.000Z" }),
         inferenceLine({ attempts: 2, loop: 1, ts: "2026-07-10T00:01:01.000Z" }),
-      ].join("\n") + "\n",
+      ].join("\n")}\n`,
     );
     const result = await parseGrokLogFile({ filePath: logPath, startOffset: 0 });
     expect(result.deltas).toHaveLength(2);
   });
 
   it("skips lines missing ts", async () => {
-    await writeFile(logPath, inferenceLine({ omitTs: true }) + "\n");
+    await writeFile(logPath, `${inferenceLine({ omitTs: true })}\n`);
     const result = await parseGrokLogFile({ filePath: logPath, startOffset: 0 });
     expect(result.deltas).toHaveLength(0);
   });
 
   it("does not advance past a trailing partial line", async () => {
-    const complete = inferenceLine({ ts: "2026-07-10T00:01:00.000Z" }) + "\n";
+    const complete = `${inferenceLine({ ts: "2026-07-10T00:01:00.000Z" })}\n`;
     const partial = inferenceLine({ ts: "2026-07-10T00:02:00.000Z" }).slice(0, 40);
     await writeFile(logPath, complete + partial);
 
@@ -242,7 +242,7 @@ describe("parseGrokLogFile", () => {
 
     // Finish the partial line
     const rest =
-      inferenceLine({ ts: "2026-07-10T00:02:00.000Z" }).slice(40) + "\n";
+      `${inferenceLine({ ts: "2026-07-10T00:02:00.000Z" }).slice(40)}\n`;
     await writeFile(logPath, complete + partial + rest);
 
     const r2 = await parseGrokLogFile({
@@ -261,7 +261,7 @@ describe("parseGrokLogFile", () => {
   });
 
   it("resolves model from timeline map", async () => {
-    await writeFile(logPath, inferenceLine({ ts: "2026-07-10T00:10:00.000Z" }) + "\n");
+    await writeFile(logPath, `${inferenceLine({ ts: "2026-07-10T00:10:00.000Z" })}\n`);
     const timeline = new Map([
       [
         SID,
@@ -281,7 +281,7 @@ describe("parseGrokLogFile", () => {
   });
 
   it("falls back to primary model then grok-unknown", async () => {
-    await writeFile(logPath, inferenceLine() + "\n");
+    await writeFile(logPath, `${inferenceLine()}\n`);
     const withPrimary = await parseGrokLogFile({
       filePath: logPath,
       startOffset: 0,
@@ -357,7 +357,7 @@ describe("buildGrokModelMaps", () => {
     if (opts.primary) signals.primaryModelId = opts.primary;
     await writeFile(join(dir, "signals.json"), JSON.stringify(signals));
     if (opts.events) {
-      await writeFile(join(dir, "events.jsonl"), opts.events.join("\n") + "\n");
+      await writeFile(join(dir, "events.jsonl"), `${opts.events.join("\n")}\n`);
     }
   }
 

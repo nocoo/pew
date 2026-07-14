@@ -44,7 +44,7 @@ function createRequest(method: string, body?: unknown): Request {
   return new Request("http://localhost/api/showcases/s1", init);
 }
 
-function createContext(id: string = "s1") {
+function createContext(id = "s1") {
   return { params: Promise.resolve({ id }) };
 }
 

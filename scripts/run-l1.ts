@@ -21,6 +21,7 @@ import {
   statSync,
   writeFileSync,
 } from "node:fs";
+import type { Dirent } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -64,7 +65,7 @@ const SKIP_DIRS = new Set([
 const INCLUDE_EXT = new Set([".ts", ".tsx", ".mts", ".cts"]);
 
 function walk(root: string, files: string[]): void {
-  let entries;
+  let entries: Dirent[];
   try {
     entries = readdirSync(root, { withFileTypes: true });
   } catch {

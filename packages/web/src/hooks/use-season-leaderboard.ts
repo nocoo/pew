@@ -81,7 +81,7 @@ export function useSeasonLeaderboard(
   useEffect(() => {
     fetchedTeamsRef.current = new Set();
     loadingTeamIdsRef.current = new Set();
-  }, [seasonIdOrSlug]);
+  }, []);
 
   const loadTeamMembers = useCallback(
     async (teamId: string) => {

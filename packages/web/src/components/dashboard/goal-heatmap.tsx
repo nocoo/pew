@@ -68,7 +68,7 @@ export function GoalHeatmap({ data, year, className }: GoalHeatmapProps) {
             Goal Tracker
           </span>
         </div>
-        <button
+        <button type="button"
           onClick={() => setSettingsOpen(true)}
           className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           aria-label="Goal settings"

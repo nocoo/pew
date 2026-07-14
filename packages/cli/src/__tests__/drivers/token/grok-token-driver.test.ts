@@ -66,10 +66,10 @@ describe("grokTokenDriver", () => {
   it("first sync emits all complete lines", async () => {
     await writeFile(
       logPath,
-      [
+      `${[
         inferenceLine("2026-07-10T00:01:00.000Z"),
         inferenceLine("2026-07-10T00:02:00.000Z"),
-      ].join("\n") + "\n",
+      ].join("\n")}\n`,
     );
     const fp = await fingerprint(logPath);
     const resume = grokTokenDriver.resumeState(undefined, fp);
@@ -79,7 +79,7 @@ describe("grokTokenDriver", () => {
   });
 
   it("second sync with unchanged file shouldSkip", async () => {
-    await writeFile(logPath, inferenceLine("2026-07-10T00:01:00.000Z") + "\n");
+    await writeFile(logPath, `${inferenceLine("2026-07-10T00:01:00.000Z")}\n`);
     const fp = await fingerprint(logPath);
     const resume = grokTokenDriver.resumeState(undefined, fp);
     const result = await grokTokenDriver.parse(logPath, resume, {});
@@ -88,7 +88,7 @@ describe("grokTokenDriver", () => {
   });
 
   it("incremental append only emits new lines", async () => {
-    const line1 = inferenceLine("2026-07-10T00:01:00.000Z") + "\n";
+    const line1 = `${inferenceLine("2026-07-10T00:01:00.000Z")}\n`;
     await writeFile(logPath, line1);
     const fp1 = await fingerprint(logPath);
     const r1 = await grokTokenDriver.parse(
@@ -99,7 +99,7 @@ describe("grokTokenDriver", () => {
     expect(r1.deltas).toHaveLength(1);
     const cursor = grokTokenDriver.buildCursor(fp1, r1) as ByteOffsetCursor;
 
-    const line2 = inferenceLine("2026-07-10T00:02:00.000Z") + "\n";
+    const line2 = `${inferenceLine("2026-07-10T00:02:00.000Z")}\n`;
     await writeFile(logPath, line1 + line2);
     const fp2 = await fingerprint(logPath);
     const r2 = await grokTokenDriver.parse(
@@ -112,7 +112,7 @@ describe("grokTokenDriver", () => {
   });
 
   it("partial-line round-trip: incomplete line not emitted until completed", async () => {
-    const complete = inferenceLine("2026-07-10T00:01:00.000Z") + "\n";
+    const complete = `${inferenceLine("2026-07-10T00:01:00.000Z")}\n`;
     const partial = inferenceLine("2026-07-10T00:02:00.000Z").slice(0, 30);
     await writeFile(logPath, complete + partial);
 
@@ -126,7 +126,7 @@ describe("grokTokenDriver", () => {
     const cursor = grokTokenDriver.buildCursor(fp1, r1) as ByteOffsetCursor;
     expect(cursor.offset).toBe(Buffer.byteLength(complete, "utf8"));
 
-    const rest = inferenceLine("2026-07-10T00:02:00.000Z").slice(30) + "\n";
+    const rest = `${inferenceLine("2026-07-10T00:02:00.000Z").slice(30)}\n`;
     await writeFile(logPath, complete + partial + rest);
     const fp2 = await fingerprint(logPath);
     const r2 = await grokTokenDriver.parse(
@@ -146,7 +146,7 @@ describe("grokTokenDriver", () => {
       join(sessionDir, "signals.json"),
       JSON.stringify({ modelsUsed: ["grok-4.5"], primaryModelId: "grok-4.5" }),
     );
-    await writeFile(logPath, inferenceLine("2026-07-10T00:01:00.000Z") + "\n");
+    await writeFile(logPath, `${inferenceLine("2026-07-10T00:01:00.000Z")}\n`);
 
     const fp = await fingerprint(logPath);
     const result = await grokTokenDriver.parse(
@@ -167,7 +167,7 @@ describe("grokTokenDriver", () => {
       join(sessionDir, "signals.json"),
       JSON.stringify({ modelsUsed: ["grok-override"], primaryModelId: "grok-override" }),
     );
-    await writeFile(logPath, inferenceLine("2026-07-10T00:01:00.000Z") + "\n");
+    await writeFile(logPath, `${inferenceLine("2026-07-10T00:01:00.000Z")}\n`);
 
     const ctx: Record<string, unknown> = {};
     await grokTokenDriver.discover(

@@ -41,7 +41,7 @@ describe("claudeSessionDriver", () => {
     it("discovers JSONL files under claudeDir", async () => {
       const projectsDir = join(tempDir, "projects", "proj1");
       await mkdir(projectsDir, { recursive: true });
-      await writeFile(join(projectsDir, "session.jsonl"), claudeSessionLine() + "\n");
+      await writeFile(join(projectsDir, "session.jsonl"), `${claudeSessionLine()}\n`);
       await writeFile(join(projectsDir, "ignore.txt"), "nope");
 
       const files = await claudeSessionDriver.discover({ claudeDir: tempDir });

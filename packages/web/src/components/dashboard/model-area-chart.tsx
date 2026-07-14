@@ -45,7 +45,7 @@ function gradId(model: string): string {
 
 /** Format date string "2026-03-07" to "Mar 7" */
 function fmtDate(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00Z");
+  const d = new Date(`${dateStr}T00:00:00Z`);
   return d.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -123,8 +123,8 @@ export function ModelAreaChart({
     const firstDate = raw[0]?.date;
     if (!firstDate) return raw;
 
-    const startDate = new Date(firstDate + "T00:00:00Z");
-    const endDate = new Date(padToDate + "T00:00:00Z");
+    const startDate = new Date(`${firstDate}T00:00:00Z`);
+    const endDate = new Date(`${padToDate}T00:00:00Z`);
 
     const cursor = new Date(startDate);
     while (cursor <= endDate) {

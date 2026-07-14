@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, Suspense } from "react";
+import { useState, useEffect, useMemo, useId, Suspense } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -62,7 +62,7 @@ function defaultTo(): string {
 
 /** Format date string "2026-03-07" to "Mar 7" */
 function fmtDate(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00Z");
+  const d = new Date(`${dateStr}T00:00:00Z`);
   return d.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -86,7 +86,8 @@ function CompareSkeleton() {
       </div>
       <div className="rounded-xl bg-secondary p-4">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-4 py-3">
+          // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+          <div key={`slot-${i}`} className="flex items-center gap-4 py-3">
             <Skeleton className="h-8 w-8 rounded-full" />
             <Skeleton className="h-4 w-32" />
             <div className="flex-1" />
@@ -163,6 +164,9 @@ function CompareResultContent() {
   const [dateTo, setDateTo] = useState(defaultTo);
   const [sourceFilter, setSourceFilter] = useState("");
   const [modelFilter, setModelFilter] = useState("");
+  const uid = useId();
+  const dateFromId = `${uid}-date-from`;
+  const dateToId = `${uid}-date-to`;
   const tzOffset = useTzOffset();
 
   // Data via SWR
@@ -286,7 +290,7 @@ function CompareResultContent() {
       <div className="space-y-4 md:space-y-6">
         {/* Header with back button */}
         <div className="flex items-start gap-4">
-          <button
+          <button type="button"
             onClick={() => router.push(`/admin/compare?userIds=${userIdsParam}`)}
             className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-background hover:bg-accent transition-colors"
           >
@@ -339,8 +343,9 @@ function CompareResultContent() {
         {/* Filter Bar */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <label className="text-xs text-muted-foreground">From</label>
+            <label htmlFor={dateFromId} className="text-xs text-muted-foreground">From</label>
             <input
+              id={dateFromId}
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
@@ -348,8 +353,9 @@ function CompareResultContent() {
             />
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-xs text-muted-foreground">To</label>
+            <label htmlFor={dateToId} className="text-xs text-muted-foreground">To</label>
             <input
+              id={dateToId}
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}

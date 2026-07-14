@@ -52,7 +52,7 @@ describe("claudeTokenDriver", () => {
     it("discovers JSONL files under claudeDir", async () => {
       const projectsDir = join(tempDir, "projects", "proj1");
       await mkdir(projectsDir, { recursive: true });
-      await writeFile(join(projectsDir, "session.jsonl"), claudeLine() + "\n");
+      await writeFile(join(projectsDir, "session.jsonl"), `${claudeLine()}\n`);
       await writeFile(join(projectsDir, "not-jsonl.txt"), "ignore");
 
       const files = await claudeTokenDriver.discover(
@@ -155,7 +155,7 @@ describe("claudeTokenDriver", () => {
   describe("parse + buildCursor", () => {
     it("parses JSONL and builds cursor with endOffset", async () => {
       const filePath = join(tempDir, "session.jsonl");
-      const content = claudeLine() + "\n";
+      const content = `${claudeLine()}\n`;
       await writeFile(filePath, content);
 
       const resume = { kind: "claude" as const, startOffset: 0, priorSeenIds: [] };
@@ -197,7 +197,7 @@ describe("claudeTokenDriver", () => {
           usage: { input_tokens: 5000, output_tokens: 800 },
         },
       });
-      await writeFile(filePath, line1 + "\n" + line2 + "\n");
+      await writeFile(filePath, `${line1}\n${line2}\n`);
 
       // Fresh context so the resume test isn't affected by other tests'
       // shared `ctx`. Byte-offset resume must work regardless of dedup state.
@@ -225,8 +225,8 @@ describe("claudeTokenDriver", () => {
       const fileA = join(projectsDir, "sessionA.jsonl");
       const fileB = join(projectsDir, "sessionB.jsonl");
       const shared = claudeLine(); // both use the default id "msg_001"
-      await writeFile(fileA, shared + "\n");
-      await writeFile(fileB, shared + "\n");
+      await writeFile(fileA, `${shared}\n`);
+      await writeFile(fileB, `${shared}\n`);
 
       // Simulate the orchestrator flow: discover initializes ctx, then
       // parse is called per file. The driver must dedup across those calls.
@@ -253,7 +253,7 @@ describe("claudeTokenDriver", () => {
       const projectsDir = join(tempDir, "projects", "proj1");
       await mkdir(projectsDir, { recursive: true });
       const fileA = join(projectsDir, "sessionA.jsonl");
-      await writeFile(fileA, claudeLine() + "\n");
+      await writeFile(fileA, `${claudeLine()}\n`);
 
       const ctx1: SyncContext = {};
       await claudeTokenDriver.discover({ claudeDir: tempDir }, ctx1);
@@ -295,7 +295,7 @@ describe("claudeTokenDriver", () => {
             usage: { input_tokens: 100, output_tokens: 50 },
           },
         });
-      await writeFile(filePath, line("2026-03-07T10:00:00.000Z") + "\n");
+      await writeFile(filePath, `${line("2026-03-07T10:00:00.000Z")}\n`);
 
       // ---- SYNC #1 ----
       const ctx1: SyncContext = {};
@@ -315,7 +315,7 @@ describe("claudeTokenDriver", () => {
       expect(cursor1.seenIds).toContain("msg_A");
 
       // ---- File grows (append same id) ----
-      await appendFile(filePath, line("2026-03-07T11:00:00.000Z") + "\n");
+      await appendFile(filePath, `${line("2026-03-07T11:00:00.000Z")}\n`);
 
       // ---- SYNC #2 (fresh ctx, cursor from sync #1) ----
       const ctx2: SyncContext = {};
@@ -336,13 +336,13 @@ describe("claudeTokenDriver", () => {
       const filePath = join(tempDir, "session.jsonl");
       await writeFile(
         filePath,
-        claudeLine({
+        `${claudeLine({
           message: {
             id: "msg_first",
             model: "m",
             usage: { input_tokens: 10, output_tokens: 5 },
           },
-        }) + "\n",
+        })}\n`,
       );
       const ctx1: SyncContext = {};
       const fp1: FileFingerprint = { inode: 7, mtimeMs: 1, size: 100 };
@@ -352,13 +352,13 @@ describe("claudeTokenDriver", () => {
 
       await appendFile(
         filePath,
-        claudeLine({
+        `${claudeLine({
           message: {
             id: "msg_second",
             model: "m",
             usage: { input_tokens: 20, output_tokens: 10 },
           },
-        }) + "\n",
+        })}\n`,
       );
 
       const ctx2: SyncContext = {};
@@ -387,7 +387,7 @@ describe("claudeTokenDriver", () => {
           }),
         );
       }
-      await writeFile(filePath, lines.join("\n") + "\n");
+      await writeFile(filePath, `${lines.join("\n")}\n`);
 
       const ctx: SyncContext = {};
       const fp: FileFingerprint = { inode: 9, mtimeMs: 1, size: 100000 };
@@ -407,7 +407,7 @@ describe("claudeTokenDriver", () => {
       // If the file was rotated (new inode), the byte offset resets to 0
       // and any persisted seenIds from the old file are meaningless.
       const filePath = join(tempDir, "session.jsonl");
-      await writeFile(filePath, claudeLine() + "\n");
+      await writeFile(filePath, `${claudeLine()}\n`);
 
       const staleCursor: ClaudeCursor = {
         inode: 999,

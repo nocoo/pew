@@ -34,7 +34,9 @@ let inflight: Promise<PricingEntriesPayload> | null = null;
 const subscribers = new Set<() => void>();
 
 function notify() {
-  subscribers.forEach((fn) => fn());
+  subscribers.forEach((fn) => {
+    fn();
+  });
 }
 
 async function loadOnce(): Promise<PricingEntriesPayload> {
@@ -78,7 +80,9 @@ interface UsePricingEntriesResult {
 export function invalidatePricingEntries(): void {
   cache = { ...cache, cachedAt: 0 };
   if (!inflight) {
-    void loadOnce().catch(() => {});
+    void loadOnce().catch(() => {
+      // Errors are surfaced via loadOnce's own state update; ignore here.
+    });
   }
 }
 

@@ -40,7 +40,7 @@ function gradId(model: string): string {
 
 /** Format date string "2026-03-07" to "Mar 7" */
 function fmtDate(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00Z");
+  const d = new Date(`${dateStr}T00:00:00Z`);
   return d.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",

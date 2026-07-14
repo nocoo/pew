@@ -95,7 +95,7 @@ export function toLocalDateStr(hourStart: string, tzOffset: number): string {
 // ---------------------------------------------------------------------------
 
 /** Aggregate records into daily points */
-export function toDailyPoints(records: UsageRow[], tzOffset: number = 0): DailyPoint[] {
+export function toDailyPoints(records: UsageRow[], tzOffset = 0): DailyPoint[] {
   const byDate = new Map<string, DailyPoint>();
 
   for (const r of records) {

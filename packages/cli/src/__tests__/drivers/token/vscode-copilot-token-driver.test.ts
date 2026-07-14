@@ -63,7 +63,7 @@ describe("vscodeCopilotTokenDriver", () => {
       await mkdir(wsDir, { recursive: true });
       await writeFile(
         join(wsDir, "session.jsonl"),
-        appendRequestLine("copilot/gpt-4o", 1709827200000) + "\n",
+        `${appendRequestLine("copilot/gpt-4o", 1709827200000)}\n`,
       );
 
       const files = await vscodeCopilotTokenDriver.discover(
@@ -250,12 +250,12 @@ describe("vscodeCopilotTokenDriver", () => {
       const filePath = join(tempDir, "session.jsonl");
       const line1 = appendRequestLine("copilot/gpt-4o", 1709827200000);
       const line2 = resultLine(0, 500, 200);
-      const firstChunk = line1 + "\n" + line2 + "\n";
+      const firstChunk = `${line1}\n${line2}\n`;
 
       // Append more data later
       const line3 = appendRequestLine("copilot/claude-opus-4.6", 1709827260000);
       const line4 = resultLine(1, 1000, 400);
-      const fullContent = firstChunk + line3 + "\n" + line4 + "\n";
+      const fullContent = `${firstChunk + line3}\n${line4}\n`;
       await writeFile(filePath, fullContent);
 
       // Parse first chunk

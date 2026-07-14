@@ -167,9 +167,9 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
                     </h2>
                     {user.badges && user.badges.length > 0 && (
                       <div className="flex gap-1">
-                        {user.badges.map((badge, idx) => (
+                        {user.badges.map((badge) => (
                           <BadgeIcon
-                            key={idx}
+                            key={`${badge.text}:${badge.icon}`}
                             text={badge.text}
                             icon={badge.icon}
                             colorBg={badge.colorBg}

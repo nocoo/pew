@@ -54,7 +54,8 @@ function SelectionSkeleton() {
     <div className="space-y-3">
       {/* Table skeleton */}
       {Array.from({ length: 8 }).map((_, i) => (
-        <div key={i} className="rounded-xl bg-secondary p-4">
+        // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+        <div key={`slot-${i}`} className="rounded-xl bg-secondary p-4">
           <div className="flex items-center gap-4">
             <Skeleton className="h-5 w-5 rounded" />
             <Skeleton className="h-8 w-8 rounded-full" />
@@ -109,7 +110,7 @@ function SortHeader({
         className
       )}
     >
-      <button
+      <button type="button"
         onClick={() => onSort(sortKey)}
         className={cn(
           "inline-flex items-center gap-1 hover:text-foreground transition-colors ml-auto",
@@ -313,7 +314,7 @@ function ComparePageContent() {
                 <span className="text-xs font-medium truncate max-w-[120px]">
                   {user.name ?? user.email}
                 </span>
-                <button
+                <button type="button"
                   onClick={() => removeUser(user.user_id)}
                   className="flex h-4 w-4 items-center justify-center rounded-full hover:bg-accent transition-colors"
                 >
@@ -325,14 +326,14 @@ function ComparePageContent() {
               {selectedUsers.length}/10
             </span>
             {selectedUsers.length > 0 && (
-              <button
+              <button type="button"
                 onClick={clearSelection}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 Clear
               </button>
             )}
-            <button
+            <button type="button"
               onClick={handleCompare}
               disabled={selectedUsers.length < 2}
               className="ml-2 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -362,7 +363,7 @@ function ComparePageContent() {
                 className="w-full rounded-lg border border-border bg-background pl-9 pr-8 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
               />
               {search && (
-                <button
+                <button type="button"
                   onClick={() => setSearch("")}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-4 w-4 items-center justify-center rounded text-muted-foreground hover:text-foreground transition-colors"
                 >
@@ -381,8 +382,7 @@ function ComparePageContent() {
 
         {/* Table */}
         {!loading && (
-          <>
-            {filteredUsers.length === 0 ? (
+          filteredUsers.length === 0 ? (
               <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
                 {search ? "No users match your filter." : "No users found."}
               </div>
@@ -458,7 +458,7 @@ function ComparePageContent() {
                         >
                           {/* Checkbox */}
                           <td className="px-4 py-3">
-                            <button
+                            <button type="button"
                               onClick={() => toggleUser(user.user_id)}
                               disabled={isDisabled}
                               className={cn(
@@ -476,7 +476,7 @@ function ComparePageContent() {
                           </td>
                           {/* User */}
                           <td className="px-4 py-3">
-                            <button
+                            <button type="button"
                               onClick={() => toggleUser(user.user_id)}
                               disabled={isDisabled}
                               className="flex items-center gap-3 min-w-0 text-left hover:opacity-80 transition-opacity cursor-pointer disabled:cursor-not-allowed"
@@ -565,14 +565,13 @@ function ComparePageContent() {
                   </tbody>
                 </table>
               </div>
-            )}
-          </>
+            )
         )}
 
         {/* Empty state - show compare button if users selected */}
         {!loading && selectedUsers.length >= 2 && (
           <div className="flex justify-center pt-2">
-            <button
+            <button type="button"
               onClick={handleCompare}
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
             >

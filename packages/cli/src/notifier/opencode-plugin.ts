@@ -109,6 +109,10 @@ export async function getOpenCodePluginStatus(
 }
 
 function buildOpenCodePlugin({ notifyPath }: { notifyPath: string }): string {
+  // Bun's $ shell interpolates its own template placeholder syntax at plugin
+  // runtime; we assemble that placeholder via string concat so it survives
+  // the outer JS template literal without triggering a JS interpolation here.
+  const bunShellPlaceholder = "$" + "{notifyPath}";
   return `// ${PLUGIN_MARKER}
 const notifyPath = ${JSON.stringify(notifyPath)};
 export const PewTrackerPlugin = async ({ $ }) => {
@@ -117,9 +121,14 @@ export const PewTrackerPlugin = async ({ $ }) => {
       if (!event || event.type !== "session.updated") return;
       try {
         if (!notifyPath) return;
-        const proc = $\`/usr/bin/env node ${"${notifyPath}"} --source=opencode\`;
-        if (proc && typeof proc.catch === "function") proc.catch(() => {});
-      } catch (_) {}
+        const proc = $\`/usr/bin/env node ${bunShellPlaceholder} --source=opencode\`;
+        if (proc && typeof proc.catch === "function")
+          proc.catch(() => {
+            // Fire-and-forget notify; failures are non-fatal for token sync.
+          });
+      } catch (_) {
+        // Guard against synchronous throws from bun-sh template — non-fatal.
+      }
     }
   };
 };

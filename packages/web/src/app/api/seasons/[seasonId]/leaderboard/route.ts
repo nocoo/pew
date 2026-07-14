@@ -92,7 +92,33 @@ export async function GET(
     const fromDate = startDateInclusive(season.start_date);
     const toDate = endDateExclusive(season.end_date);
 
-    let entries;
+    // The two branches (hasSnapshot vs live) build the same-shape rows.
+    // Explicit type keeps no-implicit-any-let happy and gives downstream
+    // enrichers (entry.team.id, entry.members, etc.) proper typing.
+    type EntryMember = {
+      user_id: string;
+      slug: string | null;
+      name: string | null;
+      image: string | null;
+      total_tokens: number;
+      input_tokens: number;
+      output_tokens: number;
+      cached_input_tokens: number;
+      session_count: number;
+      total_duration_seconds: number;
+    };
+    type Entry = {
+      rank: number;
+      team: { id: string; name: string; slug: string; logoUrl: string | null };
+      total_tokens: number;
+      input_tokens: number;
+      output_tokens: number;
+      cached_input_tokens: number;
+      session_count: number;
+      total_duration_seconds: number;
+      members?: EntryMember[];
+    };
+    let entries: Entry[] = [];
 
     if (hasSnapshot) {
       // Read from frozen snapshot tables

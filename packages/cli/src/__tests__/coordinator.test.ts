@@ -108,7 +108,7 @@ function createFakeFs(state?: Partial<FakeFsState>, opts?: {
         }
         return fakeState.lastSuccessAt;
       }
-      throw new Error("readFile: unexpected path " + path);
+      throw new Error(`readFile: unexpected path ${path}`);
     }),
 
     unlink: vi.fn(async (path: string) => {
@@ -116,7 +116,7 @@ function createFakeFs(state?: Partial<FakeFsState>, opts?: {
         fakeState.lockContent = null;
         return;
       }
-      throw new Error("unlink: unexpected path " + path);
+      throw new Error(`unlink: unexpected path ${path}`);
     }),
 
     mkdir: vi.fn(async () => {

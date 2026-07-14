@@ -70,8 +70,8 @@ export function PricingMetaBanner({ meta, servedFrom, children }: Props) {
 
       {meta.lastErrors && meta.lastErrors.length > 0 && (
         <div className="rounded-card bg-destructive/10 p-3 text-xs text-destructive space-y-1">
-          {meta.lastErrors.map((e, i) => (
-            <div key={i} className="font-mono">
+          {meta.lastErrors.map((e) => (
+            <div key={`${e.source}:${e.at}:${e.message}`} className="font-mono">
               [{e.source}] {e.message} — at {e.at}
             </div>
           ))}

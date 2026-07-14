@@ -5,7 +5,7 @@
  * No external dependencies (Redis, etc.) required.
  */
 
-import { type DbRead } from "./db";
+import type { DbRead } from "./db";
 
 // ---------------------------------------------------------------------------
 // Types

@@ -179,7 +179,8 @@ export default function SeasonsPage() {
         {loading && !data && (
           <div className="space-y-2">
             {Array.from({ length: 3 }).map((_, i) => (
-              <SeasonCardSkeleton key={i} />
+              // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+              <SeasonCardSkeleton key={`slot-${i}`} />
             ))}
           </div>
         )}

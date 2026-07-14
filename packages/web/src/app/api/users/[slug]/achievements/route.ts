@@ -98,7 +98,7 @@ export async function GET(
     // 1. Find user by slug (must be public)
     const user = await db.getPublicUserBySlugOrId(slug);
 
-    if (!user || !user.is_public) {
+    if (!user?.is_public) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 

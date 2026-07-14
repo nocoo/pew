@@ -168,7 +168,7 @@ export function PricingTable({ entries }: Props) {
                       const icon = providerIconPath(e.provider)
                         ?? (e.origin === "openrouter" ? OPENROUTER_FALLBACK_ICON : null);
                       return icon ? (
-                        // eslint-disable-next-line @next/next/no-img-element
+                        // biome-ignore lint/performance/noImgElement: user-supplied image URL, not amenable to next/image domain allowlist
                         <img
                           src={icon.src}
                           alt=""
@@ -217,7 +217,7 @@ export function PricingTable({ entries }: Props) {
         </span>
         {totalPages > 1 && (
           <div className="flex items-center gap-1">
-            <button
+            <button type="button"
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={safePage === 0}
               className="rounded p-1 hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -227,7 +227,7 @@ export function PricingTable({ entries }: Props) {
             <span className="px-2">
               {safePage + 1} / {totalPages}
             </span>
-            <button
+            <button type="button"
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={safePage >= totalPages - 1}
               className="rounded p-1 hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"

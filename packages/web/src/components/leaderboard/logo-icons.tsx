@@ -24,7 +24,7 @@ function LogoImg({
   if (error) return <>{fallback}</>;
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- external logos, can't use next/image
+    // biome-ignore lint/performance/noImgElement: user-supplied image URL, not amenable to next/image domain allowlist -- external logos, can't use next/image
     <img src={src} alt={alt} className={className} onError={() => setError(true)} />
   );
 }

@@ -105,7 +105,7 @@ export async function parseGrokLogFile(opts: {
   const deltas: ParsedDelta[] = [];
 
   const st = await stat(filePath).catch(() => null);
-  if (!st || !st.isFile()) return { deltas, endOffset: startOffset };
+  if (!st?.isFile()) return { deltas, endOffset: startOffset };
   if (startOffset >= st.size) return { deltas, endOffset: startOffset };
 
   const stream = createReadStream(filePath, { start: startOffset });
@@ -225,7 +225,7 @@ export async function parseGrokTurnTimeline(
   }
   const timeline: GrokTurnTimeline = [];
   for (const line of raw.split("\n")) {
-    if (!line || !line.includes("turn_started")) continue;
+    if (!line?.includes("turn_started")) continue;
     let obj: Record<string, unknown>;
     try {
       obj = JSON.parse(line) as Record<string, unknown>;

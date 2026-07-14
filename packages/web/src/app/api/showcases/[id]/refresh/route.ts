@@ -72,7 +72,7 @@ export async function POST(request: Request, context: RouteContext) {
 
   // Parse owner/repo from current github_url
   const urlMatch = showcase.github_url.match(/github\.com\/([^/]+)\/([^/]+)/);
-  if (!urlMatch || !urlMatch[1] || !urlMatch[2]) {
+  if (!urlMatch?.[1] || !urlMatch[2]) {
     return NextResponse.json(
       { error: "Invalid stored GitHub URL" },
       { status: 500 }

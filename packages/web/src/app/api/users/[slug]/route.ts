@@ -138,7 +138,7 @@ export async function GET(
     // Use exact time range
     fromDate = new Date(fromParam);
     toDate = new Date(toParam);
-    if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+    if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
       return NextResponse.json(
         { error: "Invalid from/to datetime format" },
         { status: 400 },
@@ -149,7 +149,7 @@ export async function GET(
     let days = DEFAULT_DAYS;
     if (daysParam) {
       const parsed = parseInt(daysParam, 10);
-      if (isNaN(parsed) || parsed < 1 || parsed > MAX_DAYS) {
+      if (Number.isNaN(parsed) || parsed < 1 || parsed > MAX_DAYS) {
         return NextResponse.json(
           { error: `days must be 1-${MAX_DAYS}` },
           { status: 400 },

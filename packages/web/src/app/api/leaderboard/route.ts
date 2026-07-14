@@ -113,7 +113,7 @@ export async function GET(request: Request) {
   let limit = DEFAULT_LIMIT;
   if (limitParam) {
     const parsed = parseInt(limitParam, 10);
-    if (isNaN(parsed) || parsed < 1 || parsed > MAX_LIMIT) {
+    if (Number.isNaN(parsed) || parsed < 1 || parsed > MAX_LIMIT) {
       return NextResponse.json(
         { error: `limit must be 1-${MAX_LIMIT}` },
         { status: 400 },
@@ -126,7 +126,7 @@ export async function GET(request: Request) {
   let offset = 0;
   if (offsetParam) {
     const parsed = parseInt(offsetParam, 10);
-    if (isNaN(parsed) || parsed < 0) {
+    if (Number.isNaN(parsed) || parsed < 0) {
       return NextResponse.json(
         { error: "offset must be a non-negative integer" },
         { status: 400 },

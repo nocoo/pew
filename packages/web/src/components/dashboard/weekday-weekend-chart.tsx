@@ -108,7 +108,7 @@ export function WeekdayWeekendChart({
 
   // Ratio label: "2.3x more on weekdays" or "1.5x more on weekends"
   let ratioLabel: string | null = null;
-  if (stats.ratio > 0 && stats.ratio !== 1 && isFinite(stats.ratio)) {
+  if (stats.ratio > 0 && stats.ratio !== 1 && Number.isFinite(stats.ratio)) {
     if (stats.ratio >= 1) {
       ratioLabel = `${stats.ratio.toFixed(1)}x more on weekdays`;
     } else {

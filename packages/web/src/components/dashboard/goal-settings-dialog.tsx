@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useId, useState } from "react";
 import { Dialog } from "radix-ui";
 import { Settings, X } from "lucide-react";
 import { formatTokensFull } from "@/lib/utils";
@@ -61,6 +61,9 @@ function GoalSettingsForm({
   const [lower, setLower] = useState(() => String(current.lower / 1_000_000));
   const [upper, setUpper] = useState(() => String(current.upper / 1_000_000));
   const [error, setError] = useState("");
+  const uid = useId();
+  const lowerId = `${uid}-lower`;
+  const upperId = `${uid}-upper`;
 
   const handleSave = useCallback(() => {
     const lowerVal = parseFloat(lower) * 1_000_000;
@@ -89,10 +92,11 @@ function GoalSettingsForm({
       {/* Form */}
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-foreground mb-1">
+          <label htmlFor={lowerId} className="block text-sm font-medium text-foreground mb-1">
             Lower threshold (M tokens/day)
           </label>
           <input
+            id={lowerId}
             type="number"
             min="0"
             step="any"
@@ -107,10 +111,11 @@ function GoalSettingsForm({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-foreground mb-1">
+          <label htmlFor={upperId} className="block text-sm font-medium text-foreground mb-1">
             Upper threshold (M tokens/day)
           </label>
           <input
+            id={upperId}
             type="number"
             min="0"
             step="any"
@@ -186,7 +191,7 @@ export function GoalSettingsDialog({
         <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl bg-card p-6 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95">
           {/* Close button */}
           <Dialog.Close asChild>
-            <button
+            <button type="button"
               className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               aria-label="Close"
             >

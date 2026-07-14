@@ -104,7 +104,7 @@ describe("toModelEvolutionPoints", () => {
     expect(result[0]!.models["model-a"]).toBe(5000);
     expect(result[0]!.models["model-b"]).toBe(4000);
     expect(result[0]!.models["model-c"]).toBe(3000);
-    expect(result[0]!.models["Other"]).toBe(100);
+    expect(result[0]!.models.Other).toBe(100);
     expect(result[0]!.models["model-d"]).toBeUndefined();
   });
 
@@ -117,7 +117,7 @@ describe("toModelEvolutionPoints", () => {
     expect(result).toHaveLength(1);
     expect(result[0]!.models["model-a"]).toBe(5000);
     // model-b is below topN and includeOther=false → dropped, no "Other" key.
-    expect(result[0]!.models["Other"]).toBeUndefined();
+    expect(result[0]!.models.Other).toBeUndefined();
     expect(result[0]!.models["model-b"]).toBeUndefined();
   });
 
@@ -136,7 +136,7 @@ describe("toModelEvolutionPoints", () => {
     const modelKeys = Object.keys(result[0]!.models);
     // 5 top models + "Other"
     expect(modelKeys).toHaveLength(6);
-    expect(result[0]!.models["Other"]).toBe(1500); // m6(1000) + m7(500)
+    expect(result[0]!.models.Other).toBe(1500); // m6(1000) + m7(500)
   });
 
   it("should not include 'Other' when all models fit in topN", () => {
@@ -146,7 +146,7 @@ describe("toModelEvolutionPoints", () => {
     ];
     const result = toModelEvolutionPoints(rows, 5);
     expect(result).toHaveLength(1);
-    expect(result[0]!.models["Other"]).toBeUndefined();
+    expect(result[0]!.models.Other).toBeUndefined();
     expect(Object.keys(result[0]!.models)).toHaveLength(2);
   });
 

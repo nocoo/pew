@@ -189,7 +189,8 @@ export function HeatmapHero({
         <div className="rounded-card bg-secondary p-4 md:p-5 space-y-2">
           <Skeleton className="h-4 w-28 mb-3" />
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full rounded-xl" />
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+            <Skeleton key={`slot-${i}`} className="h-16 w-full rounded-xl" />
           ))}
         </div>
       </div>

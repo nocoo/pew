@@ -91,7 +91,7 @@ export async function parseCodexFile(opts: {
   let lastModel = opts.lastModel;
 
   const st = await stat(filePath).catch(() => null);
-  if (!st || !st.isFile()) return { deltas, endOffset: startOffset, lastTotals, lastModel };
+  if (!st?.isFile()) return { deltas, endOffset: startOffset, lastTotals, lastModel };
 
   const endOffset = st.size;
   if (endOffset === 0 || startOffset >= endOffset) {

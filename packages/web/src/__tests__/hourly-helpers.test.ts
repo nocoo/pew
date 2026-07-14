@@ -108,7 +108,7 @@ describe("toHourlyByDevice", () => {
     // Tokens go to "unknown" device, but device-1 is still in the result with 0
     expect(result[10]!.devices["device-1"]).toBe(0);
     // Unknown devices are tracked but value goes to "unknown" key
-    expect(result[10]!.devices["unknown"]).toBe(1000);
+    expect(result[10]!.devices.unknown).toBe(1000);
   });
 });
 
@@ -139,11 +139,11 @@ describe("toHourlyByModel", () => {
 
     expect(result).toHaveLength(24);
     // Hour 10: sonnet = 1500, opus = 0
-    expect(result[10]!.models["sonnet"]).toBe(1500);
-    expect(result[10]!.models["opus"]).toBe(0);
+    expect(result[10]!.models.sonnet).toBe(1500);
+    expect(result[10]!.models.opus).toBe(0);
     // Hour 14: sonnet = 0, opus = 2000
-    expect(result[14]!.models["sonnet"]).toBe(0);
-    expect(result[14]!.models["opus"]).toBe(2000);
+    expect(result[14]!.models.sonnet).toBe(0);
+    expect(result[14]!.models.opus).toBe(2000);
   });
 
   it("should bucket models beyond topN as 'Other'", () => {
@@ -159,7 +159,7 @@ describe("toHourlyByModel", () => {
 
     expect(result[10]!.models["model-1"]).toBe(5000);
     expect(result[10]!.models["model-2"]).toBe(4000);
-    expect(result[10]!.models["Other"]).toBe(4000); // 3000 + 1000
+    expect(result[10]!.models.Other).toBe(4000); // 3000 + 1000
     expect(result[10]!.models["model-3"]).toBeUndefined();
     expect(result[10]!.models["model-4"]).toBeUndefined();
   });
@@ -174,7 +174,7 @@ describe("toHourlyByModel", () => {
     const result = toHourlyByModel(rows, dateRange, 0, 5);
 
     // Hour 10: total 6000 / 2 days = 3000 average
-    expect(result[10]!.models["sonnet"]).toBe(3000);
+    expect(result[10]!.models.sonnet).toBe(3000);
   });
 
   it("should shift hours with timezone offset (UTC+9 JST)", () => {
@@ -185,8 +185,8 @@ describe("toHourlyByModel", () => {
 
     const result = toHourlyByModel(rows, defaultDateRange, -540, 5);
 
-    expect(result[10]!.models["sonnet"]).toBe(1000);
-    expect(result[1]!.models["sonnet"]).toBe(0);
+    expect(result[10]!.models.sonnet).toBe(1000);
+    expect(result[1]!.models.sonnet).toBe(0);
   });
 
   it("should not create 'Other' bucket when models <= topN", () => {
@@ -199,7 +199,7 @@ describe("toHourlyByModel", () => {
 
     expect(result[10]!.models["model-1"]).toBe(1000);
     expect(result[10]!.models["model-2"]).toBe(2000);
-    expect(result[10]!.models["Other"]).toBeUndefined();
+    expect(result[10]!.models.Other).toBeUndefined();
   });
 });
 
@@ -231,10 +231,10 @@ describe("toHourlyByAgent", () => {
     expect(result).toHaveLength(24);
     // Hour 10: claude-code = 1500, opencode = 0
     expect(result[10]!.sources["claude-code"]).toBe(1500);
-    expect(result[10]!.sources["opencode"]).toBe(0);
+    expect(result[10]!.sources.opencode).toBe(0);
     // Hour 14: claude-code = 0, opencode = 2000
     expect(result[14]!.sources["claude-code"]).toBe(0);
-    expect(result[14]!.sources["opencode"]).toBe(2000);
+    expect(result[14]!.sources.opencode).toBe(2000);
   });
 
   it("should compute daily average over date range", () => {

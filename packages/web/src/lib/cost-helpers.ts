@@ -49,7 +49,7 @@ export interface DailyCostPoint {
 export function toDailyCostPoints(
   rows: UsageRow[],
   pricingMap: PricingMap,
-  tzOffset: number = 0,
+  tzOffset = 0,
 ): DailyCostPoint[] {
   const byDate = new Map<string, DailyCostPoint>();
 
@@ -240,7 +240,7 @@ export interface DailyCacheRate {
  * Days with zero total input tokens get `cacheRate = 0`.
  * Returns sorted ascending by date.
  */
-export function toDailyCacheRates(rows: UsageRow[], tzOffset: number = 0): DailyCacheRate[] {
+export function toDailyCacheRates(rows: UsageRow[], tzOffset = 0): DailyCacheRate[] {
   const byDate = new Map<string, { cachedTokens: number; inputTokens: number }>();
 
   for (const r of rows) {

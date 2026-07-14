@@ -151,9 +151,9 @@ export function HeatmapCalendar({
             className="relative h-4 text-xs text-muted-foreground mb-1"
             style={{ marginLeft: labelWidth }}
           >
-            {monthLabels.map((label, i) => (
+            {monthLabels.map((label) => (
               <div
-                key={i}
+                key={`${label.weekIndex}-${label.month}`}
                 className="absolute"
                 style={{ left: label.weekIndex * (cellSize + cellGap) }}
               >
@@ -186,11 +186,12 @@ export function HeatmapCalendar({
             <div className="flex" style={{ gap: cellGap }}>
               {weeks.map((week, weekIndex) => (
                 <div
-                  key={weekIndex}
+                  // biome-ignore lint/suspicious/noArrayIndexKey: weeks are computed from a fixed year, positional order is authoritative.
+                  key={`week-${weekIndex}`}
                   className="flex flex-col"
                   style={{ gap: cellGap }}
                 >
-                  {week.map((date, dayIndex) => {
+                  {week.map((date) => {
                     const dateStr = formatDateISO(date);
                     const value = dataMap.get(dateStr) ?? 0;
                     const isCurrentYear = date.getFullYear() === year;
@@ -203,7 +204,7 @@ export function HeatmapCalendar({
                     if (!isCurrentYear) {
                       return (
                         <div
-                          key={dayIndex}
+                          key={dateStr}
                           style={{
                             width: cellSize,
                             height: cellSize,
@@ -215,7 +216,8 @@ export function HeatmapCalendar({
 
                     return (
                       <div
-                        key={dayIndex}
+                        key={dateStr}
+                        role="img"
                         aria-label={`${dateStr}: ${metricLabel} ${valueFormatter(value, dateStr)}`}
                         className={cn(
                           "rounded-sm cursor-pointer transition-colors hover:ring-1 hover:ring-foreground",
@@ -241,7 +243,8 @@ export function HeatmapCalendar({
             <span>{legendLabels?.[0] ?? "Less"}</span>
             {colorScale.map((color, i) => (
               <div
-                key={i}
+                // biome-ignore lint/suspicious/noArrayIndexKey: compile-time constant tuple; positional key is authoritative.
+                key={`legend-${i}`}
                 className={cn(
                   "rounded-sm",
                   i === 0 && "border border-border/60",

@@ -275,7 +275,7 @@ describe("parseHermesDatabase", () => {
     // Replace DB file (simulate recreation)
     // Write to a temp file first, then rename to ensure inode change
     await rm(dbPath);
-    const tempPath = dbPath + ".tmp";
+    const tempPath = `${dbPath}.tmp`;
     await writeFile(tempPath, "new content to ensure different inode");
     await rename(tempPath, dbPath);
 

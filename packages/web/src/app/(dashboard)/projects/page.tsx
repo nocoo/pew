@@ -39,7 +39,8 @@ function ProjectsSkeleton() {
       {/* Stat grid (3 cols) */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="rounded-card bg-secondary p-4 space-y-2">
+          // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+          <div key={`slot-${i}`} className="rounded-card bg-secondary p-4 space-y-2">
             <Skeleton className="h-3 w-20" />
             <Skeleton className="h-7 w-24" />
           </div>
@@ -49,7 +50,8 @@ function ProjectsSkeleton() {
       {/* 2-col chart grid (Trend + Share) */}
       <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         {Array.from({ length: 2 }).map((_, i) => (
-          <ChartCardSkeleton key={i} titleWidth="w-24" chartHeight="h-[240px] md:h-[280px]" />
+          // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+          <ChartCardSkeleton key={`slot-${i}`} titleWidth="w-24" chartHeight="h-[240px] md:h-[280px]" />
         ))}
       </div>
 
@@ -73,7 +75,8 @@ function ProjectsSkeleton() {
           </thead>
           <tbody>
             {Array.from({ length: 4 }).map((_, i) => (
-              <tr key={i} className="border-b border-border/50 last:border-0">
+              // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+              <tr key={`slot-${i}`} className="border-b border-border/50 last:border-0">
                 <td className="px-4 py-3"><Skeleton className="h-4 w-28" /></td>
                 <td className="px-4 py-3 hidden lg:table-cell"><Skeleton className="h-4 w-16" /></td>
                 <td className="px-4 py-3"><Skeleton className="h-4 w-10 ml-auto" /></td>
@@ -256,7 +259,6 @@ function TagEditor({
             }}
             placeholder="tag..."
             className="w-20 rounded bg-background px-1.5 py-0.5 text-[10px] text-foreground outline-none ring-1 ring-border focus:ring-primary"
-            autoFocus
           />
           {suggestions.length > 0 && (
             <div className="absolute left-0 top-full z-10 mt-1 rounded-md border border-border bg-secondary shadow-md">
@@ -681,8 +683,7 @@ export default function ProjectsPage() {
 
       {/* Content */}
       {!loading && data && (
-        <>
-          {!hasAnyData ? (
+        !hasAnyData ? (
             <ProjectsEmptyState
               isFilterEmpty={isTagFilterEmpty}
               filterValue={tagFilter}
@@ -713,8 +714,7 @@ export default function ProjectsPage() {
                 />
               )}
             </>
-          )}
-        </>
+          )
       )}
     </div>
   );

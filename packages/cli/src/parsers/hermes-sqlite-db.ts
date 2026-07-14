@@ -60,8 +60,8 @@ function getSqliteOpener(): ((dbPath: string) => SqliteDb) | null {
     // require("node:sqlite"). Intercept process.emit, swallow the
     // specific SQLite warning, then restore normal behaviour.
     const origEmit = process.emit;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (process as any).emit = function (event: string, ...args: unknown[]) {
+    // biome-ignore lint/suspicious/noExplicitAny: process.emit override needs (process as any) to reassign the frozen signature
+    (process as any).emit = (event: string, ...args: unknown[]) => {
       if (
         event === "warning" &&
         args[0] instanceof Error &&

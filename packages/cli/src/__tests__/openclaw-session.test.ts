@@ -100,7 +100,7 @@ describe("collectOpenClawSessions", () => {
       }),
       messageLine({ timestamp: "2026-03-07T10:15:00.000Z" }),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectOpenClawSessions(f);
     expect(result).toHaveLength(1);
@@ -121,7 +121,7 @@ describe("collectOpenClawSessions", () => {
 
   it("should derive sessionKey from sha256 of absolute path", async () => {
     const f = join(tmpDir, "session.jsonl");
-    await writeFile(f, messageLine() + "\n");
+    await writeFile(f, `${messageLine()}\n`);
 
     const result = await collectOpenClawSessions(f);
     expect(result).toHaveLength(1);
@@ -133,7 +133,7 @@ describe("collectOpenClawSessions", () => {
     const dir = join(tmpDir, "agents", "code-reviewer", "sessions");
     await mkdir(dir, { recursive: true });
     const f = join(dir, "session-001.jsonl");
-    await writeFile(f, messageLine() + "\n");
+    await writeFile(f, `${messageLine()}\n`);
 
     const result = await collectOpenClawSessions(f);
     expect(result).toHaveLength(1);
@@ -142,7 +142,7 @@ describe("collectOpenClawSessions", () => {
 
   it("should set projectRef to null when path has no agents pattern", async () => {
     const f = join(tmpDir, "random-session.jsonl");
-    await writeFile(f, messageLine() + "\n");
+    await writeFile(f, `${messageLine()}\n`);
 
     const result = await collectOpenClawSessions(f);
     expect(result).toHaveLength(1);
@@ -152,7 +152,7 @@ describe("collectOpenClawSessions", () => {
   it("should return empty when no entries have timestamps", async () => {
     const f = join(tmpDir, "no-ts.jsonl");
     const line = JSON.stringify({ type: "message", message: { model: "test" } });
-    await writeFile(f, line + "\n");
+    await writeFile(f, `${line}\n`);
 
     const result = await collectOpenClawSessions(f);
     expect(result).toEqual([]);
@@ -170,7 +170,7 @@ describe("collectOpenClawSessions", () => {
         message: { model: "claude-opus-4", usage: { input: 200, output: 100, totalTokens: 300 } },
       }),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectOpenClawSessions(f);
     expect(result).toHaveLength(1);
@@ -184,7 +184,7 @@ describe("collectOpenClawSessions", () => {
       "", // empty line triggers `if (!line) continue`
       messageLine({ timestamp: "2026-03-07T10:05:00.000Z" }),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectOpenClawSessions(f);
     expect(result).toHaveLength(1);
@@ -197,7 +197,7 @@ describe("collectOpenClawSessions", () => {
       JSON.stringify({ type: 123, timestamp: "2026-03-07T10:00:00.000Z" }),
       messageLine({ timestamp: "2026-03-07T10:05:00.000Z" }),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectOpenClawSessions(f);
     expect(result).toHaveLength(1);
@@ -228,7 +228,7 @@ describe("collectOpenClawSessions", () => {
         message: "not-an-object",
       }),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
     const result = await collectOpenClawSessions(f);
     expect(result).toHaveLength(1);
     // All three entries are counted as messages, but none contribute a model.
@@ -245,7 +245,7 @@ describe("collectOpenClawSessions", () => {
         message: { model: 42 },
       }),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectOpenClawSessions(f);
     expect(result).toHaveLength(1);
@@ -261,7 +261,7 @@ describe("collectOpenClawSessions", () => {
         message: { model: "   " },
       }),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectOpenClawSessions(f);
     expect(result).toHaveLength(1);
@@ -275,7 +275,7 @@ describe("collectOpenClawSessions", () => {
     const dir = join(tmpDir, "agents", "", "sessions");
     await mkdir(dir, { recursive: true });
     const f = join(dir, "session.jsonl");
-    await writeFile(f, messageLine() + "\n");
+    await writeFile(f, `${messageLine()}\n`);
 
     const result = await collectOpenClawSessions(f);
     expect(result).toHaveLength(1);
@@ -291,7 +291,7 @@ describe("collectOpenClawSessions", () => {
       messageLine({ timestamp: "2026-03-07T10:05:00.000Z" }),
       "also broken{",
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectOpenClawSessions(f);
     expect(result).toHaveLength(1);
@@ -309,7 +309,7 @@ describe("collectOpenClawSessions", () => {
       messageLine({ timestamp: "2026-03-07T10:20:00.000Z" }), // earlier than max → ts>max false
       messageLine({ timestamp: "2026-03-07T10:40:00.000Z" }), // later than max → ts>max true
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
     const result = await collectOpenClawSessions(f);
     expect(result).toHaveLength(1);
     expect(result[0].startedAt).toBe("2026-03-07T10:20:00.000Z");

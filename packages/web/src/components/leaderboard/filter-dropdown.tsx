@@ -49,7 +49,7 @@ export function FilterDropdown({
 
   return (
     <div ref={ref} className="relative shrink-0">
-      <button
+      <button type="button"
         onClick={() => setOpen(!open)}
         className={cn(
           "flex items-center gap-2 rounded-lg bg-secondary px-3 py-[10px] text-sm font-medium transition-colors",
@@ -77,7 +77,7 @@ export function FilterDropdown({
           style={{ minWidth: panelMinWidth }}
         >
           {items.map((item) => (
-            <button
+            <button type="button"
               key={item.key}
               onClick={() => {
                 onChange(item.key);

@@ -28,7 +28,7 @@ export function ShowcaseImage({ url, repoKey, className = "" }: ShowcaseImagePro
   }
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
+    // biome-ignore lint/performance/noImgElement: user-supplied image URL, not amenable to next/image domain allowlist
     <img
       src={url}
       alt={repoKey}

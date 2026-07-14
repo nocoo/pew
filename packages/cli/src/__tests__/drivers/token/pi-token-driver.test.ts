@@ -70,7 +70,7 @@ describe("piTokenDriver", () => {
       await mkdir(sessDir, { recursive: true });
       await writeFile(
         join(sessDir, "session.jsonl"),
-        piSessionLine() + "\n" + piAssistantLine() + "\n",
+        `${piSessionLine()}\n${piAssistantLine()}\n`,
       );
 
       const files = await piTokenDriver.discover(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useId } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
@@ -219,6 +219,11 @@ function CreateSeasonForm({
   const [allowLateWithdrawal, setAllowLateWithdrawal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const uid = useId();
+  const nameId = `${uid}-name`;
+  const slugId = `${uid}-slug`;
+  const startDateId = `${uid}-start-date`;
+  const endDateId = `${uid}-end-date`;
 
   // Auto-generate slug from name
   const handleNameChange = (v: string) => {
@@ -272,10 +277,11 @@ function CreateSeasonForm({
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1">
+          <label htmlFor={nameId} className="block text-xs font-medium text-muted-foreground mb-1">
             Name
           </label>
           <input
+            id={nameId}
             type="text"
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
@@ -285,10 +291,11 @@ function CreateSeasonForm({
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1">
+          <label htmlFor={slugId} className="block text-xs font-medium text-muted-foreground mb-1">
             Slug
           </label>
           <input
+            id={slugId}
             type="text"
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
@@ -298,10 +305,11 @@ function CreateSeasonForm({
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1">
+          <label htmlFor={startDateId} className="block text-xs font-medium text-muted-foreground mb-1">
             Start Date
           </label>
           <input
+            id={startDateId}
             type="datetime-local"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
@@ -309,10 +317,11 @@ function CreateSeasonForm({
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1">
+          <label htmlFor={endDateId} className="block text-xs font-medium text-muted-foreground mb-1">
             End Date
           </label>
           <input
+            id={endDateId}
             type="datetime-local"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
@@ -321,9 +330,9 @@ function CreateSeasonForm({
         </div>
       </div>
       <div className="mt-3">
-        <label className="block text-xs font-medium text-muted-foreground mb-2">
+        <span className="block text-xs font-medium text-muted-foreground mb-2">
           Rules
-        </label>
+        </span>
         <div className="flex flex-col gap-2">
           <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
             <input
@@ -355,7 +364,7 @@ function CreateSeasonForm({
         </div>
       </div>
       <div className="flex items-center gap-2 mt-4">
-        <button
+        <button type="button"
           onClick={handleSubmit}
           disabled={submitting || !name.trim() || !slug.trim() || !startDate || !endDate}
           className={cn(
@@ -366,7 +375,7 @@ function CreateSeasonForm({
         >
           {submitting ? "Creating..." : "Create"}
         </button>
-        <button
+        <button type="button"
           onClick={onCancel}
           className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
         >
@@ -404,6 +413,11 @@ function EditSeasonRow({
   const [allowLateWithdrawal, setAllowLateWithdrawal] = useState(season.allow_late_withdrawal);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const uid = useId();
+  const nameId = `${uid}-name`;
+  const slugId = `${uid}-slug`;
+  const startDateId = `${uid}-start-date`;
+  const endDateId = `${uid}-end-date`;
 
   const handleSave = async () => {
     setSubmitting(true);
@@ -456,10 +470,11 @@ function EditSeasonRow({
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">
+            <label htmlFor={nameId} className="block text-xs font-medium text-muted-foreground mb-1">
               Name
             </label>
             <input
+              id={nameId}
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -468,10 +483,11 @@ function EditSeasonRow({
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">
+            <label htmlFor={slugId} className="block text-xs font-medium text-muted-foreground mb-1">
               Slug (read-only)
             </label>
             <input
+              id={slugId}
               type="text"
               value={season.slug}
               disabled
@@ -479,10 +495,11 @@ function EditSeasonRow({
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">
+            <label htmlFor={startDateId} className="block text-xs font-medium text-muted-foreground mb-1">
               Start Date{!isUpcoming && " (locked)"}
             </label>
             <input
+              id={startDateId}
               type="datetime-local"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
@@ -496,10 +513,11 @@ function EditSeasonRow({
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">
+            <label htmlFor={endDateId} className="block text-xs font-medium text-muted-foreground mb-1">
               End Date{!isUpcoming && " (locked)"}
             </label>
             <input
+              id={endDateId}
               type="datetime-local"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
@@ -514,9 +532,9 @@ function EditSeasonRow({
           </div>
         </div>
         <div className="mt-3">
-          <label className="block text-xs font-medium text-muted-foreground mb-2">
+          <span className="block text-xs font-medium text-muted-foreground mb-2">
             Rules
-          </label>
+          </span>
           <div className="flex flex-col gap-2">
             <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
               <input
@@ -548,7 +566,7 @@ function EditSeasonRow({
           </div>
         </div>
         <div className="flex items-center gap-2 mt-3">
-          <button
+          <button type="button"
             onClick={handleSave}
             disabled={submitting || !name.trim()}
             className={cn(
@@ -559,7 +577,7 @@ function EditSeasonRow({
             <Check className="h-3.5 w-3.5" strokeWidth={1.5} />
             {submitting ? "Saving..." : "Save"}
           </button>
-          <button
+          <button type="button"
             onClick={onCancel}
             className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           >
@@ -799,7 +817,7 @@ export default function AdminSeasonsPage() {
             usage.
           </p>
         </div>
-        <button
+        <button type="button"
           onClick={() => {
             setShowCreate(!showCreate);
             setEditingId(null);
@@ -834,8 +852,7 @@ export default function AdminSeasonsPage() {
 
       {/* Table */}
       {!loading && (
-        <>
-          {rows.length === 0 ? (
+        rows.length === 0 ? (
             <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
               No seasons yet. Create one to get started.
             </div>
@@ -899,8 +916,7 @@ export default function AdminSeasonsPage() {
                 </tbody>
               </table>
             </div>
-          )}
-        </>
+          )
       )}
 
       {/* Confirm dialog */}
@@ -971,7 +987,7 @@ function SeasonTableRow({
         <td className="px-4 py-3">
           <div className="flex items-center justify-end gap-1">
             {/* Edit */}
-            <button
+            <button type="button"
               onClick={onEdit}
               className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               title="Edit season"
@@ -981,7 +997,7 @@ function SeasonTableRow({
 
             {/* View teams */}
             {row.team_count > 0 && (
-              <button
+              <button type="button"
                 onClick={onToggleTeams}
                 className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                 title="View registered teams"
@@ -996,7 +1012,7 @@ function SeasonTableRow({
 
             {/* Sync rosters */}
             {row.status === "active" && row.allow_roster_changes && (
-              <button
+              <button type="button"
                 onClick={onSyncRosters}
                 disabled={syncing === row.id}
                 className={cn(
@@ -1017,7 +1033,7 @@ function SeasonTableRow({
 
             {/* Snapshot */}
             {row.status === "ended" && (
-              <button
+              <button type="button"
                 onClick={onSnapshot}
                 disabled={snapshotting === row.id}
                 className={cn(
@@ -1040,7 +1056,8 @@ function SeasonTableRow({
             {expandedLoading ? (
               <div className="space-y-2">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-4 w-48" />
+                  // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+                  <Skeleton key={`slot-${i}`} className="h-4 w-48" />
                 ))}
               </div>
             ) : expandedTeams.length === 0 ? (

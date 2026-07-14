@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useId } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
@@ -161,6 +161,9 @@ function CreateBadgeDialog({ open, onClose, onCreated }: CreateBadgeDialogProps)
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const uid = useId();
+  const textId = `${uid}-text`;
+  const descriptionId = `${uid}-description`;
 
   // Always exists because PALETTES is non-empty const array
   const defaultPalette = { value: "ocean" as const, label: "Ocean", bg: "#3B82F6", text: "#FFFFFF" };
@@ -214,10 +217,11 @@ function CreateBadgeDialog({ open, onClose, onCreated }: CreateBadgeDialogProps)
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Text */}
           <div>
-            <label className="mb-1 block text-sm font-medium">
+            <label htmlFor={textId} className="mb-1 block text-sm font-medium">
               Text (1-3 characters)
             </label>
             <input
+              id={textId}
               type="text"
               value={text}
               onChange={(e) => setText(e.target.value)}
@@ -231,7 +235,7 @@ function CreateBadgeDialog({ open, onClose, onCreated }: CreateBadgeDialogProps)
           {/* Icon */}
           <div>
             <div className="mb-1 flex items-center justify-between">
-              <label className="text-sm font-medium">Icon</label>
+              <span className="text-sm font-medium">Icon</span>
               <button
                 type="button"
                 onClick={randomize}
@@ -266,7 +270,7 @@ function CreateBadgeDialog({ open, onClose, onCreated }: CreateBadgeDialogProps)
 
           {/* Color Palette */}
           <div>
-            <label className="mb-1 block text-sm font-medium">Color</label>
+            <span className="mb-1 block text-sm font-medium">Color</span>
             <div className="flex gap-2">
               {PALETTES.map((p) => (
                 <button
@@ -288,7 +292,7 @@ function CreateBadgeDialog({ open, onClose, onCreated }: CreateBadgeDialogProps)
 
           {/* Preview */}
           <div>
-            <label className="mb-1 block text-sm font-medium">Preview</label>
+            <span className="mb-1 block text-sm font-medium">Preview</span>
             <div className="flex items-center gap-4 rounded-lg bg-secondary p-4">
               <BadgeIcon
                 text={text || "?"}
@@ -316,10 +320,11 @@ function CreateBadgeDialog({ open, onClose, onCreated }: CreateBadgeDialogProps)
 
           {/* Description */}
           <div>
-            <label className="mb-1 block text-sm font-medium">
+            <label htmlFor={descriptionId} className="mb-1 block text-sm font-medium">
               Description (optional)
             </label>
             <textarea
+              id={descriptionId}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
@@ -381,6 +386,10 @@ function AssignBadgeDialog({
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const uid = useId();
+  const badgeSelectId = `${uid}-badge`;
+  const userQueryId = `${uid}-user-query`;
+  const noteId = `${uid}-note`;
 
   const activeBadges = badges.filter((b) => b.is_archived === 0);
   const selectedBadge = badges.find((b) => b.id === selectedBadgeId);
@@ -451,8 +460,9 @@ function AssignBadgeDialog({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Badge Selection */}
           <div>
-            <label className="mb-1 block text-sm font-medium">Badge</label>
+            <label htmlFor={badgeSelectId} className="mb-1 block text-sm font-medium">Badge</label>
             <select
+              id={badgeSelectId}
               value={selectedBadgeId}
               onChange={(e) => setSelectedBadgeId(e.target.value)}
               className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
@@ -483,7 +493,7 @@ function AssignBadgeDialog({
 
           {/* User Search */}
           <div>
-            <label className="mb-1 block text-sm font-medium">User</label>
+            <label htmlFor={userQueryId} className="mb-1 block text-sm font-medium">User</label>
             {selectedUser ? (
               <div className="flex items-center gap-2 rounded-lg bg-secondary p-2">
                 {selectedUser.image && (
@@ -515,6 +525,7 @@ function AssignBadgeDialog({
             ) : (
               <div className="relative">
                 <input
+                  id={userQueryId}
                   type="text"
                   value={userQuery}
                   onChange={(e) => setUserQuery(e.target.value)}
@@ -569,10 +580,11 @@ function AssignBadgeDialog({
 
           {/* Note */}
           <div>
-            <label className="mb-1 block text-sm font-medium">
+            <label htmlFor={noteId} className="mb-1 block text-sm font-medium">
               Note (optional)
             </label>
             <textarea
+              id={noteId}
               value={note}
               onChange={(e) => setNote(e.target.value)}
               className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
@@ -623,6 +635,8 @@ function RevokeDialog({ open, isActive, onClose, onConfirm }: RevokeDialogProps)
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [prevOpen, setPrevOpen] = useState(open);
+  const uid = useId();
+  const reasonId = `${uid}-reason`;
 
   const action = isActive ? "Revoke" : "Clear";
 
@@ -660,10 +674,11 @@ function RevokeDialog({ open, isActive, onClose, onConfirm }: RevokeDialogProps)
         </p>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">
+            <label htmlFor={reasonId} className="block text-sm font-medium mb-1">
               Reason <span className="text-muted-foreground">(optional)</span>
             </label>
             <textarea
+              id={reasonId}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none resize-none"
@@ -728,7 +743,7 @@ function BadgeDefinitionRow({ badge, onArchive, onUnarchive }: BadgeRowProps) {
       </div>
       <div className="flex items-center gap-2">
         {badge.is_archived === 0 ? (
-          <button
+          <button type="button"
             onClick={onArchive}
             className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
           >
@@ -736,7 +751,7 @@ function BadgeDefinitionRow({ badge, onArchive, onUnarchive }: BadgeRowProps) {
             Archive
           </button>
         ) : (
-          <button
+          <button type="button"
             onClick={onUnarchive}
             className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:bg-success/10 hover:text-success"
           >
@@ -802,7 +817,7 @@ function AssignmentRow({ assignment, onRevoke }: AssignmentRowProps) {
         )}
       </div>
       {canRevoke && (
-        <button
+        <button type="button"
           onClick={onRevoke}
           className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
         >
@@ -956,14 +971,14 @@ export default function AdminBadgesPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
+          <button type="button"
             onClick={() => setShowAssignDialog(true)}
             className="flex items-center gap-2 rounded-lg bg-secondary px-4 py-2 text-sm hover:bg-secondary/80"
           >
             <UserPlus className="h-4 w-4" />
             Assign
           </button>
-          <button
+          <button type="button"
             onClick={() => setShowCreateDialog(true)}
             className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
           >
@@ -975,7 +990,7 @@ export default function AdminBadgesPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 rounded-lg bg-secondary/50 p-1">
-        <button
+        <button type="button"
           onClick={() => setActiveTab("definitions")}
           className={cn(
             "flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors",
@@ -986,7 +1001,7 @@ export default function AdminBadgesPage() {
         >
           Definitions ({badges.length})
         </button>
-        <button
+        <button type="button"
           onClick={() => setActiveTab("assignments")}
           className={cn(
             "flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors",
@@ -1003,7 +1018,7 @@ export default function AdminBadgesPage() {
       {error && (
         <div className="mb-4 rounded-lg bg-destructive/10 p-4 text-sm text-destructive">
           {error}
-          <button
+          <button type="button"
             onClick={() => setError(null)}
             className="ml-2 underline hover:no-underline"
           >
@@ -1037,7 +1052,7 @@ export default function AdminBadgesPage() {
           {/* Status filter */}
           <div className="mb-4 flex gap-2">
             {(["all", "active", "expired", "revoked", "cleared"] as const).map((s) => (
-              <button
+              <button type="button"
                 key={s}
                 onClick={() => setStatusFilter(s)}
                 className={cn(

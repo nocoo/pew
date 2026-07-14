@@ -169,6 +169,7 @@ function AchievementRing({ progress, tier, icon, size = RING_SIZE }: Achievement
   return (
     <div className={cn("relative inline-flex items-center justify-center shrink-0", styles.glow, "rounded-full")}>
       <svg
+        aria-hidden="true"
         width={size}
         height={size}
         viewBox={`0 0 ${size} ${size}`}
@@ -391,17 +392,10 @@ function AchievementCard({ achievement, index, isExpanded, onToggle, onUserClick
       style={{ animationDelay: `${Math.min(index * 30, 400)}ms` }}
     >
       {/* Clickable header */}
-      <div
-        role="button"
-        tabIndex={0}
+      <button
+        type="button"
         onClick={onToggle}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onToggle();
-          }
-        }}
-        className="w-full text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg"
+        className="w-full text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg bg-transparent border-0 p-0"
       >
         {/* Top row: ring + name/tier */}
         <div className="flex items-start gap-3">
@@ -472,9 +466,8 @@ function AchievementCard({ achievement, index, isExpanded, onToggle, onUserClick
             onUserClick={onUserClick}
           />
         )}
-      </div>
+      </button>
 
-      {/* Expanded content */}
       {isExpanded && (
         <div className="mt-4 pt-4 border-t border-border">
           {/* Tier thresholds */}

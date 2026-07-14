@@ -148,7 +148,7 @@ describe("createZcodeSqliteTokenDriver", () => {
     const firstInode = r1.cursor.inode;
 
     // Simulate inode change: rename+recreate.
-    await rename(dbPath, dbPath + ".bak");
+    await rename(dbPath, `${dbPath}.bak`);
     await writeFile(dbPath, "different-content-so-inode-differs");
 
     // Feed the driver a cursor whose inode disagrees with the fresh file.

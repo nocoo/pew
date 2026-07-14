@@ -630,9 +630,7 @@ describe("upload-engine", () => {
     expect(result.success).toBe(true);
 
     // Verify auth header uses dev token
-    const authHeader = (calls[0].init.headers as Record<string, string>)[
-      "Authorization"
-    ];
+    const authHeader = (calls[0].init.headers as Record<string, string>).Authorization;
     expect(authHeader).toBe("Bearer pk_dev_token");
   });
 
@@ -977,9 +975,9 @@ describe("upload-engine", () => {
 
     // Mix of corrupt and valid lines
     const line1 = "NOT_VALID_JSON\n";
-    const line2 = JSON.stringify(makeRecord(1)) + "\n";
+    const line2 = `${JSON.stringify(makeRecord(1))}\n`;
     const line3 = "{broken\n";
-    const line4 = JSON.stringify(makeRecord(2)) + "\n";
+    const line4 = `${JSON.stringify(makeRecord(2))}\n`;
     await writeFile(queue.queuePath, line1 + line2 + line3 + line4);
 
     const { fetchFn, calls } = createMockFetch([

@@ -94,7 +94,7 @@ export async function GET(request: Request) {
   const fromDate = fromParam ? new Date(fromParam) : defaultFrom;
   const toDate = toParam ? new Date(toParam) : now;
 
-  if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
+  if (Number.isNaN(fromDate.getTime()) || Number.isNaN(toDate.getTime())) {
     return NextResponse.json(
       { error: "Invalid date format" },
       { status: 400 }

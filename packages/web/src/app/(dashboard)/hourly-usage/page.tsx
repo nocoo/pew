@@ -304,7 +304,8 @@ function RecentSkeleton() {
               </thead>
               <tbody>
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <tr key={i} className="border-b border-border/50">
+                  // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+                  <tr key={`slot-${i}`} className="border-b border-border/50">
                     <td className="px-4 py-3"><Skeleton className="h-4 w-20" /></td>
                     <td className="px-4 py-3"><Skeleton className="h-4 w-12 ml-auto" /></td>
                     <td className="px-4 py-3"><Skeleton className="h-4 w-12 ml-auto" /></td>
@@ -373,7 +374,7 @@ export default function RecentPage() {
   const tzOffset = useTzOffset();
   const { patternFrom, patternTo } = useMemo(() => {
     const today = getLocalToday(tzOffset);
-    const fromDate = new Date(today + "T00:00:00Z");
+    const fromDate = new Date(`${today}T00:00:00Z`);
     fromDate.setUTCDate(fromDate.getUTCDate() - 30);
     return {
       patternFrom: fromDate.toISOString().slice(0, 10),
@@ -470,8 +471,7 @@ export default function RecentPage() {
 
       {/* Content */}
       {!allLoading && data && (
-        <>
-          {data.summary.total_tokens > 0 ? (
+        data.summary.total_tokens > 0 ? (
             <div className="grid gap-4 md:gap-6 xl:grid-cols-4">
               {/* Left column: Timeline charts + Detail table (3/4) */}
               <div className="xl:col-span-3 space-y-4 md:space-y-6">
@@ -564,8 +564,7 @@ export default function RecentPage() {
             <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
               No usage data in the last 72 hours.
             </div>
-          )}
-        </>
+          )
       )}
     </div>
   );

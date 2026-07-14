@@ -24,7 +24,7 @@ function buildLogWithUsage(overrides: {
     kind = "assistant_usage",
   } = overrides;
 
-  return [
+  return `${[
     `2026-03-16T10:40:00.873Z [INFO] CompactionProcessor: Utilization 27.5% (46283/168000 tokens) below threshold 80%`,
     `2026-03-16T10:40:00.959Z [INFO] [Telemetry] cli.telemetry:`,
     `{`,
@@ -47,7 +47,7 @@ function buildLogWithUsage(overrides: {
     `  "created_at": "${created_at}"`,
     `}`,
     `2026-03-16T10:40:00.960Z [DEBUG] Sending telemetry event: copilot-cli/cli.telemetry (kind: ${kind})`,
-  ].join("\n") + "\n";
+  ].join("\n")}\n`;
 }
 
 describe("parseCopilotCliFile", () => {
@@ -242,12 +242,12 @@ describe("parseCopilotCliFile", () => {
       created_at: "2026-03-16T10:40:00.000Z",
     });
     // Simulate a telemetry header followed by a truncated JSON block
-    const incompleteBlock = [
+    const incompleteBlock = `${[
       `2026-03-16T10:41:00.000Z [INFO] [Telemetry] cli.telemetry:`,
       `{`,
       `  "kind": "assistant_usage",`,
       `  "properties": {`,
-    ].join("\n") + "\n";
+    ].join("\n")}\n`;
     await writeFile(filePath, completeBlock + incompleteBlock);
 
     const result = await parseCopilotCliFile({ filePath, startOffset: 0 });
@@ -270,12 +270,12 @@ describe("parseCopilotCliFile", () => {
       created_at: "2026-03-16T10:40:00.000Z",
     });
     // First write: complete block + truncated second block
-    const truncatedTail = [
+    const truncatedTail = `${[
       `2026-03-16T10:41:00.000Z [INFO] [Telemetry] cli.telemetry:`,
       `{`,
       `  "kind": "assistant_usage",`,
       `  "properties": {`,
-    ].join("\n") + "\n";
+    ].join("\n")}\n`;
     await writeFile(filePath, completeBlock + truncatedTail);
 
     // First parse — gets block 1, rewinds before truncated block
@@ -302,7 +302,7 @@ describe("parseCopilotCliFile", () => {
   it("handles braces inside JSON string values correctly", async () => {
     const filePath = join(tempDir, "process-braces.log");
     // Build a telemetry block where a string value contains braces
-    const content = [
+    const content = `${[
       `2026-03-16T10:40:00.959Z [INFO] [Telemetry] cli.telemetry:`,
       `{`,
       `  "kind": "assistant_usage",`,
@@ -321,7 +321,7 @@ describe("parseCopilotCliFile", () => {
       `  "created_at": "2026-03-16T10:40:00.959Z"`,
       `}`,
       `2026-03-16T10:40:01.000Z [DEBUG] Done`,
-    ].join("\n") + "\n";
+    ].join("\n")}\n`;
     await writeFile(filePath, content);
 
     const result = await parseCopilotCliFile({ filePath, startOffset: 0 });
@@ -333,7 +333,7 @@ describe("parseCopilotCliFile", () => {
 
   it("falls back to 'unknown' model when properties.model is missing", async () => {
     const filePath = join(tempDir, "process-nomodel.log");
-    const content = [
+    const content = `${[
       `2026-03-16T10:40:00.959Z [INFO] [Telemetry] cli.telemetry:`,
       `{`,
       `  "kind": "assistant_usage",`,
@@ -350,7 +350,7 @@ describe("parseCopilotCliFile", () => {
       `  "created_at": "2026-03-16T10:40:00.959Z"`,
       `}`,
       `2026-03-16T10:40:01.000Z [DEBUG] Done`,
-    ].join("\n") + "\n";
+    ].join("\n")}\n`;
     await writeFile(filePath, content);
 
     const result = await parseCopilotCliFile({ filePath, startOffset: 0 });
@@ -360,7 +360,7 @@ describe("parseCopilotCliFile", () => {
 
   it("falls back to 'unknown' model when properties.model is empty string", async () => {
     const filePath = join(tempDir, "process-emptymodel.log");
-    const content = [
+    const content = `${[
       `2026-03-16T10:40:00.959Z [INFO] [Telemetry] cli.telemetry:`,
       `{`,
       `  "kind": "assistant_usage",`,
@@ -378,7 +378,7 @@ describe("parseCopilotCliFile", () => {
       `  "created_at": "2026-03-16T10:40:00.959Z"`,
       `}`,
       `2026-03-16T10:40:01.000Z [DEBUG] Done`,
-    ].join("\n") + "\n";
+    ].join("\n")}\n`;
     await writeFile(filePath, content);
 
     const result = await parseCopilotCliFile({ filePath, startOffset: 0 });
@@ -388,7 +388,7 @@ describe("parseCopilotCliFile", () => {
 
   it("skips events when created_at is missing (idempotent uploads require original timestamp)", async () => {
     const filePath = join(tempDir, "process-notime.log");
-    const content = [
+    const content = `${[
       `2026-03-16T10:40:00.959Z [INFO] [Telemetry] cli.telemetry:`,
       `{`,
       `  "kind": "assistant_usage",`,
@@ -405,7 +405,7 @@ describe("parseCopilotCliFile", () => {
       `  }`,
       `}`,
       `2026-03-16T10:40:01.000Z [DEBUG] Done`,
-    ].join("\n") + "\n";
+    ].join("\n")}\n`;
     await writeFile(filePath, content);
 
     const result = await parseCopilotCliFile({ filePath, startOffset: 0 });
@@ -417,13 +417,13 @@ describe("parseCopilotCliFile", () => {
 
   it("recovers from malformed JSON and parses subsequent valid blocks", async () => {
     const filePath = join(tempDir, "process-corrupt.log");
-    const corruptBlock = [
+    const corruptBlock = `${[
       `2026-03-16T10:39:00.000Z [INFO] [Telemetry] cli.telemetry:`,
       `{`,
       `  "kind": "assistant_usage",`,
       `  THIS IS NOT VALID JSON!!!`,
       `}`,
-    ].join("\n") + "\n";
+    ].join("\n")}\n`;
     const validBlock = buildLogWithUsage({
       model: "gpt-5-mini",
       input_tokens: 4000,
@@ -441,12 +441,12 @@ describe("parseCopilotCliFile", () => {
 
   it("handles file with log lines but no telemetry blocks", async () => {
     const filePath = join(tempDir, "process-notelem.log");
-    const content = [
+    const content = `${[
       `2026-03-16T10:40:00.000Z [INFO] Starting process`,
       `2026-03-16T10:40:01.000Z [DEBUG] Loading configuration`,
       `2026-03-16T10:40:02.000Z [INFO] Process ready`,
       `2026-03-16T10:40:03.000Z [INFO] Shutting down`,
-    ].join("\n") + "\n";
+    ].join("\n")}\n`;
     await writeFile(filePath, content);
 
     const result = await parseCopilotCliFile({ filePath, startOffset: 0 });
@@ -456,7 +456,7 @@ describe("parseCopilotCliFile", () => {
 
   it("handles metrics with negative or non-numeric token values gracefully", async () => {
     const filePath = join(tempDir, "process-badmetrics.log");
-    const content = [
+    const content = `${[
       `2026-03-16T10:40:00.959Z [INFO] [Telemetry] cli.telemetry:`,
       `{`,
       `  "kind": "assistant_usage",`,
@@ -474,7 +474,7 @@ describe("parseCopilotCliFile", () => {
       `  "created_at": "2026-03-16T10:40:00.959Z"`,
       `}`,
       `2026-03-16T10:40:01.000Z [DEBUG] Done`,
-    ].join("\n") + "\n";
+    ].join("\n")}\n`;
     await writeFile(filePath, content);
 
     const result = await parseCopilotCliFile({ filePath, startOffset: 0 });
@@ -484,7 +484,7 @@ describe("parseCopilotCliFile", () => {
 
   it("handles CRLF line endings correctly (Windows logs)", async () => {
     const filePath = join(tempDir, "process-crlf.log");
-    const content = [
+    const content = `${[
       `2026-03-16T10:40:00.873Z [INFO] CompactionProcessor: Utilization 27.5%`,
       `2026-03-16T10:40:00.959Z [INFO] [Telemetry] cli.telemetry:`,
       `{`,
@@ -503,7 +503,7 @@ describe("parseCopilotCliFile", () => {
       `  "created_at": "2026-03-16T10:40:00.959Z"`,
       `}`,
       `2026-03-16T10:40:01.000Z [DEBUG] Done`,
-    ].join("\r\n") + "\r\n";
+    ].join("\r\n")}\r\n`;
     await writeFile(filePath, content);
 
     const result = await parseCopilotCliFile({ filePath, startOffset: 0 });

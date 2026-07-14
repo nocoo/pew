@@ -43,7 +43,7 @@ export async function collectPiSessions(
   filePath: string,
 ): Promise<SessionSnapshot[]> {
   const st = await stat(filePath).catch(() => null);
-  if (!st || !st.isFile() || st.size === 0) return [];
+  if (!st?.isFile() || st.size === 0) return [];
 
   let sessionId: string | null = null;
   let userMessages = 0;

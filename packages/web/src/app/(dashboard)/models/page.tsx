@@ -29,7 +29,8 @@ function ModelsSkeleton() {
       {/* 2-col chart grid (SourceTrend + ModelEvolution) */}
       <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
         {Array.from({ length: 2 }).map((_, i) => (
-          <ChartCardSkeleton key={i} titleWidth="w-24" chartHeight="h-[240px] md:h-[280px]" />
+          // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+          <ChartCardSkeleton key={`slot-${i}`} titleWidth="w-24" chartHeight="h-[240px] md:h-[280px]" />
         ))}
       </div>
 
@@ -53,7 +54,8 @@ function ModelsSkeleton() {
           </thead>
           <tbody>
             {Array.from({ length: 5 }).map((_, i) => (
-              <tr key={i} className="border-b border-border/50 last:border-0">
+              // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+              <tr key={`slot-${i}`} className="border-b border-border/50 last:border-0">
                 <td className="px-4 py-3"><Skeleton className="h-4 w-32" /></td>
                 <td className="px-4 py-3 hidden lg:table-cell"><Skeleton className="h-4 w-16" /></td>
                 <td className="px-4 py-3"><Skeleton className="h-4 w-14 ml-auto" /></td>
@@ -142,8 +144,7 @@ export default function ModelsPage() {
 
       {/* Content */}
       {!loading && data && (
-        <>
-          {modelGroups.length === 0 ? (
+        modelGroups.length === 0 ? (
             <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
               No usage data yet. Start using your AI coding tools and sync with pew!
             </div>
@@ -248,8 +249,7 @@ export default function ModelsPage() {
                 </table>
               </div>
             </>
-          )}
-        </>
+          )
       )}
     </div>
   );

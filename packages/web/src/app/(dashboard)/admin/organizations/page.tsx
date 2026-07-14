@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
@@ -106,7 +106,7 @@ function OrgLogo({
   }
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
+    // biome-ignore lint/performance/noImgElement: user-supplied image URL, not amenable to next/image domain allowlist
     <img
       src={logoUrl}
       alt={name}
@@ -131,6 +131,9 @@ function CreateOrgForm({
   const [slug, setSlug] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const uid = useId();
+  const nameId = `${uid}-name`;
+  const slugId = `${uid}-slug`;
 
   const handleNameChange = (v: string) => {
     setName(v);
@@ -173,10 +176,11 @@ function CreateOrgForm({
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1">
+          <label htmlFor={nameId} className="block text-xs font-medium text-muted-foreground mb-1">
             Name
           </label>
           <input
+            id={nameId}
             type="text"
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
@@ -186,10 +190,11 @@ function CreateOrgForm({
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1">
+          <label htmlFor={slugId} className="block text-xs font-medium text-muted-foreground mb-1">
             Slug
           </label>
           <input
+            id={slugId}
             type="text"
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
@@ -200,7 +205,7 @@ function CreateOrgForm({
         </div>
       </div>
       <div className="flex items-center gap-2 mt-4">
-        <button
+        <button type="button"
           onClick={handleSubmit}
           disabled={submitting || !name.trim() || !slug.trim()}
           className={cn(
@@ -211,7 +216,7 @@ function CreateOrgForm({
         >
           {submitting ? "Creating..." : "Create"}
         </button>
-        <button
+        <button type="button"
           onClick={onCancel}
           className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
         >
@@ -239,6 +244,9 @@ function EditOrgRow({
   const [slug, setSlug] = useState(org.slug);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const uid = useId();
+  const nameId = `${uid}-name`;
+  const slugId = `${uid}-slug`;
 
   const handleSave = async () => {
     setSubmitting(true);
@@ -280,10 +288,11 @@ function EditOrgRow({
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">
+            <label htmlFor={nameId} className="block text-xs font-medium text-muted-foreground mb-1">
               Name
             </label>
             <input
+              id={nameId}
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -292,10 +301,11 @@ function EditOrgRow({
             />
           </div>
           <div>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">
+            <label htmlFor={slugId} className="block text-xs font-medium text-muted-foreground mb-1">
               Slug
             </label>
             <input
+              id={slugId}
               type="text"
               value={slug}
               onChange={(e) => setSlug(e.target.value)}
@@ -305,7 +315,7 @@ function EditOrgRow({
           </div>
         </div>
         <div className="flex items-center gap-2 mt-3">
-          <button
+          <button type="button"
             onClick={handleSave}
             disabled={submitting || !name.trim() || !slug.trim()}
             className={cn(
@@ -317,7 +327,7 @@ function EditOrgRow({
             <Check className="h-3.5 w-3.5" strokeWidth={1.5} />
             {submitting ? "Saving..." : "Save"}
           </button>
-          <button
+          <button type="button"
             onClick={onCancel}
             className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           >
@@ -440,13 +450,26 @@ function MembersModal({
 
   return (
     <>
+      {/* biome-ignore lint/a11y/useSemanticElements: modal backdrop needs a clickable overlay div, not a <button> element — a <button> would break the child dialog's own event flow and interrupt focus trapping. */}
       <div
+        role="button"
+        tabIndex={0}
+        aria-label="Close members modal"
         className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
         onClick={onClose}
+        onKeyDown={(e) => {
+          if (e.key === "Escape" || e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onClose();
+          }
+        }}
       >
         <div
+          role="dialog"
+          aria-modal="true"
           className="bg-background rounded-xl shadow-lg w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col"
           onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <div className="flex items-center gap-3">
@@ -456,7 +479,7 @@ function MembersModal({
               </h3>
             </div>
             <div className="flex items-center gap-2">
-              <button
+              <button type="button"
                 onClick={() => setShowAddForm(!showAddForm)}
                 className={cn(
                   "p-1.5 rounded-md transition-colors",
@@ -468,7 +491,7 @@ function MembersModal({
               >
                 <UserPlus className="h-4 w-4" strokeWidth={1.5} />
               </button>
-              <button
+              <button type="button"
                 onClick={onClose}
                 className="p-1 rounded-md hover:bg-accent transition-colors"
               >
@@ -492,7 +515,7 @@ function MembersModal({
                     className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20"
                   />
                 </div>
-                <button
+                <button type="button"
                   onClick={handleSearch}
                   disabled={searching || !searchQuery.trim()}
                   className={cn(
@@ -511,7 +534,7 @@ function MembersModal({
                       className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent transition-colors"
                     >
                       {user.image ? (
-                        // eslint-disable-next-line @next/next/no-img-element
+                        // biome-ignore lint/performance/noImgElement: user-supplied image URL, not amenable to next/image domain allowlist
                         <img
                           src={user.image}
                           alt={user.name ?? ""}
@@ -530,7 +553,7 @@ function MembersModal({
                           {user.email}
                         </p>
                       </div>
-                      <button
+                      <button type="button"
                         onClick={() => handleAddMember(user)}
                         disabled={adding}
                         className={cn(
@@ -551,7 +574,8 @@ function MembersModal({
             {loading ? (
               <div className="space-y-3">
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-12 w-full" />
+                  // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+                  <Skeleton key={`slot-${i}`} className="h-12 w-full" />
                 ))}
               </div>
             ) : members.length === 0 ? (
@@ -566,7 +590,7 @@ function MembersModal({
                     className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/50 transition-colors"
                   >
                     {member.user.image ? (
-                      // eslint-disable-next-line @next/next/no-img-element
+                      // biome-ignore lint/performance/noImgElement: user-supplied image URL, not amenable to next/image domain allowlist
                       <img
                         src={member.user.image}
                         alt={member.user.name ?? ""}
@@ -585,7 +609,7 @@ function MembersModal({
                         {member.user.email}
                       </p>
                     </div>
-                    <button
+                    <button type="button"
                       onClick={() => handleRemove(member)}
                       disabled={removing === member.userId}
                       className={cn(
@@ -742,7 +766,7 @@ export default function AdminOrganizationsPage() {
             leaderboards.
           </p>
         </div>
-        <button
+        <button type="button"
           onClick={() => {
             setShowCreate(!showCreate);
             setEditingId(null);
@@ -777,8 +801,7 @@ export default function AdminOrganizationsPage() {
 
       {/* Table */}
       {!loading && (
-        <>
-          {rows.length === 0 ? (
+        rows.length === 0 ? (
             <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
               No organizations yet. Create one to get started.
             </div>
@@ -877,7 +900,7 @@ export default function AdminOrganizationsPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-end gap-1">
-                            <button
+                            <button type="button"
                               onClick={() => {
                                 setEditingId(row.id);
                                 setShowCreate(false);
@@ -887,14 +910,14 @@ export default function AdminOrganizationsPage() {
                             >
                               <Pencil className="h-3.5 w-3.5" strokeWidth={1.5} />
                             </button>
-                            <button
+                            <button type="button"
                               onClick={() => setMembersOrg(row)}
                               className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
                               title="View members"
                             >
                               <Users className="h-3.5 w-3.5" strokeWidth={1.5} />
                             </button>
-                            <button
+                            <button type="button"
                               onClick={() => handleDelete(row)}
                               className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                               title="Delete"
@@ -909,8 +932,7 @@ export default function AdminOrganizationsPage() {
                 </tbody>
               </table>
             </div>
-          )}
-        </>
+          )
       )}
 
       {/* Members modal */}

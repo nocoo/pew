@@ -86,7 +86,7 @@ export function MyShowcasesContent() {
     <div className="space-y-4">
       {/* Add button */}
       <div className="flex justify-end">
-        <button
+        <button type="button"
           onClick={() => setShowAddModal(true)}
           className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
         >
@@ -104,7 +104,7 @@ export function MyShowcasesContent() {
           <p className="text-muted-foreground">
             You haven&apos;t submitted any showcases yet.
           </p>
-          <button
+          <button type="button"
             onClick={() => setShowAddModal(true)}
             className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
@@ -181,7 +181,7 @@ export function MyShowcasesContent() {
 
             {/* Actions */}
             <div className="shrink-0 flex items-center gap-1">
-              <button
+              <button type="button"
                 onClick={() => setEditShowcase(showcase)}
                 disabled={deleting === showcase.id}
                 className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
@@ -189,7 +189,7 @@ export function MyShowcasesContent() {
               >
                 <Pencil className="h-3.5 w-3.5" strokeWidth={1.5} />
               </button>
-              <button
+              <button type="button"
                 onClick={() => handleDelete(showcase.id)}
                 disabled={deleting === showcase.id}
                 className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
@@ -205,7 +205,7 @@ export function MyShowcasesContent() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 pt-2">
-          <button
+          <button type="button"
             onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
             disabled={offset === 0 || loading}
             className={cn(
@@ -222,7 +222,7 @@ export function MyShowcasesContent() {
             Page {currentPage} of {totalPages}
           </span>
 
-          <button
+          <button type="button"
             onClick={() => setOffset(offset + PAGE_SIZE)}
             disabled={currentPage >= totalPages || loading}
             className={cn(

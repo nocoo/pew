@@ -32,7 +32,7 @@ function AppShellInner({ children }: AppShellProps) {
   // Close mobile sidebar on route change
   useEffect(() => {
     setMobileOpen(false);
-  }, [pathname, setMobileOpen]);
+  }, [setMobileOpen]);
 
   // Prevent body scroll when mobile sidebar is open
   useEffect(() => {
@@ -56,9 +56,19 @@ function AppShellInner({ children }: AppShellProps) {
       {/* Mobile overlay */}
       {isMobile && mobileOpen && (
         <>
+          {/* biome-ignore lint/a11y/useSemanticElements: sidebar-close backdrop overlay — using a real <button> here would break the sibling <Sidebar> layout stacked over the same z-index band. */}
           <div
+            role="button"
+            tabIndex={0}
+            aria-label="Close sidebar"
             className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs"
             onClick={() => setMobileOpen(false)}
+            onKeyDown={(e) => {
+              if (e.key === "Escape" || e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setMobileOpen(false);
+              }
+            }}
           />
           <div className="fixed inset-y-0 left-0 z-50 w-[260px]">
             <Sidebar />
@@ -71,7 +81,7 @@ function AppShellInner({ children }: AppShellProps) {
         <header className="flex h-14 shrink-0 items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-3">
             {isMobile && (
-              <button
+              <button type="button"
                 onClick={() => setMobileOpen(true)}
                 aria-label="Open navigation"
                 className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"

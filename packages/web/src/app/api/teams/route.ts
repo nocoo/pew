@@ -5,7 +5,7 @@
  * Admins see all teams on GET.
  */
 
-import { randomBytes } from "crypto";
+import { randomBytes } from "node:crypto";
 
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";

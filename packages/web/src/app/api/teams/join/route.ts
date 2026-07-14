@@ -72,7 +72,7 @@ export async function POST(request: Request) {
       const settingValue = await dbRead.getAppSetting("max_team_members");
       if (settingValue) {
         const parsed = parseInt(settingValue, 10);
-        if (!isNaN(parsed) && parsed > 0) maxMembers = parsed;
+        if (!Number.isNaN(parsed) && parsed > 0) maxMembers = parsed;
       }
     } catch {
       // Settings table may not exist yet — use default

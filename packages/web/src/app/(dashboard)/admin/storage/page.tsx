@@ -129,7 +129,8 @@ function StorageSkeleton() {
       <div className="space-y-4">
         <div className="grid grid-cols-3 gap-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-xl bg-secondary p-4">
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+            <div key={`slot-${i}`} className="rounded-xl bg-secondary p-4">
               <Skeleton className="h-3 w-12 mb-2" />
               <Skeleton className="h-6 w-16" />
             </div>
@@ -137,7 +138,8 @@ function StorageSkeleton() {
         </div>
         <div className="rounded-xl bg-secondary p-4">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="flex items-center gap-4 py-3">
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+            <div key={`slot-${i}`} className="flex items-center gap-4 py-3">
               <Skeleton className="h-8 w-8 rounded-full" />
               <Skeleton className="h-4 w-32" />
               <div className="flex-1" />
@@ -150,7 +152,8 @@ function StorageSkeleton() {
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-3">
           {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="rounded-xl bg-secondary p-4">
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+            <div key={`slot-${i}`} className="rounded-xl bg-secondary p-4">
               <Skeleton className="h-3 w-12 mb-2" />
               <Skeleton className="h-6 w-16" />
             </div>
@@ -159,7 +162,8 @@ function StorageSkeleton() {
         <div className="rounded-xl bg-secondary p-4">
           <Skeleton className="h-4 w-24 mb-3" />
           {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full mb-2" />
+            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+            <Skeleton key={`slot-${i}`} className="h-12 w-full mb-2" />
           ))}
         </div>
       </div>
@@ -207,7 +211,7 @@ function SortHeader({
         className
       )}
     >
-      <button
+      <button type="button"
         onClick={() => onSort(sortKey)}
         className={cn(
           "inline-flex items-center gap-1 hover:text-foreground transition-colors ml-auto",
@@ -538,7 +542,7 @@ export default function AdminStoragePage() {
                       className="w-full rounded-lg border border-border bg-secondary pl-9 pr-8 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
                     />
                     {search && (
-                      <button
+                      <button type="button"
                         onClick={() => setSearch("")}
                         className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-4 w-4 items-center justify-center rounded text-muted-foreground hover:text-foreground transition-colors"
                       >
@@ -599,7 +603,7 @@ export default function AdminStoragePage() {
                         >
                           {/* User */}
                           <td className="px-4 py-3">
-                            <button
+                            <button type="button"
                               onClick={() => openProfileDialog(user)}
                               className="flex items-center gap-3 min-w-0 text-left hover:opacity-80 transition-opacity cursor-pointer"
                             >
@@ -675,7 +679,7 @@ export default function AdminStoragePage() {
                   <h2 className="font-medium">Edge Cache (KV)</h2>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
+                  <button type="button"
                     onClick={fetchCacheKeys}
                     disabled={cacheLoading}
                     className="inline-flex items-center gap-1.5 rounded-md bg-secondary px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors disabled:opacity-50"
@@ -689,7 +693,7 @@ export default function AdminStoragePage() {
                     />
                     Refresh
                   </button>
-                  <button
+                  <button type="button"
                     onClick={handleClearCache}
                     disabled={cacheLoading || cacheClearing || cacheKeys.length === 0}
                     className="inline-flex items-center gap-1.5 rounded-md bg-destructive/10 text-destructive px-3 py-1.5 text-xs font-medium hover:bg-destructive/20 transition-colors disabled:opacity-50"
@@ -801,7 +805,7 @@ export default function AdminStoragePage() {
                             {key}
                           </code>
                         </div>
-                        <button
+                        <button type="button"
                           onClick={() => handleInvalidateKey(key)}
                           disabled={isDeleting}
                           className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 focus:text-destructive focus:bg-destructive/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 disabled:opacity-50"

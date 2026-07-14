@@ -35,7 +35,7 @@ export async function parseCopilotCliFile(opts: {
   const deltas: ParsedDelta[] = [];
 
   const st = await stat(filePath).catch(() => null);
-  if (!st || !st.isFile()) return { deltas, endOffset: startOffset };
+  if (!st?.isFile()) return { deltas, endOffset: startOffset };
 
   const fileSize = st.size;
   if (startOffset >= fileSize) return { deltas, endOffset: startOffset };

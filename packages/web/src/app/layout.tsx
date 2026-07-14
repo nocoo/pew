@@ -43,6 +43,7 @@ export default function RootLayout({
       <head>
         {/* Apply dark class before first paint to prevent FOUC */}
         <script
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: inline anti-FOUC script must run before hydration to prevent light/dark flash; content is a static string literal owned by this file.
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var s=localStorage.getItem("theme");var d=window.matchMedia("(prefers-color-scheme:dark)").matches;if(s==="dark"||(s!=="light"&&d))document.documentElement.classList.add("dark")}catch(e){}})()`,
           }}

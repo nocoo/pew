@@ -276,7 +276,7 @@ export function groupByAgent(records: UsageRow[], pricingMap: PricingMap): Agent
 // ---------------------------------------------------------------------------
 
 /** Group usage records by date (YYYY-MM-DD), sorted newest-first. */
-export function groupByDate(records: UsageRow[], pricingMap: PricingMap, tzOffset: number = 0): DailyGroup[] {
+export function groupByDate(records: UsageRow[], pricingMap: PricingMap, tzOffset = 0): DailyGroup[] {
   const byDate = new Map<string, UsageRow[]>();
 
   for (const r of records) {
@@ -360,7 +360,7 @@ export function extractModels(records: UsageRow[]): string[] {
  */
 export function toLocalDailyBuckets(
   rows: UsageRow[],
-  tzOffset: number = 0,
+  tzOffset = 0,
 ): LocalDailyBucket[] {
   const byDate = new Map<string, LocalDailyBucket>();
 
@@ -414,7 +414,7 @@ export function compareWeekdayWeekend(
   rows: UsageRow[],
   dateRange: { from: string; to: string },
   pricingMap: PricingMap,
-  tzOffset: number = 0,
+  tzOffset = 0,
 ): WeekdayWeekendStats {
   // 1. Re-bucket rows into local-day totals
   const buckets = toLocalDailyBuckets(rows, tzOffset);
@@ -445,8 +445,8 @@ export function compareWeekdayWeekend(
   let weekendCost = 0;
   let weekendDays = 0;
 
-  const startMs = new Date(dateRange.from + "T00:00:00Z").getTime();
-  const endMs = new Date(dateRange.to + "T00:00:00Z").getTime();
+  const startMs = new Date(`${dateRange.from}T00:00:00Z`).getTime();
+  const endMs = new Date(`${dateRange.to}T00:00:00Z`).getTime();
   const DAY_MS = 86_400_000;
 
   for (let ms = startMs; ms <= endMs; ms += DAY_MS) {
@@ -507,7 +507,7 @@ export function computeMoMGrowth(
   rows: UsageRow[],
   pricingMap: PricingMap,
   now?: Date,
-  tzOffset: number = 0,
+  tzOffset = 0,
 ): MoMComparison {
   const ref = now ?? new Date();
   const currentYear = ref.getFullYear();
@@ -617,7 +617,7 @@ export function computeWoWGrowth(
   rows: UsageRow[],
   pricingMap: PricingMap,
   now?: Date,
-  tzOffset: number = 0,
+  tzOffset = 0,
 ): WoWComparison {
   const ref = now ?? new Date();
 
@@ -631,7 +631,7 @@ export function computeWoWGrowth(
   const dow = localRef.getUTCDay();
 
   // Current week Sunday (as YYYY-MM-DD)
-  const curWeekStartMs = new Date(todayStr + "T00:00:00Z").getTime() - dow * 86_400_000;
+  const curWeekStartMs = new Date(`${todayStr}T00:00:00Z`).getTime() - dow * 86_400_000;
   const curWeekStart = new Date(curWeekStartMs).toISOString().slice(0, 10);
 
   // Previous week Sunday and Saturday
@@ -733,7 +733,7 @@ export function computeWoWGrowth(
 export function computeStreak(
   rows: UsageRow[],
   today?: string,
-  tzOffset: number = 0,
+  tzOffset = 0,
 ): StreakInfo {
   const buckets = toLocalDailyBuckets(rows, tzOffset);
   const activeDates = new Set(buckets.map((b) => b.date));
@@ -753,8 +753,8 @@ export function computeStreak(
   const DAY_MS = 86_400_000;
 
   // Helper: get date string N days before a given date
-  const dayBefore = (dateStr: string, n: number = 1): string => {
-    const ms = new Date(dateStr + "T00:00:00Z").getTime() - n * DAY_MS;
+  const dayBefore = (dateStr: string, n = 1): string => {
+    const ms = new Date(`${dateStr}T00:00:00Z`).getTime() - n * DAY_MS;
     return new Date(ms).toISOString().slice(0, 10);
   };
 
@@ -783,8 +783,8 @@ export function computeStreak(
   for (let i = 1; i < sortedDates.length; i++) {
     const prevDate = sortedDates[i - 1] as string;
     const currDate = sortedDates[i] as string;
-    const prevMs = new Date(prevDate + "T00:00:00Z").getTime();
-    const currMs = new Date(currDate + "T00:00:00Z").getTime();
+    const prevMs = new Date(`${prevDate}T00:00:00Z`).getTime();
+    const currMs = new Date(`${currDate}T00:00:00Z`).getTime();
 
     if (currMs - prevMs === DAY_MS) {
       runLength++;
@@ -824,7 +824,7 @@ export function computeStreak(
  * with one key per source. Sources missing on a given date are zero-filled
  * so all dates have the same set of keys (needed for Recharts stacking).
  */
-export function toSourceTrendPoints(rows: UsageRow[], tzOffset: number = 0): SourceTrendPoint[] {
+export function toSourceTrendPoints(rows: UsageRow[], tzOffset = 0): SourceTrendPoint[] {
   if (rows.length === 0) return [];
 
   // Collect all unique sources and accumulate by (date, source)
@@ -865,7 +865,7 @@ export function toSourceTrendPoints(rows: UsageRow[], tzOffset: number = 0): Sou
  * Group rows by date and identify the dominant source per day.
  * Ties are broken alphabetically by source name.
  */
-export function toDominantSourceTimeline(rows: UsageRow[], tzOffset: number = 0): DailyDominantSource[] {
+export function toDominantSourceTimeline(rows: UsageRow[], tzOffset = 0): DailyDominantSource[] {
   if (rows.length === 0) return [];
 
   // Accumulate tokens per (date, source)
@@ -935,7 +935,7 @@ export interface HourlyWeekdayWeekendPoint {
 export function toHourlyWeekdayWeekend(
   rows: UsageRow[],
   dateRange: { from: string; to: string },
-  tzOffset: number = 0,
+  tzOffset = 0,
 ): HourlyWeekdayWeekendPoint[] {
   // Accumulators: [hour] -> { weekdayTokens, weekendTokens }
   const hourly: Array<{ weekdayTokens: number; weekendTokens: number }> = [];
@@ -944,8 +944,8 @@ export function toHourlyWeekdayWeekend(
   }
 
   // Count days in range for averaging
-  const startMs = new Date(dateRange.from + "T00:00:00Z").getTime();
-  const endMs = new Date(dateRange.to + "T00:00:00Z").getTime();
+  const startMs = new Date(`${dateRange.from}T00:00:00Z`).getTime();
+  const endMs = new Date(`${dateRange.to}T00:00:00Z`).getTime();
   const DAY_MS = 86_400_000;
 
   let weekdayCount = 0;
@@ -1013,7 +1013,7 @@ export function toHourlyByDevice(
   rows: UsageRow[],
   deviceDetails: Array<{ device_id: string; source: string; model: string; total_tokens: number }>,
   dateRange: { from: string; to: string },
-  tzOffset: number = 0,
+  tzOffset = 0,
 ): HourlyByDevicePoint[] {
   // Build a lookup map: (hour_start, source, model) -> device_id
   // This is needed because UsageRow doesn't have device_id directly
@@ -1054,8 +1054,8 @@ export function toHourlyByDevice(
   }
 
   // Count days in range for averaging
-  const startMs = new Date(dateRange.from + "T00:00:00Z").getTime();
-  const endMs = new Date(dateRange.to + "T00:00:00Z").getTime();
+  const startMs = new Date(`${dateRange.from}T00:00:00Z`).getTime();
+  const endMs = new Date(`${dateRange.to}T00:00:00Z`).getTime();
   const dayCount = Math.max(1, Math.floor((endMs - startMs) / 86_400_000) + 1);
 
   // Build result with averages
@@ -1108,8 +1108,8 @@ export interface HourlyByModelPoint {
 export function toHourlyByModel(
   rows: UsageRow[],
   dateRange: { from: string; to: string },
-  tzOffset: number = 0,
-  topN: number = 5,
+  tzOffset = 0,
+  topN = 5,
 ): HourlyByModelPoint[] {
   if (rows.length === 0) {
     // Return empty 24-hour structure
@@ -1150,8 +1150,8 @@ export function toHourlyByModel(
   }
 
   // Count days in range for averaging
-  const startMs = new Date(dateRange.from + "T00:00:00Z").getTime();
-  const endMs = new Date(dateRange.to + "T00:00:00Z").getTime();
+  const startMs = new Date(`${dateRange.from}T00:00:00Z`).getTime();
+  const endMs = new Date(`${dateRange.to}T00:00:00Z`).getTime();
   const dayCount = Math.max(1, Math.floor((endMs - startMs) / 86_400_000) + 1);
 
   // Build result with averages and zero-fill
@@ -1192,7 +1192,7 @@ export interface HourlyByAgentPoint {
 export function toHourlyByAgent(
   rows: UsageRow[],
   dateRange: { from: string; to: string },
-  tzOffset: number = 0,
+  tzOffset = 0,
 ): HourlyByAgentPoint[] {
   if (rows.length === 0) {
     return Array.from({ length: 24 }, (_, hour) => ({ hour, sources: {} }));
@@ -1224,8 +1224,8 @@ export function toHourlyByAgent(
   }
 
   // Count days in range for averaging
-  const startMs = new Date(dateRange.from + "T00:00:00Z").getTime();
-  const endMs = new Date(dateRange.to + "T00:00:00Z").getTime();
+  const startMs = new Date(`${dateRange.from}T00:00:00Z`).getTime();
+  const endMs = new Date(`${dateRange.to}T00:00:00Z`).getTime();
   const dayCount = Math.max(1, Math.floor((endMs - startMs) / 86_400_000) + 1);
 
   // Build result with averages and zero-fill

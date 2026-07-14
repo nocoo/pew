@@ -34,8 +34,8 @@ export type PeakSlot = {
  */
 export function detectPeakHours(
   rows: UsageRow[],
-  topN: number = 3,
-  tzOffset: number = 0,
+  topN = 3,
+  tzOffset = 0,
 ): PeakSlot[] {
   if (rows.length === 0) return [];
 

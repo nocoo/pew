@@ -4,7 +4,7 @@
  * DELETE /api/teams/[teamId] — leave team (or delete if owner and only member).
  */
 
-import { randomBytes } from "crypto";
+import { randomBytes } from "node:crypto";
 
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";

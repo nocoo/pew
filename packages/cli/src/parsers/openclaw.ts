@@ -37,7 +37,7 @@ export async function parseOpenClawFile(opts: {
   const deltas: ParsedDelta[] = [];
 
   const st = await stat(filePath).catch(() => null);
-  if (!st || !st.isFile()) return { deltas, endOffset: startOffset };
+  if (!st?.isFile()) return { deltas, endOffset: startOffset };
 
   const endOffset = st.size;
   if (startOffset >= endOffset) return { deltas, endOffset };

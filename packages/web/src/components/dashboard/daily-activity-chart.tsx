@@ -56,7 +56,7 @@ interface ChartSeries {
 // ---------------------------------------------------------------------------
 
 function fmtDate(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00Z");
+  const d = new Date(`${dateStr}T00:00:00Z`);
   return d.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -251,7 +251,7 @@ export function DailyActivityChart({
           {DIMENSIONS.map((opt) => {
             const active = opt.value === dim;
             return (
-              <button
+              <button type="button"
                 key={opt.value}
                 onClick={() => setDim(opt.value)}
                 className={cn(

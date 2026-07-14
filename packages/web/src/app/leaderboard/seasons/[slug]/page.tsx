@@ -127,7 +127,7 @@ function TeamRow({
       className="animate-fade-up"
       style={{ animationDelay: `${index * 40}ms` }}
     >
-      <button
+      <button type="button"
         onClick={() => canExpand && handleToggle()}
         className={cn(
           "relative flex w-full items-center gap-3 overflow-hidden rounded-card bg-secondary px-4 py-3 text-left transition-colors",
@@ -146,7 +146,7 @@ function TeamRow({
         {/* Team icon / logo */}
         <div className="flex flex-1 items-center gap-3 min-w-0">
           {entry.team.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element -- external team logos
+            // biome-ignore lint/performance/noImgElement: user-supplied image URL, not amenable to next/image domain allowlist -- external team logos
             <img
               src={entry.team.logoUrl}
               alt={entry.team.name}
@@ -232,7 +232,7 @@ function TeamRow({
 
                 {/* Avatar + name — aligned with team icon + name */}
                 <div className="flex flex-1 items-center gap-3 min-w-0">
-                  <button
+                  <button type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       onMemberClick(member);

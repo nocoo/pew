@@ -144,7 +144,7 @@ describe("toDeviceTrendPoints", () => {
 
     const result = toDeviceTrendPoints(timeline);
 
-    expect(result[0]!["default"]).toBe(100);
+    expect(result[0]!.default).toBe(100);
   });
 });
 

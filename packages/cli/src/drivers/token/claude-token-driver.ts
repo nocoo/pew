@@ -176,5 +176,5 @@ function mergeBounded(prior: string[], next: string[], cap: number): string[] {
  */
 function isLegacyCursor(cursor: ClaudeCursor | undefined): boolean {
   if (!cursor) return false;
-  return !Object.prototype.hasOwnProperty.call(cursor, "seenIds");
+  return !Object.hasOwn(cursor, "seenIds");
 }

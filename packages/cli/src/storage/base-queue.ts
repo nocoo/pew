@@ -58,14 +58,14 @@ export class BaseQueue<T> {
   /** Append a single record to the queue */
   async append(record: T): Promise<void> {
     await this.ensureDir();
-    await appendFile(this.queuePath, JSON.stringify(record) + "\n");
+    await appendFile(this.queuePath, `${JSON.stringify(record)}\n`);
   }
 
   /** Append multiple records to the queue in a single write */
   async appendBatch(records: T[]): Promise<void> {
     if (records.length === 0) return;
     await this.ensureDir();
-    const data = records.map((r) => JSON.stringify(r)).join("\n") + "\n";
+    const data = `${records.map((r) => JSON.stringify(r)).join("\n")}\n`;
     await appendFile(this.queuePath, data);
   }
 
@@ -80,9 +80,9 @@ export class BaseQueue<T> {
     await this.ensureDir();
     const data =
       records.length > 0
-        ? records.map((r) => JSON.stringify(r)).join("\n") + "\n"
+        ? `${records.map((r) => JSON.stringify(r)).join("\n")}\n`
         : "";
-    const tmpPath = this.queuePath + ".tmp";
+    const tmpPath = `${this.queuePath}.tmp`;
     await writeFile(tmpPath, data);
     await rename(tmpPath, this.queuePath);
   }
@@ -150,7 +150,7 @@ export class BaseQueue<T> {
   /** Atomically persist the full state object. */
   async saveState(state: QueueState): Promise<void> {
     await this.ensureDir();
-    await writeFile(this.statePath, JSON.stringify(state) + "\n");
+    await writeFile(this.statePath, `${JSON.stringify(state)}\n`);
   }
 
   /** Save the upload byte offset (preserves dirtyKeys). */

@@ -97,7 +97,7 @@ function ConfigLoadingSkeleton({
           </div>
         </div>
         <Dialog.Close asChild>
-          <button
+          <button type="button"
             className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             aria-label="Close"
           >
@@ -109,7 +109,8 @@ function ConfigLoadingSkeleton({
       {/* Tab bar skeleton */}
       <div className="flex gap-1 rounded-lg bg-secondary p-1 mb-5">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="flex-1 rounded-md px-3 py-2">
+          // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+          <div key={`tab-${i}`} className="flex-1 rounded-md px-3 py-2">
             <Skeleton className="h-4 w-full" />
           </div>
         ))}
@@ -120,7 +121,8 @@ function ConfigLoadingSkeleton({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
           {Array.from({ length: 3 }).map((_, i) => (
             <div
-              key={i}
+              // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+              key={`stat-${i}`}
               className="rounded-card bg-secondary p-4 md:p-5 space-y-2"
             >
               <Skeleton className="h-4 w-16" />
@@ -197,9 +199,9 @@ function DialogHeader({
             </Dialog.Title>
             {displayBadges.length > 0 && (
               <div className="flex gap-1">
-                {displayBadges.map((badge, idx) => (
+                {displayBadges.map((badge) => (
                   <BadgeIcon
-                    key={idx}
+                    key={`${badge.text}:${badge.icon}`}
                     text={badge.text}
                     icon={badge.icon}
                     colorBg={badge.colorBg}
@@ -224,7 +226,7 @@ function DialogHeader({
         </div>
       </div>
       <Dialog.Close asChild>
-        <button
+        <button type="button"
           className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           aria-label="Close"
         >

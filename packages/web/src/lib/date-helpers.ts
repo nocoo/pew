@@ -32,7 +32,7 @@ export const PERIOD_OPTIONS: { value: Period; label: string }[] = [
  * @param tzOffset — `new Date().getTimezoneOffset()`: minutes from UTC
  *   (positive = west of UTC, e.g. 480 for PST; negative = east, e.g. -540 for JST)
  */
-export function getLocalToday(tzOffset: number = 0): string {
+export function getLocalToday(tzOffset = 0): string {
   const localMs = Date.now() - tzOffset * 60_000;
   return new Date(localMs).toISOString().slice(0, 10);
 }
@@ -63,7 +63,7 @@ function toLocalDateString(d: Date): string {
  */
 export function periodToDateRange(
   period: Period,
-  tzOffset: number = 0,
+  tzOffset = 0,
 ): { from: string; to?: string } {
   const now = new Date();
 
@@ -102,7 +102,7 @@ export function periodLabel(period: Period): string {
  * E.g. "2026-03-10" → "Tue, Mar 10".
  */
 export function formatDate(date: string): string {
-  const d = new Date(date + "T00:00:00");
+  const d = new Date(`${date}T00:00:00`);
   return d.toLocaleDateString("en-US", {
     weekday: "short",
     month: "short",
@@ -172,7 +172,7 @@ export { formatDuration } from "./format";
 
 /** Advance a "YYYY-MM-DD" string by one calendar day. */
 function nextDay(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00Z");
+  const d = new Date(`${dateStr}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + 1);
   return d.toISOString().slice(0, 10);
 }
@@ -339,7 +339,7 @@ export function fmtHour(hour: number): string {
  */
 export function aggregateHourlyTokens(
   rows: UsageRow[],
-  tzOffset: number = 0,
+  tzOffset = 0,
 ): number[] {
   const buckets = new Array<number>(24).fill(0);
   for (const r of rows) {

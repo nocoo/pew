@@ -42,7 +42,7 @@ function CopyButton({
   };
 
   return (
-    <button
+    <button type="button"
       onClick={handleCopy}
       className={cn(
         "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
@@ -92,7 +92,7 @@ How to join:
         <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-card p-6 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95">
           {/* Close button */}
           <Dialog.Close asChild>
-            <button
+            <button type="button"
               className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               aria-label="Close"
             >
@@ -117,9 +117,9 @@ How to join:
 
           {/* Invite Code */}
           <div className="mb-4">
-            <label className="block text-xs font-medium text-muted-foreground mb-2">
+            <span className="block text-xs font-medium text-muted-foreground mb-2">
               Invite Code
-            </label>
+            </span>
             <div className="flex items-center gap-2 rounded-lg bg-accent/50 border border-border px-4 py-3">
               <code className="flex-1 font-mono text-sm text-foreground tracking-wider">
                 {inviteCode}
@@ -130,9 +130,9 @@ How to join:
 
           {/* Invite Message */}
           <div className="mb-6">
-            <label className="block text-xs font-medium text-muted-foreground mb-2">
+            <span className="block text-xs font-medium text-muted-foreground mb-2">
               Invite Message
-            </label>
+            </span>
             <div className="rounded-lg bg-accent/50 border border-border p-4">
               <pre className="text-sm text-foreground whitespace-pre-wrap font-sans leading-relaxed">
                 {inviteMessage}

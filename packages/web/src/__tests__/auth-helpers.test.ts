@@ -34,7 +34,7 @@ import { createMockClient } from "./test-utils";
 function makeRequest(token?: string): Request {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+    headers.Authorization = `Bearer ${token}`;
   }
   return new Request("http://localhost:7020/api/ingest", {
     method: "POST",

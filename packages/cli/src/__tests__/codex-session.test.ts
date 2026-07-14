@@ -144,7 +144,7 @@ describe("collectCodexSessions", () => {
       }),
       responseItemLine("assistant", "2026-03-07T10:03:30.000Z"),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectCodexSessions(f);
     expect(result).toHaveLength(1);
@@ -171,7 +171,7 @@ describe("collectCodexSessions", () => {
     const lines = [
       sessionMetaLine({ id: "my-unique-session-uuid" }),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectCodexSessions(f);
     expect(result).toHaveLength(1);
@@ -183,7 +183,7 @@ describe("collectCodexSessions", () => {
     const lines = [
       eventMsgLine("user_message", "2026-03-07T10:00:00.000Z"),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectCodexSessions(f);
     expect(result).toHaveLength(1);
@@ -197,7 +197,7 @@ describe("collectCodexSessions", () => {
       sessionMetaLine({ id: 12345 }),
       eventMsgLine("user_message", "2026-03-07T10:00:00.000Z"),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
     const result = await collectCodexSessions(f);
     expect(result).toHaveLength(1);
     expect(result[0].sessionKey).toMatch(/^codex:[a-f0-9]{16}$/);
@@ -209,7 +209,7 @@ describe("collectCodexSessions", () => {
       sessionMetaLine({ id: "" }),
       eventMsgLine("user_message", "2026-03-07T10:00:00.000Z"),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
     const result = await collectCodexSessions(f);
     expect(result).toHaveLength(1);
     expect(result[0].sessionKey).toMatch(/^codex:[a-f0-9]{16}$/);
@@ -221,7 +221,7 @@ describe("collectCodexSessions", () => {
       sessionMetaLine({ cwd: "" }),
       eventMsgLine("user_message", "2026-03-07T10:00:00.000Z"),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
     const result = await collectCodexSessions(f);
     expect(result).toHaveLength(1);
     expect(result[0].projectRef).toBeNull();
@@ -232,7 +232,7 @@ describe("collectCodexSessions", () => {
     const lines = [
       sessionMetaLine({ cwd: "/home/user/my-project" }),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectCodexSessions(f);
     expect(result).toHaveLength(1);
@@ -245,7 +245,7 @@ describe("collectCodexSessions", () => {
     const lines = [
       eventMsgLine("user_message", "2026-03-07T10:00:00.000Z"),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectCodexSessions(f);
     expect(result).toHaveLength(1);
@@ -268,7 +268,7 @@ describe("collectCodexSessions", () => {
         payload: { model: 42 }, // non-string → typeof check fails
       }),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
     const result = await collectCodexSessions(f);
     expect(result).toHaveLength(1);
     // turn_context entries with bad model are ignored → session_meta model preserved.
@@ -281,7 +281,7 @@ describe("collectCodexSessions", () => {
       sessionMetaLine({ model: "gpt-5" }),
       turnContextLine("gpt-5.4", "2026-03-07T10:01:00.000Z"),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectCodexSessions(f);
     expect(result).toHaveLength(1);
@@ -295,7 +295,7 @@ describe("collectCodexSessions", () => {
       // no turn_context line
       responseItemLine("user", "2026-03-07T10:01:00.000Z"),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectCodexSessions(f);
     expect(result).toHaveLength(1);
@@ -309,7 +309,7 @@ describe("collectCodexSessions", () => {
       turnContextLine("gpt-5.4", "2026-03-07T10:01:00.000Z"),
       turnContextLine("o3", "2026-03-07T10:05:00.000Z"),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectCodexSessions(f);
     expect(result).toHaveLength(1);
@@ -322,7 +322,7 @@ describe("collectCodexSessions", () => {
       type: "response_item",
       payload: { role: "user" },
     });
-    await writeFile(f, line + "\n");
+    await writeFile(f, `${line}\n`);
 
     const result = await collectCodexSessions(f);
     expect(result).toEqual([]);
@@ -337,7 +337,7 @@ describe("collectCodexSessions", () => {
       "also broken{",
       responseItemLine("assistant", "2026-03-07T10:02:00.000Z"),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectCodexSessions(f);
     expect(result).toHaveLength(1);
@@ -359,7 +359,7 @@ describe("collectCodexSessions", () => {
       eventMsgLine("user_message", "2026-03-07T10:00:06.000Z"),
       eventMsgLine("agent_message", "2026-03-07T10:00:07.000Z"),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectCodexSessions(f);
     expect(result).toHaveLength(1);
@@ -379,11 +379,11 @@ describe("collectCodexSessions", () => {
     });
     await writeFile(
       f,
-      [
+      `${[
         metaLine,
         responseItemLine("user", "2026-03-07T10:30:00.000Z"),
         responseItemLine("assistant", "2026-03-07T11:00:00.000Z"),
-      ].join("\n") + "\n",
+      ].join("\n")}\n`,
     );
 
     const result = await collectCodexSessions(f);
@@ -398,7 +398,7 @@ describe("collectCodexSessions", () => {
       "", // empty line triggers `if (!line) continue`
       responseItemLine("user", "2026-03-07T10:01:00.000Z"),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectCodexSessions(f);
     expect(result).toHaveLength(1);
@@ -412,7 +412,7 @@ describe("collectCodexSessions", () => {
       JSON.stringify({ type: 123, timestamp: "2026-03-07T10:00:00.000Z", payload: {} }),
       responseItemLine("user", "2026-03-07T10:01:00.000Z"),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectCodexSessions(f);
     expect(result).toHaveLength(1);
@@ -430,7 +430,7 @@ describe("collectCodexSessions", () => {
         payload: { role: 42 },
       }),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectCodexSessions(f);
     expect(result).toHaveLength(1);
@@ -448,7 +448,7 @@ describe("collectCodexSessions", () => {
         payload: { role: "user" },
       }),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectCodexSessions(f);
     expect(result).toHaveLength(1);
@@ -462,7 +462,7 @@ describe("collectCodexSessions", () => {
     const lines = [
       eventMsgLine("user_message", "2026-03-07T10:00:00.000Z"),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectCodexSessions(f);
     expect(result).toHaveLength(1);

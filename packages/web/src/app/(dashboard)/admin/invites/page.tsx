@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useId } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { useRouter } from "next/navigation";
@@ -77,7 +77,7 @@ function CopyButton({ text }: { text: string }) {
   };
 
   return (
-    <button
+    <button type="button"
       onClick={handleCopy}
       className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
       title="Copy code"
@@ -143,6 +143,8 @@ export default function AdminInvitesPage() {
   const [showGenerate, setShowGenerate] = useState(false);
   const [genCount, setGenCount] = useState(1);
   const [generating, setGenerating] = useState(false);
+  const uid = useId();
+  const genCountId = `${uid}-gen-count`;
 
   // Copy all available
   const [copiedAll, setCopiedAll] = useState(false);
@@ -349,7 +351,7 @@ export default function AdminInvitesPage() {
             Manage single-use invite codes for new user registration.
           </p>
         </div>
-        <button
+        <button type="button"
           onClick={() => setShowGenerate(!showGenerate)}
           className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
         >
@@ -407,23 +409,24 @@ export default function AdminInvitesPage() {
           </h3>
           <div className="flex items-end gap-3">
             <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1">
+              <label htmlFor={genCountId} className="block text-xs font-medium text-muted-foreground mb-1">
                 Count (1-20)
               </label>
               <input
+                id={genCountId}
                 type="number"
                 min={1}
                 max={20}
                 value={genCount}
                 onChange={(e) =>
                   setGenCount(
-                    Math.max(1, Math.min(20, parseInt(e.target.value) || 1))
+                    Math.max(1, Math.min(20, parseInt(e.target.value, 10) || 1))
                   )
                 }
                 className="w-24 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground tabular-nums focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
               />
             </div>
-            <button
+            <button type="button"
               onClick={handleGenerate}
               disabled={generating}
               className={cn(
@@ -433,7 +436,7 @@ export default function AdminInvitesPage() {
             >
               {generating ? "Generating..." : "Generate"}
             </button>
-            <button
+            <button type="button"
               onClick={() => {
                 setShowGenerate(false);
                 setGenCount(1);
@@ -451,7 +454,7 @@ export default function AdminInvitesPage() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 rounded-lg bg-secondary p-1">
             {(["all", "available"] as const).map((opt) => (
-              <button
+              <button type="button"
                 key={opt}
                 onClick={() => setStatusFilter(opt)}
                 className={cn(
@@ -468,7 +471,7 @@ export default function AdminInvitesPage() {
             ))}
           </div>
           {availableCodes.length > 0 && (
-            <button
+            <button type="button"
               onClick={async () => {
                 const md = availableCodes.map((r) => `- ${r.code}`).join("\n");
                 await navigator.clipboard.writeText(md);
@@ -494,8 +497,7 @@ export default function AdminInvitesPage() {
 
       {/* Table */}
       {!loading && (
-        <>
-          {filteredRows.length === 0 ? (
+        filteredRows.length === 0 ? (
             <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
               {statusFilter === "available"
                 ? "No available invite codes."
@@ -564,7 +566,7 @@ export default function AdminInvitesPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end">
                           {isDeletable(row) && (
-                            <button
+                            <button type="button"
                               onClick={() =>
                                 handleDelete(
                                   row.id,
@@ -591,8 +593,7 @@ export default function AdminInvitesPage() {
                 </tbody>
               </table>
             </div>
-          )}
-        </>
+          )
       )}
 
       {/* Confirm dialog */}

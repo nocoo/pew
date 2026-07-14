@@ -241,7 +241,7 @@ export function Sidebar() {
           <div className="flex h-screen w-[68px] flex-col items-center">
             {/* Logo */}
             <div className="flex h-14 w-full items-center justify-start pl-6 pr-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {/* biome-ignore lint/performance/noImgElement: user-supplied image URL, not amenable to next/image domain allowlist */}
               <img
                 src="/logo-24.png"
                 alt="pew"
@@ -254,7 +254,7 @@ export function Sidebar() {
             {/* Expand toggle */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <button
+                <button type="button"
                   onClick={toggle}
                   aria-label="Expand sidebar"
                   className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors mb-2"
@@ -320,7 +320,7 @@ export function Sidebar() {
             <div className="py-3 flex justify-center w-full">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button
+                  <button type="button"
                     onClick={() => signOut({ callbackUrl: "/login" })}
                     className="cursor-pointer"
                   >
@@ -347,7 +347,7 @@ export function Sidebar() {
             <div className="px-3 h-14 flex items-center">
               <div className="flex w-full items-center justify-between px-3">
                 <div className="flex items-center gap-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {/* biome-ignore lint/performance/noImgElement: user-supplied image URL, not amenable to next/image domain allowlist */}
                   <img
                     src="/logo-24.png"
                     alt="pew"
@@ -362,7 +362,7 @@ export function Sidebar() {
                     v{APP_VERSION}
                   </span>
                 </div>
-                <button
+                <button type="button"
                   onClick={toggle}
                   aria-label="Collapse sidebar"
                   className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors"
@@ -408,7 +408,7 @@ export function Sidebar() {
                 </div>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <button
+                    <button type="button"
                       onClick={() => signOut({ callbackUrl: "/login" })}
                       aria-label="Sign out"
                       className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"

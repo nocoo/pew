@@ -124,7 +124,7 @@ describe("parseClaudeFile", () => {
       message: { id: "msg_top", role: "assistant", model: "glm-5", type: "message" },
       usage: { input_tokens: 200, output_tokens: 50, cache_read_input_tokens: 10 },
     });
-    await writeFile(filePath, line + "\n");
+    await writeFile(filePath, `${line}\n`);
     const result = await parseClaudeFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(1);
     expect(result.deltas[0].tokens.outputTokens).toBe(50);
@@ -132,7 +132,7 @@ describe("parseClaudeFile", () => {
 
   it("should parse a single assistant message with usage", async () => {
     const filePath = join(tempDir, "session.jsonl");
-    await writeFile(filePath, claudeLine() + "\n");
+    await writeFile(filePath, `${claudeLine()}\n`);
 
     const result = await parseClaudeFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(1);
@@ -147,7 +147,7 @@ describe("parseClaudeFile", () => {
 
   it("should skip non-usage lines", async () => {
     const filePath = join(tempDir, "session.jsonl");
-    const content = [userLine(), claudeLine(), userLine()].join("\n") + "\n";
+    const content = `${[userLine(), claudeLine(), userLine()].join("\n")}\n`;
     await writeFile(filePath, content);
 
     const result = await parseClaudeFile({ filePath, startOffset: 0 });
@@ -156,7 +156,7 @@ describe("parseClaudeFile", () => {
 
   it("should skip streaming chunks (all-zero usage)", async () => {
     const filePath = join(tempDir, "session.jsonl");
-    const content = [streamingChunk(), claudeLine()].join("\n") + "\n";
+    const content = `${[streamingChunk(), claudeLine()].join("\n")}\n`;
     await writeFile(filePath, content);
 
     const result = await parseClaudeFile({ filePath, startOffset: 0 });
@@ -168,7 +168,7 @@ describe("parseClaudeFile", () => {
     const filePath = join(tempDir, "session.jsonl");
     const line1 = claudeLine({ timestamp: "2026-03-07T10:00:00.000Z" });
     const line2 = claudeLine({ timestamp: "2026-03-07T10:30:00.000Z" });
-    const content = line1 + "\n" + line2 + "\n";
+    const content = `${line1}\n${line2}\n`;
     await writeFile(filePath, content);
 
     // First read: get both lines
@@ -187,7 +187,7 @@ describe("parseClaudeFile", () => {
   it("should pick up new content appended after offset", async () => {
     const filePath = join(tempDir, "session.jsonl");
     const line1 = claudeLine({ timestamp: "2026-03-07T10:00:00.000Z" });
-    await writeFile(filePath, line1 + "\n");
+    await writeFile(filePath, `${line1}\n`);
 
     const result1 = await parseClaudeFile({ filePath, startOffset: 0 });
     expect(result1.deltas).toHaveLength(1);
@@ -195,7 +195,7 @@ describe("parseClaudeFile", () => {
     // Append new content
     const line2 = claudeLine({ timestamp: "2026-03-07T10:30:00.000Z" });
     const { appendFile } = await import("node:fs/promises");
-    await appendFile(filePath, line2 + "\n");
+    await appendFile(filePath, `${line2}\n`);
 
     const result2 = await parseClaudeFile({
       filePath,
@@ -225,11 +225,11 @@ describe("parseClaudeFile", () => {
 
   it("should skip malformed JSON lines gracefully", async () => {
     const filePath = join(tempDir, "session.jsonl");
-    const content = [
+    const content = `${[
       "not valid json{{{",
       claudeLine(),
       '{"broken": true, "usage": "fake"',
-    ].join("\n") + "\n";
+    ].join("\n")}\n`;
     await writeFile(filePath, content);
 
     const result = await parseClaudeFile({ filePath, startOffset: 0 });
@@ -245,7 +245,7 @@ describe("parseClaudeFile", () => {
         usage: { input_tokens: 100, output_tokens: 50 },
       },
     });
-    const content = [noTimestamp, claudeLine()].join("\n") + "\n";
+    const content = `${[noTimestamp, claudeLine()].join("\n")}\n`;
     await writeFile(filePath, content);
 
     const result = await parseClaudeFile({ filePath, startOffset: 0 });
@@ -267,7 +267,7 @@ describe("parseClaudeFile", () => {
         },
       },
     });
-    const content = [line1, line2].join("\n") + "\n";
+    const content = `${[line1, line2].join("\n")}\n`;
     await writeFile(filePath, content);
 
     const result = await parseClaudeFile({ filePath, startOffset: 0 });
@@ -289,7 +289,7 @@ describe("parseClaudeFile", () => {
         },
       },
     });
-    const content = [noModel, claudeLine()].join("\n") + "\n";
+    const content = `${[noModel, claudeLine()].join("\n")}\n`;
     await writeFile(filePath, content);
 
     const result = await parseClaudeFile({ filePath, startOffset: 0 });
@@ -312,7 +312,7 @@ describe("parseClaudeFile", () => {
         },
       },
     });
-    await writeFile(filePath, topLevelModel + "\n");
+    await writeFile(filePath, `${topLevelModel}\n`);
 
     const result = await parseClaudeFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(1);
@@ -329,7 +329,7 @@ describe("parseClaudeFile", () => {
         usage: "not-an-object",
       },
     });
-    const content = [badUsage, claudeLine()].join("\n") + "\n";
+    const content = `${[badUsage, claudeLine()].join("\n")}\n`;
     await writeFile(filePath, content);
 
     const result = await parseClaudeFile({ filePath, startOffset: 0 });
@@ -356,7 +356,7 @@ describe("parseClaudeFile — message.id dedup", () => {
     const line1 = claudeLine({ timestamp: "2026-03-07T10:00:00.000Z" });
     const line2 = claudeLine({ timestamp: "2026-03-07T10:00:00.001Z" });
     // Both use the default id "msg_001" from claudeLine()
-    await writeFile(filePath, line1 + "\n" + line2 + "\n");
+    await writeFile(filePath, `${line1}\n${line2}\n`);
 
     const seen = new Set<string>();
     const result = await parseClaudeFile({
@@ -387,7 +387,7 @@ describe("parseClaudeFile — message.id dedup", () => {
         usage: { input_tokens: 200, output_tokens: 100 },
       },
     });
-    await writeFile(filePath, line1 + "\n" + line2 + "\n");
+    await writeFile(filePath, `${line1}\n${line2}\n`);
 
     const seen = new Set<string>();
     const result = await parseClaudeFile({
@@ -403,8 +403,8 @@ describe("parseClaudeFile — message.id dedup", () => {
   it("dedups across files when the same Set is shared", async () => {
     const fileA = join(tempDir, "sessionA.jsonl");
     const fileB = join(tempDir, "sessionB.jsonl");
-    await writeFile(fileA, claudeLine() + "\n");
-    await writeFile(fileB, claudeLine({ timestamp: "2026-03-07T11:00:00.000Z" }) + "\n");
+    await writeFile(fileA, `${claudeLine()}\n`);
+    await writeFile(fileB, `${claudeLine({ timestamp: "2026-03-07T11:00:00.000Z" })}\n`);
 
     const seen = new Set<string>();
     const rA = await parseClaudeFile({ filePath: fileA, startOffset: 0, seenMessageIds: seen });
@@ -425,7 +425,7 @@ describe("parseClaudeFile — message.id dedup", () => {
         usage: { input_tokens: 100, output_tokens: 50 },
       },
     });
-    await writeFile(filePath, line + "\n" + line + "\n");
+    await writeFile(filePath, `${line}\n${line}\n`);
 
     const seen = new Set<string>();
     const result = await parseClaudeFile({
@@ -442,7 +442,7 @@ describe("parseClaudeFile — message.id dedup", () => {
     // every usage line counted, no dedup. This guarantees no other caller
     // silently changes behavior when the new parameter is added.
     const filePath = join(tempDir, "session.jsonl");
-    await writeFile(filePath, claudeLine() + "\n" + claudeLine() + "\n");
+    await writeFile(filePath, `${claudeLine()}\n${claudeLine()}\n`);
 
     const result = await parseClaudeFile({ filePath, startOffset: 0 });
     expect(result.deltas).toHaveLength(2);
@@ -473,7 +473,7 @@ describe("parseClaudeFile — message.id dedup", () => {
         usage: { input_tokens: 100, output_tokens: 50 },
       },
     });
-    await writeFile(filePath, zeroLine + "\n" + realLine + "\n");
+    await writeFile(filePath, `${zeroLine}\n${realLine}\n`);
 
     const seen = new Set<string>();
     const result = await parseClaudeFile({

@@ -43,7 +43,7 @@ export async function collectOpenClawSessions(
   filePath: string,
 ): Promise<SessionSnapshot[]> {
   const st = await stat(filePath).catch(() => null);
-  if (!st || !st.isFile() || st.size === 0) return [];
+  if (!st?.isFile() || st.size === 0) return [];
 
   let assistantMessages = 0;
   let totalMessages = 0;

@@ -27,7 +27,7 @@ function AgentCard({ group, color }: { group: AgentGroup; color: string }) {
   return (
     <div className="rounded-xl bg-secondary overflow-hidden">
       {/* Header */}
-      <button
+      <button type="button"
         onClick={() => setExpanded(!expanded)}
         className="flex w-full items-center gap-4 px-5 py-4 text-left hover:bg-accent/50 transition-colors"
       >
@@ -128,7 +128,8 @@ function AgentsSkeleton() {
   return (
     <div className="space-y-4">
       {Array.from({ length: 3 }).map((_, i) => (
-        <div key={i} className="rounded-xl bg-secondary p-5">
+        // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
+        <div key={`slot-${i}`} className="rounded-xl bg-secondary p-5">
           <div className="flex items-center gap-4">
             <Skeleton className="h-3 w-3 rounded-full" />
             <div className="flex-1">
@@ -188,8 +189,7 @@ export default function AgentsPage() {
 
       {/* Content */}
       {!loading && data && (
-        <>
-          {agentGroups.length === 0 ? (
+        agentGroups.length === 0 ? (
             <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
               No usage data yet. Start using your AI coding tools and sync with pew!
             </div>
@@ -203,8 +203,7 @@ export default function AgentsPage() {
                 />
               ))}
             </div>
-          )}
-        </>
+          )
       )}
     </div>
   );

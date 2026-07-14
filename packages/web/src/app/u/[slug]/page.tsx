@@ -24,7 +24,7 @@ export async function generateMetadata({
   const user = await db.getPublicUserBySlugOrId(slug);
 
   // If user not found or not public, return generic metadata (don't leak name)
-  if (!user || !user.is_public) {
+  if (!user?.is_public) {
     return GENERIC_METADATA;
   }
 

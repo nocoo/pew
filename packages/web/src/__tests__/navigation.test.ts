@@ -203,19 +203,19 @@ describe("sidebar navigation", () => {
 
 describe("route labels", () => {
   it("should map settings to Settings", () => {
-    expect(ROUTE_LABELS["settings"]).toBe("Settings");
+    expect(ROUTE_LABELS.settings).toBe("Settings");
   });
 
   it("should map general to General", () => {
-    expect(ROUTE_LABELS["general"]).toBe("General");
+    expect(ROUTE_LABELS.general).toBe("General");
   });
 
   it("should map teams to Teams", () => {
-    expect(ROUTE_LABELS["teams"]).toBe("Teams");
+    expect(ROUTE_LABELS.teams).toBe("Teams");
   });
 
   it("should map devices to By Device", () => {
-    expect(ROUTE_LABELS["devices"]).toBe("By Device");
+    expect(ROUTE_LABELS.devices).toBe("By Device");
   });
 
   it("should map manage-devices to Devices", () => {

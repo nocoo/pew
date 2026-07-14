@@ -103,7 +103,7 @@ describe("syncCommand.run() forwarding", () => {
     // dropped. TypeScript would reject an unknown key, so if this
     // field is truly missing the sync would compile but not forward.
     // We assert the key is in the passed opts object.
-    expect(Object.prototype.hasOwnProperty.call(opts, "openZcodeDb")).toBe(true);
+    expect(Object.hasOwn(opts, "openZcodeDb")).toBe(true);
   });
 
   it("passes both zcodeDbPath and openZcodeSessionDb into executeSessionSync (regression: manual entry session pipeline)", async () => {
@@ -116,7 +116,7 @@ describe("syncCommand.run() forwarding", () => {
     };
     expect(opts.zcodeDbPath).toBeTypeOf("string");
     expect(opts.zcodeDbPath!.endsWith("/.zcode/cli/db/db.sqlite")).toBe(true);
-    expect(Object.prototype.hasOwnProperty.call(opts, "openZcodeSessionDb")).toBe(
+    expect(Object.hasOwn(opts, "openZcodeSessionDb")).toBe(
       true,
     );
   });

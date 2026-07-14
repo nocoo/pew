@@ -40,7 +40,7 @@ interface PeakHoursCardProps {
  */
 export function PeakHoursCard({ hourly, slots, className }: PeakHoursCardProps) {
   const max = hourly.reduce((m, v) => (v > m ? v : m), 0);
-  const peakHourIndex = max > 0 ? hourly.findIndex((v) => v === max) : -1;
+  const peakHourIndex = max > 0 ? hourly.indexOf(max) : -1;
   const isEmpty = max === 0 && slots.length === 0;
 
   if (isEmpty) {
@@ -82,7 +82,8 @@ export function PeakHoursCard({ hourly, slots, className }: PeakHoursCardProps) 
             const isPeak = h === peakHourIndex && tokens > 0;
             const alpha = isPeak ? 1 : 0.25 + ratio * 0.55;
             return (
-              <Tooltip key={h}>
+              // biome-ignore lint/suspicious/noArrayIndexKey: compile-time constant tuple (24 hour buckets); positional key is authoritative.
+              <Tooltip key={`hour-${h}`}>
                 <TooltipTrigger asChild>
                   <div className="flex-1 flex flex-col items-center justify-end h-full cursor-pointer group">
                     <div
@@ -113,7 +114,8 @@ export function PeakHoursCard({ hourly, slots, className }: PeakHoursCardProps) 
       <div className="mt-1 flex text-[10px] text-muted-foreground tabular-nums">
         {Array.from({ length: 24 }).map((_, h) => (
           <div
-            key={h}
+            // biome-ignore lint/suspicious/noArrayIndexKey: compile-time constant tuple (24 hour buckets); positional key is authoritative.
+            key={`hour-${h}`}
             className="flex-1 text-center"
             style={{ visibility: h % 6 === 0 ? "visible" : "hidden" }}
           >

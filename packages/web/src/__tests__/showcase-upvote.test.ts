@@ -37,7 +37,7 @@ function createRequest(): Request {
   });
 }
 
-function createContext(id: string = "s1") {
+function createContext(id = "s1") {
   return { params: Promise.resolve({ id }) };
 }
 

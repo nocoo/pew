@@ -128,7 +128,7 @@ describe("parseVscodeCopilotFile", () => {
       setResultLine(0, resultWithTokens(100, 50)),
       "", // trailing empty
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
     const result = await parseVscodeCopilotFile({
       filePath,
       startOffset: 0,
@@ -147,7 +147,7 @@ describe("parseVscodeCopilotFile", () => {
       appendResponseLine(0),
       setResultLine(0, resultWithTokens(36533, 937)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseVscodeCopilotFile({
       filePath,
@@ -182,7 +182,7 @@ describe("parseVscodeCopilotFile", () => {
       setResultLine(0, resultWithTokens(10000, 500)),
       setResultLine(1, resultWithTokens(20000, 1000)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseVscodeCopilotFile({
       filePath,
@@ -208,7 +208,7 @@ describe("parseVscodeCopilotFile", () => {
       appendRequestLine(makeRequest("copilot/claude-opus-4.6", 1772780100000)),
       setResultLine(1, resultWithTokens(20000, 1000)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseVscodeCopilotFile({
       filePath,
@@ -233,7 +233,7 @@ describe("parseVscodeCopilotFile", () => {
       appendRequestLine(makeRequest("copilot/claude-opus-4.6-1m", 1772780000000)),
       setResultLine(0, resultWithTokens(5000, 300)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseVscodeCopilotFile({
       filePath,
@@ -252,7 +252,7 @@ describe("parseVscodeCopilotFile", () => {
       appendRequestLine(makeRequest("gpt-4o", 1772780000000)),
       setResultLine(0, resultWithTokens(5000, 300)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseVscodeCopilotFile({
       filePath,
@@ -277,7 +277,7 @@ describe("parseVscodeCopilotFile", () => {
       setResultLine(0, resultWithTokens(10000, 500)),
       setResultLine(1, resultWithoutTokens()),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseVscodeCopilotFile({
       filePath,
@@ -300,7 +300,7 @@ describe("parseVscodeCopilotFile", () => {
       appendRequestLine(makeRequest("copilot/claude-opus-4.6", 1772780000000)),
       setResultLine(0, {}),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseVscodeCopilotFile({
       filePath,
@@ -324,7 +324,7 @@ describe("parseVscodeCopilotFile", () => {
       appendRequestLine(makeRequest("copilot/claude-opus-4.6", 1772780000000)),
       setResultLine(0, resultWithTokens(10000, 500)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     // First parse
     const result1 = await parseVscodeCopilotFile({
@@ -341,7 +341,7 @@ describe("parseVscodeCopilotFile", () => {
       appendRequestLine(makeRequest("copilot/claude-opus-4.6", 1772780200000)),
       setResultLine(1, resultWithTokens(30000, 2000)),
     ];
-    await appendFile(filePath, newLines.join("\n") + "\n");
+    await appendFile(filePath, `${newLines.join("\n")}\n`);
 
     // Resume with previous state
     const result2 = await parseVscodeCopilotFile({
@@ -366,7 +366,7 @@ describe("parseVscodeCopilotFile", () => {
       snapshotLine(),
       appendRequestLine(makeRequest("copilot/claude-opus-4.6", 1772780000000)),
     ];
-    await writeFile(filePath, initialLines.join("\n") + "\n");
+    await writeFile(filePath, `${initialLines.join("\n")}\n`);
 
     // First parse: no result yet, just metadata
     const result1 = await parseVscodeCopilotFile({
@@ -383,7 +383,7 @@ describe("parseVscodeCopilotFile", () => {
     });
 
     // Append result line (after offset)
-    await appendFile(filePath, setResultLine(0, resultWithTokens(15000, 800)) + "\n");
+    await appendFile(filePath, `${setResultLine(0, resultWithTokens(15000, 800))}\n`);
 
     // Resume: kind=1 references index 0 whose kind=2 is before offset,
     // but requestMeta is persisted from prior parse
@@ -406,7 +406,7 @@ describe("parseVscodeCopilotFile", () => {
       appendRequestLine(makeRequest("copilot/claude-opus-4.6", 1772780000000)),
       setResultLine(0, resultWithTokens(10000, 500)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     await parseVscodeCopilotFile({
       filePath,
@@ -466,7 +466,7 @@ describe("parseVscodeCopilotFile", () => {
       '{"broken": true',
       setResultLine(0, resultWithTokens(5000, 300)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseVscodeCopilotFile({
       filePath,
@@ -485,7 +485,7 @@ describe("parseVscodeCopilotFile", () => {
       snapshotLine(),
       setResultLine(0, resultWithTokens(5000, 300)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseVscodeCopilotFile({
       filePath,
@@ -507,7 +507,7 @@ describe("parseVscodeCopilotFile", () => {
       appendResponseLine(0),
       setResultLine(0, resultWithTokens(5000, 300)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseVscodeCopilotFile({
       filePath,
@@ -529,7 +529,7 @@ describe("parseVscodeCopilotFile", () => {
       JSON.stringify({ kind: 1, k: ["requests", 0, "inputState"], v: { foo: "bar" } }),
       setResultLine(0, resultWithTokens(5000, 300)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseVscodeCopilotFile({
       filePath,
@@ -582,7 +582,7 @@ describe("parseVscodeCopilotFile", () => {
       // valid kind=1 result for index 0 (already in meta from snapshot) producing 1 delta
       setResultLine(0, resultWithTokens(100, 50)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const skips: SkipInfo[] = [];
     const result = await parseVscodeCopilotFile({
@@ -605,7 +605,7 @@ describe("parseVscodeCopilotFile", () => {
       // index 0 was already processed in a previous run — should be skipped here
       setResultLine(0, resultWithTokens(9999, 9999)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseVscodeCopilotFile({
       filePath,
@@ -626,7 +626,7 @@ describe("parseVscodeCopilotFile", () => {
       appendRequestLine(makeRequest("copilot/claude-opus-4.6", 1772780000000)),
       setResultLine(0, resultWithTokens(0, 0)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseVscodeCopilotFile({
       filePath,
@@ -647,7 +647,7 @@ describe("parseVscodeCopilotFile", () => {
       appendRequestLine(makeRequest("copilot/claude-opus-4.6", ts)),
       setResultLine(0, resultWithTokens(5000, 300)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseVscodeCopilotFile({
       filePath,
@@ -671,7 +671,7 @@ describe("parseVscodeCopilotFile", () => {
       appendRequestLine(makeRequest("copilot/claude-opus-4.6-1m", 1772780100000)),
       setResultLine(1, resultWithTokens(20000, 1000)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseVscodeCopilotFile({
       filePath,
@@ -696,7 +696,7 @@ describe("parseVscodeCopilotFile", () => {
       appendRequestLine(makeRequest("copilot/claude-opus-4.6", 1772780000000)),
       setResultLine(0, resultWithTokens(0, 0, { modelState: 2 })),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const skips: SkipInfo[] = [];
     await parseVscodeCopilotFile({
@@ -720,7 +720,7 @@ describe("parseVscodeCopilotFile", () => {
       appendRequestLine(makeRequest("copilot/claude-opus-4.6", 1772780000000)),
       setResultLine(0, { timings: { totalElapsed: 100 } }), // no metadata field
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const skips: SkipInfo[] = [];
     await parseVscodeCopilotFile({
@@ -743,7 +743,7 @@ describe("parseVscodeCopilotFile", () => {
       snapshotLine(),
       setResultLine(0, resultWithTokens(5000, 300)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const skips: SkipInfo[] = [];
     await parseVscodeCopilotFile({
@@ -767,7 +767,7 @@ describe("parseVscodeCopilotFile", () => {
       appendRequestLine(makeRequest("copilot/claude-opus-4.6", 1772780000000)),
       setResultLine(0, resultWithTokens(10000, 500)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const skips: SkipInfo[] = [];
     const result = await parseVscodeCopilotFile({
@@ -896,7 +896,7 @@ describe("parseVscodeCopilotFile", () => {
       appendRequestLine(makeRequest("copilot/claude-sonnet-4.6", 1772780000000)),
       setResultLine(0, resultWithTokens(50000, 100, {}, toolCallRounds)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseVscodeCopilotFile({
       filePath,
@@ -923,7 +923,7 @@ describe("parseVscodeCopilotFile", () => {
       appendRequestLine(makeRequest("copilot/claude-opus-4.6", 1772780000000)),
       setResultLine(0, resultWithTokens(30000, 50, {}, toolCallRounds)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseVscodeCopilotFile({
       filePath,
@@ -949,7 +949,7 @@ describe("parseVscodeCopilotFile", () => {
       appendRequestLine(makeRequest("copilot/claude-sonnet-4.6", 1772780000000)),
       setResultLine(0, resultWithTokens(0, 0, {}, toolCallRounds)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseVscodeCopilotFile({
       filePath,
@@ -974,7 +974,7 @@ describe("parseVscodeCopilotFile", () => {
       setResultLine(0, resultWithTokens(12000, 800)),
       appendRequestLine(makeRequest("copilot/claude-sonnet-4.6", 1772780000000)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseVscodeCopilotFile({
       filePath,
@@ -999,7 +999,7 @@ describe("parseVscodeCopilotFile", () => {
       setResultLine(0, resultWithTokens(5000, 100, {}, toolCallRounds)),
       appendRequestLine(makeRequest("copilot/claude-sonnet-4.6", 1772780000000)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseVscodeCopilotFile({
       filePath,
@@ -1021,7 +1021,7 @@ describe("parseVscodeCopilotFile", () => {
       setResultLine(0, { timings: { totalElapsed: 1000 } }),
       appendRequestLine(makeRequest("copilot/claude-sonnet-4.6", 1772780000000)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const skips: SkipInfo[] = [];
     const result = await parseVscodeCopilotFile({
@@ -1045,7 +1045,7 @@ describe("parseVscodeCopilotFile", () => {
       setResultLine(0, resultWithTokens(0, 0)),
       appendRequestLine(makeRequest("copilot/claude-sonnet-4.6", 1772780000000)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const skips: SkipInfo[] = [];
     const result = await parseVscodeCopilotFile({
@@ -1071,7 +1071,7 @@ describe("parseVscodeCopilotFile", () => {
       // kind=1 result with v: null
       JSON.stringify({ kind: 1, k: ["requests", 0, "result"], v: null }),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseVscodeCopilotFile({
       filePath,
@@ -1095,7 +1095,7 @@ describe("parseVscodeCopilotFile", () => {
       // Second result at index 0 (metadata exists → processed immediately)
       setResultLine(0, resultWithTokens(600, 200)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseVscodeCopilotFile({
       filePath,
@@ -1124,7 +1124,7 @@ describe("parseVscodeCopilotFile", () => {
       }),
       appendRequestLine(makeRequest("copilot/claude-sonnet-4.6", 1772780000000)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const result = await parseVscodeCopilotFile({
       filePath,
@@ -1151,7 +1151,7 @@ describe("parseVscodeCopilotFile", () => {
       }),
       appendRequestLine(makeRequest("copilot/claude-sonnet-4.6", 1772780000000)),
     ];
-    await writeFile(filePath, lines.join("\n") + "\n");
+    await writeFile(filePath, `${lines.join("\n")}\n`);
 
     const skips: SkipInfo[] = [];
     const result = await parseVscodeCopilotFile({

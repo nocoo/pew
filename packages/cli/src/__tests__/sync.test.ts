@@ -127,7 +127,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 5000, 800) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
     );
 
     const result = await executeSync({
@@ -192,7 +192,7 @@ describe("executeSync", () => {
     await mkdir(agentDir, { recursive: true });
     await writeFile(
       join(agentDir, "session.jsonl"),
-      openclawLine("2026-03-07T10:15:00.000Z", 5000, 800) + "\n",
+      `${openclawLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
     );
 
     const result = await executeSync({
@@ -210,7 +210,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 5000, 800) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
     );
 
     const r1 = await executeSync({
@@ -232,10 +232,10 @@ describe("executeSync", () => {
     const claudeDir = join(dataDir, ".claude", "projects", "proj-a");
     await mkdir(claudeDir, { recursive: true });
     // Two events in the same half-hour bucket, same model
-    const content = [
+    const content = `${[
       claudeLine("2026-03-07T10:05:00.000Z", 1000, 100),
       claudeLine("2026-03-07T10:20:00.000Z", 2000, 200),
-    ].join("\n") + "\n";
+    ].join("\n")}\n`;
     await writeFile(join(claudeDir, "session.jsonl"), content);
 
     const result = await executeSync({
@@ -265,7 +265,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
     // Gemini
     const geminiDir = join(dataDir, ".gemini", "tmp", "proj-b", "chats");
@@ -293,7 +293,7 @@ describe("executeSync", () => {
     await mkdir(codexDir, { recursive: true });
     await writeFile(
       join(codexDir, "rollout-abc123.jsonl"),
-      codexLines("2026-03-07T10:15:00.000Z", 5000, 800) + "\n",
+      `${codexLines("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
     );
 
     const result = await executeSync({
@@ -321,7 +321,7 @@ describe("executeSync", () => {
     await mkdir(codexDir, { recursive: true });
     await writeFile(
       join(codexDir, "rollout-abc123.jsonl"),
-      codexLines("2026-03-07T10:15:00.000Z", 5000, 800) + "\n",
+      `${codexLines("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
     );
 
     const r1 = await executeSync({
@@ -346,7 +346,7 @@ describe("executeSync", () => {
     const filePath = join(codexDir, "rollout-abc123.jsonl");
     await writeFile(
       filePath,
-      codexLines("2026-03-07T10:15:00.000Z", 5000, 800) + "\n",
+      `${codexLines("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
     );
 
     const r1 = await executeSync({
@@ -373,7 +373,7 @@ describe("executeSync", () => {
         },
       },
     });
-    await writeFile(filePath, existing + newTokenLine + "\n");
+    await writeFile(filePath, `${existing + newTokenLine}\n`);
 
     const r2 = await executeSync({
       stateDir,
@@ -453,7 +453,7 @@ describe("executeSync", () => {
     await mkdir(agentDir, { recursive: true });
     await writeFile(
       join(agentDir, "session.jsonl"),
-      openclawLine("2026-03-07T10:15:00.000Z", 5000, 800) + "\n",
+      `${openclawLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
     );
 
     const r1 = await executeSync({
@@ -478,7 +478,7 @@ describe("executeSync", () => {
     const filePath = join(agentDir, "session.jsonl");
     await writeFile(
       filePath,
-      openclawLine("2026-03-07T10:15:00.000Z", 5000, 800) + "\n",
+      `${openclawLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
     );
 
     const r1 = await executeSync({
@@ -491,7 +491,7 @@ describe("executeSync", () => {
     const existing = await readFile(filePath, "utf-8");
     await writeFile(
       filePath,
-      existing + openclawLine("2026-03-07T11:15:00.000Z", 3000, 400) + "\n",
+      `${existing + openclawLine("2026-03-07T11:15:00.000Z", 3000, 400)}\n`,
     );
 
     const r2 = await executeSync({
@@ -509,7 +509,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
 
     const events: Array<{ source: string; phase: string }> = [];
@@ -565,7 +565,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
     // Gemini
     const geminiDir = join(dataDir, ".gemini", "tmp", "proj-b", "chats");
@@ -586,14 +586,14 @@ describe("executeSync", () => {
     await mkdir(agentDir, { recursive: true });
     await writeFile(
       join(agentDir, "session.jsonl"),
-      openclawLine("2026-03-07T10:15:00.000Z", 5000, 800) + "\n",
+      `${openclawLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
     );
     // Codex
     const codexDir = join(dataDir, ".codex", "sessions", "2026", "03", "07");
     await mkdir(codexDir, { recursive: true });
     await writeFile(
       join(codexDir, "rollout-abc123.jsonl"),
-      codexLines("2026-03-07T10:15:00.000Z", 3000, 500) + "\n",
+      `${codexLines("2026-03-07T10:15:00.000Z", 3000, 500)}\n`,
     );
 
     const events: Array<{ source: string; phase: string }> = [];
@@ -635,7 +635,7 @@ describe("executeSync", () => {
     // Good file: valid JSONL
     await writeFile(
       join(proj1, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
 
     // Bad file: starts with valid-looking content but will cause readline to
@@ -645,7 +645,7 @@ describe("executeSync", () => {
     // Instead, we use vi.spyOn to make the parser throw for one specific file.
     await writeFile(
       join(proj2, "bad.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 2000, 200) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 2000, 200)}\n`,
     );
 
     // Spy on the parser module to throw for the bad file path
@@ -693,7 +693,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
 
     // OpenClaw: healthy data
@@ -701,7 +701,7 @@ describe("executeSync", () => {
     await mkdir(agentDir, { recursive: true });
     await writeFile(
       join(agentDir, "session.jsonl"),
-      openclawLine("2026-03-07T10:15:00.000Z", 5000, 800) + "\n",
+      `${openclawLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
     );
 
     // Make ALL Claude parses throw
@@ -742,7 +742,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
 
     // Import the LocalQueue module to spy on overwrite
@@ -794,7 +794,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
     // Gemini
     const geminiDir = join(dataDir, ".gemini", "tmp", "proj-b", "chats");
@@ -815,14 +815,14 @@ describe("executeSync", () => {
     await mkdir(agentDir, { recursive: true });
     await writeFile(
       join(agentDir, "session.jsonl"),
-      openclawLine("2026-03-07T10:15:00.000Z", 5000, 800) + "\n",
+      `${openclawLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
     );
     // Codex
     const codexDir = join(dataDir, ".codex", "sessions", "2026", "03", "07");
     await mkdir(codexDir, { recursive: true });
     await writeFile(
       join(codexDir, "rollout-abc123.jsonl"),
-      codexLines("2026-03-07T10:15:00.000Z", 3000, 500) + "\n",
+      `${codexLines("2026-03-07T10:15:00.000Z", 3000, 500)}\n`,
     );
 
     const result = await executeSync({
@@ -1134,7 +1134,7 @@ describe("executeSync", () => {
     await mkdir(goodDir, { recursive: true });
     await writeFile(
       join(goodDir, "session-good.jsonl"),
-      openclawLine("2026-03-07T10:15:00.000Z", 5000, 800) + "\n",
+      `${openclawLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
     );
 
     // Bad OpenClaw file
@@ -1142,7 +1142,7 @@ describe("executeSync", () => {
     await mkdir(badDir, { recursive: true });
     await writeFile(
       join(badDir, "session-bad.jsonl"),
-      openclawLine("2026-03-07T10:15:00.000Z", 3000, 400) + "\n",
+      `${openclawLine("2026-03-07T10:15:00.000Z", 3000, 400)}\n`,
     );
 
     // Spy on the parser to throw for the bad file
@@ -1189,13 +1189,13 @@ describe("executeSync", () => {
     await mkdir(goodDir, { recursive: true });
     await writeFile(
       join(goodDir, "rollout-good.jsonl"),
-      codexLines("2026-03-07T10:15:00.000Z", 5000, 800) + "\n",
+      `${codexLines("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
     );
 
     // Bad Codex file
     await writeFile(
       join(goodDir, "rollout-bad.jsonl"),
-      codexLines("2026-03-07T10:16:00.000Z", 3000, 400) + "\n",
+      `${codexLines("2026-03-07T10:16:00.000Z", 3000, 400)}\n`,
     );
 
     // Spy on the parser to throw for the bad file
@@ -1457,7 +1457,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 5000, 800) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 5000, 800)}\n`,
     );
 
     // First sync
@@ -1501,7 +1501,7 @@ describe("executeSync", () => {
     const filePath = join(claudeDir, "session.jsonl");
     await writeFile(
       filePath,
-      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
 
     // First sync
@@ -1514,7 +1514,7 @@ describe("executeSync", () => {
     const existing = await readFile(filePath, "utf-8");
     await writeFile(
       filePath,
-      existing + claudeLine("2026-03-07T10:20:00.000Z", 2000, 200) + "\n",
+      `${existing + claudeLine("2026-03-07T10:20:00.000Z", 2000, 200)}\n`,
     );
 
     // Second sync — incremental branch should SUM old + new
@@ -1539,7 +1539,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 4000, 600) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 4000, 600)}\n`,
     );
 
     // First sync
@@ -1574,7 +1574,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
 
     // Spy on LocalQueue.overwrite to throw (simulating crash during queue write)
@@ -1619,7 +1619,7 @@ describe("executeSync", () => {
     const claudeDir = join(dataDir, ".claude", "projects", "proj-inode");
     await mkdir(claudeDir, { recursive: true });
     const filePath = join(claudeDir, "session.jsonl");
-    const content = claudeLine("2026-03-07T10:15:00.000Z", 3000, 300) + "\n";
+    const content = `${claudeLine("2026-03-07T10:15:00.000Z", 3000, 300)}\n`;
     await writeFile(filePath, content);
 
     // First sync
@@ -1662,7 +1662,7 @@ describe("executeSync", () => {
     const claudeDir = join(dataDir, ".claude", "projects", "proj-multi");
     await mkdir(claudeDir, { recursive: true });
     const claudePath = join(claudeDir, "session.jsonl");
-    const claudeContent = claudeLine("2026-03-07T10:15:00.000Z", 3000, 300) + "\n";
+    const claudeContent = `${claudeLine("2026-03-07T10:15:00.000Z", 3000, 300)}\n`;
     await writeFile(claudePath, claudeContent);
 
     const geminiDir = join(dataDir, ".gemini", "tmp", "proj-multi", "chats");
@@ -1716,7 +1716,7 @@ describe("executeSync", () => {
     const claudePath = join(claudeDir, "session.jsonl");
     await writeFile(
       claudePath,
-      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
 
     const geminiDir = join(dataDir, ".gemini", "tmp", "proj-cursor-miss", "chats");
@@ -1749,7 +1749,6 @@ describe("executeSync", () => {
     // Remove all entries matching the Claude file path
     for (const key of fileKeys) {
       if (key.includes("proj-cursor-miss") && key.includes(".claude")) {
-        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- 测试模拟 cursor key 丢失
         delete cursorsData.files[key];
       }
     }
@@ -1785,7 +1784,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 5000, 500) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 5000, 500)}\n`,
     );
 
     // First sync — establishes cursors normally
@@ -1830,7 +1829,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 3000, 300) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 3000, 300)}\n`,
     );
 
     await executeSync({
@@ -1878,7 +1877,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
 
     // First sync — only Claude
@@ -1936,7 +1935,7 @@ describe("executeSync", () => {
     const claudePath = join(claudeDir, "session.jsonl");
     await writeFile(
       claudePath,
-      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
 
     const dbDir = join(dataDir, "opencode");
@@ -2058,7 +2057,7 @@ describe("executeSync", () => {
     const claudePath = join(claudeDir, "session.jsonl");
     await writeFile(
       claudePath,
-      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
 
     const dbDir = join(dataDir, "opencode");
@@ -2132,7 +2131,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 1100, 110) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1100, 110)}\n`,
     );
 
     // First sync
@@ -2176,7 +2175,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
 
     await executeSync({
@@ -2199,10 +2198,10 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      [
+      `${[
         claudeLine("2026-03-07T10:15:00.000Z", 1000, 100),
         claudeLine("2026-03-07T11:15:00.000Z", 2000, 200),
-      ].join("\n") + "\n",
+      ].join("\n")}\n`,
     );
 
     await executeSync({
@@ -2233,7 +2232,7 @@ describe("executeSync", () => {
     const filePath = join(claudeDir, "session.jsonl");
     await writeFile(
       filePath,
-      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
 
     // First sync (full scan)
@@ -2252,7 +2251,7 @@ describe("executeSync", () => {
     const existing = await readFile(filePath, "utf-8");
     await writeFile(
       filePath,
-      existing + claudeLine("2026-03-07T12:15:00.000Z", 3000, 300) + "\n",
+      `${existing + claudeLine("2026-03-07T12:15:00.000Z", 3000, 300)}\n`,
     );
 
     // Second sync — incremental
@@ -2278,7 +2277,7 @@ describe("executeSync", () => {
     const filePath = join(claudeDir, "session.jsonl");
     await writeFile(
       filePath,
-      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
 
     // First sync (full scan)
@@ -2295,7 +2294,7 @@ describe("executeSync", () => {
     const existing = await readFile(filePath, "utf-8");
     await writeFile(
       filePath,
-      existing + claudeLine("2026-03-07T13:15:00.000Z", 4000, 400) + "\n",
+      `${existing + claudeLine("2026-03-07T13:15:00.000Z", 4000, 400)}\n`,
     );
 
     // Second sync — incremental, dirtyKeys not cleared
@@ -2322,7 +2321,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
 
     // First sync
@@ -2358,7 +2357,7 @@ describe("executeSync", () => {
     const filePath = join(claudeDir, "session.jsonl");
     await writeFile(
       filePath,
-      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
 
     // First sync
@@ -2377,7 +2376,7 @@ describe("executeSync", () => {
     const existing = await readFile(filePath, "utf-8");
     await writeFile(
       filePath,
-      existing + claudeLine("2026-03-07T10:25:00.000Z", 2000, 200) + "\n",
+      `${existing + claudeLine("2026-03-07T10:25:00.000Z", 2000, 200)}\n`,
     );
 
     // Second sync — incremental, same bucket
@@ -2524,7 +2523,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
 
     const dbDir = join(dataDir, "hermes");
@@ -2573,7 +2572,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
 
     const dbDir = join(dataDir, "hermes");
@@ -2595,7 +2594,7 @@ describe("executeSync", () => {
     const cursorStore = new CursorStore(stateDir);
     const cursors = await cursorStore.load();
     const hermesCursors = (cursors as Record<string, unknown>).hermesSqlite as Record<string, Record<string, unknown>>;
-    hermesCursors["default"]!.inode = 999999; // fake inode
+    hermesCursors.default!.inode = 999999; // fake inode
     await cursorStore.save(cursors);
 
     const events: Array<{ source: string; phase: string; message?: string }> = [];
@@ -2617,7 +2616,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 1000, 100) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 1000, 100)}\n`,
     );
 
     const geminiDir = join(dataDir, ".gemini", "tmp", "proj-fl", "chats");
@@ -2641,7 +2640,6 @@ describe("executeSync", () => {
     const fileKeys = Object.keys(cursorsData.files);
     for (const key of fileKeys) {
       if (key.includes("proj-file-loss") && key.includes(".claude")) {
-        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- 测试模拟 file cursor 丢失
         delete cursorsData.files[key];
       }
     }
@@ -2711,7 +2709,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 5000, 500) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 5000, 500)}\n`,
     );
 
     // First sync
@@ -2741,7 +2739,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:15:00.000Z", 4000, 400) + "\n",
+      `${claudeLine("2026-03-07T10:15:00.000Z", 4000, 400)}\n`,
     );
 
     // First sync
@@ -2773,7 +2771,7 @@ describe("executeSync", () => {
     const claudeDir = join(dataDir, ".claude", "projects", "proj-inode-prog");
     await mkdir(claudeDir, { recursive: true });
     const filePath = join(claudeDir, "session.jsonl");
-    const content = claudeLine("2026-03-07T10:15:00.000Z", 3000, 300) + "\n";
+    const content = `${claudeLine("2026-03-07T10:15:00.000Z", 3000, 300)}\n`;
     await writeFile(filePath, content);
 
     // First sync
@@ -2859,7 +2857,7 @@ describe("executeSync", () => {
     await mkdir(join(realDir, "2026/03/07"), { recursive: true });
     await writeFile(
       realPath,
-      JSON.stringify({
+      `${JSON.stringify({
         timestamp: "2026-03-07T10:15:00.000Z",
         type: "token_count",
         payload: {
@@ -2868,7 +2866,7 @@ describe("executeSync", () => {
             total_token_usage: { input_tokens: 1000, cached_input_tokens: 0, output_tokens: 100, reasoning_output_tokens: 0 },
           },
         },
-      }) + "\n",
+      })}\n`,
     );
     // The Multica codex-home/sessions/ symlink → real codex-sessions
     await symlink(realDir, aliasDir);
@@ -2920,7 +2918,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:00:00.000Z", 50, 5) + "\n",
+      `${claudeLine("2026-03-07T10:00:00.000Z", 50, 5)}\n`,
     );
 
     const ocDir = join(dataDir, "opencode", "message", "ses_mtime_skip");
@@ -2990,7 +2988,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:00:00.000Z", 1, 1) + "\n",
+      `${claudeLine("2026-03-07T10:00:00.000Z", 1, 1)}\n`,
     );
 
     await executeSync({
@@ -3039,7 +3037,7 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     await writeFile(
       join(claudeDir, "session.jsonl"),
-      claudeLine("2026-03-07T10:00:00.000Z", 50, 5) + "\n",
+      `${claudeLine("2026-03-07T10:00:00.000Z", 50, 5)}\n`,
     );
     const ocDir = join(dataDir, "opencode", "message", "ses_mtime_skip2");
     await mkdir(ocDir, { recursive: true });
@@ -3099,8 +3097,8 @@ describe("executeSync", () => {
     await mkdir(claudeDir, { recursive: true });
     const goodPath = join(claudeDir, "good.jsonl");
     const badPath = join(claudeDir, "bad.jsonl");
-    await writeFile(goodPath, claudeLine("2026-03-07T10:00:00.000Z", 1000, 100) + "\n");
-    await writeFile(badPath, claudeLine("2026-03-07T10:05:00.000Z", 2000, 200) + "\n");
+    await writeFile(goodPath, `${claudeLine("2026-03-07T10:00:00.000Z", 1000, 100)}\n`);
+    await writeFile(badPath, `${claudeLine("2026-03-07T10:05:00.000Z", 2000, 200)}\n`);
 
     const claudeParser = await import("../parsers/claude.js");
     const origParse = claudeParser.parseClaudeFile;
@@ -3251,7 +3249,7 @@ describe("executeSync", () => {
             },
           },
         });
-      await writeFile(sessionPath, row("msg_A", "2026-06-01T10:00:00.000Z") + "\n");
+      await writeFile(sessionPath, `${row("msg_A", "2026-06-01T10:00:00.000Z")}\n`);
 
       // Preseed a LEGACY cursor (no seenIds field) that says the file has
       // been fully parsed to its current size. Also preseed knownFilePaths
@@ -3284,7 +3282,7 @@ describe("executeSync", () => {
       const queuePath = join(stateDir, "queue.jsonl");
       await writeFile(
         queuePath,
-        JSON.stringify({
+        `${JSON.stringify({
           source: "claude-code",
           model: "glm-5",
           hour_start: "2026-06-01T10:00:00.000Z",
@@ -3294,7 +3292,7 @@ describe("executeSync", () => {
           output_tokens: 50,
           reasoning_output_tokens: 0,
           total_tokens: 150,
-        }) + "\n",
+        })}\n`,
       );
 
       // User upgrades. Then Claude Code appends a rewrite of msg_A past the
@@ -3303,7 +3301,7 @@ describe("executeSync", () => {
       const { appendFile } = await import("node:fs/promises");
       await appendFile(
         sessionPath,
-        row("msg_A", "2026-06-01T10:00:30.000Z") + "\n",
+        `${row("msg_A", "2026-06-01T10:00:30.000Z")}\n`,
       );
 
       await executeSync({
@@ -3357,7 +3355,7 @@ describe("executeSync", () => {
             },
           },
         });
-      await writeFile(A, row("msg_cross", "2026-06-01T10:00:00.000Z") + "\n");
+      await writeFile(A, `${row("msg_cross", "2026-06-01T10:00:00.000Z")}\n`);
 
       const { stat } = await import("node:fs/promises");
       const stA = await stat(A);
@@ -3385,7 +3383,7 @@ describe("executeSync", () => {
       const queuePath = join(stateDir, "queue.jsonl");
       await writeFile(
         queuePath,
-        JSON.stringify({
+        `${JSON.stringify({
           source: "claude-code",
           model: "glm-5",
           hour_start: "2026-06-01T10:00:00.000Z",
@@ -3395,12 +3393,12 @@ describe("executeSync", () => {
           output_tokens: 50,
           reasoning_output_tokens: 0,
           total_tokens: 150,
-        }) + "\n",
+        })}\n`,
       );
 
       // A is unchanged. B is a new sibling file that carries the same
       // message.id (subagent parent/child sharing).
-      await writeFile(B, row("msg_cross", "2026-06-01T10:00:30.000Z") + "\n");
+      await writeFile(B, `${row("msg_cross", "2026-06-01T10:00:30.000Z")}\n`);
 
       await executeSync({
         stateDir,

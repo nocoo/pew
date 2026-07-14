@@ -365,7 +365,7 @@ describe("resolvePewBin", () => {
         // argv[1] points to nonexistent dir so sibling lookup fails
         process.argv = ["node", join(tempDir, "nonexistent", "entry.js")];
 
-        const mockExecFile = vi.fn().mockResolvedValue({ stdout: binPath + "\n", stderr: "" });
+        const mockExecFile = vi.fn().mockResolvedValue({ stdout: `${binPath}\n`, stderr: "" });
 
         const resolved = await resolvePewBin({ platform: "win32", execFile: mockExecFile });
 

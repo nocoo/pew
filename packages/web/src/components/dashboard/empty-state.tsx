@@ -104,7 +104,8 @@ function EmptyState({
           </p>
           <ol className="text-left max-w-sm mx-auto space-y-2">
             {tips.map((tip, i) => (
-              <li key={i} className="flex items-start gap-3 text-sm text-muted-foreground">
+              // biome-ignore lint/suspicious/noArrayIndexKey: `tips` is a compile-time constant array passed as a prop; positional key is authoritative for the numbered list.
+              <li key={`${tip}-${i}`} className="flex items-start gap-3 text-sm text-muted-foreground">
                 <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
                   {i + 1}
                 </span>

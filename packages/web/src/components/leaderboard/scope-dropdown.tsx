@@ -166,7 +166,7 @@ export function ScopeDropdown({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
+        <button type="button"
           role="combobox"
           aria-expanded={open}
           aria-haspopup="listbox"

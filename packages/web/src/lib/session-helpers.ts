@@ -73,7 +73,7 @@ export type WorkingHoursDay = {
  */
 export function toWorkingHoursGrid(
   records: SessionRow[],
-  tzOffset: number = 0,
+  tzOffset = 0,
 ): WorkingHoursDay[] {
   // Initialize 7x24 grid of zeroes
   const grid: WorkingHoursDay[] = DAY_NAMES.map((day) => ({
@@ -110,7 +110,7 @@ export type MessageDailyStat = {
   assistant: number;
 };
 
-export function toMessageDailyStats(records: SessionRow[], tzOffset: number = 0): MessageDailyStat[] {
+export function toMessageDailyStats(records: SessionRow[], tzOffset = 0): MessageDailyStat[] {
   if (records.length === 0) return [];
 
   const byDate = new Map<string, { user: number; assistant: number }>();
@@ -158,7 +158,7 @@ export type DimensionDailyPoint = {
  */
 export function toMessagesByDimension(
   records: SessionRow[],
-  tzOffset: number = 0,
+  tzOffset = 0,
   dimension: "source" | "model" = "source",
 ): { data: DimensionDailyPoint[]; keys: string[] } {
   if (records.length === 0) return { data: [], keys: [] };

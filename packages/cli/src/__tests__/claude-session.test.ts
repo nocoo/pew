@@ -69,7 +69,7 @@ describe("collectClaudeSessions", () => {
       line(),
       "", // trailing empty before final newline
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
     const result = await collectClaudeSessions(f);
     expect(result).toHaveLength(1);
     expect(result[0].totalMessages).toBe(2);
@@ -83,7 +83,7 @@ describe("collectClaudeSessions", () => {
       userLine({ timestamp: "2026-03-07T10:20:00.000Z" }),
       line({ timestamp: "2026-03-07T10:25:00.000Z" }),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectClaudeSessions(f);
     expect(result).toHaveLength(1);
@@ -116,7 +116,7 @@ describe("collectClaudeSessions", () => {
         timestamp: "2026-03-07T11:05:00.000Z",
       }),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectClaudeSessions(f);
     expect(result).toHaveLength(2);
@@ -141,7 +141,7 @@ describe("collectClaudeSessions", () => {
       userLine(),
       line(),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectClaudeSessions(f);
     // The line without sessionId is skipped; only ses-001 session found
@@ -157,7 +157,7 @@ describe("collectClaudeSessions", () => {
       userLine(),
       line(),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectClaudeSessions(f);
     expect(result).toHaveLength(1);
@@ -169,7 +169,7 @@ describe("collectClaudeSessions", () => {
     const projectDir = join(tmpDir, "projects", "abc123hash");
     await mkdir(projectDir, { recursive: true });
     const f = join(projectDir, "session.jsonl");
-    await writeFile(f, [userLine(), line()].join("\n") + "\n");
+    await writeFile(f, `${[userLine(), line()].join("\n")}\n`);
 
     const result = await collectClaudeSessions(f);
     expect(result).toHaveLength(1);
@@ -178,7 +178,7 @@ describe("collectClaudeSessions", () => {
 
   it("should set projectRef to null when no projects/ in path", async () => {
     const f = join(tmpDir, "standalone.jsonl");
-    await writeFile(f, [userLine(), line()].join("\n") + "\n");
+    await writeFile(f, `${[userLine(), line()].join("\n")}\n`);
 
     const result = await collectClaudeSessions(f);
     expect(result).toHaveLength(1);
@@ -195,7 +195,7 @@ describe("collectClaudeSessions", () => {
         message: { model: "claude-opus-4", usage: { input_tokens: 1, output_tokens: 1 } },
       }),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectClaudeSessions(f);
     expect(result).toHaveLength(1);
@@ -204,7 +204,7 @@ describe("collectClaudeSessions", () => {
 
   it("should handle single-message session (duration = 0)", async () => {
     const f = join(tmpDir, "single.jsonl");
-    await writeFile(f, line() + "\n");
+    await writeFile(f, `${line()}\n`);
 
     const result = await collectClaudeSessions(f);
     expect(result).toHaveLength(1);
@@ -227,7 +227,7 @@ describe("collectClaudeSessions", () => {
         message: { usage: { input_tokens: 100, output_tokens: 50 } },
       }),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectClaudeSessions(f);
     expect(result).toHaveLength(1);
@@ -246,7 +246,7 @@ describe("collectClaudeSessions", () => {
         sessionId: "ses-001",
       }),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectClaudeSessions(f);
     expect(result).toHaveLength(1);
@@ -267,7 +267,7 @@ describe("collectClaudeSessions", () => {
       // A second line with a valid timestamp so the session is emitted
       line({ timestamp: "2026-03-07T11:00:00.000Z" }),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectClaudeSessions(f);
     expect(result).toHaveLength(1);
@@ -294,7 +294,7 @@ describe("collectClaudeSessions", () => {
       // A second session WITH a valid timestamp — should still be emitted.
       line({ sessionId: "ses-with-ts" }),
     ];
-    await writeFile(f, lines.join("\n") + "\n");
+    await writeFile(f, `${lines.join("\n")}\n`);
 
     const result = await collectClaudeSessions(f);
     expect(result).toHaveLength(1);

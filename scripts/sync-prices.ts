@@ -227,7 +227,7 @@ export async function main(argv: string[]): Promise<number> {
   mkdirSync(dirname(args.outputPath), { recursive: true });
   writeFileSync(
     args.outputPath,
-    JSON.stringify(result.entries, null, 2) + "\n",
+    `${JSON.stringify(result.entries, null, 2)}\n`,
     "utf-8"
   );
   console.log(`wrote ${args.outputPath}`);

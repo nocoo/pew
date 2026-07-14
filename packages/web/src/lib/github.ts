@@ -74,7 +74,7 @@ const GITHUB_REPO_PATTERN =
 export function normalizeGitHubUrl(url: string): NormalizedGitHubUrl | null {
   const trimmed = url.trim();
   const match = trimmed.match(GITHUB_REPO_PATTERN);
-  if (!match || !match[1] || !match[2]) return null;
+  if (!match?.[1] || !match[2]) return null;
 
   const owner = match[1];
   const repo = match[2];

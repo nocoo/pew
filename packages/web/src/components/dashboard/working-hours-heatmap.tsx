@@ -79,9 +79,9 @@ export function WorkingHoursHeatmap({
         {/* Legend */}
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <span>Less</span>
-          {[0, 0.3, 0.5, 0.75, 1].map((alpha, i) => (
+          {[0, 0.3, 0.5, 0.75, 1].map((alpha) => (
             <div
-              key={i}
+              key={`legend-${alpha}`}
               className="rounded-sm"
               style={{
                 width: 10,
@@ -105,7 +105,8 @@ export function WorkingHoursHeatmap({
             >
               {HOUR_LABELS.map((label, i) => (
                 <div
-                  key={i}
+                  // biome-ignore lint/suspicious/noArrayIndexKey: compile-time constant tuple (24 hour labels); positional key is authoritative.
+                  key={`h-${i}`}
                   className="text-center"
                   style={{
                     width: CELL_SIZE + CELL_GAP,
@@ -131,7 +132,8 @@ export function WorkingHoursHeatmap({
                 {/* Hour cells */}
                 <div className="flex" style={{ gap: CELL_GAP }}>
                   {day.hours.map((count, hour) => (
-                    <Tooltip key={hour}>
+                    // biome-ignore lint/suspicious/noArrayIndexKey: compile-time constant tuple (24 hour buckets per day); positional key is authoritative.
+                    <Tooltip key={`${day.day}-h${hour}`}>
                       <TooltipTrigger asChild>
                         <div
                           className="rounded-sm cursor-pointer transition-colors hover:ring-1 hover:ring-foreground"

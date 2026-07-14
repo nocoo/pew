@@ -337,8 +337,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .animate-fade-up {
-    animation: none !important;
-    opacity: 1 !important;
+    animation: none;
+    opacity: 1;
   }
 }
 

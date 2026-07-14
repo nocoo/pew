@@ -25,7 +25,7 @@ function createFakeFs(opts?: {
   return {
     _state: state,
 
-    async writeFile(path: string, data: string, options?: { flag?: string }) {
+    async writeFile(_path: string, data: string, options?: { flag?: string }) {
       if (opts?.writeThrows) throw opts.writeThrows;
       if (options?.flag === "wx" && state.content !== null) {
         const err = new Error("EEXIST") as NodeJS.ErrnoException;

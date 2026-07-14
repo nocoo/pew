@@ -40,7 +40,7 @@ interface DeviceAreaChartProps {
 // ---------------------------------------------------------------------------
 
 function fmtDate(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00Z");
+  const d = new Date(`${dateStr}T00:00:00Z`);
   return d.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
@@ -128,8 +128,8 @@ export function DeviceAreaChart({
     const firstDate = rawData[0]?.date;
     if (!firstDate) return rawData;
 
-    const startDate = new Date(firstDate + "T00:00:00Z");
-    const endDate = new Date(padToDate + "T00:00:00Z");
+    const startDate = new Date(`${firstDate}T00:00:00Z`);
+    const endDate = new Date(`${padToDate}T00:00:00Z`);
 
     const cursor = new Date(startDate);
     while (cursor <= endDate) {
