@@ -80,6 +80,8 @@ const ADMISSION_WINDOW_MS = ${ADMISSION_WINDOW_MS};
 const CHAIN_MAX_LENGTH = ${CHAIN_MAX_LENGTH};
 const SELF_PATH = resolve(__filename);
 const HOME_DIR = homedir();
+const IS_WIN = process.platform === "win32";
+const SELF_PATH_KEY = IS_WIN ? SELF_PATH.toLowerCase() : SELF_PATH;
 const ADMISSION_DIR = join(STATE_DIR, "notify-admission");
 const DIAGNOSTIC_PATH = join(STATE_DIR, "last-notify-guard.json");
 
@@ -262,7 +264,10 @@ function isSelfNotify(cmd) {
     const resolved = part.startsWith("~/")
       ? join(HOME_DIR, part.slice(2))
       : resolve(part);
-    return resolved === SELF_PATH;
+    // Windows: NTFS/ReFS are case-insensitive by default, so compare
+    // lowercased forms; POSIX stays case-sensitive.
+    const key = IS_WIN ? resolved.toLowerCase() : resolved;
+    return key === SELF_PATH_KEY;
   });
 }
 
@@ -274,10 +279,23 @@ function isSelfNotify(cmd) {
 function writeDiagnostic(payload) {
   try {
     mkdirSync(STATE_DIR, { recursive: true, mode: 0o700 });
+    // Sample the clock locally; do NOT reference the outer \`t0\` because
+    // early-exit branches (chain_reentry, chain_too_long) fire before
+    // t0 is assigned, and touching a TDZ binding would throw
+    // ReferenceError — the outer try/catch swallows it and no diagnostic
+    // is written. See doc 45 §4.1 review item 3.
+    var stamp;
+    try {
+      stamp = typeof globalThis.__pewNow === "function"
+        ? new Date(globalThis.__pewNow()).toISOString()
+        : new Date().toISOString();
+    } catch (_) {
+      stamp = new Date().toISOString();
+    }
     writeFileSync(
       DIAGNOSTIC_PATH,
       JSON.stringify({
-        at: new Date(t0 || Date.now()).toISOString(),
+        at: stamp,
         instanceId: INSTANCE_ID,
         ...payload,
       }, null, 2),

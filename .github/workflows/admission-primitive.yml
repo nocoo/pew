@@ -13,14 +13,14 @@ on:
     branches: [main]
     paths:
       - "packages/cli/src/__tests__/admission-primitive.test.ts"
-      - "packages/cli/src/__tests__/fixtures/admission-worker.mts"
+      - "packages/cli/src/__tests__/fixtures/admission-worker.cjs"
       - "packages/cli/src/notifier/notify-handler.ts"
       - ".github/workflows/admission-primitive.yml"
   pull_request:
     branches: [main]
     paths:
       - "packages/cli/src/__tests__/admission-primitive.test.ts"
-      - "packages/cli/src/__tests__/fixtures/admission-worker.mts"
+      - "packages/cli/src/__tests__/fixtures/admission-worker.cjs"
       - "packages/cli/src/notifier/notify-handler.ts"
       - ".github/workflows/admission-primitive.yml"
   workflow_dispatch:

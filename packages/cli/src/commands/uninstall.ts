@@ -120,13 +120,31 @@ export async function executeUninstall(opts: UninstallOptions): Promise<Uninstal
       detail: "shared artifact kept",
     };
 
-  const codexBackup = shouldRemoveCodexBackup
-    ? await removeCodexBackupFn(paths.codexNotifyOriginalPath)
-    : {
-      changed: false,
-      path: paths.codexNotifyOriginalPath,
-      detail: "not selected",
-    };
+  // Doc 45 §8: the outer uninstall command must NOT delete
+  // codex_notify_original.json unconditionally — the Codex driver already
+  // removes it on its own happy path, and refuses to remove it on
+  // ownership_conflict / cycle_detected / any error. Rubber-stamping the
+  // deletion here would defeat that refusal and re-open Issue #318.
+  //
+  // Rule: only allow the outer removal when Codex was selected AND the
+  // driver reported a clean uninstall (`changed: true` with no warnings).
+  // Any skip / warning / error keeps the backup on disk for manual
+  // inspection.
+  const codexHook = hooks.find((h) => h.source === "codex");
+  const codexDriverClean =
+    codexHook !== undefined &&
+    codexHook.changed === true &&
+    (codexHook.warnings?.length ?? 0) === 0;
+  const codexBackup =
+    shouldRemoveCodexBackup && codexDriverClean
+      ? await removeCodexBackupFn(paths.codexNotifyOriginalPath)
+      : {
+        changed: false,
+        path: paths.codexNotifyOriginalPath,
+        detail: shouldRemoveCodexBackup
+          ? "backup preserved: Codex driver did not report a clean uninstall"
+          : "not selected",
+      };
 
   return { notifyHandler, codexBackup, hooks };
 }

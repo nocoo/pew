@@ -148,13 +148,39 @@ export async function uninstallCodexNotifier(
 
   const originalBackup = await readOptional(opts.originalBackupPath, fs);
   let originalNotify: string[] | null = null;
-  if (originalBackup) {
+  let backupParseError: string | null = null;
+  if (originalBackup !== null) {
     try {
       const parsed = JSON.parse(originalBackup) as { notify?: string[] };
-      if (Array.isArray(parsed.notify)) originalNotify = parsed.notify;
-    } catch {
-      // Malformed backup — treat as absent + emit a warning below.
+      if (
+        Array.isArray(parsed.notify) &&
+        parsed.notify.every((v) => typeof v === "string")
+      ) {
+        originalNotify = parsed.notify;
+      } else {
+        backupParseError = "backup missing valid `notify` string[] field";
+      }
+    } catch (err) {
+      backupParseError =
+        err instanceof Error ? `backup JSON parse failed: ${err.message}` : "backup JSON parse failed";
     }
+  }
+
+  // Doc 45 §8: backup exists on disk but we can't understand its contents.
+  // Refuse to touch either config or backup so the user can inspect the
+  // original file manually — silently removing the notify line and then
+  // deleting the corrupted backup would destroy the only trace of the
+  // saved-original command.
+  if (backupParseError !== null) {
+    return {
+      source: SOURCE,
+      action: "skip",
+      changed: false,
+      detail: `codex_notify_original.json unreadable — ${backupParseError}; not touching config or backup`,
+      warnings: [
+        "Inspect codex_notify_original.json manually. Once it's fixed or intentionally removed, re-run pew uninstall --source=codex.",
+      ],
+    };
   }
 
   // Cycle validation: refuse to restore a saved-original whose command
