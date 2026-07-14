@@ -497,12 +497,24 @@ best-effort，失败不得阻塞下一 bucket；测试应覆盖 `EPERM`。
 ["/usr/bin/env", "node", notifyPath, "--source=codex"]
 ```
 
-Windows 默认没有 `/usr/bin/env`。本轮应同时改为安装时注入的 runtime executable，
-首选：
+Windows 默认没有 `/usr/bin/env`。本轮改为安装时注入的 runtime executable，唯一
+方式：
 
 ```text
-[process.execPath, notifyPath, "--source=codex"]
+[<resolved-runtime-path>, notifyPath, "--source=codex"]
 ```
+
+`<resolved-runtime-path>` 的解析规则：
+
+1. 默认使用 `process.execPath`，通过依赖注入传给 installer（不是在 handler 内部
+   动态查询）；
+2. 如果目标 runtime（Bun 或其他）证明不满足生成的 CJS handler 契约，安装时显式
+   解析一个满足契约的 runtime path（例如通过 `which node` / `where.exe node`），
+   仍由 installer 决定、写入 config；
+3. **不引入运行时环境覆盖开关**（例如 `PEW_NOTIFY_NODE` 或类似 env）。逃生开关
+   会新增一个"命令归属由环境决定"的语义，增加所有权判定、测试面和用户排障成本，
+   而所有场景都可以通过 installer 的 DI 参数覆盖，测试通过注入 fake `execPath`
+   即可全部覆盖。
 
 所有 spawn 保持 argv array + `shell: false`；路径包含空格时不自行 quote。
 
@@ -510,13 +522,13 @@ Windows 默认没有 `/usr/bin/env`。本轮应同时改为安装时注入的 ru
 
 - install/status/uninstall 同时识别旧 `/usr/bin/env node` 和新 runtime command；
 - 从 legacy 升级到新命令是 Pew-owned in-place migration；
-- **不得**把 legacy Pew command 保存成 `codex_notify_original.json`，否则会人为制造
-  Pew self-backup；
-- 迁移完成一个发布周期后，再评估是否移除 legacy recognition。
+- **不得**把 legacy Pew command 保存成 `codex_notify_original.json`，否则会人为
+  制造 Pew self-backup。
 
-`process.execPath` 在 Bun 执行 CLI 时可能指向 Bun runtime。实施前要用生成的 CJS
-handler 做 Node 与 Bun 双 runtime smoke test；如果 Bun 不满足 handler contract，
-则增加一个可注入、显式解析的 JavaScript runtime path，而不是回退到 shell。
+实施前要用生成的 CJS handler 做 Node 与 Bun 双 runtime smoke test：`process.execPath`
+在 npm 全局安装场景下指向 node；`bun add -g @nocoo/pew` 或 `bun x` 场景下可能指向
+bun。如果 Bun 满足 CJS handler 契约，就沿用 `process.execPath`；不满足则由 installer
+显式定位一个满足契约的 runtime，仍无 env override。
 
 ## 八、安装与卸载的最小 ownership 加固
 
