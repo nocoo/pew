@@ -613,13 +613,26 @@ runtime containment 是 P0；同时做两项低成本防止再次持久化明显
 - gate 正常残留数量目标 ≤ 2，崩溃残留由后续 winner 清理；
 - 诊断文件固定为一个覆盖文件，不随 invocation 增长。
 
-### 10.3 Review 前必须确认
+### 10.3 已决项（review 结论）
 
-1. `ADMISSION_WINDOW_MS = 2_000` 是否接受；
-2. saved-original 是否正式定义为“每 batch 最多一次”；
-3. gate 是否全 source 共用（本方案推荐共用，因为 sync 会扫描所有 source）；
-4. 环境丢弃场景只做 rate containment，还是首版就增加 burst breaker；
-5. `process.execPath` 在 npm Node 与 Bun 两种安装路径下是否都满足 CJS handler contract；
-6. focused Windows CI job 的成本是否接受。
+- `ADMISSION_WINDOW_MS = 2_000`：接受。worker 是 detached，等 2 秒不阻塞 Codex，
+  只影响后台数据新鲜度；2 秒比 500ms 更能限制环境丢失场景的创建率，且是 §4.4
+  lost-wakeup 修复的正确性所需。
+- saved-original 语义：**每 admission batch 最多一次**，理由见 §4.5（containment
+  要求 gate 同时覆盖两个 spawn，非语义传染）。不提供 `--forward-every-event` 类
+  逃生开关。
+- 不引入 `MAX_HOPS`；仅保留 chain 长度 ≤ 2048 bytes 的 defense-in-depth 上界。
+- Windows CI 只跑 admission-primitive 测试文件，不挂完整 L1（成本可接受）。
+- 不引入运行时环境覆盖开关（例如 `PEW_NOTIFY_NODE`）。
 
-以上六项确认后再进入实现，避免在代码阶段隐式决定投递语义或平台支持范围。
+### 10.4 待确认（实施前）
+
+1. gate 是否**全 source 共用**（本方案推荐共用，因为 sync 会扫描所有 source；
+   若 review 认为需要 per-source 隔离，需在实施前明确切分 stateDir key）；
+2. 环境丢弃场景是否只做 rate containment（§4.6 现方案），还是首版就追加独立的
+   bounded burst breaker（例如"10 秒内 > 3 个 admitted batches 阻断 60 秒"）；
+3. `process.execPath` 在 npm Node 与 Bun 两种安装路径下是否都满足 CJS handler
+   契约。实施前必须真跑 Bun smoke test；若失败则由 installer 显式解析一个满足
+   契约的 runtime path（§7.2），仍不加 env override。
+
+前三项确认后进入实施；已决项不再重开。
