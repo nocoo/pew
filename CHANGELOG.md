@@ -29,35 +29,40 @@
 
 ## v2.26.1
 
-### Changed
-- Inject path.win32 so Windows case-fold test is real
-- Mark notifier containment implemented; changelog Unreleased
-- Cross-process wx primitive + Windows CI matrix (doc 45 §6.2 + §7.1)
-- Run gate cleanup before coordinatedSync, not after
-- Compete for forward gate before reading saved-original
-- Extend §6.1 with dual-gate + expiry-check test cases
-- Fix gate cleanup TOCTOU with grace period + post-create expiry
-- Refit §3.1 invariants and §10.1 gate errors to dual-gate model
-- Split admission into sync gate + Codex forward gate
-- Correct loser-forward analysis in §4.5
-- Split §10.3 into settled decisions + remaining open items
-- Sharpen test matrix + scope Windows CI to admission primitive
-- Reframe saved-original coalesce as containment requirement
-- Frame notBefore as lost-wakeup fix, not performance tuning
-- Tighten gate error classification — only EEXIST is coalesce
-- Add codex notifier cycle containment plan
-- Rewrite v2.26.0 changelog with what's actually new (doc 44)
-
 ### Fixed
-- Close 5 doc-45 review round-4 findings
-- Ownership hardening + runtime-path command (doc 45 §7.2 + §8)
-- Worker debounces to bucket end, cleans up before sync (doc 45 §4.4)
-- Pre-spawn chain guard + dual bucket admission (doc 45 §4.1-4.3)
+- **Codex notifier forwarding cycle (Issue #318)** — resolved. `notify.cjs`
+  is rewritten around two per-bucket exclusive-create gates
+  (`sync-<bucket>.lock` shared across sources; `forward-codex-<bucket>.lock`
+  Codex-only) plus a chain guard (`PEW_NOTIFY_CHAIN` env carries a stable
+  per-installation `INSTANCE_ID`; re-entry or chain > 2048 bytes → zero
+  spawn). Both gates fail-closed on non-`EEXIST` errno, independently. A
+  post-create expiry check + `GATE_GRACE_BUCKETS = 2` cleanup close the
+  paused-handler TOCTOU. Worker debounces to bucket end before entering
+  `coordinatedSync()` (lost-wakeup fix). Codex installer switches from
+  `/usr/bin/env node` to an injected runtime path (default
+  `process.execPath`) for Windows-safe argv; recognises the legacy form
+  for status/uninstall; refuses to reclaim the notify slot when a stale
+  backup indicates a foreign command holds it (`ownership_conflict`);
+  refuses to restore a saved-original that points back at Pew
+  (`cycle_detected`). `pew uninstall` only removes
+  `codex_notify_original.json` when the Codex driver reports a clean
+  uninstall with no warnings — any skip / warning / error keeps the file
+  on disk for manual inspection.
+- Windows self-path check is case-insensitive so a case-differing
+  saved-original still trips the self-notify guard on NTFS/ReFS.
+- Chain-guard diagnostics (`chain_reentry`, `chain_too_long`) now land in
+  `last-notify-guard.json` — a TDZ bug in `writeDiagnostic()` had been
+  swallowing them.
 
-### Removed
-- Switch delay acceptance to fake-clock, drop wall-clock gate
-- Remove runtime override; spell out runtime resolution rules
-- Drop MAX_HOPS and specify Windows-safe INSTANCE_ID canonicalization
+### Added
+- `.github/workflows/admission-primitive.yml` — cross-platform CI matrix
+  (ubuntu / macos / windows) that runs only the 32-worker cross-process
+  `wx` primitive test to verify `fs.writeFileSync({ flag: "wx" })` has
+  the expected exclusive-create semantics on all three OSes.
+
+### Documentation
+- New doc 45 (`docs/45-codex-notifier-cycle-containment.md`) with the
+  full derivation and test matrix.
 
 ## v2.26.0
 
