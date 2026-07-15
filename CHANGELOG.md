@@ -27,6 +27,38 @@
 ### Removed
 - Drop legacy `model_pricing` D1 table, admin Token Pricing CRUD UI (`/admin/pricing`) and its CRUD API (`/api/admin/pricing` route), worker-read admin-loader + `pricing.listModelPricing` / `pricing.getModelPricingByModelSource` RPCs, `origin: "admin"` pricing layer, and `pricing:all` KV cache (migration 021). The dynamic-pricing admin surface (`/admin/model-prices`, `/api/admin/pricing/models`, `/api/admin/pricing/rebuild`) is retained. Dynamic pricing pipeline (baseline + OpenRouter + models.dev → `pricing:dynamic`) is now the sole source of truth.
 
+## v2.26.1
+
+### Changed
+- Inject path.win32 so Windows case-fold test is real
+- Mark notifier containment implemented; changelog Unreleased
+- Cross-process wx primitive + Windows CI matrix (doc 45 §6.2 + §7.1)
+- Run gate cleanup before coordinatedSync, not after
+- Compete for forward gate before reading saved-original
+- Extend §6.1 with dual-gate + expiry-check test cases
+- Fix gate cleanup TOCTOU with grace period + post-create expiry
+- Refit §3.1 invariants and §10.1 gate errors to dual-gate model
+- Split admission into sync gate + Codex forward gate
+- Correct loser-forward analysis in §4.5
+- Split §10.3 into settled decisions + remaining open items
+- Sharpen test matrix + scope Windows CI to admission primitive
+- Reframe saved-original coalesce as containment requirement
+- Frame notBefore as lost-wakeup fix, not performance tuning
+- Tighten gate error classification — only EEXIST is coalesce
+- Add codex notifier cycle containment plan
+- Rewrite v2.26.0 changelog with what's actually new (doc 44)
+
+### Fixed
+- Close 5 doc-45 review round-4 findings
+- Ownership hardening + runtime-path command (doc 45 §7.2 + §8)
+- Worker debounces to bucket end, cleans up before sync (doc 45 §4.4)
+- Pre-spawn chain guard + dual bucket admission (doc 45 §4.1-4.3)
+
+### Removed
+- Switch delay acceptance to fake-clock, drop wall-clock gate
+- Remove runtime override; spell out runtime resolution rules
+- Drop MAX_HOPS and specify Windows-safe INSTANCE_ID canonicalization
+
 ## v2.26.0
 
 ### Added
