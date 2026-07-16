@@ -2,13 +2,13 @@
  * CLI login command — browser-based OAuth flow or code-based authentication.
  *
  * Two modes:
- * 1. Browser flow (default): Uses cli-base performLogin for the OAuth callback flow.
+ * 1. Browser flow (default): Uses base-cli performLogin for the OAuth callback flow.
  * 2. Code flow (--code): Uses a one-time code generated in the web UI.
  *
  * Pew-specific: host resolution (dev vs prod) and accent color.
  */
 
-import { performLogin } from "@nocoo/cli-base";
+import { performLogin } from "@nocoo/base-cli";
 import { ConfigManager } from "../config/manager.js";
 
 // ---------------------------------------------------------------------------
@@ -168,4 +168,4 @@ async function executeCodeLogin(
 }
 
 // Re-export removed 2026-07-08 (G1 cleanup): callers use `openBrowser` from
-// `@nocoo/cli-base` directly; this re-export had no consumers.
+// `@nocoo/base-cli` directly; this re-export had no consumers.

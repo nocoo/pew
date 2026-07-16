@@ -1,4 +1,4 @@
-import { defineCommand, showUsage, pc, readVersion, openBrowser } from "@nocoo/cli-base";
+import { defineCommand, showUsage, pc, readVersion, openBrowser } from "@nocoo/base-cli";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { log } from "./log.js";
@@ -478,10 +478,10 @@ const statusCommand = defineCommand({
  * Build a headless-aware openBrowser wrapper.
  *
  * - SSH session: skip the browser attempt entirely, print the login URL and
- *   `--code` instructions, then throw so cli-base still waits for the timeout
+ *   `--code` instructions, then throw so base-cli still waits for the timeout
  *   (port-forwarding power users can still use the URL).
  * - Non-SSH browser failure: add a `--code` hint beneath the URL that
- *   cli-base already printed.
+ *   base-cli already printed.
  */
 function buildOpenBrowserFn(
   host: string,
@@ -513,7 +513,7 @@ function buildOpenBrowserFn(
         log.text(pc.dim("  Forward the callback port with: ssh -L PORT:localhost:PORT user@host"));
       }
       log.blank();
-      // Throw so cli-base does NOT additionally try to open a browser and shows
+      // Throw so base-cli does NOT additionally try to open a browser and shows
       // "Could not open browser" — we already displayed everything useful.
       throw new Error("SSH session — browser unavailable");
     }
@@ -522,10 +522,10 @@ function buildOpenBrowserFn(
     try {
       await openBrowser(url);
     } catch (err) {
-      // cli-base will print "Could not open browser. Open this URL manually: ..."
+      // base-cli will print "Could not open browser. Open this URL manually: ..."
       // We append the --code hint after it resolves
-      // Note: cli-base's log callback runs synchronously before the timeout, so
-      // printing here may appear before cli-base's message. We add a small guard.
+      // Note: base-cli's log callback runs synchronously before the timeout, so
+      // printing here may appear before base-cli's message. We add a small guard.
       setTimeout(() => {
         log.blank();
         log.text(pc.bold("Tip: On a headless server? Use the code flow instead:"));
@@ -574,7 +574,7 @@ const loginCommand = defineCommand({
       log.start("Opening browser for authentication...");
     }
 
-    // In SSH mode, suppress cli-base's "Could not open browser" fallback message
+    // In SSH mode, suppress base-cli's "Could not open browser" fallback message
     // since buildOpenBrowserFn already printed more helpful SSH guidance.
     const loginLog = isSSHSession()
       ? (msg: string) => { if (!msg.startsWith("Could not open browser")) console.log(msg); }

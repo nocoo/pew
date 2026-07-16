@@ -207,8 +207,8 @@ describe("executeLogin", () => {
     expect(result.email).toBe("test@example.com");
   });
 
-  it("should timeout when browser open fails (cli-base logs but continues)", async () => {
-    // cli-base performLogin logs a message when browser fails but doesn't reject
+  it("should timeout when browser open fails (base-cli logs but continues)", async () => {
+    // base-cli performLogin logs a message when browser fails but doesn't reject
     // It still waits for the timeout since user could manually open the URL
     const result = await executeLogin({
       configDir: tempDir,

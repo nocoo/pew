@@ -1,4 +1,4 @@
-import { ConfigManager as BaseConfigManager } from "@nocoo/cli-base";
+import { ConfigManager as BaseConfigManager } from "@nocoo/base-cli";
 import type { PewConfig } from "@pew/core";
 
 const PROD_CONFIG = "config.json";
@@ -6,7 +6,7 @@ const DEV_CONFIG = "config.dev.json";
 
 /**
  * Pew-specific configuration manager.
- * Extends cli-base ConfigManager with pew-specific helpers.
+ * Extends base-cli ConfigManager with pew-specific helpers.
  *
  * - Production: ~/.config/pew/config.json
  * - Dev:        ~/.config/pew/config.dev.json

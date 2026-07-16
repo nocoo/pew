@@ -3,7 +3,7 @@
  *
  * Validates that the CLI entry point and all subcommands are defined correctly.
  */
-import { readVersion } from "@nocoo/cli-base";
+import { readVersion } from "@nocoo/base-cli";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";

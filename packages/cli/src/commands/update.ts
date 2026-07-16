@@ -1,10 +1,10 @@
 /**
  * Update pew to the latest version.
  *
- * Uses cli-base utilities for version checking and update execution.
+ * Uses base-cli utilities for version checking and update execution.
  */
 
-import { detectPackageManager, getUpdateCommand } from "@nocoo/cli-base";
+import { detectPackageManager, getUpdateCommand } from "@nocoo/base-cli";
 import { exec as execCallback } from "node:child_process";
 
 const PACKAGE_NAME = "@nocoo/pew";

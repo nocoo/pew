@@ -6,7 +6,7 @@
  * No timestamps — pew sync runs are short (<10s).
  */
 
-import { pc } from "@nocoo/cli-base";
+import { pc } from "@nocoo/base-cli";
 
 function write(icon: string, msg: string): void {
   process.stderr.write(`${icon} ${msg}\n`);

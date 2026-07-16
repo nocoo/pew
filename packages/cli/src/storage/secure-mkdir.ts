@@ -4,7 +4,7 @@
  * Directories containing API keys, cursors, and other sensitive data should
  * use mode 0o700 (rwx------) to prevent other users from listing contents.
  *
- * Note: File permissions (0o600) are already handled by @nocoo/cli-base's
+ * Note: File permissions (0o600) are already handled by @nocoo/base-cli's
  * ConfigManager. This module ensures directory permissions are also hardened.
  */
 import { mkdir } from "node:fs/promises";

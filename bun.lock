@@ -23,7 +23,7 @@
         "pew": "dist/bin.js",
       },
       "dependencies": {
-        "@nocoo/cli-base": "^0.2.4",
+        "@nocoo/base-cli": "^0.3.0",
       },
       "devDependencies": {
         "@pew/core": "workspace:*",
@@ -339,7 +339,7 @@
 
     "@next/swc-win32-x64-msvc": ["@next/swc-win32-x64-msvc@16.2.10", "", { "os": "win32", "cpu": "x64" }, "sha512-0JXq3b85Jk9Jg4ntLUbXSPvoDw3gpZou7twuKdoFG2jOw635v7+IiXfTaa0TxVMyx78pUjnrVYwLgjKfX4e6/A=="],
 
-    "@nocoo/cli-base": ["@nocoo/cli-base@0.2.4", "", { "dependencies": { "citty": "^0.2.2", "consola": "^3.4.2", "picocolors": "^1.1.1", "yocto-spinner": "^1.1.0" } }, "sha512-SUqfYxPiEjbdBE8q9q+LOQ5l9p+BfeTLAWIftxX4ceCRRqxF3xeL6aIqGXYt2j8dKrL13GS8QEv2etmtCPIoiQ=="],
+    "@nocoo/base-cli": ["@nocoo/base-cli@0.3.0", "", { "dependencies": { "citty": "^0.2.2", "consola": "^3.4.2", "picocolors": "^1.1.1", "yocto-spinner": "^1.1.0" } }, "sha512-7YOwAJjOvVT+1Ek5bszLRnAhHx0pUCBSUR3TUYO/4+D67XNee5jw7gmtDesIB2k4u/Lv0jXmgdYqq6tuIx3FVQ=="],
 
     "@nocoo/pew": ["@nocoo/pew@workspace:packages/cli"],
 
