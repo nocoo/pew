@@ -73,6 +73,7 @@ export async function executeNotify(
           piSessionsDir: opts.piSessionsDir,
           vscodeCopilotDirs: opts.vscodeCopilotDirs,
           copilotCliLogsDir: opts.copilotCliLogsDir,
+          copilotCliOtelPaths: opts.copilotCliOtelPaths,
           grokLogsPath: opts.grokLogsPath,
           grokSessionsDir: opts.grokSessionsDir,
           zcodeDbPath: opts.zcodeDbPath,

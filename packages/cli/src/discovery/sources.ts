@@ -228,6 +228,30 @@ export async function discoverCopilotCliFiles(
 }
 
 /**
+ * Discover Copilot OTel JSONL file exports from explicit files/directories.
+ * Directory entries are scanned recursively so CI runners may point pew at a
+ * stable artifact root containing one telemetry file per task.
+ */
+export async function discoverCopilotOtelFiles(paths: string[]): Promise<string[]> {
+  const files = new Set<string>();
+  for (const path of paths) {
+    try {
+      const st = await stat(path);
+      if (st.isFile()) {
+        files.add(path);
+      } else if (st.isDirectory()) {
+        for (const file of await collectFiles(path, (name) => name.endsWith(".jsonl"))) {
+          files.add(file);
+        }
+      }
+    } catch {
+      // Missing exporter paths are expected when Copilot has not run yet.
+    }
+  }
+  return [...files].sort();
+}
+
+/**
  * Discover Grok CLI unified log file.
  * Path: ~/.grok/logs/unified.jsonl (single append-only file).
  * Returns [path] if the file exists, else [].

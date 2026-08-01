@@ -72,6 +72,18 @@ npm install -g @nocoo/pew
 | `pew reset` | 清除所有同步/上传状态，准备全量重扫 |
 | `pew update` | 从 npm 更新到最新版本 |
 
+### GitHub Copilot CLI OpenTelemetry
+
+新版 Copilot CLI 可将 GenAI token 用量写入标准 OTel JSONL 文件。`pew` 会自动读取
+`COPILOT_OTEL_FILE_EXPORTER_PATH` 指向的文件；CI/批处理产生多个文件时，可用系统路径
+分隔符配置额外文件或递归扫描目录：
+
+```bash
+PEW_COPILOT_OTEL_PATHS=/data/run-a:/data/run-b pew sync
+```
+
+Windows 请使用分号分隔多个路径。
+
 ## 项目结构
 
 ```

@@ -75,6 +75,7 @@ export interface TokenDriverRegistryOpts {
   piSessionsDir?: string;
   vscodeCopilotDirs?: string[];
   copilotCliLogsDir?: string;
+  copilotCliOtelPaths?: string[];
   /** Grok CLI unified log path (~/.grok/logs/unified.jsonl) */
   grokLogsPath?: string;
   openCodeDbPath?: string;
@@ -113,7 +114,7 @@ export function createTokenDrivers(opts: TokenDriverRegistryOpts): TokenDriverSe
   if (opts.codexSessionsDir) {
     fileDrivers.push(codexTokenDriver);
   }
-  if (opts.copilotCliLogsDir) {
+  if (opts.copilotCliLogsDir || (opts.copilotCliOtelPaths?.length ?? 0) > 0) {
     fileDrivers.push(copilotCliTokenDriver);
   }
   if (opts.geminiDir) {

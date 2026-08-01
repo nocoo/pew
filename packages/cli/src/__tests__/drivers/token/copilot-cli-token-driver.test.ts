@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { copilotCliTokenDriver } from "../../../drivers/token/copilot-cli-token-driver.js";
@@ -42,9 +42,25 @@ describe("copilotCliTokenDriver", () => {
   });
 
   describe("discover", () => {
-    it("returns [] when copilotCliLogsDir is not set", async () => {
+    it("returns [] when neither process logs nor OTel paths are set", async () => {
       const files = await copilotCliTokenDriver.discover({}, ctx);
       expect(files).toEqual([]);
+    });
+
+    it("discovers JSONL files from explicit OTel files and directories", async () => {
+      const runsDir = join(tempDir, "runs");
+      const nestedDir = join(runsDir, "task-1", "telemetry");
+      await mkdir(nestedDir, { recursive: true });
+      const nestedFile = join(nestedDir, "otel.jsonl");
+      const explicitFile = join(tempDir, "copilot-otel.jsonl");
+      await writeFile(nestedFile, "{}\n");
+      await writeFile(explicitFile, "{}\n");
+
+      const files = await copilotCliTokenDriver.discover(
+        { copilotCliOtelPaths: [runsDir, explicitFile] },
+        ctx,
+      );
+      expect(files).toEqual([explicitFile, nestedFile].sort());
     });
 
     it("discovers process-*.log files under copilotCliLogsDir", async () => {

@@ -22,6 +22,7 @@ const defaultDirs: SourceDirs = {
   piSessionsDir: "/home/.pi/agent/sessions",
   vscodeCopilotDirs: ["/home/.config/Code/User"],
   copilotCliLogsDir: "/home/.copilot/logs",
+  copilotCliOtelPaths: ["/home/runs"],
   multicaCodexDirs: [],
   grokHome: "/home/.grok",
 };
@@ -222,6 +223,29 @@ describe("executeStatus", () => {
     });
     expect(result.trackedFiles).toBe(2);
     expect(result.sources["copilot-cli"]).toBe(2);
+    expect(result.sources.unknown).toBeUndefined();
+  });
+
+  it("should classify Copilot OTel files from configured files or directories", async () => {
+    const cursorStore = new CursorStore(stateDir);
+    await cursorStore.save({
+      files: {
+        "/home/runs/task-a/telemetry/otel.jsonl": {
+          type: "byte-offset",
+          offset: 500,
+          inode: 22,
+          size: 500,
+          mtimeMs: 7002,
+        },
+      },
+      updatedAt: "2026-03-09T10:00:00.000Z",
+    });
+
+    const result = await executeStatus({
+      stateDir,
+      sourceDirs: defaultDirs,
+    });
+    expect(result.sources["copilot-cli"]).toBe(1);
     expect(result.sources.unknown).toBeUndefined();
   });
 

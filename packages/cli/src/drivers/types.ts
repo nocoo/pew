@@ -111,6 +111,8 @@ export interface DiscoverOpts {
   piSessionsDir?: string;
   vscodeCopilotDirs?: string[];
   copilotCliLogsDir?: string;
+  /** Explicit Copilot OTel exporter files or recursively scanned directories. */
+  copilotCliOtelPaths?: string[];
   /** Grok CLI unified log file (~/.grok/logs/unified.jsonl) */
   grokLogsPath?: string;
   /** Grok CLI sessions root (~/.grok/sessions) */

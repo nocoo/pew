@@ -57,6 +57,8 @@ export interface SyncOptions {
   vscodeCopilotDirs?: string[];
   /** Override: GitHub Copilot CLI logs directory (~/.copilot/logs) */
   copilotCliLogsDir?: string;
+  /** Copilot OTel exporter files or recursively scanned directories */
+  copilotCliOtelPaths?: string[];
   /** Override: Hermes Agent database path (~/.hermes/state.db) */
   hermesDbPath?: string;
   /** Override: Hermes profile database paths (~/.hermes/profiles/<name>/state.db) */
@@ -334,6 +336,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     piSessionsDir: opts.piSessionsDir,
     vscodeCopilotDirs: opts.vscodeCopilotDirs,
     copilotCliLogsDir: opts.copilotCliLogsDir,
+    copilotCliOtelPaths: opts.copilotCliOtelPaths,
     grokLogsPath: opts.grokLogsPath,
     grokSessionsDir: opts.grokSessionsDir,
   };
