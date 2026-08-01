@@ -53,6 +53,15 @@ export interface SyncContext {
    */
   seenClaudeMessageIds?: Set<string>;
 
+  /** Codex rollout path → resolved root counter scope for this sync. */
+  codexFileScopes?: Map<string, string>;
+
+  /** Number of discovered Codex rollout files sharing each counter scope. */
+  codexScopeFileCounts?: Map<string, number>;
+
+  /** Highest cumulative Codex totals observed per shared counter scope. */
+  codexScopeTotals?: Map<string, TokenDelta>;
+
   /**
    * Directory mtime cache for OpenCode JSON discovery optimization.
    * Read/written by the OpenCode JSON token driver.

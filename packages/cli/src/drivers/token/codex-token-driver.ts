@@ -10,7 +10,10 @@
  * Claude/other cursors are never misclassified as legacy Codex.
  */
 
-import type { CodexCursor, TokenDelta } from "@pew/core";
+import type { CodexCursor, FileCursorBase, TokenDelta } from "@pew/core";
+import { createReadStream } from "node:fs";
+import { basename } from "node:path";
+import { createInterface } from "node:readline";
 import { discoverCodexFiles } from "../../discovery/sources.js";
 import { parseCodexFile } from "../../parsers/codex.js";
 import { fileUnchanged } from "../../utils/file-changed.js";
@@ -29,6 +32,108 @@ interface CodexParseResult extends TokenParseResult {
   endOffset: number;
   lastTotals: TokenDelta | null;
   lastModel: string | null;
+  scopeId: string | null;
+}
+
+interface CodexScopeNode {
+  filePath: string;
+  threadId: string | null;
+  sessionId: string | null;
+  parentThreadId: string | null;
+}
+
+const ROLLOUT_THREAD_ID_RE = /([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\.jsonl$/i;
+
+function rolloutThreadId(filePath: string): string | null {
+  return basename(filePath).match(ROLLOUT_THREAD_ID_RE)?.[1] ?? null;
+}
+
+async function readScopeNode(filePath: string): Promise<CodexScopeNode> {
+  const node: CodexScopeNode = {
+    filePath,
+    threadId: rolloutThreadId(filePath),
+    sessionId: null,
+    parentThreadId: null,
+  };
+  const stream = createReadStream(filePath, { encoding: "utf8" });
+  const rl = createInterface({ input: stream, crlfDelay: Infinity });
+  try {
+    for await (const line of rl) {
+      let obj: Record<string, unknown>;
+      try {
+        obj = JSON.parse(line);
+      } catch {
+        continue;
+      }
+      if (obj.type !== "session_meta") continue;
+      const payload = obj.payload as Record<string, unknown> | undefined;
+      if (!payload) break;
+      node.sessionId = typeof payload.id === "string" ? payload.id : null;
+      const source = payload.source as Record<string, unknown> | undefined;
+      const subagent = source?.subagent as Record<string, unknown> | undefined;
+      const spawn = subagent?.thread_spawn as Record<string, unknown> | undefined;
+      node.parentThreadId = typeof spawn?.parent_thread_id === "string"
+        ? spawn.parent_thread_id
+        : null;
+      break;
+    }
+  } finally {
+    rl.close();
+    stream.destroy();
+  }
+  return node;
+}
+
+async function resolveCodexScopes(files: string[]): Promise<{
+  fileScopes: Map<string, string>;
+  scopeFileCounts: Map<string, number>;
+}> {
+  const nodes: CodexScopeNode[] = [];
+  // Avoid opening thousands of rollout files at once on long-lived installs.
+  for (let i = 0; i < files.length; i += 32) {
+    nodes.push(...await Promise.all(files.slice(i, i + 32).map(readScopeNode)));
+  }
+  const byThread = new Map<string, CodexScopeNode>();
+  for (const node of nodes) {
+    if (node.threadId) byThread.set(node.threadId, node);
+  }
+  const memo = new Map<string, string>();
+  const resolving = new Set<string>();
+  function resolveNode(node: CodexScopeNode): string | null {
+    const key = node.threadId ?? node.filePath;
+    const known = memo.get(key);
+    if (known) return known;
+    if (resolving.has(key)) return node.sessionId ?? node.threadId;
+    resolving.add(key);
+    let scope: string | null = null;
+    if (node.parentThreadId) {
+      const parent = byThread.get(node.parentThreadId);
+      scope = parent ? resolveNode(parent) : node.parentThreadId;
+    }
+    scope ??= node.sessionId ?? node.threadId;
+    resolving.delete(key);
+    if (scope) memo.set(key, scope);
+    return scope;
+  }
+
+  const fileScopes = new Map<string, string>();
+  const scopeFileCounts = new Map<string, number>();
+  for (const node of nodes) {
+    const scope = resolveNode(node);
+    if (!scope) continue;
+    fileScopes.set(node.filePath, scope);
+    scopeFileCounts.set(scope, (scopeFileCounts.get(scope) ?? 0) + 1);
+  }
+  return { fileScopes, scopeFileCounts };
+}
+
+function mergeTotals(current: TokenDelta, previous: TokenDelta): TokenDelta {
+  return {
+    inputTokens: Math.max(current.inputTokens, previous.inputTokens),
+    cachedInputTokens: Math.max(current.cachedInputTokens, previous.cachedInputTokens),
+    outputTokens: Math.max(current.outputTokens, previous.outputTokens),
+    reasoningOutputTokens: Math.max(current.reasoningOutputTokens, previous.reasoningOutputTokens),
+  };
 }
 
 export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
@@ -37,7 +142,29 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
 
   async discover(opts: DiscoverOpts, _ctx: SyncContext): Promise<string[]> {
     if (!opts.codexSessionsDir) return [];
-    return discoverCodexFiles(opts.codexSessionsDir, opts.multicaCodexDirs);
+    const files = await discoverCodexFiles(opts.codexSessionsDir, opts.multicaCodexDirs);
+    const { fileScopes, scopeFileCounts } = await resolveCodexScopes(files);
+    _ctx.codexFileScopes = fileScopes;
+    _ctx.codexScopeFileCounts = scopeFileCounts;
+    _ctx.codexScopeTotals ??= new Map<string, TokenDelta>();
+    return files;
+  },
+
+  preload(cursors: Record<string, FileCursorBase>, ctx: SyncContext): void {
+    ctx.codexScopeTotals ??= new Map<string, TokenDelta>();
+    for (const cursor of Object.values(cursors)) {
+      const codex = cursor as Partial<CodexCursor>;
+      if (!codex.scopeId || !codex.lastTotals) continue;
+      const previous = ctx.codexScopeTotals.get(codex.scopeId);
+      ctx.codexScopeTotals.set(
+        codex.scopeId,
+        previous ? mergeTotals(codex.lastTotals, previous) : codex.lastTotals,
+      );
+    }
+  },
+
+  needsReplay(cursor: CodexCursor | undefined): boolean {
+    return !!cursor && !Object.hasOwn(cursor, "scopeId");
   },
 
   shouldSkip(cursor: CodexCursor | undefined, fingerprint: FileFingerprint): boolean {
@@ -56,17 +183,28 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
 
   async parse(filePath: string, resume: ResumeState, _ctx: SyncContext): Promise<CodexParseResult> {
     const r = resume as CodexResumeState;
+    const scopeId = _ctx.codexFileScopes?.get(filePath) ?? null;
+    const sharedScope = scopeId !== null && (_ctx.codexScopeFileCounts?.get(scopeId) ?? 0) > 1;
+    const highWaterTotals = sharedScope
+      ? (_ctx.codexScopeTotals?.get(scopeId) ?? null)
+      : undefined;
     const result = await parseCodexFile({
       filePath,
       startOffset: r.startOffset,
       lastTotals: r.lastTotals,
       lastModel: r.lastModel,
+      ...(sharedScope ? { highWaterTotals } : {}),
     });
+    if (sharedScope && scopeId && result.highWaterTotals) {
+      _ctx.codexScopeTotals ??= new Map<string, TokenDelta>();
+      _ctx.codexScopeTotals.set(scopeId, result.highWaterTotals);
+    }
     return {
       deltas: result.deltas,
       endOffset: result.endOffset,
       lastTotals: result.lastTotals,
       lastModel: result.lastModel,
+      scopeId,
     };
   },
 
@@ -83,6 +221,7 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
       offset: r.endOffset,
       lastTotals: r.lastTotals,
       lastModel: r.lastModel,
+      scopeId: r.scopeId,
       updatedAt: new Date().toISOString(),
     };
   },

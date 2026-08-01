@@ -134,6 +134,11 @@ export interface CodexCursor extends FileCursorBase {
   lastTotals: TokenDelta | null;
   /** Last seen model identifier */
   lastModel: string | null;
+  /**
+   * Cumulative-counter scope resolved from Codex session metadata.
+   * Optional only for backwards compatibility with pre-Goal-dedup cursors.
+   */
+  scopeId?: string | null;
 }
 
 /** Cursor for Gemini (array-index-based JSON files) */

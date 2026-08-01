@@ -44,6 +44,27 @@ function codexSessionMeta(model = "o3-mini"): string {
   });
 }
 
+function codexGoalSessionMeta(opts: {
+  id: string;
+  parentThreadId?: string;
+}): string {
+  return JSON.stringify({
+    type: "session_meta",
+    timestamp: "2026-03-07T10:00:00.000Z",
+    payload: {
+      id: opts.id,
+      model: "gpt-5.4",
+      source: opts.parentThreadId
+        ? {
+            subagent: {
+              thread_spawn: { parent_thread_id: opts.parentThreadId },
+            },
+          }
+        : "vscode",
+    },
+  });
+}
+
 describe("codexTokenDriver", () => {
   let tempDir: string;
   const ctx: SyncContext = {};
@@ -272,9 +293,142 @@ describe("codexTokenDriver", () => {
       expect(cursor.inode).toBe(500);
       expect(cursor.offset).toBeGreaterThan(0);
       expect(cursor.updatedAt).toBeDefined();
-      // Accounting migration is global (CursorState.accountingSchemaVersion),
-      // not per-file — codex driver does not set needsReplay.
-      expect(codexTokenDriver.needsReplay).toBeUndefined();
+      expect(cursor).toHaveProperty("scopeId");
+    });
+
+    it("counts a shared Goal counter once across continuation rollout files", async () => {
+      const dayDir = join(tempDir, "2026", "03", "07");
+      await mkdir(dayDir, { recursive: true });
+      const goalId = "019f9edc-bc7f-7ef1-8d32-35f66809b013";
+      const rootPath = join(
+        dayDir,
+        `rollout-2026-03-07T10-00-00-${goalId}.jsonl`,
+      );
+      const continuationPath = join(
+        dayDir,
+        "rollout-2026-03-07T11-00-00-019fbeda-8b7d-7b13-9eb3-87cecc4607e9.jsonl",
+      );
+      await writeFile(
+        rootPath,
+        `${[
+          codexGoalSessionMeta({ id: goalId }),
+          codexTokenLine({ input: 100, output: 10, timestamp: "2026-03-07T10:01:00.000Z" }),
+          codexTokenLine({ input: 200, output: 20, timestamp: "2026-03-07T10:02:00.000Z" }),
+        ].join("\n")}\n`,
+      );
+      // Goal continuation rollouts replay the same process-wide cumulative
+      // counter from the beginning, often with different event timestamps.
+      await writeFile(
+        continuationPath,
+        `${[
+          codexGoalSessionMeta({ id: goalId }),
+          codexTokenLine({ input: 100, output: 10, timestamp: "2026-03-07T11:01:00.000Z" }),
+          codexTokenLine({ input: 200, output: 20, timestamp: "2026-03-07T11:02:00.000Z" }),
+          codexTokenLine({ input: 300, output: 30, timestamp: "2026-03-07T11:03:00.000Z" }),
+        ].join("\n")}\n`,
+      );
+
+      const goalCtx: SyncContext = {};
+      const files = await codexTokenDriver.discover(
+        { codexSessionsDir: tempDir },
+        goalCtx,
+      );
+      codexTokenDriver.preload?.({}, goalCtx);
+      const deltas = [];
+      for (const filePath of files) {
+        const st = await import("node:fs/promises").then((m) => m.stat(filePath));
+        const fingerprint: FileFingerprint = {
+          inode: Number(st.ino),
+          mtimeMs: st.mtimeMs,
+          size: st.size,
+        };
+        const result = await codexTokenDriver.parse(
+          filePath,
+          codexTokenDriver.resumeState(undefined, fingerprint),
+          goalCtx,
+        );
+        deltas.push(...result.deltas);
+        const cursor = codexTokenDriver.buildCursor(fingerprint, result);
+        expect((cursor as CodexCursor & { scopeId?: string }).scopeId).toBe(goalId);
+      }
+
+      expect(deltas.reduce((sum, d) => sum + d.tokens.inputTokens, 0)).toBe(300);
+      expect(deltas.reduce((sum, d) => sum + d.tokens.outputTokens, 0)).toBe(30);
+    });
+
+    it("resolves subagent counters to the parent Goal scope", async () => {
+      const dayDir = join(tempDir, "2026", "03", "07");
+      await mkdir(dayDir, { recursive: true });
+      const goalId = "019f9edc-bc7f-7ef1-8d32-35f66809b013";
+      const parentThreadId = "019fbeda-8b7d-7b13-9eb3-87cecc4607e9";
+      const childThreadId = "019fbf71-32f5-70d3-9113-2f8b4430656e";
+      const parentPath = join(
+        dayDir,
+        `rollout-2026-03-07T10-00-00-${parentThreadId}.jsonl`,
+      );
+      const childPath = join(
+        dayDir,
+        `rollout-2026-03-07T10-30-00-${childThreadId}.jsonl`,
+      );
+      await writeFile(
+        parentPath,
+        `${[
+          codexGoalSessionMeta({ id: goalId }),
+          codexTokenLine({ input: 100, output: 10 }),
+          codexTokenLine({ input: 200, output: 20 }),
+        ].join("\n")}\n`,
+      );
+      await writeFile(
+        childPath,
+        `${[
+          codexGoalSessionMeta({ id: childThreadId, parentThreadId }),
+          codexTokenLine({ input: 100, output: 10 }),
+          codexTokenLine({ input: 200, output: 20 }),
+          codexTokenLine({ input: 250, output: 25 }),
+        ].join("\n")}\n`,
+      );
+
+      const goalCtx: SyncContext = {};
+      const files = await codexTokenDriver.discover(
+        { codexSessionsDir: tempDir },
+        goalCtx,
+      );
+      const deltas = [];
+      for (const filePath of files) {
+        const st = await import("node:fs/promises").then((m) => m.stat(filePath));
+        const fingerprint: FileFingerprint = {
+          inode: Number(st.ino),
+          mtimeMs: st.mtimeMs,
+          size: st.size,
+        };
+        const result = await codexTokenDriver.parse(
+          filePath,
+          codexTokenDriver.resumeState(undefined, fingerprint),
+          goalCtx,
+        );
+        deltas.push(...result.deltas);
+      }
+
+      expect(deltas.reduce((sum, d) => sum + d.tokens.inputTokens, 0)).toBe(250);
+      expect(goalCtx.codexFileScopes?.get(childPath)).toBe(goalId);
+    });
+
+    it("requests a full replay for cursors created before Goal scope tracking", () => {
+      const legacy = {
+        inode: 500,
+        mtimeMs: 1709827200000,
+        size: 2048,
+        offset: 300,
+        lastTotals: null,
+        lastModel: null,
+        updatedAt: "2026-01-01T00:00:00Z",
+      } as CodexCursor;
+      expect(codexTokenDriver.needsReplay?.(legacy)).toBe(true);
+
+      const current = { ...legacy, scopeId: null } as CodexCursor & {
+        scopeId: string | null;
+      };
+      expect(codexTokenDriver.needsReplay?.(current)).toBe(false);
     });
   });
 });

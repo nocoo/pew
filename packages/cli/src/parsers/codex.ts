@@ -26,6 +26,8 @@ export interface CodexFileResult {
   lastTotals: TokenDelta | null;
   /** Last seen model identifier */
   lastModel: string | null;
+  /** Highest cumulative totals for a shared Goal counter scope. */
+  highWaterTotals: TokenDelta | null;
 }
 
 /**
@@ -48,6 +50,29 @@ function diffTotals(current: TokenDelta, previous: TokenDelta): TokenDelta {
     cachedInputTokens: dCached,
     outputTokens: dOutput,
     reasoningOutputTokens: dReasoning,
+  };
+}
+
+/**
+ * Diff a replayed cumulative counter against a cross-file high-water mark.
+ * Goal continuations and subagents can replay the same process-wide counter
+ * in many rollout files. Only component-wise growth is new usage.
+ */
+function diffHighWater(current: TokenDelta, previous: TokenDelta): TokenDelta {
+  return {
+    inputTokens: Math.max(0, current.inputTokens - previous.inputTokens),
+    cachedInputTokens: Math.max(0, current.cachedInputTokens - previous.cachedInputTokens),
+    outputTokens: Math.max(0, current.outputTokens - previous.outputTokens),
+    reasoningOutputTokens: Math.max(0, current.reasoningOutputTokens - previous.reasoningOutputTokens),
+  };
+}
+
+function mergeHighWater(current: TokenDelta, previous: TokenDelta): TokenDelta {
+  return {
+    inputTokens: Math.max(current.inputTokens, previous.inputTokens),
+    cachedInputTokens: Math.max(current.cachedInputTokens, previous.cachedInputTokens),
+    outputTokens: Math.max(current.outputTokens, previous.outputTokens),
+    reasoningOutputTokens: Math.max(current.reasoningOutputTokens, previous.reasoningOutputTokens),
   };
 }
 
@@ -84,18 +109,30 @@ export async function parseCodexFile(opts: {
   startOffset: number;
   lastTotals: TokenDelta | null;
   lastModel: string | null;
+  /** Present only when multiple rollouts share one cumulative Goal counter. */
+  highWaterTotals?: TokenDelta | null;
 }): Promise<CodexFileResult> {
   const { filePath, startOffset } = opts;
   const deltas: ParsedDelta[] = [];
   let lastTotals = opts.lastTotals;
   let lastModel = opts.lastModel;
+  const useHighWater = Object.hasOwn(opts, "highWaterTotals");
+  let highWaterTotals = opts.highWaterTotals ?? null;
 
   const st = await stat(filePath).catch(() => null);
-  if (!st?.isFile()) return { deltas, endOffset: startOffset, lastTotals, lastModel };
+  if (!st?.isFile()) {
+    return { deltas, endOffset: startOffset, lastTotals, lastModel, highWaterTotals };
+  }
 
   const endOffset = st.size;
   if (endOffset === 0 || startOffset >= endOffset) {
-    return { deltas, endOffset: endOffset === 0 ? 0 : endOffset, lastTotals, lastModel };
+    return {
+      deltas,
+      endOffset: endOffset === 0 ? 0 : endOffset,
+      lastTotals,
+      lastModel,
+      highWaterTotals,
+    };
   }
 
   const stream = createReadStream(filePath, {
@@ -149,9 +186,18 @@ export async function parseCodexFile(opts: {
           reasoningOutputTokens: toNonNegInt(usage.reasoning_output_tokens),
         };
 
-        const rawDelta = lastTotals
-          ? diffTotals(currentTotals, lastTotals)
-          : { ...currentTotals };
+        const rawDelta = useHighWater
+          ? highWaterTotals
+            ? diffHighWater(currentTotals, highWaterTotals)
+            : { ...currentTotals }
+          : lastTotals
+            ? diffTotals(currentTotals, lastTotals)
+            : { ...currentTotals };
+        if (useHighWater) {
+          highWaterTotals = highWaterTotals
+            ? mergeHighWater(currentTotals, highWaterTotals)
+            : { ...currentTotals };
+        }
         lastTotals = currentTotals;
 
         // Emit disjoint fields so cost/total never double-count cache/reasoning
@@ -171,5 +217,5 @@ export async function parseCodexFile(opts: {
     stream.destroy();
   }
 
-  return { deltas, endOffset, lastTotals, lastModel };
+  return { deltas, endOffset, lastTotals, lastModel, highWaterTotals };
 }
