@@ -10,6 +10,7 @@ describe("sourceLabel", () => {
     expect(sourceLabel("grok")).toBe("Grok");
     expect(sourceLabel("hermes")).toBe("Hermes Agent");
     expect(sourceLabel("kosmos")).toBe("Kosmos");
+    expect(sourceLabel("omp")).toBe("Oh My Pi");
     expect(sourceLabel("opencode")).toBe("OpenCode");
     expect(sourceLabel("openclaw")).toBe("OpenClaw");
     expect(sourceLabel("pi")).toBe("Pi");

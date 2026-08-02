@@ -102,6 +102,7 @@ export const DEFAULT_SOURCE_DEFAULTS: Record<string, ModelPricing> = {
   grok: { input: 3, output: 15, cached: 0.75, reasoning: 15 },
   hermes: { input: 3, output: 15, cached: 0.3 },
   kosmos: { input: 3, output: 15, cached: 0.3 },
+  omp: { input: 3, output: 15, cached: 0.3 },
   opencode: { input: 2, output: 8, cached: 0.5 },
   openclaw: { input: 2, output: 8, cached: 0.5 },
   pi: { input: 3, output: 15, cached: 0.3 },
