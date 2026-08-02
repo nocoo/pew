@@ -51,5 +51,6 @@
 | 43 | [43-zcode-support.md](43-zcode-support.md) | ZCode CLI token support — `~/.zcode/cli/db/db.sqlite` model_usage parser | done |
 | 44 | [44-biome-migration-ts7.md](44-biome-migration-ts7.md) | Biome migration + TypeScript 7 stable upgrade | done |
 | 45 | [45-codex-notifier-cycle-containment.md](45-codex-notifier-cycle-containment.md) | Codex notifier forwarding-cycle containment | proposed |
+| 46 | [46-omp-support.md](46-omp-support.md) | Oh My Pi (omp) token + session support — pi-format JSONL under `~/.omp/agent/sessions` | done |
 
 > **Note:** Number 14 is intentionally vacant (original doc 14 was renumbered to 12 to fill a gap). Numbers 19, 36, and 40 have multiple entries (`Nb`, `Nc`) as history-preserving disambiguators.
