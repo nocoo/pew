@@ -10,12 +10,16 @@ import type { SyncContext, FileFingerprint } from "../../../drivers/types.js";
 function codexTokenLine(opts: {
   input?: number;
   output?: number;
+  lastInput?: number;
+  lastOutput?: number;
   model?: string;
   timestamp?: string;
 } = {}): string {
   const {
     input = 1000,
     output = 200,
+    lastInput,
+    lastOutput,
     timestamp = "2026-03-07T10:15:30.000Z",
   } = opts;
   return JSON.stringify({
@@ -30,6 +34,16 @@ function codexTokenLine(opts: {
           input_tokens_cache_hit: 0,
           reasoning_tokens: 50,
         },
+        ...(lastInput !== undefined || lastOutput !== undefined
+          ? {
+              last_token_usage: {
+                input_tokens: lastInput ?? 0,
+                cached_input_tokens: 0,
+                output_tokens: lastOutput ?? 0,
+                reasoning_output_tokens: 0,
+              },
+            }
+          : {}),
       },
     },
   });
@@ -312,8 +326,8 @@ describe("codexTokenDriver", () => {
         rootPath,
         `${[
           codexGoalSessionMeta({ id: goalId }),
-          codexTokenLine({ input: 100, output: 10, timestamp: "2026-03-07T10:01:00.000Z" }),
-          codexTokenLine({ input: 200, output: 20, timestamp: "2026-03-07T10:02:00.000Z" }),
+          codexTokenLine({ input: 100, output: 10, lastInput: 100, lastOutput: 10, timestamp: "2026-03-07T10:01:00.000Z" }),
+          codexTokenLine({ input: 200, output: 20, lastInput: 100, lastOutput: 10, timestamp: "2026-03-07T10:02:00.000Z" }),
         ].join("\n")}\n`,
       );
       // Goal continuation rollouts replay the same process-wide cumulative
@@ -322,9 +336,9 @@ describe("codexTokenDriver", () => {
         continuationPath,
         `${[
           codexGoalSessionMeta({ id: goalId }),
-          codexTokenLine({ input: 100, output: 10, timestamp: "2026-03-07T11:01:00.000Z" }),
-          codexTokenLine({ input: 200, output: 20, timestamp: "2026-03-07T11:02:00.000Z" }),
-          codexTokenLine({ input: 300, output: 30, timestamp: "2026-03-07T11:03:00.000Z" }),
+          codexTokenLine({ input: 100, output: 10, lastInput: 100, lastOutput: 10, timestamp: "2026-03-07T11:01:00.000Z" }),
+          codexTokenLine({ input: 200, output: 20, lastInput: 100, lastOutput: 10, timestamp: "2026-03-07T11:02:00.000Z" }),
+          codexTokenLine({ input: 300, output: 30, lastInput: 100, lastOutput: 10, timestamp: "2026-03-07T11:03:00.000Z" }),
         ].join("\n")}\n`,
       );
 
@@ -356,6 +370,68 @@ describe("codexTokenDriver", () => {
       expect(deltas.reduce((sum, d) => sum + d.tokens.outputTokens, 0)).toBe(30);
     });
 
+    it("preloads persisted usage edges before scanning a new continuation file", async () => {
+      const dayDir = join(tempDir, "2026", "03", "07");
+      await mkdir(dayDir, { recursive: true });
+      const goalId = "019f9edc-bc7f-7ef1-8d32-35f66809b013";
+      const rootPath = join(dayDir, `rollout-2026-03-07T10-00-00-${goalId}.jsonl`);
+      const continuationPath = join(
+        dayDir,
+        "rollout-2026-03-07T11-00-00-019fbeda-8b7d-7b13-9eb3-87cecc4607e9.jsonl",
+      );
+      await writeFile(
+        rootPath,
+        `${[
+          codexGoalSessionMeta({ id: goalId }),
+          codexTokenLine({ input: 100, output: 10, lastInput: 100, lastOutput: 10 }),
+        ].join("\n")}\n`,
+      );
+
+      const firstCtx: SyncContext = {};
+      await codexTokenDriver.discover({ codexSessionsDir: tempDir }, firstCtx);
+      const rootStat = await import("node:fs/promises").then((m) => m.stat(rootPath));
+      const rootFingerprint: FileFingerprint = {
+        inode: Number(rootStat.ino),
+        mtimeMs: rootStat.mtimeMs,
+        size: rootStat.size,
+      };
+      const rootResult = await codexTokenDriver.parse(
+        rootPath,
+        codexTokenDriver.resumeState(undefined, rootFingerprint),
+        firstCtx,
+      );
+      const rootCursor = codexTokenDriver.buildCursor(rootFingerprint, rootResult);
+      expect(rootCursor.usageKeys).toHaveLength(1);
+
+      await writeFile(
+        continuationPath,
+        `${[
+          codexGoalSessionMeta({ id: goalId }),
+          codexTokenLine({ input: 100, output: 10, lastInput: 100, lastOutput: 10 }),
+          codexTokenLine({ input: 200, output: 20, lastInput: 100, lastOutput: 10 }),
+        ].join("\n")}\n`,
+      );
+      const secondCtx: SyncContext = {};
+      await codexTokenDriver.discover({ codexSessionsDir: tempDir }, secondCtx);
+      codexTokenDriver.preload?.({ [rootPath]: rootCursor }, secondCtx);
+      const continuationStat = await import("node:fs/promises").then((m) =>
+        m.stat(continuationPath),
+      );
+      const continuationFingerprint: FileFingerprint = {
+        inode: Number(continuationStat.ino),
+        mtimeMs: continuationStat.mtimeMs,
+        size: continuationStat.size,
+      };
+      const continuationResult = await codexTokenDriver.parse(
+        continuationPath,
+        codexTokenDriver.resumeState(undefined, continuationFingerprint),
+        secondCtx,
+      );
+
+      expect(continuationResult.deltas).toHaveLength(1);
+      expect(continuationResult.deltas[0].tokens.inputTokens).toBe(100);
+    });
+
     it("resolves subagent counters to the parent Goal scope", async () => {
       const dayDir = join(tempDir, "2026", "03", "07");
       await mkdir(dayDir, { recursive: true });
@@ -374,17 +450,17 @@ describe("codexTokenDriver", () => {
         parentPath,
         `${[
           codexGoalSessionMeta({ id: goalId }),
-          codexTokenLine({ input: 100, output: 10 }),
-          codexTokenLine({ input: 200, output: 20 }),
+          codexTokenLine({ input: 100, output: 10, lastInput: 100, lastOutput: 10 }),
+          codexTokenLine({ input: 200, output: 20, lastInput: 100, lastOutput: 10 }),
         ].join("\n")}\n`,
       );
       await writeFile(
         childPath,
         `${[
           codexGoalSessionMeta({ id: childThreadId, parentThreadId }),
-          codexTokenLine({ input: 100, output: 10 }),
-          codexTokenLine({ input: 200, output: 20 }),
-          codexTokenLine({ input: 250, output: 25 }),
+          codexTokenLine({ input: 100, output: 10, lastInput: 100, lastOutput: 10 }),
+          codexTokenLine({ input: 200, output: 20, lastInput: 100, lastOutput: 10 }),
+          codexTokenLine({ input: 250, output: 25, lastInput: 50, lastOutput: 5 }),
         ].join("\n")}\n`,
       );
 
@@ -413,7 +489,66 @@ describe("codexTokenDriver", () => {
       expect(goalCtx.codexFileScopes?.get(childPath)).toBe(goalId);
     });
 
-    it("requests a full replay for cursors created before Goal scope tracking", () => {
+    it("counts both forked subagent branches instead of keeping only the highest branch", async () => {
+      const dayDir = join(tempDir, "2026", "03", "07");
+      await mkdir(dayDir, { recursive: true });
+      const goalId = "019f9edc-bc7f-7ef1-8d32-35f66809b013";
+      const parentThreadId = "019fbeda-8b7d-7b13-9eb3-87cecc4607e9";
+      const childOneId = "019fbf71-32f5-70d3-9113-2f8b4430656e";
+      const childTwoId = "019fbf72-32f5-70d3-9113-2f8b4430656f";
+      const fixtures = [
+        {
+          path: join(dayDir, `rollout-2026-03-07T10-00-00-${parentThreadId}.jsonl`),
+          lines: [
+            codexGoalSessionMeta({ id: goalId }),
+            codexTokenLine({ input: 100, output: 10, lastInput: 100, lastOutput: 10 }),
+            codexTokenLine({ input: 200, output: 20, lastInput: 100, lastOutput: 10 }),
+          ],
+        },
+        {
+          path: join(dayDir, `rollout-2026-03-07T10-30-00-${childOneId}.jsonl`),
+          lines: [
+            codexGoalSessionMeta({ id: childOneId, parentThreadId }),
+            codexTokenLine({ input: 250, output: 25, lastInput: 50, lastOutput: 5 }),
+          ],
+        },
+        {
+          path: join(dayDir, `rollout-2026-03-07T10-40-00-${childTwoId}.jsonl`),
+          lines: [
+            codexGoalSessionMeta({ id: childTwoId, parentThreadId }),
+            codexTokenLine({ input: 260, output: 26, lastInput: 60, lastOutput: 6 }),
+          ],
+        },
+      ];
+      for (const fixture of fixtures) {
+        await writeFile(fixture.path, `${fixture.lines.join("\n")}\n`);
+      }
+
+      const goalCtx: SyncContext = {};
+      const files = await codexTokenDriver.discover({ codexSessionsDir: tempDir }, goalCtx);
+      const deltas = [];
+      for (const filePath of files) {
+        const st = await import("node:fs/promises").then((m) => m.stat(filePath));
+        const fingerprint: FileFingerprint = {
+          inode: Number(st.ino),
+          mtimeMs: st.mtimeMs,
+          size: st.size,
+        };
+        const result = await codexTokenDriver.parse(
+          filePath,
+          codexTokenDriver.resumeState(undefined, fingerprint),
+          goalCtx,
+        );
+        deltas.push(...result.deltas);
+      }
+
+      expect(deltas.reduce((sum, d) => sum + d.tokens.inputTokens, 0)).toBe(310);
+      expect(deltas.reduce((sum, d) => sum + d.tokens.outputTokens, 0)).toBe(31);
+      expect(goalCtx.codexFileScopes?.get(fixtures[1].path)).toBe(goalId);
+      expect(goalCtx.codexFileScopes?.get(fixtures[2].path)).toBe(goalId);
+    });
+
+    it("requests a full replay for cursors created before usage-edge tracking", () => {
       const legacy = {
         inode: 500,
         mtimeMs: 1709827200000,
@@ -425,7 +560,7 @@ describe("codexTokenDriver", () => {
       } as CodexCursor;
       expect(codexTokenDriver.needsReplay?.(legacy)).toBe(true);
 
-      const current = { ...legacy, scopeId: null } as CodexCursor & {
+      const current = { ...legacy, scopeId: null, usageKeys: [] } as CodexCursor & {
         scopeId: string | null;
       };
       expect(codexTokenDriver.needsReplay?.(current)).toBe(false);

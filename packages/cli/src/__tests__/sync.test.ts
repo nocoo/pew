@@ -1866,7 +1866,7 @@ describe("executeSync", () => {
     expect(records[0]!.input_tokens).toBe(3000); // not doubled
 
     const updated = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    expect(updated.accountingSchemaVersion).toBe(1);
+    expect(updated.accountingSchemaVersion).toBe(2);
   });
 
   it("should allow genuinely new files without triggering rescan", async () => {
@@ -3573,7 +3573,7 @@ describe("executeSync", () => {
         join(stateDir, "cursors.json"),
         JSON.stringify({
           version: 1,
-          accountingSchemaVersion: 1,
+          accountingSchemaVersion: 2,
           files: {
             "/nonexistent/claude.jsonl": {
               inode: 999999,
@@ -3620,7 +3620,7 @@ describe("executeSync", () => {
         join(stateDir, "cursors.json"),
         JSON.stringify({
           version: 1,
-          accountingSchemaVersion: 1,
+          accountingSchemaVersion: 2,
           files: {},
           zcodeSqlite: {
             lastCompletedAt: 1000,
@@ -3673,7 +3673,7 @@ describe("executeSync", () => {
         join(stateDir, "cursors.json"),
         JSON.stringify({
           version: 1,
-          accountingSchemaVersion: 1,
+          accountingSchemaVersion: 2,
           files: {
             "/nonexistent/claude.jsonl": {
               inode: 999999,

@@ -1,13 +1,13 @@
 /**
  * Codex CLI file token driver.
  *
- * Strategy: Byte-offset JSONL streaming + cumulative diff.
+ * Strategy: Byte-offset JSONL streaming + unique cumulative-usage edges.
  * Skip gate: fileUnchanged() (inode + mtimeMs + size).
- * Parser: parseCodexFile({ filePath, startOffset, lastTotals, lastModel })
+ * Parser: last_token_usage is counted once per (Goal root, total, last) edge.
  *
- * Token accounting migration (disjoint fields) is handled globally via
- * CursorState.accountingSchemaVersion — not per-file needsReplay — so
- * Claude/other cursors are never misclassified as legacy Codex.
+ * Token accounting migrations (disjoint fields + Goal edge dedup) are handled
+ * globally via CursorState.accountingSchemaVersion, with a Codex-only replay
+ * safeguard for cursors that lack persisted usage-edge keys.
  */
 
 import type { CodexCursor, FileCursorBase, TokenDelta } from "@pew/core";
@@ -33,6 +33,7 @@ interface CodexParseResult extends TokenParseResult {
   lastTotals: TokenDelta | null;
   lastModel: string | null;
   scopeId: string | null;
+  usageKeys: string[];
 }
 
 interface CodexScopeNode {
@@ -147,24 +148,33 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
     _ctx.codexFileScopes = fileScopes;
     _ctx.codexScopeFileCounts = scopeFileCounts;
     _ctx.codexScopeTotals ??= new Map<string, TokenDelta>();
+    _ctx.codexSeenUsageKeys ??= new Map<string, Set<string>>();
     return files;
   },
 
   preload(cursors: Record<string, FileCursorBase>, ctx: SyncContext): void {
     ctx.codexScopeTotals ??= new Map<string, TokenDelta>();
+    ctx.codexSeenUsageKeys ??= new Map<string, Set<string>>();
     for (const cursor of Object.values(cursors)) {
       const codex = cursor as Partial<CodexCursor>;
-      if (!codex.scopeId || !codex.lastTotals) continue;
-      const previous = ctx.codexScopeTotals.get(codex.scopeId);
-      ctx.codexScopeTotals.set(
-        codex.scopeId,
-        previous ? mergeTotals(codex.lastTotals, previous) : codex.lastTotals,
-      );
+      if (!codex.scopeId) continue;
+      if (codex.lastTotals) {
+        const previous = ctx.codexScopeTotals.get(codex.scopeId);
+        ctx.codexScopeTotals.set(
+          codex.scopeId,
+          previous ? mergeTotals(codex.lastTotals, previous) : codex.lastTotals,
+        );
+      }
+      if (codex.usageKeys) {
+        const seen = ctx.codexSeenUsageKeys.get(codex.scopeId) ?? new Set<string>();
+        for (const key of codex.usageKeys) seen.add(key);
+        ctx.codexSeenUsageKeys.set(codex.scopeId, seen);
+      }
     }
   },
 
   needsReplay(cursor: CodexCursor | undefined): boolean {
-    return !!cursor && !Object.hasOwn(cursor, "scopeId");
+    return !!cursor && !Object.hasOwn(cursor, "usageKeys");
   },
 
   shouldSkip(cursor: CodexCursor | undefined, fingerprint: FileFingerprint): boolean {
@@ -183,17 +193,21 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
 
   async parse(filePath: string, resume: ResumeState, _ctx: SyncContext): Promise<CodexParseResult> {
     const r = resume as CodexResumeState;
-    const scopeId = _ctx.codexFileScopes?.get(filePath) ?? null;
+    const scopeId = _ctx.codexFileScopes?.get(filePath) ?? filePath;
     const sharedScope = scopeId !== null && (_ctx.codexScopeFileCounts?.get(scopeId) ?? 0) > 1;
     const highWaterTotals = sharedScope
       ? (_ctx.codexScopeTotals?.get(scopeId) ?? null)
       : undefined;
+    _ctx.codexSeenUsageKeys ??= new Map<string, Set<string>>();
+    const seenUsageKeys = _ctx.codexSeenUsageKeys.get(scopeId) ?? new Set<string>();
+    _ctx.codexSeenUsageKeys.set(scopeId, seenUsageKeys);
     const result = await parseCodexFile({
       filePath,
       startOffset: r.startOffset,
       lastTotals: r.lastTotals,
       lastModel: r.lastModel,
       ...(sharedScope ? { highWaterTotals } : {}),
+      seenUsageKeys,
     });
     if (sharedScope && scopeId && result.highWaterTotals) {
       _ctx.codexScopeTotals ??= new Map<string, TokenDelta>();
@@ -205,13 +219,14 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
       lastTotals: result.lastTotals,
       lastModel: result.lastModel,
       scopeId,
+      usageKeys: result.usageKeys,
     };
   },
 
   buildCursor(
     fingerprint: FileFingerprint,
     result: TokenParseResult,
-    _prev?: CodexCursor,
+    prev?: CodexCursor,
   ): CodexCursor {
     const r = result as CodexParseResult;
     return {
@@ -222,6 +237,10 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
       lastTotals: r.lastTotals,
       lastModel: r.lastModel,
       scopeId: r.scopeId,
+      usageKeys: [
+        ...(prev?.scopeId === r.scopeId ? (prev.usageKeys ?? []) : []),
+        ...r.usageKeys,
+      ],
       updatedAt: new Date().toISOString(),
     };
   },

@@ -62,6 +62,9 @@ export interface SyncContext {
   /** Highest cumulative Codex totals observed per shared counter scope. */
   codexScopeTotals?: Map<string, TokenDelta>;
 
+  /** Unique cumulative-usage edges already counted in each Codex Goal root scope. */
+  codexSeenUsageKeys?: Map<string, Set<string>>;
+
   /**
    * Directory mtime cache for OpenCode JSON discovery optimization.
    * Read/written by the OpenCode JSON token driver.

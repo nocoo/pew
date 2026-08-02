@@ -122,11 +122,13 @@ export interface ClaudeCursor extends FileCursorBase {
  *
  * v1: disjoint fields across codex / copilot-cli / grok (and pricing).
  *     - input/cached disjoint, output/reasoning disjoint where applicable
+ * v2: count Codex's unique cumulative-usage edges via last_token_usage.
+ *     - dedupes replayed Goal history without dropping forked subagent branches
  * Missing or lower version on CursorState → one-time full rescan.
  */
-export const ACCOUNTING_SCHEMA_VERSION = 1 as const;
+export const ACCOUNTING_SCHEMA_VERSION = 2 as const;
 
-/** Cursor for Codex CLI (byte-offset + cumulative diff state) */
+/** Cursor for Codex CLI (byte offset + cumulative edge-dedup state) */
 export interface CodexCursor extends FileCursorBase {
   /** Byte offset where we last stopped reading */
   offset: number;
@@ -139,6 +141,8 @@ export interface CodexCursor extends FileCursorBase {
    * Optional only for backwards compatibility with pre-Goal-dedup cursors.
    */
   scopeId?: string | null;
+  /** Usage-edge keys first claimed by this file for cross-rollout dedup. */
+  usageKeys?: string[];
 }
 
 /** Cursor for Gemini (array-index-based JSON files) */

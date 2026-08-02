@@ -15,7 +15,7 @@ import type {
  * { ... }` from it breaks in published npm installs where devDeps are
  * absent. Keep this in sync with packages/core/src/types.ts.
  */
-const ACCOUNTING_SCHEMA_VERSION = 1;
+const ACCOUNTING_SCHEMA_VERSION = 2;
 import { CursorStore } from "../storage/cursor-store.js";
 import { LocalQueue } from "../storage/local-queue.js";
 import { pruneAliasCursors } from "../storage/prune-alias-cursors.js";
