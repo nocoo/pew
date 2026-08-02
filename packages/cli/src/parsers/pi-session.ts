@@ -1,8 +1,9 @@
 /**
- * Pi session collector.
+ * Pi-format session collector.
  *
- * Full-scans a pi JSONL session file and extracts session-level metadata.
- * Pi stores one session per file with a tree structure (id/parentId).
+ * Full-scans a pi-format JSONL session file and extracts session-level
+ * metadata. Pi stores one session per file with a tree structure (id/parentId).
+ * Oh My Pi (omp) writes the identical schema — `source` selects the tag.
  *
  * Session header (first line): { type: "session", id, timestamp, cwd }
  * Messages: { type: "message", message: { role, model, usage, ... } }
@@ -16,11 +17,13 @@ import type { SessionSnapshot, Source } from "@pew/core";
 import { hashProjectRef } from "../utils/hash-project-ref.js";
 
 /**
- * Extract project reference from a pi session file path.
+ * Extract project reference from a pi-format session file path.
  *
- * Pi stores sessions under ~/.pi/agent/sessions/<encoded-cwd>/<file>.jsonl
- * The <encoded-cwd> directory name is a double-dash-delimited path encoding,
- * e.g. "--Users-shaozliu-projects-3p-pew--".
+ * Pi stores sessions under ~/.pi/agent/sessions/<encoded-cwd>/<file>.jsonl,
+ * omp under ~/.omp/agent/sessions/<encoded-cwd>/<file>.jsonl. The
+ * <encoded-cwd> directory name is a path encoding — pi wraps the absolute
+ * path in double dashes ("--Users-me-projects-pew--"), omp strips the home
+ * prefix ("-projects-pew"), so the same repo hashes differently per source.
  *
  * We hash the directory name through hashProjectRef() for privacy.
  */
@@ -31,9 +34,9 @@ function extractProjectRef(filePath: string): string | null {
 }
 
 /**
- * Collect session snapshots from a pi JSONL session file.
+ * Collect session snapshots from a pi-format JSONL session file.
  *
- * Each pi file is one session. We scan all lines to collect:
+ * Each file is one session. We scan all lines to collect:
  * - Session ID from the header line (type: "session")
  * - Message counts (user, assistant, total)
  * - Timestamps for wall-clock duration
@@ -41,6 +44,7 @@ function extractProjectRef(filePath: string): string | null {
  */
 export async function collectPiSessions(
   filePath: string,
+  source: Source = "pi",
 ): Promise<SessionSnapshot[]> {
   const st = await stat(filePath).catch(() => null);
   if (!st?.isFile() || st.size === 0) return [];
@@ -123,8 +127,8 @@ export async function collectPiSessions(
 
   return [
     {
-      sessionKey: `pi:${sessionId}`,
-      source: "pi" as Source,
+      sessionKey: `${source}:${sessionId}`,
+      source,
       kind: "human",
       startedAt,
       lastMessageAt,

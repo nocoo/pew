@@ -89,6 +89,37 @@ describe("collectPiSessions", () => {
     expect(typeof snap.projectRef).toBe("string");
   });
 
+  it("tags the snapshot and session key with the requested source", async () => {
+    const filePath = join(sessionDir, "omp.jsonl");
+    const lines = [
+      JSON.stringify({
+        type: "session",
+        version: 3,
+        id: "019fc4c0-9097-7000-868a-7b93e2205b9b",
+        timestamp: "2026-08-02T23:13:02.103Z",
+        cwd: "/test/project",
+      }),
+      JSON.stringify({
+        type: "message",
+        id: "msg1",
+        parentId: null,
+        timestamp: "2026-08-02T23:13:31.892Z",
+        message: {
+          role: "assistant",
+          model: "claude-opus-5",
+          content: [],
+          usage: { input: 44128, output: 195, cacheRead: 0, cacheWrite: 0 },
+        },
+      }),
+    ];
+    await writeFile(filePath, `${lines.join("\n")}\n`);
+
+    const snapshots = await collectPiSessions(filePath, "omp");
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0].sessionKey).toBe("omp:019fc4c0-9097-7000-868a-7b93e2205b9b");
+    expect(snapshots[0].source).toBe("omp");
+  });
+
   it("returns empty for file without session header", async () => {
     const filePath = join(sessionDir, "no-header.jsonl");
     await writeFile(filePath, `${JSON.stringify({

@@ -125,6 +125,53 @@ describe("parsePiFile", () => {
     expect(result.endOffset).toBe(st.size);
   });
 
+  it("tags deltas with the requested source (omp shares the pi schema)", async () => {
+    const filePath = join(testDir, "session.jsonl");
+    const lines = [
+      JSON.stringify({
+        type: "session",
+        version: 3,
+        id: "omp-session",
+        timestamp: "2026-08-02T23:13:02.103Z",
+        cwd: "/test",
+      }),
+      JSON.stringify({
+        type: "message",
+        id: "msg1",
+        parentId: null,
+        timestamp: "2026-08-02T23:13:31.892Z",
+        message: {
+          role: "assistant",
+          content: [{ type: "text", text: "Hi" }],
+          model: "claude-opus-5",
+          usage: {
+            input: 44128,
+            output: 195,
+            cacheRead: 0,
+            cacheWrite: 0,
+            totalTokens: 44323,
+            cost: { input: 0.22064, output: 0.004875, cacheRead: 0, cacheWrite: 0, total: 0.225515 },
+          },
+        },
+      }),
+    ];
+    await writeFile(filePath, `${lines.join("\n")}\n`);
+
+    const result = await parsePiFile({ filePath, startOffset: 0, source: "omp" });
+    expect(result.deltas).toHaveLength(1);
+    expect(result.deltas[0]).toEqual({
+      source: "omp",
+      model: "claude-opus-5",
+      timestamp: "2026-08-02T23:13:31.892Z",
+      tokens: {
+        inputTokens: 44128,
+        cachedInputTokens: 0,
+        outputTokens: 195,
+        reasoningOutputTokens: 0,
+      },
+    });
+  });
+
   it("skips non-assistant messages", async () => {
     const filePath = join(testDir, "session.jsonl");
     const lines = [
