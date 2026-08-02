@@ -17,6 +17,7 @@ const defaultDirs: SourceDirs = {
   geminiDir: "/home/.gemini",
   kosmosDataDir: "/home/.config/kosmos-app",
   pmstudioDataDir: "/home/.config/pm-studio-app",
+  ompSessionsDir: "/home/.omp/agent/sessions",
   openCodeMessageDir: "/home/.local/share/opencode/storage/message",
   openclawDir: "/home/.openclaw",
   piSessionsDir: "/home/.pi/agent/sessions",
@@ -363,7 +364,7 @@ describe("executeStatus", () => {
     expect(result.lastSync).toBeNull();
   });
 
-  it("should classify kosmos / pmstudio / pi files and unknown fallback", async () => {
+  it("should classify kosmos / pmstudio / omp / pi files and unknown fallback", async () => {
     const cursorStore = new CursorStore(stateDir);
     await cursorStore.save({
       files: {
@@ -378,6 +379,13 @@ describe("executeStatus", () => {
           type: "byte-offset",
           offset: 1,
           inode: 102,
+          size: 1,
+          mtimeMs: 1,
+        },
+        "/home/.omp/agent/sessions/z/session.jsonl": {
+          type: "byte-offset",
+          offset: 1,
+          inode: 105,
           size: 1,
           mtimeMs: 1,
         },
@@ -403,9 +411,10 @@ describe("executeStatus", () => {
       stateDir,
       sourceDirs: defaultDirs,
     });
-    expect(result.trackedFiles).toBe(4);
+    expect(result.trackedFiles).toBe(5);
     expect(result.sources.kosmos).toBe(1);
     expect(result.sources.pmstudio).toBe(1);
+    expect(result.sources.omp).toBe(1);
     expect(result.sources.pi).toBe(1);
     expect(result.sources.unknown).toBe(1);
   });

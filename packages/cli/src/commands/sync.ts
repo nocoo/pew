@@ -51,6 +51,8 @@ export interface SyncOptions {
   openMessageDb?: (dbPath: string) => { queryMessages: QueryMessagesFn; close: () => void } | null;
   /** Override: OpenClaw data directory (~/.openclaw) */
   openclawDir?: string;
+  /** Override: Oh My Pi session directory (~/.omp/agent/sessions) */
+  ompSessionsDir?: string;
   /** Override: Pi session directory (~/.pi/agent/sessions) */
   piSessionsDir?: string;
   /** Override: VSCode Copilot base directories (stable + insiders) */
@@ -331,6 +333,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     geminiDir: opts.geminiDir,
     kosmosDataDir: opts.kosmosDataDir,
     pmstudioDataDir: opts.pmstudioDataDir,
+    ompSessionsDir: opts.ompSessionsDir,
     openCodeMessageDir: opts.openCodeMessageDir,
     openCodeDbPath: opts.openCodeDbPath,
     openclawDir: opts.openclawDir,
