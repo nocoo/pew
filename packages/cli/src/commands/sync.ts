@@ -83,6 +83,16 @@ export interface SyncOptions {
   onCorruptLine?: OnCorruptLine;
 }
 
+interface InternalSyncOptions extends SyncOptions {
+  /**
+   * Previous full queue snapshot retained across an accounting-schema rescan.
+   * Missing buckets are emitted as zero-value tombstones so overwrite upserts
+   * also clear historical server rows that the corrected parser no longer
+   * produces.
+   */
+  reconcilePreviousQueueRecords?: QueueRecord[];
+}
+
 /** Progress event for UI display */
 interface ProgressEvent {
   source: string;
@@ -174,6 +184,10 @@ function sourceKey(source: Source): keyof SyncResult["sources"] {
  * Pure logic — no CLI I/O. Receives all dependencies via options.
  */
 export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
+  return executeSyncInternal(opts);
+}
+
+async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResult> {
   const { stateDir, onProgress } = opts;
 
   const cursorStore = new CursorStore(stateDir);
@@ -220,6 +234,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       phase: "warn",
       message: `Token accounting schema v${ACCOUNTING_SCHEMA_VERSION} — one-time full rescan`,
     });
+    const { records: previousQueueRecords } = await queue.readFromOffset(0);
     await cursorStore.save({
       version: 1,
       accountingSchemaVersion: ACCOUNTING_SCHEMA_VERSION,
@@ -228,7 +243,10 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       knownDbSources: {},
       updatedAt: null,
     });
-    return executeSync(opts);
+    return executeSyncInternal({
+      ...opts,
+      reconcilePreviousQueueRecords: previousQueueRecords,
+    });
   }
 
   // Upgrade detection: cursors.json created before knownFilePaths was added
@@ -246,7 +264,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       files: {},
       updatedAt: null,
     });
-    return executeSync(opts);
+    return executeSyncInternal(opts);
   }
 
   // Backfill knownDbSources for cursors created between v1.6.0 (added
@@ -282,7 +300,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
         files: {},
         updatedAt: null,
       });
-      return executeSync(opts);
+      return executeSyncInternal(opts);
     } else {
       cursors.knownDbSources = {};
     }
@@ -529,7 +547,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       files: {},
       updatedAt: null,
     });
-    return executeSync(opts);
+    return executeSyncInternal(opts);
   }
 
   // ---------- Phase 2: DB-based drivers ----------
@@ -720,7 +738,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
         files: {},
         updatedAt: null,
       });
-      return executeSync(opts);
+      return executeSyncInternal(opts);
     }
 
     let result: Awaited<ReturnType<typeof driver.run>>;
@@ -766,7 +784,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
         files: {},
         updatedAt: null,
       });
-      return executeSync(opts);
+      return executeSyncInternal(opts);
     }
 
     // Write cursor back to the correct field
@@ -905,6 +923,33 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       reasoning_output_tokens: bucket.tokens.reasoningOutputTokens,
       total_tokens: totalTokens,
     });
+  }
+
+  // Accounting-schema migrations must reconcile removed buckets as well as
+  // overwrite buckets that still exist. The ingest worker uses overwrite
+  // upserts, so a zero-value record is the safe tombstone for an old key that
+  // is absent from the corrected full scan. Without these tombstones, stale
+  // historical rows survive online indefinitely and keep totals inflated.
+  if (initialCursorEmpty && opts.reconcilePreviousQueueRecords) {
+    const recordKey = (record: QueueRecord) =>
+      `${record.source}|${record.model}|${record.hour_start}|${record.device_id}`;
+    const currentKeys = new Set(records.map(recordKey));
+
+    for (const previous of opts.reconcilePreviousQueueRecords) {
+      if (previous.device_id !== opts.deviceId) continue;
+      const key = recordKey(previous);
+      if (currentKeys.has(key)) continue;
+
+      records.push({
+        ...previous,
+        input_tokens: 0,
+        cached_input_tokens: 0,
+        output_tokens: 0,
+        reasoning_output_tokens: 0,
+        total_tokens: 0,
+      });
+      currentKeys.add(key);
+    }
   }
 
   // ---------- Write to queue (overwrite, not append) ----------

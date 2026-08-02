@@ -1869,6 +1869,55 @@ describe("executeSync", () => {
     expect(updated.accountingSchemaVersion).toBe(2);
   });
 
+  it("should tombstone buckets removed by an accounting schema rescan", async () => {
+    const claudeDir = join(dataDir, ".claude", "projects", "proj-acct-tombstone");
+    const sessionPath = join(claudeDir, "session.jsonl");
+    await mkdir(claudeDir, { recursive: true });
+    await writeFile(
+      sessionPath,
+      `${claudeLine("2026-03-07T11:15:00.000Z", 4000, 400)}\n`,
+    );
+
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      claudeDir: join(dataDir, ".claude"),
+    });
+
+    // Simulate upgrading accounting semantics after the old parser produced a
+    // bucket that the corrected parser no longer emits.
+    const cursorsPath = join(stateDir, "cursors.json");
+    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    delete cursorsData.accountingSchemaVersion;
+    await writeFile(cursorsPath, JSON.stringify(cursorsData));
+    await rm(sessionPath);
+
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      claudeDir: join(dataDir, ".claude"),
+    });
+
+    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
+    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({
+      source: "claude-code",
+      model: "glm-5",
+      device_id: "dev-1",
+      input_tokens: 0,
+      cached_input_tokens: 0,
+      output_tokens: 0,
+      reasoning_output_tokens: 0,
+      total_tokens: 0,
+    });
+
+    const queueState = JSON.parse(
+      await readFile(join(stateDir, "queue.state.json"), "utf-8"),
+    );
+    expect(queueState.dirtyKeys).toHaveLength(1);
+  });
+
   it("should allow genuinely new files without triggering rescan", async () => {
     // Scenario: sync Claude → add a new Gemini file → sync again.
     // The new Gemini file should be picked up in incremental mode (SUM),
