@@ -20,6 +20,7 @@ export interface NotifierPaths {
   codexNotifyOriginalPath: string;
   hermesHome: string;
   hermesPluginDir: string;
+  ompExtensionPath: string;
   piExtensionPath: string;
 }
 
@@ -70,6 +71,7 @@ export function resolveNotifierPaths(
     codexNotifyOriginalPath: join(stateDir, "codex_notify_original.json"),
     hermesHome,
     hermesPluginDir: join(hermesHome, "plugins"),
+    ompExtensionPath: join(home, ".omp", "agent", "extensions", "pew-sync.ts"),
     piExtensionPath: join(home, ".pi", "agent", "extensions", "pew-sync.ts"),
   };
 }
