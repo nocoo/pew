@@ -96,6 +96,7 @@ export interface DiscoverOpts {
   geminiDir?: string;
   kosmosDataDir?: string;
   pmstudioDataDir?: string;
+  ompSessionsDir?: string;
   openCodeMessageDir?: string;
   openCodeDbPath?: string;
   openclawDir?: string;

@@ -118,7 +118,7 @@ describe("resolveDefaultPaths", () => {
     expect(paths.hermesProfileDbPaths[0].dbKey).toBe("profiles/tomato");
   });
 
-  it("should return exactly 22 path properties", () => {
+  it("should return exactly 23 path properties", () => {
     const keys = [
       "stateDir",
       "binDir",
@@ -134,6 +134,7 @@ describe("resolveDefaultPaths", () => {
       "hermesProfileDbPaths",
       "kosmosDataDir",
       "multicaCodexDirs",
+      "ompSessionsDir",
       "openCodeDbPath",
       "openCodeMessageDir",
       "openclawDir",

@@ -157,6 +157,16 @@ export async function discoverOpenClawFiles(
 }
 
 /**
+ * Discover Oh My Pi session JSONL files.
+ * Path pattern: ~/.omp/agent/sessions/<encoded-cwd>/*.jsonl
+ */
+export async function discoverOmpFiles(
+  ompSessionsDir: string,
+): Promise<string[]> {
+  return collectFiles(ompSessionsDir, (name) => name.endsWith(".jsonl"));
+}
+
+/**
  * Discover pi session JSONL files.
  * Path pattern: ~/.pi/agent/sessions/<encoded-cwd>/*.jsonl
  */
