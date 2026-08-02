@@ -17,6 +17,7 @@ export type SessionSyncSourceKey =
   | "gemini"
   | "grok"
   | "kosmos"
+  | "omp"
   | "opencode"
   | "openclaw"
   | "pi"
@@ -62,6 +63,7 @@ export function sourceKey(source: Source): SessionSyncSourceKey | null {
     case "gemini-cli": return "gemini";
     case "grok": return "grok";
     case "kosmos": return "kosmos";
+    case "omp": return "omp";
     case "opencode": return "opencode";
     case "openclaw": return "openclaw";
     case "pi": return "pi";
