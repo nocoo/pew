@@ -85,7 +85,16 @@ async function readScopeNode(filePath: string): Promise<CodexScopeNode> {
   return node;
 }
 
-async function resolveCodexScopes(files: string[]): Promise<{
+async function resolveCodexScopes(
+  files: string[],
+  /**
+   * thread id → root scope for rollouts this run did NOT re-read. A new child
+   * rollout almost always names a parent that is already cached, so without
+   * this its chain dead-ends and it invents `parentThreadId` as its own scope —
+   * bypassing the root scope's usage-edge dedup and re-counting history.
+   */
+  knownThreadScopes: Map<string, string> = new Map(),
+): Promise<{
   fileScopes: Map<string, string>;
   scopeFileCounts: Map<string, number>;
 }> {
@@ -109,7 +118,9 @@ async function resolveCodexScopes(files: string[]): Promise<{
     let scope: string | null = null;
     if (node.parentThreadId) {
       const parent = byThread.get(node.parentThreadId);
-      scope = parent ? resolveNode(parent) : node.parentThreadId;
+      scope = parent
+        ? resolveNode(parent)
+        : (knownThreadScopes.get(node.parentThreadId) ?? node.parentThreadId);
     }
     scope ??= node.sessionId ?? node.threadId;
     resolving.delete(key);
@@ -144,10 +155,20 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
     // too expensive to redo for every known file on every sync (installs carry
     // thousands of rollouts, and the notify hook syncs at every session end),
     // so paths whose cursor already recorded a scope are reused as-is and only
-    // genuinely new rollouts are opened.
+    // genuinely new rollouts are opened. The cached thread → scope map is
+    // handed to the resolver so a new child rollout can still climb to a
+    // parent that was not re-read this run.
     const known = ctx.codexKnownScopes ?? {};
+    const knownThreadScopes = new Map<string, string>();
+    for (const [filePath, scopeId] of Object.entries(known)) {
+      const threadId = rolloutThreadId(filePath);
+      if (threadId) knownThreadScopes.set(threadId, scopeId);
+    }
     const unresolved = files.filter((filePath) => !known[filePath]);
-    const { fileScopes, scopeFileCounts } = await resolveCodexScopes(unresolved);
+    const { fileScopes, scopeFileCounts } = await resolveCodexScopes(
+      unresolved,
+      knownThreadScopes,
+    );
 
     for (const filePath of files) {
       const cached = known[filePath];

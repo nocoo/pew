@@ -501,6 +501,52 @@ describe("codexTokenDriver", () => {
       expect(goalCtx.codexFileScopes?.get(childPath)).toBe(goalId);
     });
 
+    it("inherits the root scope from a parent that was not re-read this sync", async () => {
+      // Regression: discovery only re-reads rollouts with no cached scope, so a
+      // brand-new child names a parent that is absent from this run's node set.
+      // Without the cached thread → scope map its chain dead-ends and it adopts
+      // parentThreadId as its own scope, escaping the root scope's usage-edge
+      // dedup and re-counting the replayed history.
+      const dayDir = join(tempDir, "2026", "03", "07");
+      await mkdir(dayDir, { recursive: true });
+      const goalId = "019f9edc-bc7f-7ef1-8d32-35f66809b013";
+      const parentThreadId = "019fbeda-8b7d-7b13-9eb3-87cecc4607e9";
+      const childThreadId = "019fbf71-32f5-70d3-9113-2f8b4430656e";
+      const parentPath = join(
+        dayDir,
+        `rollout-2026-03-07T10-00-00-${parentThreadId}.jsonl`,
+      );
+      const childPath = join(
+        dayDir,
+        `rollout-2026-03-07T10-30-00-${childThreadId}.jsonl`,
+      );
+      await writeFile(
+        parentPath,
+        `${[
+          codexGoalSessionMeta({ id: goalId }),
+          codexTokenLine({ input: 100, output: 10, lastInput: 100, lastOutput: 10 }),
+        ].join("\n")}\n`,
+      );
+      await writeFile(
+        childPath,
+        `${[
+          codexGoalSessionMeta({ id: childThreadId, parentThreadId }),
+          codexTokenLine({ input: 100, output: 10, lastInput: 100, lastOutput: 10 }),
+          codexTokenLine({ input: 150, output: 15, lastInput: 50, lastOutput: 5 }),
+        ].join("\n")}\n`,
+      );
+
+      // Second sync: the parent's scope is already cached, the child is new.
+      const ctx: SyncContext = {
+        codexKnownScopes: { [parentPath]: goalId },
+        codexSeenUsageKeys: new Map([[goalId, new Set<string>()]]),
+      };
+      await codexTokenDriver.discover({ codexSessionsDir: tempDir }, ctx);
+
+      expect(ctx.codexFileScopes?.get(parentPath)).toBe(goalId);
+      expect(ctx.codexFileScopes?.get(childPath)).toBe(goalId);
+    });
+
     it("counts both forked subagent branches instead of keeping only the highest branch", async () => {
       const dayDir = join(tempDir, "2026", "03", "07");
       await mkdir(dayDir, { recursive: true });
