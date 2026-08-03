@@ -335,6 +335,12 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   // discoveredFiles \ parseFailedPaths = cursor-valid paths for this run.
   const parseFailedPaths = new Set<string>();
 
+  // Codex rescan health, consumed by the accounting-migration reconciliation
+  // below. Codex only qualifies as "fully rescanned" when it discovered at
+  // least one rollout and every one of them parsed cleanly.
+  let codexFilesDiscovered = 0;
+  let codexParseFailures = 0;
+
   // Build driver sets from options
   const { fileDrivers, dbDrivers } = createTokenDrivers(opts);
 
@@ -447,6 +453,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
       total: files.length,
       message: parseMsg,
     });
+    if (driver.source === "codex") codexFilesDiscovered += files.length;
 
     for (let i = 0; i < files.length; i++) {
       const filePath = files[i];
@@ -457,6 +464,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
         // throw: do NOT mark it freshly-synced (would seed a known-only
         // stale entry).
         parseFailedPaths.add(filePath);
+        if (driver.source === "codex") codexParseFailures++;
         continue;
       }
 
@@ -532,6 +540,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
         // as freshly-synced post-loop — that would leave a known-only
         // stale entry that future cursor-loss detection would trip on.
         parseFailedPaths.add(filePath);
+        if (driver.source === "codex") codexParseFailures++;
         continue;
       }
 
@@ -975,17 +984,35 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
     });
   }
 
-  // Accounting-schema migrations must reconcile removed buckets as well as
-  // overwrite buckets that still exist. The ingest worker uses overwrite
-  // upserts, so a zero-value record is the safe tombstone for an old key that
-  // is absent from the corrected full scan. Without these tombstones, stale
-  // historical rows survive online indefinitely and keep totals inflated.
-  if (initialCursorEmpty && opts.reconcilePreviousQueueRecords) {
+  // Accounting-schema migrations overwrite buckets that still exist, but a
+  // bucket the corrected scan no longer produces needs an explicit zero-value
+  // tombstone — the ingest worker upserts with overwrite semantics, so a key
+  // that is simply absent keeps its stale (inflated) server row forever.
+  //
+  // Deliberately narrow, because "absent from this scan" is NOT the same claim
+  // as "this history is wrong":
+  //
+  //   - Only `codex` rows. v2 corrects Codex's Goal-counter accounting and
+  //     nothing else; zeroing Claude/Gemini/Copilot rows whose raw logs the
+  //     user has since rotated away would destroy correct, already-uploaded
+  //     history.
+  //   - Only when Codex was fully rescanned this run: at least one rollout
+  //     discovered and every discovered rollout parsed. A missing $CODEX_HOME,
+  //     an unmounted volume, or a mid-scan read error all present as "no
+  //     buckets produced", which must never be read as "delete the history".
+  //
+  // Residual, accepted: a Codex hour whose rollouts were pruned before the
+  // migration is zeroed rather than left at its v1 value. That value is known
+  // to be inflated (v1 re-counted each file's whole cumulative total), so zero
+  // is the closer of the two available answers.
+  const codexFullyRescanned = codexFilesDiscovered > 0 && codexParseFailures === 0;
+  if (initialCursorEmpty && opts.reconcilePreviousQueueRecords && codexFullyRescanned) {
     const recordKey = (record: QueueRecord) =>
       `${record.source}|${record.model}|${record.hour_start}|${record.device_id}`;
     const currentKeys = new Set(records.map(recordKey));
 
     for (const previous of opts.reconcilePreviousQueueRecords) {
+      if (previous.source !== "codex") continue;
       if (previous.device_id !== opts.deviceId) continue;
       const key = recordKey(previous);
       if (currentKeys.has(key)) continue;

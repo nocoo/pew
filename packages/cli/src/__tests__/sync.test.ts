@@ -1869,41 +1869,37 @@ describe("executeSync", () => {
     expect(updated.accountingSchemaVersion).toBe(2);
   });
 
-  it("should tombstone buckets removed by an accounting schema rescan", async () => {
-    const claudeDir = join(dataDir, ".claude", "projects", "proj-acct-tombstone");
-    const sessionPath = join(claudeDir, "session.jsonl");
-    await mkdir(claudeDir, { recursive: true });
+  it("should tombstone codex buckets removed by an accounting schema rescan", async () => {
+    const codexDir = join(dataDir, ".codex", "sessions", "2026", "03", "07");
+    const rolloutPath = join(codexDir, "rollout-acct-tombstone.jsonl");
+    await mkdir(codexDir, { recursive: true });
     await writeFile(
-      sessionPath,
-      `${claudeLine("2026-03-07T11:15:00.000Z", 4000, 400)}\n`,
+      rolloutPath,
+      `${codexLines("2026-03-07T11:15:00.000Z", 4000, 400)}\n`,
     );
+    const codexSessionsDir = join(dataDir, ".codex", "sessions");
 
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-    });
+    await executeSync({ stateDir, deviceId: "dev-1", codexSessionsDir });
 
-    // Simulate upgrading accounting semantics after the old parser produced a
-    // bucket that the corrected parser no longer emits.
+    // Upgrade accounting semantics. The rollout that produced the bucket is
+    // gone, but other rollouts remain, so the codex rescan is still complete.
     const cursorsPath = join(stateDir, "cursors.json");
     const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
     delete cursorsData.accountingSchemaVersion;
     await writeFile(cursorsPath, JSON.stringify(cursorsData));
-    await rm(sessionPath);
+    await rm(rolloutPath);
+    await writeFile(
+      join(codexDir, "rollout-acct-survivor.jsonl"),
+      `${codexLines("2026-03-07T12:15:00.000Z", 100, 10)}\n`,
+    );
 
-    await executeSync({
-      stateDir,
-      deviceId: "dev-1",
-      claudeDir: join(dataDir, ".claude"),
-    });
+    await executeSync({ stateDir, deviceId: "dev-1", codexSessionsDir });
 
     const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
     const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
-    expect(records).toHaveLength(1);
-    expect(records[0]).toMatchObject({
-      source: "claude-code",
-      model: "glm-5",
+    const tombstone = records.find((r) => r.hour_start.startsWith("2026-03-07T11"));
+    expect(tombstone).toMatchObject({
+      source: "codex",
       device_id: "dev-1",
       input_tokens: 0,
       cached_input_tokens: 0,
@@ -1911,11 +1907,117 @@ describe("executeSync", () => {
       reasoning_output_tokens: 0,
       total_tokens: 0,
     });
+  });
 
-    const queueState = JSON.parse(
-      await readFile(join(stateDir, "queue.state.json"), "utf-8"),
+  it("should never tombstone non-codex buckets on an accounting rescan", async () => {
+    // v2 corrects Codex accounting only. A Claude project whose raw logs the
+    // user has since rotated away must keep its already-uploaded history —
+    // "absent from this scan" is not "this history is wrong".
+    const claudeDir = join(dataDir, ".claude", "projects", "proj-acct-keep");
+    const sessionPath = join(claudeDir, "session.jsonl");
+    await mkdir(claudeDir, { recursive: true });
+    await writeFile(
+      sessionPath,
+      `${claudeLine("2026-03-07T11:15:00.000Z", 4000, 400)}\n`,
     );
-    expect(queueState.dirtyKeys).toHaveLength(1);
+    const codexDir = join(dataDir, ".codex", "sessions", "2026", "03", "07");
+    await mkdir(codexDir, { recursive: true });
+    await writeFile(
+      join(codexDir, "rollout-acct-keep.jsonl"),
+      `${codexLines("2026-03-07T12:15:00.000Z", 100, 10)}\n`,
+    );
+
+    const dirs = {
+      claudeDir: join(dataDir, ".claude"),
+      codexSessionsDir: join(dataDir, ".codex", "sessions"),
+    };
+    await executeSync({ stateDir, deviceId: "dev-1", ...dirs });
+
+    const cursorsPath = join(stateDir, "cursors.json");
+    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    delete cursorsData.accountingSchemaVersion;
+    await writeFile(cursorsPath, JSON.stringify(cursorsData));
+    await rm(sessionPath);
+
+    await executeSync({ stateDir, deviceId: "dev-1", ...dirs });
+
+    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
+    const records = queueRaw.trim().split("\n").map((l) => JSON.parse(l) as QueueRecord);
+    expect(records.some((r) => r.source === "claude-code")).toBe(false);
+  });
+
+  it("should not tombstone when codex discovered nothing (dir missing or unmounted)", async () => {
+    const codexDir = join(dataDir, ".codex", "sessions", "2026", "03", "07");
+    await mkdir(codexDir, { recursive: true });
+    await writeFile(
+      join(codexDir, "rollout-acct-gone.jsonl"),
+      `${codexLines("2026-03-07T11:15:00.000Z", 4000, 400)}\n`,
+    );
+    const codexSessionsDir = join(dataDir, ".codex", "sessions");
+
+    await executeSync({ stateDir, deviceId: "dev-1", codexSessionsDir });
+
+    const cursorsPath = join(stateDir, "cursors.json");
+    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    delete cursorsData.accountingSchemaVersion;
+    await writeFile(cursorsPath, JSON.stringify(cursorsData));
+    // Whole sessions tree unavailable — zero rollouts discovered.
+    await rm(codexSessionsDir, { recursive: true });
+
+    await executeSync({ stateDir, deviceId: "dev-1", codexSessionsDir });
+
+    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
+    const records = queueRaw
+      .split("\n")
+      .filter((l) => l.trim().length > 0)
+      .map((l) => JSON.parse(l) as QueueRecord);
+    // No zero-value tombstone is emitted, so the already-uploaded server row
+    // for that hour survives the migration.
+    expect(records.some((r) => r.total_tokens === 0)).toBe(false);
+  });
+
+  it("should not tombstone when a codex rollout failed to parse", async () => {
+    const codexDir = join(dataDir, ".codex", "sessions", "2026", "03", "07");
+    await mkdir(codexDir, { recursive: true });
+    const gonePath = join(codexDir, "rollout-acct-fail-a.jsonl");
+    await writeFile(gonePath, `${codexLines("2026-03-07T11:15:00.000Z", 4000, 400)}\n`);
+    const codexSessionsDir = join(dataDir, ".codex", "sessions");
+
+    await executeSync({ stateDir, deviceId: "dev-1", codexSessionsDir });
+
+    const cursorsPath = join(stateDir, "cursors.json");
+    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    delete cursorsData.accountingSchemaVersion;
+    await writeFile(cursorsPath, JSON.stringify(cursorsData));
+
+    // The rollout that produced the bucket is gone and the one that remains
+    // cannot be read. A partial rescan must not be mistaken for evidence that
+    // the missing hour should be deleted.
+    await rm(gonePath);
+    await writeFile(
+      join(codexDir, "rollout-acct-fail-b.jsonl"),
+      `${codexLines("2026-03-07T12:15:00.000Z", 100, 10)}\n`,
+    );
+
+    // Dynamic import: vi.spyOn needs the live module namespace object, which a
+    // static named import does not provide.
+    const codexParser = await import("../parsers/codex.js");
+    const spy = vi
+      .spyOn(codexParser, "parseCodexFile")
+      .mockRejectedValue(new Error("Simulated unreadable rollout"));
+
+    try {
+      await executeSync({ stateDir, deviceId: "dev-1", codexSessionsDir });
+    } finally {
+      spy.mockRestore();
+    }
+
+    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
+    const records = queueRaw
+      .split("\n")
+      .filter((l) => l.trim().length > 0)
+      .map((l) => JSON.parse(l) as QueueRecord);
+    expect(records.some((r) => r.total_tokens === 0)).toBe(false);
   });
 
   it("should allow genuinely new files without triggering rescan", async () => {
