@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Check, Copy, Plane, Terminal } from "lucide-react";
+import { ArrowRight, Check, Copy, Terminal } from "lucide-react";
 import { PassCard, PassPerforation } from "@/components/brand/badge-card";
 import { agentColor } from "@/lib/palette";
 import { sourceLabel } from "@/lib/usage-transforms";
@@ -26,6 +26,9 @@ const AGENTS = [
   "vscode-copilot",
   "zcode",
 ] as const;
+
+/** Decorative seat code — avoid culturally unlucky counts (e.g. 14). */
+const SEAT_CODE = "17A";
 
 // ---------------------------------------------------------------------------
 // Shared field / chrome helpers (boarding-pass vernacular)
@@ -58,13 +61,12 @@ function Coupon({
   index: string;
   children: React.ReactNode;
   className?: string;
-  /** Stub coupons often have a slightly different ground */
   tinted?: boolean;
 }) {
   return (
     <section
       className={cn(
-        "relative flex min-w-0 flex-col px-4 py-5 sm:px-5 sm:py-6",
+        "relative flex min-w-0 flex-1 flex-col px-4 py-5 sm:px-5 sm:py-6",
         tinted && "bg-secondary/35",
         className,
       )}
@@ -77,8 +79,59 @@ function Coupon({
           {index}
         </span>
       </div>
-      {children}
+      <div className="flex flex-1 flex-col">{children}</div>
     </section>
+  );
+}
+
+/** Horizontal sci-fi craft — nose points right (LCL → AIN). */
+function SpaceshipIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 40 20"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      aria-hidden="true"
+    >
+      {/* thruster glow */}
+      <path
+        d="M2 10h6"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        opacity="0.35"
+      />
+      <path
+        d="M1 7.5c1.5 1 1.5 4 0 5"
+        stroke="currentColor"
+        strokeWidth="1"
+        strokeLinecap="round"
+        opacity="0.25"
+      />
+      {/* rear fin */}
+      <path
+        d="M10 4 L14 8.5 L14 11.5 L10 16 L8 12.5 L8 7.5 Z"
+        fill="currentColor"
+        opacity="0.55"
+      />
+      {/* hull */}
+      <path
+        d="M12 7.5 C16 5.5 24 5 30 7.2 C33 8.2 35.5 9.2 37 10 C35.5 10.8 33 11.8 30 12.8 C24 15 16 14.5 12 12.5 C11 12 10.5 11 10.5 10 C10.5 9 11 8 12 7.5 Z"
+        fill="currentColor"
+      />
+      {/* canopy */}
+      <ellipse cx="26" cy="10" rx="3.2" ry="2" fill="hsl(var(--background))" opacity="0.9" />
+      <ellipse cx="26.4" cy="10" rx="1.6" ry="1" fill="currentColor" opacity="0.35" />
+      {/* nose accent */}
+      <path
+        d="M33 9.2 C35 9.6 36.5 9.9 37.5 10 C36.5 10.1 35 10.4 33 10.8"
+        stroke="hsl(var(--background))"
+        strokeWidth="0.8"
+        strokeLinecap="round"
+        opacity="0.5"
+      />
+    </svg>
   );
 }
 
@@ -170,12 +223,12 @@ function DashboardCta() {
 }
 
 // ---------------------------------------------------------------------------
-// Coupon panels
+// Coupon panels — balanced mass across three columns
 // ---------------------------------------------------------------------------
 
 function PassengerCoupon() {
   return (
-    <Coupon title="Passenger" index="01 / 03" className="lg:flex-[1.05]">
+    <Coupon title="Passenger" index="01 / 03">
       <div className="flex items-center gap-3">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary ring-1 ring-border sm:h-14 sm:w-14">
           <Image
@@ -226,16 +279,50 @@ function PassengerCoupon() {
         Your pass to the contribution graph — counts{" "}
         <span className="text-foreground">tokens</span>, never conversations.
       </p>
+
+      {/* Sequence lives here so boarding stub stays lean */}
+      <div className="mt-auto border-t border-border/70 pt-4">
+        <FieldLabel>Sequence</FieldLabel>
+        <ol
+          className="mt-2 space-y-1.5 text-[13px] text-muted-foreground"
+          aria-label="Boarding sequence"
+        >
+          <li className="flex items-baseline gap-2">
+            <span className="font-mono text-[10px] text-primary" aria-hidden="true">
+              1
+            </span>
+            <span>
+              <Code>pew login</Code>
+              <span className="text-muted-foreground/70"> · browser</span>
+            </span>
+          </li>
+          <li className="flex items-baseline gap-2">
+            <span className="font-mono text-[10px] text-primary" aria-hidden="true">
+              2
+            </span>
+            <span>
+              <Code>pew init</Code>
+              <span className="text-muted-foreground/70"> · hooks</span>
+            </span>
+          </li>
+          <li className="flex items-baseline gap-2">
+            <span className="font-mono text-[10px] text-primary" aria-hidden="true">
+              3
+            </span>
+            <span>Launch — auto-sync</span>
+          </li>
+        </ol>
+      </div>
     </Coupon>
   );
 }
 
 function FlightCoupon() {
   return (
-    <Coupon title="Flight" index="02 / 03" className="lg:flex-[1.2]">
-      {/* Airport-style route block */}
-      <div className="rounded-xl border border-border/80 bg-secondary/40 px-3 py-3.5 sm:px-4">
-        <div className="flex items-end justify-between gap-2">
+    <Coupon title="Flight" index="02 / 03">
+      {/* Route block — horizontal craft, nose → destination */}
+      <div className="rounded-xl border border-border/80 bg-secondary/40 px-3 py-4 sm:px-4">
+        <div className="flex items-center justify-between gap-2 sm:gap-3">
           <div className="min-w-0">
             <FieldLabel>From</FieldLabel>
             <p className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
@@ -243,15 +330,18 @@ function FlightCoupon() {
             </p>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">Local logs</p>
           </div>
-          <div className="mb-4 flex flex-col items-center gap-1 px-1">
-            <div className="h-px w-8 border-t border-dashed border-border sm:w-12" />
-            <Plane
-              className="h-3.5 w-3.5 rotate-90 text-primary sm:h-4 sm:w-4"
-              strokeWidth={2}
-              aria-hidden="true"
-            />
-            <div className="h-px w-8 border-t border-dashed border-border sm:w-12" />
+
+          <div className="flex min-w-0 flex-1 flex-col items-center gap-1.5 px-1">
+            <div className="flex w-full items-center gap-1.5">
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-primary/40" />
+              <SpaceshipIcon className="h-4 w-8 shrink-0 text-primary sm:h-5 sm:w-10" />
+              <div className="h-px flex-1 bg-gradient-to-r from-primary/40 via-border to-transparent" />
+            </div>
+            <span className="font-mono text-[9px] tracking-[0.2em] text-muted-foreground/50">
+              PEW-01
+            </span>
           </div>
+
           <div className="min-w-0 text-right">
             <FieldLabel>To</FieldLabel>
             <p className="font-display text-2xl font-bold tracking-tight text-primary sm:text-3xl">
@@ -272,19 +362,14 @@ function FlightCoupon() {
           <p className="mt-0.5 font-mono text-xs text-foreground">EVERY DAY</p>
         </div>
         <div>
-          <FieldLabel>Bag</FieldLabel>
-          <p className="mt-0.5 font-display text-sm font-semibold text-foreground">
-            {AGENTS.length}
-          </p>
+          <FieldLabel>Fleet</FieldLabel>
+          <p className="mt-0.5 font-display text-sm font-semibold text-foreground">FULL</p>
         </div>
       </div>
 
-      <div className="mt-5">
+      <div className="mt-5 flex-1">
         <FieldLabel>Fleet · supported agents</FieldLabel>
-        <ul
-          className="mt-2 flex flex-wrap gap-1.5"
-          aria-label={`${AGENTS.length} supported agents`}
-        >
+        <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Supported agents">
           {AGENTS.map((source) => {
             const { color } = agentColor(source);
             return (
@@ -293,7 +378,7 @@ function FlightCoupon() {
                   className={cn(
                     "inline-flex items-center gap-1.5 rounded-full",
                     "border border-border/80 bg-card px-2 py-0.5",
-                    "text-[10px] font-medium text-foreground/90 sm:text-[11px] sm:px-2.5 sm:py-1",
+                    "text-[10px] font-medium text-foreground/90 sm:px-2.5 sm:py-1 sm:text-[11px]",
                   )}
                 >
                   <span
@@ -308,70 +393,8 @@ function FlightCoupon() {
           })}
         </ul>
       </div>
-    </Coupon>
-  );
-}
 
-function BoardingCoupon() {
-  return (
-    <Coupon title="Boarding" index="03 / 03" tinted className="lg:flex-[1]">
-      <div className="grid grid-cols-3 gap-2.5">
-        <div>
-          <FieldLabel>Gate</FieldLabel>
-          <p className="mt-0.5 font-display text-lg font-bold text-foreground">CLI</p>
-        </div>
-        <div>
-          <FieldLabel>Seat</FieldLabel>
-          <p className="mt-0.5 font-display text-lg font-bold text-foreground">
-            {AGENTS.length}A
-          </p>
-        </div>
-        <div>
-          <FieldLabel>Zone</FieldLabel>
-          <p className="mt-0.5 font-display text-lg font-bold text-primary">NOW</p>
-        </div>
-      </div>
-
-      <div className="mt-4">
-        <FieldLabel>Check-in</FieldLabel>
-        <div className="mt-1.5">
-          <InstallCommand />
-        </div>
-      </div>
-
-      <ol
-        className="mt-3.5 space-y-1.5 text-[13px] text-muted-foreground"
-        aria-label="Boarding sequence"
-      >
-        <li className="flex items-baseline gap-2">
-          <span className="font-mono text-[10px] text-primary" aria-hidden="true">
-            1
-          </span>
-          <span>
-            <Code>pew login</Code>
-          </span>
-        </li>
-        <li className="flex items-baseline gap-2">
-          <span className="font-mono text-[10px] text-primary" aria-hidden="true">
-            2
-          </span>
-          <span>
-            <Code>pew init</Code>
-          </span>
-        </li>
-        <li className="flex items-baseline gap-2">
-          <span className="font-mono text-[10px] text-primary" aria-hidden="true">
-            3
-          </span>
-          <span>Wheels up — auto-sync</span>
-        </li>
-      </ol>
-
-      <div className="mt-4">
-        <DashboardCta />
-      </div>
-
-      <div className="mt-4 border-t border-border/70 pt-3">
+      <div className="mt-auto border-t border-border/70 pt-4">
         <FieldLabel>Gate codes</FieldLabel>
         <div className="mt-1.5 space-y-1 text-[12px] text-muted-foreground sm:text-[13px]">
           <div className="flex flex-wrap items-baseline gap-x-2">
@@ -388,8 +411,43 @@ function BoardingCoupon() {
           </div>
         </div>
       </div>
+    </Coupon>
+  );
+}
 
-      <p className="mt-3 text-[10px] leading-relaxed text-muted-foreground/55">
+function BoardingCoupon() {
+  return (
+    <Coupon title="Boarding" index="03 / 03" tinted>
+      <div className="grid grid-cols-3 gap-2.5">
+        <div>
+          <FieldLabel>Gate</FieldLabel>
+          <p className="mt-0.5 font-display text-lg font-bold text-foreground">CLI</p>
+        </div>
+        <div>
+          <FieldLabel>Seat</FieldLabel>
+          <p className="mt-0.5 font-display text-lg font-bold text-foreground">{SEAT_CODE}</p>
+        </div>
+        <div>
+          <FieldLabel>Zone</FieldLabel>
+          <p className="mt-0.5 font-display text-lg font-bold text-primary">NOW</p>
+        </div>
+      </div>
+
+      <div className="mt-5">
+        <FieldLabel>Check-in</FieldLabel>
+        <div className="mt-1.5">
+          <InstallCommand />
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <FieldLabel>Board</FieldLabel>
+        <div className="mt-1.5">
+          <DashboardCta />
+        </div>
+      </div>
+
+      <p className="mt-auto pt-5 text-[10px] leading-relaxed text-muted-foreground/55">
         Some agents lack a session-end hook — they board on the next{" "}
         <Code>pew sync</Code>.
       </p>
@@ -408,7 +466,7 @@ export function LandingContent() {
         <PassCard
           badge="BOARDING PASS"
           destination="Destination · AI Native"
-          meta={`FLIGHT PEW · ${AGENTS.length} AGENTS · LOCAL-FIRST`}
+          meta="FLIGHT PEW · FULL FLEET · LOCAL-FIRST"
           footer={
             <div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-center">
               <div className="flex items-center gap-1.5">
@@ -428,12 +486,6 @@ export function LandingContent() {
             </div>
           }
         >
-          {/*
-            Classic 3-coupon boarding pass:
-            01 Passenger | 02 Flight | 03 Boarding stub
-            Mobile: stack with horizontal perforations
-            lg+: row with vertical perforations
-          */}
           <div className="flex flex-col lg:flex-row lg:items-stretch">
             <PassengerCoupon />
 
