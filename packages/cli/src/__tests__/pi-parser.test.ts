@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { writeFile, mkdir, rm, stat } from "node:fs/promises";
+import { writeFile, appendFile, mkdir, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { parsePiFile, normalizePiUsage } from "../parsers/pi.js";
@@ -341,6 +341,83 @@ describe("parsePiFile", () => {
     expect(result.deltas[2].model).toBe("gemini-3-pro-preview");
     expect(result.deltas[2].tokens.inputTokens).toBe(381 + 0);
     expect(result.deltas[2].tokens.cachedInputTokens).toBe(3199);
+  });
+
+  it("leaves a half-written trailing line unread and retries it after completion", async () => {
+    const filePath = join(testDir, "session.jsonl");
+    const complete = JSON.stringify({
+      type: "message",
+      id: "msg1",
+      parentId: null,
+      timestamp: "2026-04-07T04:42:45.000Z",
+      message: {
+        role: "assistant",
+        model: "claude-opus-4.6-1m",
+        content: [],
+        usage: { input: 100, output: 10, cacheRead: 0, cacheWrite: 0 },
+      },
+    });
+    const second = JSON.stringify({
+      type: "message",
+      id: "msg2",
+      parentId: "msg1",
+      timestamp: "2026-04-07T04:42:50.000Z",
+      message: {
+        role: "assistant",
+        model: "claude-opus-4.6-1m",
+        content: [],
+        usage: { input: 200, output: 20, cacheRead: 0, cacheWrite: 0 },
+      },
+    });
+
+    // Writer flushed the first line plus half of the second
+    const partial = second.slice(0, 40);
+    await writeFile(filePath, `${complete}\n${partial}`);
+
+    const first = await parsePiFile({ filePath, startOffset: 0 });
+    expect(first.deltas).toHaveLength(1);
+    // Cursor must stop after the last complete "\n", not at file size
+    expect(first.endOffset).toBe(Buffer.byteLength(`${complete}\n`));
+
+    // Writer completes the line — it must still be parsed
+    await writeFile(filePath, `${complete}\n${second}\n`);
+    const resumed = await parsePiFile({ filePath, startOffset: first.endOffset });
+    expect(resumed.deltas).toHaveLength(1);
+    expect(resumed.deltas[0].tokens.inputTokens).toBe(200);
+    expect(resumed.endOffset).toBe(Buffer.byteLength(`${complete}\n${second}\n`));
+  });
+
+  it("does not replay lines appended while a parse is in flight", async () => {
+    const filePath = join(testDir, "session.jsonl");
+    const line = (id: string, input: number) =>
+      JSON.stringify({
+        type: "message",
+        id,
+        parentId: null,
+        timestamp: "2026-04-07T04:42:45.000Z",
+        message: {
+          role: "assistant",
+          model: "claude-opus-4.6-1m",
+          content: [],
+          usage: { input, output: 1, cacheRead: 0, cacheWrite: 0 },
+        },
+      });
+
+    const first = `${line("msg1", 100)}\n`;
+    await writeFile(filePath, first);
+
+    // Grow the file the moment parsing starts — the appended line must be
+    // outside this round's snapshot, so the cursor never skips past it.
+    const appended = `${line("msg2", 200)}\n`;
+    const parsePromise = parsePiFile({ filePath, startOffset: 0 });
+    await appendFile(filePath, appended);
+    const round1 = await parsePromise;
+
+    expect(round1.endOffset).toBeLessThanOrEqual(Buffer.byteLength(first));
+
+    const round2 = await parsePiFile({ filePath, startOffset: round1.endOffset });
+    const seen = [...round1.deltas, ...round2.deltas].map((d) => d.tokens.inputTokens);
+    expect(seen.sort((a, b) => a - b)).toEqual([100, 200]);
   });
 
   it("returns empty for missing file", async () => {
