@@ -41,6 +41,7 @@ function turnContext(model: string, overrides: Record<string, unknown> = {}): st
 function tokenCount(
   total: Partial<TokenDelta & { total_tokens: number }>,
   timestamp = "2026-03-09T10:00:05.000Z",
+  last?: Partial<TokenDelta & { total_tokens: number }>,
 ): string {
   return JSON.stringify({
     timestamp,
@@ -55,6 +56,17 @@ function tokenCount(
           reasoning_output_tokens: total.reasoningOutputTokens ?? 0,
           total_tokens: total.total_tokens ?? 0,
         },
+        ...(last
+          ? {
+              last_token_usage: {
+                input_tokens: last.inputTokens ?? 0,
+                cached_input_tokens: last.cachedInputTokens ?? 0,
+                output_tokens: last.outputTokens ?? 0,
+                reasoning_output_tokens: last.reasoningOutputTokens ?? 0,
+                total_tokens: last.total_tokens ?? 0,
+              },
+            }
+          : {}),
       },
     },
   });
@@ -85,6 +97,34 @@ describe("parseCodexFile", () => {
 
   afterEach(async () => {
     await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it("counts unique last_token_usage edges instead of an inherited absolute prefix", async () => {
+    const filePath = join(tempDir, "rollout.jsonl");
+    const inherited = tokenCount(
+      { inputTokens: 10_000, cachedInputTokens: 8_000, outputTokens: 1_000, reasoningOutputTokens: 400 },
+      "2026-03-09T10:00:05.000Z",
+      { inputTokens: 1_000, cachedInputTokens: 800, outputTokens: 100, reasoningOutputTokens: 40 },
+    );
+    await writeFile(filePath, `${turnContext("gpt-5.4")}\n${inherited}\n${inherited}\n`);
+
+    const seenUsageKeys = new Set<string>();
+    const result = await parseCodexFile({
+      filePath,
+      startOffset: 0,
+      lastTotals: null,
+      lastModel: null,
+      seenUsageKeys,
+    });
+
+    expect(result.deltas).toHaveLength(1);
+    expect(result.deltas[0].tokens).toEqual({
+      inputTokens: 200,
+      cachedInputTokens: 800,
+      outputTokens: 60,
+      reasoningOutputTokens: 40,
+    });
+    expect(result.usageKeys).toHaveLength(1);
   });
 
   it("should parse a single token_count event with turn_context model", async () => {

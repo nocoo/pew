@@ -123,11 +123,13 @@ export interface ClaudeCursor extends FileCursorBase {
  *
  * v1: disjoint fields across codex / copilot-cli / grok (and pricing).
  *     - input/cached disjoint, output/reasoning disjoint where applicable
+ * v2: count Codex's unique cumulative-usage edges via last_token_usage.
+ *     - dedupes replayed Goal history without dropping forked subagent branches
  * Missing or lower version on CursorState → one-time full rescan.
  */
-export const ACCOUNTING_SCHEMA_VERSION = 1 as const;
+export const ACCOUNTING_SCHEMA_VERSION = 2 as const;
 
-/** Cursor for Codex CLI (byte-offset + cumulative diff state) */
+/** Cursor for Codex CLI (byte offset + cumulative edge-dedup state) */
 export interface CodexCursor extends FileCursorBase {
   /** Byte offset where we last stopped reading */
   offset: number;
@@ -135,6 +137,13 @@ export interface CodexCursor extends FileCursorBase {
   lastTotals: TokenDelta | null;
   /** Last seen model identifier */
   lastModel: string | null;
+  /**
+   * Cumulative-counter scope resolved from Codex session metadata. Points at
+   * the shared `CursorState.codexScopes` entry that owns this file's usage
+   * edges. Optional only for backwards compatibility with pre-Goal-dedup
+   * cursors.
+   */
+  scopeId?: string | null;
 }
 
 /** Cursor for Gemini (array-index-based JSON files) */
@@ -225,6 +234,21 @@ export type FileCursor =
   | OpenCodeCursor
   | VscodeCopilotCursor;
 
+/**
+ * Cross-rollout dedup state for one Codex cumulative-counter scope.
+ *
+ * Stored per scope rather than per file: a Goal continuation replays the same
+ * counter into many rollouts, and the rollout that first observed an edge is
+ * routinely pruned before its siblings. Per-file storage lost the edge with
+ * the file and let the next replay count it again.
+ */
+export interface CodexScopeState {
+  /** Highest cumulative totals observed anywhere in this scope. */
+  totals: TokenDelta | null;
+  /** Every usage-edge key already counted in this scope. */
+  usageKeys: string[];
+}
+
 /** Top-level cursor store persisted to disk */
 export interface CursorState {
   version: 1;
@@ -241,6 +265,11 @@ export interface CursorState {
   openCodeSqlite?: OpenCodeSqliteCursor;
   /** ZCode SQLite database cursor (separate from per-file cursors) */
   zcodeSqlite?: ZcodeSqliteCursor;
+  /**
+   * Codex cumulative-counter scopes, keyed by resolved scope id. Outlives the
+   * individual rollout files so pruning one never resurrects its usage edges.
+   */
+  codexScopes?: Record<string, CodexScopeState>;
   /**
    * Set of file paths that have been scanned at least once (persisted as
    * `Record<string, true>` for JSON compatibility). Used to distinguish

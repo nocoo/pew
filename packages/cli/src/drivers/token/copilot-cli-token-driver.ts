@@ -11,8 +11,12 @@
  */
 
 import type { ByteOffsetCursor } from "@pew/core";
-import { discoverCopilotCliFiles } from "../../discovery/sources.js";
+import {
+  discoverCopilotCliFiles,
+  discoverCopilotOtelFiles,
+} from "../../discovery/sources.js";
 import { parseCopilotCliFile } from "../../parsers/copilot-cli.js";
+import { parseCopilotOtelFile } from "../../parsers/copilot-otel.js";
 import { fileUnchanged } from "../../utils/file-changed.js";
 import type {
   FileTokenDriver,
@@ -32,9 +36,19 @@ export const copilotCliTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
   kind: "file",
   source: "copilot-cli",
 
-  async discover(opts: DiscoverOpts, _ctx: SyncContext): Promise<string[]> {
-    if (!opts.copilotCliLogsDir) return [];
-    return discoverCopilotCliFiles(opts.copilotCliLogsDir);
+  async discover(opts: DiscoverOpts, ctx: SyncContext): Promise<string[]> {
+    const processLogs = opts.copilotCliLogsDir
+      ? await discoverCopilotCliFiles(opts.copilotCliLogsDir)
+      : [];
+    const otelFiles = opts.copilotCliOtelPaths
+      ? await discoverCopilotOtelFiles(opts.copilotCliOtelPaths)
+      : [];
+    // Remember which paths came from the OTel side. COPILOT_OTEL_FILE_EXPORTER_PATH
+    // accepts any filename, so parse() must not infer the format from the
+    // extension — a valid `copilot-otel.out` would otherwise be handed to the
+    // process-log parser and silently yield nothing.
+    ctx.copilotOtelPaths = new Set(otelFiles);
+    return [...new Set([...processLogs, ...otelFiles])].sort();
   },
 
   shouldSkip(cursor: ByteOffsetCursor | undefined, fingerprint: FileFingerprint): boolean {
@@ -47,9 +61,11 @@ export const copilotCliTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
     return { kind: "byte-offset", startOffset };
   },
 
-  async parse(filePath: string, resume: ResumeState, _ctx: SyncContext): Promise<CopilotCliParseResult> {
+  async parse(filePath: string, resume: ResumeState, ctx: SyncContext): Promise<CopilotCliParseResult> {
     const r = resume as ByteOffsetResumeState;
-    const result = await parseCopilotCliFile({ filePath, startOffset: r.startOffset });
+    const result = ctx.copilotOtelPaths?.has(filePath)
+      ? await parseCopilotOtelFile({ filePath, startOffset: r.startOffset })
+      : await parseCopilotCliFile({ filePath, startOffset: r.startOffset });
     return { deltas: result.deltas, endOffset: result.endOffset };
   },
 

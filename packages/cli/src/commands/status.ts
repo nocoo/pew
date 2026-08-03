@@ -16,6 +16,7 @@ export interface SourceDirs {
   piSessionsDir: string;
   vscodeCopilotDirs: string[];
   copilotCliLogsDir: string;
+  copilotCliOtelPaths: string[];
   multicaCodexDirs: string[];
   /** Grok CLI home (~/.grok) — used to classify log + session cursors */
   grokHome: string;
@@ -60,6 +61,13 @@ function classifySource(filePath: string, dirs: SourceDirs): string {
     if (filePath.startsWith(dir)) return "vscode-copilot";
   }
   if (filePath.startsWith(dirs.copilotCliLogsDir)) return "copilot-cli";
+  for (const path of dirs.copilotCliOtelPaths) {
+    if (
+      filePath === path
+      || filePath.startsWith(`${path}/`)
+      || filePath.startsWith(`${path}\\`)
+    ) return "copilot-cli";
+  }
   return "unknown";
 }
 

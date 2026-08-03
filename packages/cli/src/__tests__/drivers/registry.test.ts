@@ -76,6 +76,13 @@ describe("createTokenDrivers", () => {
     expect(fileDrivers[0].source).toBe("copilot-cli");
   });
 
+  it("includes copilot-cli token driver when only OTel paths are set", () => {
+    const { fileDrivers } = createTokenDrivers({
+      copilotCliOtelPaths: ["/tmp/copilot-otel.jsonl"],
+    });
+    expect(fileDrivers.map((d) => d.source)).toContain("copilot-cli");
+  });
+
   it("returns all 9 file drivers when all dirs are set", () => {
     const { fileDrivers, dbDrivers } = createTokenDrivers({
       claudeDir: "/tmp/claude",

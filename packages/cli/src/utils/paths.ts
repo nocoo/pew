@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { readdirSync, existsSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 
 /**
  * Discover Multica Codex session directories.
@@ -161,6 +161,11 @@ export function resolveDefaultPaths(home = homedir()) {
   // Always use ~/.hermes as the Hermes root - ignore HERMES_HOME which points to
   // a profile-specific directory (e.g. ~/.hermes/profiles/tomato), not the root.
   const hermesHome = join(home, ".hermes");
+  const copilotCliOtelPaths = [
+    process.env.COPILOT_OTEL_FILE_EXPORTER_PATH,
+    ...(process.env.PEW_COPILOT_OTEL_PATHS?.split(delimiter) ?? []),
+  ].filter((path): path is string => typeof path === "string" && path.trim().length > 0)
+    .map((path) => path.trim());
   return {
     /** pew state directory: ~/.config/pew/ */
     stateDir: join(home, ".config", "pew"),
@@ -205,6 +210,8 @@ export function resolveDefaultPaths(home = homedir()) {
     vscodeCopilotDirs: resolveVscodeCopilotDirs(home),
     /** GitHub Copilot CLI logs: ~/.copilot/logs */
     copilotCliLogsDir: join(home, ".copilot", "logs"),
+    /** Copilot OTel files/roots from standard and pew-specific env vars */
+    copilotCliOtelPaths: [...new Set(copilotCliOtelPaths)],
     /** Hermes Agent database: ~/.hermes/state.db */
     hermesDbPath: join(hermesHome, "state.db"),
     /** Hermes Agent profile databases: ~/.hermes/profiles/<name>/state.db */

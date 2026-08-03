@@ -54,6 +54,37 @@ export interface SyncContext {
   seenClaudeMessageIds?: Set<string>;
 
   /**
+   * Codex rollout path → scope id already recorded by a previous sync. Lets
+   * discovery skip re-reading session_meta for files it has seen before.
+   */
+  codexKnownScopes?: Record<string, string>;
+
+  /**
+   * False when Codex discovery could not read every directory under its roots.
+   * A partial listing must never be read as "these buckets no longer exist".
+   */
+  codexDiscoveryComplete?: boolean;
+
+  /** Codex rollout path → resolved root counter scope for this sync. */
+  codexFileScopes?: Map<string, string>;
+
+  /** Number of discovered Codex rollout files sharing each counter scope. */
+  codexScopeFileCounts?: Map<string, number>;
+
+  /** Highest cumulative Codex totals observed per shared counter scope. */
+  codexScopeTotals?: Map<string, TokenDelta>;
+
+  /** Unique cumulative-usage edges already counted in each Codex Goal root scope. */
+  codexSeenUsageKeys?: Map<string, Set<string>>;
+
+  /**
+   * Paths this run's discovery classified as Copilot OTel exports. Set by the
+   * copilot-cli driver's discover(), read by its parse() to pick a parser by
+   * provenance instead of by filename.
+   */
+  copilotOtelPaths?: Set<string>;
+
+  /**
    * Directory mtime cache for OpenCode JSON discovery optimization.
    * Read/written by the OpenCode JSON token driver.
    * Persisted to CursorState.dirMtimes by the orchestrator.
@@ -103,6 +134,8 @@ export interface DiscoverOpts {
   piSessionsDir?: string;
   vscodeCopilotDirs?: string[];
   copilotCliLogsDir?: string;
+  /** Explicit Copilot OTel exporter files or recursively scanned directories. */
+  copilotCliOtelPaths?: string[];
   /** Grok CLI unified log file (~/.grok/logs/unified.jsonl) */
   grokLogsPath?: string;
   /** Grok CLI sessions root (~/.grok/sessions) */

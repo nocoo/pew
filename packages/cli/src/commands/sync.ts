@@ -1,5 +1,6 @@
 import { stat } from "node:fs/promises";
 import type {
+  CodexScopeState,
   CursorState,
   FileCursor,
   FileCursorBase,
@@ -15,7 +16,7 @@ import type {
  * { ... }` from it breaks in published npm installs where devDeps are
  * absent. Keep this in sync with packages/core/src/types.ts.
  */
-const ACCOUNTING_SCHEMA_VERSION = 1;
+const ACCOUNTING_SCHEMA_VERSION = 2;
 import { CursorStore } from "../storage/cursor-store.js";
 import { LocalQueue } from "../storage/local-queue.js";
 import { pruneAliasCursors } from "../storage/prune-alias-cursors.js";
@@ -59,6 +60,8 @@ export interface SyncOptions {
   vscodeCopilotDirs?: string[];
   /** Override: GitHub Copilot CLI logs directory (~/.copilot/logs) */
   copilotCliLogsDir?: string;
+  /** Copilot OTel exporter files or recursively scanned directories */
+  copilotCliOtelPaths?: string[];
   /** Override: Hermes Agent database path (~/.hermes/state.db) */
   hermesDbPath?: string;
   /** Override: Hermes profile database paths (~/.hermes/profiles/<name>/state.db) */
@@ -81,6 +84,16 @@ export interface SyncOptions {
   onProgress?: (event: ProgressEvent) => void;
   /** Callback invoked when a corrupted JSONL line is found in the queue */
   onCorruptLine?: OnCorruptLine;
+}
+
+interface InternalSyncOptions extends SyncOptions {
+  /**
+   * Previous full queue snapshot retained across an accounting-schema rescan.
+   * Missing buckets are emitted as zero-value tombstones so overwrite upserts
+   * also clear historical server rows that the corrected parser no longer
+   * produces.
+   */
+  reconcilePreviousQueueRecords?: QueueRecord[];
 }
 
 /** Progress event for UI display */
@@ -177,6 +190,10 @@ function sourceKey(source: Source): keyof SyncResult["sources"] {
  * Pure logic — no CLI I/O. Receives all dependencies via options.
  */
 export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
+  return executeSyncInternal(opts);
+}
+
+async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResult> {
   const { stateDir, onProgress } = opts;
 
   const cursorStore = new CursorStore(stateDir);
@@ -223,6 +240,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       phase: "warn",
       message: `Token accounting schema v${ACCOUNTING_SCHEMA_VERSION} — one-time full rescan`,
     });
+    const { records: previousQueueRecords } = await queue.readFromOffset(0);
     await cursorStore.save({
       version: 1,
       accountingSchemaVersion: ACCOUNTING_SCHEMA_VERSION,
@@ -231,7 +249,10 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       knownDbSources: {},
       updatedAt: null,
     });
-    return executeSync(opts);
+    return executeSyncInternal({
+      ...opts,
+      reconcilePreviousQueueRecords: previousQueueRecords,
+    });
   }
 
   // Upgrade detection: cursors.json created before knownFilePaths was added
@@ -249,7 +270,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       files: {},
       updatedAt: null,
     });
-    return executeSync(opts);
+    return executeSyncInternal(opts);
   }
 
   // Backfill knownDbSources for cursors created between v1.6.0 (added
@@ -285,7 +306,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
         files: {},
         updatedAt: null,
       });
-      return executeSync(opts);
+      return executeSyncInternal(opts);
     } else {
       cursors.knownDbSources = {};
     }
@@ -319,11 +340,43 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   // discoveredFiles \ parseFailedPaths = cursor-valid paths for this run.
   const parseFailedPaths = new Set<string>();
 
+  // Codex rescan health, consumed by the accounting-migration reconciliation
+  // below. Codex only qualifies as "fully rescanned" when it discovered at
+  // least one rollout and every one of them parsed cleanly.
+  let codexFilesDiscovered = 0;
+  let codexParseFailures = 0;
+
   // Build driver sets from options
   const { fileDrivers, dbDrivers } = createTokenDrivers(opts);
 
-  // Shared state bag for cross-driver communication
+  // Shared state bag for cross-driver communication.
+  //
+  // Codex scope state is seeded from (and written back to) CursorState.codexScopes
+  // rather than per-file cursors: a Goal continuation replays one cumulative
+  // counter across many rollouts, and the rollout that first observed an edge is
+  // routinely pruned before its siblings. Per-file storage lost the edge with the
+  // file, so the next replay counted it again.
   const ctx: SyncContext = { dirMtimes: cursors.dirMtimes };
+  const persistedScopes = cursors.codexScopes ?? {};
+  ctx.codexScopeTotals = new Map(
+    Object.entries(persistedScopes)
+      .filter((entry): entry is [string, { totals: TokenDelta; usageKeys: string[] }] =>
+        entry[1].totals !== null,
+      )
+      .map(([scopeId, scope]) => [scopeId, scope.totals]),
+  );
+  ctx.codexSeenUsageKeys = new Map(
+    Object.entries(persistedScopes).map(([scopeId, scope]) => [
+      scopeId,
+      new Set(scope.usageKeys),
+    ]),
+  );
+  ctx.codexKnownScopes = Object.fromEntries(
+    Object.entries(cursors.files).flatMap(([filePath, cursor]) => {
+      const scopeId = (cursor as { scopeId?: string | null }).scopeId;
+      return scopeId ? [[filePath, scopeId] as const] : [];
+    }),
+  );
 
   // Discovery options bag (drivers read their relevant directory)
   const discoverOpts = {
@@ -340,6 +393,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     piSessionsDir: opts.piSessionsDir,
     vscodeCopilotDirs: opts.vscodeCopilotDirs,
     copilotCliLogsDir: opts.copilotCliLogsDir,
+    copilotCliOtelPaths: opts.copilotCliOtelPaths,
     grokLogsPath: opts.grokLogsPath,
     grokSessionsDir: opts.grokSessionsDir,
   };
@@ -405,6 +459,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       total: files.length,
       message: parseMsg,
     });
+    if (driver.source === "codex") codexFilesDiscovered += files.length;
 
     for (let i = 0; i < files.length; i++) {
       const filePath = files[i];
@@ -415,6 +470,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
         // throw: do NOT mark it freshly-synced (would seed a known-only
         // stale entry).
         parseFailedPaths.add(filePath);
+        if (driver.source === "codex") codexParseFailures++;
         continue;
       }
 
@@ -490,6 +546,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
         // as freshly-synced post-loop — that would leave a known-only
         // stale entry that future cursor-loss detection would trip on.
         parseFailedPaths.add(filePath);
+        if (driver.source === "codex") codexParseFailures++;
         continue;
       }
 
@@ -532,7 +589,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       files: {},
       updatedAt: null,
     });
-    return executeSync(opts);
+    return executeSyncInternal(opts);
   }
 
   // ---------- Phase 2: DB-based drivers ----------
@@ -723,7 +780,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
         files: {},
         updatedAt: null,
       });
-      return executeSync(opts);
+      return executeSyncInternal(opts);
     }
 
     let result: Awaited<ReturnType<typeof driver.run>>;
@@ -769,7 +826,7 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
         files: {},
         updatedAt: null,
       });
-      return executeSync(opts);
+      return executeSyncInternal(opts);
     }
 
     // Write cursor back to the correct field
@@ -861,6 +918,29 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
   cursors.files = pruned.cursorFiles;
   cursors.knownFilePaths = pruned.knownFilePaths ?? cursors.knownFilePaths;
 
+  // Persist Codex scope state. Keyed by scope, so it survives the prune above
+  // dropping whichever rollout happened to observe an edge first. Scopes no
+  // longer referenced by any surviving cursor are dropped so the file cannot
+  // grow without bound.
+  const liveScopes = new Set(
+    Object.values(cursors.files).flatMap((cursor) => {
+      const scopeId = (cursor as { scopeId?: string | null }).scopeId;
+      return scopeId ? [scopeId] : [];
+    }),
+  );
+  if (liveScopes.size > 0) {
+    const codexScopes: Record<string, CodexScopeState> = {};
+    for (const scopeId of liveScopes) {
+      codexScopes[scopeId] = {
+        totals: ctx.codexScopeTotals?.get(scopeId) ?? null,
+        usageKeys: [...(ctx.codexSeenUsageKeys?.get(scopeId) ?? [])],
+      };
+    }
+    cursors.codexScopes = codexScopes;
+  } else {
+    cursors.codexScopes = undefined;
+  }
+
   // ---------- Aggregate into half-hour buckets ----------
   onProgress?.({
     source: "all",
@@ -908,6 +988,57 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
       reasoning_output_tokens: bucket.tokens.reasoningOutputTokens,
       total_tokens: totalTokens,
     });
+  }
+
+  // Accounting-schema migrations overwrite buckets that still exist, but a
+  // bucket the corrected scan no longer produces needs an explicit zero-value
+  // tombstone — the ingest worker upserts with overwrite semantics, so a key
+  // that is simply absent keeps its stale (inflated) server row forever.
+  //
+  // Deliberately narrow, because "absent from this scan" is NOT the same claim
+  // as "this history is wrong":
+  //
+  //   - Only `codex` rows. v2 corrects Codex's Goal-counter accounting and
+  //     nothing else; zeroing Claude/Gemini/Copilot rows whose raw logs the
+  //     user has since rotated away would destroy correct, already-uploaded
+  //     history.
+  //   - Only when Codex was fully rescanned this run: discovery walked every
+  //     directory under its roots, found at least one rollout, and every
+  //     discovered rollout parsed. A missing $CODEX_HOME, an unmounted volume,
+  //     an unreadable day directory, or a mid-scan read error all present as
+  //     "fewer buckets produced", which must never be read as "delete the
+  //     history". Directory-walk errors are swallowed by design so one bad
+  //     subtree cannot fail a sync, hence the explicit completeness flag.
+  //
+  // Residual, accepted: a Codex hour whose rollouts were pruned before the
+  // migration is zeroed rather than left at its v1 value. That value is known
+  // to be inflated (v1 re-counted each file's whole cumulative total), so zero
+  // is the closer of the two available answers.
+  const codexFullyRescanned =
+    codexFilesDiscovered > 0 &&
+    codexParseFailures === 0 &&
+    ctx.codexDiscoveryComplete === true;
+  if (initialCursorEmpty && opts.reconcilePreviousQueueRecords && codexFullyRescanned) {
+    const recordKey = (record: QueueRecord) =>
+      `${record.source}|${record.model}|${record.hour_start}|${record.device_id}`;
+    const currentKeys = new Set(records.map(recordKey));
+
+    for (const previous of opts.reconcilePreviousQueueRecords) {
+      if (previous.source !== "codex") continue;
+      if (previous.device_id !== opts.deviceId) continue;
+      const key = recordKey(previous);
+      if (currentKeys.has(key)) continue;
+
+      records.push({
+        ...previous,
+        input_tokens: 0,
+        cached_input_tokens: 0,
+        output_tokens: 0,
+        reasoning_output_tokens: 0,
+        total_tokens: 0,
+      });
+      currentKeys.add(key);
+    }
   }
 
   // ---------- Write to queue (overwrite, not append) ----------

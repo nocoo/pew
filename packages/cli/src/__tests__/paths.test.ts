@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { join } from "node:path";
+import { delimiter, join } from "node:path";
 import { mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { mkdtempSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
@@ -9,15 +9,21 @@ describe("resolveDefaultPaths", () => {
   let savedHermesHome: string | undefined;
   let savedCodexHome: string | undefined;
   let savedMulticaWorkspaces: string | undefined;
+  let savedCopilotOtelPath: string | undefined;
+  let savedPewCopilotOtelPaths: string | undefined;
   let tempDir: string | null = null;
 
   beforeEach(() => {
     savedHermesHome = process.env.HERMES_HOME;
     savedCodexHome = process.env.CODEX_HOME;
     savedMulticaWorkspaces = process.env.MULTICA_WORKSPACES;
+    savedCopilotOtelPath = process.env.COPILOT_OTEL_FILE_EXPORTER_PATH;
+    savedPewCopilotOtelPaths = process.env.PEW_COPILOT_OTEL_PATHS;
     delete process.env.HERMES_HOME;
     delete process.env.CODEX_HOME;
     delete process.env.MULTICA_WORKSPACES;
+    delete process.env.COPILOT_OTEL_FILE_EXPORTER_PATH;
+    delete process.env.PEW_COPILOT_OTEL_PATHS;
   });
 
   afterEach(() => {
@@ -35,6 +41,16 @@ describe("resolveDefaultPaths", () => {
       process.env.MULTICA_WORKSPACES = savedMulticaWorkspaces;
     } else {
       delete process.env.MULTICA_WORKSPACES;
+    }
+    if (savedCopilotOtelPath !== undefined) {
+      process.env.COPILOT_OTEL_FILE_EXPORTER_PATH = savedCopilotOtelPath;
+    } else {
+      delete process.env.COPILOT_OTEL_FILE_EXPORTER_PATH;
+    }
+    if (savedPewCopilotOtelPaths !== undefined) {
+      process.env.PEW_COPILOT_OTEL_PATHS = savedPewCopilotOtelPaths;
+    } else {
+      delete process.env.PEW_COPILOT_OTEL_PATHS;
     }
     if (tempDir) {
       rmSync(tempDir, { recursive: true, force: true });
@@ -91,6 +107,17 @@ describe("resolveDefaultPaths", () => {
     expect(paths.copilotCliLogsDir).toBe(join("/fakehome", ".copilot", "logs"));
   });
 
+  it("should resolve standard and additional Copilot OTel paths", () => {
+    process.env.COPILOT_OTEL_FILE_EXPORTER_PATH = "/tmp/copilot-otel.jsonl";
+    process.env.PEW_COPILOT_OTEL_PATHS = ["/tmp/run-a", "/tmp/run-b"].join(delimiter);
+    const paths = resolveDefaultPaths("/fakehome");
+    expect(paths.copilotCliOtelPaths).toEqual([
+      "/tmp/copilot-otel.jsonl",
+      "/tmp/run-a",
+      "/tmp/run-b",
+    ]);
+  });
+
   it("should resolve hermesDbPath to ~/.hermes/state.db", () => {
     const paths = resolveDefaultPaths("/fakehome");
     expect(paths.hermesDbPath).toBe(join("/fakehome", ".hermes", "state.db"));
@@ -118,7 +145,7 @@ describe("resolveDefaultPaths", () => {
     expect(paths.hermesProfileDbPaths[0].dbKey).toBe("profiles/tomato");
   });
 
-  it("should return exactly 23 path properties", () => {
+  it("should return exactly 24 path properties", () => {
     const keys = [
       "stateDir",
       "binDir",
@@ -126,6 +153,7 @@ describe("resolveDefaultPaths", () => {
       "claudeDir",
       "codexSessionsDir",
       "copilotCliLogsDir",
+      "copilotCliOtelPaths",
       "geminiDir",
       "grokHome",
       "grokLogsPath",

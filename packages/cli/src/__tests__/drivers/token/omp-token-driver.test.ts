@@ -3,6 +3,7 @@ import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ompTokenDriver } from "../../../drivers/token/omp-token-driver.js";
+import type { ByteOffsetCursor } from "@pew/core";
 import type { SyncContext, FileFingerprint } from "../../../drivers/types.js";
 
 /** omp writes the pi schema: session header + assistant messages with usage */
@@ -65,6 +66,50 @@ describe("ompTokenDriver", () => {
       const files = await ompTokenDriver.discover({ ompSessionsDir: tempDir }, ctx);
       expect(files).toHaveLength(1);
       expect(files[0]).toContain("session.jsonl");
+    });
+  });
+
+  describe("shouldSkip + resumeState", () => {
+    const fingerprint: FileFingerprint = {
+      inode: 100,
+      mtimeMs: 1709827200000,
+      size: 4096,
+    };
+
+    it("never skips a file with no cursor", () => {
+      expect(ompTokenDriver.shouldSkip(undefined, fingerprint)).toBe(false);
+      expect(ompTokenDriver.resumeState(undefined, fingerprint).startOffset).toBe(0);
+    });
+
+    it("skips only when inode, mtime and size all match", () => {
+      const cursor: ByteOffsetCursor = {
+        inode: 100,
+        mtimeMs: 1709827200000,
+        size: 4096,
+        offset: 512,
+        updatedAt: "2026-08-02T00:00:00.000Z",
+      };
+      expect(ompTokenDriver.shouldSkip(cursor, fingerprint)).toBe(true);
+      expect(ompTokenDriver.shouldSkip({ ...cursor, size: 8192 }, fingerprint)).toBe(false);
+      expect(ompTokenDriver.shouldSkip({ ...cursor, mtimeMs: 1 }, fingerprint)).toBe(false);
+    });
+
+    it("resumes from the cursor offset, but restarts when the inode changed", () => {
+      const cursor: ByteOffsetCursor = {
+        inode: 100,
+        mtimeMs: 1709827200000,
+        size: 4096,
+        offset: 512,
+        updatedAt: "2026-08-02T00:00:00.000Z",
+      };
+      expect(ompTokenDriver.resumeState(cursor, fingerprint).startOffset).toBe(512);
+      // Rotated/replaced file — a stale offset would silently skip real usage.
+      expect(ompTokenDriver.resumeState({ ...cursor, inode: 999 }, fingerprint).startOffset).toBe(0);
+      // Legacy cursor without an offset field.
+      const { offset: _drop, ...noOffset } = cursor;
+      expect(
+        ompTokenDriver.resumeState(noOffset as ByteOffsetCursor, fingerprint).startOffset,
+      ).toBe(0);
     });
   });
 

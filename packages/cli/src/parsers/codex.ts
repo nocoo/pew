@@ -4,9 +4,9 @@
  * Parses Codex JSONL rollout files (~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl)
  * incrementally from a byte offset.
  *
- * Strategy: Cumulative total_token_usage with diff (like Gemini).
- * Each `event_msg` with `payload.type === "token_count"` contains running totals.
- * We diff consecutive totals to produce per-turn deltas.
+ * Strategy: count each unique cumulative-usage graph edge once.
+ * `last_token_usage` is the exact request delta; pairing it with the new
+ * `total_token_usage` dedupes replayed history while retaining fork branches.
  *
  * Model is tracked from `turn_context.payload.model` or `session_meta.payload.model`.
  */
@@ -26,6 +26,10 @@ export interface CodexFileResult {
   lastTotals: TokenDelta | null;
   /** Last seen model identifier */
   lastModel: string | null;
+  /** Highest cumulative totals for a shared Goal counter scope. */
+  highWaterTotals: TokenDelta | null;
+  /** Usage-edge keys first observed while parsing this file. */
+  usageKeys: string[];
 }
 
 /**
@@ -49,6 +53,50 @@ function diffTotals(current: TokenDelta, previous: TokenDelta): TokenDelta {
     outputTokens: dOutput,
     reasoningOutputTokens: dReasoning,
   };
+}
+
+/**
+ * Diff a replayed cumulative counter against a cross-file high-water mark.
+ * Goal continuations and subagents can replay the same process-wide counter
+ * in many rollout files. Only component-wise growth is new usage.
+ */
+function diffHighWater(current: TokenDelta, previous: TokenDelta): TokenDelta {
+  return {
+    inputTokens: Math.max(0, current.inputTokens - previous.inputTokens),
+    cachedInputTokens: Math.max(0, current.cachedInputTokens - previous.cachedInputTokens),
+    outputTokens: Math.max(0, current.outputTokens - previous.outputTokens),
+    reasoningOutputTokens: Math.max(0, current.reasoningOutputTokens - previous.reasoningOutputTokens),
+  };
+}
+
+function mergeHighWater(current: TokenDelta, previous: TokenDelta): TokenDelta {
+  return {
+    inputTokens: Math.max(current.inputTokens, previous.inputTokens),
+    cachedInputTokens: Math.max(current.cachedInputTokens, previous.cachedInputTokens),
+    outputTokens: Math.max(current.outputTokens, previous.outputTokens),
+    reasoningOutputTokens: Math.max(current.reasoningOutputTokens, previous.reasoningOutputTokens),
+  };
+}
+
+/**
+ * Stable, lossless key for one edge in Codex's cumulative usage graph.
+ *
+ * Forked subagents inherit their parent's total_token_usage and then branch.
+ * The pair (new cumulative total, last request usage) identifies the graph
+ * edge, while either value alone is insufficient. Base-36 keeps cursor JSON
+ * compact without introducing hash collisions.
+ */
+export function codexUsageEdgeKey(current: TokenDelta, last: TokenDelta): string {
+  return [
+    current.inputTokens,
+    current.cachedInputTokens,
+    current.outputTokens,
+    current.reasoningOutputTokens,
+    last.inputTokens,
+    last.cachedInputTokens,
+    last.outputTokens,
+    last.reasoningOutputTokens,
+  ].map((value) => value.toString(36)).join(".");
 }
 
 /**
@@ -76,7 +124,8 @@ export function normalizeCodexUsage(raw: TokenDelta): TokenDelta {
  * Parse a Codex CLI JSONL rollout file incrementally from a byte offset.
  *
  * Extracts token deltas from `event_msg` lines with `payload.type === "token_count"`.
- * Uses cumulative `total_token_usage` with diff strategy.
+ * Uses exact `last_token_usage` with cumulative-edge dedup. Very old logs
+ * without that field fall back to cumulative diffing.
  * Tracks model from `turn_context` and `session_meta` events.
  */
 export async function parseCodexFile(opts: {
@@ -84,18 +133,35 @@ export async function parseCodexFile(opts: {
   startOffset: number;
   lastTotals: TokenDelta | null;
   lastModel: string | null;
+  /** Present only when multiple rollouts share one cumulative Goal counter. */
+  highWaterTotals?: TokenDelta | null;
+  /** Dedup set shared by every rollout in the resolved Goal root scope. */
+  seenUsageKeys?: Set<string>;
 }): Promise<CodexFileResult> {
   const { filePath, startOffset } = opts;
   const deltas: ParsedDelta[] = [];
   let lastTotals = opts.lastTotals;
   let lastModel = opts.lastModel;
+  const useHighWater = Object.hasOwn(opts, "highWaterTotals");
+  let highWaterTotals = opts.highWaterTotals ?? null;
+  const seenUsageKeys = opts.seenUsageKeys ?? new Set<string>();
+  const usageKeys: string[] = [];
 
   const st = await stat(filePath).catch(() => null);
-  if (!st?.isFile()) return { deltas, endOffset: startOffset, lastTotals, lastModel };
+  if (!st?.isFile()) {
+    return { deltas, endOffset: startOffset, lastTotals, lastModel, highWaterTotals, usageKeys };
+  }
 
   const endOffset = st.size;
   if (endOffset === 0 || startOffset >= endOffset) {
-    return { deltas, endOffset: endOffset === 0 ? 0 : endOffset, lastTotals, lastModel };
+    return {
+      deltas,
+      endOffset: endOffset === 0 ? 0 : endOffset,
+      lastTotals,
+      lastModel,
+      highWaterTotals,
+      usageKeys,
+    };
   }
 
   const stream = createReadStream(filePath, {
@@ -149,9 +215,39 @@ export async function parseCodexFile(opts: {
           reasoningOutputTokens: toNonNegInt(usage.reasoning_output_tokens),
         };
 
-        const rawDelta = lastTotals
-          ? diffTotals(currentTotals, lastTotals)
-          : { ...currentTotals };
+        const lastUsage = info.last_token_usage as Record<string, unknown> | undefined;
+        let rawDelta: TokenDelta;
+        if (lastUsage && typeof lastUsage === "object") {
+          const last: TokenDelta = {
+            inputTokens: toNonNegInt(lastUsage.input_tokens),
+            cachedInputTokens: toNonNegInt(lastUsage.cached_input_tokens),
+            outputTokens: toNonNegInt(lastUsage.output_tokens),
+            reasoningOutputTokens: toNonNegInt(lastUsage.reasoning_output_tokens),
+          };
+          const usageKey = codexUsageEdgeKey(currentTotals, last);
+          if (seenUsageKeys.has(usageKey)) {
+            rawDelta = { inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, reasoningOutputTokens: 0 };
+          } else {
+            seenUsageKeys.add(usageKey);
+            usageKeys.push(usageKey);
+            rawDelta = last;
+          }
+        } else {
+          // Backward-compatible fallback for very old rollouts that predate
+          // last_token_usage. Those logs can only be diffed heuristically.
+          rawDelta = useHighWater
+            ? highWaterTotals
+              ? diffHighWater(currentTotals, highWaterTotals)
+              : { ...currentTotals }
+            : lastTotals
+              ? diffTotals(currentTotals, lastTotals)
+              : { ...currentTotals };
+        }
+        if (useHighWater) {
+          highWaterTotals = highWaterTotals
+            ? mergeHighWater(currentTotals, highWaterTotals)
+            : { ...currentTotals };
+        }
         lastTotals = currentTotals;
 
         // Emit disjoint fields so cost/total never double-count cache/reasoning
@@ -171,5 +267,5 @@ export async function parseCodexFile(opts: {
     stream.destroy();
   }
 
-  return { deltas, endOffset, lastTotals, lastModel };
+  return { deltas, endOffset, lastTotals, lastModel, highWaterTotals, usageKeys };
 }
