@@ -27,6 +27,64 @@
 ### Removed
 - Drop legacy `model_pricing` D1 table, admin Token Pricing CRUD UI (`/admin/pricing`) and its CRUD API (`/api/admin/pricing` route), worker-read admin-loader + `pricing.listModelPricing` / `pricing.getModelPricingByModelSource` RPCs, `origin: "admin"` pricing layer, and `pricing:all` KV cache (migration 021). The dynamic-pricing admin surface (`/admin/model-prices`, `/api/admin/pricing/models`, `/api/admin/pricing/rebuild`) is retained. Dynamic pricing pipeline (baseline + OpenRouter + models.dev → `pricing:dynamic`) is now the sole source of truth.
 
+## v2.27.0
+
+### Added
+- Add omp to palette, labels, pricing, API allowlists
+- Add omp notifier extension hook
+- Wire omp through sync, session-sync, status, notify
+- Add omp discovery + token/session drivers
+- Add 'omp' source foundation (types + exhaustive switches)
+- Ingest Copilot OpenTelemetry exports
+
+### Changed
+- Correct omp orchestration and nesting depth
+- Pin append timing in parser snapshot tests
+- Correct omp reasoning, cursor and transcript semantics
+- Document omp support and update tool rosters
+- Parameterize pi parsers by source
+- Bump postcss ^8.5.10 -> ^8.5.18 (security)
+- Bump next-auth ^5.0.0-beta.30 -> ^5.0.0-beta.32
+- Bump @aws-sdk/client-s3 3.1092.0 -> 3.1093.0
+- Bump @cloudflare/workers-types 5.20260721.1 -> 5.20260722.1
+- Bump lint-staged ^17.1.0 -> ^17.1.1
+- Bump radix-ui ^1.6.4 -> ^1.6.5
+- 9 dependency upgrades (STU-2118) (#361)
+- Bump recharts ^3.9.2 -> ^3.10.0
+- Bump radix-ui ^1.6.3 -> ^1.6.4
+- Bump @aws-sdk/client-s3 3.1090.0 -> 3.1091.0
+- Bump @cloudflare/workers-types 5.20260718.1 -> 5.20260719.1
+- Bump radix-ui ^1.6.2 -> ^1.6.3
+- Bump lint-staged ^17.0.8 -> ^17.1.0
+- Bump @cloudflare/workers-types 5.20260717.1 -> 5.20260718.1
+- Bump 4 patch/minor deps (aws-sdk, workers-types, lucide-react, wrangler) (#341)
+- Bump 4 patch/minor deps (aws-sdk, workers-types, tailwindcss x2) (#336)
+- Migrate @nocoo/cli-base → @nocoo/base-cli ^0.3.0
+- Bump wrangler 4.110.0 -> 4.111.0
+- Bump @cloudflare/workers-types 5.20260711.1 -> 5.20260715.1
+- Bump @biomejs/biome 2.5.3 -> 2.5.4
+- Bump @aws-sdk/client-s3 3.1085.0 -> 3.1088.0
+- Bump oxc-parser 0.139.0 -> 0.140.0
+- Rewrite v2.26.1 changelog to reflect actual user-facing scope
+
+### Fixed
+- Inherit codex scope from a parent not re-read this sync
+- Block tombstones when codex discovery was partial
+- Scope accounting tombstones to a clean codex rescan
+- Dispatch copilot parsers by discovery provenance
+- Persist codex usage edges as scope state
+- Pin copilot otel read to the stat snapshot
+- Re-point dynamic-delete allowlist at the moved fixture
+- Count pi/omp orchestration tokens
+- Find session stem at any nesting depth
+- Pin grok log read to the stat snapshot
+- Classify nested omp agent transcripts as automated
+- Map pi/omp reasoning tokens instead of dropping them
+- Stop pi/omp cursor from skipping or replaying lines
+- Clear stale buckets on accounting replay
+- Count forked Codex usage edges exactly
+- Dedupe shared Codex goal counters
+
 ## v2.26.1
 
 ### Fixed
