@@ -1,4 +1,33 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import type * as FsPromises from "node:fs/promises";
+
+/**
+ * Lets a test run code in the window between a parser's `stat()` snapshot and
+ * the read that follows it. Without this the "append during parse" scenario
+ * is a race: `stat()` and `appendFile()` both go to the libuv threadpool, so
+ * the append can land inside the snapshot and the assertion silently passes
+ * for the wrong reason. The hook fires once, then clears itself.
+ */
+const statGate = vi.hoisted(() => ({
+  afterStat: null as null | (() => Promise<unknown>),
+}));
+
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof FsPromises>();
+  return {
+    ...actual,
+    stat: async (...args: Parameters<typeof actual.stat>) => {
+      const result = await actual.stat(...args);
+      const hook = statGate.afterStat;
+      if (hook) {
+        statGate.afterStat = null;
+        await hook();
+      }
+      return result;
+    },
+  };
+});
+
 import { writeFile, appendFile, mkdir, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -462,7 +491,7 @@ describe("parsePiFile", () => {
     expect(resumed.endOffset).toBe(Buffer.byteLength(`${complete}\n${second}\n`));
   });
 
-  it("does not replay lines appended while a parse is in flight", async () => {
+  it("does not replay lines appended after its stat snapshot", async () => {
     const filePath = join(testDir, "session.jsonl");
     const line = (id: string, input: number) =>
       JSON.stringify({
@@ -481,18 +510,22 @@ describe("parsePiFile", () => {
     const first = `${line("msg1", 100)}\n`;
     await writeFile(filePath, first);
 
-    // Grow the file the moment parsing starts — the appended line must be
-    // outside this round's snapshot, so the cursor never skips past it.
+    // Pin the interleaving: the append runs after the parser's stat() has
+    // captured its snapshot but before it opens the stream. Racing an append
+    // against the stat would make this test flaky in exactly the direction
+    // that hides the bug.
     const appended = `${line("msg2", 200)}\n`;
-    const parsePromise = parsePiFile({ filePath, startOffset: 0 });
-    await appendFile(filePath, appended);
-    const round1 = await parsePromise;
+    statGate.afterStat = () => appendFile(filePath, appended);
+    const round1 = await parsePiFile({ filePath, startOffset: 0 });
+    expect(statGate.afterStat).toBeNull(); // hook fired
 
-    expect(round1.endOffset).toBeLessThanOrEqual(Buffer.byteLength(first));
+    // The appended line was outside the snapshot: not parsed, not counted.
+    expect(round1.endOffset).toBe(Buffer.byteLength(first));
+    expect(round1.deltas.map((d) => d.tokens.inputTokens)).toEqual([100]);
 
+    // Next round picks it up exactly once.
     const round2 = await parsePiFile({ filePath, startOffset: round1.endOffset });
-    const seen = [...round1.deltas, ...round2.deltas].map((d) => d.tokens.inputTokens);
-    expect(seen.sort((a, b) => a - b)).toEqual([100, 200]);
+    expect(round2.deltas.map((d) => d.tokens.inputTokens)).toEqual([200]);
   });
 
   it("returns empty for missing file", async () => {
