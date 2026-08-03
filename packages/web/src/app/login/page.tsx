@@ -4,25 +4,10 @@ import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Suspense, useState } from "react";
+import { BadgeAmbientGlow, BadgeCard } from "@/components/brand/badge-card";
 import { Github } from "@/components/icons/github";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { SiteFooter } from "@/components/layout/site-footer";
-
-function Barcode() {
-  const bars = [2, 1, 3, 1, 2, 1, 1, 3, 1, 2, 1, 3, 2, 1, 1, 2, 3, 1, 2, 1];
-  return (
-    <div className="flex items-stretch gap-[1.5px] h-full">
-      {bars.map((w, i) => (
-        <div
-          // biome-ignore lint/suspicious/noArrayIndexKey: compile-time constant tuple; positional key is authoritative.
-          key={`bar-${i}`}
-          className="rounded-[0.5px] bg-primary-foreground"
-          style={{ width: `${w * 1.5}px`, opacity: i % 3 === 0 ? 0.9 : 0.5 }}
-        />
-      ))}
-    </div>
-  );
-}
 
 function GoogleIcon() {
   return (
@@ -52,8 +37,6 @@ function LoginContent() {
   const error = searchParams.get("error");
   const rawCallback = searchParams.get("callbackUrl");
   const callbackUrl = rawCallback?.startsWith("/") && !rawCallback.startsWith("//") ? rawCallback : "/dashboard";
-  const year = new Date().getFullYear();
-  const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
 
   const [inviteCode, setInviteCode] = useState("");
   const [inviteError, setInviteError] = useState("");
@@ -87,183 +70,124 @@ function LoginContent() {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col bg-background overflow-hidden">
-    <div className="flex flex-1 items-center justify-center p-4">
-      {/* Radial glow */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background: [
-            "radial-gradient(ellipse 70% 55% at 50% 50%,",
-            "hsl(var(--foreground) / 0.045) 0%,",
-            "hsl(var(--foreground) / 0.042) 10%,",
-            "hsl(var(--foreground) / 0.036) 20%,",
-            "hsl(var(--foreground) / 0.028) 32%,",
-            "hsl(var(--foreground) / 0.020) 45%,",
-            "hsl(var(--foreground) / 0.012) 58%,",
-            "hsl(var(--foreground) / 0.006) 72%,",
-            "hsl(var(--foreground) / 0.002) 86%,",
-            "transparent 100%)",
-          ].join(" "),
-        }}
-      />
-      {/* Top-right controls */}
-      <div className="absolute top-4 right-4 z-10 flex items-center gap-1">
-        <a
-          href="https://github.com/nocoo/pew"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="GitHub repository"
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-        >
-          <Github className="h-[18px] w-[18px]" aria-hidden="true" strokeWidth={1.5} />
-        </a>
-        <ThemeToggle />
-      </div>
-      <div className="flex flex-col items-center">
-        {/* Badge card — bank card flipped vertical: 54/86 */}
-        <div
-          className="relative w-72 overflow-hidden rounded-2xl bg-card flex flex-col ring-1 ring-black/[0.08] dark:ring-white/[0.06]"
-          style={{
-            boxShadow: [
-              "0 1px 2px rgba(0,0,0,0.06)",
-              "0 4px 8px rgba(0,0,0,0.04)",
-              "0 12px 24px rgba(0,0,0,0.06)",
-              "0 24px 48px rgba(0,0,0,0.04)",
-              "0 0 0 0.5px rgba(0,0,0,0.02)",
-              "0 0 60px rgba(0,0,0,0.03)",
-            ].join(", "),
-          }}
-        >
-          {/* Header strip with barcode */}
-          <div className="bg-primary px-5 py-4">
-            <div className="flex items-center justify-between">
-              {/* Punch hole */}
-              <div
-                className="h-4 w-8 rounded-full bg-background/80"
-                style={{
-                  boxShadow: "inset 0 1.5px 3px rgba(0,0,0,0.35), inset 0 -0.5px 1px rgba(255,255,255,0.1)",
-                }}
-              />
-              <div className="flex items-center gap-2">
-                <Image src="/logo-24.png" alt="pew" width={16} height={16} className="brightness-0 invert" />
-                <span className="text-sm font-semibold font-handwriting text-primary-foreground">pew</span>
-              </div>
-              <span className="text-[10px] font-medium uppercase tracking-widest text-primary-foreground/60">
-                DEV
-              </span>
-            </div>
-            {/* Barcode row */}
-            <div className="mt-3 flex items-center justify-between">
-              <span className="text-[9px] font-mono text-primary-foreground/40 tracking-wider">
-                ID {year}-{today.slice(4)}
-              </span>
-              <div className="h-6">
-                <Barcode />
-              </div>
-            </div>
-          </div>
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
+      <div className="flex flex-1 items-center justify-center p-4">
+        <BadgeAmbientGlow />
 
-          {/* Badge content */}
-          <div className="flex flex-1 flex-col items-center px-6 pt-6 pb-5">
-            {/* Avatar placeholder */}
-            <div className="h-24 w-24 overflow-hidden rounded-full bg-secondary dark:bg-[#171717] ring-1 ring-border flex items-center justify-center">
+        {/* Top-right controls */}
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-1">
+          <a
+            href="https://github.com/nocoo/pew"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="GitHub repository"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <Github className="h-[18px] w-[18px]" aria-hidden="true" strokeWidth={1.5} />
+          </a>
+          <ThemeToggle />
+        </div>
+
+        <div className="flex flex-col items-center">
+          <BadgeCard
+            badge="DEV"
+            className="w-72"
+            contentClassName="items-center px-6 pt-6 pb-5"
+            footer={
+              <div className="flex items-center gap-1.5">
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
+                <span className="text-[10px] text-muted-foreground">Secure Auth</span>
+              </div>
+            }
+          >
+            <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-secondary ring-1 ring-border dark:bg-[#171717]">
               <Image src="/logo-80.png" alt="pew" width={80} height={80} />
             </div>
 
             <p className="mt-5 text-lg font-semibold text-foreground">Show your tokens</p>
             <p className="mt-1 text-xs text-muted-foreground">Sign in to view your dashboard</p>
 
-            {/* Error message */}
             {error && error !== "InviteRequired" && (
-              <div className="mt-3 w-full rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive text-center">
+              <div className="mt-3 w-full rounded-lg bg-destructive/10 px-3 py-2 text-center text-xs text-destructive">
                 {error === "AccessDenied"
                   ? "Your account is not authorized to access this application."
                   : "Sign in failed. Please try again."}
               </div>
             )}
 
-            {/* Divider */}
             <div className="mt-5 h-px w-full bg-border" />
-
-            {/* Spacing before action area */}
             <div className="mt-5" />
 
             {error === "InviteRequired" ? (
-              <>
-                {/* Invite code input */}
-                <div className="w-full space-y-3">
-                  <p className="text-xs text-muted-foreground text-center">
-                    An invite code is required to create your account.
-                  </p>
-                  <input
-                    type="text"
-                    maxLength={8}
-                    placeholder="Enter invite code"
-                    value={inviteCode}
-                    onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && inviteCode.trim().length > 0 && !verifying) {
-                        handleInviteSubmit();
-                      }
-                    }}
-                    className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-center text-sm font-mono tracking-widest text-foreground placeholder:text-muted-foreground/50 placeholder:tracking-normal placeholder:font-sans focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                  {inviteError && (
-                    <div className="w-full rounded-lg bg-destructive/10 px-3 py-2 text-xs text-destructive text-center">
-                      {inviteError}
-                    </div>
-                  )}
-                  <button type="button"
-                    onClick={handleInviteSubmit}
-                    disabled={inviteCode.trim().length === 0 || verifying}
-                    className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-secondary px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <GoogleIcon />
-                    {verifying ? "Verifying..." : "Verify & Sign In"}
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                {/* Google Sign-in button */}
-                <button type="button"
-                  onClick={handleGoogleLogin}
-                  className="flex w-full items-center justify-center gap-2.5 rounded-xl bg-secondary px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent cursor-pointer"
+              <div className="w-full space-y-3">
+                <p className="text-center text-xs text-muted-foreground">
+                  An invite code is required to create your account.
+                </p>
+                <input
+                  type="text"
+                  maxLength={8}
+                  placeholder="Enter invite code"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && inviteCode.trim().length > 0 && !verifying) {
+                      handleInviteSubmit();
+                    }
+                  }}
+                  className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-center font-mono text-sm tracking-widest text-foreground placeholder:font-sans placeholder:tracking-normal placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+                {inviteError && (
+                  <div className="w-full rounded-lg bg-destructive/10 px-3 py-2 text-center text-xs text-destructive">
+                    {inviteError}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={handleInviteSubmit}
+                  disabled={inviteCode.trim().length === 0 || verifying}
+                  className="flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl bg-secondary px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <GoogleIcon />
-                  Sign in with Google
+                  {verifying ? "Verifying..." : "Verify & Sign In"}
                 </button>
-              </>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                className="flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl bg-secondary px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+              >
+                <GoogleIcon />
+                Sign in with Google
+              </button>
             )}
 
-            {/* Terms */}
             <p className="mt-3 text-center text-[10px] leading-relaxed text-muted-foreground/60">
               By signing in you agree to our{" "}
-              <a href="/privacy" className="underline hover:text-muted-foreground transition-colors">
+              <a
+                href="/privacy"
+                className="underline transition-colors hover:text-muted-foreground"
+              >
                 privacy policy
               </a>
             </p>
-          </div>
-
-          {/* Footer strip */}
-          <div className="mt-auto flex items-center justify-center border-t border-border bg-secondary/50 py-2.5">
-            <div className="flex items-center gap-1.5">
-              <div className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-              <span className="text-[10px] text-muted-foreground">Secure Auth</span>
-            </div>
-          </div>
+          </BadgeCard>
         </div>
       </div>
-    </div>
-    <SiteFooter />
+      <SiteFooter />
     </div>
   );
 }
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>}>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      }
+    >
       <LoginContent />
     </Suspense>
   );
