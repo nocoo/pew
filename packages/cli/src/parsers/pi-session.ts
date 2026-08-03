@@ -17,6 +17,37 @@ import type { SessionSnapshot, Source } from "@pew/core";
 import { hashProjectRef } from "../utils/hash-project-ref.js";
 
 /**
+ * A root session file stem: `<ISO-with-dashes>Z_<uuid>`, e.g.
+ * `2026-08-02T23-13-02-103Z_019fc4c0-9097-7000-868a-7b93e2205b9b`.
+ *
+ * Both pi and omp name root session files this way. omp additionally creates
+ * a sibling *directory* with the same stem holding per-agent transcripts, so
+ * a parent directory matching this pattern means "the file is a nested agent
+ * transcript, not a root session".
+ */
+const SESSION_STEM =
+  /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/**
+ * Locate the `<encoded-cwd>` directory for a pi-format session file.
+ *
+ * Root session:  `<sessions>/<encoded-cwd>/<stem>.jsonl`
+ * Agent nested:  `<sessions>/<encoded-cwd>/<stem>/<agent>.jsonl`
+ *                (omp task subagents, `__advisor[.slug].jsonl`)
+ *
+ * Returns the encoded-cwd dir name plus whether the file is nested. Without
+ * the hop, nested transcripts would hash the *root session stem* as their
+ * project — a per-session bogus project that never matches the real one.
+ */
+function locateSession(filePath: string): { dirName: string; nested: boolean } {
+  const parent = basename(dirname(filePath));
+  if (SESSION_STEM.test(parent)) {
+    return { dirName: basename(dirname(dirname(filePath))), nested: true };
+  }
+  return { dirName: parent, nested: false };
+}
+
+/**
  * Extract project reference from a pi-format session file path.
  *
  * Pi stores sessions under ~/.pi/agent/sessions/<encoded-cwd>/<file>.jsonl,
@@ -27,8 +58,7 @@ import { hashProjectRef } from "../utils/hash-project-ref.js";
  *
  * We hash the directory name through hashProjectRef() for privacy.
  */
-function extractProjectRef(filePath: string): string | null {
-  const dirName = basename(dirname(filePath));
+function extractProjectRef(dirName: string): string | null {
   if (!dirName) return null;
   return hashProjectRef(dirName);
 }
@@ -41,6 +71,10 @@ function extractProjectRef(filePath: string): string | null {
  * - Message counts (user, assistant, total)
  * - Timestamps for wall-clock duration
  * - Last seen model
+ *
+ * omp writes task-subagent and advisor transcripts as nested files carrying
+ * their own `type: "session"` header. Those are agent-driven, so they are
+ * reported as `kind: "automated"` and attributed to the parent project dir.
  */
 export async function collectPiSessions(
   filePath: string,
@@ -98,7 +132,9 @@ export async function collectPiSessions(
         const role = typeof msg.role === "string" ? msg.role : null;
         totalMessages++;
 
-        if (role === "user") {
+        // Advisor/subagent prompts are persisted as user messages tagged
+        // `attribution: "agent"` — they are not human turns.
+        if (role === "user" && msg.attribution !== "agent") {
           userMessages++;
         } else if (role === "assistant") {
           assistantMessages++;
@@ -123,13 +159,14 @@ export async function collectPiSessions(
   const durationMs =
     new Date(lastMessageAt).getTime() - new Date(startedAt).getTime();
 
-  const projectRef = extractProjectRef(filePath);
+  const { dirName, nested } = locateSession(filePath);
+  const projectRef = extractProjectRef(dirName);
 
   return [
     {
       sessionKey: `${source}:${sessionId}`,
       source,
-      kind: "human",
+      kind: nested ? "automated" : "human",
       startedAt,
       lastMessageAt,
       durationSeconds: Math.max(0, Math.floor(durationMs / 1000)),

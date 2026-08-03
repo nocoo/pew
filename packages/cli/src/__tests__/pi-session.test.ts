@@ -120,6 +120,59 @@ describe("collectPiSessions", () => {
     expect(snapshots[0].source).toBe("omp");
   });
 
+  it("reports a nested agent transcript as automated, attributed to the parent project", async () => {
+    // omp writes task-subagent transcripts to
+    //   <encoded-cwd>/<root-session-stem>/<agent>.jsonl
+    const stem = "2026-08-02T23-13-02-103Z_019fc4c0-9097-7000-868a-7b93e2205b9b";
+    const nestedDir = join(sessionDir, stem);
+    await mkdir(nestedDir, { recursive: true });
+    const filePath = join(nestedDir, "TranscriptProbe.jsonl");
+    const lines = [
+      JSON.stringify({
+        type: "session",
+        version: 3,
+        id: "019fc4f2-5466-7000-bd90-3b71e315ade8",
+        timestamp: "2026-08-03T00:07:23.494Z",
+        cwd: "/test/project",
+      }),
+      JSON.stringify({
+        type: "message",
+        id: "m1",
+        parentId: null,
+        timestamp: "2026-08-03T00:07:24.000Z",
+        message: { role: "user", attribution: "agent", content: [] },
+      }),
+      JSON.stringify({
+        type: "message",
+        id: "m2",
+        parentId: "m1",
+        timestamp: "2026-08-03T00:07:30.000Z",
+        message: {
+          role: "assistant",
+          model: "claude-opus-5",
+          content: [],
+          usage: { input: 100, output: 10, cacheRead: 0, cacheWrite: 0 },
+        },
+      }),
+    ];
+    await writeFile(filePath, `${lines.join("\n")}\n`);
+
+    const [snap] = await collectPiSessions(filePath, "omp");
+    expect(snap.kind).toBe("automated");
+    // Agent-attributed prompts are not human turns
+    expect(snap.userMessages).toBe(0);
+    expect(snap.assistantMessages).toBe(1);
+    expect(snap.totalMessages).toBe(2);
+
+    // projectRef must hop over the session stem to the encoded-cwd dir,
+    // matching the root session in the same project.
+    const rootPath = join(sessionDir, `${stem}.jsonl`);
+    await writeFile(rootPath, `${lines[0]}\n`);
+    const [rootSnap] = await collectPiSessions(rootPath, "omp");
+    expect(snap.projectRef).toBe(rootSnap.projectRef);
+    expect(rootSnap.kind).toBe("human");
+  });
+
   it("returns empty for file without session header", async () => {
     const filePath = join(sessionDir, "no-header.jsonl");
     await writeFile(filePath, `${JSON.stringify({
