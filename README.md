@@ -18,8 +18,8 @@ pew 自动从本地 AI 编程工具的日志文件中提取 token 用量数据�
 ┌──────────────────────────────────────────────────────────────────┐
 │  Local AI Tool Logs (read-only)                                  │
 │  Claude Code · Codex · Gemini CLI · GitHub Copilot CLI · Grok     │
-│  Hermes · Kosmos · OpenClaw · OpenCode · Pi · PM Studio           │
-│  VS Code Copilot · ZCode                                          │
+│  Hermes · Kosmos · Oh My Pi · OpenClaw · OpenCode · Pi            │
+│  PM Studio · VS Code Copilot · ZCode                              │
 └───────────────┬──────────────────────────────────────────────────┘
                 │  pew sync (incremental parse)
                 ▼
@@ -37,7 +37,7 @@ pew 自动从本地 AI 编程工具的日志文件中提取 token 用量数据�
 
 **Token 追踪**
 
-- **13 种 AI 工具** — Claude Code、Codex、Gemini CLI、GitHub Copilot CLI、Grok、Hermes、Kosmos、OpenClaw、OpenCode、Pi、PM Studio、VS Code Copilot、ZCode
+- **14 种 AI 工具** — Claude Code、Codex、Gemini CLI、GitHub Copilot CLI、Grok、Hermes、Kosmos、Oh My Pi、OpenClaw、OpenCode、Pi、PM Studio、VS Code Copilot、ZCode
 - **四维 token 计数** — 输入 token、缓存命中 token、输出 token、推理 token
 - **增量同步** — 基于字节偏移/数组索引/时间水位的增量解析，不重复计数
 - **幂等上传** — 服务端 upsert 语义，重复上传不会导致数据膨胀
@@ -51,7 +51,7 @@ pew 自动从本地 AI 编程工具的日志文件中提取 token 用量数据�
 
 **自动化**
 
-- **通知钩子** — `pew init` 一键为 6 种工具（Claude Code、Codex、Gemini CLI、OpenClaw、OpenCode、Pi）安装 hook，会话结束后自动触发同步；其余 7 种（GitHub Copilot CLI、Grok、Hermes、Kosmos、PM Studio、VS Code Copilot、ZCode）无 hook 机制，靠下一次 `pew sync` 拉取
+- **通知钩子** — `pew init` 一键为 7 种工具（Claude Code、Codex、Gemini CLI、Oh My Pi、OpenClaw、OpenCode、Pi）安装 hook，会话结束后自动触发同步；其余 7 种（GitHub Copilot CLI、Grok、Hermes、Kosmos、PM Studio、VS Code Copilot、ZCode）无 hook 机制，靠下一次 `pew sync` 拉取
 - **只读设计** — 绝不修改用户的 AI 工具原始日志文件
 
 ## 安装
@@ -67,7 +67,7 @@ npm install -g @nocoo/pew
 | `pew sync` | 解析本地 AI 工具用量并上传到仪表盘 |
 | `pew status` | 显示同步状态和 token 用量摘要 |
 | `pew login` | 通过浏览器 OAuth 连接仪表盘 |
-| `pew init` | 为 Claude Code、Codex、Gemini CLI、OpenClaw、OpenCode、Pi 安装通知钩子（其它工具无 hook，靠 `pew sync` 拉取） |
+| `pew init` | 为 Claude Code、Codex、Gemini CLI、Oh My Pi、OpenClaw、OpenCode、Pi 安装通知钩子（其它工具无 hook，靠 `pew sync` 拉取） |
 | `pew uninstall` | 移除通知钩子 |
 | `pew reset` | 清除所有同步/上传状态，准备全量重扫 |
 | `pew update` | 从 npm 更新到最新版本 |

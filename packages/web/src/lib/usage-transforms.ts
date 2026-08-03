@@ -183,6 +183,7 @@ const SOURCE_LABELS: Record<string, string> = {
   grok: "Grok",
   hermes: "Hermes Agent",
   kosmos: "Kosmos",
+  omp: "Oh My Pi",
   opencode: "OpenCode",
   openclaw: "OpenClaw",
   pi: "Pi",

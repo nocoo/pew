@@ -52,6 +52,8 @@ export interface SyncOptions {
   openMessageDb?: (dbPath: string) => { queryMessages: QueryMessagesFn; close: () => void } | null;
   /** Override: OpenClaw data directory (~/.openclaw) */
   openclawDir?: string;
+  /** Override: Oh My Pi session directory (~/.omp/agent/sessions) */
+  ompSessionsDir?: string;
   /** Override: Pi session directory (~/.pi/agent/sessions) */
   piSessionsDir?: string;
   /** Override: VSCode Copilot base directories (stable + insiders) */
@@ -113,6 +115,7 @@ export interface SyncResult {
     gemini: number;
     grok: number;
     kosmos: number;
+    omp: number;
     opencode: number;
     openclaw: number;
     pi: number;
@@ -129,6 +132,7 @@ export interface SyncResult {
     gemini: number;
     grok: number;
     kosmos: number;
+    omp: number;
     opencode: number;
     openclaw: number;
     pi: number;
@@ -161,6 +165,7 @@ function sourceKey(source: Source): keyof SyncResult["sources"] {
     case "gemini-cli": return "gemini";
     case "grok": return "grok";
     case "kosmos": return "kosmos";
+    case "omp": return "omp";
     case "opencode": return "opencode";
     case "openclaw": return "openclaw";
     case "pi": return "pi";
@@ -321,8 +326,8 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   let replayDetected = false;
 
   const allDeltas: ParsedDelta[] = [];
-  const sourceCounts = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, grok: 0, hermes: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0, vscodeCopilot: 0, zcode: 0 };
-  const filesScanned = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, grok: 0, hermes: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0, vscodeCopilot: 0, zcode: 0 };
+  const sourceCounts = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, grok: 0, hermes: 0, kosmos: 0, omp: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0, vscodeCopilot: 0, zcode: 0 };
+  const filesScanned = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, grok: 0, hermes: 0, kosmos: 0, omp: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0, vscodeCopilot: 0, zcode: 0 };
   const dbsScanned = { opencode: 0, hermes: 0, zcode: 0 };
 
   // Collect all discovered file paths (across all drivers) for knownFilePaths
@@ -381,6 +386,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
     geminiDir: opts.geminiDir,
     kosmosDataDir: opts.kosmosDataDir,
     pmstudioDataDir: opts.pmstudioDataDir,
+    ompSessionsDir: opts.ompSessionsDir,
     openCodeMessageDir: opts.openCodeMessageDir,
     openCodeDbPath: opts.openCodeDbPath,
     openclawDir: opts.openclawDir,

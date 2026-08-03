@@ -1,8 +1,9 @@
 /**
- * Pi session collector.
+ * Pi-format session collector.
  *
- * Full-scans a pi JSONL session file and extracts session-level metadata.
- * Pi stores one session per file with a tree structure (id/parentId).
+ * Full-scans a pi-format JSONL session file and extracts session-level
+ * metadata. Pi stores one session per file with a tree structure (id/parentId).
+ * Oh My Pi (omp) writes the identical schema — `source` selects the tag.
  *
  * Session header (first line): { type: "session", id, timestamp, cwd }
  * Messages: { type: "message", message: { role, model, usage, ... } }
@@ -16,31 +17,79 @@ import type { SessionSnapshot, Source } from "@pew/core";
 import { hashProjectRef } from "../utils/hash-project-ref.js";
 
 /**
- * Extract project reference from a pi session file path.
+ * A root session file stem: `<ISO-with-dashes>Z_<uuid>`, e.g.
+ * `2026-08-02T23-13-02-103Z_019fc4c0-9097-7000-868a-7b93e2205b9b`.
  *
- * Pi stores sessions under ~/.pi/agent/sessions/<encoded-cwd>/<file>.jsonl
- * The <encoded-cwd> directory name is a double-dash-delimited path encoding,
- * e.g. "--Users-shaozliu-projects-3p-pew--".
+ * Both pi and omp name root session files this way. omp additionally creates
+ * a sibling *directory* with the same stem holding per-agent transcripts, so
+ * a parent directory matching this pattern means "the file is a nested agent
+ * transcript, not a root session".
+ */
+const SESSION_STEM =
+  /^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+/**
+ * Locate the `<encoded-cwd>` directory for a pi-format session file.
+ *
+ * Root session:     `<sessions>/<encoded-cwd>/<stem>.jsonl`
+ * Task subagent:    `<sessions>/<encoded-cwd>/<stem>/<SubId>.jsonl`
+ * Root advisor:     `<sessions>/<encoded-cwd>/<stem>/__advisor[.slug].jsonl`
+ * Subagent advisor: `<sessions>/<encoded-cwd>/<stem>/<SubId>/__advisor.jsonl`
+ *
+ * Nesting depth is therefore unbounded (a subagent's own artifacts dir is
+ * `<stem>/<SubId>/`, and that nests again for its advisor), so we walk
+ * ancestors until a directory matches the root-session stem and take *its*
+ * parent. Checking only the immediate parent would classify a subagent
+ * advisor as a root session and hash `<SubId>` as its project.
+ *
+ * Returns the encoded-cwd dir name plus whether the file is nested.
+ */
+function locateSession(filePath: string): { dirName: string; nested: boolean } {
+  const parent = dirname(filePath);
+  let dir = parent;
+
+  // Stop at the filesystem root: dirname() becomes a fixed point.
+  for (let next = dirname(dir); next !== dir; dir = next, next = dirname(dir)) {
+    if (SESSION_STEM.test(basename(dir))) {
+      return { dirName: basename(next), nested: true };
+    }
+  }
+
+  return { dirName: basename(parent), nested: false };
+}
+
+/**
+ * Extract project reference from a pi-format session file path.
+ *
+ * Pi stores sessions under ~/.pi/agent/sessions/<encoded-cwd>/<file>.jsonl,
+ * omp under ~/.omp/agent/sessions/<encoded-cwd>/<file>.jsonl. The
+ * <encoded-cwd> directory name is a path encoding — pi wraps the absolute
+ * path in double dashes ("--Users-me-projects-pew--"), omp strips the home
+ * prefix ("-projects-pew"), so the same repo hashes differently per source.
  *
  * We hash the directory name through hashProjectRef() for privacy.
  */
-function extractProjectRef(filePath: string): string | null {
-  const dirName = basename(dirname(filePath));
+function extractProjectRef(dirName: string): string | null {
   if (!dirName) return null;
   return hashProjectRef(dirName);
 }
 
 /**
- * Collect session snapshots from a pi JSONL session file.
+ * Collect session snapshots from a pi-format JSONL session file.
  *
- * Each pi file is one session. We scan all lines to collect:
+ * Each file is one session. We scan all lines to collect:
  * - Session ID from the header line (type: "session")
  * - Message counts (user, assistant, total)
  * - Timestamps for wall-clock duration
  * - Last seen model
+ *
+ * omp writes task-subagent and advisor transcripts as nested files carrying
+ * their own `type: "session"` header. Those are agent-driven, so they are
+ * reported as `kind: "automated"` and attributed to the parent project dir.
  */
 export async function collectPiSessions(
   filePath: string,
+  source: Source = "pi",
 ): Promise<SessionSnapshot[]> {
   const st = await stat(filePath).catch(() => null);
   if (!st?.isFile() || st.size === 0) return [];
@@ -94,7 +143,9 @@ export async function collectPiSessions(
         const role = typeof msg.role === "string" ? msg.role : null;
         totalMessages++;
 
-        if (role === "user") {
+        // Advisor/subagent prompts are persisted as user messages tagged
+        // `attribution: "agent"` — they are not human turns.
+        if (role === "user" && msg.attribution !== "agent") {
           userMessages++;
         } else if (role === "assistant") {
           assistantMessages++;
@@ -119,13 +170,14 @@ export async function collectPiSessions(
   const durationMs =
     new Date(lastMessageAt).getTime() - new Date(startedAt).getTime();
 
-  const projectRef = extractProjectRef(filePath);
+  const { dirName, nested } = locateSession(filePath);
+  const projectRef = extractProjectRef(dirName);
 
   return [
     {
-      sessionKey: `pi:${sessionId}`,
-      source: "pi" as Source,
-      kind: "human",
+      sessionKey: `${source}:${sessionId}`,
+      source,
+      kind: nested ? "automated" : "human",
       startedAt,
       lastMessageAt,
       durationSeconds: Math.max(0, Math.floor(durationMs / 1000)),

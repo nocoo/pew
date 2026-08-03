@@ -202,6 +202,8 @@ export function resolveDefaultPaths(home = homedir()) {
     zcodeHome: join(home, ".zcode"),
     /** ZCode CLI SQLite database: ~/.zcode/cli/db/db.sqlite */
     zcodeDbPath: join(home, ".zcode", "cli", "db", "db.sqlite"),
+    /** Oh My Pi session data: ~/.omp/agent/sessions */
+    ompSessionsDir: join(home, ".omp", "agent", "sessions"),
     /** Pi session data: ~/.pi/agent/sessions */
     piSessionsDir: join(home, ".pi", "agent", "sessions"),
     /** VSCode Copilot base dirs (stable + insiders, platform-aware) */

@@ -247,4 +247,21 @@ describe("parseCopilotOtelFile", () => {
     expect(result.deltas).toHaveLength(400);
     expect(result.endOffset).toBe(Buffer.byteLength(content));
   });
+
+  it("still counts spans with a partial or missing identifier", async () => {
+    // Exporters have been seen emitting spans with only one of the two ids,
+    // and dedup must not swallow distinct usage when neither is present.
+    const filePath = join(tempDir, "otel.jsonl");
+    await writeFile(filePath, [
+      otelSpan({ traceId: "only-trace", spanId: undefined }),
+      otelSpan({ traceId: undefined, spanId: "only-span" }),
+      otelSpan({ traceId: undefined, spanId: undefined }),
+      otelSpan({ traceId: undefined, spanId: undefined }),
+      "",
+    ].join("\n"));
+
+    const result = await parseCopilotOtelFile({ filePath, startOffset: 0 });
+    // Two identified spans (distinct ids) plus both unidentified ones.
+    expect(result.deltas).toHaveLength(4);
+  });
 });

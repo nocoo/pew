@@ -19,6 +19,7 @@ const VALID_SOURCES = new Set([
   "grok",
   "hermes",
   "kosmos",
+  "omp",
   "opencode",
   "openclaw",
   "pi",

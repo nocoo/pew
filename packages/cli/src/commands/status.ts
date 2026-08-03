@@ -10,6 +10,7 @@ export interface SourceDirs {
   geminiDir: string;
   kosmosDataDir: string;
   pmstudioDataDir: string;
+  ompSessionsDir: string;
   openCodeMessageDir: string;
   openclawDir: string;
   piSessionsDir: string;
@@ -51,6 +52,7 @@ function classifySource(filePath: string, dirs: SourceDirs): string {
   if (filePath.startsWith(dirs.geminiDir)) return "gemini-cli";
   if (filePath.startsWith(dirs.kosmosDataDir)) return "kosmos";
   if (filePath.startsWith(dirs.pmstudioDataDir)) return "pmstudio";
+  if (filePath.startsWith(dirs.ompSessionsDir)) return "omp";
   if (filePath.startsWith(dirs.openCodeMessageDir)) return "opencode";
   if (filePath.startsWith(dirs.openclawDir)) return "openclaw";
   if (filePath.startsWith(dirs.piSessionsDir)) return "pi";

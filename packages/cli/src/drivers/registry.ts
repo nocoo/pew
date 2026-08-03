@@ -26,6 +26,7 @@ import { codexTokenDriver } from "./token/codex-token-driver.js";
 import { vscodeCopilotTokenDriver } from "./token/vscode-copilot-token-driver.js";
 import { copilotCliTokenDriver } from "./token/copilot-cli-token-driver.js";
 import { piTokenDriver } from "./token/pi-token-driver.js";
+import { ompTokenDriver } from "./token/omp-token-driver.js";
 import { kosmosTokenDriver, pmstudioTokenDriver } from "./token/kosmos-token-driver.js";
 import { grokTokenDriver } from "./token/grok-token-driver.js";
 import {
@@ -46,6 +47,7 @@ import { geminiSessionDriver } from "./session/gemini-session-driver.js";
 import { openCodeJsonSessionDriver } from "./session/opencode-json-session-driver.js";
 import { openClawSessionDriver } from "./session/openclaw-session-driver.js";
 import { piSessionDriver } from "./session/pi-session-driver.js";
+import { ompSessionDriver } from "./session/omp-session-driver.js";
 import { kosmosSessionDriver, pmstudioSessionDriver } from "./session/kosmos-session-driver.js";
 import { grokSessionDriver } from "./session/grok-session-driver.js";
 import {
@@ -69,6 +71,7 @@ export interface TokenDriverRegistryOpts {
   geminiDir?: string;
   kosmosDataDir?: string;
   pmstudioDataDir?: string;
+  ompSessionsDir?: string;
   openCodeMessageDir?: string;
   openclawDir?: string;
   codexSessionsDir?: string;
@@ -125,6 +128,9 @@ export function createTokenDrivers(opts: TokenDriverRegistryOpts): TokenDriverSe
   }
   if (opts.kosmosDataDir) {
     fileDrivers.push(kosmosTokenDriver);
+  }
+  if (opts.ompSessionsDir) {
+    fileDrivers.push(ompTokenDriver);
   }
   if (opts.openCodeMessageDir) {
     fileDrivers.push(openCodeJsonTokenDriver);
@@ -200,6 +206,7 @@ export interface SessionDriverRegistryOpts {
   geminiDir?: string;
   kosmosDataDir?: string;
   pmstudioDataDir?: string;
+  ompSessionsDir?: string;
   openCodeMessageDir?: string;
   openclawDir?: string;
   codexSessionsDir?: string;
@@ -246,6 +253,9 @@ export function createSessionDrivers(opts: SessionDriverRegistryOpts): SessionDr
   }
   if (opts.kosmosDataDir) {
     fileDrivers.push(kosmosSessionDriver);
+  }
+  if (opts.ompSessionsDir) {
+    fileDrivers.push(ompSessionDriver);
   }
   if (opts.openCodeMessageDir) {
     fileDrivers.push(openCodeJsonSessionDriver);

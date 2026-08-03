@@ -22,6 +22,11 @@ import {
   uninstallPiHook,
   getPiHookStatus,
 } from "./pi-hook.js";
+import {
+  installOmpHook,
+  uninstallOmpHook,
+  getOmpHookStatus,
+} from "./omp-hook.js";
 
 interface RegistryDeps {
   spawn?: (cmd: string, args: string[], opts?: object) => { status: number | null };
@@ -93,6 +98,25 @@ const DRIVERS: NotifierDriver[] = [
     status: (paths) =>
       getGeminiHookStatus({
         settingsPath: paths.geminiSettingsPath,
+        notifyPath: paths.notifyPath,
+      }),
+  },
+  {
+    source: "omp",
+    displayName: "Oh My Pi",
+    install: (paths) =>
+      installOmpHook({
+        extensionPath: paths.ompExtensionPath,
+        notifyPath: paths.notifyPath,
+      }),
+    uninstall: (paths) =>
+      uninstallOmpHook({
+        extensionPath: paths.ompExtensionPath,
+        notifyPath: paths.notifyPath,
+      }),
+    status: (paths) =>
+      getOmpHookStatus({
+        extensionPath: paths.ompExtensionPath,
         notifyPath: paths.notifyPath,
       }),
   },

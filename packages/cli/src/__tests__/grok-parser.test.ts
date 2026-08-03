@@ -1,5 +1,34 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtemp, writeFile, rm, mkdir } from "node:fs/promises";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import type * as FsPromises from "node:fs/promises";
+
+/**
+ * Lets a test run code in the window between the parser's `stat()` snapshot
+ * and the read that follows it. Without this the "append during parse"
+ * scenario is a race: `stat()` and `appendFile()` both go to the libuv
+ * threadpool, so the append can land inside the snapshot and the assertion
+ * passes for the wrong reason. The hook fires once, then clears itself.
+ */
+const statGate = vi.hoisted(() => ({
+  afterStat: null as null | (() => Promise<unknown>),
+}));
+
+vi.mock("node:fs/promises", async (importOriginal) => {
+  const actual = await importOriginal<typeof FsPromises>();
+  return {
+    ...actual,
+    stat: async (...args: Parameters<typeof actual.stat>) => {
+      const result = await actual.stat(...args);
+      const hook = statGate.afterStat;
+      if (hook) {
+        statGate.afterStat = null;
+        await hook();
+      }
+      return result;
+    },
+  };
+});
+
+import { mkdtemp, writeFile, appendFile, rm, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -251,6 +280,28 @@ describe("parseGrokLogFile", () => {
     });
     expect(r2.deltas).toHaveLength(1);
     expect(r2.deltas[0]!.timestamp).toBe("2026-07-10T00:02:00.000Z");
+  });
+
+  it("keeps endOffset within its stat snapshot when the log grows mid-parse", async () => {
+    const first = `${inferenceLine({ ts: "2026-07-10T00:01:00.000Z" })}\n`;
+    await writeFile(logPath, first);
+
+    // Pin the interleaving: the append runs after the parser's stat() has
+    // captured its snapshot but before it opens the stream. Racing the two
+    // would make this flaky in exactly the direction that hides the bug.
+    // The persisted cursor pairs this endOffset with a `size` fingerprinted
+    // before the parse, so endOffset must not run past the snapshot.
+    statGate.afterStat = () =>
+      appendFile(logPath, `${inferenceLine({ ts: "2026-07-10T00:02:00.000Z" })}\n`);
+    const r1 = await parseGrokLogFile({ filePath: logPath, startOffset: 0 });
+    expect(statGate.afterStat).toBeNull(); // hook fired
+
+    expect(r1.endOffset).toBe(Buffer.byteLength(first, "utf8"));
+    expect(r1.deltas.map((d) => d.timestamp)).toEqual(["2026-07-10T00:01:00.000Z"]);
+
+    // The appended line is still picked up on the next run — exactly once.
+    const r2 = await parseGrokLogFile({ filePath: logPath, startOffset: r1.endOffset });
+    expect(r2.deltas.map((d) => d.timestamp)).toEqual(["2026-07-10T00:02:00.000Z"]);
   });
 
   it("returns startOffset when only a partial line exists", async () => {

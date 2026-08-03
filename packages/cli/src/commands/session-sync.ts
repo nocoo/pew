@@ -62,6 +62,8 @@ export interface SessionSyncOptions {
   } | null;
   /** Override: OpenClaw data directory (~/.openclaw) */
   openclawDir?: string;
+  /** Override: Oh My Pi session directory (~/.omp/agent/sessions) */
+  ompSessionsDir?: string;
   /** Override: Pi session directory (~/.pi/agent/sessions) */
   piSessionsDir?: string;
   /** Override: Kosmos data directory (kosmos-app) */
@@ -102,6 +104,7 @@ export interface SessionSyncResult {
     gemini: number;
     grok: number;
     kosmos: number;
+    omp: number;
     opencode: number;
     openclaw: number;
     pi: number;
@@ -116,6 +119,7 @@ export interface SessionSyncResult {
     gemini: number;
     grok: number;
     kosmos: number;
+    omp: number;
     opencode: number;
     openclaw: number;
     pi: number;
@@ -160,8 +164,8 @@ export async function executeSessionSync(
   const cursors = await cursorStore.load();
 
   const allSnapshots: SessionSnapshot[] = [];
-  const sourceCounts = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, grok: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0, zcode: 0 };
-  const filesScanned = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, grok: 0, kosmos: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0, zcode: 0 };
+  const sourceCounts = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, grok: 0, kosmos: 0, omp: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0, zcode: 0 };
+  const filesScanned = { claude: 0, codex: 0, copilotCli: 0, gemini: 0, grok: 0, kosmos: 0, omp: 0, opencode: 0, openclaw: 0, pi: 0, pmstudio: 0, zcode: 0 };
   const dbsScanned = { opencode: 0, zcode: 0 };
 
   // Paths surfaced by discovery this run; consumed by the alias-prune
@@ -180,6 +184,7 @@ export async function executeSessionSync(
     geminiDir: opts.geminiDir,
     kosmosDataDir: opts.kosmosDataDir,
     pmstudioDataDir: opts.pmstudioDataDir,
+    ompSessionsDir: opts.ompSessionsDir,
     openCodeMessageDir: opts.openCodeMessageDir,
     openCodeDbPath: opts.openCodeDbPath,
     openclawDir: opts.openclawDir,

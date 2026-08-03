@@ -59,6 +59,7 @@ function isSource(value: string): value is Source {
     "gemini-cli",
     "grok",
     "kosmos",
+    "omp",
     "opencode",
     "openclaw",
     "pi",
@@ -175,6 +176,7 @@ const SOURCE_LABELS: Record<string, string> = {
   gemini: "Gemini",
   grok: "Grok",
   kosmos: "Kosmos",
+  omp: "Oh My Pi",
   opencode: "OpenCode",
   openclaw: "OpenClaw",
   pi: "Pi",
@@ -293,6 +295,7 @@ export const syncCommand = defineCommand({
       hermesProfileDbPaths: paths.hermesProfileDbPaths,
       openHermesDb,
       openclawDir: paths.openclawDir,
+      ompSessionsDir: paths.ompSessionsDir,
       piSessionsDir: paths.piSessionsDir,
       vscodeCopilotDirs: paths.vscodeCopilotDirs,
       copilotCliLogsDir: paths.copilotCliLogsDir,
@@ -322,6 +325,7 @@ export const syncCommand = defineCommand({
       if (result.sources.gemini > 0) deltaParts.push(`Gemini: ${result.sources.gemini}`);
       if (result.sources.grok > 0) deltaParts.push(`Grok: ${result.sources.grok}`);
       if (result.sources.kosmos > 0) deltaParts.push(`Kosmos: ${result.sources.kosmos}`);
+      if (result.sources.omp > 0) deltaParts.push(`Oh My Pi: ${result.sources.omp}`);
       if (result.sources.opencode > 0) deltaParts.push(`OpenCode: ${result.sources.opencode}`);
       if (result.sources.openclaw > 0) deltaParts.push(`OpenClaw: ${result.sources.openclaw}`);
       if (result.sources.pi > 0) deltaParts.push(`Pi: ${result.sources.pi}`);
@@ -356,6 +360,7 @@ export const syncCommand = defineCommand({
       openCodeDbPath: paths.openCodeDbPath,
       openSessionDb,
       openclawDir: paths.openclawDir,
+      ompSessionsDir: paths.ompSessionsDir,
       piSessionsDir: paths.piSessionsDir,
       grokLogsPath: paths.grokLogsPath,
       grokSessionsDir: paths.grokSessionsDir,
@@ -381,6 +386,7 @@ export const syncCommand = defineCommand({
       if (sessionResult.sources.copilotCli > 0) sessParts.push(`Copilot CLI: ${sessionResult.sources.copilotCli}`);
       if (sessionResult.sources.gemini > 0) sessParts.push(`Gemini: ${sessionResult.sources.gemini}`);
       if (sessionResult.sources.kosmos > 0) sessParts.push(`Kosmos: ${sessionResult.sources.kosmos}`);
+      if (sessionResult.sources.omp > 0) sessParts.push(`Oh My Pi: ${sessionResult.sources.omp}`);
       if (sessionResult.sources.opencode > 0) sessParts.push(`OpenCode: ${sessionResult.sources.opencode}`);
       if (sessionResult.sources.openclaw > 0) sessParts.push(`OpenClaw: ${sessionResult.sources.openclaw}`);
       if (sessionResult.sources.pi > 0) sessParts.push(`Pi: ${sessionResult.sources.pi}`);
@@ -421,6 +427,7 @@ const statusCommand = defineCommand({
         geminiDir: paths.geminiDir,
         kosmosDataDir: paths.kosmosDataDir,
         pmstudioDataDir: paths.pmstudioDataDir,
+        ompSessionsDir: paths.ompSessionsDir,
         openCodeMessageDir: paths.openCodeMessageDir,
         openclawDir: paths.openclawDir,
         piSessionsDir: paths.piSessionsDir,
@@ -729,6 +736,7 @@ const notifyCommand = defineCommand({
       geminiDir: paths.geminiDir,
       kosmosDataDir: paths.kosmosDataDir,
       pmstudioDataDir: paths.pmstudioDataDir,
+      ompSessionsDir: paths.ompSessionsDir,
       openCodeMessageDir: paths.openCodeMessageDir,
       openCodeDbPath: paths.openCodeDbPath,
       openMessageDb: openMessageDb2,

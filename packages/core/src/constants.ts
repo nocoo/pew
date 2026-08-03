@@ -21,6 +21,7 @@ export const SOURCES: readonly Source[] = Object.freeze([
   "grok",
   "hermes",
   "kosmos",
+  "omp",
   "opencode",
   "openclaw",
   "pi",

@@ -32,6 +32,7 @@ const AGENTS = [
   "grok",
   "hermes",
   "kosmos",
+  "omp",
   "opencode",
   "openclaw",
   "pi",

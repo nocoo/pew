@@ -10,7 +10,7 @@
 // Source: Supported AI coding tools
 // ---------------------------------------------------------------------------
 
-/** The 13 supported AI coding tools */
+/** The 14 supported AI coding tools */
 export type Source =
   | "claude-code"
   | "codex"
@@ -19,6 +19,7 @@ export type Source =
   | "grok"
   | "hermes"
   | "kosmos"
+  | "omp"
   | "opencode"
   | "openclaw"
   | "pi"
