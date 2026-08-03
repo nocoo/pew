@@ -6,7 +6,51 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 export default function LandingPage() {
   return (
-    <div className="relative flex h-screen flex-col bg-background overflow-hidden">
+    <div className="relative flex min-h-screen flex-col bg-background">
+      {/* Ambient brand glow — soft violet wash, stays within Basalt tokens */}
+      <div
+        className="pointer-events-none absolute inset-0 overflow-hidden"
+        aria-hidden="true"
+      >
+        <div
+          className="absolute inset-0"
+          style={{
+            background: [
+              "radial-gradient(ellipse 55% 45% at 18% 42%,",
+              "hsl(var(--primary) / 0.09) 0%,",
+              "hsl(var(--primary) / 0.04) 35%,",
+              "transparent 70%)",
+            ].join(" "),
+          }}
+        />
+        <div
+          className="absolute inset-0"
+          style={{
+            background: [
+              "radial-gradient(ellipse 50% 40% at 82% 58%,",
+              "hsl(var(--primary) / 0.07) 0%,",
+              "hsl(var(--primary) / 0.03) 40%,",
+              "transparent 72%)",
+            ].join(" "),
+          }}
+        />
+        {/* Faint contribution-grid texture */}
+        <div
+          className="absolute inset-0 opacity-[0.35] dark:opacity-[0.22]"
+          style={{
+            backgroundImage: [
+              "linear-gradient(to right, hsl(var(--foreground) / 0.035) 1px, transparent 1px)",
+              "linear-gradient(to bottom, hsl(var(--foreground) / 0.035) 1px, transparent 1px)",
+            ].join(", "),
+            backgroundSize: "28px 28px",
+            maskImage:
+              "radial-gradient(ellipse 70% 60% at 50% 50%, black 20%, transparent 75%)",
+            WebkitMaskImage:
+              "radial-gradient(ellipse 70% 60% at 50% 50%, black 20%, transparent 75%)",
+          }}
+        />
+      </div>
+
       {/* Top-right icons */}
       <div className="absolute right-6 top-4 z-50 flex items-center gap-1">
         <a
@@ -28,10 +72,11 @@ export default function LandingPage() {
         <ThemeToggle />
       </div>
 
-      {/* Main — fills remaining space */}
       <LandingContent />
 
-      <SiteFooter />
+      <div className="relative z-10">
+        <SiteFooter />
+      </div>
     </div>
   );
 }
