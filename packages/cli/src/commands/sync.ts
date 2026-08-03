@@ -1002,16 +1002,22 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   //     nothing else; zeroing Claude/Gemini/Copilot rows whose raw logs the
   //     user has since rotated away would destroy correct, already-uploaded
   //     history.
-  //   - Only when Codex was fully rescanned this run: at least one rollout
-  //     discovered and every discovered rollout parsed. A missing $CODEX_HOME,
-  //     an unmounted volume, or a mid-scan read error all present as "no
-  //     buckets produced", which must never be read as "delete the history".
+  //   - Only when Codex was fully rescanned this run: discovery walked every
+  //     directory under its roots, found at least one rollout, and every
+  //     discovered rollout parsed. A missing $CODEX_HOME, an unmounted volume,
+  //     an unreadable day directory, or a mid-scan read error all present as
+  //     "fewer buckets produced", which must never be read as "delete the
+  //     history". Directory-walk errors are swallowed by design so one bad
+  //     subtree cannot fail a sync, hence the explicit completeness flag.
   //
   // Residual, accepted: a Codex hour whose rollouts were pruned before the
   // migration is zeroed rather than left at its v1 value. That value is known
   // to be inflated (v1 re-counted each file's whole cumulative total), so zero
   // is the closer of the two available answers.
-  const codexFullyRescanned = codexFilesDiscovered > 0 && codexParseFailures === 0;
+  const codexFullyRescanned =
+    codexFilesDiscovered > 0 &&
+    codexParseFailures === 0 &&
+    ctx.codexDiscoveryComplete === true;
   if (initialCursorEmpty && opts.reconcilePreviousQueueRecords && codexFullyRescanned) {
     const recordKey = (record: QueueRecord) =>
       `${record.source}|${record.model}|${record.hour_start}|${record.device_id}`;

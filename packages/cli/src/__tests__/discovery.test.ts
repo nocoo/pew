@@ -338,15 +338,37 @@ describe("discoverCodexFiles", () => {
     await writeFile(join(dateDir, "rollout-def456.jsonl"), "{}");
     await writeFile(join(dateDir, "other.txt"), "not a rollout");
 
-    const files = await discoverCodexFiles(join(tempDir, "sessions"));
+    const { files, complete } = await discoverCodexFiles(join(tempDir, "sessions"));
     expect(files).toHaveLength(2);
     expect(files.every((f) => f.includes("rollout-"))).toBe(true);
     expect(files.every((f) => f.endsWith(".jsonl"))).toBe(true);
+    expect(complete).toBe(true);
   });
 
-  it("should return empty array if directory does not exist", async () => {
-    const files = await discoverCodexFiles(join(tempDir, "nonexistent"));
+  it("should report an incomplete walk when the root does not exist", async () => {
+    const { files, complete } = await discoverCodexFiles(join(tempDir, "nonexistent"));
     expect(files).toEqual([]);
+    // "Cannot read the root" is not the same claim as "there is nothing here".
+    expect(complete).toBe(false);
+  });
+
+  it("should report an incomplete walk when a day directory is unreadable", async () => {
+    const sessionsDir = join(tempDir, "sessions");
+    const readable = join(sessionsDir, "2026", "03", "07");
+    const blocked = join(sessionsDir, "2026", "03", "08");
+    await mkdir(readable, { recursive: true });
+    await mkdir(blocked, { recursive: true });
+    await writeFile(join(readable, "rollout-ok.jsonl"), "{}");
+    await writeFile(join(blocked, "rollout-hidden.jsonl"), "{}");
+    await chmod(blocked, 0o000);
+
+    try {
+      const { files, complete } = await discoverCodexFiles(sessionsDir);
+      expect(files).toHaveLength(1);
+      expect(complete).toBe(false);
+    } finally {
+      await chmod(blocked, 0o755);
+    }
   });
 
   it("should combine files from primary dir and extra dirs", async () => {
@@ -363,7 +385,7 @@ describe("discoverCodexFiles", () => {
     await writeFile(join(extraDir1, "rollout-extra1.jsonl"), "{}");
     await writeFile(join(extraDir2, "rollout-extra2.jsonl"), "{}");
 
-    const files = await discoverCodexFiles(
+    const { files, complete } = await discoverCodexFiles(
       join(tempDir, "primary"),
       [extraDir1, extraDir2],
     );
@@ -373,6 +395,7 @@ describe("discoverCodexFiles", () => {
     expect(files.some((f) => f.includes("rollout-extra2.jsonl"))).toBe(true);
     // Verify sorted
     expect(files).toEqual([...files].sort());
+    expect(complete).toBe(true);
   });
 
   it("should work with empty extraDirs array", async () => {
@@ -380,7 +403,7 @@ describe("discoverCodexFiles", () => {
     await mkdir(dateDir, { recursive: true });
     await writeFile(join(dateDir, "rollout-abc.jsonl"), "{}");
 
-    const files = await discoverCodexFiles(join(tempDir, "sessions"), []);
+    const { files } = await discoverCodexFiles(join(tempDir, "sessions"), []);
     expect(files).toHaveLength(1);
     expect(files[0]).toContain("rollout-abc.jsonl");
   });
@@ -390,23 +413,24 @@ describe("discoverCodexFiles", () => {
     await mkdir(dateDir, { recursive: true });
     await writeFile(join(dateDir, "rollout-abc.jsonl"), "{}");
 
-    const files = await discoverCodexFiles(join(tempDir, "sessions"), undefined);
+    const { files } = await discoverCodexFiles(join(tempDir, "sessions"), undefined);
     expect(files).toHaveLength(1);
     expect(files[0]).toContain("rollout-abc.jsonl");
   });
 
-  it("should handle nonexistent extra dirs gracefully", async () => {
+  it("should flag nonexistent extra dirs as an incomplete walk", async () => {
     const primaryDir = join(tempDir, "primary", "2026", "03", "07");
     await mkdir(primaryDir, { recursive: true });
     await writeFile(join(primaryDir, "rollout-primary.jsonl"), "{}");
 
-    const files = await discoverCodexFiles(
+    const { files, complete } = await discoverCodexFiles(
       join(tempDir, "primary"),
       [join(tempDir, "nonexistent1"), join(tempDir, "nonexistent2")],
     );
     // Only primary dir files found
     expect(files).toHaveLength(1);
     expect(files[0]).toContain("rollout-primary.jsonl");
+    expect(complete).toBe(false);
   });
 });
 

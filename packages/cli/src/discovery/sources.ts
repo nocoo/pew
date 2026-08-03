@@ -5,10 +5,15 @@ import { join } from "node:path";
  * Recursively collect files matching a predicate under a directory.
  * Uses withFileTypes to avoid separate stat() calls per entry.
  * Returns absolute paths sorted alphabetically.
+ *
+ * A directory that cannot be read is skipped rather than thrown, so one
+ * unreadable subtree never fails a whole sync. Callers that need to know the
+ * listing is partial (rather than genuinely empty) pass `onWalkError`.
  */
 async function collectFiles(
   dir: string,
   predicate: (name: string) => boolean,
+  onWalkError?: () => void,
 ): Promise<string[]> {
   const results: string[] = [];
 
@@ -17,6 +22,7 @@ async function collectFiles(
     try {
       entries = await readdir(currentDir, { withFileTypes: true });
     } catch {
+      onWalkError?.();
       return;
     }
 
@@ -176,6 +182,18 @@ export async function discoverPiFiles(
   return collectFiles(piSessionsDir, (name) => name.endsWith(".jsonl"));
 }
 
+/** Codex rollout listing plus whether the traversal saw every directory. */
+export interface CodexDiscovery {
+  files: string[];
+  /**
+   * False when any directory under the scanned roots could not be read
+   * (permissions, an unmounted volume, a transient I/O error). The listing is
+   * then a subset of reality, which callers must not mistake for "this history
+   * no longer exists".
+   */
+  complete: boolean;
+}
+
 /**
  * Discover Codex CLI rollout files.
  * Path pattern: ~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl
@@ -186,20 +204,24 @@ export async function discoverPiFiles(
 export async function discoverCodexFiles(
   codexSessionsDir: string,
   extraDirs?: string[],
-): Promise<string[]> {
+): Promise<CodexDiscovery> {
   const predicate = (name: string) =>
     name.startsWith("rollout-") && name.endsWith(".jsonl");
 
   const results: string[] = [];
+  let complete = true;
+  const onWalkError = () => {
+    complete = false;
+  };
 
   // Primary directory
-  const primaryFiles = await collectFiles(codexSessionsDir, predicate);
+  const primaryFiles = await collectFiles(codexSessionsDir, predicate, onWalkError);
   results.push(...primaryFiles);
 
   // Extra directories (e.g. Multica Codex sessions)
   if (extraDirs && extraDirs.length > 0) {
     for (const extraDir of extraDirs) {
-      const extraFiles = await collectFiles(extraDir, predicate);
+      const extraFiles = await collectFiles(extraDir, predicate, onWalkError);
       results.push(...extraFiles);
     }
   }
@@ -222,7 +244,7 @@ export async function discoverCodexFiles(
     }
   }
 
-  return deduped.sort();
+  return { files: deduped.sort(), complete };
 }
 
 /**

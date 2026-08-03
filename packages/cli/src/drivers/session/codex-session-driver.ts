@@ -16,7 +16,7 @@ export const codexSessionDriver: FileSessionDriver<SessionFileCursor> = {
 
   async discover(opts: DiscoverOpts): Promise<string[]> {
     if (!opts.codexSessionsDir) return [];
-    return discoverCodexFiles(opts.codexSessionsDir, opts.multicaCodexDirs);
+    return (await discoverCodexFiles(opts.codexSessionsDir, opts.multicaCodexDirs)).files;
   },
 
   shouldSkip(cursor: SessionFileCursor | undefined, fingerprint: FileFingerprint): boolean {

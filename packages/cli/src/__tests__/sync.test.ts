@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtemp, rm, writeFile, mkdir, readFile, symlink } from "node:fs/promises";
+import { mkdtemp, rm, writeFile, mkdir, readFile, symlink, chmod } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { executeSync } from "../commands/sync.js";
@@ -2017,6 +2017,47 @@ describe("executeSync", () => {
       .split("\n")
       .filter((l) => l.trim().length > 0)
       .map((l) => JSON.parse(l) as QueueRecord);
+    expect(records.some((r) => r.total_tokens === 0)).toBe(false);
+  });
+
+  it("should not tombstone when a codex directory could not be read", async () => {
+    // Directory-walk errors are swallowed by design (one bad subtree must not
+    // fail a sync), so an unreadable day directory looks exactly like "those
+    // rollouts are gone". Zeroing on that would destroy valid history.
+    const sessionsDir = join(dataDir, ".codex", "sessions");
+    const keptDir = join(sessionsDir, "2026", "03", "07");
+    const blockedDir = join(sessionsDir, "2026", "03", "08");
+    await mkdir(keptDir, { recursive: true });
+    await mkdir(blockedDir, { recursive: true });
+    await writeFile(
+      join(keptDir, "rollout-acct-readable.jsonl"),
+      `${codexLines("2026-03-07T11:15:00.000Z", 100, 10)}\n`,
+    );
+    await writeFile(
+      join(blockedDir, "rollout-acct-blocked.jsonl"),
+      `${codexLines("2026-03-08T11:15:00.000Z", 4000, 400)}\n`,
+    );
+
+    await executeSync({ stateDir, deviceId: "dev-1", codexSessionsDir: sessionsDir });
+
+    const cursorsPath = join(stateDir, "cursors.json");
+    const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
+    delete cursorsData.accountingSchemaVersion;
+    await writeFile(cursorsPath, JSON.stringify(cursorsData));
+
+    await chmod(blockedDir, 0o000);
+    try {
+      await executeSync({ stateDir, deviceId: "dev-1", codexSessionsDir: sessionsDir });
+    } finally {
+      await chmod(blockedDir, 0o755);
+    }
+
+    const queueRaw = await readFile(join(stateDir, "queue.jsonl"), "utf-8");
+    const records = queueRaw
+      .split("\n")
+      .filter((l) => l.trim().length > 0)
+      .map((l) => JSON.parse(l) as QueueRecord);
+    // The hour behind the unreadable directory keeps its server row.
     expect(records.some((r) => r.total_tokens === 0)).toBe(false);
   });
 

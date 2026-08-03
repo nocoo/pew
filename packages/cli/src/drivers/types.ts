@@ -59,6 +59,12 @@ export interface SyncContext {
    */
   codexKnownScopes?: Record<string, string>;
 
+  /**
+   * False when Codex discovery could not read every directory under its roots.
+   * A partial listing must never be read as "these buckets no longer exist".
+   */
+  codexDiscoveryComplete?: boolean;
+
   /** Codex rollout path → resolved root counter scope for this sync. */
   codexFileScopes?: Map<string, string>;
 

@@ -134,7 +134,11 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
 
   async discover(opts: DiscoverOpts, ctx: SyncContext): Promise<string[]> {
     if (!opts.codexSessionsDir) return [];
-    const files = await discoverCodexFiles(opts.codexSessionsDir, opts.multicaCodexDirs);
+    const { files, complete } = await discoverCodexFiles(
+      opts.codexSessionsDir,
+      opts.multicaCodexDirs,
+    );
+    ctx.codexDiscoveryComplete = complete;
 
     // Scope resolution reads each rollout's session_meta header. That is far
     // too expensive to redo for every known file on every sync (installs carry
