@@ -7,7 +7,7 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 export default function LandingPage() {
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
+    <div className="relative flex min-h-screen flex-col bg-background">
       <BadgeAmbientGlow />
 
       {/* Top-right icons — same pattern as login */}
