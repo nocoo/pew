@@ -10,7 +10,7 @@
  * safeguard for cursors that lack persisted usage-edge keys.
  */
 
-import type { CodexCursor, FileCursorBase, TokenDelta } from "@pew/core";
+import type { CodexCursor, TokenDelta } from "@pew/core";
 import { createReadStream } from "node:fs";
 import { basename } from "node:path";
 import { createInterface } from "node:readline";
@@ -128,53 +128,39 @@ async function resolveCodexScopes(files: string[]): Promise<{
   return { fileScopes, scopeFileCounts };
 }
 
-function mergeTotals(current: TokenDelta, previous: TokenDelta): TokenDelta {
-  return {
-    inputTokens: Math.max(current.inputTokens, previous.inputTokens),
-    cachedInputTokens: Math.max(current.cachedInputTokens, previous.cachedInputTokens),
-    outputTokens: Math.max(current.outputTokens, previous.outputTokens),
-    reasoningOutputTokens: Math.max(current.reasoningOutputTokens, previous.reasoningOutputTokens),
-  };
-}
-
 export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
   kind: "file",
   source: "codex",
 
-  async discover(opts: DiscoverOpts, _ctx: SyncContext): Promise<string[]> {
+  async discover(opts: DiscoverOpts, ctx: SyncContext): Promise<string[]> {
     if (!opts.codexSessionsDir) return [];
     const files = await discoverCodexFiles(opts.codexSessionsDir, opts.multicaCodexDirs);
-    const { fileScopes, scopeFileCounts } = await resolveCodexScopes(files);
-    _ctx.codexFileScopes = fileScopes;
-    _ctx.codexScopeFileCounts = scopeFileCounts;
-    _ctx.codexScopeTotals ??= new Map<string, TokenDelta>();
-    _ctx.codexSeenUsageKeys ??= new Map<string, Set<string>>();
+
+    // Scope resolution reads each rollout's session_meta header. That is far
+    // too expensive to redo for every known file on every sync (installs carry
+    // thousands of rollouts, and the notify hook syncs at every session end),
+    // so paths whose cursor already recorded a scope are reused as-is and only
+    // genuinely new rollouts are opened.
+    const known = ctx.codexKnownScopes ?? {};
+    const unresolved = files.filter((filePath) => !known[filePath]);
+    const { fileScopes, scopeFileCounts } = await resolveCodexScopes(unresolved);
+
+    for (const filePath of files) {
+      const cached = known[filePath];
+      if (!cached) continue;
+      fileScopes.set(filePath, cached);
+      scopeFileCounts.set(cached, (scopeFileCounts.get(cached) ?? 0) + 1);
+    }
+
+    ctx.codexFileScopes = fileScopes;
+    ctx.codexScopeFileCounts = scopeFileCounts;
+    ctx.codexScopeTotals ??= new Map<string, TokenDelta>();
+    ctx.codexSeenUsageKeys ??= new Map<string, Set<string>>();
     return files;
   },
 
-  preload(cursors: Record<string, FileCursorBase>, ctx: SyncContext): void {
-    ctx.codexScopeTotals ??= new Map<string, TokenDelta>();
-    ctx.codexSeenUsageKeys ??= new Map<string, Set<string>>();
-    for (const cursor of Object.values(cursors)) {
-      const codex = cursor as Partial<CodexCursor>;
-      if (!codex.scopeId) continue;
-      if (codex.lastTotals) {
-        const previous = ctx.codexScopeTotals.get(codex.scopeId);
-        ctx.codexScopeTotals.set(
-          codex.scopeId,
-          previous ? mergeTotals(codex.lastTotals, previous) : codex.lastTotals,
-        );
-      }
-      if (codex.usageKeys) {
-        const seen = ctx.codexSeenUsageKeys.get(codex.scopeId) ?? new Set<string>();
-        for (const key of codex.usageKeys) seen.add(key);
-        ctx.codexSeenUsageKeys.set(codex.scopeId, seen);
-      }
-    }
-  },
-
   needsReplay(cursor: CodexCursor | undefined): boolean {
-    return !!cursor && !Object.hasOwn(cursor, "usageKeys");
+    return !!cursor && !Object.hasOwn(cursor, "scopeId");
   },
 
   shouldSkip(cursor: CodexCursor | undefined, fingerprint: FileFingerprint): boolean {
@@ -226,7 +212,7 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
   buildCursor(
     fingerprint: FileFingerprint,
     result: TokenParseResult,
-    prev?: CodexCursor,
+    _prev?: CodexCursor,
   ): CodexCursor {
     const r = result as CodexParseResult;
     return {
@@ -237,10 +223,6 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
       lastTotals: r.lastTotals,
       lastModel: r.lastModel,
       scopeId: r.scopeId,
-      usageKeys: [
-        ...(prev?.scopeId === r.scopeId ? (prev.usageKeys ?? []) : []),
-        ...r.usageKeys,
-      ],
       updatedAt: new Date().toISOString(),
     };
   },

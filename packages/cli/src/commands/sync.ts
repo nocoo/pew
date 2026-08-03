@@ -1,5 +1,6 @@
 import { stat } from "node:fs/promises";
 import type {
+  CodexScopeState,
   CursorState,
   FileCursor,
   FileCursorBase,
@@ -337,8 +338,34 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   // Build driver sets from options
   const { fileDrivers, dbDrivers } = createTokenDrivers(opts);
 
-  // Shared state bag for cross-driver communication
+  // Shared state bag for cross-driver communication.
+  //
+  // Codex scope state is seeded from (and written back to) CursorState.codexScopes
+  // rather than per-file cursors: a Goal continuation replays one cumulative
+  // counter across many rollouts, and the rollout that first observed an edge is
+  // routinely pruned before its siblings. Per-file storage lost the edge with the
+  // file, so the next replay counted it again.
   const ctx: SyncContext = { dirMtimes: cursors.dirMtimes };
+  const persistedScopes = cursors.codexScopes ?? {};
+  ctx.codexScopeTotals = new Map(
+    Object.entries(persistedScopes)
+      .filter((entry): entry is [string, { totals: TokenDelta; usageKeys: string[] }] =>
+        entry[1].totals !== null,
+      )
+      .map(([scopeId, scope]) => [scopeId, scope.totals]),
+  );
+  ctx.codexSeenUsageKeys = new Map(
+    Object.entries(persistedScopes).map(([scopeId, scope]) => [
+      scopeId,
+      new Set(scope.usageKeys),
+    ]),
+  );
+  ctx.codexKnownScopes = Object.fromEntries(
+    Object.entries(cursors.files).flatMap(([filePath, cursor]) => {
+      const scopeId = (cursor as { scopeId?: string | null }).scopeId;
+      return scopeId ? [[filePath, scopeId] as const] : [];
+    }),
+  );
 
   // Discovery options bag (drivers read their relevant directory)
   const discoverOpts = {
@@ -875,6 +902,29 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   );
   cursors.files = pruned.cursorFiles;
   cursors.knownFilePaths = pruned.knownFilePaths ?? cursors.knownFilePaths;
+
+  // Persist Codex scope state. Keyed by scope, so it survives the prune above
+  // dropping whichever rollout happened to observe an edge first. Scopes no
+  // longer referenced by any surviving cursor are dropped so the file cannot
+  // grow without bound.
+  const liveScopes = new Set(
+    Object.values(cursors.files).flatMap((cursor) => {
+      const scopeId = (cursor as { scopeId?: string | null }).scopeId;
+      return scopeId ? [scopeId] : [];
+    }),
+  );
+  if (liveScopes.size > 0) {
+    const codexScopes: Record<string, CodexScopeState> = {};
+    for (const scopeId of liveScopes) {
+      codexScopes[scopeId] = {
+        totals: ctx.codexScopeTotals?.get(scopeId) ?? null,
+        usageKeys: [...(ctx.codexSeenUsageKeys?.get(scopeId) ?? [])],
+      };
+    }
+    cursors.codexScopes = codexScopes;
+  } else {
+    cursors.codexScopes = undefined;
+  }
 
   // ---------- Aggregate into half-hour buckets ----------
   onProgress?.({

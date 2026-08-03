@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
+import { mkdtemp, rm, writeFile, mkdir, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { codexTokenDriver } from "../../../drivers/token/codex-token-driver.js";
@@ -370,7 +370,11 @@ describe("codexTokenDriver", () => {
       expect(deltas.reduce((sum, d) => sum + d.tokens.outputTokens, 0)).toBe(30);
     });
 
-    it("preloads persisted usage edges before scanning a new continuation file", async () => {
+    it("keeps scope dedup state after the rollout that claimed an edge is pruned", async () => {
+      // Regression: usage edges used to be stored on the cursor of whichever
+      // rollout observed them first. Pruning that rollout dropped the keys, so
+      // the next Goal continuation replayed the same history and counted it
+      // twice. Scope state now lives in CursorState.codexScopes and survives.
       const dayDir = join(tempDir, "2026", "03", "07");
       await mkdir(dayDir, { recursive: true });
       const goalId = "019f9edc-bc7f-7ef1-8d32-35f66809b013";
@@ -389,7 +393,7 @@ describe("codexTokenDriver", () => {
 
       const firstCtx: SyncContext = {};
       await codexTokenDriver.discover({ codexSessionsDir: tempDir }, firstCtx);
-      const rootStat = await import("node:fs/promises").then((m) => m.stat(rootPath));
+      const rootStat = await stat(rootPath);
       const rootFingerprint: FileFingerprint = {
         inode: Number(rootStat.ino),
         mtimeMs: rootStat.mtimeMs,
@@ -401,8 +405,15 @@ describe("codexTokenDriver", () => {
         firstCtx,
       );
       const rootCursor = codexTokenDriver.buildCursor(rootFingerprint, rootResult);
-      expect(rootCursor.usageKeys).toHaveLength(1);
+      expect(rootCursor.scopeId).toBe(goalId);
 
+      // What the orchestrator persists to CursorState.codexScopes.
+      const persistedKeys = [...(firstCtx.codexSeenUsageKeys?.get(goalId) ?? [])];
+      expect(persistedKeys).toHaveLength(1);
+
+      // The rollout that claimed the edge is pruned; only the continuation,
+      // which replays the same cumulative history, remains.
+      await rm(rootPath);
       await writeFile(
         continuationPath,
         `${[
@@ -411,12 +422,12 @@ describe("codexTokenDriver", () => {
           codexTokenLine({ input: 200, output: 20, lastInput: 100, lastOutput: 10 }),
         ].join("\n")}\n`,
       );
-      const secondCtx: SyncContext = {};
+
+      const secondCtx: SyncContext = {
+        codexSeenUsageKeys: new Map([[goalId, new Set(persistedKeys)]]),
+      };
       await codexTokenDriver.discover({ codexSessionsDir: tempDir }, secondCtx);
-      codexTokenDriver.preload?.({ [rootPath]: rootCursor }, secondCtx);
-      const continuationStat = await import("node:fs/promises").then((m) =>
-        m.stat(continuationPath),
-      );
+      const continuationStat = await stat(continuationPath);
       const continuationFingerprint: FileFingerprint = {
         inode: Number(continuationStat.ino),
         mtimeMs: continuationStat.mtimeMs,
@@ -428,6 +439,7 @@ describe("codexTokenDriver", () => {
         secondCtx,
       );
 
+      // Only the genuinely new edge, not the replayed one.
       expect(continuationResult.deltas).toHaveLength(1);
       expect(continuationResult.deltas[0].tokens.inputTokens).toBe(100);
     });

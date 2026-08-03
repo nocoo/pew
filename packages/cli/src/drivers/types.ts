@@ -53,6 +53,12 @@ export interface SyncContext {
    */
   seenClaudeMessageIds?: Set<string>;
 
+  /**
+   * Codex rollout path → scope id already recorded by a previous sync. Lets
+   * discovery skip re-reading session_meta for files it has seen before.
+   */
+  codexKnownScopes?: Record<string, string>;
+
   /** Codex rollout path → resolved root counter scope for this sync. */
   codexFileScopes?: Map<string, string>;
 
@@ -64,6 +70,13 @@ export interface SyncContext {
 
   /** Unique cumulative-usage edges already counted in each Codex Goal root scope. */
   codexSeenUsageKeys?: Map<string, Set<string>>;
+
+  /**
+   * Paths this run's discovery classified as Copilot OTel exports. Set by the
+   * copilot-cli driver's discover(), read by its parse() to pick a parser by
+   * provenance instead of by filename.
+   */
+  copilotOtelPaths?: Set<string>;
 
   /**
    * Directory mtime cache for OpenCode JSON discovery optimization.
