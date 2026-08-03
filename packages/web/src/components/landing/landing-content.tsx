@@ -366,7 +366,7 @@ function CommandsStub() {
 
 export function LandingContent() {
   return (
-    <main className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-3 py-5 sm:px-5 sm:py-8">
+    <main className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-3 pt-16 pb-5 sm:px-5 sm:pt-16 sm:pb-8 lg:pt-8">
       <div
         className="animate-fade-up overflow-hidden rounded-2xl bg-card ring-1 ring-black/[0.08] dark:ring-white/[0.06]"
         style={{ boxShadow: BADGE_CARD_SHADOW, animationDelay: "40ms" }}
