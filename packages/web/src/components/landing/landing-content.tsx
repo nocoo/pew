@@ -143,7 +143,10 @@ function InstallCommand() {
       <span className="select-none text-muted-foreground" aria-hidden="true">
         $
       </span>
-      <code className="shrink-0 whitespace-nowrap text-foreground">{INSTALL_CMD}</code>
+      <code className="min-w-0 shrink whitespace-nowrap text-foreground">
+        {INSTALL_CMD}
+      </code>
+      <span className="min-w-2 flex-1" aria-hidden="true" />
       <span
         className={cn(
           "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors",
