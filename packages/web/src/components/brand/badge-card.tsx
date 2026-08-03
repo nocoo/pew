@@ -38,9 +38,28 @@ export interface BadgeCardProps {
   contentClassName?: string;
 }
 
+function PunchHole({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn("h-4 w-8 shrink-0 rounded-full bg-background/80", className)}
+      style={{
+        boxShadow:
+          "inset 0 1.5px 3px rgba(0,0,0,0.35), inset 0 -0.5px 1px rgba(255,255,255,0.1)",
+      }}
+      aria-hidden="true"
+    />
+  );
+}
+
+function credentialId() {
+  const year = new Date().getFullYear();
+  const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  return `ID ${year}-${today.slice(4)}`;
+}
+
 /**
- * Shared "bank badge" card chrome — primary header strip, punch hole,
- * barcode ID row, multi-layer shadow. Used by login and landing CTA.
+ * Vertical work-badge chrome (login). Punch hole + barcode strip —
+ * employee ID / bank badge metaphor.
  */
 export function BadgeCard({
   children,
@@ -49,9 +68,6 @@ export function BadgeCard({
   className,
   contentClassName,
 }: BadgeCardProps) {
-  const year = new Date().getFullYear();
-  const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-
   return (
     <div
       className={cn(
@@ -61,17 +77,9 @@ export function BadgeCard({
       )}
       style={{ boxShadow: BADGE_CARD_SHADOW }}
     >
-      {/* Header strip with punch hole + barcode */}
       <div className="bg-primary px-5 py-4">
         <div className="flex items-center justify-between">
-          <div
-            className="h-4 w-8 rounded-full bg-background/80"
-            style={{
-              boxShadow:
-                "inset 0 1.5px 3px rgba(0,0,0,0.35), inset 0 -0.5px 1px rgba(255,255,255,0.1)",
-            }}
-            aria-hidden="true"
-          />
+          <PunchHole />
           <div className="flex items-center gap-2">
             <Image
               src="/logo-24.png"
@@ -91,7 +99,7 @@ export function BadgeCard({
         </div>
         <div className="mt-3 flex items-center justify-between">
           <span className="font-mono text-[9px] tracking-wider text-primary-foreground/40">
-            ID {year}-{today.slice(4)}
+            {credentialId()}
           </span>
           <div className="h-6" aria-hidden="true">
             <Barcode />
@@ -106,6 +114,112 @@ export function BadgeCard({
           {footer}
         </div>
       )}
+    </div>
+  );
+}
+
+export interface PassCardProps {
+  children: ReactNode;
+  /** Uppercase ticket type, e.g. TOKEN PASS */
+  badge?: string;
+  /** Secondary mono line under the title (agent count, route, etc.) */
+  meta?: string;
+  footer?: ReactNode;
+  className?: string;
+  contentClassName?: string;
+}
+
+/**
+ * Landscape boarding-pass / token-pass chrome (landing).
+ * Same materials as BadgeCard (shadow, ring, primary strip, barcode)
+ * but a horizontal credential — one shell for multi-column content.
+ */
+export function PassCard({
+  children,
+  badge = "TOKEN PASS",
+  meta,
+  footer,
+  className,
+  contentClassName,
+}: PassCardProps) {
+  return (
+    <div
+      className={cn(
+        "relative flex w-full flex-col overflow-hidden rounded-2xl bg-card",
+        "ring-1 ring-black/[0.08] dark:ring-white/[0.06]",
+        className,
+      )}
+      style={{ boxShadow: BADGE_CARD_SHADOW }}
+    >
+      {/* Boarding-pass header — wide primary strip */}
+      <div className="bg-primary px-5 py-3.5 sm:px-6 sm:py-4">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <PunchHole />
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <Image
+              src="/logo-24.png"
+              alt=""
+              width={16}
+              height={16}
+              className="brightness-0 invert"
+              aria-hidden="true"
+            />
+            <span className="font-handwriting text-base font-semibold leading-none text-primary-foreground sm:text-lg">
+              pew
+            </span>
+            <span className="hidden text-primary-foreground/35 sm:inline" aria-hidden="true">
+              ·
+            </span>
+            <span className="hidden truncate text-xs text-primary-foreground/55 sm:inline">
+              Show your tokens
+            </span>
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-4">
+            <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-primary-foreground/70">
+              {badge}
+            </span>
+            <div className="h-5 sm:h-6" aria-hidden="true">
+              <Barcode />
+            </div>
+          </div>
+        </div>
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[9px] tracking-wider text-primary-foreground/40 sm:mt-3">
+          <span>{credentialId()}</span>
+          {meta ? (
+            <>
+              <span className="text-primary-foreground/25" aria-hidden="true">
+                ·
+              </span>
+              <span>{meta}</span>
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      <div className={cn("flex flex-1 flex-col", contentClassName)}>{children}</div>
+
+      {footer != null && (
+        <div className="mt-auto flex items-center justify-center border-t border-border bg-secondary/50 px-4 py-2.5">
+          {footer}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Vertical tear line between pass panels (boarding-pass stub). */
+export function PassPerforation({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        "relative hidden w-5 shrink-0 flex-col items-center self-stretch md:flex",
+        className,
+      )}
+      aria-hidden="true"
+    >
+      <div className="h-2.5 w-2.5 shrink-0 rounded-full border border-border bg-background" />
+      <div className="w-px flex-1 border-l border-dashed border-border" />
+      <div className="h-2.5 w-2.5 shrink-0 rounded-full border border-border bg-background" />
     </div>
   );
 }
