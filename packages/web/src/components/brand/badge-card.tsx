@@ -38,7 +38,7 @@ export interface BadgeCardProps {
   contentClassName?: string;
 }
 
-function PunchHole({ className }: { className?: string }) {
+export function PunchHole({ className }: { className?: string }) {
   return (
     <div
       className={cn("h-4 w-8 shrink-0 rounded-full bg-background/80", className)}
@@ -51,10 +51,90 @@ function PunchHole({ className }: { className?: string }) {
   );
 }
 
-function credentialId() {
+export function credentialId() {
   const year = new Date().getFullYear();
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
   return `ID ${year}-${today.slice(4)}`;
+}
+
+export interface PassHeaderProps {
+  /** Right-side ticket type, e.g. BOARDING PASS */
+  badge?: string;
+  /** Secondary line under brand (product destination / tagline) */
+  destination?: string;
+  /** Mono meta row after the ID */
+  meta?: string;
+  className?: string;
+}
+
+/**
+ * Landscape boarding-pass header chrome for the landing card.
+ * Punch hole + brand + barcode — decoration lives here, not in the body.
+ */
+export function PassHeader({
+  badge = "BOARDING PASS",
+  destination = "Destination · AI Native",
+  meta = "LOCAL-FIRST · TOKENS ONLY",
+  className,
+}: PassHeaderProps) {
+  return (
+    <div className={cn("bg-primary px-5 py-3.5 sm:px-6 sm:py-4", className)}>
+      <div className="flex items-start gap-3 sm:items-center sm:gap-4">
+        <PunchHole className="mt-0.5 sm:mt-0" />
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <Image
+              src="/logo-24.png"
+              alt=""
+              width={16}
+              height={16}
+              className="brightness-0 invert"
+              aria-hidden="true"
+            />
+            <span className="font-handwriting text-base font-semibold leading-none text-primary-foreground sm:text-lg">
+              pew
+            </span>
+            <span
+              className="hidden text-primary-foreground/30 sm:inline"
+              aria-hidden="true"
+            >
+              ·
+            </span>
+            <span className="hidden text-xs text-primary-foreground/55 sm:inline">
+              Show your tokens
+            </span>
+          </div>
+          {destination ? (
+            <p className="mt-1.5 font-display text-sm font-semibold tracking-wide text-primary-foreground sm:text-[0.95rem]">
+              {destination}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-primary-foreground/70">
+            {badge}
+          </span>
+          <div className="h-5 sm:h-6" aria-hidden="true">
+            <Barcode />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[9px] tracking-wider text-primary-foreground/40 sm:mt-3">
+        <span>{credentialId()}</span>
+        {meta ? (
+          <>
+            <span className="text-primary-foreground/25" aria-hidden="true">
+              ·
+            </span>
+            <span>{meta}</span>
+          </>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 /**

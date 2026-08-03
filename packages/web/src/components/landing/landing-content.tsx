@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Check, Copy, Terminal } from "lucide-react";
-import { BADGE_CARD_SHADOW } from "@/components/brand/badge-card";
+import { BADGE_CARD_SHADOW, PassHeader } from "@/components/brand/badge-card";
 import { agentColor } from "@/lib/palette";
 import { sourceLabel } from "@/lib/usage-transforms";
 import { cn } from "@/lib/utils";
@@ -133,23 +133,12 @@ export function LandingContent() {
         className="animate-fade-up overflow-hidden rounded-2xl bg-card ring-1 ring-black/[0.08] dark:ring-white/[0.06]"
         style={{ boxShadow: BADGE_CARD_SHADOW, animationDelay: "40ms" }}
       >
-        {/* Brand strip — same materials as login badge, no ticket jargon */}
-        <div className="flex items-center justify-between gap-3 bg-primary px-5 py-3 sm:px-6">
-          <div className="flex items-center gap-2">
-            <Image
-              src="/logo-24.png"
-              alt=""
-              width={16}
-              height={16}
-              className="brightness-0 invert"
-              aria-hidden="true"
-            />
-            <span className="font-handwriting text-base font-semibold text-primary-foreground sm:text-lg">
-              pew
-            </span>
-          </div>
-          <span className="text-xs text-primary-foreground/70">Show your tokens</span>
-        </div>
+        {/* Boarding-pass chrome lives in the header only */}
+        <PassHeader
+          badge="BOARDING PASS"
+          destination="Destination · AI Native"
+          meta="LOCAL-FIRST · READ-ONLY LOGS · TOKENS ONLY"
+        />
 
         <div className="grid md:grid-cols-2 md:divide-x md:divide-border">
           {/* ── Product ──────────────────────────────────────────────── */}
