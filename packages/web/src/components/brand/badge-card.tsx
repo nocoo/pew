@@ -73,56 +73,62 @@ export interface PassHeaderProps {
  */
 export function PassHeader({
   badge = "BOARDING PASS",
-  destination = "Destination · AI Native",
+  destination,
   meta = "LOCAL-FIRST · TOKENS ONLY",
   className,
 }: PassHeaderProps) {
   return (
-    <div className={cn("bg-primary px-5 py-3.5 sm:px-6 sm:py-4", className)}>
-      <div className="flex items-start gap-3 sm:items-center sm:gap-4">
-        <PunchHole className="mt-0.5 sm:mt-0" />
+    <div className={cn("bg-primary px-4 py-2.5 sm:px-5 sm:py-3", className)}>
+      <div className="flex items-center gap-3 sm:gap-4">
+        <PunchHole />
 
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            <Image
-              src="/logo-24.png"
-              alt=""
-              width={16}
-              height={16}
-              className="brightness-0 invert"
-              aria-hidden="true"
-            />
-            <span className="font-handwriting text-base font-semibold leading-none text-primary-foreground sm:text-lg">
-              pew
-            </span>
-            <span
-              className="hidden text-primary-foreground/30 sm:inline"
-              aria-hidden="true"
-            >
-              ·
-            </span>
-            <span className="hidden text-xs text-primary-foreground/55 sm:inline">
-              Show your tokens
-            </span>
-          </div>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
+          <Image
+            src="/logo-24.png"
+            alt=""
+            width={16}
+            height={16}
+            className="brightness-0 invert"
+            aria-hidden="true"
+          />
+          <span className="font-handwriting text-base font-semibold leading-none text-primary-foreground">
+            pew
+          </span>
+          <span
+            className="hidden text-primary-foreground/30 sm:inline"
+            aria-hidden="true"
+          >
+            ·
+          </span>
+          <span className="hidden text-xs text-primary-foreground/55 sm:inline">
+            Show your tokens
+          </span>
           {destination ? (
-            <p className="mt-1.5 font-display text-sm font-semibold tracking-wide text-primary-foreground sm:text-[0.95rem]">
-              {destination}
-            </p>
+            <>
+              <span
+                className="hidden text-primary-foreground/30 md:inline"
+                aria-hidden="true"
+              >
+                ·
+              </span>
+              <span className="hidden font-display text-xs font-semibold tracking-wide text-primary-foreground/80 md:inline">
+                {destination}
+              </span>
+            </>
           ) : null}
         </div>
 
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
-          <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-primary-foreground/70">
+        <div className="flex shrink-0 items-center gap-3">
+          <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-primary-foreground/70">
             {badge}
           </span>
-          <div className="h-5 sm:h-6" aria-hidden="true">
+          <div className="h-5" aria-hidden="true">
             <Barcode />
           </div>
         </div>
       </div>
 
-      <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[9px] tracking-wider text-primary-foreground/40 sm:mt-3">
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 font-mono text-[9px] tracking-wider text-primary-foreground/40">
         <span>{credentialId()}</span>
         {meta ? (
           <>

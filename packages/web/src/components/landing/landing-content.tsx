@@ -68,12 +68,12 @@ function Coupon({
   return (
     <section
       className={cn(
-        "flex min-w-0 flex-col px-3.5 py-4 sm:px-4 sm:py-4",
+        "flex min-w-0 flex-col px-3.5 pt-4 pb-5 sm:px-4 sm:pt-4 sm:pb-6",
         tinted && "bg-secondary/40",
         className,
       )}
     >
-      <p className="mb-3 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground/70">
+      <p className="mb-2.5 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground/70">
         {title}
       </p>
       <div className="flex min-h-0 flex-1 flex-col">{children}</div>
@@ -127,12 +127,12 @@ function InstallCommand() {
       onClick={handleCopy}
       aria-label={copied ? "Copied install command" : `Copy install command: ${INSTALL_CMD}`}
       className={cn(
-        "group flex w-full min-w-0 items-center gap-2 rounded-lg",
-        "border border-border bg-card px-2.5 py-2.5 sm:gap-2.5 sm:px-3",
-        "font-mono text-[12px] sm:text-[13px]",
+        "group flex w-full min-w-0 items-center gap-1.5 overflow-x-auto rounded-lg",
+        "border border-border bg-card px-2 py-2 sm:gap-2 sm:px-2.5",
+        "font-mono text-[11px] sm:text-xs",
         "transition-colors duration-200 hover:bg-accent",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        "cursor-pointer text-left",
+        "cursor-pointer text-left scrollbar-hide",
       )}
     >
       <Terminal
@@ -143,9 +143,7 @@ function InstallCommand() {
       <span className="select-none text-muted-foreground" aria-hidden="true">
         $
       </span>
-      <code className="min-w-0 flex-1 whitespace-normal break-all text-foreground">
-        {INSTALL_CMD}
-      </code>
+      <code className="shrink-0 whitespace-nowrap text-foreground">{INSTALL_CMD}</code>
       <span
         className={cn(
           "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors",
@@ -276,9 +274,9 @@ function FlightCoupon() {
 
 function BoardingCoupon() {
   return (
-    <Coupon title="Boarding" className="lg:flex-[1.25]">
+    <Coupon title="Boarding" className="lg:min-w-[220px] lg:flex-[1.45]">
       <FieldLabel>Check-in</FieldLabel>
-      <div className="mt-1.5">
+      <div className="mt-1.5 min-w-0">
         <InstallCommand />
       </div>
 
@@ -372,8 +370,7 @@ export function LandingContent() {
       >
         <PassHeader
           badge="BOARDING PASS"
-          destination="Destination · AI Native"
-          meta="LOCAL-FIRST · READ-ONLY LOGS · TOKENS ONLY"
+          meta="LOCAL-FIRST · READ-ONLY · TOKENS ONLY"
         />
 
         {/*
