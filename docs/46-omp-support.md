@@ -20,39 +20,47 @@ support a wiring exercise rather than a new parser.
 
 ## 2. Token semantics (verified on real data)
 
-The invariant below holds for **100 %** of assistant rows measured in both
-tools (pi: 3276 rows, omp: 178 rows):
+Per omp's `Usage` declaration (`@oh-my-pi/pi-catalog`):
 
 ```
 totalTokens === input + output + cacheRead + cacheWrite
+                     + orchestration.{input,cacheRead,output}   (when reported)
 ```
 
-So `input` **excludes** cache traffic. Per omp's `Usage` declaration
-(`@oh-my-pi/pi-catalog`), `totalTokens` additionally absorbs a provider-side
-`orchestration` bucket when one is reported — no observed row carries it, and
-pew does not import it.
+The four-term form holds for **100 %** of assistant rows measured in both
+tools (pi: 3276 rows, omp: 178 rows) — no captured row carried an
+`orchestration` bucket. So `input` **excludes** cache traffic.
 
 `normalizePiUsage()` maps this to pew's `TokenDelta`:
 
 | pi/omp field | pew field |
 |---|---|
-| `input + cacheWrite` | `inputTokens` |
-| `cacheRead` | `cachedInputTokens` |
-| `output - reasoning` | `outputTokens` |
+| `input + cacheWrite + orchestration.input` | `inputTokens` |
+| `cacheRead + orchestration.cacheRead` | `cachedInputTokens` |
+| `output - reasoning + orchestration.output` | `outputTokens` |
 | `reasoningTokens` (omp) / `reasoning` (pi) | `reasoningOutputTokens` |
 
-Reasoning tokens are a **subset of `output`**, not an additional bucket — omp's
-own type says *"Always a subset of `output` — non-reasoning output is
-`output - reasoningTokens`"*. They are therefore **carved out of** `output`,
-never added on top, so `total_tokens` (which sums all four pew fields) is
-unchanged. The value is clamped to `output` so a malformed row cannot drive
-`outputTokens` negative.
+**Orchestration tokens are billed.** The type calls them "provider-side
+orchestration tokens, billed but not part of the conversation prompt/cache
+buckets"; OpenAI / Codex Responses populate them. Each component folds into
+the matching pew bucket — dropping them would undercount both tokens and the
+cost pew recomputes from them.
 
-An absent field means *unknown*, not zero — providers that don't report
-reasoning simply leave `outputTokens` whole. Anthropic is one of them, which
+**Reasoning tokens are a subset of `output`**, not an additional bucket —
+omp's type says *"Always a subset of `output` — non-reasoning output is
+`output - reasoningTokens`"*. They are **carved out of** the conversation
+output, never added on top, so the row total is unchanged. The value is
+clamped to the conversation `output` (orchestration output is a separate
+bucket) so a malformed row cannot drive `outputTokens` negative.
+
+An absent reasoning field means *unknown*, not zero — providers that don't
+report it simply leave `outputTokens` whole. Anthropic is one of them, which
 is why the initial `claude-opus-5` capture showed no reasoning at all; OpenAI
 (`output_tokens_details.reasoning_tokens`) and Google (`thoughtsTokenCount`)
 do populate it.
+
+Together these keep pew's `total_tokens` (the sum of all four pew fields)
+equal to the source's own `totalTokens`.
 
 **Cost is not imported.** omp records a per-message `cost` object from its own
 provider pricing; pew recomputes cost from its own pricing map. The two can
@@ -102,18 +110,21 @@ omp persists task-subagent and advisor turns as **nested** JSONL beside the
 root session, each with its own `type: "session"` header:
 
 ```
-<encoded-cwd>/<stem>.jsonl              root session          → kind "human"
-<encoded-cwd>/<stem>/<AgentId>.jsonl    task subagent         → kind "automated"
-<encoded-cwd>/<stem>/__advisor.jsonl    advisor (per omp docs)→ kind "automated"
+<encoded-cwd>/<stem>.jsonl                        root session   → "human"
+<encoded-cwd>/<stem>/<SubId>.jsonl                task subagent  → "automated"
+<encoded-cwd>/<stem>/__advisor[.slug].jsonl       root advisor   → "automated"
+<encoded-cwd>/<stem>/<SubId>/__advisor.jsonl      subagent advisor → "automated"
 ```
 
 - **Token discovery stays recursive.** omp's own `omp stats` "scans the session
   dir recursively", so subagent usage is real billed usage and must be counted.
 - **Session discovery must not treat them as human sessions.** `locateSession()`
-  detects a parent directory matching the root-session stem
-  (`<ISO>Z_<uuid>`), marks the snapshot `kind: "automated"`, and hops one level
-  up so `projectRef` hashes the `<encoded-cwd>` dir instead of the session
-  stem. Without the hop every subagent would invent its own bogus project.
+  walks ancestors until a directory matches the root-session stem
+  (`<ISO>Z_<uuid>`), marks the snapshot `kind: "automated"`, and takes *that
+  directory's* parent so `projectRef` hashes `<encoded-cwd>`. Nesting depth is
+  unbounded — a subagent's own artifacts dir is `<stem>/<SubId>/`, which nests
+  again for its advisor — so checking only the immediate parent would classify
+  a subagent advisor as a root session and hash `<SubId>` as its project.
 - **Agent-attributed prompts are not human turns.** omp persists advisor /
   subagent prompts as `user` messages tagged `attribution: "agent"`; they count
   toward `totalMessages` but not `userMessages`.
