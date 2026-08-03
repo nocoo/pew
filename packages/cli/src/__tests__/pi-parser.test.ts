@@ -94,6 +94,42 @@ describe("normalizePiUsage", () => {
     expect(result.outputTokens).toBe(50);
     expect(result.reasoningOutputTokens).toBe(0);
   });
+
+  it("folds orchestration tokens into the matching buckets", () => {
+    // Provider-side orchestration is billed and already counted in the
+    // source's own totalTokens (OpenAI / Codex Responses populate it).
+    const usage = {
+      input: 1000,
+      output: 200,
+      cacheRead: 300,
+      cacheWrite: 50,
+      reasoningTokens: 80,
+      orchestration: { input: 40, cacheRead: 7, output: 11 },
+      totalTokens: 1000 + 200 + 300 + 50 + 40 + 7 + 11,
+    };
+    const result = normalizePiUsage(usage);
+    expect(result).toEqual({
+      inputTokens: 1000 + 50 + 40,
+      cachedInputTokens: 300 + 7,
+      outputTokens: 200 - 80 + 11,
+      reasoningOutputTokens: 80,
+    });
+
+    // pew's total must still equal the source's own totalTokens
+    const total =
+      result.inputTokens + result.cachedInputTokens + result.outputTokens + result.reasoningOutputTokens;
+    expect(total).toBe(usage.totalTokens);
+  });
+
+  it("ignores a malformed orchestration value", () => {
+    const result = normalizePiUsage({ input: 5, output: 10, orchestration: "nope" });
+    expect(result).toEqual({
+      inputTokens: 5,
+      cachedInputTokens: 0,
+      outputTokens: 10,
+      reasoningOutputTokens: 0,
+    });
+  });
 });
 
 describe("parsePiFile", () => {

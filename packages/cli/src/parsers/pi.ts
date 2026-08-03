@@ -14,38 +14,54 @@ export interface PiFileResult {
  * Normalize a pi-format usage object to our TokenDelta format.
  *
  * Pi/omp session JSONL assistant messages carry per-turn absolute usage:
- *   input + cacheWrite         → inputTokens
- *   cacheRead                  → cachedInputTokens
- *   output - reasoning         → outputTokens
- *   reasoningTokens|reasoning  → reasoningOutputTokens
+ *   input + cacheWrite + orchestration.input  → inputTokens
+ *   cacheRead + orchestration.cacheRead       → cachedInputTokens
+ *   output - reasoning + orchestration.output → outputTokens
+ *   reasoningTokens | reasoning               → reasoningOutputTokens
  *
  * `input` counts non-cached input tokens and `cacheWrite` counts tokens
  * written to the cache (analogous to Anthropic's
  * `cache_creation_input_tokens`). Together they represent total input.
- * The invariant `totalTokens === input + output + cacheRead + cacheWrite`
- * holds whenever the provider reports no separate orchestration bucket, so
- * this mapping never double-counts.
+ *
+ * `orchestration` is a provider-side bucket ("billed, but not part of the
+ * conversation prompt/cache buckets" — OpenAI/Codex Responses populate it).
+ * It is counted in the source's own `totalTokens`, so folding each component
+ * into the matching pew bucket is what keeps
+ * `totalTokens === inputTokens + cachedInputTokens + outputTokens +
+ * reasoningOutputTokens`. Dropping it would undercount both tokens and the
+ * cost pew recomputes from them.
  *
  * Reasoning tokens are a documented **subset of `output`** (omp's
  * `Usage.reasoningTokens`: "Always a subset of `output` — non-reasoning
  * output is `output - reasoningTokens`"; pi spells the same field
- * `reasoning`). They are therefore split out of `output` rather than added
- * on top, keeping the row total unchanged. Providers that don't report the
- * field omit it — absent means unknown, which we treat as no split.
+ * `reasoning`). They are split out of the *conversation* output rather than
+ * added on top, keeping the row total unchanged. Providers that don't report
+ * the field omit it — absent means unknown, which we treat as no split.
  */
 export function normalizePiUsage(u: Record<string, unknown>): TokenDelta {
-  const output = toNonNegInt(u?.output);
-  // omp ≥17 uses `reasoningTokens`; pi uses `reasoning`. Clamp to `output`
-  // so a malformed row can never push outputTokens negative.
+  const orchestration =
+    u?.orchestration && typeof u.orchestration === "object"
+      ? (u.orchestration as Record<string, unknown>)
+      : undefined;
+
+  const conversationOutput = toNonNegInt(u?.output);
+  // omp ≥17 uses `reasoningTokens`; pi uses `reasoning`. Clamp to the
+  // conversation output (orchestration output is a separate bucket) so a
+  // malformed row can never push outputTokens negative.
   const reasoning = Math.min(
-    output,
+    conversationOutput,
     toNonNegInt(u?.reasoningTokens ?? u?.reasoning),
   );
 
   return {
-    inputTokens: toNonNegInt(u?.input) + toNonNegInt(u?.cacheWrite),
-    cachedInputTokens: toNonNegInt(u?.cacheRead),
-    outputTokens: output - reasoning,
+    inputTokens:
+      toNonNegInt(u?.input) +
+      toNonNegInt(u?.cacheWrite) +
+      toNonNegInt(orchestration?.input),
+    cachedInputTokens:
+      toNonNegInt(u?.cacheRead) + toNonNegInt(orchestration?.cacheRead),
+    outputTokens:
+      conversationOutput - reasoning + toNonNegInt(orchestration?.output),
     reasoningOutputTokens: reasoning,
   };
 }
