@@ -198,6 +198,42 @@ export function BadgeCard({
   );
 }
 
+/** Tear line between boarding-pass coupons (vertical desktop / horizontal mobile). */
+export function PassPerforation({
+  orientation = "vertical",
+  className,
+}: {
+  orientation?: "vertical" | "horizontal";
+  className?: string;
+}) {
+  if (orientation === "horizontal") {
+    return (
+      <div
+        className={cn("flex items-center gap-2 px-3", className)}
+        aria-hidden="true"
+      >
+        <div className="h-2 w-2 shrink-0 rounded-full border border-border bg-background" />
+        <div className="h-px flex-1 border-t border-dashed border-border" />
+        <div className="h-2 w-2 shrink-0 rounded-full border border-border bg-background" />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "flex w-4 shrink-0 flex-col items-center self-stretch",
+        className,
+      )}
+      aria-hidden="true"
+    >
+      <div className="h-2 w-2 shrink-0 rounded-full border border-border bg-background" />
+      <div className="w-px flex-1 border-l border-dashed border-border" />
+      <div className="h-2 w-2 shrink-0 rounded-full border border-border bg-background" />
+    </div>
+  );
+}
+
 /** Soft centered radial wash used behind public badge cards (login / landing). */
 export function BadgeAmbientGlow() {
   return (
