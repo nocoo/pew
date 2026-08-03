@@ -173,6 +173,46 @@ describe("collectPiSessions", () => {
     expect(rootSnap.kind).toBe("human");
   });
 
+  it("resolves a subagent advisor transcript nested two levels deep", async () => {
+    // omp: `<session>/<SubId>/__advisor.jsonl` — the immediate parent is the
+    // subagent id, so the stem must be found by walking ancestors.
+    const stem = "2026-08-02T23-13-02-103Z_019fc4c0-9097-7000-868a-7b93e2205b9b";
+    const advisorDir = join(sessionDir, stem, "TranscriptProbe");
+    await mkdir(advisorDir, { recursive: true });
+    const filePath = join(advisorDir, "__advisor.jsonl");
+    const lines = [
+      JSON.stringify({
+        type: "session",
+        version: 3,
+        id: "019fc500-0000-7000-bd90-3b71e315ade8",
+        timestamp: "2026-08-03T00:10:00.000Z",
+        cwd: "/test/project",
+      }),
+      JSON.stringify({
+        type: "message",
+        id: "a1",
+        parentId: null,
+        timestamp: "2026-08-03T00:10:05.000Z",
+        message: {
+          role: "assistant",
+          model: "claude-opus-5",
+          content: [],
+          usage: { input: 10, output: 5, cacheRead: 0, cacheWrite: 0 },
+        },
+      }),
+    ];
+    await writeFile(filePath, `${lines.join("\n")}\n`);
+
+    const rootPath = join(sessionDir, `${stem}.jsonl`);
+    await writeFile(rootPath, `${lines[0]}\n`);
+
+    const [advisor] = await collectPiSessions(filePath, "omp");
+    const [root] = await collectPiSessions(rootPath, "omp");
+
+    expect(advisor.kind).toBe("automated");
+    expect(advisor.projectRef).toBe(root.projectRef);
+  });
+
   it("returns empty for file without session header", async () => {
     const filePath = join(sessionDir, "no-header.jsonl");
     await writeFile(filePath, `${JSON.stringify({

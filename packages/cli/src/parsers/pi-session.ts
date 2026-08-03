@@ -31,20 +31,31 @@ const SESSION_STEM =
 /**
  * Locate the `<encoded-cwd>` directory for a pi-format session file.
  *
- * Root session:  `<sessions>/<encoded-cwd>/<stem>.jsonl`
- * Agent nested:  `<sessions>/<encoded-cwd>/<stem>/<agent>.jsonl`
- *                (omp task subagents, `__advisor[.slug].jsonl`)
+ * Root session:     `<sessions>/<encoded-cwd>/<stem>.jsonl`
+ * Task subagent:    `<sessions>/<encoded-cwd>/<stem>/<SubId>.jsonl`
+ * Root advisor:     `<sessions>/<encoded-cwd>/<stem>/__advisor[.slug].jsonl`
+ * Subagent advisor: `<sessions>/<encoded-cwd>/<stem>/<SubId>/__advisor.jsonl`
  *
- * Returns the encoded-cwd dir name plus whether the file is nested. Without
- * the hop, nested transcripts would hash the *root session stem* as their
- * project — a per-session bogus project that never matches the real one.
+ * Nesting depth is therefore unbounded (a subagent's own artifacts dir is
+ * `<stem>/<SubId>/`, and that nests again for its advisor), so we walk
+ * ancestors until a directory matches the root-session stem and take *its*
+ * parent. Checking only the immediate parent would classify a subagent
+ * advisor as a root session and hash `<SubId>` as its project.
+ *
+ * Returns the encoded-cwd dir name plus whether the file is nested.
  */
 function locateSession(filePath: string): { dirName: string; nested: boolean } {
-  const parent = basename(dirname(filePath));
-  if (SESSION_STEM.test(parent)) {
-    return { dirName: basename(dirname(dirname(filePath))), nested: true };
+  const parent = dirname(filePath);
+  let dir = parent;
+
+  // Stop at the filesystem root: dirname() becomes a fixed point.
+  for (let next = dirname(dir); next !== dir; dir = next, next = dirname(dir)) {
+    if (SESSION_STEM.test(basename(dir))) {
+      return { dirName: basename(next), nested: true };
+    }
   }
-  return { dirName: parent, nested: false };
+
+  return { dirName: basename(parent), nested: false };
 }
 
 /**
