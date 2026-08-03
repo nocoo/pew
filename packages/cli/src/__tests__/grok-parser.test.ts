@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtemp, writeFile, rm, mkdir } from "node:fs/promises";
+import { mkdtemp, writeFile, appendFile, rm, mkdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
@@ -251,6 +251,26 @@ describe("parseGrokLogFile", () => {
     });
     expect(r2.deltas).toHaveLength(1);
     expect(r2.deltas[0]!.timestamp).toBe("2026-07-10T00:02:00.000Z");
+  });
+
+  it("keeps endOffset within the stat snapshot when the log grows mid-parse", async () => {
+    const first = `${inferenceLine({ ts: "2026-07-10T00:01:00.000Z" })}\n`;
+    await writeFile(logPath, first);
+    const snapshot = (await stat(logPath)).size;
+
+    // Grow the log while the parse is in flight. The appended line must land
+    // outside this round's window so the persisted cursor (whose `size` comes
+    // from a fingerprint taken before parse) never ends up with offset > size.
+    const parsePromise = parseGrokLogFile({ filePath: logPath, startOffset: 0 });
+    await appendFile(logPath, `${inferenceLine({ ts: "2026-07-10T00:02:00.000Z" })}\n`);
+    const r1 = await parsePromise;
+
+    expect(r1.endOffset).toBeLessThanOrEqual(snapshot);
+
+    // The appended line is still picked up on the next run — exactly once.
+    const r2 = await parseGrokLogFile({ filePath: logPath, startOffset: r1.endOffset });
+    const seen = [...r1.deltas, ...r2.deltas].map((d) => d.timestamp).sort();
+    expect(seen).toEqual(["2026-07-10T00:01:00.000Z", "2026-07-10T00:02:00.000Z"]);
   });
 
   it("returns startOffset when only a partial line exists", async () => {

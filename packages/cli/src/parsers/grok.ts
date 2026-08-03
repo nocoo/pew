@@ -87,6 +87,9 @@ export function resolveGrokModel(opts: {
  * Parse Grok unified.jsonl incrementally from a byte offset.
  *
  * Streamed by chunk (never loads the whole unread tail into one buffer).
+ * Pinned to the `stat()` snapshot: bytes appended mid-parse stay unread, so
+ * the cursor this run produces can never run ahead of the size the caller
+ * fingerprinted before calling us (`offset <= size` always holds on disk).
  * Partial-line safe: endOffset stops after the last complete `\n`. A trailing
  * unterminated line is left unread for the next sync.
  */
@@ -108,7 +111,8 @@ export async function parseGrokLogFile(opts: {
   if (!st?.isFile()) return { deltas, endOffset: startOffset };
   if (startOffset >= st.size) return { deltas, endOffset: startOffset };
 
-  const stream = createReadStream(filePath, { start: startOffset });
+  // `end` is inclusive — pin the read to the stat snapshot.
+  const stream = createReadStream(filePath, { start: startOffset, end: st.size - 1 });
   // Carry incomplete trailing bytes across chunks (Uint8Array avoids Buffer generics)
   let pending: Uint8Array = new Uint8Array(0);
   // Bytes of complete lines (ending in \n) consumed relative to startOffset
