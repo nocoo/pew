@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Check, Copy, Terminal } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { BadgeCard } from "@/components/brand/badge-card";
 import { agentColor } from "@/lib/palette";
 import { sourceLabel } from "@/lib/usage-transforms";
 import { cn } from "@/lib/utils";
@@ -47,36 +47,31 @@ function InstallCommand() {
       onClick={handleCopy}
       aria-label={`Copy install command: ${command}`}
       className={cn(
-        "group relative flex w-full items-center gap-3 overflow-hidden rounded-xl",
-        "border border-primary/35 bg-card px-4 py-4 sm:px-5",
+        "group flex w-full items-center gap-3 rounded-xl",
+        "border border-border bg-secondary px-4 py-3.5",
         "font-mono text-[13px] sm:text-sm",
-        "shadow-[0_0_0_1px_hsl(var(--primary)/0.08),0_8px_28px_-12px_hsl(var(--primary)/0.35)]",
-        "transition-[border-color,background-color,box-shadow] duration-200",
-        "hover:border-primary/55 hover:bg-primary/[0.04]",
-        "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        "transition-colors duration-200",
+        "hover:bg-accent",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         "cursor-pointer text-left",
       )}
     >
-      <span
-        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent"
-        aria-hidden="true"
-      />
       <Terminal
-        className="h-4 w-4 shrink-0 text-primary"
-        strokeWidth={2}
+        className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground transition-colors"
+        strokeWidth={1.75}
         aria-hidden="true"
       />
-      <span className="text-primary select-none" aria-hidden="true">
+      <span className="select-none text-muted-foreground" aria-hidden="true">
         $
       </span>
       <code className="min-w-0 flex-1 truncate text-foreground">{command}</code>
       <span
         className={cn(
-          "inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium",
+          "inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium",
           "transition-colors duration-200",
           copied
             ? "bg-success/15 text-success"
-            : "bg-primary/10 text-primary group-hover:bg-primary/15",
+            : "bg-background/80 text-muted-foreground group-hover:text-foreground",
         )}
       >
         {copied ? (
@@ -126,7 +121,6 @@ function AgentRoster() {
                 "inline-flex items-center gap-1.5 rounded-full",
                 "border border-border/80 bg-card/80 px-2.5 py-1",
                 "text-[11px] font-medium text-foreground/90",
-                "shadow-[0_1px_0_hsl(var(--foreground)/0.03)]",
               )}
             >
               <span
@@ -203,124 +197,116 @@ export function LandingContent() {
           </div>
         </div>
 
-        {/* ── Right: install + dashboard CTAs ──────────────────────────── */}
+        {/* ── Right: badge card CTA (matches login chrome) ─────────────── */}
         <div
           className="min-w-0 animate-fade-up"
           style={{ animationDelay: "140ms" }}
         >
-          <div
-            className={cn(
-              "relative overflow-hidden rounded-2xl border border-border/80 bg-card",
-              "p-5 sm:p-6",
-              "shadow-[0_1px_2px_hsl(var(--foreground)/0.04),0_12px_40px_-16px_hsl(var(--primary)/0.18)]",
-              "ring-1 ring-black/[0.04] dark:ring-white/[0.05]",
-            )}
-          >
-            {/* Soft primary wash */}
-            <div
-              className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-primary/[0.08] blur-3xl"
-              aria-hidden="true"
-            />
-
-            <div className="relative space-y-5">
-              <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-primary">
-                  Get started
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  One install. Auto-sync after each session.
-                </p>
+          <BadgeCard
+            badge="CLI"
+            contentClassName="px-5 pt-5 pb-5 sm:px-6 sm:pt-6"
+            footer={
+              <div className="flex items-center gap-1.5">
+                <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
+                <span className="text-[10px] text-muted-foreground">
+                  Local-first · Ready
+                </span>
               </div>
+            }
+          >
+            <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground/70">
+              Get started
+            </p>
+            <p className="mt-1 text-sm font-medium text-foreground">
+              One install. Auto-sync after each session.
+            </p>
 
+            <div className="mt-4">
               <InstallCommand />
+            </div>
 
-              <ol
-                className="space-y-2 text-sm text-muted-foreground"
-                aria-label="Quick start"
-              >
-                <li className="flex items-start gap-2.5">
-                  <span
-                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/10 font-mono text-[11px] font-semibold text-primary"
-                    aria-hidden="true"
-                  >
-                    1
-                  </span>
-                  <span>
-                    <Code>pew login</Code> — sign in via browser
-                  </span>
-                </li>
-                <li className="flex items-start gap-2.5">
-                  <span
-                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/10 font-mono text-[11px] font-semibold text-primary"
-                    aria-hidden="true"
-                  >
-                    2
-                  </span>
-                  <span>
-                    <Code>pew init</Code> — install auto-sync hooks
-                  </span>
-                </li>
-                <li className="flex items-start gap-2.5">
-                  <span
-                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/10 font-mono text-[11px] font-semibold text-primary"
-                    aria-hidden="true"
-                  >
-                    3
-                  </span>
-                  <span>Done — tokens sync automatically</span>
-                </li>
-              </ol>
+            <ol
+              className="mt-4 space-y-2 text-sm text-muted-foreground"
+              aria-label="Quick start"
+            >
+              <li className="flex items-start gap-2.5">
+                <span
+                  className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-secondary font-mono text-[11px] font-semibold text-foreground"
+                  aria-hidden="true"
+                >
+                  1
+                </span>
+                <span>
+                  <Code>pew login</Code> — sign in via browser
+                </span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span
+                  className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-secondary font-mono text-[11px] font-semibold text-foreground"
+                  aria-hidden="true"
+                >
+                  2
+                </span>
+                <span>
+                  <Code>pew init</Code> — install auto-sync hooks
+                </span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <span
+                  className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-secondary font-mono text-[11px] font-semibold text-foreground"
+                  aria-hidden="true"
+                >
+                  3
+                </span>
+                <span>Done — tokens sync automatically</span>
+              </li>
+            </ol>
 
-              <p className="text-[11px] leading-relaxed text-muted-foreground/70">
-                GitHub Copilot CLI, Grok, Hermes, Kosmos, PM Studio, VS Code
-                Copilot &amp; ZCode have no session-end hook — they sync on the
-                next <Code>pew sync</Code>.
+            <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground/60">
+              GitHub Copilot CLI, Grok, Hermes, Kosmos, PM Studio, VS Code Copilot
+              &amp; ZCode have no session-end hook — they sync on the next{" "}
+              <Code>pew sync</Code>.
+            </p>
+
+            <div className="mt-5 h-px w-full bg-border" />
+
+            <Link
+              href="/login"
+              className={cn(
+                "mt-5 flex w-full items-center justify-center gap-2",
+                "rounded-xl bg-secondary px-4 py-3",
+                "text-sm font-medium text-foreground",
+                "transition-colors hover:bg-accent",
+              )}
+            >
+              Enter dashboard
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </Link>
+
+            <div className="mt-5">
+              <p className="mb-2 text-[10px] font-medium uppercase tracking-widest text-muted-foreground/60">
+                Handy commands
               </p>
-
-              <div className="h-px w-full bg-border/80" />
-
-              <Button
-                asChild
-                size="lg"
-                className={cn(
-                  "h-11 w-full rounded-xl text-sm font-semibold",
-                  "shadow-[0_8px_24px_-10px_hsl(var(--primary)/0.55)]",
-                  "transition-[transform,box-shadow] duration-200",
-                  "hover:shadow-[0_10px_28px_-8px_hsl(var(--primary)/0.65)]",
-                  "active:translate-y-px",
-                )}
-              >
-                <Link href="/login">
-                  Enter dashboard
-                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </Link>
-              </Button>
-
-              <div>
-                <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground/70">
-                  Handy commands
-                </p>
-                <div className="space-y-1.5 text-sm text-muted-foreground">
-                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                    <Code>pew sync</Code>
-                    <span className="text-muted-foreground/75">sync right now</span>
-                  </div>
-                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                    <Code>pew reset</Code>
-                    <span className="text-muted-foreground/75">
-                      wipe local state, re-scan
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                    <Code>pew update</Code>
-                    <span className="text-muted-foreground/75">
-                      grab the latest version
-                    </span>
-                  </div>
+              <div className="space-y-1.5 text-sm text-muted-foreground">
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <Code>pew sync</Code>
+                  <span className="text-muted-foreground/75">sync right now</span>
+                </div>
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <Code>pew reset</Code>
+                  <span className="text-muted-foreground/75">
+                    wipe local state, re-scan
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <Code>pew update</Code>
+                  <span className="text-muted-foreground/75">
+                    grab the latest version
+                  </span>
                 </div>
               </div>
             </div>
-          </div>
+          </BadgeCard>
         </div>
       </div>
     </main>
