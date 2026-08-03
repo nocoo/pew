@@ -75,6 +75,61 @@ describe("copilotCliTokenDriver", () => {
       expect(files).toHaveLength(2);
       expect(files.every((f) => f.endsWith(".log"))).toBe(true);
     });
+
+    it("records OTel provenance so parse never guesses from the extension", async () => {
+      // COPILOT_OTEL_FILE_EXPORTER_PATH accepts any filename. A `.out` export
+      // used to be routed to the process-log parser and silently yield nothing.
+      const exporterPath = join(tempDir, "copilot-otel.out");
+      await writeFile(
+        exporterPath,
+        `${JSON.stringify({
+          type: "span",
+          traceId: "t1",
+          spanId: "s1",
+          name: "chat gpt-5.5",
+          startTime: [1_773_657_600, 0],
+          attributes: {
+            "gen_ai.provider.name": "github",
+            "gen_ai.response.model": "gpt-5.5",
+            "gen_ai.usage.input_tokens": 500,
+            "gen_ai.usage.output_tokens": 40,
+          },
+        })}\n`,
+      );
+
+      const otelCtx: SyncContext = {};
+      const files = await copilotCliTokenDriver.discover(
+        { copilotCliOtelPaths: [exporterPath] },
+        otelCtx,
+      );
+      expect(files).toEqual([exporterPath]);
+      expect(otelCtx.copilotOtelPaths?.has(exporterPath)).toBe(true);
+
+      const result = await copilotCliTokenDriver.parse(
+        exporterPath,
+        { kind: "byte-offset", startOffset: 0 },
+        otelCtx,
+      );
+      expect(result.deltas).toHaveLength(1);
+      expect(result.deltas[0].tokens.inputTokens).toBe(500);
+    });
+
+    it("routes a .jsonl process log to the process-log parser when it is not an OTel path", async () => {
+      // Mirror of the above: provenance wins over the filename in both
+      // directions, so a process log that happens to end in .jsonl still
+      // reaches the telemetry-block parser.
+      const logPath = join(tempDir, "process-1.jsonl");
+      await writeFile(logPath, buildUsageBlock(1234, 56));
+
+      const logCtx: SyncContext = { copilotOtelPaths: new Set<string>() };
+      const result = await copilotCliTokenDriver.parse(
+        logPath,
+        { kind: "byte-offset", startOffset: 0 },
+        logCtx,
+      );
+      expect(result.deltas).toHaveLength(1);
+      expect(result.deltas[0].tokens.inputTokens).toBe(1234);
+    });
   });
 
   describe("shouldSkip", () => {
