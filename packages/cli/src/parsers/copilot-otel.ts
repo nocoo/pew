@@ -6,8 +6,7 @@
  */
 
 import { createReadStream } from "node:fs";
-import { open, stat } from "node:fs/promises";
-import { createInterface } from "node:readline";
+import { stat } from "node:fs/promises";
 import type { Source, TokenDelta } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
@@ -74,7 +73,21 @@ function extractUsageDelta(span: Record<string, unknown>): ParsedDelta | null {
   };
 }
 
-/** Parse complete JSONL records from a byte offset, retaining partial tails. */
+/**
+ * Parse complete JSONL records from a byte offset.
+ *
+ * Byte-accurate and partial-line safe, the same contract the Codex/Grok
+ * parsers use:
+ *   - the read is pinned to the `stat()` snapshot (`end: size - 1`), so spans
+ *     appended while the parse is in flight are neither emitted now nor
+ *     re-emitted next run;
+ *   - `endOffset` advances only past complete `\n`-terminated lines, measured
+ *     in real bytes, so a half-written trailing record is retried instead of
+ *     being skipped forever.
+ *
+ * Line terminators are counted per line (not guessed once from the file head),
+ * which keeps the offset exact for mixed or CRLF endings.
+ */
 export async function parseCopilotOtelFile(opts: {
   filePath: string;
   startOffset: number;
@@ -86,55 +99,72 @@ export async function parseCopilotOtelFile(opts: {
     return { deltas, endOffset: startOffset };
   }
 
-  const eolBytes = await detectEolSize(filePath);
-  const stream = createReadStream(filePath, { start: startOffset, encoding: "utf8" });
-  const rl = createInterface({ input: stream, crlfDelay: Infinity });
+  // `end` is inclusive — pin the read to the stat snapshot.
+  const stream = createReadStream(filePath, { start: startOffset, end: st.size - 1 });
+  // Carry incomplete trailing bytes across chunks (Uint8Array avoids Buffer generics)
+  let pending: Uint8Array = new Uint8Array(0);
+  // Bytes of complete lines (ending in \n) consumed relative to startOffset
+  let completeBytes = 0;
   const seenSpanIds = new Set<string>();
-  let bytesConsumed = 0;
-  let endOffset = startOffset;
 
-  function consume(line: string): boolean {
-    if (!line.trim()) return true;
+  function consume(line: string): void {
+    if (!line.trim()) return;
     let span: Record<string, unknown>;
     try {
-      span = JSON.parse(line);
+      span = JSON.parse(line) as Record<string, unknown>;
     } catch {
-      return false;
+      // Malformed but terminated line — skip it and advance past it.
+      return;
     }
     const traceId = typeof span.traceId === "string" ? span.traceId : "";
     const spanId = typeof span.spanId === "string" ? span.spanId : "";
     const id = traceId || spanId ? `${traceId}:${spanId}` : null;
-    if (id && seenSpanIds.has(id)) return true;
-    if (id) seenSpanIds.add(id);
+    if (id) {
+      if (seenSpanIds.has(id)) return;
+      seenSpanIds.add(id);
+    }
     const delta = extractUsageDelta(span);
     if (delta) deltas.push(delta);
-    return true;
   }
 
   try {
-    for await (const line of rl) {
-      const lineBytes = Buffer.byteLength(line, "utf8");
-      const contentEnd = startOffset + bytesConsumed + lineBytes;
-      bytesConsumed += lineBytes + (contentEnd < st.size ? eolBytes : 0);
-      if (consume(line)) endOffset = Math.min(st.size, startOffset + bytesConsumed);
+    for await (const chunk of stream) {
+      const piece: Uint8Array = Buffer.isBuffer(chunk)
+        ? chunk
+        : Buffer.from(chunk as string);
+      if (pending.length === 0) {
+        pending = piece;
+      } else {
+        const merged = new Uint8Array(pending.length + piece.length);
+        merged.set(pending, 0);
+        merged.set(piece, pending.length);
+        pending = merged;
+      }
+
+      let offset = 0;
+      while (offset < pending.length) {
+        const nl = pending.indexOf(0x0a, offset);
+        if (nl === -1) break;
+
+        const lineBuf = pending.subarray(offset, nl);
+        completeBytes += nl - offset + 1; // include \n
+        offset = nl + 1;
+
+        // Trim a CR so CRLF files parse, while its byte stays counted above.
+        const end = lineBuf.length > 0 && lineBuf[lineBuf.length - 1] === 0x0d
+          ? lineBuf.length - 1
+          : lineBuf.length;
+        if (end === 0) continue;
+        consume(Buffer.from(lineBuf.subarray(0, end)).toString("utf8"));
+      }
+
+      // Keep only the trailing partial line
+      pending = offset === 0 ? pending : pending.subarray(offset);
     }
   } finally {
-    rl.close();
     stream.destroy();
   }
-  return { deltas, endOffset };
-}
 
-async function detectEolSize(filePath: string): Promise<number> {
-  const fh = await open(filePath, "r");
-  try {
-    const buf = Buffer.alloc(4096);
-    const { bytesRead } = await fh.read(buf, 0, buf.length, 0);
-    for (let i = 0; i < bytesRead; i++) {
-      if (buf[i] === 0x0a) return i > 0 && buf[i - 1] === 0x0d ? 2 : 1;
-    }
-    return 1;
-  } finally {
-    await fh.close();
-  }
+  // Trailing partial line is NOT counted in endOffset
+  return { deltas, endOffset: startOffset + completeBytes };
 }
