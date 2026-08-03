@@ -120,9 +120,11 @@ export function BadgeCard({
 
 export interface PassCardProps {
   children: ReactNode;
-  /** Uppercase ticket type, e.g. TOKEN PASS */
+  /** Uppercase ticket type, e.g. BOARDING PASS */
   badge?: string;
-  /** Secondary mono line under the title (agent count, route, etc.) */
+  /** Destination headline shown large in the header */
+  destination?: string;
+  /** Secondary mono line (flight no, agent count, etc.) */
   meta?: string;
   footer?: ReactNode;
   className?: string;
@@ -130,13 +132,13 @@ export interface PassCardProps {
 }
 
 /**
- * Landscape boarding-pass / token-pass chrome (landing).
- * Same materials as BadgeCard (shadow, ring, primary strip, barcode)
- * but a horizontal credential — one shell for multi-column content.
+ * Landscape boarding-pass chrome (landing).
+ * Same materials as BadgeCard — horizontal multi-coupon credential.
  */
 export function PassCard({
   children,
-  badge = "TOKEN PASS",
+  badge = "BOARDING PASS",
+  destination,
   meta,
   footer,
   className,
@@ -151,30 +153,33 @@ export function PassCard({
       )}
       style={{ boxShadow: BADGE_CARD_SHADOW }}
     >
-      {/* Boarding-pass header — wide primary strip */}
-      <div className="bg-primary px-5 py-3.5 sm:px-6 sm:py-4">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <PunchHole />
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <Image
-              src="/logo-24.png"
-              alt=""
-              width={16}
-              height={16}
-              className="brightness-0 invert"
-              aria-hidden="true"
-            />
-            <span className="font-handwriting text-base font-semibold leading-none text-primary-foreground sm:text-lg">
-              pew
-            </span>
-            <span className="hidden text-primary-foreground/35 sm:inline" aria-hidden="true">
-              ·
-            </span>
-            <span className="hidden truncate text-xs text-primary-foreground/55 sm:inline">
-              Show your tokens
-            </span>
+      <div className="bg-primary px-4 py-3.5 sm:px-6 sm:py-4">
+        <div className="flex items-start gap-3 sm:items-center sm:gap-4">
+          <PunchHole className="mt-0.5 sm:mt-0" />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <Image
+                src="/logo-24.png"
+                alt=""
+                width={16}
+                height={16}
+                className="brightness-0 invert"
+                aria-hidden="true"
+              />
+              <span className="font-handwriting text-base font-semibold leading-none text-primary-foreground sm:text-lg">
+                pew
+              </span>
+              <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-primary-foreground/55">
+                airlines
+              </span>
+            </div>
+            {destination ? (
+              <p className="mt-1.5 font-display text-sm font-semibold tracking-wide text-primary-foreground sm:text-base">
+                {destination}
+              </p>
+            ) : null}
           </div>
-          <div className="flex shrink-0 flex-col items-end gap-1.5 sm:flex-row sm:items-center sm:gap-4">
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
             <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-primary-foreground/70">
               {badge}
             </span>
@@ -207,12 +212,36 @@ export function PassCard({
   );
 }
 
-/** Vertical tear line between pass panels (boarding-pass stub). */
-export function PassPerforation({ className }: { className?: string }) {
+type PerforationOrientation = "vertical" | "horizontal";
+
+/**
+ * Tear line between boarding-pass coupons.
+ * vertical = desktop column split; horizontal = mobile stacked coupons.
+ */
+export function PassPerforation({
+  orientation = "vertical",
+  className,
+}: {
+  orientation?: PerforationOrientation;
+  className?: string;
+}) {
+  if (orientation === "horizontal") {
+    return (
+      <div
+        className={cn("flex items-center gap-2 px-4 sm:px-5", className)}
+        aria-hidden="true"
+      >
+        <div className="h-2.5 w-2.5 shrink-0 rounded-full border border-border bg-background" />
+        <div className="h-px flex-1 border-t border-dashed border-border" />
+        <div className="h-2.5 w-2.5 shrink-0 rounded-full border border-border bg-background" />
+      </div>
+    );
+  }
+
   return (
     <div
       className={cn(
-        "relative hidden w-5 shrink-0 flex-col items-center self-stretch md:flex",
+        "relative w-5 shrink-0 flex-col items-center self-stretch",
         className,
       )}
       aria-hidden="true"
