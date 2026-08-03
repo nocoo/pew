@@ -11,30 +11,42 @@ export interface PiFileResult {
 }
 
 /**
- * Normalize pi's usage object to our TokenDelta format.
+ * Normalize a pi-format usage object to our TokenDelta format.
  *
- * Pi session JSONL assistant messages carry per-turn absolute usage:
- *   input + cacheWrite  → inputTokens
- *   cacheRead           → cachedInputTokens
- *   output              → outputTokens
- *   (hardcoded 0)       → reasoningOutputTokens
+ * Pi/omp session JSONL assistant messages carry per-turn absolute usage:
+ *   input + cacheWrite         → inputTokens
+ *   cacheRead                  → cachedInputTokens
+ *   output - reasoning         → outputTokens
+ *   reasoningTokens|reasoning  → reasoningOutputTokens
  *
- * Note: pi's `input` field counts non-cached input tokens and `cacheWrite`
- * counts tokens written to the cache (analogous to Anthropic's
+ * `input` counts non-cached input tokens and `cacheWrite` counts tokens
+ * written to the cache (analogous to Anthropic's
  * `cache_creation_input_tokens`). Together they represent total input.
  * The invariant `totalTokens === input + output + cacheRead + cacheWrite`
- * holds for every row, so this mapping never double-counts.
+ * holds whenever the provider reports no separate orchestration bucket, so
+ * this mapping never double-counts.
  *
- * `reasoning` (pi-only, absent in omp) is a subset of `output` — folding it
- * in would double-count, so reasoning is reported as 0.
+ * Reasoning tokens are a documented **subset of `output`** (omp's
+ * `Usage.reasoningTokens`: "Always a subset of `output` — non-reasoning
+ * output is `output - reasoningTokens`"; pi spells the same field
+ * `reasoning`). They are therefore split out of `output` rather than added
+ * on top, keeping the row total unchanged. Providers that don't report the
+ * field omit it — absent means unknown, which we treat as no split.
  */
 export function normalizePiUsage(u: Record<string, unknown>): TokenDelta {
+  const output = toNonNegInt(u?.output);
+  // omp ≥17 uses `reasoningTokens`; pi uses `reasoning`. Clamp to `output`
+  // so a malformed row can never push outputTokens negative.
+  const reasoning = Math.min(
+    output,
+    toNonNegInt(u?.reasoningTokens ?? u?.reasoning),
+  );
+
   return {
-    inputTokens:
-      toNonNegInt(u?.input) + toNonNegInt(u?.cacheWrite),
+    inputTokens: toNonNegInt(u?.input) + toNonNegInt(u?.cacheWrite),
     cachedInputTokens: toNonNegInt(u?.cacheRead),
-    outputTokens: toNonNegInt(u?.output),
-    reasoningOutputTokens: 0,
+    outputTokens: output - reasoning,
+    reasoningOutputTokens: reasoning,
   };
 }
 

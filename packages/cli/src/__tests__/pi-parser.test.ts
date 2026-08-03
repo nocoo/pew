@@ -55,6 +55,45 @@ describe("normalizePiUsage", () => {
       reasoningOutputTokens: 0,
     });
   });
+
+  it("splits omp reasoningTokens out of output (subset, not additive)", () => {
+    const result = normalizePiUsage({
+      input: 100,
+      output: 500,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 600,
+      reasoningTokens: 120,
+    });
+    expect(result).toEqual({
+      inputTokens: 100,
+      cachedInputTokens: 0,
+      outputTokens: 380,
+      reasoningOutputTokens: 120,
+    });
+    // Row total is preserved — reasoning is carved out, never added on top
+    const total =
+      result.inputTokens + result.cachedInputTokens + result.outputTokens + result.reasoningOutputTokens;
+    expect(total).toBe(600);
+  });
+
+  it("splits pi's legacy `reasoning` spelling the same way", () => {
+    const result = normalizePiUsage({ input: 3, output: 123, cacheRead: 0, cacheWrite: 0, reasoning: 26 });
+    expect(result.outputTokens).toBe(97);
+    expect(result.reasoningOutputTokens).toBe(26);
+  });
+
+  it("clamps reasoning to output so outputTokens never goes negative", () => {
+    const result = normalizePiUsage({ output: 10, reasoningTokens: 999 });
+    expect(result.outputTokens).toBe(0);
+    expect(result.reasoningOutputTokens).toBe(10);
+  });
+
+  it("treats an absent reasoning field as no split (unknown, not zero-reasoning)", () => {
+    const result = normalizePiUsage({ input: 5, output: 50 });
+    expect(result.outputTokens).toBe(50);
+    expect(result.reasoningOutputTokens).toBe(0);
+  });
 });
 
 describe("parsePiFile", () => {
