@@ -18,7 +18,7 @@
     },
     "packages/cli": {
       "name": "@nocoo/pew",
-      "version": "2.26.1",
+      "version": "2.27.0",
       "bin": {
         "pew": "dist/bin.js",
       },
@@ -32,14 +32,14 @@
     },
     "packages/core": {
       "name": "@pew/core",
-      "version": "2.26.1",
+      "version": "2.27.0",
       "devDependencies": {
         "@types/node": "26.1.1",
       },
     },
     "packages/web": {
       "name": "@pew/web",
-      "version": "2.26.1",
+      "version": "2.27.0",
       "dependencies": {
         "@aws-sdk/client-s3": "3.1093.0",
         "class-variance-authority": "^0.7.1",
@@ -69,7 +69,7 @@
     },
     "packages/worker": {
       "name": "@pew/worker",
-      "version": "2.26.1",
+      "version": "2.27.0",
       "devDependencies": {
         "@cloudflare/workers-types": "5.20260722.1",
         "@pew/core": "workspace:*",
@@ -78,7 +78,7 @@
     },
     "packages/worker-read": {
       "name": "@pew/worker-read",
-      "version": "2.26.1",
+      "version": "2.27.0",
       "devDependencies": {
         "@cloudflare/workers-types": "5.20260722.1",
         "@pew/core": "workspace:*",
@@ -98,7 +98,7 @@
     "picomatch": "^4.0.4",
     "postcss": "^8.5.18",
     "sharp": "^0.35.3",
-    "undici": "^7.28.0",
+    "undici": "^7.29.0",
     "vite": "^7.3.5",
     "ws": "^8.21.0",
     "yaml": "^2.8.3",
@@ -984,7 +984,7 @@
 
     "typescript": ["typescript@7.0.2", "", { "optionalDependencies": { "@typescript/typescript-aix-ppc64": "7.0.2", "@typescript/typescript-darwin-arm64": "7.0.2", "@typescript/typescript-darwin-x64": "7.0.2", "@typescript/typescript-freebsd-arm64": "7.0.2", "@typescript/typescript-freebsd-x64": "7.0.2", "@typescript/typescript-linux-arm": "7.0.2", "@typescript/typescript-linux-arm64": "7.0.2", "@typescript/typescript-linux-loong64": "7.0.2", "@typescript/typescript-linux-mips64el": "7.0.2", "@typescript/typescript-linux-ppc64": "7.0.2", "@typescript/typescript-linux-riscv64": "7.0.2", "@typescript/typescript-linux-s390x": "7.0.2", "@typescript/typescript-linux-x64": "7.0.2", "@typescript/typescript-netbsd-arm64": "7.0.2", "@typescript/typescript-netbsd-x64": "7.0.2", "@typescript/typescript-openbsd-arm64": "7.0.2", "@typescript/typescript-openbsd-x64": "7.0.2", "@typescript/typescript-sunos-x64": "7.0.2", "@typescript/typescript-win32-arm64": "7.0.2", "@typescript/typescript-win32-x64": "7.0.2" }, "bin": { "tsc": "bin/tsc" } }, "sha512-8FYau96o3NKOhbjKi/qNvG/W5jhzxkbdm5sj9AbZ/5T5sWqn3hJgLfGx27sRKZWTvyzCP8dLRBTf5tBTSRVUNA=="],
 
-    "undici": ["undici@7.28.0", "", {}, "sha512-cRZYrTDwWznlnRiPjggAGxZXanty6M8RV1ff8Wm4LWXBp7/IG8v5DnOm74DtUBp9OONpK75YlPnIjQqX0dBDtA=="],
+    "undici": ["undici@7.29.0", "", {}, "sha512-IDxfleLmmbSskfWSUATiN1nfn2rDuvnMOqb5CWR92iIfojA0Ud+ulOAAEQ57LPr9rWmsreUyf5lwyao+7GNNVw=="],
 
     "undici-types": ["undici-types@8.3.0", "", {}, "sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ=="],
 
