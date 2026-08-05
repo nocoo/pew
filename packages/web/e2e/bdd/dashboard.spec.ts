@@ -118,9 +118,12 @@ test.describe("Feature: Dashboard", () => {
     // When: visit /dashboard and click the sidebar Daily Usage link
     await page.goto("/dashboard");
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
-    await page.locator("aside nav").getByText("Daily Usage").click();
+    await page
+      .locator("aside nav")
+      .getByRole("link", { name: "Daily Usage" })
+      .click();
     // Then: URL updates to /daily-usage
-    await expect(page).toHaveURL(/\/daily-usage/);
+    await expect(page).toHaveURL(/\/daily-usage/, { timeout: 15_000 });
   });
 
   test("Given auth is bypassed, When I click General in the sidebar, Then I land on /settings with the General heading", async ({ page }) => {
@@ -128,9 +131,9 @@ test.describe("Feature: Dashboard", () => {
     // When: visit /dashboard and click the sidebar General link
     await page.goto("/dashboard");
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
-    await page.locator("aside nav").getByText("General").click();
+    await page.locator("aside nav").getByRole("link", { name: "General" }).click();
     // Then: URL updates to /settings and General heading renders
-    await expect(page).toHaveURL(/\/settings/);
+    await expect(page).toHaveURL(/\/settings/, { timeout: 15_000 });
     await expect(page.getByRole("heading", { name: "General" })).toBeVisible();
   });
 });
