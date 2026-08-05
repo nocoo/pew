@@ -1,4 +1,9 @@
-FROM oven/bun:1 AS base
+ARG NODE_VERSION=22
+FROM node:${NODE_VERSION}-slim AS base
+
+# Keep Bun for workspace installs/build scripts while pinning every Node.js
+# execution in the build and runtime stages to the same supported major.
+COPY --from=oven/bun:1 /usr/local/bin/bun /usr/local/bin/bun
 
 # --- Install dependencies ---
 # Include all workspace package.json files so bun.lock stays consistent.
@@ -18,15 +23,11 @@ RUN bun install --frozen-lockfile
 FROM base AS builder
 WORKDIR /app
 
-# Install Node.js — required for `next build` on linux/amd64. Bun's runtime
-# resolver cannot load sharp's @img/sharp-linux-x64 native binding from
-# inside Next.js's Turbopack page-data collection workers under bun's
-# isolated install layout, so `bun next build` fails at page-data with
-# "Could not load the sharp module using the linux-x64 runtime". Real Node
-# resolves the same layout correctly.
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends nodejs \
-  && rm -rf /var/lib/apt/lists/*
+# Real Node.js is required for `next build` on linux/amd64. Bun's runtime
+# resolver cannot load sharp's @img/sharp-linux-x64 native binding from inside
+# Next.js's Turbopack page-data collection workers under bun's isolated install
+# layout. The base image pins Node.js to the same supported major as the runner.
+RUN node --version | grep -Eq '^v22\.'
 
 # Railway injects service env vars as Docker build args.
 # Next.js needs these at build time for page data collection.
@@ -49,10 +50,10 @@ COPY . .
 # Build @pew/web with real Node.js — see comment above.
 RUN bun run --filter @pew/core build \
   && cd packages/web \
-  && /usr/bin/node ./node_modules/.bin/next build
+  && node ./node_modules/.bin/next build
 
 # --- Production image ---
-FROM node:22-slim AS runner
+FROM node:${NODE_VERSION}-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
