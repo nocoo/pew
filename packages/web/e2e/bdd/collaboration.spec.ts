@@ -78,7 +78,7 @@ test.describe("Feature: Collaboration", () => {
       // Given: E2E_SKIP_AUTH=true is set by the runner
       // When: visit /settings/general and click the sidebar Organizations link
       await page.goto("/settings/general");
-      const orgLink = page.getByRole("link", { name: "Organizations" });
+      const orgLink = page.locator('a[href="/settings/organizations"]');
       // Then: link is visible (also covers organizations.spec.ts navigation
       // "organizations link appears in settings sidebar") and clicking it
       // navigates to the organizations page
