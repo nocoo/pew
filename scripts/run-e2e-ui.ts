@@ -58,8 +58,10 @@ async function main() {
       E2E_SKIP_AUTH: "true",
       E2E_ADMIN_BYPASS: "true", // Enable admin bypass for Playwright tests
     },
-    stdout: "pipe",
-    stderr: "pipe",
+    // Keep the dev server's output flowing. Unconsumed pipes can fill during
+    // the browser suite and block the server, leaving page.goto() to time out.
+    stdout: "inherit",
+    stderr: "inherit",
   });
 
   const ready = await waitForServer();
