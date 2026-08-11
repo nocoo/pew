@@ -113,7 +113,7 @@ export default function ModelsPage() {
 
   const modelEvolutionData = useMemo(() => {
     if (!data) return [];
-    const sparse = toModelEvolutionPoints(data.records, undefined, tzOffset);
+    const sparse = toModelEvolutionPoints(data.records, 10, tzOffset);
     if (sparse.length === 0) return sparse;
     const allModels = Object.keys((sparse[0] as (typeof sparse)[number]).models);
     const zeroModels: Record<string, number> = {};

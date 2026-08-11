@@ -121,22 +121,20 @@ describe("toModelEvolutionPoints", () => {
     expect(result[0]!.models["model-b"]).toBeUndefined();
   });
 
-  it("should default topN to 5", () => {
-    const rows = [
-      makeRow({ model: "m1", hour_start: "2026-03-07", total_tokens: 6000 }),
-      makeRow({ model: "m2", hour_start: "2026-03-07", total_tokens: 5000 }),
-      makeRow({ model: "m3", hour_start: "2026-03-07", total_tokens: 4000 }),
-      makeRow({ model: "m4", hour_start: "2026-03-07", total_tokens: 3000 }),
-      makeRow({ model: "m5", hour_start: "2026-03-07", total_tokens: 2000 }),
-      makeRow({ model: "m6", hour_start: "2026-03-07", total_tokens: 1000 }),
-      makeRow({ model: "m7", hour_start: "2026-03-07", total_tokens: 500 }),
-    ];
+  it("should default topN to 10", () => {
+    const rows = Array.from({ length: 12 }, (_, i) =>
+      makeRow({
+        model: `m${i + 1}`,
+        hour_start: "2026-03-07",
+        total_tokens: (12 - i) * 1000,
+      }),
+    );
     const result = toModelEvolutionPoints(rows);
     expect(result).toHaveLength(1);
     const modelKeys = Object.keys(result[0]!.models);
-    // 5 top models + "Other"
-    expect(modelKeys).toHaveLength(6);
-    expect(result[0]!.models.Other).toBe(1500); // m6(1000) + m7(500)
+    // 10 top models + "Other"
+    expect(modelKeys).toHaveLength(11);
+    expect(result[0]!.models.Other).toBe(3000); // m11(2000) + m12(1000)
   });
 
   it("should not include 'Other' when all models fit in topN", () => {

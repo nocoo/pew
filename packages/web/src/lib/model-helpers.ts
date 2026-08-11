@@ -35,13 +35,14 @@ export interface ModelEra {
 /**
  * Produce daily model evolution data points.
  *
- * Identifies the top N models by total tokens across the entire period,
- * optionally groups the rest as "Other", and returns one entry per date
- * with per-model token counts (zero-filled for missing models on a given day).
+ * Identifies the top N models by total tokens across the entire period
+ * (default 10), optionally groups the rest as "Other", and returns one
+ * entry per date with per-model token counts (zero-filled for missing
+ * models on a given day).
  */
 export function toModelEvolutionPoints(
   rows: UsageRow[],
-  topN = 5,
+  topN = 10,
   tzOffset = 0,
   includeOther = true,
 ): ModelEra[] {
