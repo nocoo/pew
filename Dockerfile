@@ -50,7 +50,9 @@ COPY . .
 # Build @pew/web with real Node.js — see comment above.
 RUN bun run --filter @pew/core build \
   && cd packages/web \
-  && node ./node_modules/.bin/next build
+  && node ./node_modules/.bin/next build \
+  && cd /app \
+  && bun run scripts/fix-standalone-swc-helpers.ts --required
 
 # --- Production image ---
 FROM node:${NODE_VERSION}-slim AS runner

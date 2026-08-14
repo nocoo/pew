@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 7020",
-    "build": "tsc --noEmit && next build",
+    "build": "tsc --noEmit && next build && bun ../../scripts/fix-standalone-swc-helpers.ts --required",
+
     "start": "next start --port 7020",
     "typecheck": "tsc --noEmit"
   },
