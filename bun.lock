@@ -1,5 +1,5 @@
 {
-  "lockfileVersion": 3,
+  "lockfileVersion": 1,
   "configVersion": 1,
   "workspaces": {
     "": {
@@ -88,12 +88,8 @@
   },
   "overrides": {
     "@babel/core": "^7.29.6",
-    "brace-expansion@^2": {
-      ".": "2.0.3",
-    },
-    "brace-expansion@^5": {
-      ".": "5.0.6",
-    },
+    "brace-expansion@^2": "2.0.3",
+    "brace-expansion@^5": "5.0.6",
     "cookie": "^1.1.1",
     "esbuild": ">=0.28.1",
     "fast-xml-builder": ">=1.1.7",
@@ -654,7 +650,7 @@
 
     "@types/react": ["@types/react@19.2.18", "", { "dependencies": { "csstype": "^3.2.2" } }, "sha512-AnzbBERsrLKtk2XSfTbYRLjQPdy116Sty4q+T+Bp3IC4l6jNBvreVPAHmpq9qhXQM7CXZPjLVmGMw9sy+hxQ3w=="],
 
-    "@types/react-dom": ["@types/react-dom@19.2.5", "", { "peerDependencies": { "@types/react": "^19.2.0" } }, "sha512-fMPwH9v7r/pp43yUd2/Mbiex5KouJwwR3dzHkhLREUC6764VyDsqxhAxv6OFEYR1RhjOyD1naqba8ECDBe7ZQg=="],
+    "@types/react-dom": ["@types/react-dom@19.2.5", "", { "peerDependencies": { "@types/react": "^19.2.0" } }, "sha512-7cc3f01fdbfbaffa69e37c94776fcc6e27b1e4aa2e270c11dddcc79212d11140baefae15c83b2ac61031bfa3851184754618cec83d676aa6daf0408305eed942"],
 
     "@types/use-sync-external-store": ["@types/use-sync-external-store@0.0.6", "", {}, "sha512-zFDAD+tlpf2r4asuHEj0XH6pY6i0g5NeAHPn+15wk3BV6JA69eERFXC1gyGThDkVa1zCyKr5jox1+2LbV/AMLg=="],
 
