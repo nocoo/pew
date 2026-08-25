@@ -3,7 +3,8 @@ FROM node:${NODE_VERSION}-slim AS base
 
 # Keep Bun for workspace installs/build scripts while pinning every Node.js
 # execution in the build and runtime stages to the same supported major.
-COPY --from=oven/bun:1 /usr/local/bin/bun /usr/local/bin/bun
+# Pin patch: floating oven/bun:1 broke frozen-lockfile across Bun minors.
+COPY --from=oven/bun:1.4.0 /usr/local/bin/bun /usr/local/bin/bun
 
 # --- Install dependencies ---
 # Include all workspace package.json files so bun.lock stays consistent.

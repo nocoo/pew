@@ -17,7 +17,7 @@ jobs:
   quality:
     uses: nocoo/base-ci/.github/workflows/bun-quality.yml@aec4adc1a817c56790d1698329ef9398a15a754a  # v2026.5
     with:
-      bun-version: "1.3.11"
+      bun-version: "1.4.0"
       pre-command: "bun run build"
       typecheck-command: "" # Included in lint script
       test-command: "bun run test:coverage"
@@ -55,7 +55,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.3.11"
+          bun-version: "1.4.0"
 
       - run: bun install --frozen-lockfile --ignore-scripts
 
@@ -113,7 +113,7 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.3.11"
+          bun-version: "1.4.0"
 
       - run: bun install --frozen-lockfile --ignore-scripts
 
