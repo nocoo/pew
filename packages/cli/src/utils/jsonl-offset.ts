@@ -13,6 +13,33 @@ export function jsonlStreamBound(fileSize: number, endBound?: number): number {
   return Math.min(fileSize, endBound);
 }
 
+/** Last offset at or before `bound` that ends a complete newline-terminated record. */
+export async function lastCompleteJsonlOffset(
+  filePath: string,
+  startOffset: number,
+  bound: number,
+): Promise<number> {
+  if (bound <= startOffset) return startOffset;
+  try {
+    const handle = await open(filePath, "r");
+    try {
+      const len = bound - startOffset;
+      const buf = Buffer.alloc(len);
+      const { bytesRead } = await handle.read(buf, 0, len, startOffset);
+      const data = buf.subarray(0, bytesRead);
+      if (data.length === 0) return startOffset;
+      if (data[data.length - 1] === 0x0a) return startOffset + data.length;
+      const nl = data.lastIndexOf(0x0a);
+      if (nl === -1) return startOffset;
+      return startOffset + nl + 1;
+    } finally {
+      await handle.close();
+    }
+  } catch {
+    return startOffset;
+  }
+}
+
 /** SHA-256 of bytes [start, end). Null if the range is unreadable. */
 export async function hashJsonlSlice(
   filePath: string,

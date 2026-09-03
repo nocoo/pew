@@ -3,7 +3,7 @@ import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import type { Source, TokenDelta } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
-import { jsonlStreamBound } from "../utils/jsonl-offset.js";
+import { jsonlStreamBound, lastCompleteJsonlOffset } from "../utils/jsonl-offset.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
 
 /** Result of parsing an OpenClaw JSONL session file */
@@ -41,13 +41,13 @@ export async function parseOpenClawFile(opts: {
   const st = await stat(filePath).catch(() => null);
   if (!st?.isFile()) return { deltas, endOffset: startOffset };
 
-  const endOffset = jsonlStreamBound(st.size, opts.endBound);
-  if (startOffset >= endOffset) return { deltas, endOffset };
+  const bound = jsonlStreamBound(st.size, opts.endBound);
+  if (startOffset >= bound) return { deltas, endOffset: bound };
 
   const stream = createReadStream(filePath, {
     encoding: "utf8",
     start: startOffset,
-    end: endOffset - 1,
+    end: bound - 1,
   });
   const rl = createInterface({ input: stream, crlfDelay: Infinity });
 
@@ -101,5 +101,8 @@ export async function parseOpenClawFile(opts: {
     stream.destroy();
   }
 
-  return { deltas, endOffset };
+  return {
+    deltas,
+    endOffset: await lastCompleteJsonlOffset(filePath, startOffset, bound),
+  };
 }

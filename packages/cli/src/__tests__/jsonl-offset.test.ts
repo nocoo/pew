@@ -9,6 +9,7 @@ import {
   clampedJsonlEndOffset,
   hashJsonlSlice,
   jsonlStreamBound,
+  lastCompleteJsonlOffset,
   parseStableJsonlFile,
 } from "../utils/jsonl-offset.js";
 
@@ -282,6 +283,37 @@ describe("parseStableJsonlFile", () => {
         }) as FileCursor,
     });
     expect(committed?.cursor.continuityAnchors).toEqual([]);
+  });
+});
+
+describe("lastCompleteJsonlOffset", () => {
+  let dir: string;
+  let filePath: string;
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), "pew-jsonl-complete-"));
+    filePath = join(dir, "log.jsonl");
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("returns the bound when it already ends on a newline", async () => {
+    const body = '{"id":"a"}\n{"id":"b"}\n';
+    await writeFile(filePath, body);
+    expect(await lastCompleteJsonlOffset(filePath, 0, body.length)).toBe(body.length);
+  });
+
+  it("rewinds to the previous newline when the bound bisects a record", async () => {
+    const first = '{"id":"a"}\n';
+    await writeFile(filePath, `${first}{"id":"part`);
+    expect(await lastCompleteJsonlOffset(filePath, 0, first.length + 8)).toBe(first.length);
+  });
+
+  it("returns startOffset when no complete record exists in the range", async () => {
+    await writeFile(filePath, '{"id":"part');
+    expect(await lastCompleteJsonlOffset(filePath, 0, 8)).toBe(0);
   });
 });
 

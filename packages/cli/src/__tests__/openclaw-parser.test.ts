@@ -63,6 +63,27 @@ describe("parseOpenClawFile", () => {
     expect(result.endOffset).toBe(first.length);
   });
 
+  it("does not advance a cursor into a bisected first record", async () => {
+    const filePath = join(tempDir, "partial.jsonl");
+    const rec = `${openclawLine()}\n`;
+    await writeFile(filePath, rec.slice(0, 80));
+    const first = await parseOpenClawFile({
+      filePath,
+      startOffset: 0,
+      endBound: 80,
+    });
+    expect(first.deltas).toHaveLength(0);
+    expect(first.endOffset).toBe(0);
+    await writeFile(filePath, rec);
+    const second = await parseOpenClawFile({
+      filePath,
+      startOffset: first.endOffset,
+      endBound: rec.length,
+    });
+    expect(second.deltas).toHaveLength(1);
+    expect(second.endOffset).toBe(rec.length);
+  });
+
   it("should skip non-message types", async () => {
     const filePath = join(tempDir, "session.jsonl");
     const lines = [
