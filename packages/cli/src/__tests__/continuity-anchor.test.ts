@@ -208,8 +208,8 @@ describe("readContinuityAnchors / resolveJsonlContinuity", () => {
     expect(decision).toEqual({ action: "skip", reason: "unproven-discontinuity" });
   });
 
-  it("returns no anchors when the file cannot be read", async () => {
-    expect(await readContinuityAnchors(join(dir, "missing.jsonl"), 10)).toEqual([]);
+  it("returns null when the file cannot be read", async () => {
+    expect(await readContinuityAnchors(join(dir, "missing.jsonl"), 10)).toBeNull();
   });
 
   it("returns no anchors at offset 0", async () => {
@@ -248,25 +248,43 @@ describe("readContinuityAnchors / resolveJsonlContinuity", () => {
   });
 
   it("reads an anchor when the last record is larger than 1 MiB", async () => {
+    const head = rec("a");
+    const mid = rec("b");
     const huge = Buffer.from(`{"id":"${"x".repeat(1_100_000)}"}\n`);
-    const tail = rec("z");
-    const body = Buffer.concat([huge, tail]);
+    const body = Buffer.concat([head, mid, huge]);
     await writeFile(filePath, body);
     const anchors = await readContinuityAnchors(filePath, body.length);
-    expect(anchors.length).toBeGreaterThan(0);
-    expect(anchors[anchors.length - 1]?.sha256).toBe(hashRecord(tail));
+    expect(anchors).not.toBeNull();
+    expect(anchors).toHaveLength(3);
+    expect(anchors?.[2]?.length).toBe(huge.length);
+    expect(anchors?.[2]?.sha256).toBe(hashRecord(huge));
   });
 
-  it("appends a legacy cursor when the file only grew", async () => {
+  it("appends a legacy cursor when growth stays on a record boundary", async () => {
     const body = Buffer.concat([rec("a"), rec("b")]);
-    await writeFile(filePath, body);
+    const grown = Buffer.concat([body, rec("c")]);
+    await writeFile(filePath, grown);
     const decision = await resolveJsonlContinuity({
       filePath,
-      fileSize: body.length + 10,
+      fileSize: grown.length,
       cursorSize: body.length,
       offset: body.length,
       anchors: undefined,
     });
     expect(decision).toEqual({ action: "append", startOffset: body.length });
+  });
+
+  it("skips legacy growth when offset is not a record boundary", async () => {
+    const body = Buffer.concat([rec("a"), rec("b")]);
+    const grown = Buffer.concat([body, rec("c")]);
+    await writeFile(filePath, grown);
+    const decision = await resolveJsonlContinuity({
+      filePath,
+      fileSize: grown.length,
+      cursorSize: body.length,
+      offset: body.length + 3,
+      anchors: undefined,
+    });
+    expect(decision).toEqual({ action: "skip", reason: "unproven-discontinuity" });
   });
 });

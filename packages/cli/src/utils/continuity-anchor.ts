@@ -63,7 +63,7 @@ export function hashRecord(recordWithTerminator: Uint8Array): string {
 export async function readContinuityAnchors(
   filePath: string,
   endOffset: number,
-): Promise<ContinuityAnchor[]> {
+): Promise<ContinuityAnchor[] | null> {
   if (endOffset <= 0) return [];
   try {
     const handle = await open(filePath, "r");
@@ -84,7 +84,7 @@ export async function readContinuityAnchors(
       await handle.close();
     }
   } catch {
-    return [];
+    return null;
   }
 }
 
@@ -151,7 +151,23 @@ async function resolveJsonlContinuityUnchecked(opts: {
   if (fileSize === cursorSize) {
     return { action: "skip", reason: "unproven-discontinuity" };
   }
+  if (!(await isRecordBoundary(filePath, offset))) {
+    return { action: "skip", reason: "unproven-discontinuity" };
+  }
   return { action: "append", startOffset: offset };
+}
+
+/** True when `offset` is 0 or the previous byte is a newline. */
+async function isRecordBoundary(filePath: string, offset: number): Promise<boolean> {
+  if (offset <= 0) return true;
+  const handle = await open(filePath, "r");
+  try {
+    const buf = Buffer.alloc(1);
+    const { bytesRead } = await handle.read(buf, 0, 1, offset - 1);
+    return bytesRead === 1 && buf[0] === 0x0a;
+  } finally {
+    await handle.close();
+  }
 }
 
 async function anchorsMatchAt(

@@ -36,11 +36,12 @@ function piLine(ts: string, input: number): string {
   });
 }
 
-function claudeLine(ts: string, input: number): string {
+function claudeLine(ts: string, input: number, id = "msg-1"): string {
   return JSON.stringify({
     type: "assistant",
     timestamp: ts,
     message: {
+      id,
       model: "glm-5",
       stop_reason: "end_turn",
       usage: {
@@ -228,6 +229,17 @@ describe("jsonl continuity through executeSync", () => {
     };
     expect(after.files[grokLog]?.continuityAnchors?.length).toBeGreaterThan(0);
     expect(await grokQueueInput(stateDir)).toBe(100);
+  });
+
+  it("clears claude seenIds on an empty epoch so a reused id counts", async () => {
+    const session = join(claudeDir, "projects", "p1", "s.jsonl");
+    await writeFile(session, `${claudeLine("2026-03-07T10:00:00.000Z", 7, "reuse")}\n`);
+    await executeSync({ stateDir, deviceId: "dev-1", claudeDir });
+    await writeFile(session, "");
+    await executeSync({ stateDir, deviceId: "dev-1", claudeDir });
+    await writeFile(session, `${claudeLine("2026-03-07T13:00:00.000Z", 9, "reuse")}\n`);
+    const third = await executeSync({ stateDir, deviceId: "dev-1", claudeDir });
+    expect(third.sources.claude).toBe(1);
   });
 
   it("recovers after an observed empty epoch", async () => {

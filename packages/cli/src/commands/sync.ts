@@ -1,5 +1,6 @@
 import { stat } from "node:fs/promises";
 import type {
+  CodexCursor,
   CodexScopeState,
   CursorState,
   FileCursor,
@@ -188,6 +189,29 @@ function sourceKey(source: Source): keyof SyncResult["sources"] {
       throw new Error(`Unknown source: ${_exhaustive}`);
     }
   }
+}
+
+function emptyEpochCursor(
+  cursor: FileCursorBase & { offset: number },
+  fingerprint: FileFingerprint,
+): FileCursor {
+  const codex = cursor as CodexCursor;
+  return {
+    inode: fingerprint.inode,
+    mtimeMs: fingerprint.mtimeMs,
+    size: 0,
+    offset: 0,
+    continuityAnchors: [],
+    continuityBroken: undefined,
+    updatedAt: new Date().toISOString(),
+    seenIds: [],
+    lastTotals: null,
+    lastModel: null,
+    scopeId: codex.scopeId ?? null,
+    processedRequestIndices: [],
+    requestMeta: {},
+    processedRequestIds: [],
+  } as FileCursor;
 }
 
 /**
@@ -503,11 +527,14 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
             offsetCursor.continuityAnchors.length === 0)
         ) {
           try {
-            offsetCursor.continuityAnchors = await readContinuityAnchors(
+            const stamped = await readContinuityAnchors(
               filePath,
               offsetCursor.offset,
             );
-            cursors.files[filePath] = offsetCursor as FileCursor;
+            if (stamped && stamped.length > 0) {
+              offsetCursor.continuityAnchors = stamped;
+              cursors.files[filePath] = offsetCursor as FileCursor;
+            }
           } catch {
             // Best-effort migration; a later changed-file pass will retry.
           }
@@ -561,16 +588,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
       // instead of SUM-replaying a retained tail or wiping every source.
       const jsonlSource = usesJsonlOffsetResume(driver.source, filePath);
       if (offsetCursor && jsonlSource && fingerprint.size === 0) {
-        cursors.files[filePath] = {
-          ...offsetCursor,
-          inode: fingerprint.inode,
-          mtimeMs: fingerprint.mtimeMs,
-          size: 0,
-          offset: 0,
-          continuityAnchors: [],
-          continuityBroken: undefined,
-          updatedAt: new Date().toISOString(),
-        } as FileCursor;
+        cursors.files[filePath] = emptyEpochCursor(offsetCursor, fingerprint);
         continue;
       }
 
@@ -624,12 +642,15 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
         if (built.offset > fingerprint.size) {
           built.size = built.offset;
         }
-        try {
-          built.continuityAnchors = await readContinuityAnchors(filePath, built.offset);
-        } catch {
-          built.continuityAnchors = [];
+        const anchors = await readContinuityAnchors(filePath, built.offset);
+        if (anchors === null) {
+          if (offsetCursor?.continuityAnchors) {
+            built.continuityAnchors = offsetCursor.continuityAnchors;
+          }
+        } else {
+          built.continuityAnchors = anchors;
+          built.continuityBroken = undefined;
         }
-        built.continuityBroken = undefined;
       }
       cursors.files[filePath] = built;
 
