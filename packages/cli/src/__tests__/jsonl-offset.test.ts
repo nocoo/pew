@@ -8,6 +8,7 @@ import type { TokenParseResult } from "../drivers/types.js";
 import {
   clampedJsonlEndOffset,
   hashJsonlSlice,
+  jsonlCompleteBound,
   jsonlStreamBound,
   lastCompleteJsonlOffset,
   parseStableJsonlFile,
@@ -314,6 +315,41 @@ describe("lastCompleteJsonlOffset", () => {
   it("returns startOffset when no complete record exists in the range", async () => {
     await writeFile(filePath, '{"id":"part');
     expect(await lastCompleteJsonlOffset(filePath, 0, 8)).toBe(0);
+  });
+
+  it("scans backward in chunks instead of allocating the unread range", async () => {
+    const first = '{"id":"a"}\n';
+    await writeFile(filePath, `${first}${"x".repeat(70 * 1024)}`);
+    expect(
+      await lastCompleteJsonlOffset(filePath, 0, first.length + 70 * 1024),
+    ).toBe(first.length);
+  });
+
+  it("returns null when the file cannot be read", async () => {
+    expect(await lastCompleteJsonlOffset(join(dir, "missing.jsonl"), 0, 8)).toBeNull();
+  });
+});
+
+describe("jsonlCompleteBound", () => {
+  let dir: string;
+  let filePath: string;
+
+  beforeEach(async () => {
+    dir = await mkdtemp(join(tmpdir(), "pew-jsonl-bound-"));
+    filePath = join(dir, "log.jsonl");
+  });
+
+  afterEach(async () => {
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it("returns the snapshot bound when startOffset is already there", async () => {
+    await writeFile(filePath, '{"id":"a"}\n');
+    expect(await jsonlCompleteBound(filePath, 10, 10)).toBe(10);
+  });
+
+  it("falls back to startOffset when the file cannot be read", async () => {
+    expect(await jsonlCompleteBound(join(dir, "missing.jsonl"), 3, 10)).toBe(3);
   });
 });
 

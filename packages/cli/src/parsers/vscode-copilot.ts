@@ -25,7 +25,7 @@ import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import type { Source } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
-import { jsonlStreamBound, lastCompleteJsonlOffset } from "../utils/jsonl-offset.js";
+import { jsonlCompleteBound } from "../utils/jsonl-offset.js";
 import { toNonNegInt } from "../utils/token-delta.js";
 import {
   type RequestMeta,
@@ -117,11 +117,16 @@ export async function parseVscodeCopilotFile(
     };
   }
 
-  const bound = jsonlStreamBound(st.size, opts.endBound);
-  if (startOffset >= bound) {
+  const endOffset = await jsonlCompleteBound(
+    filePath,
+    startOffset,
+    st.size,
+    opts.endBound,
+  );
+  if (startOffset >= endOffset) {
     return {
       deltas,
-      endOffset: bound,
+      endOffset,
       requestMeta,
       processedRequestIndices: [...processedSet],
     };
@@ -130,7 +135,7 @@ export async function parseVscodeCopilotFile(
   const stream = createReadStream(filePath, {
     encoding: "utf8",
     start: startOffset,
-    end: bound - 1,
+    end: endOffset - 1,
   });
   const rl = createInterface({ input: stream, crlfDelay: Infinity });
 
@@ -300,7 +305,7 @@ export async function parseVscodeCopilotFile(
 
   return {
     deltas,
-    endOffset: await lastCompleteJsonlOffset(filePath, startOffset, bound),
+    endOffset,
     requestMeta,
     processedRequestIndices: [...processedSet],
   };

@@ -16,7 +16,7 @@ import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import type { Source, TokenDelta } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
-import { jsonlStreamBound, lastCompleteJsonlOffset } from "../utils/jsonl-offset.js";
+import { jsonlCompleteBound } from "../utils/jsonl-offset.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
 
 /** Result of parsing a single Codex JSONL rollout file */
@@ -154,11 +154,16 @@ export async function parseCodexFile(opts: {
     return { deltas, endOffset: startOffset, lastTotals, lastModel, highWaterTotals, usageKeys };
   }
 
-  const bound = jsonlStreamBound(st.size, opts.endBound);
-  if (bound === 0 || startOffset >= bound) {
+  const endOffset = await jsonlCompleteBound(
+    filePath,
+    startOffset,
+    st.size,
+    opts.endBound,
+  );
+  if (endOffset === 0 || startOffset >= endOffset) {
     return {
       deltas,
-      endOffset: bound === 0 ? 0 : bound,
+      endOffset: endOffset === 0 ? 0 : endOffset,
       lastTotals,
       lastModel,
       highWaterTotals,
@@ -169,7 +174,7 @@ export async function parseCodexFile(opts: {
   const stream = createReadStream(filePath, {
     encoding: "utf8",
     start: startOffset,
-    end: bound - 1,
+    end: endOffset - 1,
   });
   const rl = createInterface({ input: stream, crlfDelay: Infinity });
 
@@ -270,12 +275,5 @@ export async function parseCodexFile(opts: {
     stream.destroy();
   }
 
-  return {
-    deltas,
-    endOffset: await lastCompleteJsonlOffset(filePath, startOffset, bound),
-    lastTotals,
-    lastModel,
-    highWaterTotals,
-    usageKeys,
-  };
+  return { deltas, endOffset, lastTotals, lastModel, highWaterTotals, usageKeys };
 }

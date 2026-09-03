@@ -3,7 +3,7 @@ import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import type { Source, TokenDelta } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
-import { jsonlStreamBound, lastCompleteJsonlOffset } from "../utils/jsonl-offset.js";
+import { jsonlCompleteBound } from "../utils/jsonl-offset.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
 
 /** Result of parsing an OpenClaw JSONL session file */
@@ -41,13 +41,18 @@ export async function parseOpenClawFile(opts: {
   const st = await stat(filePath).catch(() => null);
   if (!st?.isFile()) return { deltas, endOffset: startOffset };
 
-  const bound = jsonlStreamBound(st.size, opts.endBound);
-  if (startOffset >= bound) return { deltas, endOffset: bound };
+  const endOffset = await jsonlCompleteBound(
+    filePath,
+    startOffset,
+    st.size,
+    opts.endBound,
+  );
+  if (startOffset >= endOffset) return { deltas, endOffset };
 
   const stream = createReadStream(filePath, {
     encoding: "utf8",
     start: startOffset,
-    end: bound - 1,
+    end: endOffset - 1,
   });
   const rl = createInterface({ input: stream, crlfDelay: Infinity });
 
@@ -101,8 +106,5 @@ export async function parseOpenClawFile(opts: {
     stream.destroy();
   }
 
-  return {
-    deltas,
-    endOffset: await lastCompleteJsonlOffset(filePath, startOffset, bound),
-  };
+  return { deltas, endOffset };
 }

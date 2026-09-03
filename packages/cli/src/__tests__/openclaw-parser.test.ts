@@ -84,6 +84,23 @@ describe("parseOpenClawFile", () => {
     expect(second.endOffset).toBe(rec.length);
   });
 
+  it("does not emit a newline-free final JSON object", async () => {
+    const filePath = join(tempDir, "no-nl.jsonl");
+    const first = `${openclawLine()}\n`;
+    const dangling = openclawLine({ timestamp: "2026-03-07T11:00:00.000Z" });
+    await writeFile(filePath, `${first}${dangling}`);
+    const initial = await parseOpenClawFile({ filePath, startOffset: 0 });
+    expect(initial.deltas).toHaveLength(1);
+    expect(initial.endOffset).toBe(first.length);
+    await writeFile(filePath, `${first}${dangling}\n`);
+    const again = await parseOpenClawFile({
+      filePath,
+      startOffset: initial.endOffset,
+    });
+    expect(again.deltas).toHaveLength(1);
+    expect(again.endOffset).toBe(first.length + dangling.length + 1);
+  });
+
   it("should skip non-message types", async () => {
     const filePath = join(tempDir, "session.jsonl");
     const lines = [

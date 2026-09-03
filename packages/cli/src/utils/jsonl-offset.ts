@@ -13,30 +13,46 @@ export function jsonlStreamBound(fileSize: number, endBound?: number): number {
   return Math.min(fileSize, endBound);
 }
 
+/** Snapshot-pinned exclusive end that stops after the last complete JSONL record. */
+export async function jsonlCompleteBound(
+  filePath: string,
+  startOffset: number,
+  fileSize: number,
+  endBound?: number,
+): Promise<number> {
+  const bound = jsonlStreamBound(fileSize, endBound);
+  if (startOffset >= bound) return bound;
+  return (await lastCompleteJsonlOffset(filePath, startOffset, bound)) ?? startOffset;
+}
+
 /** Last offset at or before `bound` that ends a complete newline-terminated record. */
 export async function lastCompleteJsonlOffset(
   filePath: string,
   startOffset: number,
   bound: number,
-): Promise<number> {
+): Promise<number | null> {
   if (bound <= startOffset) return startOffset;
   try {
     const handle = await open(filePath, "r");
     try {
-      const len = bound - startOffset;
-      const buf = Buffer.alloc(len);
-      const { bytesRead } = await handle.read(buf, 0, len, startOffset);
-      const data = buf.subarray(0, bytesRead);
-      if (data.length === 0) return startOffset;
-      if (data[data.length - 1] === 0x0a) return startOffset + data.length;
-      const nl = data.lastIndexOf(0x0a);
-      if (nl === -1) return startOffset;
-      return startOffset + nl + 1;
+      let pos = bound;
+      const buf = Buffer.alloc(Math.min(HASH_CHUNK, bound - startOffset));
+      while (pos > startOffset) {
+        const start = Math.max(startOffset, pos - buf.length);
+        const len = pos - start;
+        const { bytesRead } = await handle.read(buf, 0, len, start);
+        if (bytesRead !== len) return null;
+        const data = buf.subarray(0, bytesRead);
+        const nl = data.lastIndexOf(0x0a);
+        if (nl !== -1) return start + nl + 1;
+        pos = start;
+      }
+      return startOffset;
     } finally {
       await handle.close();
     }
   } catch {
-    return startOffset;
+    return null;
   }
 }
 
