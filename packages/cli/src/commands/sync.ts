@@ -29,13 +29,17 @@ import { toUtcHalfHourStart, bucketKey, addTokens, emptyTokenDelta } from "../ut
 import { createTokenDrivers } from "../drivers/registry.js";
 import type { SyncContext, FileFingerprint } from "../drivers/types.js";
 import {
+  restoreCodexSharedState,
+  snapshotCodexSharedState,
+} from "../utils/codex-shared-state.js";
+import {
   applyResumeStartOffset,
   isOffsetCursor,
   readContinuityAnchors,
   resolveJsonlContinuity,
   usesJsonlOffsetResume,
 } from "../utils/continuity-anchor.js";
-import { parserSawSmallerSnapshot } from "../utils/jsonl-offset.js";
+import { parseStableJsonlFile } from "../utils/jsonl-offset.js";
 import { aggregateRecords } from "./upload.js";
 
 /** Sync execution options */
@@ -634,41 +638,48 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
         applyResumeStartOffset(resume, decision.startOffset);
       }
 
-      const result = await driver.parse(filePath, resume, ctx).catch(
-        (err: unknown) => {
+      const parseFile = () =>
+        driver.parse(filePath, resume, ctx).catch((err: unknown) => {
           onProgress?.({
             source: driver.source,
             phase: "warn",
             message: `Skipping ${filePath}: ${err instanceof Error ? err.message : String(err)}`,
           });
           return null;
-        },
-      );
-      if (!result) {
-        parseFailedPaths.add(filePath);
-        if (driver.source === "codex") codexParseFailures++;
-        continue;
-      }
+        });
 
-      const built = driver.buildCursor(fingerprint, result, cursor) as FileCursor;
-      if (
-        jsonlSource &&
-        isOffsetCursor(built) &&
-        parserSawSmallerSnapshot(result.deltas.length, built.offset, fingerprint.size)
-      ) {
-        parseFailedPaths.add(filePath);
-        if (driver.source === "codex") codexParseFailures++;
-        continue;
-      }
-      if (jsonlSource && isOffsetCursor(built)) {
-        if (built.offset > fingerprint.size) {
-          built.size = built.offset;
+      let result: Awaited<ReturnType<typeof driver.parse>> | null;
+      let built: FileCursor;
+      if (jsonlSource) {
+        const scopeSnapshot = snapshotCodexSharedState(ctx, filePath);
+        const stable = await parseStableJsonlFile({
+          filePath,
+          snapshotSize: fingerprint.size,
+          parse: parseFile,
+          buildCursor: (parsed) => {
+            const next = driver.buildCursor(fingerprint, parsed, cursor) as FileCursor;
+            if (isOffsetCursor(next) && next.offset > fingerprint.size) {
+              next.size = next.offset;
+            }
+            return next;
+          },
+        });
+        if (!stable) {
+          restoreCodexSharedState(ctx, scopeSnapshot);
+          parseFailedPaths.add(filePath);
+          if (driver.source === "codex") codexParseFailures++;
+          continue;
         }
-        const anchors = await readContinuityAnchors(filePath, built.offset);
-        if (anchors !== null) {
-          built.continuityAnchors = anchors;
-          built.continuityBroken = undefined;
+        result = stable.result;
+        built = stable.cursor;
+      } else {
+        result = await parseFile();
+        if (!result) {
+          parseFailedPaths.add(filePath);
+          if (driver.source === "codex") codexParseFailures++;
+          continue;
         }
+        built = driver.buildCursor(fingerprint, result, cursor) as FileCursor;
       }
       cursors.files[filePath] = built;
 
