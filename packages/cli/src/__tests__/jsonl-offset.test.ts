@@ -348,8 +348,10 @@ describe("jsonlCompleteBound", () => {
     expect(await jsonlCompleteBound(filePath, 10, 10)).toBe(10);
   });
 
-  it("falls back to startOffset when the file cannot be read", async () => {
-    expect(await jsonlCompleteBound(join(dir, "missing.jsonl"), 3, 10)).toBe(3);
+  it("throws when the complete-line bound cannot be read", async () => {
+    await expect(jsonlCompleteBound(join(dir, "missing.jsonl"), 3, 10)).rejects.toThrow(
+      /complete bound unreadable/,
+    );
   });
 });
 

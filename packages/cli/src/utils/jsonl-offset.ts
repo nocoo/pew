@@ -22,7 +22,11 @@ export async function jsonlCompleteBound(
 ): Promise<number> {
   const bound = jsonlStreamBound(fileSize, endBound);
   if (startOffset >= bound) return bound;
-  return (await lastCompleteJsonlOffset(filePath, startOffset, bound)) ?? startOffset;
+  const complete = await lastCompleteJsonlOffset(filePath, startOffset, bound);
+  if (complete === null) {
+    throw new Error(`JSONL complete bound unreadable: ${filePath}`);
+  }
+  return complete;
 }
 
 /** Last offset at or before `bound` that ends a complete newline-terminated record. */
