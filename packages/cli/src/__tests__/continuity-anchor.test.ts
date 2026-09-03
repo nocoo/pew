@@ -260,7 +260,20 @@ describe("readContinuityAnchors / resolveJsonlContinuity", () => {
     expect(anchors?.[2]?.sha256).toBe(hashRecord(huge));
   });
 
-  it("appends a legacy cursor when growth stays on a record boundary", async () => {
+  it("appends from zero after an observed empty epoch", async () => {
+    const grown = Buffer.concat([rec("n1"), rec("n2")]);
+    await writeFile(filePath, grown);
+    const decision = await resolveJsonlContinuity({
+      filePath,
+      fileSize: grown.length,
+      cursorSize: 0,
+      offset: 0,
+      anchors: [],
+    });
+    expect(decision).toEqual({ action: "append", startOffset: 0 });
+  });
+
+  it("skips any changed legacy cursor without anchors", async () => {
     const body = Buffer.concat([rec("a"), rec("b")]);
     const grown = Buffer.concat([body, rec("c")]);
     await writeFile(filePath, grown);
@@ -269,20 +282,6 @@ describe("readContinuityAnchors / resolveJsonlContinuity", () => {
       fileSize: grown.length,
       cursorSize: body.length,
       offset: body.length,
-      anchors: undefined,
-    });
-    expect(decision).toEqual({ action: "append", startOffset: body.length });
-  });
-
-  it("skips legacy growth when offset is not a record boundary", async () => {
-    const body = Buffer.concat([rec("a"), rec("b")]);
-    const grown = Buffer.concat([body, rec("c")]);
-    await writeFile(filePath, grown);
-    const decision = await resolveJsonlContinuity({
-      filePath,
-      fileSize: grown.length,
-      cursorSize: body.length,
-      offset: body.length + 3,
       anchors: undefined,
     });
     expect(decision).toEqual({ action: "skip", reason: "unproven-discontinuity" });

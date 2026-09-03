@@ -1,6 +1,5 @@
 import { stat } from "node:fs/promises";
 import type {
-  CodexCursor,
   CodexScopeState,
   CursorState,
   FileCursor,
@@ -192,10 +191,9 @@ function sourceKey(source: Source): keyof SyncResult["sources"] {
 }
 
 function emptyEpochCursor(
-  cursor: FileCursorBase & { offset: number },
+  _cursor: FileCursorBase & { offset: number },
   fingerprint: FileFingerprint,
 ): FileCursor {
-  const codex = cursor as CodexCursor;
   return {
     inode: fingerprint.inode,
     mtimeMs: fingerprint.mtimeMs,
@@ -207,7 +205,7 @@ function emptyEpochCursor(
     seenIds: [],
     lastTotals: null,
     lastModel: null,
-    scopeId: codex.scopeId ?? null,
+    scopeId: null,
     processedRequestIndices: [],
     requestMeta: {},
     processedRequestIds: [],
@@ -643,11 +641,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
           built.size = built.offset;
         }
         const anchors = await readContinuityAnchors(filePath, built.offset);
-        if (anchors === null) {
-          if (offsetCursor?.continuityAnchors) {
-            built.continuityAnchors = offsetCursor.continuityAnchors;
-          }
-        } else {
+        if (anchors !== null) {
           built.continuityAnchors = anchors;
           built.continuityBroken = undefined;
         }

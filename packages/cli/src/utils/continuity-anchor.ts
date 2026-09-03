@@ -75,7 +75,7 @@ export async function readContinuityAnchors(
         const buf = Buffer.alloc(len);
         const { bytesRead } = await handle.read(buf, 0, len, start);
         const lines = completeRecords(buf.subarray(0, bytesRead), start === 0);
-        if (lines.length > 0 || start === 0) {
+        if (lines.length >= CONTINUITY_ANCHOR_COUNT || start === 0) {
           return lines.slice(-CONTINUITY_ANCHOR_COUNT);
         }
         window = Math.min(endOffset, window * 2);
@@ -144,30 +144,10 @@ async function resolveJsonlContinuityUnchecked(opts: {
     return { action: "skip", reason: "unproven-discontinuity" };
   }
 
-  if (offset > fileSize || fileSize < cursorSize) {
-    return { action: "skip", reason: "unproven-discontinuity" };
+  if (offset === 0 && cursorSize === 0) {
+    return { action: "append", startOffset: 0 };
   }
-  // Equal-size mtime bump cannot be proven to be append-only.
-  if (fileSize === cursorSize) {
-    return { action: "skip", reason: "unproven-discontinuity" };
-  }
-  if (!(await isRecordBoundary(filePath, offset))) {
-    return { action: "skip", reason: "unproven-discontinuity" };
-  }
-  return { action: "append", startOffset: offset };
-}
-
-/** True when `offset` is 0 or the previous byte is a newline. */
-async function isRecordBoundary(filePath: string, offset: number): Promise<boolean> {
-  if (offset <= 0) return true;
-  const handle = await open(filePath, "r");
-  try {
-    const buf = Buffer.alloc(1);
-    const { bytesRead } = await handle.read(buf, 0, 1, offset - 1);
-    return bytesRead === 1 && buf[0] === 0x0a;
-  } finally {
-    await handle.close();
-  }
+  return { action: "skip", reason: "unproven-discontinuity" };
 }
 
 async function anchorsMatchAt(
