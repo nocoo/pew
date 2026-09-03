@@ -208,6 +208,10 @@ describe("readContinuityAnchors / resolveJsonlContinuity", () => {
     expect(decision).toEqual({ action: "skip", reason: "unproven-discontinuity" });
   });
 
+  it("returns no anchors when the file cannot be read", async () => {
+    expect(await readContinuityAnchors(join(dir, "missing.jsonl"), 10)).toEqual([]);
+  });
+
   it("returns no anchors at offset 0", async () => {
     await writeFile(filePath, rec("a"));
     expect(await readContinuityAnchors(filePath, 0)).toEqual([]);
@@ -217,6 +221,40 @@ describe("readContinuityAnchors / resolveJsonlContinuity", () => {
     const lf = Buffer.from('{"id":"a"}\n');
     const crlf = Buffer.from('{"id":"a"}\r\n');
     expect(hashRecord(lf)).toBe(hashRecord(crlf));
+  });
+
+  it("skips when the log path cannot be read with anchors", async () => {
+    const decision = await resolveJsonlContinuity({
+      filePath: join(dir, "missing.jsonl"),
+      fileSize: 10,
+      cursorSize: 10,
+      offset: 99,
+      anchors: [{ sha256: "ab", length: 3 }],
+    });
+    expect(decision).toEqual({ action: "skip", reason: "unproven-discontinuity" });
+  });
+
+  it("skips a legacy equal-size rewrite", async () => {
+    const body = Buffer.concat([rec("a"), rec("b")]);
+    await writeFile(filePath, body);
+    const decision = await resolveJsonlContinuity({
+      filePath,
+      fileSize: body.length,
+      cursorSize: body.length,
+      offset: body.length,
+      anchors: undefined,
+    });
+    expect(decision).toEqual({ action: "skip", reason: "unproven-discontinuity" });
+  });
+
+  it("reads an anchor when the last record is larger than 1 MiB", async () => {
+    const huge = Buffer.from(`{"id":"${"x".repeat(1_100_000)}"}\n`);
+    const tail = rec("z");
+    const body = Buffer.concat([huge, tail]);
+    await writeFile(filePath, body);
+    const anchors = await readContinuityAnchors(filePath, body.length);
+    expect(anchors.length).toBeGreaterThan(0);
+    expect(anchors[anchors.length - 1]?.sha256).toBe(hashRecord(tail));
   });
 
   it("appends a legacy cursor when the file only grew", async () => {

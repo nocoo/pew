@@ -65,35 +65,63 @@ export async function readContinuityAnchors(
   endOffset: number,
 ): Promise<ContinuityAnchor[]> {
   if (endOffset <= 0) return [];
-  const start = Math.max(0, endOffset - ANCHOR_WINDOW_BYTES);
-  const handle = await open(filePath, "r");
   try {
-    const len = endOffset - start;
-    const buf = Buffer.alloc(len);
-    const { bytesRead } = await handle.read(buf, 0, len, start);
-    const data = buf.subarray(0, bytesRead);
-    let i = 0;
-    if (start > 0) {
-      const firstNl = data.indexOf(0x0a);
-      if (firstNl === -1) return [];
-      i = firstNl + 1;
-    }
-    const lines: ContinuityAnchor[] = [];
-    let lineStart = i;
-    for (; i < data.length; i++) {
-      if (data[i] === 0x0a) {
-        const rec = data.subarray(lineStart, i + 1);
-        lines.push({ sha256: hashRecord(rec), length: rec.length });
-        lineStart = i + 1;
+    const handle = await open(filePath, "r");
+    try {
+      let window = ANCHOR_WINDOW_BYTES;
+      for (;;) {
+        const start = Math.max(0, endOffset - window);
+        const len = endOffset - start;
+        const buf = Buffer.alloc(len);
+        const { bytesRead } = await handle.read(buf, 0, len, start);
+        const lines = completeRecords(buf.subarray(0, bytesRead), start === 0);
+        if (lines.length > 0 || start === 0) {
+          return lines.slice(-CONTINUITY_ANCHOR_COUNT);
+        }
+        window = Math.min(endOffset, window * 2);
       }
+    } finally {
+      await handle.close();
     }
-    return lines.slice(-CONTINUITY_ANCHOR_COUNT);
-  } finally {
-    await handle.close();
+  } catch {
+    return [];
   }
 }
 
+function completeRecords(data: Uint8Array, fromFileStart: boolean): ContinuityAnchor[] {
+  let i = 0;
+  if (!fromFileStart) {
+    const firstNl = data.indexOf(0x0a);
+    if (firstNl === -1) return [];
+    i = firstNl + 1;
+  }
+  const lines: ContinuityAnchor[] = [];
+  let lineStart = i;
+  for (; i < data.length; i++) {
+    if (data[i] === 0x0a) {
+      const rec = data.subarray(lineStart, i + 1);
+      lines.push({ sha256: hashRecord(rec), length: rec.length });
+      lineStart = i + 1;
+    }
+  }
+  return lines;
+}
+
 export async function resolveJsonlContinuity(opts: {
+  filePath: string;
+  fileSize: number;
+  cursorSize: number;
+  offset: number;
+  anchors: ContinuityAnchor[] | undefined;
+}): Promise<ContinuityDecision> {
+  try {
+    return await resolveJsonlContinuityUnchecked(opts);
+  } catch {
+    return { action: "skip", reason: "unproven-discontinuity" };
+  }
+}
+
+async function resolveJsonlContinuityUnchecked(opts: {
   filePath: string;
   fileSize: number;
   cursorSize: number;
@@ -117,6 +145,10 @@ export async function resolveJsonlContinuity(opts: {
   }
 
   if (offset > fileSize || fileSize < cursorSize) {
+    return { action: "skip", reason: "unproven-discontinuity" };
+  }
+  // Equal-size mtime bump cannot be proven to be append-only.
+  if (fileSize === cursorSize) {
     return { action: "skip", reason: "unproven-discontinuity" };
   }
   return { action: "append", startOffset: offset };

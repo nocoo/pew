@@ -496,6 +496,22 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
       // A cursor whose offset is already past EOF is never unchanged — the
       // next pass must run continuity instead of refreshing a poisoned offset.
       if (!poisonedOffset && driver.shouldSkip(cursor, fingerprint)) {
+        if (
+          offsetCursor &&
+          usesJsonlOffsetResume(driver.source, filePath) &&
+          (!offsetCursor.continuityAnchors ||
+            offsetCursor.continuityAnchors.length === 0)
+        ) {
+          try {
+            offsetCursor.continuityAnchors = await readContinuityAnchors(
+              filePath,
+              offsetCursor.offset,
+            );
+            cursors.files[filePath] = offsetCursor as FileCursor;
+          } catch {
+            // Best-effort migration; a later changed-file pass will retry.
+          }
+        }
         onProgress?.({
           source: driver.source,
           phase: "parse",
@@ -543,8 +559,23 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
 
       // Same-inode JSONL trim/rewrite: rebase to the last proven record
       // instead of SUM-replaying a retained tail or wiping every source.
+      const jsonlSource = usesJsonlOffsetResume(driver.source, filePath);
+      if (offsetCursor && jsonlSource && fingerprint.size === 0) {
+        cursors.files[filePath] = {
+          ...offsetCursor,
+          inode: fingerprint.inode,
+          mtimeMs: fingerprint.mtimeMs,
+          size: 0,
+          offset: 0,
+          continuityAnchors: [],
+          continuityBroken: undefined,
+          updatedAt: new Date().toISOString(),
+        } as FileCursor;
+        continue;
+      }
+
       const resume = driver.resumeState(cursor, fingerprint);
-      if (offsetCursor && usesJsonlOffsetResume(driver.source, filePath)) {
+      if (offsetCursor && jsonlSource) {
         const decision = await resolveJsonlContinuity({
           filePath,
           fileSize: fingerprint.size,
@@ -583,20 +614,21 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
         },
       );
       if (!result) {
-        // Parser threw. Track as failed so we don't advertise this path
-        // as freshly-synced post-loop — that would leave a known-only
-        // stale entry that future cursor-loss detection would trip on.
         parseFailedPaths.add(filePath);
         if (driver.source === "codex") codexParseFailures++;
         continue;
       }
 
-      // Build and persist cursor (cast: driver returns concrete cursor type
-      // but the generic loop types it as FileCursorBase)
       const built = driver.buildCursor(fingerprint, result, cursor) as FileCursor;
-      if (isOffsetCursor(built) && usesJsonlOffsetResume(driver.source, filePath)) {
-        if (built.offset > fingerprint.size) built.offset = fingerprint.size;
-        built.continuityAnchors = await readContinuityAnchors(filePath, built.offset);
+      if (jsonlSource && isOffsetCursor(built)) {
+        if (built.offset > fingerprint.size) {
+          built.size = built.offset;
+        }
+        try {
+          built.continuityAnchors = await readContinuityAnchors(filePath, built.offset);
+        } catch {
+          built.continuityAnchors = [];
+        }
         built.continuityBroken = undefined;
       }
       cursors.files[filePath] = built;

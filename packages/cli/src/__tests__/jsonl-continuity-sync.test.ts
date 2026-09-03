@@ -202,6 +202,66 @@ describe("jsonl continuity through executeSync", () => {
     expect(second.sources.pi).toBe(1);
   });
 
+  it("stamps anchors onto an unchanged legacy cursor", async () => {
+    await writeFile(grokLog, `${grokLine("2026-03-07T10:00:00.000Z", 100)}\n`);
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      grokLogsPath: grokLog,
+      claudeDir,
+    });
+    const cursorsPath = join(stateDir, "cursors.json");
+    const cursors = JSON.parse(await readFile(cursorsPath, "utf8")) as {
+      files: Record<string, { continuityAnchors?: unknown[] }>;
+    };
+    delete cursors.files[grokLog]!.continuityAnchors;
+    await writeFile(cursorsPath, `${JSON.stringify(cursors)}\n`);
+
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      grokLogsPath: grokLog,
+      claudeDir,
+    });
+    const after = JSON.parse(await readFile(cursorsPath, "utf8")) as {
+      files: Record<string, { continuityAnchors?: unknown[] }>;
+    };
+    expect(after.files[grokLog]?.continuityAnchors?.length).toBeGreaterThan(0);
+    expect(await grokQueueInput(stateDir)).toBe(100);
+  });
+
+  it("recovers after an observed empty epoch", async () => {
+    await writeFile(
+      grokLog,
+      `${[
+        grokLine("2026-03-07T10:00:00.000Z", 100),
+        grokLine("2026-03-07T10:01:00.000Z", 200),
+      ].join("\n")}\n`,
+    );
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      grokLogsPath: grokLog,
+      claudeDir,
+    });
+    await writeFile(grokLog, "");
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      grokLogsPath: grokLog,
+      claudeDir,
+    });
+    await writeFile(grokLog, `${grokLine("2026-03-07T12:00:00.000Z", 15)}\n`);
+    const third = await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      grokLogsPath: grokLog,
+      claudeDir,
+    });
+    expect(third.sources.grok).toBe(1);
+    expect(await grokQueueInput(stateDir)).toBe(315);
+  });
+
   it("does not keep a poisoned offset sticky on an unchanged file", async () => {
     const body = `${grokLine("2026-03-07T10:00:00.000Z", 100)}\n`;
     await writeFile(grokLog, body);
