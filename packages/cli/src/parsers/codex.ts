@@ -16,6 +16,7 @@ import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import type { Source, TokenDelta } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
+import { jsonlStreamBound } from "../utils/jsonl-offset.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
 
 /** Result of parsing a single Codex JSONL rollout file */
@@ -133,6 +134,7 @@ export async function parseCodexFile(opts: {
   startOffset: number;
   lastTotals: TokenDelta | null;
   lastModel: string | null;
+  endBound?: number;
   /** Present only when multiple rollouts share one cumulative Goal counter. */
   highWaterTotals?: TokenDelta | null;
   /** Dedup set shared by every rollout in the resolved Goal root scope. */
@@ -152,7 +154,7 @@ export async function parseCodexFile(opts: {
     return { deltas, endOffset: startOffset, lastTotals, lastModel, highWaterTotals, usageKeys };
   }
 
-  const endOffset = st.size;
+  const endOffset = jsonlStreamBound(st.size, opts.endBound);
   if (endOffset === 0 || startOffset >= endOffset) {
     return {
       deltas,
@@ -167,6 +169,7 @@ export async function parseCodexFile(opts: {
   const stream = createReadStream(filePath, {
     encoding: "utf8",
     start: startOffset,
+    end: endOffset - 1,
   });
   const rl = createInterface({ input: stream, crlfDelay: Infinity });
 

@@ -46,7 +46,11 @@ export const piTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
 
   async parse(filePath: string, resume: ResumeState, _ctx: SyncContext): Promise<PiParseResult> {
     const r = resume as ByteOffsetResumeState;
-    const result = await parsePiFile({ filePath, startOffset: r.startOffset });
+    const result = await parsePiFile({
+      filePath,
+      startOffset: r.startOffset,
+      endBound: r.endBound,
+    });
     return { deltas: result.deltas, endOffset: result.endOffset };
   },
 

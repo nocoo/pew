@@ -49,7 +49,12 @@ export const ompTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
 
   async parse(filePath: string, resume: ResumeState, _ctx: SyncContext): Promise<OmpParseResult> {
     const r = resume as ByteOffsetResumeState;
-    const result = await parsePiFile({ filePath, startOffset: r.startOffset, source: "omp" });
+    const result = await parsePiFile({
+      filePath,
+      startOffset: r.startOffset,
+      endBound: r.endBound,
+      source: "omp",
+    });
     return { deltas: result.deltas, endOffset: result.endOffset };
   },
 

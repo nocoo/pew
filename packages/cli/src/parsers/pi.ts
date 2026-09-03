@@ -3,7 +3,7 @@ import { stat } from "node:fs/promises";
 import type { Source, TokenDelta } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
-import { clampedJsonlEndOffset } from "../utils/jsonl-offset.js";
+import { clampedJsonlEndOffset, jsonlStreamBound } from "../utils/jsonl-offset.js";
 
 /** Result of parsing a single pi-format JSONL session file */
 export interface PiFileResult {
@@ -87,6 +87,7 @@ export function normalizePiUsage(u: Record<string, unknown>): TokenDelta {
 export async function parsePiFile(opts: {
   filePath: string;
   startOffset: number;
+  endBound?: number;
   /** Source tag for emitted deltas — "pi" (default) or "omp" */
   source?: Source;
 }): Promise<PiFileResult> {
@@ -95,11 +96,12 @@ export async function parsePiFile(opts: {
 
   const st = await stat(filePath).catch(() => null);
   if (!st?.isFile()) return { deltas, endOffset: startOffset };
-  if (startOffset >= st.size) return { deltas, endOffset: st.size };
+  const bound = jsonlStreamBound(st.size, opts.endBound);
+  if (startOffset >= bound) return { deltas, endOffset: bound };
 
-  // `end` is inclusive — pin the read to the stat snapshot so bytes appended
+  // `end` is inclusive — pin the read to the snapshot bound so bytes appended
   // mid-parse stay unread (and unaccounted) until the next run.
-  const stream = createReadStream(filePath, { start: startOffset, end: st.size - 1 });
+  const stream = createReadStream(filePath, { start: startOffset, end: bound - 1 });
   // Carry incomplete trailing bytes across chunks (Uint8Array avoids Buffer generics)
   let pending: Uint8Array = new Uint8Array(0);
   // Bytes of complete lines (ending in \n) consumed relative to startOffset
@@ -176,5 +178,5 @@ export async function parsePiFile(opts: {
   }
 
   // Trailing partial line is NOT counted in endOffset
-  return { deltas, endOffset: clampedJsonlEndOffset(startOffset, st.size, completeBytes) };
+  return { deltas, endOffset: clampedJsonlEndOffset(startOffset, bound, completeBytes) };
 }

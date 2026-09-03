@@ -30,6 +30,7 @@ import { toUtcHalfHourStart, bucketKey, addTokens, emptyTokenDelta } from "../ut
 import { createTokenDrivers } from "../drivers/registry.js";
 import type { SyncContext, FileFingerprint } from "../drivers/types.js";
 import {
+  applyResumeEndBound,
   applyResumeStartOffset,
   isOffsetCursor,
   readContinuityAnchors,
@@ -651,6 +652,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
         continuityStart = decision.startOffset;
         continuityAction = decision.action;
       }
+      if (jsonlSource) applyResumeEndBound(resume, fingerprint.size);
 
       const parseFile = () =>
         driver.parse(filePath, resume, ctx).catch((err: unknown) => {

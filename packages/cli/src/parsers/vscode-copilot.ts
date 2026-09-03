@@ -25,6 +25,7 @@ import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import type { Source } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
+import { jsonlStreamBound } from "../utils/jsonl-offset.js";
 import { toNonNegInt } from "../utils/token-delta.js";
 import {
   type RequestMeta,
@@ -56,6 +57,7 @@ export interface SkipInfo {
 export interface VscodeCopilotParseOpts {
   filePath: string;
   startOffset: number;
+  endBound?: number;
   /** Persisted index→metadata mapping from prior parse (for incremental resume) */
   requestMeta: Record<number, RequestMeta>;
   /** Indices already emitted as records (skip on re-encounter) */
@@ -115,7 +117,7 @@ export async function parseVscodeCopilotFile(
     };
   }
 
-  const endOffset = st.size;
+  const endOffset = jsonlStreamBound(st.size, opts.endBound);
   if (startOffset >= endOffset) {
     return {
       deltas,
@@ -128,6 +130,7 @@ export async function parseVscodeCopilotFile(
   const stream = createReadStream(filePath, {
     encoding: "utf8",
     start: startOffset,
+    end: endOffset - 1,
   });
   const rl = createInterface({ input: stream, crlfDelay: Infinity });
 

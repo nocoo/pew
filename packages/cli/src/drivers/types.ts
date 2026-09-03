@@ -167,6 +167,7 @@ export interface TokenParseResult {
 export interface ByteOffsetResumeState {
   readonly kind: "byte-offset";
   startOffset: number;
+  endBound?: number;
 }
 
 /**
@@ -178,6 +179,7 @@ export interface ByteOffsetResumeState {
 export interface ClaudeResumeState {
   readonly kind: "claude";
   startOffset: number;
+  endBound?: number;
   priorSeenIds: string[];
 }
 
@@ -204,6 +206,7 @@ export interface OpenCodeJsonResumeState {
 export interface CodexResumeState {
   readonly kind: "codex";
   startOffset: number;
+  endBound?: number;
   lastTotals: TokenDelta | null;
   lastModel: string | null;
 }
@@ -215,6 +218,7 @@ export interface CodexResumeState {
 export interface VscodeCopilotResumeState {
   readonly kind: "vscode-copilot";
   startOffset: number;
+  endBound?: number;
   /** Persisted index→metadata mapping from prior parse */
   requestMeta: Record<number, { modelId: string; timestamp: number }>;
   /** Indices already emitted as records (skip on re-encounter) */

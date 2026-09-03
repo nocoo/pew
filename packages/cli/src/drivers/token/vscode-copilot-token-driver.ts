@@ -83,6 +83,7 @@ export const vscodeCopilotTokenDriver: FileTokenDriver<VscodeCopilotCursor> = {
     const result = await parseVscodeCopilotFile({
       filePath,
       startOffset: r.startOffset,
+      endBound: r.endBound,
       requestMeta: r.requestMeta,
       processedRequestIndices: r.processedRequestIndices,
     });

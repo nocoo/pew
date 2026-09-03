@@ -2,6 +2,7 @@ import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import type { Source, TokenDelta } from "@pew/core";
+import { jsonlStreamBound } from "../utils/jsonl-offset.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
 
 /** A parsed token delta with metadata for bucket aggregation */
@@ -62,6 +63,7 @@ export function normalizeClaudeUsage(u: Record<string, unknown>): TokenDelta {
 export async function parseClaudeFile(opts: {
   filePath: string;
   startOffset: number;
+  endBound?: number;
   seenMessageIds?: Set<string>;
 }): Promise<ClaudeFileResult> {
   const { filePath, startOffset, seenMessageIds } = opts;
@@ -71,12 +73,13 @@ export async function parseClaudeFile(opts: {
   const st = await stat(filePath).catch(() => null);
   if (!st?.isFile()) return { deltas, endOffset: startOffset, emittedIds };
 
-  const endOffset = st.size;
+  const endOffset = jsonlStreamBound(st.size, opts.endBound);
   if (startOffset >= endOffset) return { deltas, endOffset, emittedIds };
 
   const stream = createReadStream(filePath, {
     encoding: "utf8",
     start: startOffset,
+    end: endOffset - 1,
   });
   const rl = createInterface({ input: stream, crlfDelay: Infinity });
 

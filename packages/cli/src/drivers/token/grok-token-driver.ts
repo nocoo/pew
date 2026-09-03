@@ -59,6 +59,7 @@ export const grokTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
     const result = await parseGrokLogFile({
       filePath,
       startOffset: r.startOffset,
+      endBound: r.endBound,
       sidTurnTimeline: maps.sidTurnTimeline,
       sidPrimaryModel: maps.sidPrimaryModel,
     });

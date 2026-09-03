@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import {
   CONTINUITY_ANCHOR_COUNT,
+  applyResumeEndBound,
   applyResumeStartOffset,
   hashRecord,
   isOffsetCursor,
@@ -59,6 +60,12 @@ describe("isOffsetCursor / applyResumeStartOffset", () => {
     applyResumeStartOffset(resume, 12);
     expect(resume.startOffset).toBe(12);
     applyResumeStartOffset({ kind: "array-index" }, 3);
+  });
+
+  it("stamps endBound onto resume state", () => {
+    const resume = { kind: "byte-offset" as const, startOffset: 0 };
+    applyResumeEndBound(resume, 50);
+    expect(resume).toMatchObject({ endBound: 50 });
   });
 });
 

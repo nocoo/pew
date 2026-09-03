@@ -2,6 +2,7 @@ import { createReadStream } from "node:fs";
 import { open, stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import type { TokenDelta } from "@pew/core";
+import { jsonlStreamBound } from "../utils/jsonl-offset.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
 import type { ParsedDelta } from "./claude.js";
 
@@ -30,6 +31,7 @@ export interface CopilotCliFileResult {
 export async function parseCopilotCliFile(opts: {
   filePath: string;
   startOffset: number;
+  endBound?: number;
 }): Promise<CopilotCliFileResult> {
   const { filePath, startOffset } = opts;
   const deltas: ParsedDelta[] = [];
@@ -37,7 +39,7 @@ export async function parseCopilotCliFile(opts: {
   const st = await stat(filePath).catch(() => null);
   if (!st?.isFile()) return { deltas, endOffset: startOffset };
 
-  const fileSize = st.size;
+  const fileSize = jsonlStreamBound(st.size, opts.endBound);
   if (startOffset >= fileSize) return { deltas, endOffset: fileSize };
 
   // Detect line ending width (LF=1, CRLF=2) from the first 4 KB.
@@ -48,6 +50,7 @@ export async function parseCopilotCliFile(opts: {
 
   const stream = createReadStream(filePath, {
     start: startOffset,
+    end: fileSize - 1,
     encoding: "utf8",
   });
 

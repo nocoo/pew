@@ -8,6 +8,7 @@ import type { TokenParseResult } from "../drivers/types.js";
 import {
   clampedJsonlEndOffset,
   hashJsonlSlice,
+  jsonlStreamBound,
   parseStableJsonlFile,
 } from "../utils/jsonl-offset.js";
 
@@ -281,6 +282,16 @@ describe("parseStableJsonlFile", () => {
         }) as FileCursor,
     });
     expect(committed?.cursor.continuityAnchors).toEqual([]);
+  });
+});
+
+describe("jsonlStreamBound", () => {
+  it("pins to min(fileSize, endBound) and treats a missing bound as file size", () => {
+    expect(jsonlStreamBound(100)).toBe(100);
+    expect(jsonlStreamBound(100, 80)).toBe(80);
+    expect(jsonlStreamBound(100, 120)).toBe(100);
+    expect(jsonlStreamBound(0, 10)).toBe(0);
+    expect(jsonlStreamBound(100, -1)).toBe(100);
   });
 });
 

@@ -6,6 +6,13 @@ import { isOffsetCursor, readContinuityAnchors } from "./continuity-anchor.js";
 
 const HASH_CHUNK = 64 * 1024;
 
+/** Exclusive byte bound for a JSONL read pinned to a snapshot. */
+export function jsonlStreamBound(fileSize: number, endBound?: number): number {
+  if (fileSize <= 0) return 0;
+  if (endBound === undefined || endBound < 0) return fileSize;
+  return Math.min(fileSize, endBound);
+}
+
 /** SHA-256 of bytes [start, end). Null if the range is unreadable. */
 export async function hashJsonlSlice(
   filePath: string,

@@ -215,6 +215,7 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
     const result = await parseCodexFile({
       filePath,
       startOffset: r.startOffset,
+      endBound: r.endBound,
       lastTotals: r.lastTotals,
       lastModel: r.lastModel,
       ...(sharedScope ? { highWaterTotals } : {}),

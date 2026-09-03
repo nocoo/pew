@@ -50,6 +50,12 @@ export function applyResumeStartOffset(resume: unknown, startOffset: number): vo
   }
 }
 
+export function applyResumeEndBound(resume: unknown, endBound: number): void {
+  if (resume !== null && typeof resume === "object") {
+    (resume as { endBound: number }).endBound = endBound;
+  }
+}
+
 /** Hash one on-disk record (bytes include the trailing line break). */
 export function hashRecord(recordWithTerminator: Uint8Array): string {
   let end = recordWithTerminator.length;
