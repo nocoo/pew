@@ -7,7 +7,7 @@ import type { FileCursor } from "@pew/core";
 import type { TokenParseResult } from "../drivers/types.js";
 import {
   clampedJsonlEndOffset,
-  hashJsonlPrefix,
+  hashJsonlSlice,
   parseStableJsonlFile,
 } from "../utils/jsonl-offset.js";
 
@@ -39,7 +39,7 @@ function offsetCursor(size: number, offset = size): FileCursor {
   };
 }
 
-describe("hashJsonlPrefix", () => {
+describe("hashJsonlSlice", () => {
   let dir: string;
   let filePath: string;
 
@@ -52,39 +52,48 @@ describe("hashJsonlPrefix", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  it("hashes exactly snapshotSize bytes", async () => {
+  it("hashes exactly the requested byte range", async () => {
     const body = '{"a":1}\n{"b":2}\n';
     await writeFile(filePath, body);
     const expected = createHash("sha256").update(body, "utf8").digest("hex");
-    expect(await hashJsonlPrefix(filePath, body.length)).toBe(expected);
+    expect(await hashJsonlSlice(filePath, 0, body.length)).toBe(expected);
+  });
+
+  it("ignores bytes before startOffset so incremental sync is O(new bytes)", async () => {
+    const prefix = `${"x".repeat(256 * 1024)}\n`;
+    const tail = '{"id":"new"}\n';
+    await writeFile(filePath, `${prefix}${tail}`);
+    const expected = createHash("sha256").update(tail, "utf8").digest("hex");
+    expect(await hashJsonlSlice(filePath, prefix.length, prefix.length + tail.length)).toBe(
+      expected,
+    );
   });
 
   it("ignores bytes appended past the snapshot", async () => {
     const prefix = '{"a":1}\n';
     await writeFile(filePath, `${prefix}{"b":2}\n`);
     const expected = createHash("sha256").update(prefix, "utf8").digest("hex");
-    expect(await hashJsonlPrefix(filePath, prefix.length)).toBe(expected);
+    expect(await hashJsonlSlice(filePath, 0, prefix.length)).toBe(expected);
   });
 
-  it("returns null when the file is shorter than the snapshot", async () => {
+  it("returns null when the file is shorter than the range", async () => {
     await writeFile(filePath, "ab");
-    expect(await hashJsonlPrefix(filePath, 10)).toBeNull();
+    expect(await hashJsonlSlice(filePath, 0, 10)).toBeNull();
   });
 
   it("returns null when the file is missing", async () => {
-    expect(await hashJsonlPrefix(join(dir, "missing.jsonl"), 4)).toBeNull();
+    expect(await hashJsonlSlice(join(dir, "missing.jsonl"), 0, 4)).toBeNull();
   });
 
-  it("returns null for a negative snapshot size", async () => {
+  it("returns null for a negative or inverted range", async () => {
     await writeFile(filePath, "ab");
-    expect(await hashJsonlPrefix(filePath, -1)).toBeNull();
+    expect(await hashJsonlSlice(filePath, -1, 2)).toBeNull();
+    expect(await hashJsonlSlice(filePath, 3, 1)).toBeNull();
   });
 
-  it("hashes an empty snapshot as the empty digest", async () => {
+  it("hashes an empty range as the empty digest", async () => {
     await writeFile(filePath, "");
-    expect(await hashJsonlPrefix(filePath, 0)).toBe(
-      createHash("sha256").digest("hex"),
-    );
+    expect(await hashJsonlSlice(filePath, 0, 0)).toBe(createHash("sha256").digest("hex"));
   });
 });
 
@@ -101,11 +110,12 @@ describe("parseStableJsonlFile", () => {
     await rm(dir, { recursive: true, force: true });
   });
 
-  it("commits the parse and stamps anchors when the prefix is unchanged", async () => {
+  it("commits the parse and stamps anchors when the unread slice is unchanged", async () => {
     const body = '{"id":"a"}\n{"id":"b"}\n{"id":"c"}\n';
     await writeFile(filePath, body);
     const committed = await parseStableJsonlFile({
       filePath,
+      startOffset: 0,
       snapshotSize: body.length,
       parse: async () => deltaResult(3),
       buildCursor: () => offsetCursor(body.length),
@@ -120,6 +130,7 @@ describe("parseStableJsonlFile", () => {
     await writeFile(filePath, original);
     const committed = await parseStableJsonlFile({
       filePath,
+      startOffset: 0,
       snapshotSize: original.length,
       parse: async () => {
         await writeFile(filePath, '{"id":"new1"}\n{"id":"new2"}\n');
@@ -135,6 +146,7 @@ describe("parseStableJsonlFile", () => {
     await writeFile(filePath, original);
     const committed = await parseStableJsonlFile({
       filePath,
+      startOffset: 0,
       snapshotSize: original.length,
       parse: async () => {
         await writeFile(filePath, '{"id":"b"}\n{"id":"c"}\n');
@@ -150,6 +162,7 @@ describe("parseStableJsonlFile", () => {
     await writeFile(filePath, body);
     const committed = await parseStableJsonlFile({
       filePath,
+      startOffset: 0,
       snapshotSize: body.length,
       parse: async () => {
         await rm(filePath);
@@ -160,11 +173,12 @@ describe("parseStableJsonlFile", () => {
     expect(committed).toBeNull();
   });
 
-  it("keeps an append past the snapshot when the original prefix is intact", async () => {
+  it("keeps an append past the snapshot when the original unread slice is intact", async () => {
     const prefix = '{"id":"a"}\n{"id":"b"}\n';
     await writeFile(filePath, prefix);
     const committed = await parseStableJsonlFile({
       filePath,
+      startOffset: 0,
       snapshotSize: prefix.length,
       parse: async () => {
         await writeFile(filePath, `${prefix}{"id":"c"}\n`);
@@ -175,9 +189,61 @@ describe("parseStableJsonlFile", () => {
     expect(committed?.result.deltas[0]?.tokens.inputTokens).toBe(7);
   });
 
-  it("returns null when the prefix cannot be hashed", async () => {
+  it("discards when the parser consumed bytes past the orchestrator snapshot", async () => {
+    const body = '{"id":"a"}\n';
+    await writeFile(filePath, body);
+    const committed = await parseStableJsonlFile({
+      filePath,
+      startOffset: 0,
+      snapshotSize: body.length,
+      parse: async () => deltaResult(1),
+      buildCursor: () => offsetCursor(body.length, body.length + 8),
+    });
+    expect(committed).toBeNull();
+  });
+
+  it("does not parse when confirm fails before parse", async () => {
+    const body = '{"id":"a"}\n';
+    await writeFile(filePath, body);
+    let parsed = false;
+    const committed = await parseStableJsonlFile({
+      filePath,
+      startOffset: 0,
+      snapshotSize: body.length,
+      confirm: async () => false,
+      parse: async () => {
+        parsed = true;
+        return deltaResult(1);
+      },
+      buildCursor: () => offsetCursor(body.length),
+    });
+    expect(parsed).toBe(false);
+    expect(committed).toBeNull();
+  });
+
+  it("discards when confirm fails after parse", async () => {
+    const body = '{"id":"a"}\n';
+    await writeFile(filePath, body);
+    let calls = 0;
+    const committed = await parseStableJsonlFile({
+      filePath,
+      startOffset: 0,
+      snapshotSize: body.length,
+      confirm: async () => {
+        calls += 1;
+        return calls === 1;
+      },
+      parse: async () => deltaResult(1),
+      buildCursor: () => offsetCursor(body.length),
+    });
+    expect(calls).toBe(2);
+    expect(committed).toBeNull();
+  });
+
+  it("returns null when the unread slice cannot be hashed", async () => {
     const committed = await parseStableJsonlFile({
       filePath: join(dir, "missing.jsonl"),
+      startOffset: 0,
       snapshotSize: 4,
       parse: async () => deltaResult(1),
       buildCursor: () => offsetCursor(4),
@@ -190,6 +256,7 @@ describe("parseStableJsonlFile", () => {
     await writeFile(filePath, body);
     const committed = await parseStableJsonlFile({
       filePath,
+      startOffset: 0,
       snapshotSize: body.length,
       parse: async () => null,
       buildCursor: () => offsetCursor(body.length),
@@ -202,14 +269,16 @@ describe("parseStableJsonlFile", () => {
     await writeFile(filePath, body);
     const committed = await parseStableJsonlFile({
       filePath,
+      startOffset: 0,
       snapshotSize: body.length,
       parse: async () => deltaResult(1),
-      buildCursor: () => ({
-        inode: 1,
-        mtimeMs: 1,
-        size: body.length,
-        updatedAt: "t",
-      }) as FileCursor,
+      buildCursor: () =>
+        ({
+          inode: 1,
+          mtimeMs: 1,
+          size: body.length,
+          updatedAt: "t",
+        }) as FileCursor,
     });
     expect(committed?.cursor.continuityAnchors).toEqual([]);
   });

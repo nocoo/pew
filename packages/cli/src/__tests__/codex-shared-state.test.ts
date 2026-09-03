@@ -3,8 +3,10 @@ import type { TokenDelta } from "@pew/core";
 import type { SyncContext } from "../drivers/types.js";
 import {
   restoreCodexSharedState,
+  restoreJsonlSharedState,
   snapshotCodexSharedState,
-} from "../utils/codex-shared-state.js";
+  snapshotJsonlSharedState,
+} from "../utils/jsonl-shared-state.js";
 
 const totals = (input: number): TokenDelta => ({
   inputTokens: input,
@@ -68,5 +70,25 @@ describe("snapshotCodexSharedState / restoreCodexSharedState", () => {
     restoreCodexSharedState(ctx, snapshot);
     expect(ctx.codexScopeTotals!.has(scopeId)).toBe(false);
     expect([...ctx.codexSeenUsageKeys!.get(scopeId)!]).toEqual([]);
+  });
+});
+
+describe("snapshotJsonlSharedState / restoreJsonlSharedState", () => {
+  it("rolls back Claude message ids mutated during a discarded parse", () => {
+    const ctx: SyncContext = {
+      seenClaudeMessageIds: new Set(["keep"]),
+    };
+    const snapshot = snapshotJsonlSharedState(ctx, "/unused.jsonl");
+    ctx.seenClaudeMessageIds!.add("from-discarded-file");
+    restoreJsonlSharedState(ctx, snapshot);
+    expect([...ctx.seenClaudeMessageIds!]).toEqual(["keep"]);
+  });
+
+  it("clears a Claude set that did not exist before parse", () => {
+    const ctx: SyncContext = {};
+    const snapshot = snapshotJsonlSharedState(ctx, "/unused.jsonl");
+    ctx.seenClaudeMessageIds = new Set(["new"]);
+    restoreJsonlSharedState(ctx, snapshot);
+    expect([...(ctx.seenClaudeMessageIds ?? [])]).toEqual([]);
   });
 });

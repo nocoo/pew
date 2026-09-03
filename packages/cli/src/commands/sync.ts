@@ -1,6 +1,7 @@
 import { stat } from "node:fs/promises";
 import type {
   CodexScopeState,
+  ContinuityAnchor,
   CursorState,
   FileCursor,
   FileCursorBase,
@@ -29,10 +30,6 @@ import { toUtcHalfHourStart, bucketKey, addTokens, emptyTokenDelta } from "../ut
 import { createTokenDrivers } from "../drivers/registry.js";
 import type { SyncContext, FileFingerprint } from "../drivers/types.js";
 import {
-  restoreCodexSharedState,
-  snapshotCodexSharedState,
-} from "../utils/codex-shared-state.js";
-import {
   applyResumeStartOffset,
   isOffsetCursor,
   readContinuityAnchors,
@@ -40,6 +37,10 @@ import {
   usesJsonlOffsetResume,
 } from "../utils/continuity-anchor.js";
 import { parseStableJsonlFile } from "../utils/jsonl-offset.js";
+import {
+  restoreJsonlSharedState,
+  snapshotJsonlSharedState,
+} from "../utils/jsonl-shared-state.js";
 import { aggregateRecords } from "./upload.js";
 
 /** Sync execution options */
@@ -610,14 +611,25 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
       }
 
       const resume = driver.resumeState(cursor, fingerprint);
+      let continuityOpts: {
+        filePath: string;
+        fileSize: number;
+        cursorSize: number;
+        offset: number;
+        anchors: ContinuityAnchor[] | undefined;
+      } | null = null;
+      let continuityStart = 0;
+      let continuityAction: "append" | "rebase" | null = null;
       if (offsetCursor && jsonlSource) {
-        const decision = await resolveJsonlContinuity({
+        const jsonlCursor = offsetCursor;
+        continuityOpts = {
           filePath,
           fileSize: fingerprint.size,
-          cursorSize: offsetCursor.size,
-          offset: offsetCursor.offset,
-          anchors: offsetCursor.continuityAnchors,
-        });
+          cursorSize: jsonlCursor.size,
+          offset: jsonlCursor.offset,
+          anchors: jsonlCursor.continuityAnchors,
+        };
+        const decision = await resolveJsonlContinuity(continuityOpts);
         if (decision.action === "skip") {
           onProgress?.({
             source: driver.source,
@@ -625,17 +637,19 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
             message: `JSONL log continuity lost for ${driver.source}; skipping ${filePath} to avoid double-counting`,
           });
           cursors.files[filePath] = {
-            ...offsetCursor,
+            ...jsonlCursor,
             inode: fingerprint.inode,
             mtimeMs: fingerprint.mtimeMs,
             size: fingerprint.size,
-            offset: Math.min(offsetCursor.offset, fingerprint.size),
+            offset: Math.min(jsonlCursor.offset, fingerprint.size),
             continuityBroken: true,
             updatedAt: new Date().toISOString(),
           } as FileCursor;
           continue;
         }
         applyResumeStartOffset(resume, decision.startOffset);
+        continuityStart = decision.startOffset;
+        continuityAction = decision.action;
       }
 
       const parseFile = () =>
@@ -651,21 +665,29 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
       let result: Awaited<ReturnType<typeof driver.parse>> | null;
       let built: FileCursor;
       if (jsonlSource) {
-        const scopeSnapshot = snapshotCodexSharedState(ctx, filePath);
+        const sharedSnapshot = snapshotJsonlSharedState(ctx, filePath);
+        const startOffset = continuityOpts
+          ? continuityStart
+          : "startOffset" in resume && typeof resume.startOffset === "number"
+            ? resume.startOffset
+            : 0;
         const stable = await parseStableJsonlFile({
           filePath,
+          startOffset,
           snapshotSize: fingerprint.size,
+          confirm: continuityOpts && continuityAction
+            ? async () => {
+                const again = await resolveJsonlContinuity(continuityOpts);
+                return again.action === continuityAction
+                  && again.startOffset === continuityStart;
+              }
+            : undefined,
           parse: parseFile,
-          buildCursor: (parsed) => {
-            const next = driver.buildCursor(fingerprint, parsed, cursor) as FileCursor;
-            if (isOffsetCursor(next) && next.offset > fingerprint.size) {
-              next.size = next.offset;
-            }
-            return next;
-          },
+          buildCursor: (parsed) =>
+            driver.buildCursor(fingerprint, parsed, cursor) as FileCursor,
         });
         if (!stable) {
-          restoreCodexSharedState(ctx, scopeSnapshot);
+          restoreJsonlSharedState(ctx, sharedSnapshot);
           parseFailedPaths.add(filePath);
           if (driver.source === "codex") codexParseFailures++;
           continue;

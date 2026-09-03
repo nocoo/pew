@@ -6,18 +6,20 @@ import { isOffsetCursor, readContinuityAnchors } from "./continuity-anchor.js";
 
 const HASH_CHUNK = 64 * 1024;
 
-/** SHA-256 of bytes [0, size). Null if the file is shorter or unreadable. */
-export async function hashJsonlPrefix(
+/** SHA-256 of bytes [start, end). Null if the range is unreadable. */
+export async function hashJsonlSlice(
   filePath: string,
-  size: number,
+  start: number,
+  end: number,
 ): Promise<string | null> {
-  if (size < 0) return null;
+  if (start < 0 || end < start) return null;
+  const size = end - start;
   try {
     const handle = await open(filePath, "r");
     try {
       const hash = createHash("sha256");
       let remaining = size;
-      let pos = 0;
+      let pos = start;
       const buf = Buffer.alloc(Math.min(HASH_CHUNK, Math.max(size, 1)));
       while (remaining > 0) {
         const toRead = Math.min(buf.length, remaining);
@@ -37,24 +39,29 @@ export async function hashJsonlPrefix(
 }
 
 /**
- * Parse a JSONL file only if the orchestrator snapshot prefix is unchanged
- * through parse and anchor capture. Returns null to discard the parse.
+ * Parse a JSONL unread slice only if it stays unchanged through parse and
+ * anchor capture. Returns null to discard the parse.
  */
 export async function parseStableJsonlFile(opts: {
   filePath: string;
+  startOffset: number;
   snapshotSize: number;
   parse: () => Promise<TokenParseResult | null>;
   buildCursor: (result: TokenParseResult) => FileCursor;
+  confirm?: () => Promise<boolean>;
 }): Promise<{ result: TokenParseResult; cursor: FileCursor } | null> {
-  const pre = await hashJsonlPrefix(opts.filePath, opts.snapshotSize);
+  const pre = await hashJsonlSlice(opts.filePath, opts.startOffset, opts.snapshotSize);
   if (pre === null) return null;
+  if (opts.confirm && !(await opts.confirm())) return null;
   const result = await opts.parse();
   if (!result) return null;
   const cursor = opts.buildCursor(result);
   const offset = isOffsetCursor(cursor) ? cursor.offset : 0;
+  if (offset > opts.snapshotSize) return null;
   const anchors = await readContinuityAnchors(opts.filePath, offset);
   if (anchors === null) return null;
-  const post = await hashJsonlPrefix(opts.filePath, opts.snapshotSize);
+  if (opts.confirm && !(await opts.confirm())) return null;
+  const post = await hashJsonlSlice(opts.filePath, opts.startOffset, opts.snapshotSize);
   if (post !== pre) return null;
   cursor.continuityAnchors = anchors;
   cursor.continuityBroken = undefined;

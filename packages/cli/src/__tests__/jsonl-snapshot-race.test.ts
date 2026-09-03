@@ -271,4 +271,53 @@ describe("executeSync jsonl snapshot race", () => {
     );
     expect(after.codexScopes?.[goalId]?.usageKeys).toEqual(beforeKeys);
   });
+
+  it("does not let a discarded Claude parse suppress a later file's reused id", async () => {
+    const claudeDir = join(tempDir, ".claude");
+    const proj = join(claudeDir, "projects", "p1");
+    await mkdir(proj, { recursive: true });
+    const fileA = join(proj, "a.jsonl");
+    const fileB = join(proj, "b.jsonl");
+    const claudeLine = (ts: string, input: number, id: string): string =>
+      JSON.stringify({
+        type: "assistant",
+        timestamp: ts,
+        message: {
+          id,
+          model: "glm-5",
+          stop_reason: "end_turn",
+          usage: {
+            input_tokens: input,
+            cache_creation_input_tokens: 0,
+            cache_read_input_tokens: 0,
+            output_tokens: 1,
+          },
+        },
+      });
+    await writeFile(fileA, `${claudeLine("2026-03-07T10:00:00.000Z", 7, "a1")}\n`);
+    await writeFile(fileB, `${claudeLine("2026-03-07T10:00:00.000Z", 8, "b1")}\n`);
+    const first = await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      claudeDir,
+    });
+    expect(first.sources.claude).toBe(2);
+
+    await writeFile(
+      fileA,
+      `${claudeLine("2026-03-07T10:00:00.000Z", 7, "a1")}\n${claudeLine("2026-03-07T11:00:00.000Z", 9, "shared")}\n`,
+    );
+    await writeFile(
+      fileB,
+      `${claudeLine("2026-03-07T10:00:00.000Z", 8, "b1")}\n${claudeLine("2026-03-07T11:00:00.000Z", 9, "shared")}\n`,
+    );
+    race.paths.add(fileA);
+    race.enabled = true;
+    const second = await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      claudeDir,
+    });
+    expect(second.sources.claude).toBe(1);
+  });
 });

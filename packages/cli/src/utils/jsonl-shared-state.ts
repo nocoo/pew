@@ -8,6 +8,11 @@ export type CodexSharedSnapshot = {
   usageKeys: string[];
 } | null;
 
+export type JsonlSharedSnapshot = {
+  codex: CodexSharedSnapshot;
+  claudeIds: string[] | null;
+};
+
 export function snapshotCodexSharedState(
   ctx: SyncContext,
   filePath: string,
@@ -44,4 +49,29 @@ export function restoreCodexSharedState(
     ctx.codexSeenUsageKeys ??= new Map();
     ctx.codexSeenUsageKeys.set(snapshot.scopeId, new Set(snapshot.usageKeys));
   }
+}
+
+export function snapshotJsonlSharedState(
+  ctx: SyncContext,
+  filePath: string,
+): JsonlSharedSnapshot {
+  return {
+    codex: snapshotCodexSharedState(ctx, filePath),
+    claudeIds: ctx.seenClaudeMessageIds ? [...ctx.seenClaudeMessageIds] : null,
+  };
+}
+
+export function restoreJsonlSharedState(
+  ctx: SyncContext,
+  snapshot: JsonlSharedSnapshot,
+): void {
+  restoreCodexSharedState(ctx, snapshot.codex);
+  if (snapshot.claudeIds === null) {
+    ctx.seenClaudeMessageIds?.clear();
+    return;
+  }
+  const seen = ctx.seenClaudeMessageIds ?? new Set<string>();
+  seen.clear();
+  for (const id of snapshot.claudeIds) seen.add(id);
+  ctx.seenClaudeMessageIds = seen;
 }
