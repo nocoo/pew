@@ -521,6 +521,20 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
         if (
           offsetCursor &&
           usesJsonlOffsetResume(driver.source, filePath) &&
+          fingerprint.size === 0
+        ) {
+          cursors.files[filePath] = emptyEpochCursor(offsetCursor, fingerprint);
+          onProgress?.({
+            source: driver.source,
+            phase: "parse",
+            current: i + 1,
+            total: files.length,
+          });
+          continue;
+        }
+        if (
+          offsetCursor &&
+          usesJsonlOffsetResume(driver.source, filePath) &&
           (!offsetCursor.continuityAnchors ||
             offsetCursor.continuityAnchors.length === 0)
         ) {

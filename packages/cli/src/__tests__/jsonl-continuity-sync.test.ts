@@ -231,6 +231,24 @@ describe("jsonl continuity through executeSync", () => {
     expect(await grokQueueInput(stateDir)).toBe(100);
   });
 
+  it("resets stale driver state on an already-empty fast-skip cursor", async () => {
+    const session = join(claudeDir, "projects", "p1", "s.jsonl");
+    await writeFile(session, `${claudeLine("2026-03-07T10:00:00.000Z", 7, "reuse")}\n`);
+    await executeSync({ stateDir, deviceId: "dev-1", claudeDir });
+    await writeFile(session, "");
+    await executeSync({ stateDir, deviceId: "dev-1", claudeDir });
+    const cursorsPath = join(stateDir, "cursors.json");
+    const cursors = JSON.parse(await readFile(cursorsPath, "utf8")) as {
+      files: Record<string, { seenIds?: string[] }>;
+    };
+    cursors.files[session]!.seenIds = ["reuse"];
+    await writeFile(cursorsPath, `${JSON.stringify(cursors)}\n`);
+    await executeSync({ stateDir, deviceId: "dev-1", claudeDir });
+    await writeFile(session, `${claudeLine("2026-03-07T14:00:00.000Z", 9, "reuse")}\n`);
+    const fourth = await executeSync({ stateDir, deviceId: "dev-1", claudeDir });
+    expect(fourth.sources.claude).toBe(1);
+  });
+
   it("clears claude seenIds on an empty epoch so a reused id counts", async () => {
     const session = join(claudeDir, "projects", "p1", "s.jsonl");
     await writeFile(session, `${claudeLine("2026-03-07T10:00:00.000Z", 7, "reuse")}\n`);
