@@ -35,6 +35,7 @@ import {
   resolveJsonlContinuity,
   usesJsonlOffsetResume,
 } from "../utils/continuity-anchor.js";
+import { parserSawSmallerSnapshot } from "../utils/jsonl-offset.js";
 import { aggregateRecords } from "./upload.js";
 
 /** Sync execution options */
@@ -650,6 +651,15 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
       }
 
       const built = driver.buildCursor(fingerprint, result, cursor) as FileCursor;
+      if (
+        jsonlSource &&
+        isOffsetCursor(built) &&
+        parserSawSmallerSnapshot(result.deltas.length, built.offset, fingerprint.size)
+      ) {
+        parseFailedPaths.add(filePath);
+        if (driver.source === "codex") codexParseFailures++;
+        continue;
+      }
       if (jsonlSource && isOffsetCursor(built)) {
         if (built.offset > fingerprint.size) {
           built.size = built.offset;

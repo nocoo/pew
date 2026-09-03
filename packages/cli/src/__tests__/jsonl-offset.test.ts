@@ -1,5 +1,13 @@
 import { describe, it, expect } from "vitest";
-import { clampedJsonlEndOffset } from "../utils/jsonl-offset.js";
+import { clampedJsonlEndOffset, parserSawSmallerSnapshot } from "../utils/jsonl-offset.js";
+
+describe("parserSawSmallerSnapshot", () => {
+  it("detects an empty parse that ended behind the orchestrator size", () => {
+    expect(parserSawSmallerSnapshot(0, 10, 50)).toBe(true);
+    expect(parserSawSmallerSnapshot(0, 50, 50)).toBe(false);
+    expect(parserSawSmallerSnapshot(1, 10, 50)).toBe(false);
+  });
+});
 
 describe("clampedJsonlEndOffset", () => {
   it("returns file size when startOffset is past EOF", () => {
