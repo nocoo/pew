@@ -80,6 +80,16 @@ export interface HourBucket {
 // Sync cursor (incremental parsing)
 // ---------------------------------------------------------------------------
 
+/**
+ * Privacy-safe splice marker for one complete JSONL record.
+ * `sha256` hashes record bytes excluding the trailing line break;
+ * `length` is the on-disk size including the terminator.
+ */
+export interface ContinuityAnchor {
+  sha256: string;
+  length: number;
+}
+
 /** Base fields shared by all per-file cursors */
 export interface FileCursorBase {
   /** File inode for detecting file rotation/replacement */
@@ -90,6 +100,16 @@ export interface FileCursorBase {
   size: number;
   /** ISO 8601 timestamp of last update */
   updatedAt: string;
+  /**
+   * Last 2–3 complete JSONL records before `offset`.
+   * Used to rebase after a same-inode trim/rewrite. Omitted on non-offset cursors.
+   */
+  continuityAnchors?: ContinuityAnchor[];
+  /**
+   * Set when a same-inode discontinuity could not be proven safe to replay.
+   * Incremental parse is skipped until the user resets this cursor.
+   */
+  continuityBroken?: boolean;
 }
 
 /** Cursor for byte-offset-based JSONL files (Claude, OpenClaw) */

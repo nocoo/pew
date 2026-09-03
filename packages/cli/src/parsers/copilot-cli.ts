@@ -38,7 +38,7 @@ export async function parseCopilotCliFile(opts: {
   if (!st?.isFile()) return { deltas, endOffset: startOffset };
 
   const fileSize = st.size;
-  if (startOffset >= fileSize) return { deltas, endOffset: startOffset };
+  if (startOffset >= fileSize) return { deltas, endOffset: fileSize };
 
   // Detect line ending width (LF=1, CRLF=2) from the first 4 KB.
   // readline with crlfDelay:Infinity strips both \n and \r\n, but we

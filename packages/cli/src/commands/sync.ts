@@ -28,6 +28,13 @@ import type { ParsedDelta } from "../parsers/claude.js";
 import { toUtcHalfHourStart, bucketKey, addTokens, emptyTokenDelta } from "../utils/buckets.js";
 import { createTokenDrivers } from "../drivers/registry.js";
 import type { SyncContext, FileFingerprint } from "../drivers/types.js";
+import {
+  applyResumeStartOffset,
+  isOffsetCursor,
+  readContinuityAnchors,
+  resolveJsonlContinuity,
+  usesJsonlOffsetResume,
+} from "../utils/continuity-anchor.js";
 import { aggregateRecords } from "./upload.js";
 
 /** Sync execution options */
@@ -481,9 +488,14 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
       };
 
       const cursor = cursors.files[filePath] as FileCursorBase | undefined;
+      const offsetCursor = isOffsetCursor(cursor) ? cursor : undefined;
+      const poisonedOffset =
+        !!offsetCursor && offsetCursor.offset > fingerprint.size;
 
       // Fast skip: file unchanged since last cursor?
-      if (driver.shouldSkip(cursor, fingerprint)) {
+      // A cursor whose offset is already past EOF is never unchanged — the
+      // next pass must run continuity instead of refreshing a poisoned offset.
+      if (!poisonedOffset && driver.shouldSkip(cursor, fingerprint)) {
         onProgress?.({
           source: driver.source,
           phase: "parse",
@@ -529,8 +541,37 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
         }
       }
 
-      // Extract resume state and parse
+      // Same-inode JSONL trim/rewrite: rebase to the last proven record
+      // instead of SUM-replaying a retained tail or wiping every source.
       const resume = driver.resumeState(cursor, fingerprint);
+      if (offsetCursor && usesJsonlOffsetResume(driver.source, filePath)) {
+        const decision = await resolveJsonlContinuity({
+          filePath,
+          fileSize: fingerprint.size,
+          cursorSize: offsetCursor.size,
+          offset: offsetCursor.offset,
+          anchors: offsetCursor.continuityAnchors,
+        });
+        if (decision.action === "skip") {
+          onProgress?.({
+            source: driver.source,
+            phase: "warn",
+            message: `JSONL log continuity lost for ${driver.source}; skipping ${filePath} to avoid double-counting`,
+          });
+          cursors.files[filePath] = {
+            ...offsetCursor,
+            inode: fingerprint.inode,
+            mtimeMs: fingerprint.mtimeMs,
+            size: fingerprint.size,
+            offset: Math.min(offsetCursor.offset, fingerprint.size),
+            continuityBroken: true,
+            updatedAt: new Date().toISOString(),
+          } as FileCursor;
+          continue;
+        }
+        applyResumeStartOffset(resume, decision.startOffset);
+      }
+
       const result = await driver.parse(filePath, resume, ctx).catch(
         (err: unknown) => {
           onProgress?.({
@@ -552,7 +593,13 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
 
       // Build and persist cursor (cast: driver returns concrete cursor type
       // but the generic loop types it as FileCursorBase)
-      cursors.files[filePath] = driver.buildCursor(fingerprint, result, cursor) as FileCursor;
+      const built = driver.buildCursor(fingerprint, result, cursor) as FileCursor;
+      if (isOffsetCursor(built) && usesJsonlOffsetResume(driver.source, filePath)) {
+        if (built.offset > fingerprint.size) built.offset = fingerprint.size;
+        built.continuityAnchors = await readContinuityAnchors(filePath, built.offset);
+        built.continuityBroken = undefined;
+      }
+      cursors.files[filePath] = built;
 
       // Collect deltas
       allDeltas.push(...result.deltas);

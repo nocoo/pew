@@ -146,9 +146,11 @@ describe("SyncCursor types", () => {
       size: 4096,
       offset: 4096,
       updatedAt: "2026-03-07T10:00:00Z",
+      continuityAnchors: [{ sha256: "abc", length: 12 }],
     };
     expect(cursor.offset).toBe(4096);
     expect(cursor.inode).toBe(123456);
+    expect(cursor.continuityAnchors).toHaveLength(1);
   });
 
   it("should hold Gemini cursor with array index", () => {

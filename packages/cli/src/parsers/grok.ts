@@ -16,6 +16,7 @@ import { join } from "node:path";
 import type { Source, TokenDelta } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
+import { clampedJsonlEndOffset } from "../utils/jsonl-offset.js";
 
 /** Result of parsing the Grok unified log */
 export interface GrokFileResult {
@@ -109,7 +110,7 @@ export async function parseGrokLogFile(opts: {
 
   const st = await stat(filePath).catch(() => null);
   if (!st?.isFile()) return { deltas, endOffset: startOffset };
-  if (startOffset >= st.size) return { deltas, endOffset: startOffset };
+  if (startOffset >= st.size) return { deltas, endOffset: st.size };
 
   // `end` is inclusive — pin the read to the stat snapshot.
   const stream = createReadStream(filePath, { start: startOffset, end: st.size - 1 });
@@ -199,7 +200,7 @@ export async function parseGrokLogFile(opts: {
   }
 
   // Trailing partial line is NOT counted in endOffset
-  return { deltas, endOffset: startOffset + completeBytes };
+  return { deltas, endOffset: clampedJsonlEndOffset(startOffset, st.size, completeBytes) };
 }
 
 // ---------------------------------------------------------------------------

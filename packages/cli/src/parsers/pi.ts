@@ -3,6 +3,7 @@ import { stat } from "node:fs/promises";
 import type { Source, TokenDelta } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
+import { clampedJsonlEndOffset } from "../utils/jsonl-offset.js";
 
 /** Result of parsing a single pi-format JSONL session file */
 export interface PiFileResult {
@@ -94,7 +95,7 @@ export async function parsePiFile(opts: {
 
   const st = await stat(filePath).catch(() => null);
   if (!st?.isFile()) return { deltas, endOffset: startOffset };
-  if (startOffset >= st.size) return { deltas, endOffset: startOffset };
+  if (startOffset >= st.size) return { deltas, endOffset: st.size };
 
   // `end` is inclusive — pin the read to the stat snapshot so bytes appended
   // mid-parse stay unread (and unaccounted) until the next run.
@@ -175,5 +176,5 @@ export async function parsePiFile(opts: {
   }
 
   // Trailing partial line is NOT counted in endOffset
-  return { deltas, endOffset: startOffset + completeBytes };
+  return { deltas, endOffset: clampedJsonlEndOffset(startOffset, st.size, completeBytes) };
 }
