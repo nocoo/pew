@@ -107,7 +107,7 @@ export interface FileCursorBase {
   continuityAnchors?: ContinuityAnchor[];
   /**
    * Set when a same-inode discontinuity could not be proven safe to replay.
-   * Incremental parse is skipped until the user resets this cursor.
+   * The cursor parks at a stamped offset; later appends resume from there.
    */
   continuityBroken?: boolean;
 }

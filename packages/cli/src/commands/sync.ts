@@ -632,25 +632,58 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
         };
         const decision = await resolveJsonlContinuity(continuityOpts);
         if (decision.action === "skip") {
-          onProgress?.({
-            source: driver.source,
-            phase: "warn",
-            message: `JSONL log continuity lost for ${driver.source}; skipping ${filePath} to avoid double-counting`,
-          });
-          cursors.files[filePath] = {
-            ...jsonlCursor,
-            inode: fingerprint.inode,
-            mtimeMs: fingerprint.mtimeMs,
-            size: fingerprint.size,
-            offset: Math.min(jsonlCursor.offset, fingerprint.size),
-            continuityBroken: true,
-            updatedAt: new Date().toISOString(),
-          } as FileCursor;
-          continue;
+          const parked = Math.min(jsonlCursor.offset, fingerprint.size);
+          let stamped: ContinuityAnchor[] | null = null;
+          try {
+            stamped = await readContinuityAnchors(filePath, parked);
+          } catch {
+            stamped = null;
+          }
+          if (stamped && stamped.length > 0 && parked < fingerprint.size) {
+            continuityOpts = {
+              filePath,
+              fileSize: fingerprint.size,
+              cursorSize: parked,
+              offset: parked,
+              anchors: stamped,
+            };
+            applyResumeStartOffset(resume, parked);
+            continuityStart = parked;
+            continuityAction = "append";
+          } else {
+            onProgress?.({
+              source: driver.source,
+              phase: "warn",
+              message: `JSONL log continuity lost for ${driver.source}; skipping ${filePath} to avoid double-counting`,
+            });
+            let eofAnchors = stamped;
+            if (parked !== fingerprint.size) {
+              try {
+                eofAnchors = await readContinuityAnchors(
+                  filePath,
+                  fingerprint.size,
+                );
+              } catch {
+                eofAnchors = stamped;
+              }
+            }
+            cursors.files[filePath] = {
+              ...jsonlCursor,
+              inode: fingerprint.inode,
+              mtimeMs: fingerprint.mtimeMs,
+              size: fingerprint.size,
+              offset: fingerprint.size,
+              continuityAnchors: eofAnchors ?? [],
+              continuityBroken: true,
+              updatedAt: new Date().toISOString(),
+            } as FileCursor;
+            continue;
+          }
+        } else {
+          applyResumeStartOffset(resume, decision.startOffset);
+          continuityStart = decision.startOffset;
+          continuityAction = decision.action;
         }
-        applyResumeStartOffset(resume, decision.startOffset);
-        continuityStart = decision.startOffset;
-        continuityAction = decision.action;
       }
       if (jsonlSource) applyResumeEndBound(resume, fingerprint.size);
 

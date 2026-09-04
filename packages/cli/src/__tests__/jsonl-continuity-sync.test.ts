@@ -176,6 +176,106 @@ describe("jsonl continuity through executeSync", () => {
     );
   });
 
+  it("appends after a continuity skip instead of warning forever", async () => {
+    await writeFile(
+      grokLog,
+      `${[
+        grokLine("2026-03-07T10:00:00.000Z", 100),
+        grokLine("2026-03-07T10:01:00.000Z", 200),
+      ].join("\n")}\n`,
+    );
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      grokLogsPath: grokLog,
+      claudeDir,
+    });
+    await writeFile(
+      grokLog,
+      `${[
+        grokLine("2026-03-08T10:00:00.000Z", 9),
+        grokLine("2026-03-08T10:01:00.000Z", 9),
+      ].join("\n")}\n`,
+    );
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      grokLogsPath: grokLog,
+      claudeDir,
+    });
+    expect(await grokQueueInput(stateDir)).toBe(300);
+
+    const extra = grokLine("2026-03-08T10:02:00.000Z", 40);
+    await writeFile(
+      grokLog,
+      `${(await readFile(grokLog, "utf8")).trimEnd()}\n${extra}\n`,
+    );
+    const warnings: string[] = [];
+    const third = await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      grokLogsPath: grokLog,
+      claudeDir,
+      onProgress: (event) => {
+        if (event.phase === "warn" && event.message) warnings.push(event.message);
+      },
+    });
+    expect(warnings.some((m) => m.includes("continuity lost"))).toBe(false);
+    expect(third.sources.grok).toBe(1);
+    expect(await grokQueueInput(stateDir)).toBe(340);
+  });
+
+  it("ingests unread growth after a no-anchor skip behind eof", async () => {
+    await writeFile(
+      grokLog,
+      `${[
+        grokLine("2026-03-07T10:00:00.000Z", 100),
+        grokLine("2026-03-07T10:01:00.000Z", 200),
+      ].join("\n")}\n`,
+    );
+    await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      grokLogsPath: grokLog,
+      claudeDir,
+    });
+    const cursorsPath = join(stateDir, "cursors.json");
+    const cursors = JSON.parse(await readFile(cursorsPath, "utf8")) as {
+      files: Record<
+        string,
+        {
+          offset: number;
+          size: number;
+          continuityAnchors?: unknown[];
+          continuityBroken?: boolean;
+        }
+      >;
+    };
+    const parked = cursors.files[grokLog]!.offset;
+    delete cursors.files[grokLog]!.continuityAnchors;
+    cursors.files[grokLog]!.continuityBroken = true;
+    await writeFile(cursorsPath, `${JSON.stringify(cursors)}\n`);
+
+    const extra = grokLine("2026-03-07T10:02:00.000Z", 50);
+    await writeFile(
+      grokLog,
+      `${(await readFile(grokLog, "utf8")).trimEnd()}\n${extra}\n`,
+    );
+    const second = await executeSync({
+      stateDir,
+      deviceId: "dev-1",
+      grokLogsPath: grokLog,
+      claudeDir,
+    });
+    expect(second.sources.grok).toBe(1);
+    expect(await grokQueueInput(stateDir)).toBe(350);
+    const after = JSON.parse(await readFile(cursorsPath, "utf8")) as {
+      files: Record<string, { offset: number; continuityBroken?: boolean }>;
+    };
+    expect(after.files[grokLog]?.offset).toBeGreaterThan(parked);
+    expect(after.files[grokLog]?.continuityBroken).toBeUndefined();
+  });
+
   it("rebases a pi jsonl after a same-inode suffix trim", async () => {
     const piDir = join(tempDir, "pi-sessions");
     await mkdir(piDir, { recursive: true });
