@@ -25,9 +25,6 @@ function makeReq(
 
 async function importProxy(nextauthUrl?: string) {
   vi.resetModules();
-  vi.mock("@/auth", () => ({
-    auth: vi.fn((handler: unknown) => handler),
-  }));
 
   if (nextauthUrl !== undefined) {
     vi.stubEnv("NEXTAUTH_URL", nextauthUrl);
