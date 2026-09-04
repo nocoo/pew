@@ -17,7 +17,6 @@ import {
 
 const DEFAULT_SESSIONS = join(homedir(), ".grok", "sessions");
 const DEFAULT_DEVICE = "b53ddcac-5c55-4f1a-a746-d138dd1a3d16";
-const DEFAULT_HOST = "https://pew.md";
 
 function argValue(flag: string): string | undefined {
   const idx = process.argv.indexOf(flag);
@@ -75,6 +74,22 @@ async function loadOccupied(path: string | undefined): Promise<Set<string>> {
   return new Set(raw.map((x) => String(x)));
 }
 
+function sqlString(value: string): string {
+  return `'${value.replaceAll("'", "''")}'`;
+}
+
+function insertSql(userId: string, record: QueueRecord): string {
+  return `INSERT INTO usage_records
+  (user_id, device_id, source, model, hour_start,
+   input_tokens, cached_input_tokens, output_tokens,
+   reasoning_output_tokens, total_tokens)
+VALUES (${sqlString(userId)}, ${sqlString(record.device_id)}, 'grok',
+  ${sqlString(record.model)}, ${sqlString(record.hour_start)},
+  ${record.input_tokens}, ${record.cached_input_tokens}, ${record.output_tokens},
+  ${record.reasoning_output_tokens}, ${record.total_tokens})
+ON CONFLICT (user_id, device_id, source, model, hour_start) DO NOTHING;`;
+}
+
 async function main(): Promise<void> {
   const sessionsDir = argValue("--sessions") ?? DEFAULT_SESSIONS;
   const deviceId = argValue("--device-id") ?? DEFAULT_DEVICE;
@@ -83,9 +98,10 @@ async function main(): Promise<void> {
   const apply = hasFlag("--apply");
 
   const files = await listUpdatesJsonl(sessionsDir);
+  const seenEventIds = new Set<string>();
   const deltas = [];
   for (const file of files) {
-    deltas.push(...(await parseGrokSessionUsageFile(file)));
+    deltas.push(...(await parseGrokSessionUsageFile(file, seenEventIds)));
   }
   const all = sessionUsageToIngestRecords(deltas, { deviceId });
   const occupied = await loadOccupied(occupiedPath);
@@ -108,30 +124,32 @@ async function main(): Promise<void> {
   }
 
   if (!apply) return;
-
-  const token = process.env.PEW_API_TOKEN;
-  if (!token) {
-    throw new Error("PEW_API_TOKEN is required for --apply");
+  if (!occupiedPath) {
+    throw new Error("--apply requires --occupied so existing hours are not sent");
   }
-  const host = argValue("--host") ?? DEFAULT_HOST;
-  const version = argValue("--client-version") ?? "2.28.0";
-  const batchSize = 50;
-  for (let i = 0; i < records.length; i += batchSize) {
-    const batch = records.slice(i, i + batchSize);
-    const resp = await fetch(`${host}/api/ingest`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        "X-Pew-Client-Version": version,
-      },
-      body: JSON.stringify(batch),
-    });
-    if (!resp.ok) {
-      const body = await resp.text();
-      throw new Error(`ingest ${resp.status}: ${body.slice(0, 500)}`);
+  const userId = argValue("--user-id");
+  if (!userId) {
+    throw new Error("--apply requires --user-id");
+  }
+  const wrangler = argValue("--wrangler") ??
+    join(import.meta.dir, "../packages/worker/node_modules/.bin/wrangler");
+  const cwd = argValue("--worker-dir") ??
+    join(import.meta.dir, "../packages/worker");
+  const chunkSize = 20;
+  for (let i = 0; i < records.length; i += chunkSize) {
+    const batch = records.slice(i, i + chunkSize);
+    const sql = batch.map((r) => insertSql(userId, r)).join("\n");
+    const sqlPath = `/tmp/pew-grok-backfill-${i}.sql`;
+    await Bun.write(sqlPath, sql);
+    const proc = Bun.spawn(
+      [wrangler, "d1", "execute", "pew-db", "--remote", "--file", sqlPath],
+      { cwd, stdout: "inherit", stderr: "inherit" },
+    );
+    const code = await proc.exited;
+    if (code !== 0) {
+      throw new Error(`wrangler d1 execute failed at offset ${i} exit ${code}`);
     }
-    console.error(`uploaded batch ${i / batchSize + 1} (${batch.length})`);
+    console.error(`inserted batch ${i / chunkSize + 1} (${batch.length})`);
   }
 }
 

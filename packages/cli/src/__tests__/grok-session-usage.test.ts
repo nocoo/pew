@@ -5,7 +5,6 @@ import { join } from "node:path";
 import {
   accumulateSessionUsage,
   excludeOccupiedBuckets,
-  isNewUsageEpoch,
   parseGrokSessionUsageFile,
   parseTurnCompletedLine,
   sessionUsageToIngestRecords,
@@ -32,6 +31,7 @@ function turnLine(opts: {
   agentTimestampMs?: number;
   usage: Record<string, unknown>;
   model?: string;
+  eventId?: string;
   omitMeta?: boolean;
 }): string {
   const usage = {
@@ -50,6 +50,7 @@ function turnLine(opts: {
   if (!opts.omitMeta) {
     params._meta = {
       agentTimestampMs: opts.agentTimestampMs ?? 1_788_245_632_727,
+      ...(opts.eventId ? { eventId: opts.eventId } : {}),
     };
   }
   return JSON.stringify({
@@ -59,73 +60,22 @@ function turnLine(opts: {
   });
 }
 
-describe("isNewUsageEpoch", () => {
-  it("starts an epoch when there is no previous snapshot", () => {
-    expect(isNewUsageEpoch(null, snap())).toBe(true);
-  });
-
-  it("continues when counters and turns are non-decreasing", () => {
-    expect(isNewUsageEpoch(snap({ numTurns: 7 }), snap({ numTurns: 8 }))).toBe(
-      false,
-    );
-  });
-
-  it("breaks when numTurns drops", () => {
-    expect(
-      isNewUsageEpoch(snap({ numTurns: 58, inputTokens: 1000 }), snap({ numTurns: 1 })),
-    ).toBe(true);
-  });
-
-  it("breaks when inputTokens drops", () => {
-    expect(
-      isNewUsageEpoch(snap({ inputTokens: 8000 }), snap({ inputTokens: 200 })),
-    ).toBe(true);
-  });
-
-  it("breaks when modelCalls drops", () => {
-    expect(
-      isNewUsageEpoch(snap({ modelCalls: 10 }), snap({ modelCalls: 2 })),
-    ).toBe(true);
-  });
-});
-
 describe("toSessionUsageDelta", () => {
-  it("normalizes a full snapshot on a new epoch", () => {
-    expect(toSessionUsageDelta(null, snap({
-      inputTokens: 21601,
-      cachedReadTokens: 11136,
-      outputTokens: 193,
-      reasoningTokens: 48,
-    }))).toEqual({
+  it("normalizes each prompt snapshot in full", () => {
+    expect(
+      toSessionUsageDelta(
+        snap({
+          inputTokens: 21601,
+          cachedReadTokens: 11136,
+          outputTokens: 193,
+          reasoningTokens: 48,
+        }),
+      ),
+    ).toEqual({
       inputTokens: 10465,
       cachedInputTokens: 11136,
       outputTokens: 145,
       reasoningOutputTokens: 48,
-    });
-  });
-
-  it("diffs raw counters inside an epoch then normalizes", () => {
-    const prev = snap({
-      inputTokens: 242791,
-      cachedReadTokens: 160256,
-      outputTokens: 3411,
-      reasoningTokens: 2026,
-      numTurns: 7,
-      modelCalls: 7,
-    });
-    const cur = snap({
-      inputTokens: 8532019,
-      cachedReadTokens: 8333696,
-      outputTokens: 40210,
-      reasoningTokens: 14838,
-      numTurns: 58,
-      modelCalls: 58,
-    });
-    expect(toSessionUsageDelta(prev, cur)).toEqual({
-      inputTokens: Math.max(0, 8532019 - 242791 - (8333696 - 160256)),
-      cachedInputTokens: 8333696 - 160256,
-      outputTokens: Math.max(0, 40210 - 3411 - (14838 - 2026)),
-      reasoningOutputTokens: 14838 - 2026,
     });
   });
 });
@@ -141,11 +91,13 @@ describe("parseTurnCompletedLine", () => {
         numTurns: 1,
         modelCalls: 1,
       },
+      eventId: "evt-1",
     });
     const parsed = parseTurnCompletedLine(line);
     expect(parsed?.timestampMs).toBe(1_788_245_632_727);
     expect(parsed?.model).toBe("grok-4.6");
     expect(parsed?.snapshot.inputTokens).toBe(100);
+    expect(parsed?.eventId).toBe("evt-1");
   });
 
   it("falls back to unix-seconds timestamp when _meta is missing", () => {
@@ -234,67 +186,100 @@ describe("parseTurnCompletedLine", () => {
 });
 
 describe("accumulateSessionUsage", () => {
-  it("emits snapshot then diffs then a new epoch after rewind", () => {
+  it("counts each prompt snapshot in full, including after rewind", () => {
     const t0 = 1_788_245_632_727;
-    const events = [
-      {
-        timestampMs: t0,
-        model: "grok-4.6",
-        snapshot: snap({
-          inputTokens: 242791,
-          cachedReadTokens: 160256,
-          outputTokens: 3411,
-          reasoningTokens: 2026,
-          numTurns: 7,
-          modelCalls: 7,
-        }),
-      },
+    const first = snap({
+      inputTokens: 242791,
+      cachedReadTokens: 160256,
+      outputTokens: 3411,
+      reasoningTokens: 2026,
+      numTurns: 7,
+      modelCalls: 7,
+    });
+    const second = snap({
+      inputTokens: 8532019,
+      cachedReadTokens: 8333696,
+      outputTokens: 40210,
+      reasoningTokens: 14838,
+      numTurns: 58,
+      modelCalls: 58,
+    });
+    const third = snap({
+      inputTokens: 218205,
+      cachedReadTokens: 218112,
+      outputTokens: 2014,
+      reasoningTokens: 1227,
+      numTurns: 1,
+      modelCalls: 1,
+    });
+    const deltas = accumulateSessionUsage([
+      { timestampMs: t0, model: "grok-4.6", eventId: "a", snapshot: first },
       {
         timestampMs: t0 + 60_000,
         model: "grok-4.6",
-        snapshot: snap({
-          inputTokens: 8532019,
-          cachedReadTokens: 8333696,
-          outputTokens: 40210,
-          reasoningTokens: 14838,
-          numTurns: 58,
-          modelCalls: 58,
-        }),
+        eventId: "b",
+        snapshot: second,
       },
       {
         timestampMs: t0 + 120_000,
         model: "grok-4.6",
-        snapshot: snap({
-          inputTokens: 218205,
-          cachedReadTokens: 218112,
-          outputTokens: 2014,
-          reasoningTokens: 1227,
-          numTurns: 1,
-          modelCalls: 1,
-        }),
+        eventId: "c",
+        snapshot: third,
       },
-    ];
-    const deltas = accumulateSessionUsage(events);
+    ]);
     expect(deltas).toHaveLength(3);
-    expect(deltas[0]?.tokens).toEqual(
-      toSessionUsageDelta(null, events[0]!.snapshot),
-    );
-    expect(deltas[1]?.tokens).toEqual(
-      toSessionUsageDelta(events[0]!.snapshot, events[1]!.snapshot),
-    );
-    expect(deltas[2]?.tokens).toEqual(
-      toSessionUsageDelta(null, events[2]!.snapshot),
-    );
+    expect(deltas[0]?.tokens).toEqual(toSessionUsageDelta(first));
+    expect(deltas[1]?.tokens).toEqual(toSessionUsageDelta(second));
+    expect(deltas[2]?.tokens).toEqual(toSessionUsageDelta(third));
     expect(deltas[0]?.timestamp).toBe("2026-09-01T06:53:52.727Z");
   });
 
-  it("drops all-zero diffs", () => {
+  it("drops all-zero snapshots", () => {
+    const snapshot = snap({
+      inputTokens: 0,
+      cachedReadTokens: 0,
+      outputTokens: 0,
+      reasoningTokens: 0,
+    });
+    expect(
+      accumulateSessionUsage([
+        {
+          timestampMs: 1_788_245_632_727,
+          model: "grok-4.6",
+          eventId: "z",
+          snapshot,
+        },
+      ]),
+    ).toHaveLength(0);
+  });
+
+  it("skips duplicate event ids across files", () => {
     const snapshot = snap();
-    const deltas = accumulateSessionUsage([
-      { timestampMs: 1_788_245_632_727, model: "grok-4.6", snapshot },
-      { timestampMs: 1_788_245_632_827, model: "grok-4.6", snapshot },
-    ]);
-    expect(deltas).toHaveLength(1);
+    const seen = new Set<string>();
+    const first = accumulateSessionUsage(
+      [
+        {
+          timestampMs: 1_788_245_632_727,
+          model: "grok-4.6",
+          eventId: "dup",
+          snapshot,
+        },
+      ],
+      seen,
+    );
+    const second = accumulateSessionUsage(
+      [
+        {
+          timestampMs: 1_788_245_632_827,
+          model: "grok-4.6",
+          eventId: "dup",
+          snapshot,
+        },
+      ],
+      seen,
+    );
+    expect(first).toHaveLength(1);
+    expect(second).toHaveLength(0);
   });
 });
 

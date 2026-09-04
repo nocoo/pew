@@ -20,47 +20,16 @@ export interface SessionUsageSnapshot {
 export interface SessionUsageEvent {
   timestampMs: number;
   model: string;
+  eventId: string | null;
   snapshot: SessionUsageSnapshot;
 }
 
-export function isNewUsageEpoch(
-  prev: SessionUsageSnapshot | null,
-  cur: SessionUsageSnapshot,
-): boolean {
-  if (prev === null) return true;
-  return (
-    cur.numTurns < prev.numTurns ||
-    cur.inputTokens < prev.inputTokens ||
-    cur.modelCalls < prev.modelCalls
-  );
-}
-
-export function toSessionUsageDelta(
-  prev: SessionUsageSnapshot | null,
-  cur: SessionUsageSnapshot,
-): TokenDelta {
-  const raw =
-    prev === null || isNewUsageEpoch(prev, cur)
-      ? cur
-      : {
-          inputTokens: Math.max(0, cur.inputTokens - prev.inputTokens),
-          cachedReadTokens: Math.max(
-            0,
-            cur.cachedReadTokens - prev.cachedReadTokens,
-          ),
-          outputTokens: Math.max(0, cur.outputTokens - prev.outputTokens),
-          reasoningTokens: Math.max(
-            0,
-            cur.reasoningTokens - prev.reasoningTokens,
-          ),
-          numTurns: cur.numTurns,
-          modelCalls: cur.modelCalls,
-        };
+export function toSessionUsageDelta(cur: SessionUsageSnapshot): TokenDelta {
   return normalizeGrokUsage({
-    prompt_tokens: raw.inputTokens,
-    cached_prompt_tokens: raw.cachedReadTokens,
-    completion_tokens: raw.outputTokens,
-    reasoning_tokens: raw.reasoningTokens,
+    prompt_tokens: cur.inputTokens,
+    cached_prompt_tokens: cur.cachedReadTokens,
+    completion_tokens: cur.outputTokens,
+    reasoning_tokens: cur.reasoningTokens,
   });
 }
 
@@ -84,13 +53,23 @@ function readModel(usage: Record<string, unknown>): string {
   return "grok-unknown";
 }
 
+function readMeta(
+  params: Record<string, unknown>,
+): Record<string, unknown> | null {
+  const meta = params._meta;
+  if (meta === null || typeof meta !== "object" || Array.isArray(meta)) {
+    return null;
+  }
+  return meta as Record<string, unknown>;
+}
+
 function readTimestampMs(
   obj: Record<string, unknown>,
   params: Record<string, unknown>,
 ): number | null {
-  const meta = params._meta;
-  if (meta !== null && typeof meta === "object" && !Array.isArray(meta)) {
-    const ms = (meta as Record<string, unknown>).agentTimestampMs;
+  const meta = readMeta(params);
+  if (meta) {
+    const ms = meta.agentTimestampMs;
     if (typeof ms === "number" && Number.isFinite(ms) && ms > 0) {
       return ms;
     }
@@ -100,6 +79,14 @@ function readTimestampMs(
     return ts < 1e12 ? ts * 1000 : ts;
   }
   return null;
+}
+
+function readEventId(params: Record<string, unknown>): string | null {
+  const meta = readMeta(params);
+  if (!meta) return null;
+  return typeof meta.eventId === "string" && meta.eventId.length > 0
+    ? meta.eventId
+    : null;
 }
 
 export function parseTurnCompletedLine(line: string): SessionUsageEvent | null {
@@ -132,18 +119,22 @@ export function parseTurnCompletedLine(line: string): SessionUsageEvent | null {
   return {
     timestampMs,
     model: readModel(usageObj),
+    eventId: readEventId(paramsObj),
     snapshot: readSnapshot(usageObj),
   };
 }
 
 export function accumulateSessionUsage(
   events: SessionUsageEvent[],
+  seenEventIds: Set<string> = new Set(),
 ): ParsedDelta[] {
   const deltas: ParsedDelta[] = [];
-  let prev: SessionUsageSnapshot | null = null;
   for (const event of events) {
-    const tokens = toSessionUsageDelta(prev, event.snapshot);
-    prev = event.snapshot;
+    if (event.eventId) {
+      if (seenEventIds.has(event.eventId)) continue;
+      seenEventIds.add(event.eventId);
+    }
+    const tokens = toSessionUsageDelta(event.snapshot);
     if (isAllZero(tokens)) continue;
     deltas.push({
       source: GROK_SOURCE,
@@ -157,6 +148,7 @@ export function accumulateSessionUsage(
 
 export async function parseGrokSessionUsageFile(
   filePath: string,
+  seenEventIds?: Set<string>,
 ): Promise<ParsedDelta[]> {
   const events: SessionUsageEvent[] = [];
   const rl = createInterface({
@@ -168,7 +160,7 @@ export async function parseGrokSessionUsageFile(
     const parsed = parseTurnCompletedLine(line);
     if (parsed) events.push(parsed);
   }
-  return accumulateSessionUsage(events);
+  return accumulateSessionUsage(events, seenEventIds);
 }
 
 export function occupiedBucketKey(model: string, hourStart: string): string {
