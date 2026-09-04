@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v2.28.1
+
+### Fixed
+- Resume JSONL token sync after a continuity skip by stamping anchors at the parked offset so later appends are ingested instead of warning forever
+
 ## v2.28.0
 
 ### Added
