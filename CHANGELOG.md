@@ -2,30 +2,23 @@
 
 ## Unreleased
 
+## v2.28.0
+
+### Added
+- Rebase JSONL token sync after a same-inode log trim using continuity anchors (append / rebase / skip) so Grok rolling logs and other offset JSONL sources do not stall or SUM-inflate
+- Landing page boarding-pass layout and related chrome
+
 ### Fixed
-- Codex notifier forwarding cycle (Issue #318). notify.cjs now runs a
-  chain guard (`PEW_NOTIFY_CHAIN` env carries a stable per-installation
-  `INSTANCE_ID`; re-entry or chain > 2048 bytes → zero spawn) and two
-  per-bucket exclusive-create gates: `sync-<bucket>.lock` shared across
-  sources for the single Pew worker, `forward-codex-<bucket>.lock`
-  Codex-only for the at-most-one saved-original callback per
-  `ADMISSION_WINDOW_MS = 2000ms`. Both gates fail-closed on
-  non-`EEXIST` errno, independently. A post-create expiry recheck +
-  worker cleanup of gate files older than `GATE_GRACE_BUCKETS = 2`
-  close the paused-handler TOCTOU. Worker debounces to bucket end
-  before entering `coordinatedSync()` (§4.4 lost-wakeup). Codex
-  installer now uses the injected runtime path (default
-  `process.execPath`) instead of `/usr/bin/env node`; recognises the
-  legacy form for status/uninstall; refuses to reclaim the notify
-  slot when a stale backup indicates a foreign command holds it
-  (ownership_conflict); refuses to restore a saved-original that
-  points back at Pew (cycle_detected). Cross-process wx primitive
-  verified on ubuntu / macos / windows via
-  `.github/workflows/admission-primitive.yml`. See doc 45 for the
-  full derivation.
+- JSONL resume: stamp anchors on legacy cursors, reset empty-epoch driver state, skip unproven resumes, fingerprint the unread snapshot before commit, pin parsers to the snapshot bound, and only parse complete newline-terminated records
+- Fail closed when a JSONL complete-line bound cannot be read, so a transient IO error cannot fast-skip forever
+- Codex notifier forwarding cycle (Issue #318)
+- Copy full `@swc/helpers` into Next standalone output; pin Docker builder to Node 22 and Bun 1.4.0
 
 ### Removed
 - Drop legacy `model_pricing` D1 table, admin Token Pricing CRUD UI (`/admin/pricing`) and its CRUD API (`/api/admin/pricing` route), worker-read admin-loader + `pricing.listModelPricing` / `pricing.getModelPricingByModelSource` RPCs, `origin: "admin"` pricing layer, and `pricing:all` KV cache (migration 021). The dynamic-pricing admin surface (`/admin/model-prices`, `/api/admin/pricing/models`, `/api/admin/pricing/rebuild`) is retained. Dynamic pricing pipeline (baseline + OpenRouter + models.dev → `pricing:dynamic`) is now the sole source of truth.
+
+### Changed
+- Dependency and toolchain upgrades (Next 16.3.4, wrangler 4.127.1, Biome 2.5.11, Vitest 4.1.11)
 
 ## v2.27.0
 
