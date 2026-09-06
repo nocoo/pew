@@ -1,4 +1,4 @@
-<p align="center"><img src="logo.png" width="128" height="128"/></p>
+<p align="center"><img src="assets/brand/icon-rounded.png" width="128" height="128" alt="Pew logo"/></p>
 
 <h1 align="center">pew</h1>
 

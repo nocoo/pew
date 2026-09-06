@@ -1,0 +1,53 @@
+{
+  "project": "pew",
+  "study": "hexly.ai/artwork/logo-family/pew/2026-09-06-01",
+  "finishing": "04",
+  "archiveRepository": "https://github.com/nocoo/hexly.ai",
+  "archiveRevision": "dbde89154844529f77422fde391c06e012b8b08f",
+  "nativeSize": [
+    2048,
+    2048
+  ],
+  "rawImageSha256": "efa6aff9f478cb56ac3bcb390dc935aa6a6f7b9f56b5e98c7df4a1ea11a2746b",
+  "previousLogoSha256": "2b94fa9b0b0521008a08caa3bae34552f68785fd591c8dc578ceee943addc35e",
+  "approval": {
+    "scope": "Owner requested adoption and usage completion for Frogie, Pew, Firefly, and Bogo; local only",
+    "retainedPresentation": "Owner explicitly retained Pew tapered stripe motif",
+    "rawReview": "hexly.ai/artwork/logo-family/pew/2026-09-06-01/raw-review.json"
+  },
+  "assets": [
+    {
+      "path": "logo.png",
+      "role": "Canonical transparent foreground",
+      "width": 2048,
+      "height": 2048,
+      "bytes": 3043802,
+      "sha256": "5c002bb5dcfb31f4db5ca52958e58175ad32bf0a34288828ddf443375b573ecb"
+    },
+    {
+      "path": "assets/brand/icon.png",
+      "role": "Square presentation for platform-managed masking",
+      "width": 2048,
+      "height": 2048,
+      "bytes": 4459362,
+      "sha256": "d3734589bc3d7062c7473421a44570ff7cdd2744a813c756dd2a7eacb4e1f29a"
+    },
+    {
+      "path": "assets/brand/icon-rounded.png",
+      "role": "Rounded large README and social presentation",
+      "width": 2048,
+      "height": 2048,
+      "bytes": 4364683,
+      "sha256": "26c25676ec61a4fb2d1b3f01f8b959743f7f42ad17ccffd5efacb56a099fa69c"
+    }
+  ],
+  "usage": {
+    "updated": "2026-09-07",
+    "scope": "Local source adoption and usage standard; publication remains paused",
+    "foreground": "Root logo.png supplies transparent app marks and browser favicons; preserve framing without extra background or corner mask",
+    "largePresentation": "Rounded master supplies the README header and large social presentation",
+    "platformIcon": "Use square presentation only where the platform manages app-icon masking",
+    "sop": "hexly.ai/docs/07-logo-usage-sop.md",
+    "generator": "uv run --with pillow python scripts/resize-logos.py"
+  }
+}
