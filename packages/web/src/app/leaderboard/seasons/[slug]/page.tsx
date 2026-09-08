@@ -9,6 +9,8 @@ import {
   Camera,
 } from "lucide-react";
 import { Banner } from "@nocoo/basalt/components/banner";
+import { Button } from "@nocoo/basalt/components/button";
+import { Empty } from "@nocoo/basalt/components/empty";
 import { Breadcrumbs } from "@nocoo/basalt/components/breadcrumbs";
 import { cn, formatTokensFull } from "@/lib/utils";
 import { formatDuration } from "@/lib/date-helpers";
@@ -108,11 +110,13 @@ function TeamRow({
       className="animate-fade-up"
       style={{ animationDelay: `${index * 40}ms` }}
     >
-      <button type="button"
+      <Button
+        type="button"
+        variant="ghost"
         onClick={() => canExpand && handleToggle()}
         className={cn(
-          "relative flex w-full items-center gap-3 overflow-hidden rounded-card bg-secondary px-4 py-3 text-left transition-colors",
-          canExpand && "hover:bg-accent cursor-pointer",
+          "relative flex h-auto w-full items-center gap-3 overflow-hidden rounded-card bg-secondary px-4 py-3 text-left hover:bg-secondary",
+          canExpand && "cursor-pointer hover:bg-accent",
           entry.rank <= 3 && "ring-1 ring-border/50",
           expanded && "rounded-b-none",
         )}
@@ -187,7 +191,7 @@ function TeamRow({
             )}
           />
         )}
-      </button>
+      </Button>
 
       {/* Expanded member list */}
       {expanded && (
@@ -213,12 +217,14 @@ function TeamRow({
 
                 {/* Avatar + name — aligned with team icon + name */}
                 <div className="flex flex-1 items-center gap-3 min-w-0">
-                  <button type="button"
+                  <Button
+                    type="button"
+                    variant="ghost"
                     onClick={(e) => {
                       e.stopPropagation();
                       onMemberClick(member);
                     }}
-                    className="flex items-center gap-3 min-w-0 hover:opacity-80 transition-opacity cursor-pointer"
+                    className="flex h-auto min-w-0 items-center gap-3 px-0 py-0 hover:bg-transparent hover:opacity-80"
                   >
                     <Avatar className="h-8 w-8 shrink-0">
                       {member.image && (
@@ -234,7 +240,7 @@ function TeamRow({
                       </span>
                       <TokenTierBadge totalTokens={member.total_tokens} />
                     </div>
-                  </button>
+                  </Button>
                 </div>
 
                 {/* Session count — same width as team row */}
@@ -264,9 +270,7 @@ function TeamRow({
             );
           })
           ) : (
-            <div className="py-2 text-center text-sm text-muted-foreground">
-              No members to display
-            </div>
+            <Empty title="No members to display" />
           )}
         </div>
       )}
@@ -371,13 +375,12 @@ export default function SeasonLeaderboardPage() {
             )}
           >
             {data.entries.length === 0 ? (
-              <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
-                <Trophy className="mx-auto h-12 w-12 mb-4 opacity-30" />
-                <p className="text-lg">No teams registered yet</p>
-                <p className="text-sm mt-1">
-                  Teams need to register before they appear on the leaderboard.
-                </p>
-              </div>
+              <Empty
+                title="No teams registered yet"
+                description="Teams need to register before they appear on the leaderboard."
+                icon={<Trophy className="h-12 w-12 opacity-30" />}
+                className="rounded-basalt-card bg-basalt-secondary p-8"
+              />
             ) : (
               data.entries.map((entry, i) => (
                 <TeamRow

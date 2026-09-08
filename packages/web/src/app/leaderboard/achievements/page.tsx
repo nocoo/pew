@@ -33,6 +33,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@nocoo/basalt/components/button";
+import { Empty } from "@nocoo/basalt/components/empty";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import {
   useAchievements,
@@ -241,15 +243,17 @@ function EarnedByAvatars({ earnedBy, totalEarned, onUserClick }: EarnedByAvatars
       <span className="text-[10px] text-muted-foreground uppercase tracking-wide">Earned by</span>
       <div className="flex -space-x-1.5">
         {earnedBy.slice(0, displayCount).map((user) => (
-          <button
+          <Button
             key={user.id}
             type="button"
+            variant="ghost"
+            size="icon"
             aria-label={`View ${user.name}'s profile`}
             onClick={(e) => {
               e.stopPropagation();
               onUserClick({ id: user.id, slug: user.slug, name: user.name, image: user.image });
             }}
-            className="cursor-pointer rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="h-auto w-auto rounded-full p-0 hover:bg-transparent"
           >
             <Avatar className="h-5 w-5 ring-2 ring-background hover:ring-primary transition-all">
               {user.image && <AvatarImage src={user.image} alt={user.name} />}
@@ -257,7 +261,7 @@ function EarnedByAvatars({ earnedBy, totalEarned, onUserClick }: EarnedByAvatars
                 {user.name[0]?.toUpperCase() ?? "?"}
               </AvatarFallback>
             </Avatar>
-          </button>
+          </Button>
         ))}
       </div>
       {remainingCount > 0 && (
@@ -294,9 +298,9 @@ function MemberList({ members, loading, error, hasMore, onLoadMore, unit, onUser
 
   if (members.length === 0 && !loading) {
     return (
-      <div className="text-xs text-muted-foreground text-center py-4">
-        No members yet. Be the first to earn this achievement!
-      </div>
+      <Empty
+        title="No members yet. Be the first to earn this achievement!"
+      />
     );
   }
 
@@ -306,11 +310,12 @@ function MemberList({ members, loading, error, hasMore, onLoadMore, unit, onUser
         const tierStyle = TIER_STYLES[member.tier];
 
         return (
-          <button
+          <Button
             key={member.id}
             type="button"
+            variant="ghost"
             onClick={() => onUserClick({ id: member.id, slug: member.slug, name: member.name, image: member.image })}
-            className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors text-left"
+            className="flex h-auto w-full items-center gap-3 rounded-lg p-2 text-left hover:bg-muted/50"
           >
             <span className="text-xs text-muted-foreground w-5 text-right tabular-nums">
               {i + 1}
@@ -336,7 +341,7 @@ function MemberList({ members, loading, error, hasMore, onLoadMore, unit, onUser
                 {formatShortTokens(member.currentValue)} {unit}
               </div>
             </div>
-          </button>
+          </Button>
         );
       })}
 
@@ -347,13 +352,14 @@ function MemberList({ members, loading, error, hasMore, onLoadMore, unit, onUser
       )}
 
       {hasMore && !loading && (
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={onLoadMore}
-          className="w-full text-xs text-muted-foreground hover:text-foreground py-2 transition-colors"
+          className="h-auto w-full py-2 text-xs text-muted-foreground hover:text-foreground"
         >
           Load more...
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -392,10 +398,11 @@ function AchievementCard({ achievement, index, isExpanded, onToggle, onUserClick
       style={{ animationDelay: `${Math.min(index * 30, 400)}ms` }}
     >
       {/* Clickable header */}
-      <button
+      <Button
         type="button"
+        variant="ghost"
         onClick={onToggle}
-        className="w-full text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-lg bg-transparent border-0 p-0"
+        className="h-auto w-full cursor-pointer rounded-lg p-0 text-left hover:bg-transparent"
       >
         {/* Top row: ring + name/tier */}
         <div className="flex items-start gap-3">
@@ -466,7 +473,7 @@ function AchievementCard({ achievement, index, isExpanded, onToggle, onUserClick
             onUserClick={onUserClick}
           />
         )}
-      </button>
+      </Button>
 
       {isExpanded && (
         <div className="mt-4 pt-4 border-t border-border">

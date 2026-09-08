@@ -6,6 +6,7 @@
 
 import Link from "next/link";
 import { ExternalLink, Star, GitFork, Code, Scale } from "lucide-react";
+import { Button } from "@nocoo/basalt/components/button";
 import { Github } from "@/components/icons/github";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ShowcaseImage } from "./showcase-image";
@@ -112,10 +113,11 @@ export function ShowcaseCard({ showcase, isLoggedIn, onLoginRequired, onUpvoteCh
         {/* Footer: Submitter + GitHub owner */}
         <div className="mt-2 flex items-center gap-3">
           {/* Pew user */}
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => onUserClick?.(showcase.user)}
-            className="flex items-center gap-1.5 hover:opacity-80 transition-opacity cursor-pointer"
+            className="flex h-auto items-center gap-1.5 px-0 py-0 hover:bg-transparent hover:opacity-80"
           >
             <Avatar className="h-5 w-5">
               {showcase.user.image && (
@@ -128,7 +130,7 @@ export function ShowcaseCard({ showcase, isLoggedIn, onLoginRequired, onUpvoteCh
             <span className="text-xs text-muted-foreground truncate hover:text-foreground transition-colors">
               {displayName}
             </span>
-          </button>
+          </Button>
 
           {/* GitHub owner */}
           <a

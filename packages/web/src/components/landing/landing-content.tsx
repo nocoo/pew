@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { Button } from "@nocoo/basalt/components/button";
 import { ClipboardText } from "@nocoo/basalt/components/clipboard-text";
 import {
   BADGE_CARD_SHADOW,
@@ -263,21 +264,12 @@ function BoardingCoupon() {
 
       <p className="mt-2 text-[10px] leading-snug text-muted-foreground/60">{NO_HOOK_NOTE}</p>
 
-      <Link
-        href="/login"
-        className={cn(
-          "mt-auto inline-flex h-10 w-full items-center justify-center gap-1.5",
-          "rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground",
-          "shadow-[0_8px_20px_-10px_hsl(var(--basalt-primary)/0.65)]",
-          "transition-[transform,background-color] duration-200",
-          "hover:bg-primary/90",
-          "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
-          "active:translate-y-px",
-        )}
-      >
-        Enter dashboard
-        <ArrowRight className="h-4 w-4" aria-hidden="true" />
-      </Link>
+      <Button asChild className="mt-auto w-full">
+        <Link href="/login">
+          Enter dashboard
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </Link>
+      </Button>
     </Coupon>
   );
 }
