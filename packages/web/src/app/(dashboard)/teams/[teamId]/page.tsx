@@ -80,12 +80,12 @@ function StatusBadge({ status }: { status: SeasonStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium",
+        "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium",
         STATUS_STYLES[status],
       )}
     >
       {status === "active" && (
-        <span className="mr-1 inline-block h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+        <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-green-500 animate-pulse" />
       )}
       {STATUS_LABELS[status]}
     </span>

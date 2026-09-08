@@ -33,7 +33,7 @@ export function FilterDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="secondary" className="shrink-0">
+        <Button variant="secondary" className="shrink-0 gap-2">
           {selected ? (
             <span
               className="h-2.5 w-2.5 shrink-0 rounded-full"
