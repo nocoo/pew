@@ -13,9 +13,6 @@ import {
   Check,
   ChevronUp,
   RefreshCw,
-  Circle,
-  Clock,
-  CheckCircle2,
   UserPlus,
   ArrowLeftRight,
   LogOut,
@@ -23,7 +20,9 @@ import {
 import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
 import { ErrorBanner } from "@/components/ui/error-banner";
+import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
+import { StatusBadge as SharedStatusBadge } from "@/components/leaderboard/status-badge";
 import { Checkbox } from "@nocoo/basalt/components/checkbox";
 import { Field } from "@nocoo/basalt/components/field";
 import { Input } from "@nocoo/basalt/components/input";
@@ -70,56 +69,8 @@ function SeasonsSkeleton() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Status badge + rules display
-// ---------------------------------------------------------------------------
-
-const STATUS_CONFIG: Record<
-  SeasonStatus,
-  { icon: typeof Circle; color: string; bg: string; dot: string }
-> = {
-  active: {
-    icon: Circle,
-    color: "text-success",
-    bg: "bg-success/15",
-    dot: "bg-success",
-  },
-  upcoming: {
-    icon: Clock,
-    color: "text-blue-600 dark:text-blue-400",
-    bg: "bg-blue-500/15",
-    dot: "bg-blue-500",
-  },
-  ended: {
-    icon: CheckCircle2,
-    color: "text-muted-foreground",
-    bg: "bg-muted",
-    dot: "bg-muted-foreground",
-  },
-};
-
 function StatusBadge({ status }: { status: SeasonStatus }) {
-  const config = STATUS_CONFIG[status];
-  const Icon = config.icon;
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold leading-none tracking-wide uppercase",
-        config.bg,
-        config.color,
-      )}
-    >
-      {status === "active" ? (
-        <span className="relative flex h-2 w-2">
-          <span className={cn("absolute inline-flex h-full w-full animate-ping rounded-full opacity-75", config.dot)} />
-          <span className={cn("relative inline-flex h-2 w-2 rounded-full", config.dot)} />
-        </span>
-      ) : (
-        <Icon className="h-3 w-3" strokeWidth={2} />
-      )}
-      {status}
-    </span>
-  );
+  return <SharedStatusBadge status={status} />;
 }
 
 const RULE_CONFIG = [
@@ -277,9 +228,7 @@ function CreateSeasonForm({
         Create Season
       </h3>
       {error && (
-        <div className="rounded-lg bg-destructive/10 p-2 text-xs text-destructive mb-3">
-          {error}
-        </div>
+        <Banner variant="error" size="sm" className="mb-3" description={error} />
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="Name" htmlFor={nameId}>
@@ -437,9 +386,7 @@ function EditSeasonRow({
     <tr className="border-b border-border/50">
       <td colSpan={6} className="px-4 py-3">
         {error && (
-          <div className="rounded-lg bg-destructive/10 p-2 text-xs text-destructive mb-2">
-            {error}
-          </div>
+          <Banner variant="error" size="sm" className="mb-2" description={error} />
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Name" htmlFor={nameId}>
