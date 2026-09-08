@@ -6,6 +6,7 @@
 
 import { useState, useCallback } from "react";
 import { Plus, Pencil, Trash2, Eye, EyeOff, ExternalLink, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { Badge } from "@nocoo/basalt/components/badge";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
@@ -151,17 +152,14 @@ export function MyShowcasesContent() {
                 </a>
 
                 {/* Visibility badge */}
-                {showcase.is_public ? (
-                  <span className="flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-medium text-success">
+                <Badge variant={showcase.is_public ? "success" : "secondary"}>
+                  {showcase.is_public ? (
                     <Eye className="h-2.5 w-2.5" />
-                    Public
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  ) : (
                     <EyeOff className="h-2.5 w-2.5" />
-                    Hidden
-                  </span>
-                )}
+                  )}
+                  {showcase.is_public ? "Public" : "Hidden"}
+                </Badge>
               </div>
 
               {showcase.tagline && (
