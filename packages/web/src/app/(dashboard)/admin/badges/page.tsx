@@ -21,7 +21,6 @@ import {
   ArchiveRestore,
   UserPlus,
   Ban,
-  Loader2,
   Shuffle,
   X,
   type LucideIcon,
@@ -31,8 +30,11 @@ import { useAdmin } from "@/hooks/use-admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
+import { Autocomplete } from "@nocoo/basalt/components/autocomplete";
+import { Badge } from "@nocoo/basalt/components/badge";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
+import { Empty } from "@nocoo/basalt/components/empty";
 import {
   Dialog,
   DialogClose,
@@ -116,57 +118,31 @@ function BadgesSkeleton() {
 // Status badge
 // ---------------------------------------------------------------------------
 
-const STATUS_CONFIG: Record<
-  string,
-  { label: string; color: string; bg: string }
-> = {
-  active: { label: "Active", color: "text-success", bg: "bg-success/15" },
-  expired: {
-    label: "Expired",
-    color: "text-warning",
-    bg: "bg-warning/15",
-  },
-  revoked_early: {
-    label: "Revoked",
-    color: "text-destructive",
-    bg: "bg-destructive/15",
-  },
-  revoked_post_expiry: {
-    label: "Cleared",
-    color: "text-muted-foreground",
-    bg: "bg-muted",
-  },
+const STATUS_LABELS: Record<string, string> = {
+  active: "Active",
+  expired: "Expired",
+  revoked_early: "Revoked",
+  revoked_post_expiry: "Cleared",
+};
+
+const STATUS_VARIANTS: Record<string, "success" | "warning" | "destructive" | "secondary"> = {
+  active: "success",
+  expired: "warning",
+  revoked_early: "destructive",
+  revoked_post_expiry: "secondary",
 };
 
 function AssignmentStatusBadge({ status }: { status: string }) {
-  const config = STATUS_CONFIG[status];
-  if (!config) {
-    return (
-      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-        Unknown
-      </span>
-    );
-  }
   return (
-    <span
-      className={cn(
-        "rounded-full px-2 py-0.5 text-[10px] font-medium",
-        config.bg,
-        config.color,
-      )}
-    >
-      {config.label}
-    </span>
+    <Badge variant={STATUS_VARIANTS[status] ?? "secondary"}>
+      {STATUS_LABELS[status] ?? "Unknown"}
+    </Badge>
   );
 }
 
 function ArchiveStatusBadge({ isArchived }: { isArchived: boolean }) {
   if (!isArchived) return null;
-  return (
-    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-      Archived
-    </span>
-  );
+  return <Badge variant="secondary">Archived</Badge>;
 }
 
 // ---------------------------------------------------------------------------
@@ -363,9 +339,7 @@ function CreateBadgeDialog({ open, onClose, onCreated }: CreateBadgeDialogProps)
             />
           </Field>
 
-          {error && (
-            <p className="text-sm text-destructive">{error}</p>
-          )}
+          {error && <Banner variant="error" size="sm" description={error} />}
 
           <DialogFooter>
             <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>
@@ -562,51 +536,26 @@ function AssignBadgeDialog({
                 </Button>
               </div>
             ) : (
-              <div className="relative">
-                <Input
-                  id={userQueryId}
-                  type="text"
-                  value={userQuery}
-                  onChange={(e) => setUserQuery(e.target.value)}
-                  placeholder="Search users..."
-                />
-                {searching && (
-                  <Loader2 className="absolute right-3 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
-                )}
-                {userResults.length > 0 && (
-                  <div className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-lg border bg-background shadow-lg">
-                    {userResults.map((user) => (
-                      <Button
-                        key={user.id}
-                        type="button"
-                        variant="ghost"
-                        className="h-auto w-full justify-start gap-2 px-3 py-2"
-                        onClick={() => {
-                          setSelectedUser(user);
-                          setUserQuery("");
-                          setDebouncedQuery("");
-                        }}
-                      >
-                        {user.image && (
-                          <Image
-                            src={user.image}
-                            alt=""
-                            width={24}
-                            height={24}
-                            className="h-6 w-6 rounded-full"
-                          />
-                        )}
-                        <div className="text-left">
-                          <p className="text-sm">{user.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {user.email}
-                          </p>
-                        </div>
-                      </Button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <Autocomplete
+                id={userQueryId}
+                items={userResults.map((user) => ({
+                  value: user.id,
+                  label: `${user.name ?? "Unknown"} (${user.email})`,
+                }))}
+                onValueChange={(next) => {
+                  const user = userResults.find((candidate) => candidate.id === next);
+                  if (!user) return;
+                  setSelectedUser(user);
+                  setUserQuery("");
+                  setDebouncedQuery("");
+                }}
+                onInput={(event) => {
+                  const target = event.target;
+                  if (target instanceof HTMLInputElement) setUserQuery(target.value);
+                }}
+                placeholder="Search users..."
+                loading={searching}
+              />
             )}
           </div>
 
@@ -626,7 +575,7 @@ function AssignBadgeDialog({
             />
           </Field>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && <Banner variant="error" size="sm" description={error} />}
 
           <DialogFooter>
             <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>
@@ -1052,9 +1001,10 @@ export default function AdminBadgesPage() {
       ) : activeTab === "definitions" ? (
         <div className="space-y-3">
           {badges.length === 0 ? (
-            <p className="py-8 text-center text-muted-foreground">
-              No badges created yet. Create your first badge!
-            </p>
+            <Empty
+              title="No badges created yet. Create your first badge!"
+              className="rounded-basalt-card bg-basalt-secondary p-8"
+            />
           ) : (
             badges.map((badge) => (
               <BadgeDefinitionRow
@@ -1086,9 +1036,10 @@ export default function AdminBadgesPage() {
 
           <div className="space-y-3">
             {assignments.length === 0 ? (
-              <p className="py-8 text-center text-muted-foreground">
-                No assignments found.
-              </p>
+              <Empty
+                title="No assignments found."
+                className="rounded-basalt-card bg-basalt-secondary p-8"
+              />
             ) : (
               assignments.map((assignment) => (
                 <AssignmentRow
