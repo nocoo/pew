@@ -122,7 +122,7 @@ export function PricingTable({ entries }: Props) {
           <SelectTrigger size="sm" aria-label="Provider" className="w-40">
             <SelectValue placeholder="Provider" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-h-[min(24rem,var(--radix-select-content-available-height))] overflow-y-auto">
             <SelectItem value="__all__">All providers</SelectItem>
             {providers.map((p) => (
               <SelectItem key={p} value={p}>
@@ -141,7 +141,7 @@ export function PricingTable({ entries }: Props) {
           <SelectTrigger size="sm" aria-label="Origin" className="w-36">
             <SelectValue placeholder="Origin" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-h-[min(24rem,var(--radix-select-content-available-height))] overflow-y-auto">
             <SelectItem value="__all__">All origins</SelectItem>
             {KNOWN_ORIGINS.map((o) => (
               <SelectItem key={o} value={o}>
