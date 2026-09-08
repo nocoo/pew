@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import type { LeaderboardEntry, LeaderboardPeriod } from "@/hooks/use-leaderboard";
+import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { TableHeader } from "@/components/leaderboard/table-header";
@@ -101,13 +102,16 @@ export function LeaderboardPageShell({
           ))}
           {/* Load more button — hide when reached max or no more data */}
           {hasMore && entries.length < MAX_ENTRIES && (
-            <button type="button"
+            <Button
+              type="button"
+              variant="secondary"
+              className={`w-full ${ROW_CLASSES}`}
               onClick={loadMore}
               disabled={loadingMore}
-              className={`w-full ${ROW_CLASSES} text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50`}
+              loading={loadingMore}
             >
               {loadingMore ? "Loading..." : "Show more"}
-            </button>
+            </Button>
           )}
         </div>
       )}
