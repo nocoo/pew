@@ -1,53 +1,37 @@
+@import "@nocoo/basalt/styles/tailwind";
 @import "tailwindcss";
 @import "tw-animate-css";
+@source "../../../node_modules/@nocoo/basalt/dist/**/*.{js,jsx,ts,tsx}";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/*
- * Map CSS-variable design tokens to Tailwind v4 theme namespace
- * so utilities like bg-background, text-foreground, etc. work.
- *
- * Color space: HSL (basalt design system).
- * Primary: Electric Violet — cyberpunk energy, "pew pew" laser vibes.
- * Accent: Acid Lime — for charts, heatmaps, achievement highlights.
- * Luminance: 3-tier (L0 body > L1 card > L2 secondary).
- */
 @theme inline {
-  --color-border: hsl(var(--border));
-  --color-input: hsl(var(--input));
-  --color-ring: hsl(var(--ring));
-  --color-background: hsl(var(--background));
-  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--basalt-border));
+  --color-input: hsl(var(--basalt-input));
+  --color-ring: hsl(var(--basalt-ring));
+  --color-background: hsl(var(--basalt-background));
+  --color-foreground: hsl(var(--basalt-foreground));
 
-  --color-primary: hsl(var(--primary));
-  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary: hsl(var(--basalt-primary));
+  --color-primary-foreground: hsl(var(--basalt-primary-foreground));
 
-  --color-secondary: hsl(var(--secondary));
-  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-secondary: hsl(var(--basalt-secondary));
+  --color-secondary-foreground: hsl(var(--basalt-secondary-foreground));
 
-  --color-destructive: hsl(var(--destructive));
-  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-destructive: hsl(var(--basalt-destructive));
+  --color-destructive-foreground: hsl(var(--basalt-destructive-foreground));
 
-  --color-muted: hsl(var(--muted));
-  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-muted: hsl(var(--basalt-muted));
+  --color-muted-foreground: hsl(var(--basalt-muted-foreground));
 
-  --color-accent: hsl(var(--accent));
-  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent: hsl(var(--basalt-accent));
+  --color-accent-foreground: hsl(var(--basalt-accent-foreground));
 
-  --color-popover: hsl(var(--popover));
-  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-popover: hsl(var(--basalt-popover));
+  --color-popover-foreground: hsl(var(--basalt-popover-foreground));
 
-  --color-card: hsl(var(--card));
-  --color-card-foreground: hsl(var(--card-foreground));
-
-  --color-sidebar: hsl(var(--sidebar-background));
-  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
-  --color-sidebar-primary: hsl(var(--sidebar-primary));
-  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
-  --color-sidebar-accent: hsl(var(--sidebar-accent));
-  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
-  --color-sidebar-border: hsl(var(--sidebar-border));
-  --color-sidebar-ring: hsl(var(--sidebar-ring));
+  --color-card: hsl(var(--basalt-card));
+  --color-card-foreground: hsl(var(--basalt-card-foreground));
 
   --color-success: hsl(var(--success));
   --color-success-foreground: hsl(var(--success-foreground));
@@ -55,7 +39,6 @@
   --color-badge-red: hsl(var(--badge-red));
   --color-badge-red-foreground: hsl(var(--badge-red-foreground));
 
-  /* 11 sequential chart colors + utility tokens */
   --color-chart-1: hsl(var(--chart-1));
   --color-chart-2: hsl(var(--chart-2));
   --color-chart-3: hsl(var(--chart-3));
@@ -73,112 +56,32 @@
   --color-chart-axis: hsl(var(--chart-axis));
   --color-chart-muted: hsl(var(--chart-muted));
 
-  /* Heatmap color scales — green (GitHub-style) */
   --color-heatmap-green-1: hsl(var(--heatmap-green-1));
   --color-heatmap-green-2: hsl(var(--heatmap-green-2));
   --color-heatmap-green-3: hsl(var(--heatmap-green-3));
   --color-heatmap-green-4: hsl(var(--heatmap-green-4));
 
-  /* Heatmap color scales — goal (red/yellow/green traffic-light) */
   --color-heatmap-goal-red: hsl(var(--heatmap-goal-red));
   --color-heatmap-goal-yellow: hsl(var(--heatmap-goal-yellow));
   --color-heatmap-goal-green: hsl(var(--heatmap-goal-green));
 
-  /* Rank badge colors (leaderboard podium) */
   --color-rank-gold: hsl(var(--rank-gold));
   --color-rank-silver: hsl(var(--rank-silver));
   --color-rank-bronze: hsl(var(--rank-bronze));
 
-  /* Radius tokens */
   --radius-card: 14px;
   --radius-widget: 10px;
-  --radius-lg: var(--radius);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-sm: calc(var(--radius) - 4px);
-
-  /* Animations */
-  --animate-accordion-down: accordion-down 0.2s ease-out;
-  --animate-accordion-up: accordion-up 0.2s ease-out;
-  --animate-collapsible-down: collapsible-down 0.2s ease-out;
-  --animate-collapsible-up: collapsible-up 0.2s ease-out;
+  --radius-lg: var(--basalt-radius);
+  --radius-md: calc(var(--basalt-radius) - 2px);
+  --radius-sm: calc(var(--basalt-radius) - 4px);
 }
 
-@keyframes accordion-down {
-  from { height: 0; }
-  to { height: var(--radix-accordion-content-height); }
-}
-
-@keyframes accordion-up {
-  from { height: var(--radix-accordion-content-height); }
-  to { height: 0; }
-}
-
-@keyframes collapsible-down {
-  from { height: 0; }
-  to { height: var(--radix-collapsible-content-height); }
-}
-
-@keyframes collapsible-up {
-  from { height: var(--radix-collapsible-content-height); }
-  to { height: 0; }
-}
-
-/*
- * Design tokens — light (default) & dark mode
- * 3-tier luminance: L0 (background) > L1 (card) > L2 (secondary)
- * Primary: Electric Violet (cyberpunk/laser energy)
- * Accent: Acid Lime (charts, heatmaps, achievements)
- */
 :root {
-  /* L0 body — cool-tinted off-white */
-  --background: 260 20% 95%;
-  --foreground: 260 10% 10%;
-
-  /* L1 content panel */
-  --card: 260 20% 98%;
-  --card-foreground: 260 10% 10%;
-
-  /* L2 inner cards */
-  --secondary: 0 0% 100%;
-  --secondary-foreground: 260 10% 10%;
-
-  --popover: 0 0% 100%;
-  --popover-foreground: 260 10% 10%;
-
-  /* Electric Violet primary */
-  --primary: 270 85% 52%;
-  --primary-foreground: 0 0% 100%;
-
-  --muted: 260 15% 92%;
-  --muted-foreground: 260 8% 32%;
-
-  --accent: 260 15% 92%;
-  --accent-foreground: 260 10% 10%;
-
-  --destructive: 0 72% 48%;
-  --destructive-foreground: 0 0% 100%;
-
-  --border: 260 12% 85%;
-  --input: 260 12% 85%;
-  --ring: 270 85% 52%;
-
-  --radius: 0.75rem;
-
-  --sidebar-background: 260 20% 95%;
-  --sidebar-foreground: 260 10% 10%;
-  --sidebar-primary: 270 85% 52%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 260 15% 88%;
-  --sidebar-accent-foreground: 260 10% 10%;
-  --sidebar-border: 260 12% 85%;
-  --sidebar-ring: 270 85% 52%;
-
   --success: 142 71% 32%;
   --success-foreground: 0 0% 100%;
   --badge-red: 340 82% 50%;
   --badge-red-foreground: 0 0% 100%;
 
-  /* 14 sequential chart colors — Violet to Lime energy spectrum (boosted saturation + contrast) */
   --chart-1: 270 85% 52%;
   --chart-2: 290 78% 48%;
   --chart-3: 320 72% 48%;
@@ -194,75 +97,29 @@
   --chart-13: 175 78% 42%;
   --chart-14: 145 72% 34%;
 
-  /* Chart utility tokens */
   --chart-axis: 260 8% 32%;
   --chart-muted: 260 8% 58%;
 
-  /* Heatmap color scales — Acid Lime (boosted for light bg contrast) */
   --heatmap-green-1: 82 45% 82%;
   --heatmap-green-2: 82 65% 58%;
   --heatmap-green-3: 82 85% 42%;
   --heatmap-green-4: 82 92% 32%;
 
-  /* Heatmap goal traffic-light — light mode */
   --heatmap-goal-red: 0 72% 55%;
   --heatmap-goal-yellow: 45 88% 48%;
   --heatmap-goal-green: 142 65% 38%;
 
-  /* Rank badge colors (leaderboard podium) */
   --rank-gold: 45 92% 42%;
   --rank-silver: 260 8% 48%;
   --rank-bronze: 25 72% 38%;
 }
 
 .dark {
-  /* L0 body: deep space black with subtle violet tint */
-  --background: 260 15% 7%;
-  --foreground: 260 5% 93%;
-
-  /* L1 content panel */
-  --card: 260 12% 10%;
-  --card-foreground: 260 5% 93%;
-
-  /* L2 inner cards */
-  --secondary: 260 10% 13%;
-  --secondary-foreground: 260 5% 93%;
-
-  --popover: 260 12% 10%;
-  --popover-foreground: 260 5% 93%;
-
-  /* Electric Violet primary (boosted for dark) */
-  --primary: 270 90% 65%;
-  --primary-foreground: 270 100% 98%;
-
-  --muted: 260 10% 15%;
-  --muted-foreground: 260 5% 50%;
-
-  --accent: 260 10% 16%;
-  --accent-foreground: 260 5% 93%;
-
-  --destructive: 0 70% 50%;
-  --destructive-foreground: 0 70% 95%;
-
-  --border: 260 10% 18%;
-  --input: 260 10% 20%;
-  --ring: 270 90% 65%;
-
-  --sidebar-background: 260 15% 7%;
-  --sidebar-foreground: 260 5% 93%;
-  --sidebar-primary: 270 90% 65%;
-  --sidebar-primary-foreground: 270 100% 98%;
-  --sidebar-accent: 260 10% 16%;
-  --sidebar-accent-foreground: 260 5% 93%;
-  --sidebar-border: 260 10% 18%;
-  --sidebar-ring: 270 90% 65%;
-
   --success: 142 70% 42%;
   --success-foreground: 142 70% 95%;
   --badge-red: 340 70% 52%;
   --badge-red-foreground: 340 70% 95%;
 
-  /* 14 sequential chart colors — Violet to Lime, boosted for dark bg */
   --chart-1: 270 90% 65%;
   --chart-2: 290 80% 60%;
   --chart-3: 320 75% 58%;
@@ -278,43 +135,37 @@
   --chart-13: 175 82% 52%;
   --chart-14: 145 76% 46%;
 
-  /* Chart utility tokens */
   --chart-axis: 260 5% 55%;
   --chart-muted: 260 5% 35%;
 
-  /* Heatmap color scales — Acid Lime, boosted for dark bg */
   --heatmap-green-1: 82 50% 20%;
   --heatmap-green-2: 82 70% 32%;
   --heatmap-green-3: 82 85% 45%;
   --heatmap-green-4: 82 95% 58%;
 
-  /* Heatmap goal traffic-light — dark mode (boosted) */
   --heatmap-goal-red: 0 70% 55%;
   --heatmap-goal-yellow: 45 90% 58%;
   --heatmap-goal-green: 142 70% 48%;
 
-  /* Rank badge colors — boosted for dark bg */
   --rank-gold: 45 90% 58%;
   --rank-silver: 260 8% 65%;
   --rank-bronze: 25 70% 55%;
 }
 
-/*
- * Base styles
- */
 @layer base {
+  html,
+  body {
+    height: 100%;
+  }
   * {
-    @apply border-border;
+    @apply border-basalt-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-basalt-background text-basalt-foreground antialiased;
     font-family: var(--font-inter), "Inter", system-ui, -apple-system, sans-serif;
   }
 }
 
-/*
- * Custom utilities
- */
 @utility font-display {
   font-family: var(--font-space-grotesk), "Space Grotesk", system-ui, sans-serif;
 }
@@ -323,12 +174,10 @@
   font-family: var(--font-caveat), "Caveat", cursive;
 }
 
-/* Recharts — suppress focus outline on click */
 .recharts-wrapper *:focus {
   outline: none;
 }
 
-/* Landing page entrance animations — respect reduced motion */
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
@@ -345,7 +194,6 @@
   }
 }
 
-/* Hide scrollbar utility */
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;

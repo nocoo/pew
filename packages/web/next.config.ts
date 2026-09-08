@@ -7,6 +7,7 @@ const rootPkg = require("../../package.json") as { version: string };
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  transpilePackages: ["@nocoo/basalt"],
   turbopack: {
     root: path.join(__dirname, "../.."),
   },
