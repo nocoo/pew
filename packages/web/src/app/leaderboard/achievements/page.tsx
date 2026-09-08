@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
 import { ErrorBanner } from "@/components/ui/error-banner";
@@ -290,9 +291,11 @@ interface MemberListProps {
 function MemberList({ members, loading, error, hasMore, onLoadMore, unit, onUserClick }: MemberListProps) {
   if (error) {
     return (
-      <div className="text-xs text-destructive text-center py-4">
-        Failed to load members: {error}
-      </div>
+      <Banner
+        variant="error"
+        size="sm"
+        description={`Failed to load members: ${error}`}
+      />
     );
   }
 
@@ -402,7 +405,7 @@ function AchievementCard({ achievement, index, isExpanded, onToggle, onUserClick
         type="button"
         variant="ghost"
         onClick={onToggle}
-        className="h-auto w-full cursor-pointer rounded-lg p-0 text-left hover:bg-transparent"
+        className="flex h-auto w-full cursor-pointer flex-col items-stretch rounded-lg p-0 text-left hover:bg-transparent"
       >
         {/* Top row: ring + name/tier */}
         <div className="flex items-start gap-3">
