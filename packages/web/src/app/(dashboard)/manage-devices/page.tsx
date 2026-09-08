@@ -228,32 +228,36 @@ function DeviceCard({
           {confirmDelete ? (
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground">Delete this device?</span>
-              <button type="button"
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
                 onClick={handleDelete}
                 disabled={deleting}
-                className={cn(
-                  "rounded-lg bg-destructive/10 px-3 py-1 text-xs font-medium text-destructive hover:bg-destructive/20 transition-colors",
-                  deleting && "opacity-50"
-                )}
+                loading={deleting}
               >
                 {deleting ? "Deleting..." : "Confirm"}
-              </button>
-              <button type="button"
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
                 onClick={() => setConfirmDelete(false)}
                 disabled={deleting}
-                className="rounded-lg bg-accent px-3 py-1 text-xs font-medium text-muted-foreground hover:bg-accent/80 transition-colors"
               >
                 Cancel
-              </button>
+              </Button>
             </div>
           ) : (
-            <button type="button"
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
               onClick={() => setConfirmDelete(true)}
-              className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
             >
               <Trash2 className="h-3 w-3" strokeWidth={1.5} />
               Delete
-            </button>
+            </Button>
           )}
         </div>
       )}
