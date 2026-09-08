@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useSeasons, type SeasonListItem } from "@/hooks/use-seasons";
 import { formatSeasonDate } from "@/lib/seasons";
 import { CheckRuling } from "@/components/leaderboard/check-ruling";
+import { Banner } from "@nocoo/basalt/components/banner";
 import { StatusBadge } from "@/components/leaderboard/status-badge";
 import { LeaderboardNav } from "@/components/leaderboard/leaderboard-nav";
 import { LeaderboardPageTitle } from "@/components/leaderboard/leaderboard-page-title";
@@ -170,9 +171,7 @@ export default function SeasonsPage() {
 
         {/* Error */}
         {error && (
-          <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
-            {error}
-          </div>
+          <Banner variant="error" description={error} />
         )}
 
         {/* Loading */}

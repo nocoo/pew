@@ -20,6 +20,7 @@ import {
   Users,
 } from "lucide-react";
 import { Github } from "@/components/icons/github";
+import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
 import { rowIconClassName, rowIconDangerClassName } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -210,9 +211,7 @@ export function AdminShowcasesContent() {
   // Error state
   if (error) {
     return (
-      <div className="rounded-xl bg-destructive/10 p-4 text-sm text-destructive">
-        Failed to load showcases: {error}
-      </div>
+      <Banner variant="error" title="Failed to load showcases" description={error} />
     );
   }
 

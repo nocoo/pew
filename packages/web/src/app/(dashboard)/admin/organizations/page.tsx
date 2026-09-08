@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ErrorBanner } from "@/components/ui/error-banner";
+import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
 import {
   Dialog,
@@ -182,9 +183,7 @@ function CreateOrgForm({
         Create Organization
       </h3>
       {error && (
-        <div className="rounded-lg bg-destructive/10 p-2 text-xs text-destructive mb-3">
-          {error}
-        </div>
+        <Banner variant="error" size="sm" className="mb-3" description={error} />
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="Name" htmlFor={nameId}>
@@ -281,9 +280,7 @@ function EditOrgRow({
     <tr className="border-b border-border/50">
       <td colSpan={5} className="px-4 py-3">
         {error && (
-          <div className="rounded-lg bg-destructive/10 p-2 text-xs text-destructive mb-2">
-            {error}
-          </div>
+          <Banner variant="error" size="sm" className="mb-2" description={error} />
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Name" htmlFor={nameId}>

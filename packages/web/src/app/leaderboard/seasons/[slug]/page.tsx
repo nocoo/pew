@@ -8,6 +8,7 @@ import {
   Zap,
   Camera,
 } from "lucide-react";
+import { Banner } from "@nocoo/basalt/components/banner";
 import { Breadcrumbs } from "@nocoo/basalt/components/breadcrumbs";
 import { cn, formatTokensFull } from "@/lib/utils";
 import { formatDuration } from "@/lib/date-helpers";
@@ -352,9 +353,7 @@ export default function SeasonLeaderboardPage() {
 
         {/* Error */}
         {error && (
-          <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
-            {error}
-          </div>
+          <Banner variant="error" description={error} />
         )}
 
         {/* Loading */}

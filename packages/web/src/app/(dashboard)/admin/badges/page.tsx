@@ -31,6 +31,7 @@ import { useAdmin } from "@/hooks/use-admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
+import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
 import {
   Dialog,
@@ -1044,15 +1045,14 @@ export default function AdminBadgesPage() {
 
       {/* Error */}
       {error && (
-        <div className="mb-4 rounded-lg bg-destructive/10 p-4 text-sm text-destructive">
-          {error}
-          <button type="button"
-            onClick={() => setError(null)}
-            className="ml-2 underline hover:no-underline"
-          >
-            Dismiss
-          </button>
-        </div>
+        <Banner
+          variant="error"
+          className="mb-4"
+          description={error}
+          action={
+            <Banner.Action onClick={() => setError(null)}>Dismiss</Banner.Action>
+          }
+        />
       )}
 
       {/* Content */}

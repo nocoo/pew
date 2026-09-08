@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@nocoo/basalt/components/dialog";
+import { Banner } from "@nocoo/basalt/components/banner";
 import { Empty } from "@nocoo/basalt/components/empty";
 import { chromeIconClassName } from "@/lib/ghost-icon";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
@@ -174,9 +175,7 @@ export default function OrganizationsPage() {
   if (error) {
     return (
       <div className="max-w-3xl">
-        <div className="rounded-xl bg-destructive/10 border border-destructive/30 p-4 text-center">
-          <p className="text-sm text-destructive">{error}</p>
-        </div>
+        <Banner variant="error" description={error} />
       </div>
     );
   }

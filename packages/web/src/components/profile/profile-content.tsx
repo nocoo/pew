@@ -9,6 +9,7 @@ import {
   DollarSign,
   Calendar,
 } from "lucide-react";
+import { Banner } from "@nocoo/basalt/components/banner";
 import { cn, formatTokens } from "@/lib/utils";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { usePricingMap, formatCost } from "@/hooks/use-pricing";
@@ -229,9 +230,7 @@ export function ProfileContent({
 
       {/* Error state */}
       {error && (
-        <div className="rounded-lg bg-destructive/10 p-4 text-sm text-destructive mb-4">
-          {error}
-        </div>
+        <Banner variant="error" className="mb-4" description={error} />
       )}
 
       {/* Not found state */}

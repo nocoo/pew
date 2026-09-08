@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { Banner } from "@nocoo/basalt/components/banner";
 import { cn } from "@/lib/utils";
 import type { DynamicPricingMetaDto } from "@/lib/rpc-types";
 
@@ -32,9 +33,10 @@ function staleness(iso: string): "fresh" | "stale" | "danger" {
 export function PricingMetaBanner({ meta, servedFrom, children }: Props) {
   if (!meta) {
     return (
-      <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
-        Pricing meta unavailable — worker-read may be down.
-      </div>
+      <Banner
+        variant="error"
+        description="Pricing meta unavailable — worker-read may be down."
+      />
     );
   }
 
@@ -63,19 +65,21 @@ export function PricingMetaBanner({ meta, servedFrom, children }: Props) {
       </div>
 
       {servedFrom === "baseline" && (
-        <div className="rounded-card bg-orange-500/10 p-3 text-xs text-orange-700 dark:text-orange-300">
-          Showing bundled baseline — KV cache is empty (cold start) or worker-read is unreachable.
-        </div>
+        <Banner
+          variant="alert"
+          size="sm"
+          description="Showing bundled baseline — KV cache is empty (cold start) or worker-read is unreachable."
+        />
       )}
 
       {meta.lastErrors && meta.lastErrors.length > 0 && (
-        <div className="rounded-card bg-destructive/10 p-3 text-xs text-destructive space-y-1">
+        <Banner variant="error" size="sm">
           {meta.lastErrors.map((e) => (
             <div key={`${e.source}:${e.at}:${e.message}`} className="font-mono">
               [{e.source}] {e.message} — at {e.at}
             </div>
           ))}
-        </div>
+        </Banner>
       )}
     </div>
   );
