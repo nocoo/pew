@@ -20,18 +20,69 @@ const caveat = Caveat({
   weight: ["700"],
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXTAUTH_URL ?? "https://pew.md"
-  ),
-  title: "pew - AI Token Usage Dashboard",
-  description: "The contribution graph for AI-native developers",
-  openGraph: {
-    title: "pew - AI Token Usage Dashboard",
-    description: "The contribution graph for AI-native developers",
-    type: "website",
-  },
+type HexlyShare = {
+  name: string;
+  description: { en: string };
+  image: {
+    url: string;
+    type: string;
+    width: number;
+    height: number;
+    alt: string;
+  };
 };
+
+async function hexlyShare(): Promise<HexlyShare> {
+  try {
+    const response = await fetch("https://hexly.ai/api/share/pew.json");
+    if (!response.ok) throw new Error(`hexly share ${response.status}`);
+    return response.json();
+  } catch {
+    return {
+      name: "Pew",
+      description: {
+        en: "A contribution graph for the AI-native era. See your coding tokens tell a story.",
+      },
+      image: {
+        url: "https://hexly.ai/og/pew.jpg",
+        type: "image/jpeg",
+        width: 1200,
+        height: 630,
+        alt: "Pew identity",
+      },
+    };
+  }
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  const share = await hexlyShare();
+  return {
+    metadataBase: new URL(process.env.NEXTAUTH_URL ?? "https://pew.md"),
+    title: "pew - AI Token Usage Dashboard",
+    description: share.description.en,
+    openGraph: {
+      title: share.name,
+      description: share.description.en,
+      type: "website",
+      url: "https://pew.md/",
+      images: [
+        {
+          url: share.image.url,
+          type: share.image.type,
+          width: share.image.width,
+          height: share.image.height,
+          alt: share.image.alt,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: share.name,
+      description: share.description.en,
+      images: [share.image.url],
+    },
+  };
+}
 
 export default function RootLayout({
   children,
