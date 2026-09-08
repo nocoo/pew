@@ -10,6 +10,6 @@
   "devDependencies": {
     "@cloudflare/workers-types": "5.20260906.1",
     "@pew/core": "workspace:*",
-    "wrangler": "4.129.0"
+    "wrangler": "4.129.1"
   }
 }
