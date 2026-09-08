@@ -12,7 +12,16 @@ import {
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { Banner } from "@nocoo/basalt/components/banner";
+import { Button } from "@nocoo/basalt/components/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@nocoo/basalt/components/dropdown-menu";
 import { Empty } from "@nocoo/basalt/components/empty";
+import { Input } from "@nocoo/basalt/components/input";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { formatDuration } from "@/lib/date-helpers";
 import { sourceLabel } from "@/hooks/use-usage-data";
@@ -68,31 +77,21 @@ function CreateProjectForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex items-center gap-2">
-      <input
+      <Input
         type="text"
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Project name"
         maxLength={100}
-        className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
+        className="flex-1"
+        aria-label="Project name"
       />
-      <button
-        type="submit"
-        disabled={saving || !name.trim()}
-        className={cn(
-          "rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90",
-          (saving || !name.trim()) && "opacity-50 cursor-not-allowed",
-        )}
-      >
+      <Button type="submit" disabled={saving || !name.trim()} loading={saving}>
         {saving ? "Creating…" : "Create"}
-      </button>
-      <button
-        type="button"
-        onClick={onCancel}
-        className="rounded-lg px-2 py-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-      >
+      </Button>
+      <Button type="button" variant="ghost" size="icon" onClick={onCancel} aria-label="Cancel">
         <X className="h-4 w-4" />
-      </button>
+      </Button>
     </form>
   );
 }
@@ -105,49 +104,38 @@ function AssignDropdown({
   projects,
   onAssignExisting,
   onCreateNew,
-  onClose,
 }: {
   projects: Project[];
   onAssignExisting: (projectId: string) => void;
   onCreateNew: () => void;
-  onClose: () => void;
 }) {
   return (
-    <div className="absolute right-0 top-full z-10 mt-1 w-56 rounded-lg border border-border bg-background shadow-lg">
-      <div className="p-1">
+    <DropdownMenuContent align="end" className="w-56">
         {projects.length > 0 && (
-          <>
-            <p className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
+          <DropdownMenuGroup aria-label="Existing projects">
+            <div
+              role="presentation"
+              className="px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider text-basalt-muted-foreground"
+            >
               Existing projects
-            </p>
+            </div>
             {projects.map((p) => (
-              <button type="button"
+              <DropdownMenuItem
                 key={p.id}
-                onClick={() => {
-                  onAssignExisting(p.id);
-                  onClose();
-                }}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
+                className="gap-2"
+                onSelect={() => onAssignExisting(p.id)}
               >
                 <FolderKanban className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
                 <span className="truncate">{p.name}</span>
-              </button>
+              </DropdownMenuItem>
             ))}
-            <Separator className="my-1" />
-          </>
+          </DropdownMenuGroup>
         )}
-        <button type="button"
-          onClick={() => {
-            onCreateNew();
-            onClose();
-          }}
-          className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors"
-        >
+        <DropdownMenuItem className="gap-2" onSelect={onCreateNew}>
           <Plus className="h-3.5 w-3.5 text-muted-foreground" strokeWidth={1.5} />
           <span>Create new project</span>
-        </button>
-      </div>
-    </div>
+        </DropdownMenuItem>
+    </DropdownMenuContent>
   );
 }
 
@@ -190,26 +178,28 @@ function ProjectCard({
               }}
               className="flex items-center gap-2"
             >
-              <input
+              <Input
                 type="text"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 maxLength={100}
                 onBlur={handleRename}
-                className="flex-1 rounded-lg border border-border bg-background px-2 py-1 text-sm font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-ring/20"
+                className="flex-1"
+                aria-label="Project name"
               />
             </form>
           ) : (
-            <button type="button"
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-auto px-0 py-0 text-sm font-medium text-foreground hover:bg-transparent"
               onClick={() => {
                 setEditName(project.name);
                 setEditing(true);
               }}
-              className="text-sm font-medium text-foreground hover:text-foreground/80 transition-colors text-left"
-              title="Click to rename"
             >
               {project.name}
-            </button>
+            </Button>
           )}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-muted-foreground">
             <span>
@@ -240,30 +230,32 @@ function ProjectCard({
         {/* Delete */}
         {confirming ? (
           <div className="flex items-center gap-1.5">
-            <button type="button"
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
               onClick={() => {
                 onDelete();
                 setConfirming(false);
               }}
-              className="rounded-md bg-destructive px-2 py-1 text-[11px] font-medium text-destructive-foreground hover:bg-destructive/90 transition-colors"
             >
               Delete
-            </button>
-            <button type="button"
-              onClick={() => setConfirming(false)}
-              className="rounded-md px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-            >
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={() => setConfirming(false)}>
               Cancel
-            </button>
+            </Button>
           </div>
         ) : (
-          <button type="button"
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="hover:bg-basalt-destructive/10 hover:text-basalt-destructive"
             onClick={() => setConfirming(true)}
-            className="rounded-md p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-            title="Delete project"
+            aria-label="Delete project"
           >
             <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-          </button>
+          </Button>
         )}
       </div>
 
@@ -287,13 +279,16 @@ function ProjectCard({
               <code className="font-mono text-foreground break-all">
                 {alias.project_ref}
               </code>
-              <button type="button"
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="ml-0.5 h-4 w-4 text-muted-foreground/50 hover:text-basalt-destructive"
                 onClick={() => onRemoveAlias(alias)}
-                className="ml-0.5 text-muted-foreground/50 hover:text-destructive transition-colors"
-                title="Remove alias"
+                aria-label="Remove alias"
               >
                 <X className="h-3 w-3" />
-              </button>
+              </Button>
             </span>
           ))}
         </div>
@@ -331,7 +326,6 @@ export default function ProjectsPage() {
   const [createForAlias, setCreateForAlias] = useState<ProjectAliasInput | null>(
     null,
   );
-  const [openDropdownKey, setOpenDropdownKey] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   // ---------------------------------------------------------------------------
@@ -431,16 +425,18 @@ export default function ProjectsPage() {
               Your Projects
             </h2>
             {!showCreate && (
-              <button type="button"
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => {
                   setCreateForAlias(null);
                   setShowCreate(true);
                 }}
-                className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               >
                 <Plus className="h-3.5 w-3.5" strokeWidth={1.5} />
                 New Project
-              </button>
+              </Button>
             )}
           </div>
 
@@ -578,38 +574,27 @@ export default function ProjectsPage() {
                           {relativeTime(ref.last_active)}
                         </td>
                         <td className="px-4 py-2.5 text-right whitespace-nowrap">
-                          <div className="relative inline-block">
-                            <button type="button"
-                              onClick={() =>
-                                setOpenDropdownKey(
-                                  openDropdownKey === key ? null : key,
-                                )
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button type="button" variant="ghost" size="sm">
+                                Assign
+                                <ChevronDown className="h-3 w-3" strokeWidth={1.5} />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <AssignDropdown
+                              projects={projects}
+                              onAssignExisting={(projectId) =>
+                                handleAssignToExisting(projectId, ref)
                               }
-                              className="inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                            >
-                              Assign
-                              <ChevronDown
-                                className="h-3 w-3"
-                                strokeWidth={1.5}
-                              />
-                            </button>
-                            {openDropdownKey === key && (
-                              <AssignDropdown
-                                projects={projects}
-                                onAssignExisting={(projectId) =>
-                                  handleAssignToExisting(projectId, ref)
-                                }
-                                onCreateNew={() => {
-                                  setCreateForAlias({
-                                    source: ref.source,
-                                    project_ref: ref.project_ref,
-                                  });
-                                  setShowCreate(true);
-                                }}
-                                onClose={() => setOpenDropdownKey(null)}
-                              />
-                            )}
-                          </div>
+                              onCreateNew={() => {
+                                setCreateForAlias({
+                                  source: ref.source,
+                                  project_ref: ref.project_ref,
+                                });
+                                setShowCreate(true);
+                              }}
+                            />
+                          </DropdownMenu>
                         </td>
                       </tr>
                     );
