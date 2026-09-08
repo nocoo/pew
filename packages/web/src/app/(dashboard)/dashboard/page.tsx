@@ -13,7 +13,7 @@ import {
 import { useUsageData, toHeatmapData } from "@/hooks/use-usage-data";
 import { useTzOffset } from "@/hooks/use-tz-offset";
 import { useAchievements } from "@/hooks/use-achievements";
-import { formatTokens, cn } from "@/lib/utils";
+import { formatTokens } from "@/lib/utils";
 import { usePricingMap, formatCost } from "@/hooks/use-pricing";
 import { computeTotalCost, toDailyCostPoints, computeCacheSavings, forecastMonthlyCost, toDailyCacheRates } from "@/lib/cost-helpers";
 import { compareWeekdayWeekend, computeMoMGrowth, computeWoWGrowth, toHourlyWeekdayWeekend } from "@/lib/usage-helpers";
@@ -33,6 +33,7 @@ import { ErrorBanner } from "@/components/ui/error-banner";
 import { DashboardEmptyState } from "@/components/dashboard/empty-state";
 import { DashboardSegment } from "@/components/dashboard/dashboard-segment";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
+import { Button } from "@nocoo/basalt/components/button";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { periodToDateRange, periodLabel, getLocalToday, fillDateRange } from "@/lib/date-helpers";
 import type { Period } from "@/lib/date-helpers";
@@ -335,21 +336,17 @@ export default function DashboardPage() {
               <div className="flex flex-col gap-3 md:gap-4">
                 <div>
                   {/* Tab toggle: Tokens | Cost */}
-                  <div className="mb-3 flex items-center gap-1 rounded-lg bg-muted p-1 w-fit">
+                  <div className="mb-3 flex w-fit items-center gap-1 rounded-lg bg-muted p-1">
                     {(["tokens", "cost"] as const).map((tab) => (
-                      <button
+                      <Button
                         key={tab}
                         type="button"
+                        size="sm"
+                        variant={chartTab === tab ? "secondary" : "ghost"}
                         onClick={() => setChartTab(tab)}
-                        className={cn(
-                          "rounded-md px-3 py-1 text-xs font-medium transition-colors",
-                          chartTab === tab
-                            ? "bg-secondary text-foreground shadow-sm"
-                            : "text-muted-foreground hover:text-foreground"
-                        )}
                       >
                         {tab === "tokens" ? "Tokens" : "Cost"}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                   {chartTab === "tokens" ? (

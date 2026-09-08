@@ -15,6 +15,8 @@ import { ModelInfoTooltip } from "@/components/dashboard/model-info-tooltip";
 import { periodToDateRange, periodLabel } from "@/lib/date-helpers";
 import type { Period } from "@/lib/date-helpers";
 import { useTzOffset } from "@/hooks/use-tz-offset";
+import { Button } from "@nocoo/basalt/components/button";
+import { Empty } from "@nocoo/basalt/components/empty";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 
 // ---------------------------------------------------------------------------
@@ -28,9 +30,11 @@ function AgentCard({ group, color }: { group: AgentGroup; color: string }) {
   return (
     <div className="rounded-xl bg-secondary overflow-hidden">
       {/* Header */}
-      <button type="button"
+      <Button
+        type="button"
+        variant="ghost"
         onClick={() => setExpanded(!expanded)}
-        className="flex w-full items-center gap-4 px-5 py-4 text-left hover:bg-accent/50 transition-colors"
+        className="flex h-auto w-full items-center gap-4 rounded-none px-5 py-4 text-left hover:bg-accent/50"
       >
         <div
           className="h-3 w-3 rounded-full shrink-0"
@@ -52,7 +56,7 @@ function AgentCard({ group, color }: { group: AgentGroup; color: string }) {
         ) : (
           <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" strokeWidth={1.5} />
         )}
-      </button>
+      </Button>
 
       {/* Usage bar */}
       <div className="px-5 pb-2">
@@ -186,9 +190,11 @@ export default function AgentsPage() {
       {/* Content */}
       {!loading && data && (
         agentGroups.length === 0 ? (
-            <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
-              No usage data yet. Start using your AI coding tools and sync with pew!
-            </div>
+            <Empty
+              title="No usage data yet."
+              description="Start using your AI coding tools and sync with pew!"
+              className="rounded-basalt-card bg-basalt-secondary p-8"
+            />
           ) : (
             <div className="space-y-4">
               {agentGroups.map((group) => (

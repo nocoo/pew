@@ -143,9 +143,11 @@ function DeviceCard({
               )}
             </div>
           ) : (
-            <button type="button"
+            <Button
+              type="button"
+              variant="ghost"
               onClick={handleStartEdit}
-              className="text-sm font-medium text-foreground hover:text-foreground/80 transition-colors text-left"
+              className="h-auto px-0 py-0 text-left text-sm font-medium text-foreground hover:bg-transparent hover:text-foreground/80"
               title="Click to rename"
             >
               {hasAlias ? (
@@ -155,7 +157,7 @@ function DeviceCard({
                   {isDefault ? "Legacy Device" : "Set a name..."}
                 </span>
               )}
-            </button>
+            </Button>
           )}
 
           {/* Meta row */}

@@ -14,6 +14,7 @@ import { toMessageDailyStats, toMessagesByDimension } from "@/lib/session-helper
 import type { DeviceTimelinePoint, DeviceAggregate } from "@pew/core";
 import { toDeviceTrendPoints, buildDeviceLabelMap } from "@/lib/device-helpers";
 import { fillDateRange } from "@/lib/date-helpers";
+import { Button } from "@nocoo/basalt/components/button";
 import { cn, formatTokens } from "@/lib/utils";
 import { chartAxis, CHART_COLORS, agentColor, modelColor } from "@/lib/palette";
 import { sourceLabel } from "@/hooks/use-usage-data";
@@ -247,24 +248,18 @@ export function DailyActivityChart({
             {view.unit}
           </span>
         </div>
-        <div className="inline-flex rounded-md bg-background p-0.5 text-xs">
-          {DIMENSIONS.map((opt) => {
-            const active = opt.value === dim;
-            return (
-              <button type="button"
-                key={opt.value}
-                onClick={() => setDim(opt.value)}
-                className={cn(
-                  "px-2.5 py-1 rounded-sm transition-colors",
-                  active
-                    ? "bg-secondary text-foreground font-medium shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {opt.label}
-              </button>
-            );
-          })}
+        <div className="inline-flex rounded-md bg-background p-0.5">
+          {DIMENSIONS.map((opt) => (
+            <Button
+              type="button"
+              key={opt.value}
+              size="sm"
+              variant={opt.value === dim ? "secondary" : "ghost"}
+              onClick={() => setDim(opt.value)}
+            >
+              {opt.label}
+            </Button>
+          ))}
         </div>
       </div>
 

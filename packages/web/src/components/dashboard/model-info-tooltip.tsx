@@ -1,6 +1,7 @@
 "use client";
 
 import { Info } from "lucide-react";
+import { Button } from "@nocoo/basalt/components/button";
 import {
   HoverCard,
   HoverCardContent,
@@ -41,18 +42,19 @@ export function ModelInfoTooltip({ model, className }: Props) {
   return (
     <HoverCard>
       <HoverCardTrigger asChild>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           aria-label={`Pricing info for ${model}`}
           className={cn(
-            "inline-flex h-3.5 w-3.5 items-center justify-center text-muted-foreground/60 hover:text-foreground transition-colors align-middle",
+            "inline-flex h-3.5 w-3.5 items-center justify-center text-muted-foreground/60 hover:bg-transparent hover:text-foreground align-middle",
             className,
           )}
-          // Prevent surrounding row click handlers (table expand etc.).
           onClick={(e) => e.stopPropagation()}
         >
           <Info className="h-3.5 w-3.5" strokeWidth={1.5} aria-hidden="true" />
-        </button>
+        </Button>
       </HoverCardTrigger>
       <HoverCardContent
         align="start"
