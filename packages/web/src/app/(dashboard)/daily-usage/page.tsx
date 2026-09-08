@@ -26,6 +26,7 @@ import { DashboardSegment } from "@/components/dashboard/dashboard-segment";
 import { ModelInfoTooltip } from "@/components/dashboard/model-info-tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@nocoo/basalt/components/button";
+import { Empty } from "@nocoo/basalt/components/empty";
 import { ghostIconClassName } from "@/components/ui/button";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import {
@@ -500,9 +501,10 @@ export default function DailyUsagePage() {
               </div>
             </div>
           ) : (
-            <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
-              No usage data for {formatMonth(year, month)}.
-            </div>
+            <Empty
+              title={`No usage data for ${formatMonth(year, month)}.`}
+              className="rounded-basalt-card bg-basalt-secondary p-8"
+            />
           )
       )}
     </div>

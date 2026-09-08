@@ -16,6 +16,7 @@ import { cn, formatTokens, formatTokensFull } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { Button } from "@nocoo/basalt/components/button";
+import { Empty } from "@nocoo/basalt/components/empty";
 import { Checkbox } from "@nocoo/basalt/components/checkbox";
 import { Input } from "@nocoo/basalt/components/input";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
@@ -389,9 +390,10 @@ function ComparePageContent() {
         {/* Table */}
         {!loading && (
           filteredUsers.length === 0 ? (
-              <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
-                {search ? "No users match your filter." : "No users found."}
-              </div>
+              <Empty
+                title={search ? "No users match your filter." : "No users found."}
+                className="rounded-basalt-card bg-basalt-secondary p-8"
+              />
             ) : (
               <div className="rounded-xl bg-secondary p-1 overflow-x-auto">
                 <table className="w-full">

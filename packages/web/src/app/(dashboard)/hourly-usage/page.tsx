@@ -10,6 +10,7 @@ import type { UsageRow } from "@/hooks/use-usage-data";
 import { useTzOffset } from "@/hooks/use-tz-offset";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { Button } from "@nocoo/basalt/components/button";
+import { Empty } from "@nocoo/basalt/components/empty";
 import { useDeviceData } from "@/hooks/use-device-data";
 import { TimelineInOutChart } from "@/components/dashboard/timeline-inout-chart";
 import { TimelineDeviceChart } from "@/components/dashboard/timeline-device-chart";
@@ -565,9 +566,10 @@ export default function RecentPage() {
               </div>
             </div>
           ) : (
-            <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
-              No usage data in the last 72 hours.
-            </div>
+            <Empty
+              title="No usage data in the last 72 hours."
+              className="rounded-basalt-card bg-basalt-secondary p-8"
+            />
           )
       )}
     </div>

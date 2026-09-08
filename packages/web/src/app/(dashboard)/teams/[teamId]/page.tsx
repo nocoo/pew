@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
+import { Empty } from "@nocoo/basalt/components/empty";
 import { Input } from "@nocoo/basalt/components/input";
 import { Switch } from "@nocoo/basalt/components/switch";
 import { rowIconClassName } from "@/components/ui/button";
@@ -280,9 +281,10 @@ function SeasonRegistration({
       <MessageBanner message={message} />
 
       {seasons.length === 0 ? (
-        <div className="rounded-lg bg-accent/50 p-4 text-center text-sm text-muted-foreground">
-          No upcoming or active seasons available.
-        </div>
+        <Empty
+          title="No upcoming or active seasons available."
+          className="rounded-basalt-card bg-basalt-secondary p-8"
+        />
       ) : (
         <div className="space-y-2">
           {seasons.map((season) => (

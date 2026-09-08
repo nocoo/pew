@@ -13,6 +13,7 @@ import { toSourceTrendPoints } from "@/lib/usage-helpers";
 import { toModelEvolutionPoints } from "@/lib/model-helpers";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChartCardSkeleton } from "@/components/dashboard/chart-card-skeleton";
+import { Empty } from "@nocoo/basalt/components/empty";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { CHART_COLORS } from "@/lib/palette";
 import { DeviceTrendChart } from "@/components/dashboard/device-trend-chart";
@@ -274,9 +275,11 @@ export default function ByDevicePage() {
       {/* Content */}
       {!loading && data && (
         devices.length === 0 ? (
-            <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
-              No device data yet. Sync from multiple devices to compare usage.
-            </div>
+            <Empty
+              title="No device data yet."
+              description="Sync from multiple devices to compare usage."
+              className="rounded-basalt-card bg-basalt-secondary p-8"
+            />
           ) : (
             <>
               {/* Overview */}

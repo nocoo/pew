@@ -10,6 +10,7 @@ import { useAdmin } from "@/hooks/use-admin";
 import { useTzOffset } from "@/hooks/use-tz-offset";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { Button } from "@nocoo/basalt/components/button";
+import { Empty } from "@nocoo/basalt/components/empty";
 import { Input } from "@nocoo/basalt/components/input";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import {
@@ -490,9 +491,10 @@ function CompareResultContent() {
 
         {/* No data for range */}
         {!loading && data && chartData.length === 0 && (
-          <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
-            No usage data in the selected date range.
-          </div>
+          <Empty
+            title="No usage data in the selected date range."
+            className="rounded-basalt-card bg-basalt-secondary p-8"
+          />
         )}
 
         {/* User Table */}

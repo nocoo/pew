@@ -18,6 +18,7 @@ import { ModelInfoTooltip } from "@/components/dashboard/model-info-tooltip";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
 import { periodToDateRange, periodLabel, getLocalToday, fillDateRange } from "@/lib/date-helpers";
 import type { Period } from "@/lib/date-helpers";
+import { Empty } from "@nocoo/basalt/components/empty";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 
 // ---------------------------------------------------------------------------
@@ -141,9 +142,11 @@ export default function ModelsPage() {
       {/* Content */}
       {!loading && data && (
         modelGroups.length === 0 ? (
-            <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
-              No usage data yet. Start using your AI coding tools and sync with pew!
-            </div>
+            <Empty
+              title="No usage data yet."
+              description="Start using your AI coding tools and sync with pew!"
+              className="rounded-basalt-card bg-basalt-secondary p-8"
+            />
           ) : (
             <>
               {/* Evolution charts */}

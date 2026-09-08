@@ -10,6 +10,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { Banner } from "@nocoo/basalt/components/banner";
+import { Empty } from "@nocoo/basalt/components/empty";
 import { cn, formatTokens } from "@/lib/utils";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { usePricingMap, formatCost } from "@/hooks/use-pricing";
@@ -235,9 +236,10 @@ export function ProfileContent({
 
       {/* Not found state */}
       {notFound && (
-        <div className="rounded-lg bg-muted p-4 text-sm text-muted-foreground mb-4">
-          User profile not found or not public.
-        </div>
+        <Empty
+          title="User profile not found or not public."
+          className="mb-4"
+        />
       )}
 
       {/* Content area */}

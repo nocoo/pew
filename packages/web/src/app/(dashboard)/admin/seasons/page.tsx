@@ -22,6 +22,7 @@ import { useAdmin } from "@/hooks/use-admin";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
+import { Empty } from "@nocoo/basalt/components/empty";
 import { StatusBadge as SharedStatusBadge } from "@/components/leaderboard/status-badge";
 import { Checkbox } from "@nocoo/basalt/components/checkbox";
 import { Field } from "@nocoo/basalt/components/field";
@@ -721,9 +722,10 @@ export default function AdminSeasonsPage() {
       {/* Table */}
       {!loading && (
         rows.length === 0 ? (
-            <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
-              No seasons yet. Create one to get started.
-            </div>
+            <Empty
+              title="No seasons yet. Create one to get started."
+              className="rounded-basalt-card bg-basalt-secondary p-8"
+            />
           ) : (
             <div className="rounded-xl bg-secondary p-1 overflow-x-auto">
               <table className="w-full">
@@ -928,9 +930,7 @@ function SeasonTableRow({
                 ))}
               </div>
             ) : expandedTeams.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                No team data available.
-              </p>
+              <Empty title="No team data available." />
             ) : (
               <div className="space-y-1">
                 <p className="text-xs font-medium text-muted-foreground mb-2">

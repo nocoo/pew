@@ -16,6 +16,7 @@ import { useSeasons, type SeasonListItem } from "@/hooks/use-seasons";
 import { formatSeasonDate } from "@/lib/seasons";
 import { CheckRuling } from "@/components/leaderboard/check-ruling";
 import { Banner } from "@nocoo/basalt/components/banner";
+import { Empty } from "@nocoo/basalt/components/empty";
 import { StatusBadge } from "@/components/leaderboard/status-badge";
 import { LeaderboardNav } from "@/components/leaderboard/leaderboard-nav";
 import { LeaderboardPageTitle } from "@/components/leaderboard/leaderboard-page-title";
@@ -188,13 +189,12 @@ export default function SeasonsPage() {
         {data && (
           <div className="space-y-2">
             {sortedSeasons.length === 0 ? (
-              <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
-                <Trophy className="mx-auto h-12 w-12 mb-4 opacity-30" />
-                <p className="text-lg">No seasons yet</p>
-                <p className="text-sm mt-1">
-                  Check back later for upcoming competitions.
-                </p>
-              </div>
+              <Empty
+                title="No seasons yet"
+                description="Check back later for upcoming competitions."
+                icon={<Trophy className="h-12 w-12 opacity-30" />}
+                className="rounded-basalt-card bg-basalt-secondary p-8"
+              />
             ) : (
               sortedSeasons.map((season, i) => (
                 <SeasonCard
