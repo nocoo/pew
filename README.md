@@ -1,207 +1,140 @@
-<p align="center"><img src="assets/brand/icon-rounded.png" width="128" height="128" alt="Pew logo"/></p>
+<p align="center">
+  <img src="assets/brand/icon-rounded.png" width="128" height="128" alt="pew" />
+</p>
 
 <h1 align="center">pew</h1>
 
-<p align="center"><strong>AI 编程工具的 contribution graph</strong><br>追踪 token 用量 · 可视化消耗趋势 · 排行榜竞技</p>
+<p align="center">记录 AI 编程工具的用量、会话和使用趋势。</p>
 
-[![npm](https://img.shields.io/npm/v/@nocoo/pew)](https://www.npmjs.com/package/@nocoo/pew)
-[![Node](https://img.shields.io/node/v/@nocoo/pew)](https://nodejs.org/)
-[![License](https://img.shields.io/github/license/nocoo/pew)](LICENSE)
-
----
+<p align="center">
+  <a href="https://pew.md">站点</a> ·
+  <a href="docs/README.en.md">English</a>
+</p>
 
 ## 这是什么
 
-pew 自动从本地 AI 编程工具的日志文件中提取 token 用量数据，聚合后上传至 SaaS 仪表盘，帮你了解每天在 AI 辅助编程上花了多少 token。类似于 GitHub 的 contribution graph，但计数单位是 token 而非 commit。
+pew 由本地 CLI 和 Web 仪表盘组成。CLI 读取 AI 编程工具的日志与本地数据库，提取 token 用量和会话统计，再上传到仪表盘，按时间、工具、模型、设备和项目查看使用情况。
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│  Local AI Tool Logs (read-only)                                  │
-│  Claude Code · Codex · Gemini CLI · GitHub Copilot CLI · Grok     │
-│  Hermes · Kosmos · Oh My Pi · OpenClaw · OpenCode · Pi            │
-│  PM Studio · VS Code Copilot · ZCode                              │
-└───────────────┬──────────────────────────────────────────────────┘
-                │  pew sync (incremental parse)
-                ▼
-       ParsedDelta[] → 30-min bucket aggregation → QueueRecord[]
-                │
-                │  upload (idempotent upsert)
-                ▼
-┌──────────────────────────────────────────────────────────────────┐
-│  SaaS Dashboard                                                  │
-│  仪表盘 · 模型分析 · 设备追踪 · 会话统计 · 排行榜 · 赛季       │
-└──────────────────────────────────────────────────────────────────┘
-```
+原始日志保持只读。上传的 token 数据按半小时聚合；会话记录包含时间、消息数和经过哈希处理的项目引用，不包含对话正文。统计完整度取决于上游工具实际保存的数据，费用由模型价格表估算，与供应商账单可能不同。
 
 ## 功能
 
-**Token 追踪**
+- 汇总输入、缓存输入、输出和推理 token，支持增量扫描、离线上传队列和重复上传去重。
+- 展示贡献热力图、小时 / 每日趋势、模型与工具分布、设备和项目分析。
+- 查看会话起止时间、持续时长、消息数和人工 / 自动会话分类。
+- 管理设备名称和项目映射，按团队、组织与赛季查看汇总，浏览公开排行榜、成就和作品展示。
+- 从动态模型价格与回退价格表估算用量成本，查看价格来源和更新时间。
+- 为部分工具配置会话后的自动同步，其余来源可通过 `pew sync` 手动汇总。
 
-- **14 种 AI 工具** — Claude Code、Codex、Gemini CLI、GitHub Copilot CLI、Grok、Hermes、Kosmos、Oh My Pi、OpenClaw、OpenCode、Pi、PM Studio、VS Code Copilot、ZCode
-- **四维 token 计数** — 输入 token、缓存命中 token、输出 token、推理 token
-- **增量同步** — 基于字节偏移/数组索引/时间水位的增量解析，不重复计数
-- **幂等上传** — 服务端 upsert 语义，重复上传不会导致数据膨胀
+当前 token 来源包括 Claude Code、Codex、Gemini CLI、GitHub Copilot CLI、Grok、Hermes、Kosmos、Oh My Pi、OpenClaw、OpenCode、Pi、PM Studio、VS Code Copilot 和 ZCode。会话统计的来源范围较小，目前不含 Hermes 和 VS Code Copilot。
 
-**SaaS 仪表盘**
+## 使用
 
-- **多维分析** — 按小时/天、按模型、按设备、按项目查看用量
-- **会话统计** — 消息数、持续时长、工具调用等会话级指标
-- **排行榜** — 公开排行榜 + 赛季系统，与其他开发者比拼
-- **团队协作** — 创建团队，汇总成员用量
-
-**自动化**
-
-- **通知钩子** — `pew init` 一键为 7 种工具（Claude Code、Codex、Gemini CLI、Oh My Pi、OpenClaw、OpenCode、Pi）安装 hook，会话结束后自动触发同步；其余 7 种（GitHub Copilot CLI、Grok、Hermes、Kosmos、PM Studio、VS Code Copilot、ZCode）无 hook 机制，靠下一次 `pew sync` 拉取
-- **只读设计** — 绝不修改用户的 AI 工具原始日志文件
-
-## 安装
+推荐使用 Node.js 24 或更新版本。npm 包声明支持 Node.js 18，但 OpenCode、Hermes、ZCode 的 SQLite 数据源依赖运行时内置 SQLite，旧版 Node.js 无法读取这些来源。
 
 ```bash
 npm install -g @nocoo/pew
+pew login
+pew sync
+pew status
 ```
 
-## 命令一览
+`pew login` 通过浏览器连接 [pew.md](https://pew.md)，Web 使用 Google 登录。新账号是否需要邀请码由站点设置决定，默认需要。无浏览器的机器可以在 Web 的 Devices 管理页生成一次性代码，再执行 `pew login --code XXXX-XXXX`。
 
-| 命令 | 说明 |
-|------|------|
-| `pew sync` | 解析本地 AI 工具用量并上传到仪表盘 |
-| `pew status` | 显示同步状态和 token 用量摘要 |
-| `pew login` | 通过浏览器 OAuth 连接仪表盘 |
-| `pew init` | 为 Claude Code、Codex、Gemini CLI、Oh My Pi、OpenClaw、OpenCode、Pi 安装通知钩子（其它工具无 hook，靠 `pew sync` 拉取） |
-| `pew uninstall` | 移除通知钩子 |
-| `pew reset` | 清除所有同步/上传状态，准备全量重扫 |
-| `pew update` | 从 npm 更新到最新版本 |
+| 命令 | 用途 |
+| --- | --- |
+| `pew sync` | 扫描本地数据；已登录时上传 |
+| `pew sync --no-upload` | 只解析并写入本地队列 |
+| `pew status` | 查看扫描、队列与自动同步状态 |
+| `pew init` | 配置受支持工具的自动同步集成 |
+| `pew uninstall` | 移除自动同步集成 |
+| `pew logout` | 清除当前登录凭据 |
+| `pew update` | 更新已安装的 CLI |
 
-### GitHub Copilot CLI OpenTelemetry
+自动同步支持 Claude Code、Codex、Gemini CLI、Oh My Pi、OpenClaw、OpenCode 和 Pi；配置过程会修改相应工具的设置。CLI 自己的凭据、游标、队列和运行记录保存在 `~/.config/pew/`。
 
-新版 Copilot CLI 可将 GenAI token 用量写入标准 OTel JSONL 文件。`pew` 会自动读取
-`COPILOT_OTEL_FILE_EXPORTER_PATH` 指向的文件；CI/批处理产生多个文件时，可用系统路径
-分隔符配置额外文件或递归扫描目录：
-
-```bash
-PEW_COPILOT_OTEL_PATHS=/data/run-a:/data/run-b pew sync
-```
-
-Windows 请使用分号分隔多个路径。
-
-## 项目结构
-
-```
-pew/
-├── packages/
-│   ├── core/           # 共享 TypeScript 类型 (@pew/core)
-│   ├── cli/            # CLI 工具 (@nocoo/pew, published to npm)
-│   ├── web/            # SaaS 仪表盘 (Next.js 16 + App Router)
-│   ├── worker/         # Cloudflare Worker — D1 写入
-│   └── worker-read/    # Cloudflare Worker — D1 读取
-├── docs/               # 设计文档与架构决策记录
-├── scripts/            # 发布、E2E、安全扫描脚本
-└── .husky/             # Git hooks (pre-commit, pre-push)
-```
-
-## 技术栈
-
-| 层 | 技术 |
-|----|------|
-| 运行时 & 包管理 | [Bun](https://bun.sh/) |
-| CLI 框架 | [citty](https://github.com/unjs/citty) + [picocolors](https://github.com/alexeyraspopov/picocolors) |
-| Web 框架 | [Next.js 16](https://nextjs.org/) (App Router) |
-| UI | [React 19](https://react.dev/) + [Tailwind CSS 4](https://tailwindcss.com/) + [Radix UI](https://www.radix-ui.com/) + [Recharts](https://recharts.org/) |
-| 认证 | [NextAuth.js v5](https://authjs.dev/) (Google OAuth) |
-| 数据库 | [Cloudflare D1](https://developers.cloudflare.com/d1/) (SQLite) |
-| 边缘计算 | [Cloudflare Workers](https://workers.cloudflare.com/) |
-| 类型系统 | [TypeScript](https://www.typescriptlang.org/) (strict mode) |
+Copilot CLI 的 OTel 文件可通过 `COPILOT_OTEL_FILE_EXPORTER_PATH` 指定；多个文件或目录可放入 `PEW_COPILOT_OTEL_PATHS`，使用操作系统的路径分隔符。默认来源路径见 [paths.ts](packages/cli/src/utils/paths.ts)。
 
 ## 开发
 
-**环境要求**: [Bun](https://bun.sh/) ≥ 1.0, [Node.js](https://nodejs.org/) ≥ 18
+仓库使用 Bun workspaces。使用与当前 CI / Dockerfile 一致的 Bun 1.4.0，并准备 Node.js 24 或更新版本。
 
 ```bash
-# 安装依赖（自动配置 Git hooks）
-bun install
-
-# 构建所有包
-bun run build
-
-# 启动 Web 开发服务器 (port 7020)
-bun run dev
+git clone https://github.com/nocoo/pew.git
+cd pew
+bun install --frozen-lockfile
+cp packages/web/.env.example packages/web/.env.local
 ```
 
-| 命令 | 说明 |
-|------|------|
-| `bun run build` | 构建所有包 (core → cli → web → worker) |
-| `bun run dev` | 启动 Web 开发服务器 |
-| `bun run test` | 运行单元测试 (Vitest) |
-| `bun run test:coverage` | 单元测试 + V8 覆盖率（≥ 90% 阈值） |
-| `bun run lint` | TypeScript 类型检查 (5 packages) + Biome + 自研 gate（dynamic-delete / ts-expect-error） |
-| `bun run test:e2e` | L2 API E2E 测试 (port 17020) |
-| `bun run test:e2e:ui` | L3 BDD E2E 测试 via Playwright (port 27020) |
-| `bun run test:security` | 安全扫描 |
-| `bun run release` | 版本发布（bump + changelog + tag） |
+填写 `packages/web/.env.local` 后运行 `bun run dev`，Web 默认地址为 `http://localhost:7020`。Google OAuth 回调为 `http://localhost:7020/api/auth/callback/google`。
+
+| 配置 | 用途 |
+| --- | --- |
+| `AUTH_SECRET`、`AUTH_GOOGLE_ID`、`AUTH_GOOGLE_SECRET` | 会话与 Google 登录 |
+| `CF_ACCOUNT_ID`、`CF_D1_DATABASE_ID`、`CF_D1_API_TOKEN` | D1 REST 写入与数据库访问 |
+| `WORKER_INGEST_URL`、`WORKER_SECRET` | 用量与会话批量写入 |
+| `WORKER_READ_URL`、`WORKER_READ_SECRET` | 数据查询，运行时必需 |
+| `ADMIN_EMAILS` | 管理员邮箱列表 |
+
+应用需要初始化过的 D1 数据库和已配置的两个 Worker；数据库迁移在 [scripts/migrations/](scripts/migrations/)，Worker 的绑定与测试环境在各自的 `wrangler.toml`。团队与组织 Logo 上传还需要 `CF_R2_ENDPOINT`、`CF_R2_ACCESS_KEY_ID`、`CF_R2_SECRET_ACCESS_KEY`、`CF_R2_BUCKET`；当前公开资源域名在 [r2.ts](packages/web/src/lib/r2.ts) 中配置。
+
+```bash
+bun run typecheck
+bun run lint
+bun run build
+bun run --filter '@nocoo/pew' build
+```
+
+根 `build` 只构建 core 和 Web，CLI 需单独构建。Web 使用 Next.js standalone 产物，容器入口见 [Dockerfile](Dockerfile)。CLI 的正式与开发主机目前在 [login.ts](packages/cli/src/commands/login.ts) 中固定，自部署时需要调整对应地址。
+
+| 目录 | 内容 |
+| --- | --- |
+| `packages/core` | 共享 TypeScript 类型 |
+| `packages/cli` | npm CLI、解析器、队列与自动同步 |
+| `packages/web` | 仪表盘、账号与应用 API |
+| `packages/worker` | D1 批量写入 Worker |
+| `packages/worker-read` | 查询、缓存与模型价格同步 |
+| `scripts` | 迁移、测试和维护脚本 |
 
 ## 测试
 
-| 层级 | 内容 | 工具 | 触发时机 |
-|------|------|------|----------|
-| L1 Unit | 业务逻辑、解析器、工具函数 | Vitest | pre-commit |
-| L2 API E2E | HTTP 端到端、Worker 集成 | Vitest | pre-push |
-| L3 BDD E2E | 浏览器端用户流程 | Playwright | pre-push |
-| G1 Static | TypeScript 7 strict + Biome `--error-on-warnings` + 自研 gate | tsc + Biome + oxc-parser | pre-commit |
-| G2 Security | 依赖审计 + 自定义安全规则 | scripts/run-security.ts | 手动 |
+| 测试层 | 命令 | 前提 |
+| --- | --- | --- |
+| 单元与组件逻辑 | `bun run test` | 已安装依赖 |
+| CLI 采集流水线集成 | `bun run test:e2e:cli` | 使用临时目录与测试数据，无需登录 |
+| API 端到端 | `bun run test:e2e` | 独立的远端测试 D1 与 Worker；端口 17020 |
+| 浏览器端到端 | `bun run test:e2e:ui` | 同一套测试资源、Chromium；端口 27020 |
 
-覆盖率目标 90%（statements / branches / functions / lines），每次 commit 强制检查。
+浏览器测试前运行 `bunx playwright install chromium`。可用 `bun run test:watch` 持续运行单元测试，或用 `bun run test:coverage` 查看报告。
 
-## E2E setup
+### E2E 配置
 
-L2 API E2E 和 L3 Browser E2E 都需要 Cloudflare D1 凭据。pre-push hook 会在
-缺少 `packages/web/.env.local` 或 `packages/web/.env.test` 时 fail-fast，提示
-开发者按下表创建文件。两个文件均不提交到仓库，由开发者本地维护，CI 由 GitHub
-Secrets 注入。
+API 和浏览器测试读取 `packages/web/.env.local` 与 `packages/web/.env.test`。前者提供应用连接、Cloudflare 凭据与共享密钥；后者提供 `CF_D1_DATABASE_ID_TEST`、`WORKER_INGEST_URL_TEST` 和 `WORKER_READ_URL_TEST`，分别指向独立测试数据库与测试 Worker。
 
-### `packages/web/.env.local`（生产 D1 + Worker + Auth 凭据）
+测试脚本核对资源与应用环境不同，并要求测试库中存在 `_test_marker` 标记。准备方法见 [D1 测试环境说明](docs/31-d1-test-isolation.md)。API 测试会写入并清理测试用户数据；浏览器测试通过开发态测试登录运行，不验证真实 Google OAuth。运行前确认测试端口空闲。
 
-| Key | 说明 |
-|-----|------|
-| `CF_ACCOUNT_ID` | Cloudflare 账号 ID |
-| `CF_D1_DATABASE_ID` | 生产 D1 database ID |
-| `CF_D1_API_TOKEN` | D1 REST API token |
-| `WORKER_INGEST_URL` | 生产 ingest Worker URL |
-| `WORKER_READ_URL` | 生产 read Worker URL |
-| `WORKER_SECRET` | ingest Worker 共享密钥 |
-| `WORKER_READ_SECRET` | read Worker 共享密钥 |
-| `AUTH_SECRET` | NextAuth 会话签名密钥 |
+## 技术栈
 
-### `packages/web/.env.test`（测试 D1 隔离，必须与生产不同）
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![Bun](https://img.shields.io/badge/Bun-14151A?logo=bun&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js-000000?logo=nextdotjs&logoColor=white)
+![Cloudflare](https://img.shields.io/badge/Cloudflare-F38020?logo=cloudflare&logoColor=white)
 
-| Key | 说明 |
-|-----|------|
-| `CF_D1_DATABASE_ID_TEST` | 测试 D1 database ID（与生产不同） |
-| `WORKER_INGEST_URL_TEST` | 测试 ingest Worker URL（与生产不同） |
-| `WORKER_READ_URL_TEST` | 测试 read Worker URL（与生产不同） |
-
-`scripts/d1-test-guard.ts` 在 E2E 启动时强制校验：测试 DB ID ≠ 生产、测试
-Worker URL ≠ 生产、测试库有 `_test_marker` 表。三项任一失败立即终止。
-
-### 本机运行
-
-```bash
-bun run test:e2e        # L2 API E2E
-bun run test:e2e:ui     # L3 Browser E2E (Playwright)
-bun run test:e2e:bdd    # alias of test:e2e:ui
-```
+| 部分 | 实现 |
+| --- | --- |
+| CLI | Node.js / Bun、TypeScript、@nocoo/base-cli、运行时内置 SQLite |
+| Web | Next.js、React、Basalt、Tailwind CSS、Recharts、SWR |
+| 认证 | Auth.js、Google OAuth |
+| 数据与存储 | Cloudflare Workers、D1、KV、R2 |
+| 开发与测试 | Bun workspaces、Biome、Vitest、Playwright |
 
 ## 文档
 
-| 文档 | 说明 |
-|------|------|
-| [docs/01-plan.md](docs/01-plan.md) | 初始规划 |
-| [docs/03-data-pipeline.md](docs/03-data-pipeline.md) | 数据管线架构 |
-| [docs/04-sync-resilience.md](docs/04-sync-resilience.md) | 同步容错机制 |
-| [docs/05-token-accounting.md](docs/05-token-accounting.md) | Token 计量规则 |
-| [docs/06-session-statistics.md](docs/06-session-statistics.md) | 会话统计设计 |
-| [docs/18-season-system.md](docs/18-season-system.md) | 赛季系统 |
-| [docs/30-quality-system-upgrade.md](docs/30-quality-system-upgrade.md) | 质量体系 |
+- [文档索引](docs/README.md)
+- [数据流水线](docs/03-data-pipeline.md)
+- [隐私说明](PRIVACY.md)
+- [变更记录](CHANGELOG.md)
 
-## License
+## 许可证
 
-[MIT](LICENSE) © 2026
+[MIT](LICENSE) © 2026 Zheng Li

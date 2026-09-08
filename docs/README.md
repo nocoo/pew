@@ -1,5 +1,8 @@
 # pew — Documentation Index
 
+- [Project README (中文)](../README.md)
+- [Project README (English)](README.en.md)
+
 | # | Document | Description | Status |
 |---|----------|-------------|--------|
 | 01 | [01-plan.md](01-plan.md) | Monorepo skeleton & implementation plan | done |
