@@ -113,16 +113,16 @@ function SortHeader({
         className
       )}
     >
-      <button type="button"
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
         onClick={() => onSort(sortKey)}
-        className={cn(
-          "inline-flex items-center gap-1 hover:text-foreground transition-colors ml-auto",
-          isActive && "text-foreground"
-        )}
+        className={cn("ml-auto h-auto gap-1 px-0 py-0", isActive && "text-foreground")}
       >
         {label}
         <Icon className="h-3 w-3" strokeWidth={1.5} />
-      </button>
+      </Button>
     </th>
   );
 }
@@ -312,24 +312,25 @@ function ComparePageContent() {
                 <span className="text-xs font-medium truncate max-w-[120px]">
                   {user.name ?? user.email}
                 </span>
-                <button type="button"
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-4 w-4"
                   onClick={() => removeUser(user.user_id)}
-                  className="flex h-4 w-4 items-center justify-center rounded-full hover:bg-accent transition-colors"
+                  aria-label={`Remove ${user.name ?? user.email ?? "user"}`}
                 >
                   <X className="h-2.5 w-2.5" strokeWidth={2} />
-                </button>
+                </Button>
               </div>
             ))}
             <span className="text-xs text-muted-foreground tabular-nums ml-auto">
               {selectedUsers.length}/10
             </span>
             {selectedUsers.length > 0 && (
-              <button type="button"
-                onClick={clearSelection}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
+              <Button type="button" variant="ghost" size="sm" onClick={clearSelection}>
                 Clear
-              </button>
+              </Button>
             )}
             <Button
               type="button"
@@ -472,10 +473,12 @@ function ComparePageContent() {
                           </td>
                           {/* User */}
                           <td className="px-4 py-3">
-                            <button type="button"
+                            <Button
+                              type="button"
+                              variant="ghost"
                               onClick={() => toggleUser(user.user_id)}
                               disabled={isDisabled}
-                              className="flex items-center gap-3 min-w-0 text-left hover:opacity-80 transition-opacity cursor-pointer disabled:cursor-not-allowed"
+                              className="h-auto min-w-0 justify-start gap-3 px-0 py-0 hover:bg-transparent hover:opacity-80"
                             >
                               <Avatar className="h-7 w-7 shrink-0">
                                 {user.image && (
@@ -502,7 +505,7 @@ function ComparePageContent() {
                                   {user.email ?? user.user_id}
                                 </p>
                               </div>
-                            </button>
+                            </Button>
                           </td>
                           {/* Total tokens */}
                           <td className="px-4 py-3 text-right">
@@ -567,13 +570,10 @@ function ComparePageContent() {
         {/* Empty state - show compare button if users selected */}
         {!loading && selectedUsers.length >= 2 && (
           <div className="flex justify-center pt-2">
-            <button type="button"
-              onClick={handleCompare}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
+            <Button type="button" onClick={handleCompare}>
               <Users className="h-4 w-4" strokeWidth={1.5} />
               Compare {selectedUsers.length} Users
-            </button>
+            </Button>
           </div>
         )}
       </div>
