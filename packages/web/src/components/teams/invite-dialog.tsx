@@ -13,6 +13,7 @@ import {
 } from "@nocoo/basalt/components/dialog";
 import { UserPlus, X } from "lucide-react";
 import { chromeIconClassName } from "@/lib/ghost-icon";
+import { useRestoreDialogFocus } from "@/lib/restore-dialog-focus";
 
 export interface InviteDialogProps {
   open: boolean;
@@ -27,6 +28,7 @@ export function InviteDialog({
   teamName,
   inviteCode,
 }: InviteDialogProps) {
+  const restoreFocus = useRestoreDialogFocus(open);
   const inviteMessage = `Join my team "${teamName}" on pew!
 
 How to join:
@@ -37,7 +39,7 @@ How to join:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent onCloseAutoFocus={restoreFocus}>
         <DialogClose asChild>
           <Button
             variant="ghost"

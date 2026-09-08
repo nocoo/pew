@@ -12,6 +12,7 @@ import { Sidebar } from "./sidebar";
 import { ThemeToggle } from "./theme-toggle";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { breadcrumbsFromPathname } from "@/lib/navigation";
+import { useRestoreDialogFocus } from "@/lib/restore-dialog-focus";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -39,6 +40,7 @@ export function AppShell({ children }: AppShellProps) {
   }, [mobileOpen]);
 
   const items = breadcrumbsFromPathname(pathname);
+  const restoreFocus = useRestoreDialogFocus(mobileOpen);
 
   return (
     <BasaltAppShell>
@@ -50,6 +52,7 @@ export function AppShell({ children }: AppShellProps) {
           <SheetContent
             side="left"
             className="w-[260px] max-w-[260px] border-0 bg-basalt-background p-0"
+            onCloseAutoFocus={restoreFocus}
           >
             <SheetTitle className="sr-only">Navigation</SheetTitle>
             <Sidebar collapsed={false} onToggle={() => setMobileOpen(false)} />

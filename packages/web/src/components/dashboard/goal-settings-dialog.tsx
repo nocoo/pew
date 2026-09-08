@@ -14,6 +14,7 @@ import { Field } from "@nocoo/basalt/components/field";
 import { Input } from "@nocoo/basalt/components/input";
 import { Settings } from "lucide-react";
 import { formatTokensFull } from "@/lib/utils";
+import { useRestoreDialogFocus } from "@/lib/restore-dialog-focus";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -163,6 +164,7 @@ export function GoalSettingsDialog({
   onSave,
   current,
 }: GoalSettingsDialogProps) {
+  const restoreFocus = useRestoreDialogFocus(open);
   const handleSave = useCallback(
     (thresholds: GoalThresholds) => {
       onSave(thresholds);
@@ -177,7 +179,7 @@ export function GoalSettingsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="sm">
+      <DialogContent size="sm" onCloseAutoFocus={restoreFocus}>
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-basalt-primary/10 text-basalt-primary">
           <Settings className="h-6 w-6" strokeWidth={1.5} />
         </div>

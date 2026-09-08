@@ -18,6 +18,8 @@ import {
 } from "@nocoo/basalt/components/dialog";
 import { Field } from "@nocoo/basalt/components/field";
 import { Input } from "@nocoo/basalt/components/input";
+import { Label } from "@nocoo/basalt/components/label";
+import { useRestoreDialogFocus } from "@/lib/restore-dialog-focus";
 import { InputArea } from "@nocoo/basalt/components/input-area";
 import { Switch } from "@nocoo/basalt/components/switch";
 import { ExternalLink, AlertCircle, Star, GitFork, Code, Scale } from "lucide-react";
@@ -91,6 +93,7 @@ export function ShowcaseFormModal({
   const uid = useId();
   const githubUrlId = `${uid}-github-url`;
   const taglineId = `${uid}-tagline`;
+  const restoreFocus = useRestoreDialogFocus(open);
 
   // Preview state (for add mode)
   const { preview, loading: previewLoading, error: previewError, fetchPreview, reset: resetPreview } = useShowcasePreview();
@@ -237,7 +240,7 @@ export function ShowcaseFormModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="lg">
+      <DialogContent size="lg" onCloseAutoFocus={restoreFocus}>
           <DialogHeader>
             <DialogTitle className="text-xl">
               {editMode ? "Edit Showcase" : "Add Showcase"}
@@ -262,7 +265,8 @@ export function ShowcaseFormModal({
           {/* GitHub URL input (add mode only) */}
           {!editMode && (
             <div className="mb-4">
-              <Field label="GitHub Repository URL" htmlFor={githubUrlId}>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor={githubUrlId}>GitHub Repository URL</Label>
                 <div className="flex gap-2">
                   <Input
                     id={githubUrlId}
@@ -282,7 +286,7 @@ export function ShowcaseFormModal({
                     Preview
                   </Button>
                 </div>
-              </Field>
+              </div>
               {previewError && (
                 <p className="mt-1.5 text-xs text-destructive">{previewError}</p>
               )}

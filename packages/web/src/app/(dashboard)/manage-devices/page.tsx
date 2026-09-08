@@ -18,6 +18,7 @@ import { cn, formatTokens } from "@/lib/utils";
 import { sourceLabel } from "@/hooks/use-usage-data";
 import { deviceLabel, shortDeviceId } from "@/lib/device-helpers";
 import { useDevices } from "@/hooks/use-devices";
+import { useRestoreDialogFocus } from "@/lib/restore-dialog-focus";
 import { DevicesEmptyState } from "@/components/dashboard/empty-state";
 import type { DeviceSummary } from "@pew/core";
 
@@ -282,6 +283,7 @@ function AuthCodeModal({
   const [generatingCode, setGeneratingCode] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const restoreFocus = useRestoreDialogFocus(open);
 
   // Reset state when modal closes — render-time update pattern.
   // (The countdown interval is cleaned up by the useEffect below when
@@ -348,7 +350,7 @@ function AuthCodeModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="sm">
+      <DialogContent size="sm" onCloseAutoFocus={restoreFocus}>
           <DialogClose asChild>
             <Button
               variant="ghost"

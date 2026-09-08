@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useRestoreDialogFocus } from "@/lib/restore-dialog-focus";
 import { Button } from "@nocoo/basalt/components/button";
 import { chromeIconClassName } from "@/components/ui/button";
 import {
@@ -254,6 +255,7 @@ export function UserProfileDialog({
   seasonStart,
   seasonEnd,
 }: UserProfileDialogProps) {
+  const restoreFocus = useRestoreDialogFocus(open);
   // Resolve admin status
   const { isAdmin, loading: adminLoading } = useAdmin();
 
@@ -298,7 +300,7 @@ export function UserProfileDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="xl">
+      <DialogContent size="xl" onCloseAutoFocus={restoreFocus}>
         {configReady ? (
           <>
             <ProfileDialogHeader
