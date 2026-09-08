@@ -61,13 +61,15 @@ export function ScopeDropdown({
       >
         <DropdownMenuItem
           className={cn("gap-2", value.type === "global" && "bg-basalt-accent")}
+          role="menuitemradio"
+          aria-checked={value.type === "global"}
           onSelect={() => onChange({ type: "global" })}
         >
           <Globe className={iconClass} strokeWidth={1.5} />
           Global
         </DropdownMenuItem>
         {organizations.length > 0 && (
-          <DropdownMenuGroup>
+          <DropdownMenuGroup aria-label="Organizations">
             <div
               role="presentation"
               className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-basalt-muted-foreground"
@@ -81,6 +83,8 @@ export function ScopeDropdown({
                   "gap-2",
                   value.type === "org" && value.id === org.id && "bg-basalt-accent",
                 )}
+                role="menuitemradio"
+                aria-checked={value.type === "org" && value.id === org.id}
                 onSelect={() => onChange({ type: "org", id: org.id })}
               >
                 <OrgLogoIcon logoUrl={org.logoUrl} name={org.name} />
@@ -90,7 +94,7 @@ export function ScopeDropdown({
           </DropdownMenuGroup>
         )}
         {teams.length > 0 && (
-          <DropdownMenuGroup>
+          <DropdownMenuGroup aria-label="Teams">
             <div
               role="presentation"
               className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-basalt-muted-foreground"
@@ -104,6 +108,8 @@ export function ScopeDropdown({
                   "gap-2",
                   value.type === "team" && value.id === team.id && "bg-basalt-accent",
                 )}
+                role="menuitemradio"
+                aria-checked={value.type === "team" && value.id === team.id}
                 onSelect={() => onChange({ type: "team", id: team.id })}
               >
                 <TeamLogoIcon logoUrl={team.logoUrl} name={team.name} />
