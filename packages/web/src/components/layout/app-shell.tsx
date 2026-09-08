@@ -61,7 +61,6 @@ export function AppShell({ children }: AppShellProps) {
       )}
       <AppMain>
         <AppHeader
-          className="[&_svg]:[stroke-width:1.5]"
           leading={
             isMobile ? (
               <Button

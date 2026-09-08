@@ -2,14 +2,13 @@
 
 import { useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import {
   Users,
   ChevronDown,
-  ChevronRight,
   Zap,
   Camera,
 } from "lucide-react";
+import { Breadcrumbs } from "@nocoo/basalt/components/breadcrumbs";
 import { cn, formatTokensFull } from "@/lib/utils";
 import { formatDuration } from "@/lib/date-helpers";
 import { getSeasonEndExclusiveISO } from "@/lib/season-helpers";
@@ -59,34 +58,15 @@ function SeasonTableHeader() {
 // ---------------------------------------------------------------------------
 
 function Breadcrumb({ seasonName }: { seasonName?: string | undefined }) {
+  const items = [
+    { href: "/leaderboard", label: "Leaderboard" },
+    { href: "/leaderboard/seasons", label: "Seasons" },
+    ...(seasonName ? [{ label: seasonName }] : []),
+  ];
   return (
-    <nav
-      className="flex items-center gap-1.5 text-sm text-muted-foreground animate-fade-up"
-      style={{ animationDelay: "120ms" }}
-      aria-label="Breadcrumb"
-    >
-      <Link
-        href="/leaderboard"
-        className="hover:text-foreground transition-colors"
-      >
-        Leaderboard
-      </Link>
-      <ChevronRight className="h-3.5 w-3.5" />
-      <Link
-        href="/leaderboard/seasons"
-        className="hover:text-foreground transition-colors"
-      >
-        Seasons
-      </Link>
-      {seasonName && (
-        <>
-          <ChevronRight className="h-3.5 w-3.5" />
-          <span className="text-foreground font-medium truncate">
-            {seasonName}
-          </span>
-        </>
-      )}
-    </nav>
+    <div className="animate-fade-up" style={{ animationDelay: "120ms" }}>
+      <Breadcrumbs items={items} />
+    </div>
   );
 }
 

@@ -179,6 +179,16 @@
   outline: none;
 }
 
+/* Basalt Breadcrumbs / AppHeader separators: 12px, stroke 1.5, muted. */
+nav[aria-label="Breadcrumb"] svg,
+nav[aria-label="Breadcrumb"] + svg {
+  width: 0.75rem;
+  height: 0.75rem;
+  flex-shrink: 0;
+  stroke-width: 1.5;
+  color: hsl(var(--basalt-muted-foreground));
+}
+
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
