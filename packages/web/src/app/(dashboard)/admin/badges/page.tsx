@@ -23,6 +23,7 @@ import {
   Ban,
   Loader2,
   Shuffle,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -31,7 +32,27 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
 import { Button } from "@nocoo/basalt/components/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@nocoo/basalt/components/dialog";
+import { Field } from "@nocoo/basalt/components/field";
+import { Input } from "@nocoo/basalt/components/input";
+import { InputArea } from "@nocoo/basalt/components/input-area";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@nocoo/basalt/components/select";
+import { chromeIconClassName } from "@/lib/ghost-icon";
 import { BadgeIcon, type BadgeIconType } from "@/components/badges/badge-icon";
 import type { BadgeColorPalette } from "@pew/core";
 import type { BadgeRow, BadgeAssignmentRow, UserSearchResult } from "@/lib/rpc-types";
@@ -210,29 +231,34 @@ function CreateBadgeDialog({ open, onClose, onCreated }: CreateBadgeDialogProps)
     }
   };
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-xl bg-background p-6 shadow-xl">
-        <h2 className="mb-4 text-lg font-semibold">Create Badge</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Text */}
-          <div>
-            <label htmlFor={textId} className="mb-1 block text-sm font-medium">
-              Text (1-3 characters)
-            </label>
-            <input
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+      <DialogContent>
+        <DialogClose asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`absolute top-4 right-4 ${chromeIconClassName}`}
+            aria-label="Close"
+          >
+            <X aria-hidden="true" strokeWidth={1.5} />
+          </Button>
+        </DialogClose>
+        <DialogHeader>
+          <DialogTitle>Create Badge</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          <Field label="Text (1-3 characters)" htmlFor={textId}>
+            <Input
               id={textId}
               type="text"
               value={text}
               onChange={(e) => setText(e.target.value)}
               maxLength={3}
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
               placeholder="MVP"
               required
             />
-          </div>
+          </Field>
 
           {/* Icon */}
           <div>
@@ -320,47 +346,31 @@ function CreateBadgeDialog({ open, onClose, onCreated }: CreateBadgeDialogProps)
             </div>
           </div>
 
-          {/* Description */}
-          <div>
-            <label htmlFor={descriptionId} className="mb-1 block text-sm font-medium">
-              Description (optional)
-            </label>
-            <textarea
+          <Field label="Description (optional)" htmlFor={descriptionId} required={false}>
+            <InputArea
               id={descriptionId}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
               placeholder="Admin notes..."
               rows={2}
             />
-          </div>
+          </Field>
 
           {error && (
             <p className="text-sm text-destructive">{error}</p>
           )}
 
-          {/* Actions */}
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg px-4 py-2 text-sm hover:bg-secondary"
-              disabled={loading}
-            >
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading || text.trim().length === 0}
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+            </Button>
+            <Button type="submit" disabled={loading || text.trim().length === 0} loading={loading}>
               Create
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -453,49 +463,58 @@ function AssignBadgeDialog({
     }
   };
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="w-full max-w-md rounded-xl bg-background p-6 shadow-xl">
-        <h2 className="mb-4 text-lg font-semibold">Assign Badge</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Badge Selection */}
-          <div>
-            <label htmlFor={badgeSelectId} className="mb-1 block text-sm font-medium">Badge</label>
-            <select
-              id={badgeSelectId}
-              value={selectedBadgeId}
-              onChange={(e) => setSelectedBadgeId(e.target.value)}
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-              required
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+      <DialogContent>
+        <DialogClose asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`absolute top-4 right-4 ${chromeIconClassName}`}
+            aria-label="Close"
+          >
+            <X aria-hidden="true" strokeWidth={1.5} />
+          </Button>
+        </DialogClose>
+        <DialogHeader>
+          <DialogTitle>Assign Badge</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          <Field label="Badge" htmlFor={badgeSelectId}>
+            <Select
+              value={selectedBadgeId || "__pending__"}
+              onValueChange={(next) => {
+                if (next !== "__pending__") setSelectedBadgeId(next);
+              }}
             >
-              <option value="">Select a badge...</option>
-              {activeBadges.map((badge) => (
-                <option key={badge.id} value={badge.id}>
-                  {badge.text} ({badge.icon})
-                </option>
-              ))}
-            </select>
-            {selectedBadge && (
-              <div className="mt-2 flex items-center gap-2">
-                <BadgeIcon
-                  text={selectedBadge.text}
-                  icon={selectedBadge.icon as BadgeIconType}
-                  colorBg={selectedBadge.color_bg}
-                  colorText={selectedBadge.color_text}
-                  size="md"
-                />
-                <span className="text-sm text-muted-foreground">
-                  {selectedBadge.description || "No description"}
-                </span>
-              </div>
-            )}
-          </div>
+              <SelectTrigger id={badgeSelectId} aria-label="Badge">
+                <SelectValue placeholder="Select a badge..." />
+              </SelectTrigger>
+              <SelectContent className="max-h-[min(24rem,var(--radix-select-content-available-height))] overflow-y-auto">
+                {activeBadges.map((badge) => (
+                  <SelectItem key={badge.id} value={badge.id}>
+                    {badge.text} ({badge.icon})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+          {selectedBadge && (
+            <div className="flex items-center gap-2">
+              <BadgeIcon
+                text={selectedBadge.text}
+                icon={selectedBadge.icon as BadgeIconType}
+                colorBg={selectedBadge.color_bg}
+                colorText={selectedBadge.color_text}
+                size="md"
+              />
+              <span className="text-sm text-muted-foreground">
+                {selectedBadge.description || "No description"}
+              </span>
+            </div>
+          )}
 
-          {/* User Search */}
-          <div>
-            <label htmlFor={userQueryId} className="mb-1 block text-sm font-medium">User</label>
+          <Field label="User" htmlFor={userQueryId}>
             {selectedUser ? (
               <div className="flex items-center gap-2 rounded-lg bg-secondary p-2">
                 {selectedUser.image && (
@@ -513,25 +532,25 @@ function AssignBadgeDialog({
                     {selectedUser.email}
                   </p>
                 </div>
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   onClick={() => {
                     setSelectedUser(null);
                     setUserQuery("");
                   }}
-                  className="text-xs text-muted-foreground hover:text-foreground"
                 >
                   Change
-                </button>
+                </Button>
               </div>
             ) : (
               <div className="relative">
-                <input
+                <Input
                   id={userQueryId}
                   type="text"
                   value={userQuery}
                   onChange={(e) => setUserQuery(e.target.value)}
-                  className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
                   placeholder="Search users..."
                 />
                 {searching && (
@@ -540,15 +559,16 @@ function AssignBadgeDialog({
                 {userResults.length > 0 && (
                   <div className="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-lg border bg-background shadow-lg">
                     {userResults.map((user) => (
-                      <button
+                      <Button
                         key={user.id}
                         type="button"
+                        variant="ghost"
+                        className="h-auto w-full justify-start gap-2 px-3 py-2"
                         onClick={() => {
                           setSelectedUser(user);
                           setUserQuery("");
                           setDebouncedQuery("");
                         }}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-secondary"
                       >
                         {user.image && (
                           <Image
@@ -559,66 +579,53 @@ function AssignBadgeDialog({
                             className="h-6 w-6 rounded-full"
                           />
                         )}
-                        <div>
+                        <div className="text-left">
                           <p className="text-sm">{user.name}</p>
                           <p className="text-xs text-muted-foreground">
                             {user.email}
                           </p>
                         </div>
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 )}
               </div>
             )}
-          </div>
+          </Field>
 
-          {/* Duration info */}
           <div className="rounded-lg bg-secondary/50 p-3 text-sm">
             <p className="text-muted-foreground">
               Badge will be active for <strong>7 days</strong> from assignment.
             </p>
           </div>
 
-          {/* Note */}
-          <div>
-            <label htmlFor={noteId} className="mb-1 block text-sm font-medium">
-              Note (optional)
-            </label>
-            <textarea
+          <Field label="Note (optional)" htmlFor={noteId} required={false}>
+            <InputArea
               id={noteId}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
               placeholder="Reason for assignment..."
               rows={2}
             />
-          </div>
+          </Field>
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 
-          {/* Actions */}
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg px-4 py-2 text-sm hover:bg-secondary"
-              disabled={loading}
-            >
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={loading || !selectedBadgeId || !selectedUser}
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              loading={loading}
             >
-              {loading && <Loader2 className="h-4 w-4 animate-spin" />}
               Assign
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -658,56 +665,51 @@ function RevokeDialog({ open, isActive, onClose, onConfirm }: RevokeDialogProps)
     setLoading(false);
   };
 
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="w-full max-w-md rounded-xl bg-card p-6 shadow-lg">
-        <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive mb-4">
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+      <DialogContent>
+        <DialogClose asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`absolute top-4 right-4 ${chromeIconClassName}`}
+            aria-label="Close"
+          >
+            <X aria-hidden="true" strokeWidth={1.5} />
+          </Button>
+        </DialogClose>
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
           <Ban className="h-6 w-6" strokeWidth={1.5} />
         </div>
-        <h2 className="text-center text-lg font-semibold text-foreground mb-2">
-          {action} Assignment
-        </h2>
-        <p className="text-center text-sm text-muted-foreground mb-4">
-          {isActive
-            ? "This will immediately remove the badge from the user's leaderboard display."
-            : "This will clear the expired assignment, allowing the badge to be re-assigned to this user."}
-        </p>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label htmlFor={reasonId} className="block text-sm font-medium mb-1">
-              Reason <span className="text-muted-foreground">(optional)</span>
-            </label>
-            <textarea
+        <DialogHeader className="text-center">
+          <DialogTitle className="text-center">{action} Assignment</DialogTitle>
+          <DialogDescription className="text-center">
+            {isActive
+              ? "This will immediately remove the badge from the user's leaderboard display."
+              : "This will clear the expired assignment, allowing the badge to be re-assigned to this user."}
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="mt-4">
+          <Field label="Reason (optional)" htmlFor={reasonId} required={false}>
+            <InputArea
               id={reasonId}
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none resize-none"
               placeholder={isActive ? "Why is this badge being revoked?" : "Note for audit trail..."}
               rows={2}
             />
-          </div>
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={loading}
-              className="flex-1 rounded-lg border border-border bg-secondary px-4 py-2.5 text-sm font-medium text-foreground hover:bg-accent transition-colors disabled:opacity-50"
-            >
+          </Field>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={onClose} disabled={loading}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 rounded-lg bg-destructive px-4 py-2.5 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:opacity-50"
-            >
+            </Button>
+            <Button type="submit" variant="destructive" disabled={loading} loading={loading}>
               {loading ? "..." : action}
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
