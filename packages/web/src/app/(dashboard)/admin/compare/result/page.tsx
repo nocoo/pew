@@ -10,7 +10,15 @@ import { useAdmin } from "@/hooks/use-admin";
 import { useTzOffset } from "@/hooks/use-tz-offset";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { Button } from "@nocoo/basalt/components/button";
+import { Input } from "@nocoo/basalt/components/input";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@nocoo/basalt/components/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -346,52 +354,58 @@ function CompareResultContent() {
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <label htmlFor={dateFromId} className="text-xs text-muted-foreground">From</label>
-            <input
+            <Input
               id={dateFromId}
               type="date"
+              size="sm"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/20"
             />
           </div>
           <div className="flex items-center gap-2">
             <label htmlFor={dateToId} className="text-xs text-muted-foreground">To</label>
-            <input
+            <Input
               id={dateToId}
               type="date"
+              size="sm"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/20"
             />
           </div>
 
-          {/* Agent filter */}
-          <select
-            value={sourceFilter}
-            onChange={(e) => setSourceFilter(e.target.value)}
-            className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/20"
+          <Select
+            value={sourceFilter === "" ? "__all__" : sourceFilter}
+            onValueChange={(next) => setSourceFilter(next === "__all__" ? "" : next)}
           >
-            <option value="">All Agents</option>
-            {(data?.sources ?? []).map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger size="sm" aria-label="Agent" className="w-40">
+              <SelectValue placeholder="All Agents" />
+            </SelectTrigger>
+            <SelectContent className="max-h-[min(24rem,var(--radix-select-content-available-height))] overflow-y-auto">
+              <SelectItem value="__all__">All Agents</SelectItem>
+              {(data?.sources ?? []).map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-          {/* Model filter */}
-          <select
-            value={modelFilter}
-            onChange={(e) => setModelFilter(e.target.value)}
-            className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/20"
+          <Select
+            value={modelFilter === "" ? "__all__" : modelFilter}
+            onValueChange={(next) => setModelFilter(next === "__all__" ? "" : next)}
           >
-            <option value="">All Models</option>
-            {(data?.models ?? []).map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger size="sm" aria-label="Model" className="w-44">
+              <SelectValue placeholder="All Models" />
+            </SelectTrigger>
+            <SelectContent className="max-h-[min(24rem,var(--radix-select-content-available-height))] overflow-y-auto">
+              <SelectItem value="__all__">All Models</SelectItem>
+              {(data?.models ?? []).map((m) => (
+                <SelectItem key={m} value={m}>
+                  {m}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Error */}
