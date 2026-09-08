@@ -1,16 +1,17 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import { Button } from "@nocoo/basalt/components/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@nocoo/basalt/components/popover";
 import {
   Globe,
   ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/components/ui/popover";
 import { TeamLogoIcon, OrgLogoIcon } from "@/components/leaderboard/logo-icons";
 import type { ScopeSelection, Organization, Team } from "@/lib/leaderboard-scope";
 
@@ -166,26 +167,23 @@ export function ScopeDropdown({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button type="button"
+        <Button
+          variant="secondary"
           role="combobox"
           aria-expanded={open}
           aria-haspopup="listbox"
           aria-controls="scope-listbox"
-          className={cn(
-            "flex items-center gap-2 rounded-lg bg-secondary px-3 py-2.5 text-sm font-medium transition-colors",
-            "text-foreground hover:bg-accent",
-          )}
         >
           {labelIcon}
           {label}
           <ChevronDown
             className={cn(
-              "h-3.5 w-3.5 text-muted-foreground transition-transform duration-200",
+              "h-3.5 w-3.5 text-basalt-muted-foreground transition-transform duration-200",
               open && "rotate-180",
             )}
             strokeWidth={1.5}
           />
-        </button>
+        </Button>
       </PopoverTrigger>
       <PopoverContent
         align="start"

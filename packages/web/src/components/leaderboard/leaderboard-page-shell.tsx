@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import type { LeaderboardEntry, LeaderboardPeriod } from "@/hooks/use-leaderboard";
+import { Empty } from "@nocoo/basalt/components/empty";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { TableHeader } from "@/components/leaderboard/table-header";
 import { LeaderboardSkeleton } from "@/components/leaderboard/leaderboard-skeleton";
@@ -113,9 +114,10 @@ export function LeaderboardPageShell({
 
       {/* Empty state — only show after loading completes with no results */}
       {!loading && entries.length === 0 && !error && (
-        <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
-          {emptyMessage}
-        </div>
+        <Empty
+          title={emptyMessage}
+          className="rounded-basalt-card bg-basalt-secondary p-8"
+        />
       )}
 
       {/* User profile dialog — lazy mounted to avoid useAdmin/useSeasons firing while closed */}
