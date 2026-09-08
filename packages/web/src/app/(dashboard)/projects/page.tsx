@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useProjects } from "@/hooks/use-projects";
 import { useTzOffset } from "@/hooks/use-tz-offset";
 import { ErrorBanner } from "@/components/ui/error-banner";
@@ -15,8 +15,8 @@ import {
 import { ProjectShareChart } from "@/components/dashboard/project-share-chart";
 import type { ProjectBreakdownItem } from "@/lib/session-helpers";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
+import { Autocomplete } from "@nocoo/basalt/components/autocomplete";
 import { Button } from "@nocoo/basalt/components/button";
-import { Input } from "@nocoo/basalt/components/input";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import {
   periodToDateRange,
@@ -194,10 +194,9 @@ function TagEditor({
 }) {
   const [editing, setEditing] = useState(false);
   const [input, setInput] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
 
   const suggestions = useMemo(() => {
-    if (!input) return [];
+    if (!input) return allTags.filter((t) => !project.tags.includes(t));
     const lower = input.toLowerCase();
     return allTags.filter(
       (t) => t.includes(lower) && !project.tags.includes(t),
@@ -241,51 +240,25 @@ function TagEditor({
         </span>
       ))}
       {editing ? (
-        <div className="relative">
-          <Input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && input.trim()) {
-                e.preventDefault();
-                handleAdd(input);
-              } else if (e.key === "Escape") {
-                setInput("");
-                setEditing(false);
-              }
-            }}
-            onBlur={() => {
-              setTimeout(() => {
-                setInput("");
-                setEditing(false);
-              }, 150);
-            }}
-            placeholder="tag..."
-            className="h-6 w-20 px-1.5 py-0.5 text-[10px]"
-            aria-label="Add tag"
-          />
-          {suggestions.length > 0 && (
-            <div className="absolute left-0 top-full z-10 mt-1">
-              {suggestions.slice(0, 5).map((s) => (
-                <Button
-                  key={s}
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  className="block h-auto w-full justify-start px-2.5 py-1 text-[10px]"
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    handleAdd(s);
-                  }}
-                >
-                  {s}
-                </Button>
-              ))}
-            </div>
-          )}
-        </div>
+        <Autocomplete
+          items={suggestions.slice(0, 5).map((s) => ({ value: s, label: s }))}
+          value={input}
+          onValueChange={(next) => {
+            if (next.trim()) {
+              handleAdd(next);
+              return;
+            }
+            setInput(next);
+          }}
+          onInput={(event) => {
+            const target = event.target;
+            if (target instanceof HTMLInputElement) setInput(target.value);
+          }}
+          placeholder="tag..."
+          aria-label="Add tag"
+          size="sm"
+          className="w-28"
+        />
       ) : (
         <Button
           type="button"
