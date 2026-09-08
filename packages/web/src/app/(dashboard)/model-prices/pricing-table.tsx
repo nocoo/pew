@@ -156,26 +156,44 @@ export function PricingTable({ entries }: Props) {
         <table className="w-full">
           <thead>
             <tr className="border-b border-border">
-              {COLUMNS.map((col) => (
-                <th
-                  key={col.key}
-                  onClick={() => toggleSort(col.key)}
-                  className={cn(
-                    "px-4 py-3 text-xs font-medium text-muted-foreground cursor-pointer select-none",
-                    col.numeric ? "text-right" : "text-left",
-                  )}
-                >
-                  <span className="inline-flex items-center gap-1">
-                    {col.label}
-                    {sortKey === col.key &&
-                      (sortDir === "asc" ? (
-                        <ArrowUp className="h-3 w-3" strokeWidth={1.5} />
-                      ) : (
-                        <ArrowDown className="h-3 w-3" strokeWidth={1.5} />
-                      ))}
-                  </span>
-                </th>
-              ))}
+              {COLUMNS.map((col) => {
+                const isActive = sortKey === col.key;
+                const ariaSort = isActive
+                  ? sortDir === "asc"
+                    ? "ascending"
+                    : "descending"
+                  : "none";
+                return (
+                  <th
+                    key={col.key}
+                    aria-sort={ariaSort}
+                    className={cn(
+                      "px-4 py-3 text-xs font-medium text-muted-foreground",
+                      col.numeric ? "text-right" : "text-left",
+                    )}
+                  >
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => toggleSort(col.key)}
+                      className={cn(
+                        "h-auto gap-1 px-0 py-0 text-xs font-medium text-muted-foreground hover:bg-transparent",
+                        col.numeric && "ml-auto",
+                        isActive && "text-foreground",
+                      )}
+                    >
+                      {col.label}
+                      {isActive &&
+                        (sortDir === "asc" ? (
+                          <ArrowUp className="h-3 w-3" strokeWidth={1.5} />
+                        ) : (
+                          <ArrowDown className="h-3 w-3" strokeWidth={1.5} />
+                        ))}
+                    </Button>
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
