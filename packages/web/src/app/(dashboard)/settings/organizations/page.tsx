@@ -229,6 +229,7 @@ export default function OrganizationsPage() {
                   className="flex items-center gap-4 p-4 hover:bg-accent/50 transition-colors cursor-pointer"
                   onClick={() => openMembersModal(org)}
                   onKeyDown={(e) => {
+                    if (e.target !== e.currentTarget) return;
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
                       openMembersModal(org);
