@@ -6,11 +6,10 @@ import {
   AvatarImage,
   Button,
   Sidebar as BasaltSidebar,
+  Link,
   SidebarFooter,
   SidebarGroup,
   SidebarHeader,
-  SidebarIconItem,
-  SidebarItem,
   SidebarNav,
   SidebarUser,
   Tooltip,
@@ -44,9 +43,10 @@ import {
   GitCompareArrows,
 } from "lucide-react";
 import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import type { ElementType } from "react";
+import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
 import {
   ADMIN_NAV_GROUP,
@@ -116,6 +116,24 @@ function isActivePath(pathname: string, href: string) {
   return href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
 }
 
+function navItemClass(active: boolean) {
+  return cn(
+    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-normal no-underline transition-colors",
+    active
+      ? "bg-basalt-accent text-basalt-foreground"
+      : "text-basalt-muted-foreground hover:bg-basalt-accent hover:text-basalt-foreground",
+  );
+}
+
+function navIconClass(active: boolean) {
+  return cn(
+    "relative flex h-10 w-10 items-center justify-center rounded-lg no-underline transition-colors",
+    active
+      ? "bg-basalt-accent text-basalt-foreground"
+      : "text-basalt-muted-foreground hover:bg-basalt-accent hover:text-basalt-foreground",
+  );
+}
+
 function PewMark() {
   return (
     <Image src="/logo-24.png" alt="pew" width={24} height={24} className="shrink-0" />
@@ -129,7 +147,6 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
   const { data: session } = useSession();
   const { isAdmin } = useAdmin();
 
@@ -140,14 +157,6 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const userEmail = session?.user?.email ?? "";
   const userImage = session?.user?.image;
   const userInitial = userName[0] ?? "?";
-
-  const go = (item: NavItem) => {
-    if (item.external) {
-      window.open(item.href, "_blank", "noopener,noreferrer");
-      return;
-    }
-    router.push(item.href);
-  };
 
   const avatar = (
     <Avatar className="h-9 w-9 shrink-0">
@@ -177,14 +186,17 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           {allNavItems.map((item) => (
             <Tooltip key={item.href} delayDuration={0}>
               <TooltipTrigger asChild>
-                <SidebarIconItem
-                  active={isActivePath(pathname, item.href)}
+                <Link
+                  href={item.href}
                   aria-label={item.label}
-                  className="self-center"
-                  onClick={() => go(item)}
+                  aria-current={isActivePath(pathname, item.href) ? "page" : undefined}
+                  className={`${navIconClass(isActivePath(pathname, item.href))} self-center`}
+                  {...(item.external
+                    ? { target: "_blank", rel: "noopener noreferrer" }
+                    : {})}
                 >
                   <item.icon className="h-4 w-4" strokeWidth={1.5} />
-                </SidebarIconItem>
+                </Link>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
                 {item.label}
@@ -195,14 +207,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <SidebarFooter className="flex w-full justify-center px-0">
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
-              <button
-                type="button"
-                className="cursor-pointer"
+              <Button
+                variant="ghost"
+                className="h-9 w-9 p-0"
                 onClick={() => signOut({ callbackUrl: "/login" })}
                 aria-label={`${userName} · Click to sign out`}
               >
                 {avatar}
-              </button>
+              </Button>
             </TooltipTrigger>
             <TooltipContent side="right" sideOffset={8}>
               {userName} · Click to sign out
@@ -241,10 +253,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {navGroups.map((group) => (
           <SidebarGroup key={group.label} label={group.label} defaultOpen={group.defaultOpen ?? true}>
             {group.items.map((item) => (
-              <SidebarItem
+              <Link
                 key={item.href}
-                active={isActivePath(pathname, item.href)}
-                onClick={() => go(item)}
+                href={item.href}
+                aria-current={isActivePath(pathname, item.href) ? "page" : undefined}
+                className={navItemClass(isActivePath(pathname, item.href))}
+                {...(item.external
+                  ? { target: "_blank", rel: "noopener noreferrer" }
+                  : {})}
               >
                 <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.5} />
                 <span className="flex-1 truncate text-left">{item.label}</span>
@@ -254,7 +270,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     strokeWidth={1.5}
                   />
                 ) : null}
-              </SidebarItem>
+              </Link>
             ))}
           </SidebarGroup>
         ))}
