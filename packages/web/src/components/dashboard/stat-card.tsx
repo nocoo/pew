@@ -1,3 +1,4 @@
+import { LayerCard } from "@nocoo/basalt/components/layer-card";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -95,12 +96,9 @@ export function StatCard({
   ) : null;
 
   return (
-    <div
-      className={cn(
-        "rounded-card bg-secondary",
-        isPrimary ? "p-5 md:p-6" : "p-4 md:p-5",
-        className
-      )}
+    <LayerCard
+      padding={isPrimary ? "lg" : "md"}
+      {...(className != null ? { className } : {})}
     >
       {/* Top accent bar — only shown when explicitly provided */}
       {accentColor && (
@@ -142,7 +140,7 @@ export function StatCard({
           {/* Right: icon */}
           {Icon && (
             <div className="hidden md:flex md:items-start md:shrink-0">
-              <div className={cn("rounded-md bg-background p-2", iconColor)}>
+              <div className={cn("rounded-md bg-basalt-background p-2", iconColor)}>
                 <Icon className={cn(isPrimary ? "h-6 w-6" : "h-5 w-5")} strokeWidth={1.5} />
               </div>
             </div>
@@ -151,7 +149,7 @@ export function StatCard({
           <div className="md:hidden mt-3 flex items-start justify-between">
             <div className="flex-1">{TrendsContent}</div>
             {Icon && (
-              <div className={cn("rounded-md bg-background p-2 shrink-0", iconColor)}>
+              <div className={cn("rounded-md bg-basalt-background p-2 shrink-0", iconColor)}>
                 <Icon className={cn(isPrimary ? "h-6 w-6" : "h-5 w-5")} strokeWidth={1.5} />
               </div>
             )}
@@ -183,7 +181,7 @@ export function StatCard({
               )}
             </div>
             {Icon && (
-              <div className={cn("rounded-md bg-background p-2", iconColor)}>
+              <div className={cn("rounded-md bg-basalt-background p-2", iconColor)}>
                 <Icon className={cn(isPrimary ? "h-6 w-6" : "h-5 w-5")} strokeWidth={1.5} />
               </div>
             )}
@@ -191,7 +189,7 @@ export function StatCard({
           {TrendsContent}
         </>
       )}
-    </div>
+    </LayerCard>
   );
 }
 

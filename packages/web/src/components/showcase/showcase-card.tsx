@@ -117,7 +117,7 @@ export function ShowcaseCard({ showcase, isLoggedIn, onLoginRequired, onUpvoteCh
             onClick={() => onUserClick?.(showcase.user)}
             className="flex items-center gap-1.5 hover:opacity-80 transition-opacity cursor-pointer"
           >
-            <Avatar className="h-5 w-5" size="sm">
+            <Avatar className="h-5 w-5">
               {showcase.user.image && (
                 <AvatarImage src={showcase.user.image} alt={displayName} />
               )}

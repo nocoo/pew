@@ -1,10 +1,12 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
-
-// ---------------------------------------------------------------------------
-// Shared filter dropdown — visually consistent with PeriodSelector
-// ---------------------------------------------------------------------------
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@nocoo/basalt/components/select";
 
 interface FilterOption {
   value: string;
@@ -12,14 +14,14 @@ interface FilterOption {
 }
 
 interface FilterDropdownProps {
-  /** Visible label shown before the current value (optional) */
   label?: string;
   value: string;
   onChange: (v: string) => void;
   options: FilterOption[];
-  /** Text shown for the "all / unfiltered" option. Defaults to "All". */
   allLabel?: string;
 }
+
+const ALL_VALUE = "__all__";
 
 export function FilterDropdown({
   label,
@@ -29,28 +31,26 @@ export function FilterDropdown({
   allLabel = "All",
 }: FilterDropdownProps) {
   return (
-    <div className="relative flex items-center rounded-lg bg-secondary p-1">
-      {label && (
-        <span className="pl-2 pr-1 text-xs text-muted-foreground select-none">
-          {label}:
-        </span>
-      )}
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="appearance-none rounded-md bg-transparent pl-2 pr-6 py-1.5 text-xs font-medium text-foreground outline-none cursor-pointer"
+    <div className="flex min-w-36 items-center gap-2">
+      {label ? (
+        <span className="shrink-0 text-xs text-basalt-muted-foreground">{label}</span>
+      ) : null}
+      <Select
+        value={value === "" ? ALL_VALUE : value}
+        onValueChange={(next) => onChange(next === ALL_VALUE ? "" : next)}
       >
-        <option value="">{allLabel}</option>
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-      <ChevronDown
-        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground"
-        strokeWidth={2}
-      />
+        <SelectTrigger size="sm" aria-label={label ?? allLabel}>
+          <SelectValue placeholder={allLabel} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL_VALUE}>{allLabel}</SelectItem>
+          {options.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

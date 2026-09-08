@@ -15,7 +15,7 @@ interface ErrorBannerProps {
 export function ErrorBanner({ messagePrefix, error }: ErrorBannerProps) {
   if (!error) return null;
   return (
-    <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive">
+    <div className="rounded-basalt-card bg-basalt-destructive/10 p-4 text-sm text-basalt-destructive">
       {messagePrefix}: {error}
     </div>
   );

@@ -1,23 +1,18 @@
 "use client";
 
-/**
- * Admin-only dialog that warns when ended seasons haven't been snapshotted.
- *
- * Self-contained: owns admin check + data fetching internally.
- * Session-scoped dismiss — reappears on page reload so admins are reminded.
- */
-
-import { useState } from "react";
-import { Dialog } from "radix-ui";
+import { Button } from "@nocoo/basalt/components/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@nocoo/basalt/components/dialog";
 import { AlertTriangle } from "lucide-react";
+import { useState } from "react";
 import { useAdmin } from "@/hooks/use-admin";
 import { useSeasons, type SeasonListItem } from "@/hooks/use-seasons";
-import { Button } from "@/components/ui/button";
-
-// ---------------------------------------------------------------------------
-// Inner component — only mounted when admin is confirmed (avoids unnecessary
-// /api/seasons call for non-admin users).
-// ---------------------------------------------------------------------------
 
 function SnapshotAlertInner() {
   const { data, loading } = useSeasons({ status: "ended" });
@@ -30,50 +25,44 @@ function SnapshotAlertInner() {
   if (dismissed) return null;
 
   return (
-    <Dialog.Root open onOpenChange={(open: boolean) => { if (!open) setDismissed(true); }}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl bg-card p-6 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95">
-          {/* Header */}
-          <div className="flex items-center gap-2 mb-4">
-            <div className="flex size-8 items-center justify-center rounded-lg bg-warning/10">
-              <AlertTriangle className="size-4 text-warning" strokeWidth={1.5} />
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) setDismissed(true);
+      }}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <div className="flex items-center gap-2">
+            <div className="flex size-8 items-center justify-center rounded-lg bg-basalt-warning-tint">
+              <AlertTriangle className="size-4 text-basalt-warning" strokeWidth={1.5} />
             </div>
-            <Dialog.Title className="text-lg font-semibold text-foreground">
-              Seasons Pending Snapshot
-            </Dialog.Title>
+            <DialogTitle className="text-lg">Seasons Pending Snapshot</DialogTitle>
           </div>
-
-          <Dialog.Description className="text-sm text-muted-foreground mb-4">
+          <DialogDescription>
             The following ended seasons haven&apos;t been snapshotted yet. Leaderboard
             results are still based on live data.
-          </Dialog.Description>
+          </DialogDescription>
+        </DialogHeader>
 
-          {/* Season list */}
-          <ul className="mb-6 space-y-1.5">
-            {unsnapshotted.map((s) => (
-              <SeasonRow key={s.id} season={s} />
-            ))}
-          </ul>
+        <ul className="space-y-1.5">
+          {unsnapshotted.map((s) => (
+            <SeasonRow key={s.id} season={s} />
+          ))}
+        </ul>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={() => setDismissed(true)}>
-              Dismiss
-            </Button>
-            <Button size="sm" asChild>
-              <a href="/admin/seasons">Go to Seasons</a>
-            </Button>
-          </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+        <DialogFooter>
+          <Button variant="outline" size="sm" onClick={() => setDismissed(true)}>
+            Dismiss
+          </Button>
+          <Button size="sm" asChild>
+            <a href="/admin/seasons">Go to Seasons</a>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Season row
-// ---------------------------------------------------------------------------
 
 function SeasonRow({ season }: { season: SeasonListItem }) {
   const endDate = new Date(season.end_date);
@@ -81,26 +70,19 @@ function SeasonRow({ season }: { season: SeasonListItem }) {
     month: "short",
     day: "numeric",
   });
-
   return (
-    <li className="flex items-center gap-2 text-sm text-foreground">
-      <span className="size-1.5 shrink-0 rounded-full bg-warning" />
+    <li className="flex items-center gap-2 text-sm text-basalt-foreground">
+      <span className="size-1.5 shrink-0 rounded-full bg-basalt-warning" />
       <span>
         {season.name}{" "}
-        <span className="text-muted-foreground">(ended {formatted})</span>
+        <span className="text-basalt-muted-foreground">(ended {formatted})</span>
       </span>
     </li>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Public component — gate on admin status
-// ---------------------------------------------------------------------------
-
 export function SnapshotAlert() {
   const { isAdmin, loading } = useAdmin();
-
   if (loading || !isAdmin) return null;
-
   return <SnapshotAlertInner />;
 }
