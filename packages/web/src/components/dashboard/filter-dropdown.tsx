@@ -42,7 +42,7 @@ export function FilterDropdown({
         <SelectTrigger size="sm" aria-label={label ?? allLabel}>
           <SelectValue placeholder={allLabel} />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="max-h-[min(24rem,var(--radix-select-content-available-height))] overflow-y-auto">
           <SelectItem value={ALL_VALUE}>{allLabel}</SelectItem>
           {options.map((opt) => (
             <SelectItem key={opt.value} value={opt.value}>
