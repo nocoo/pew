@@ -17,9 +17,12 @@ import {
   Pencil,
   X,
 } from "lucide-react";
+import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
+import { Input } from "@nocoo/basalt/components/input";
+import { Switch } from "@nocoo/basalt/components/switch";
 import { rowIconClassName } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { StatusBadge } from "@/components/leaderboard/status-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
@@ -31,8 +34,6 @@ import {
 } from "@/hooks/use-season-registration";
 import { formatSeasonDate } from "@/lib/seasons";
 import { UserProfileDialog } from "@/components/user-profile-dialog";
-import type { SeasonStatus } from "@pew/core";
-
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -56,40 +57,6 @@ interface TeamDetail {
   members: TeamMember[];
   auto_register_season: boolean;
   logoUrl: string | null;
-}
-
-// ---------------------------------------------------------------------------
-// Status badge (reused from leaderboard)
-// ---------------------------------------------------------------------------
-
-const STATUS_STYLES: Record<SeasonStatus, string> = {
-  active:
-    "bg-green-500/15 text-green-700 dark:text-green-400 border-green-500/25",
-  upcoming:
-    "bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/25",
-  ended: "bg-muted text-muted-foreground border-border",
-};
-
-const STATUS_LABELS: Record<SeasonStatus, string> = {
-  active: "Active",
-  upcoming: "Upcoming",
-  ended: "Ended",
-};
-
-function StatusBadge({ status }: { status: SeasonStatus }) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium",
-        STATUS_STYLES[status],
-      )}
-    >
-      {status === "active" && (
-        <span className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-green-500 animate-pulse" />
-      )}
-      {STATUS_LABELS[status]}
-    </span>
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -138,13 +105,13 @@ function SeasonRow({
           {season.is_registered ? (
             // Can withdraw from upcoming seasons, or active seasons with late withdrawal enabled
             season.status === "upcoming" || (season.status === "active" && season.allow_late_withdrawal) ? (
-              <button type="button"
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
                 onClick={() => onWithdraw(season.id)}
                 disabled={isBusy}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-destructive hover:border-destructive/50 transition-colors",
-                  isBusy && "opacity-50 cursor-not-allowed",
-                )}
+                loading={isBusy}
               >
                 {isBusy ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
@@ -154,16 +121,15 @@ function SeasonRow({
                     <span>Withdraw</span>
                   </>
                 )}
-              </button>
+              </Button>
             ) : null
           ) : season.status === "upcoming" || (season.status === "active" && season.allow_late_registration) ? (
-            <button type="button"
+            <Button
+              type="button"
+              size="sm"
               onClick={() => onRegister(season.id)}
               disabled={isBusy}
-              className={cn(
-                "flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors",
-                isBusy && "opacity-50 cursor-not-allowed",
-              )}
+              loading={isBusy}
             >
               {isBusy ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
@@ -173,7 +139,7 @@ function SeasonRow({
                   <span>Register</span>
                 </>
               )}
-            </button>
+            </Button>
           ) : null}
         </div>
       )}
@@ -228,25 +194,15 @@ function AutoRegisterToggle({
 
   return (
     <div className="flex items-start gap-3 rounded-lg bg-accent/50 px-4 py-3">
-      <button
-        type="button"
-        role="switch"
-        aria-checked={enabled}
+      <Switch
+        checked={enabled}
         disabled={saving}
-        onClick={handleToggle}
-        className={cn(
-          "relative mt-0.5 inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-          enabled ? "bg-primary" : "bg-border",
-          saving && "opacity-50 cursor-not-allowed",
-        )}
-      >
-        <span
-          className={cn(
-            "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-background shadow-sm ring-0 transition-transform",
-            enabled ? "translate-x-4" : "translate-x-0",
-          )}
-        />
-      </button>
+        onCheckedChange={() => {
+          void handleToggle();
+        }}
+        aria-label="Automatically register this team for new seasons"
+        className="mt-0.5"
+      />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <p className="text-xs font-medium text-foreground">
@@ -619,16 +575,15 @@ export default function TeamDetailPage() {
   if (error || !team) {
     return (
       <div className="max-w-3xl space-y-8">
-        <button type="button"
+        <Button
+          type="button"
+          variant="ghost"
           onClick={() => router.push("/teams")}
-          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
           Back to Teams
-        </button>
-        <div className="rounded-xl bg-destructive/10 p-6 text-center text-sm text-destructive">
-          {error ?? "Team not found"}
-        </div>
+        </Button>
+        <Banner variant="error" title={error ?? "Team not found"} />
       </div>
     );
   }
@@ -643,13 +598,14 @@ export default function TeamDetailPage() {
   return (
     <div className="max-w-3xl space-y-8">
       {/* Back link */}
-      <button type="button"
+      <Button
+        type="button"
+        variant="ghost"
         onClick={() => router.push("/teams")}
-        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
         Back to Teams
-      </button>
+      </Button>
 
       {/* Message */}
       <MessageBanner message={message} />
@@ -674,26 +630,31 @@ export default function TeamDetailPage() {
             {/* Logo edit overlay (owner only, hover to show) */}
             {isOwner && (
               <>
-                <button type="button"
+                <Button
+                  type="button"
+                  variant="ghost"
                   onClick={() => logoInputRef.current?.click()}
                   disabled={uploadingLogo}
-                  className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Change logo"
+                  className="absolute inset-0 h-auto w-auto rounded-xl bg-black/50 opacity-0 group-hover:opacity-100 hover:bg-black/50"
+                  aria-label="Change logo"
                 >
                   {uploadingLogo ? (
                     <Loader2 className="h-4 w-4 text-white animate-spin" strokeWidth={2} />
                   ) : (
                     <Camera className="h-4 w-4 text-white" strokeWidth={1.5} />
                   )}
-                </button>
+                </Button>
                 {team.logoUrl && (
-                  <button type="button"
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
                     onClick={handleRemoveLogo}
-                    className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Remove logo"
+                    className="absolute -top-1 -right-1 h-5 w-5 opacity-0 group-hover:opacity-100"
+                    aria-label="Remove logo"
                   >
                     <X className="h-3 w-3" strokeWidth={2} />
-                  </button>
+                  </Button>
                 )}
               </>
             )}
@@ -710,13 +671,13 @@ export default function TeamDetailPage() {
           <div className="flex-1 min-w-0">
             {editing ? (
               <div className="flex items-center gap-2">
-                <input
+                <Input
                   ref={editInputRef}
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
                   maxLength={64}
-                  className="rounded-lg border border-border bg-background px-3 py-1.5 text-lg font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow min-w-0 flex-1"
+                  className="min-w-0 flex-1 text-lg font-semibold"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleRename();
                     if (e.key === "Escape") cancelEditing();
@@ -754,13 +715,16 @@ export default function TeamDetailPage() {
 
           {/* Invite button (owner only) */}
           {isOwner && (
-            <button type="button"
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="shrink-0"
               onClick={() => openInviteDialog(team.name, team.invite_code)}
-              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
             >
               <UserPlus className="h-3.5 w-3.5" strokeWidth={1.5} />
               Invite
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -777,9 +741,11 @@ export default function TeamDetailPage() {
               key={member.userId}
               className="flex items-center gap-3 rounded-lg bg-secondary px-4 py-2.5"
             >
-              <button type="button"
+              <Button
+                type="button"
+                variant="ghost"
                 onClick={() => handleMemberClick(member)}
-                className="flex flex-1 items-center gap-3 text-left transition-colors hover:opacity-80 cursor-pointer min-w-0"
+                className="h-auto min-w-0 flex-1 justify-start gap-3 px-0 py-0 hover:bg-transparent hover:opacity-80"
               >
                 <Avatar className="h-7 w-7 shrink-0">
                   {member.image && <AvatarImage src={member.image} />}
@@ -787,23 +753,26 @@ export default function TeamDetailPage() {
                     {(member.name ?? "?").charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <p className="text-sm text-foreground truncate flex-1 min-w-0">
+                <p className="min-w-0 flex-1 truncate text-left text-sm text-foreground">
                   {member.name ?? "Unknown"}
                 </p>
-              </button>
+              </Button>
               {member.role === "owner" ? (
                 <span className="text-xs font-medium text-primary shrink-0">
                   Owner
                 </span>
               ) : isOwner ? (
-                <button type="button"
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0 hover:bg-basalt-destructive/10 hover:text-basalt-destructive"
                   onClick={(e) => handleKick(e, member)}
-                  className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
-                  title={`Remove ${member.name ?? "member"}`}
+                  aria-label={`Remove ${member.name ?? "member"}`}
                 >
                   <UserMinus className="h-3.5 w-3.5" strokeWidth={1.5} />
                   <span className="hidden sm:inline">Remove</span>
-                </button>
+                </Button>
               ) : (
                 <span className="text-xs font-medium text-muted-foreground shrink-0">
                   Member
@@ -853,14 +822,11 @@ export default function TeamDetailPage() {
                 ? "You cannot delete this team while other members remain. Remove all members first, or leave the team."
                 : "Leave this team. You can rejoin if you have a valid invite code."}
           </p>
-          <button type="button"
+          <Button
+            type="button"
+            size="sm"
+            variant={isSoloOwner ? "destructive" : "secondary"}
             onClick={handleLeaveOrDelete}
-            className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-              isSoloOwner
-                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                : "border border-border text-muted-foreground hover:text-foreground hover:bg-accent",
-            )}
           >
             {isSoloOwner ? (
               <>
@@ -873,7 +839,7 @@ export default function TeamDetailPage() {
                 Leave Team
               </>
             )}
-          </button>
+          </Button>
         </div>
       </section>
 
