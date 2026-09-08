@@ -6,7 +6,9 @@
 
 import { useState, useCallback } from "react";
 import { Plus, Pencil, Trash2, Eye, EyeOff, ExternalLink, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
+import { Empty } from "@nocoo/basalt/components/empty";
 import { rowIconClassName, rowIconDangerClassName } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useShowcases, type Showcase } from "@/hooks/use-showcases";
@@ -73,9 +75,11 @@ export function MyShowcasesContent() {
   // Error state
   if (error) {
     return (
-      <div className="rounded-xl bg-destructive/10 p-4 text-sm text-destructive">
-        Failed to load showcases: {error}
-      </div>
+      <Banner
+        variant="error"
+        title="Failed to load showcases"
+        description={error}
+      />
     );
   }
 
@@ -88,13 +92,10 @@ export function MyShowcasesContent() {
     <div className="space-y-4">
       {/* Add button */}
       <div className="flex justify-end">
-        <button type="button"
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-        >
+        <Button type="button" onClick={() => setShowAddModal(true)}>
           <Plus className="h-4 w-4" strokeWidth={1.5} />
           Add Showcase
-        </button>
+        </Button>
       </div>
 
       {/* Delete feedback */}
@@ -102,18 +103,17 @@ export function MyShowcasesContent() {
 
       {/* Empty state */}
       {showcases.length === 0 && (
-        <div className="rounded-xl bg-secondary p-8 text-center">
-          <p className="text-muted-foreground">
-            You haven&apos;t submitted any showcases yet.
-          </p>
-          <button type="button"
-            onClick={() => setShowAddModal(true)}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            <Plus className="h-4 w-4" strokeWidth={1.5} />
-            Add Your First Showcase
-          </button>
-        </div>
+        <Empty
+          title="No showcases yet"
+          description="You haven't submitted any showcases yet."
+          className="rounded-basalt-card bg-basalt-secondary p-8"
+          action={
+            <Button type="button" onClick={() => setShowAddModal(true)}>
+              <Plus className="h-4 w-4" strokeWidth={1.5} />
+              Add Your First Showcase
+            </Button>
+          }
+        />
       )}
 
       {/* Showcase list */}
