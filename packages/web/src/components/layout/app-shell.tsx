@@ -39,9 +39,6 @@ export function AppShell({ children }: AppShellProps) {
   }, [mobileOpen]);
 
   const items = breadcrumbsFromPathname(pathname);
-  const current = items.at(-1);
-  const crumbs = items.slice(0, -1);
-  const title = current?.label ?? "";
 
   return (
     <BasaltAppShell>
@@ -74,8 +71,7 @@ export function AppShell({ children }: AppShellProps) {
               </Button>
             ) : null
           }
-          breadcrumbs={crumbs}
-          title={title}
+          breadcrumbs={items}
           actions={
             <>
               <Button
