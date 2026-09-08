@@ -1,5 +1,6 @@
 "use client";
 
+import "@/basalt-tw-source";
 import { TooltipProvider } from "@nocoo/basalt/components/tooltip";
 import { AccentProvider } from "@nocoo/basalt/providers/accent";
 import { LinkProvider } from "@nocoo/basalt/providers/link";

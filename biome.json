@@ -109,6 +109,16 @@
 	},
 	"overrides": [
 		{
+			"includes": ["packages/web/src/app/globals.css"],
+			"linter": {
+				"rules": {
+					"correctness": {
+						"noInvalidPositionAtImportRule": "off"
+					}
+				}
+			}
+		},
+		{
 			"includes": [
 				"**/*.test.ts",
 				"**/*.test.tsx",
