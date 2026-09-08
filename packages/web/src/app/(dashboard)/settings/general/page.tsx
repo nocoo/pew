@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
 import { Separator } from "@/components/ui/separator";
+import { Field } from "@nocoo/basalt/components/field";
+import { Input } from "@nocoo/basalt/components/input";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 
 // ---------------------------------------------------------------------------
@@ -208,23 +210,20 @@ export default function SettingsPage() {
         </h2>
         <div className="rounded-xl bg-secondary p-5 space-y-4">
           {/* Nickname */}
-          <div>
-            <label htmlFor="nickname" className="block text-xs font-medium text-muted-foreground mb-1.5">
-              Leaderboard Nickname
-            </label>
-            <input
+          <Field
+            label="Leaderboard Nickname"
+            htmlFor="nickname"
+            hint="Displayed on the leaderboard instead of your real name. Leave empty to use your Google name."
+          >
+            <Input
               id="nickname"
               type="text"
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               placeholder={userName}
               maxLength={32}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
             />
-            <p className="mt-1 text-[10px] text-muted-foreground">
-              Displayed on the leaderboard instead of your real name. Leave empty to use your Google name.
-            </p>
-          </div>
+          </Field>
 
           {/* Slug */}
           <div>

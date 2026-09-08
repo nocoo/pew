@@ -1,70 +1,19 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
 import { Button } from "@nocoo/basalt/components/button";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@nocoo/basalt/components/popover";
-import {
-  Globe,
-  ChevronDown,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@nocoo/basalt/components/dropdown-menu";
+import { Globe, ChevronDown } from "lucide-react";
 import { TeamLogoIcon, OrgLogoIcon } from "@/components/leaderboard/logo-icons";
 import type { ScopeSelection, Organization, Team } from "@/lib/leaderboard-scope";
 
-// Re-export for existing consumers
 export type { ScopeSelection, Organization, Team } from "@/lib/leaderboard-scope";
-// Re-export removed 2026-07-08 (G1 cleanup): tests and other callers import
-// these directly from `@/lib/leaderboard-scope`.
 
-
-// ---------------------------------------------------------------------------
-// DropdownItem
-// ---------------------------------------------------------------------------
-
-function DropdownItem({
-  active,
-  onClick,
-  children,
-  id,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-  id: string;
-}) {
-  return (
-    <div
-      role="option"
-      id={id}
-      aria-selected={active}
-      tabIndex={-1}
-      onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClick();
-        }
-      }}
-      className={cn(
-        "flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-1.5 text-sm transition-colors outline-none",
-        "focus-visible:ring-2 focus-visible:ring-ring",
-        active
-          ? "bg-accent text-foreground"
-          : "text-muted-foreground hover:bg-accent hover:text-foreground",
-      )}
-    >
-      {children}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// ScopeDropdown
-// ---------------------------------------------------------------------------
+const iconClass = "h-3.5 w-3.5 shrink-0 text-basalt-muted-foreground";
 
 export function ScopeDropdown({
   value,
@@ -77,73 +26,12 @@ export function ScopeDropdown({
   organizations: Organization[];
   teams: Team[];
 }) {
-  const [open, setOpen] = useState(false);
-  const listboxRef = useRef<HTMLDivElement>(null);
+  if (organizations.length === 0 && teams.length === 0) return null;
 
-  const iconClass = "h-3.5 w-3.5 shrink-0 text-muted-foreground";
-
-  // Determine which option is currently selected
-  const activeId = value.type === "global"
-    ? "scope-global"
-    : value.type === "org"
-      ? `scope-org-${value.id}`
-      : `scope-team-${value.id}`;
-
-  // Roving focus: arrow keys move focus among [role="option"] elements
-  const handleListboxKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      const container = listboxRef.current;
-      if (!container) return;
-      const items = Array.from(
-        container.querySelectorAll<HTMLElement>('[role="option"]'),
-      );
-      if (items.length === 0) return;
-
-      const current = document.activeElement as HTMLElement;
-      const idx = items.indexOf(current);
-
-      let next: HTMLElement | undefined;
-      switch (e.key) {
-        case "ArrowDown":
-          e.preventDefault();
-          next = items[(idx + 1) % items.length];
-          break;
-        case "ArrowUp":
-          e.preventDefault();
-          next = items[(idx - 1 + items.length) % items.length];
-          break;
-        case "Home":
-          e.preventDefault();
-          next = items[0];
-          break;
-        case "End":
-          e.preventDefault();
-          next = items[items.length - 1];
-          break;
-      }
-      next?.focus();
-    },
-    [],
-  );
-
-  // Auto-focus the selected option (or first) when popover opens
-  const handleOpenAutoFocus = useCallback(
-    (e: Event) => {
-      e.preventDefault(); // prevent Radix from focusing the content wrapper
-      const container = listboxRef.current;
-      if (!container) return;
-      const target =
-        container.querySelector<HTMLElement>(`#${CSS.escape(activeId)}`) ??
-        container.querySelector<HTMLElement>('[role="option"]');
-      target?.focus();
-    },
-    [activeId],
-  );
-
-  // Find selected item for trigger label
   const selectedOrg = value.type === "org" ? organizations.find((o) => o.id === value.id) : null;
   const selectedTeam = value.type === "team" ? teams.find((t) => t.id === value.id) : null;
-  const label = value.type === "global" ? "Global" : selectedOrg?.name ?? selectedTeam?.name ?? "Global";
+  const label =
+    value.type === "global" ? "Global" : (selectedOrg?.name ?? selectedTeam?.name ?? "Global");
 
   const labelIcon =
     value.type === "global" ? (
@@ -156,105 +44,44 @@ export function ScopeDropdown({
       <Globe className={iconClass} strokeWidth={1.5} />
     );
 
-  // Hide dropdown if no orgs or teams
-  if (organizations.length === 0 && teams.length === 0) return null;
-
-  const select = (scope: ScopeSelection) => {
-    onChange(scope);
-    setOpen(false);
-  };
-
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="secondary"
-          role="combobox"
-          aria-expanded={open}
-          aria-haspopup="listbox"
-          aria-controls="scope-listbox"
-        >
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="secondary">
           {labelIcon}
           {label}
-          <ChevronDown
-            className={cn(
-              "h-3.5 w-3.5 text-basalt-muted-foreground transition-transform duration-200",
-              open && "rotate-180",
-            )}
-            strokeWidth={1.5}
-          />
+          <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.5} />
         </Button>
-      </PopoverTrigger>
-      <PopoverContent
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
         align="start"
-        className="min-w-[180px] max-h-[320px] overflow-y-auto p-1"
-        onOpenAutoFocus={handleOpenAutoFocus}
+        className="max-h-[min(24rem,var(--radix-dropdown-menu-content-available-height))] overflow-y-auto"
       >
-        {/* Roving focus: real DOM focus moves to options, no aria-activedescendant needed */}
-        <div
-          ref={listboxRef}
-          id="scope-listbox"
-          role="listbox"
-          aria-label="Leaderboard scope"
-          onKeyDown={handleListboxKeyDown}
-        >
-          {/* Global option */}
-          <DropdownItem
-            id="scope-global"
-            active={value.type === "global"}
-            onClick={() => select({ type: "global" })}
+        <DropdownMenuItem className="gap-2" onSelect={() => onChange({ type: "global" })}>
+          <Globe className={iconClass} strokeWidth={1.5} />
+          Global
+        </DropdownMenuItem>
+        {organizations.map((org) => (
+          <DropdownMenuItem
+            key={org.id}
+            className="gap-2"
+            onSelect={() => onChange({ type: "org", id: org.id })}
           >
-            <Globe className={iconClass} strokeWidth={1.5} />
-            Global
-          </DropdownItem>
-
-          {/* Organizations group */}
-          {organizations.length > 0 && (
-            <>
-              <div
-                role="presentation"
-                className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-1"
-              >
-                Organizations
-              </div>
-              {organizations.map((org) => (
-                <DropdownItem
-                  key={org.id}
-                  id={`scope-org-${org.id}`}
-                  active={value.type === "org" && value.id === org.id}
-                  onClick={() => select({ type: "org", id: org.id })}
-                >
-                  <OrgLogoIcon logoUrl={org.logoUrl} name={org.name} />
-                  {org.name}
-                </DropdownItem>
-              ))}
-            </>
-          )}
-
-          {/* Teams group */}
-          {teams.length > 0 && (
-            <>
-              <div
-                role="presentation"
-                className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mt-1"
-              >
-                Teams
-              </div>
-              {teams.map((team) => (
-                <DropdownItem
-                  key={team.id}
-                  id={`scope-team-${team.id}`}
-                  active={value.type === "team" && value.id === team.id}
-                  onClick={() => select({ type: "team", id: team.id })}
-                >
-                  <TeamLogoIcon logoUrl={team.logoUrl} name={team.name} />
-                  {team.name}
-                </DropdownItem>
-              ))}
-            </>
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
+            <OrgLogoIcon logoUrl={org.logoUrl} name={org.name} />
+            {org.name}
+          </DropdownMenuItem>
+        ))}
+        {teams.map((team) => (
+          <DropdownMenuItem
+            key={team.id}
+            className="gap-2"
+            onSelect={() => onChange({ type: "team", id: team.id })}
+          >
+            <TeamLogoIcon logoUrl={team.logoUrl} name={team.name} />
+            {team.name}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

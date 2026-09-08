@@ -1,8 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@nocoo/basalt/components/button";
+import { Empty } from "@nocoo/basalt/components/empty";
+import { Input } from "@nocoo/basalt/components/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@nocoo/basalt/components/select";
 import { cn } from "@/lib/utils";
 import type { DynamicPricingEntryDto } from "@/lib/rpc-types";
 import {
@@ -82,50 +91,65 @@ export function PricingTable({ entries }: Props) {
 
   if (entries.length === 0) {
     return (
-      <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
-        No pricing data available — check the meta banner for sync status.
-      </div>
+      <Empty
+        className="rounded-basalt-card bg-basalt-secondary p-8"
+        title="No pricing data available"
+        description="Check the meta banner for sync status."
+      />
     );
   }
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2 items-center">
-        <input
+        <Input
           type="search"
           value={filter}
-          onChange={(e) => { setFilter(e.target.value); resetPage(); }}
+          onChange={(e) => {
+            setFilter(e.target.value);
+            resetPage();
+          }}
           placeholder="Filter by model, display name, or provider…"
-          className="w-full max-w-sm rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
+          className="w-full max-w-sm"
         />
-        <div className="relative flex items-center rounded-lg bg-secondary p-1">
-          <span className="pl-2 pr-1 text-xs text-muted-foreground select-none">Provider:</span>
-          <select
-            value={provider}
-            onChange={(e) => { setProvider(e.target.value); resetPage(); }}
-            className="appearance-none rounded-md bg-transparent pl-2 pr-6 py-1.5 text-xs font-medium text-foreground outline-none cursor-pointer"
-          >
-            <option value="">All</option>
+        <Select
+          value={provider === "" ? "__all__" : provider}
+          onValueChange={(next) => {
+            setProvider(next === "__all__" ? "" : next);
+            resetPage();
+          }}
+        >
+          <SelectTrigger size="sm" aria-label="Provider" className="w-40">
+            <SelectValue placeholder="Provider" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All providers</SelectItem>
             {providers.map((p) => (
-              <option key={p} value={p}>{p}</option>
+              <SelectItem key={p} value={p}>
+                {p}
+              </SelectItem>
             ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" strokeWidth={2} />
-        </div>
-        <div className="relative flex items-center rounded-lg bg-secondary p-1">
-          <span className="pl-2 pr-1 text-xs text-muted-foreground select-none">Origin:</span>
-          <select
-            value={origin}
-            onChange={(e) => { setOrigin(e.target.value); resetPage(); }}
-            className="appearance-none rounded-md bg-transparent pl-2 pr-6 py-1.5 text-xs font-medium text-foreground outline-none cursor-pointer"
-          >
-            <option value="">All</option>
+          </SelectContent>
+        </Select>
+        <Select
+          value={origin === "" ? "__all__" : origin}
+          onValueChange={(next) => {
+            setOrigin(next === "__all__" ? "" : next);
+            resetPage();
+          }}
+        >
+          <SelectTrigger size="sm" aria-label="Origin" className="w-36">
+            <SelectValue placeholder="Origin" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All origins</SelectItem>
             {KNOWN_ORIGINS.map((o) => (
-              <option key={o} value={o}>{o}</option>
+              <SelectItem key={o} value={o}>
+                {o}
+              </SelectItem>
             ))}
-          </select>
-          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" strokeWidth={2} />
-        </div>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="rounded-xl bg-secondary p-1 overflow-x-auto">
