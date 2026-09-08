@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { Building2, Users, Check, Loader2, X } from "lucide-react";
@@ -85,6 +85,12 @@ export default function OrganizationsPage() {
   // Members modal state
   const [membersModalOrg, setMembersModalOrg] = useState<Organization | null>(null);
   const [members, setMembers] = useState<OrgMember[]>([]);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
+  const wasMembersOpenRef = useRef(false);
+  if (membersModalOrg !== null && !wasMembersOpenRef.current) {
+    restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }
+  wasMembersOpenRef.current = membersModalOrg !== null;
   const [loadingMembers, setLoadingMembers] = useState(false);
 
   // ---------------------------------------------------------------------------
@@ -283,7 +289,12 @@ export default function OrganizationsPage() {
       </section>
 
       <Dialog open={membersModalOrg !== null} onOpenChange={(next) => { if (!next) closeMembersModal(); }}>
-        <DialogContent>
+        <DialogContent
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            restoreFocusRef.current?.focus();
+          }}
+        >
           <DialogClose asChild>
             <Button
               variant="ghost"
