@@ -3,9 +3,19 @@
 import { useMemo, useState } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
-import { Building2, Users, Check, Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Building2, Users, Check, Loader2, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@nocoo/basalt/components/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@nocoo/basalt/components/dialog";
+import { Empty } from "@nocoo/basalt/components/empty";
+import { chromeIconClassName } from "@/lib/ghost-icon";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 
 // ---------------------------------------------------------------------------
@@ -194,11 +204,10 @@ export default function OrganizationsPage() {
         </h2>
 
         {organizations.length === 0 ? (
-          <div className="rounded-xl bg-secondary p-8 text-center">
-            <p className="text-sm text-muted-foreground">
-              No organizations available yet.
-            </p>
-          </div>
+          <Empty
+            title="No organizations available yet."
+            className="rounded-basalt-card bg-basalt-secondary p-8"
+          />
         ) : (
           <div className="rounded-xl bg-secondary divide-y divide-border overflow-hidden">
             {organizations.map((org) => {
@@ -239,7 +248,10 @@ export default function OrganizationsPage() {
                   </div>
 
                   {/* Join/Leave button */}
-                  <button type="button"
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={isMember ? "secondary" : "default"}
                     onClick={(e) => {
                       e.stopPropagation();
                       if (isPending) return;
@@ -250,13 +262,7 @@ export default function OrganizationsPage() {
                       }
                     }}
                     disabled={isPending}
-                    className={cn(
-                      "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-                      isMember
-                        ? "bg-primary/10 text-primary hover:bg-primary/20"
-                        : "bg-accent text-foreground hover:bg-accent/80 border border-border",
-                      isPending && "opacity-50 cursor-not-allowed"
-                    )}
+                    loading={isPending}
                   >
                     {isPending ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -268,7 +274,7 @@ export default function OrganizationsPage() {
                     ) : (
                       "Join"
                     )}
-                  </button>
+                  </Button>
                 </div>
               );
             })}
@@ -276,104 +282,86 @@ export default function OrganizationsPage() {
         )}
       </section>
 
-      {/* Members Modal */}
-      {membersModalOrg && (
-        // biome-ignore lint/a11y/useSemanticElements: modal backdrop overlay — a real <button> would interfere with the child dialog's own interaction/focus semantics.
-        <div
-          role="button"
-          tabIndex={0}
-          aria-label="Close members modal"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
-          onClick={closeMembersModal}
-          onKeyDown={(e) => {
-            if (e.key === "Escape" || e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              closeMembersModal();
-            }
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="w-full max-w-md mx-4 rounded-xl bg-background border border-border shadow-xl max-h-[80vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center gap-3 p-4 border-b border-border">
-              <Avatar className="h-8 w-8">
-                {membersModalOrg.logoUrl && (
-                  <AvatarImage src={membersModalOrg.logoUrl} alt={membersModalOrg.name} />
-                )}
-                <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                  {membersModalOrg.name[0]?.toUpperCase() ?? "?"}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-semibold text-foreground truncate">
-                  {membersModalOrg.name}
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  {membersModalOrg.memberCount} {membersModalOrg.memberCount === 1 ? "member" : "members"}
-                </p>
-              </div>
-              <button type="button"
-                onClick={closeMembersModal}
-                className="text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <svg aria-hidden="true" className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Members list */}
-            <div className="flex-1 overflow-y-auto p-4">
-              {loadingMembers ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                </div>
-              ) : members.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  No members yet.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
-                    <Users className="h-3.5 w-3.5" strokeWidth={1.5} />
-                    Members
+      <Dialog open={membersModalOrg !== null} onOpenChange={(next) => { if (!next) closeMembersModal(); }}>
+        <DialogContent>
+          <DialogClose asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`absolute top-4 right-4 ${chromeIconClassName}`}
+              aria-label="Close"
+            >
+              <X aria-hidden="true" strokeWidth={1.5} />
+            </Button>
+          </DialogClose>
+          {membersModalOrg ? (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-3 pr-8">
+                  <Avatar className="h-8 w-8">
+                    {membersModalOrg.logoUrl && (
+                      <AvatarImage src={membersModalOrg.logoUrl} alt={membersModalOrg.name} />
+                    )}
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                      {membersModalOrg.name[0]?.toUpperCase() ?? "?"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <DialogTitle className="truncate text-sm">
+                      {membersModalOrg.name}
+                    </DialogTitle>
+                    <DialogDescription>
+                      {membersModalOrg.memberCount}{" "}
+                      {membersModalOrg.memberCount === 1 ? "member" : "members"}
+                    </DialogDescription>
                   </div>
-                  {members.map((member) => (
-                    <div
-                      key={member.id}
-                      className="flex items-center gap-3 rounded-lg bg-secondary p-3"
-                    >
-                      <Avatar className="h-8 w-8">
-                        {member.user.image && (
-                          <AvatarImage src={member.user.image} alt={member.user.name ?? "User"} />
-                        )}
-                        <AvatarFallback className="bg-accent text-foreground text-xs">
-                          {member.user.name?.[0]?.toUpperCase() ?? "?"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {member.user.name ?? "Anonymous"}
-                        </p>
-                        {member.user.slug && (
-                          <p className="text-xs text-muted-foreground truncate">
-                            @{member.user.slug}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+              </DialogHeader>
+              <div className="mt-4">
+                {loadingMembers ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : members.length === 0 ? (
+                  <Empty title="No members yet." />
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+                      <Users className="h-3.5 w-3.5" strokeWidth={1.5} />
+                      Members
+                    </div>
+                    {members.map((member) => (
+                      <div
+                        key={member.id}
+                        className="flex items-center gap-3 rounded-lg bg-secondary p-3"
+                      >
+                        <Avatar className="h-8 w-8">
+                          {member.user.image && (
+                            <AvatarImage src={member.user.image} alt={member.user.name ?? "User"} />
+                          )}
+                          <AvatarFallback className="bg-accent text-foreground text-xs">
+                            {member.user.name?.[0]?.toUpperCase() ?? "?"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {member.user.name ?? "Anonymous"}
+                          </p>
+                          {member.user.slug && (
+                            <p className="text-xs text-muted-foreground truncate">
+                              @{member.user.slug}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
