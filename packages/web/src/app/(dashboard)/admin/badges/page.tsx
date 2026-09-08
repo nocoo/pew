@@ -277,33 +277,25 @@ function CreateBadgeDialog({ open, onClose, onCreated }: CreateBadgeDialogProps)
           <div>
             <div className="mb-1 flex items-center justify-between">
               <span className="text-sm font-medium">Icon</span>
-              <button
-                type="button"
-                onClick={randomize}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-              >
+              <Button type="button" variant="ghost" size="sm" onClick={randomize}>
                 <Shuffle className="h-3 w-3" />
                 Randomize
-              </button>
+              </Button>
             </div>
             <div className="flex flex-wrap gap-2">
               {ICONS.map((i) => {
                 const IconComp = i.icon;
                 return (
-                  <button
+                  <Button
                     key={i.value}
                     type="button"
+                    variant={icon === i.value ? "secondary" : "outline"}
+                    size="icon"
                     onClick={() => setIcon(i.value)}
-                    className={cn(
-                      "flex h-10 w-10 items-center justify-center rounded-lg border transition-colors",
-                      icon === i.value
-                        ? "border-primary bg-primary/10"
-                        : "border-border hover:border-primary/50",
-                    )}
-                    title={i.label}
+                    aria-label={i.label}
                   >
                     <IconComp className="h-5 w-5" strokeWidth={1.5} />
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -314,18 +306,20 @@ function CreateBadgeDialog({ open, onClose, onCreated }: CreateBadgeDialogProps)
             <span className="mb-1 block text-sm font-medium">Color</span>
             <div className="flex gap-2">
               {PALETTES.map((p) => (
-                <button
+                <Button
                   key={p.value}
                   type="button"
+                  variant="outline"
+                  size="icon"
                   onClick={() => setPalette(p.value)}
                   className={cn(
-                    "h-10 w-10 rounded-lg border transition-colors",
+                    "h-10 w-10",
                     palette === p.value
                       ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
                       : "hover:ring-1 hover:ring-primary/50",
                   )}
                   style={{ backgroundColor: p.bg }}
-                  title={p.label}
+                  aria-label={p.label}
                 />
               ))}
             </div>
@@ -781,21 +775,21 @@ function BadgeDefinitionRow({ badge, onArchive, onUnarchive }: BadgeRowProps) {
       </div>
       <div className="flex items-center gap-2">
         {badge.is_archived === 0 ? (
-          <button type="button"
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="hover:bg-basalt-destructive/10 hover:text-basalt-destructive"
             onClick={onArchive}
-            className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
           >
             <Archive className="h-4 w-4" />
             Archive
-          </button>
+          </Button>
         ) : (
-          <button type="button"
-            onClick={onUnarchive}
-            className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:bg-success/10 hover:text-success"
-          >
+          <Button type="button" variant="ghost" size="sm" onClick={onUnarchive}>
             <ArchiveRestore className="h-4 w-4" />
             Unarchive
-          </button>
+          </Button>
         )}
       </div>
     </div>
@@ -855,13 +849,16 @@ function AssignmentRow({ assignment, onRevoke }: AssignmentRowProps) {
         )}
       </div>
       {canRevoke && (
-        <button type="button"
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="hover:bg-basalt-destructive/10 hover:text-basalt-destructive"
           onClick={onRevoke}
-          className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
         >
           <Ban className="h-4 w-4" />
           {assignment.status === "active" ? "Revoke" : "Clear"}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -1019,28 +1016,22 @@ export default function AdminBadgesPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 rounded-lg bg-secondary/50 p-1">
-        <button type="button"
+        <Button
+          type="button"
+          variant={activeTab === "definitions" ? "secondary" : "ghost"}
+          className="flex-1"
           onClick={() => setActiveTab("definitions")}
-          className={cn(
-            "flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors",
-            activeTab === "definitions"
-              ? "bg-background shadow-sm"
-              : "text-muted-foreground hover:text-foreground",
-          )}
         >
           Definitions ({badges.length})
-        </button>
-        <button type="button"
+        </Button>
+        <Button
+          type="button"
+          variant={activeTab === "assignments" ? "secondary" : "ghost"}
+          className="flex-1"
           onClick={() => setActiveTab("assignments")}
-          className={cn(
-            "flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors",
-            activeTab === "assignments"
-              ? "bg-background shadow-sm"
-              : "text-muted-foreground hover:text-foreground",
-          )}
         >
           Assignments ({assignments.length})
-        </button>
+        </Button>
       </div>
 
       {/* Error */}
@@ -1080,18 +1071,16 @@ export default function AdminBadgesPage() {
           {/* Status filter */}
           <div className="mb-4 flex gap-2">
             {(["all", "active", "expired", "revoked", "cleared"] as const).map((s) => (
-              <button type="button"
+              <Button
+                type="button"
                 key={s}
+                size="sm"
+                variant={statusFilter === s ? "default" : "secondary"}
+                className="capitalize"
                 onClick={() => setStatusFilter(s)}
-                className={cn(
-                  "rounded-full px-3 py-1 text-sm capitalize transition-colors",
-                  statusFilter === s
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-secondary text-muted-foreground hover:text-foreground",
-                )}
               >
                 {s}
-              </button>
+              </Button>
             ))}
           </div>
 
