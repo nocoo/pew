@@ -17,6 +17,7 @@ import {
   Pencil,
   X,
 } from "lucide-react";
+import { Badge } from "@nocoo/basalt/components/badge";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
@@ -87,11 +88,7 @@ function SeasonRow({
             {season.name}
           </p>
           <StatusBadge status={season.status} />
-          {season.is_registered && (
-            <span className="inline-flex items-center rounded-full bg-primary/15 text-primary border border-primary/25 px-2 py-0.5 text-xs font-medium">
-              Registered
-            </span>
-          )}
+          {season.is_registered && <Badge variant="info">Registered</Badge>}
         </div>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {formatSeasonDate(season.start_date)} – {formatSeasonDate(season.end_date)}
