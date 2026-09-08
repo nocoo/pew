@@ -34,7 +34,7 @@ export interface HeatmapCalendarProps {
 
 const heatmapColorScales = {
   green: [
-    "hsl(var(--muted))",
+    "hsl(var(--basalt-muted))",
     "hsl(var(--heatmap-green-1))",
     "hsl(var(--heatmap-green-2))",
     "hsl(var(--heatmap-green-3))",

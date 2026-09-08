@@ -20,7 +20,7 @@ export function PageHeader({ children }: { children: React.ReactNode }) {
         aria-hidden="true"
         style={{
           background:
-            "radial-gradient(ellipse 80% 60% at 50% 0%, hsl(var(--primary) / 0.08) 0%, transparent 70%)",
+            "radial-gradient(ellipse 80% 60% at 50% 0%, hsl(var(--basalt-primary) / 0.08) 0%, transparent 70%)",
         }}
       />
       <div

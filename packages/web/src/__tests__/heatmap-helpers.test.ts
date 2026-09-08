@@ -8,12 +8,12 @@ import { getHeatmapColor, HOUR_LABELS } from "@/lib/heatmap-helpers";
 describe("getHeatmapColor", () => {
   it("returns empty color for value 0", () => {
     const result = getHeatmapColor(0, 100);
-    expect(result).toBe("hsl(var(--muted))");
+    expect(result).toBe("hsl(var(--basalt-muted))");
   });
 
   it("returns empty color when maxValue is 0", () => {
     const result = getHeatmapColor(5, 0);
-    expect(result).toBe("hsl(var(--muted))");
+    expect(result).toBe("hsl(var(--basalt-muted))");
   });
 
   it("returns alpha 0.3 for ratio <= 0.25", () => {

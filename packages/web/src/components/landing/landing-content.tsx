@@ -107,7 +107,7 @@ function SpaceshipIcon({ className }: { className?: string }) {
         d="M12 7.5 C16 5.5 24 5 30 7.2 C33 8.2 35.5 9.2 37 10 C35.5 10.8 33 11.8 30 12.8 C24 15 16 14.5 12 12.5 C11 12 10.5 11 10.5 10 C10.5 9 11 8 12 7.5 Z"
         fill="currentColor"
       />
-      <ellipse cx="26" cy="10" rx="3.2" ry="2" fill="hsl(var(--background))" opacity="0.9" />
+      <ellipse cx="26" cy="10" rx="3.2" ry="2" fill="hsl(var(--basalt-background))" opacity="0.9" />
     </svg>
   );
 }
@@ -318,7 +318,7 @@ function BoardingCoupon() {
         className={cn(
           "mt-auto inline-flex h-10 w-full items-center justify-center gap-1.5",
           "rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground",
-          "shadow-[0_8px_20px_-10px_hsl(var(--primary)/0.65)]",
+          "shadow-[0_8px_20px_-10px_hsl(var(--basalt-primary)/0.65)]",
           "transition-[transform,background-color] duration-200",
           "hover:bg-primary/90",
           "focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",

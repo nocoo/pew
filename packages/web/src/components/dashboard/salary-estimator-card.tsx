@@ -518,10 +518,10 @@ function SliderControl({
           border-radius: 3px;
           background: linear-gradient(
             to right,
-            hsl(var(--primary)) 0%,
-            hsl(var(--primary)) var(--slider-pct),
-            hsl(var(--muted)) var(--slider-pct),
-            hsl(var(--muted)) 100%
+            hsl(var(--basalt-primary)) 0%,
+            hsl(var(--basalt-primary)) var(--slider-pct),
+            hsl(var(--basalt-muted)) var(--slider-pct),
+            hsl(var(--basalt-muted)) 100%
           );
           cursor: pointer;
         }
@@ -532,8 +532,8 @@ function SliderControl({
           width: 16px;
           height: 16px;
           border-radius: 50%;
-          background: hsl(var(--primary));
-          border: 2px solid hsl(var(--background));
+          background: hsl(var(--basalt-primary));
+          border: 2px solid hsl(var(--basalt-background));
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
           cursor: pointer;
           transition: transform 0.1s ease;
@@ -547,8 +547,8 @@ function SliderControl({
           width: 16px;
           height: 16px;
           border-radius: 50%;
-          background: hsl(var(--primary));
-          border: 2px solid hsl(var(--background));
+          background: hsl(var(--basalt-primary));
+          border: 2px solid hsl(var(--basalt-background));
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
           cursor: pointer;
         }
@@ -558,7 +558,7 @@ function SliderControl({
         }
 
         .slider-input:focus::-webkit-slider-thumb {
-          box-shadow: 0 0 0 3px hsl(var(--primary) / 0.2);
+          box-shadow: 0 0 0 3px hsl(var(--basalt-primary) / 0.2);
         }
       `}</style>
     </div>

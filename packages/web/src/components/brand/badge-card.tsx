@@ -250,14 +250,14 @@ export function BadgeAmbientGlow() {
       style={{
         background: [
           "radial-gradient(ellipse 70% 55% at 50% 50%,",
-          "hsl(var(--foreground) / 0.045) 0%,",
-          "hsl(var(--foreground) / 0.042) 10%,",
-          "hsl(var(--foreground) / 0.036) 20%,",
-          "hsl(var(--foreground) / 0.028) 32%,",
-          "hsl(var(--foreground) / 0.020) 45%,",
-          "hsl(var(--foreground) / 0.012) 58%,",
-          "hsl(var(--foreground) / 0.006) 72%,",
-          "hsl(var(--foreground) / 0.002) 86%,",
+          "hsl(var(--basalt-foreground) / 0.045) 0%,",
+          "hsl(var(--basalt-foreground) / 0.042) 10%,",
+          "hsl(var(--basalt-foreground) / 0.036) 20%,",
+          "hsl(var(--basalt-foreground) / 0.028) 32%,",
+          "hsl(var(--basalt-foreground) / 0.020) 45%,",
+          "hsl(var(--basalt-foreground) / 0.012) 58%,",
+          "hsl(var(--basalt-foreground) / 0.006) 72%,",
+          "hsl(var(--basalt-foreground) / 0.002) 86%,",
           "transparent 100%)",
         ].join(" "),
       }}

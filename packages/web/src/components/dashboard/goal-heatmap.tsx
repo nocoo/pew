@@ -17,7 +17,7 @@ import {
 // ---------------------------------------------------------------------------
 
 const goalColorScale = [
-  "hsl(var(--muted))",
+  "hsl(var(--basalt-muted))",
   "hsl(var(--heatmap-goal-red))",
   "hsl(var(--heatmap-goal-yellow))",
   "hsl(var(--heatmap-goal-green))",

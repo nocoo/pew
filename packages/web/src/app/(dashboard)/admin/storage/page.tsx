@@ -312,7 +312,7 @@ export default function AdminStoragePage() {
     const confirmed = await confirm({
       title: "Clear all cache entries?",
       description: "This cannot be undone.",
-      confirmText: "Clear All",
+      confirmLabel: "Clear All",
       variant: "destructive",
     });
     if (!confirmed) return;
@@ -560,7 +560,7 @@ export default function AdminStoragePage() {
               ) : (
                 <div className="rounded-xl bg-secondary overflow-x-auto flex-1 lg:overflow-y-auto min-h-0">
                   <table className="w-full">
-                    <thead className="sticky top-0 z-10 bg-secondary shadow-[0_1px_0_0_hsl(var(--border)/0.3)]">
+                    <thead className="sticky top-0 z-10 bg-secondary shadow-[0_1px_0_0_hsl(var(--basalt-border)/0.3)]">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
                           User

@@ -7,7 +7,7 @@
 
 import { withAlpha } from "@/lib/palette";
 
-export const EMPTY_COLOR = "hsl(var(--muted))";
+export const EMPTY_COLOR = "hsl(var(--basalt-muted))";
 
 /**
  * Map a session count to a CSS color string at one of four intensity levels.
