@@ -1,7 +1,7 @@
 "use client";
 
-import { ToggleGroup, ToggleGroupItem } from "@nocoo/basalt/components/toggle-group";
 import { PERIOD_OPTIONS, type Period } from "@/lib/date-helpers";
+import { cn } from "@/lib/utils";
 
 export { periodToDateRange, periodLabel } from "@/lib/date-helpers";
 export type { Period } from "@/lib/date-helpers";
@@ -13,19 +13,22 @@ interface PeriodSelectorProps {
 
 export function PeriodSelector({ value, onChange }: PeriodSelectorProps) {
   return (
-    <ToggleGroup
-      type="single"
-      value={value}
-      onValueChange={(next) => {
-        if (next) onChange(next as Period);
-      }}
-      aria-label="Period"
-    >
+    <div className="flex items-center gap-1 rounded-lg bg-basalt-muted p-1">
       {PERIOD_OPTIONS.map((opt) => (
-        <ToggleGroupItem key={opt.value} value={opt.value}>
+        <button
+          type="button"
+          key={opt.value}
+          onClick={() => onChange(opt.value)}
+          className={cn(
+            "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
+            value === opt.value
+              ? "bg-basalt-bright text-basalt-foreground shadow-sm"
+              : "text-basalt-muted-foreground hover:text-basalt-foreground",
+          )}
+        >
           {opt.label}
-        </ToggleGroupItem>
+        </button>
       ))}
-    </ToggleGroup>
+    </div>
   );
 }

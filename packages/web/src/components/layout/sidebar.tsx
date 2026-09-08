@@ -4,7 +4,6 @@ import {
   Avatar,
   AvatarFallback,
   AvatarImage,
-  Button,
   Sidebar as BasaltSidebar,
   SidebarFooter,
   SidebarGroup,
@@ -163,15 +162,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <SidebarHeader className="justify-start px-0 pl-6">
           <PewMark />
         </SidebarHeader>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="mb-1 self-center"
+        <button
+          type="button"
           onClick={onToggle}
           aria-label="Expand sidebar"
+          className="mb-2 flex h-10 w-10 items-center justify-center self-center rounded-lg text-basalt-muted-foreground transition-colors hover:bg-basalt-accent hover:text-basalt-foreground"
         >
-          <PanelLeft aria-hidden="true" />
-        </Button>
+          <PanelLeft className="h-4 w-4" aria-hidden="true" strokeWidth={1.5} />
+        </button>
         <SidebarNav className="w-full items-center gap-1 pt-1">
           {allNavItems.map((item) => (
             <Tooltip key={item.href} delayDuration={0}>
@@ -225,15 +223,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               v{APP_VERSION}
             </span>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 shrink-0"
+          <button
+            type="button"
             onClick={onToggle}
             aria-label="Collapse sidebar"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-basalt-muted-foreground transition-colors hover:text-basalt-foreground"
           >
-            <PanelLeft aria-hidden="true" />
-          </Button>
+            <PanelLeft className="h-4 w-4" aria-hidden="true" strokeWidth={1.5} />
+          </button>
         </div>
       </SidebarHeader>
       <SidebarNav className="pt-1">
@@ -266,15 +263,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           action={
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 shrink-0"
+                <button
+                  type="button"
                   onClick={() => signOut({ callbackUrl: "/login" })}
                   aria-label="Sign out"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-basalt-muted-foreground transition-colors hover:bg-basalt-accent hover:text-basalt-foreground"
                 >
-                  <LogOut aria-hidden="true" />
-                </Button>
+                  <LogOut className="h-4 w-4" aria-hidden="true" strokeWidth={1.5} />
+                </button>
               </TooltipTrigger>
               <TooltipContent side="top">Sign out</TooltipContent>
             </Tooltip>
