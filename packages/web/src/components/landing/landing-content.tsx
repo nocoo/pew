@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Check, Copy, Terminal } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import { ClipboardText } from "@nocoo/basalt/components/clipboard-text";
 import {
   BADGE_CARD_SHADOW,
   PassHeader,
@@ -113,57 +113,7 @@ function SpaceshipIcon({ className }: { className?: string }) {
 }
 
 function InstallCommand() {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(INSTALL_CMD);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      aria-label={copied ? "Copied install command" : `Copy install command: ${INSTALL_CMD}`}
-      className={cn(
-        "group flex w-full min-w-0 items-center gap-1.5 overflow-x-auto rounded-lg",
-        "border border-border bg-card px-2 py-2 sm:gap-2 sm:px-2.5",
-        "font-mono text-[11px] sm:text-xs",
-        "transition-colors duration-200 hover:bg-accent",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        "cursor-pointer text-left scrollbar-hide",
-      )}
-    >
-      <Terminal
-        className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-foreground"
-        strokeWidth={1.75}
-        aria-hidden="true"
-      />
-      <span className="select-none text-muted-foreground" aria-hidden="true">
-        $
-      </span>
-      <code className="min-w-0 shrink whitespace-nowrap text-foreground">
-        {INSTALL_CMD}
-      </code>
-      <span className="min-w-2 flex-1" aria-hidden="true" />
-      <span
-        className={cn(
-          "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors",
-          copied
-            ? "bg-success/15 text-success"
-            : "bg-secondary text-muted-foreground group-hover:text-foreground",
-        )}
-        aria-hidden="true"
-      >
-        {copied ? (
-          <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
-        ) : (
-          <Copy className="h-3.5 w-3.5" strokeWidth={2} />
-        )}
-      </span>
-    </button>
-  );
+  return <ClipboardText text={INSTALL_CMD} className="w-full max-w-full" />;
 }
 
 // ---------------------------------------------------------------------------
