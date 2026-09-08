@@ -78,7 +78,8 @@ test.describe("Feature: Collaboration", () => {
       // Given: E2E_SKIP_AUTH=true is set by the runner
       // When: visit /settings/general and click the sidebar Organizations link
       await page.goto("/settings/general");
-      const orgItem = page.locator("aside nav").getByRole("button", { name: "Organizations" });
+      // Settings and Admin both label this item "Organizations"; Settings is first.
+      const orgItem = page.locator("aside nav").getByRole("button", { name: "Organizations" }).first();
       await expect(orgItem).toBeVisible();
       await orgItem.click();
       await expect(page).toHaveURL(/\/settings\/organizations/);
