@@ -20,6 +20,8 @@ import {
   Users,
 } from "lucide-react";
 import { Github } from "@/components/icons/github";
+import { Button } from "@nocoo/basalt/components/button";
+import { rowIconClassName, rowIconDangerClassName } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ShowcaseImage } from "@/components/showcase";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
@@ -284,17 +286,16 @@ export function AdminShowcasesContent() {
           </span>
         </div>
 
-        <button type="button"
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(rowIconClassName, "h-8 w-8 [&_svg]:size-4", loading && "animate-spin")}
           onClick={() => fetchData()}
           disabled={loading}
-          className={cn(
-            "flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors",
-            loading && "animate-spin"
-          )}
-          title="Refresh"
+          aria-label="Refresh"
         >
-          <RefreshCw className="h-4 w-4" strokeWidth={1.5} />
-        </button>
+          <RefreshCw strokeWidth={1.5} />
+        </Button>
       </div>
 
       {/* Action feedback */}
@@ -423,26 +424,30 @@ export function AdminShowcasesContent() {
                     {/* Actions */}
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-1">
-                        <button type="button"
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={rowIconClassName}
                           onClick={() => handleToggleVisibility(showcase.id, showcase.is_public)}
                           disabled={isLoading}
-                          className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
-                          title={showcase.is_public ? "Hide" : "Show"}
+                          aria-label={showcase.is_public ? "Hide" : "Show"}
                         >
                           {showcase.is_public ? (
-                            <EyeOff className="h-3.5 w-3.5" strokeWidth={1.5} />
+                            <EyeOff strokeWidth={1.5} />
                           ) : (
-                            <Eye className="h-3.5 w-3.5" strokeWidth={1.5} />
+                            <Eye strokeWidth={1.5} />
                           )}
-                        </button>
-                        <button type="button"
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={rowIconDangerClassName}
                           onClick={() => handleDelete(showcase.id)}
                           disabled={isLoading}
-                          className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
-                          title="Delete"
+                          aria-label="Delete"
                         >
-                          <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-                        </button>
+                          <Trash2 strokeWidth={1.5} />
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -456,35 +461,31 @@ export function AdminShowcasesContent() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 pt-2">
-          <button type="button"
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
             onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
             disabled={offset === 0 || loading}
-            className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-md border border-border transition-colors",
-              offset === 0 || loading
-                ? "opacity-50 cursor-not-allowed"
-                : "hover:bg-accent hover:text-foreground"
-            )}
+            aria-label="Previous page"
           >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
+            <ChevronLeft strokeWidth={1.5} />
+          </Button>
 
           <span className="text-sm text-muted-foreground tabular-nums px-2">
             Page {currentPage} of {totalPages}
           </span>
 
-          <button type="button"
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
             onClick={() => setOffset(offset + PAGE_SIZE)}
             disabled={currentPage >= totalPages || loading}
-            className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-md border border-border transition-colors",
-              currentPage >= totalPages || loading
-                ? "opacity-50 cursor-not-allowed"
-                : "hover:bg-accent hover:text-foreground"
-            )}
+            aria-label="Next page"
           >
-            <ChevronRight className="h-4 w-4" />
-          </button>
+            <ChevronRight strokeWidth={1.5} />
+          </Button>
         </div>
       )}
 

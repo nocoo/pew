@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { Settings, Target } from "lucide-react";
+import { Button } from "@nocoo/basalt/components/button";
+import { rowIconClassName } from "@/components/ui/button";
 import { cn, formatTokens } from "@/lib/utils";
 import { HeatmapCalendar, type HeatmapDataPoint } from "./heatmap-calendar";
 import {
@@ -68,13 +70,15 @@ export function GoalHeatmap({ data, year, className }: GoalHeatmapProps) {
             Goal Tracker
           </span>
         </div>
-        <button type="button"
+        <Button
+          variant="ghost"
+          size="icon"
+          className={rowIconClassName}
           onClick={() => setSettingsOpen(true)}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
           aria-label="Goal settings"
         >
-          <Settings className="h-3.5 w-3.5" strokeWidth={1.5} />
-        </button>
+          <Settings strokeWidth={1.5} />
+        </Button>
       </div>
 
       {/* Header: achievement rate + days on target — fixed height for alignment */}

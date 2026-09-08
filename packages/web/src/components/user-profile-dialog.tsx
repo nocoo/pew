@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { Button } from "@nocoo/basalt/components/button";
+import { chromeIconClassName } from "@/components/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -103,8 +104,8 @@ function ConfigLoadingSkeleton({
           </div>
         </div>
         <DialogClose asChild>
-          <Button variant="ghost" size="icon" aria-label="Close">
-            <X aria-hidden="true" />
+          <Button variant="ghost" size="icon" className={chromeIconClassName} aria-label="Close">
+            <X aria-hidden="true" strokeWidth={1.5} />
           </Button>
         </DialogClose>
       </div>
@@ -217,7 +218,7 @@ function ProfileDialogHeader({
           </div>
           {user && (
             <p className="flex items-center gap-1.5 text-sm text-muted-foreground mt-0.5">
-              <Calendar className="h-3.5 w-3.5" />
+              <Calendar className="h-3.5 w-3.5" strokeWidth={1.5} />
               Member since {formatMemberSince(user.created_at)}
               {isAdmin && user.first_seen && (
                 <span className="text-muted-foreground/60">
@@ -229,8 +230,8 @@ function ProfileDialogHeader({
         </div>
       </div>
       <DialogClose asChild>
-        <Button variant="ghost" size="icon" aria-label="Close">
-          <X aria-hidden="true" />
+        <Button variant="ghost" size="icon" className={chromeIconClassName} aria-label="Close">
+          <X aria-hidden="true" strokeWidth={1.5} />
         </Button>
       </DialogClose>
     </div>

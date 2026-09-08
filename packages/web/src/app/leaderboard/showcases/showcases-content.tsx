@@ -7,6 +7,8 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@nocoo/basalt/components/button";
+import { rowIconClassName } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useShowcases, type Showcase } from "@/hooks/use-showcases";
 import { ShowcaseCard, ShowcaseFormModal } from "@/components/showcase";
@@ -81,17 +83,16 @@ export function ShowcasesContent({ isLoggedIn }: ShowcasesContentProps) {
           <span className="text-sm text-muted-foreground">
             {total} {total === 1 ? "showcase" : "showcases"}
           </span>
-          <button type="button"
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(rowIconClassName, refreshing && "animate-spin")}
             onClick={() => refetch()}
             disabled={refreshing}
-            className={cn(
-              "flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors",
-              refreshing && "animate-spin"
-            )}
-            title="Refresh"
+            aria-label="Refresh"
           >
-            <RefreshCw className="h-3.5 w-3.5" strokeWidth={1.5} />
-          </button>
+            <RefreshCw strokeWidth={1.5} />
+          </Button>
         </div>
 
         {isLoggedIn && (
@@ -140,35 +141,31 @@ export function ShowcasesContent({ isLoggedIn }: ShowcasesContentProps) {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 pt-4">
-          <button type="button"
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
             onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
             disabled={offset === 0}
-            className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-md border border-border transition-colors",
-              offset === 0
-                ? "opacity-50 cursor-not-allowed"
-                : "hover:bg-accent hover:text-foreground"
-            )}
+            aria-label="Previous page"
           >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
+            <ChevronLeft strokeWidth={1.5} />
+          </Button>
 
           <span className="text-sm text-muted-foreground tabular-nums px-2">
             Page {currentPage} of {totalPages}
           </span>
 
-          <button type="button"
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
             onClick={() => setOffset(offset + PAGE_SIZE)}
             disabled={currentPage >= totalPages}
-            className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-md border border-border transition-colors",
-              currentPage >= totalPages
-                ? "opacity-50 cursor-not-allowed"
-                : "hover:bg-accent hover:text-foreground"
-            )}
+            aria-label="Next page"
           >
-            <ChevronRight className="h-4 w-4" />
-          </button>
+            <ChevronRight strokeWidth={1.5} />
+          </Button>
         </div>
       )}
 

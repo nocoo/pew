@@ -301,6 +301,7 @@ function CompareResultContent() {
             <Button
               variant="outline"
               size="icon"
+              className="h-8 w-8 text-basalt-muted-foreground"
               aria-label="Back to user selection"
               onClick={() => router.push(`/admin/compare?userIds=${userIdsParam}`)}
             >

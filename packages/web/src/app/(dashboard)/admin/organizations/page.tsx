@@ -19,6 +19,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { Button } from "@nocoo/basalt/components/button";
+import { rowIconClassName, rowIconDangerClassName } from "@/components/ui/button";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { useAdmin } from "@/hooks/use-admin";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -895,30 +896,36 @@ export default function AdminOrganizationsPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-end gap-1">
-                            <button type="button"
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={rowIconClassName}
                               onClick={() => {
                                 setEditingId(row.id);
                                 setShowCreate(false);
                               }}
-                              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                              title="Edit"
+                              aria-label="Edit"
                             >
-                              <Pencil className="h-3.5 w-3.5" strokeWidth={1.5} />
-                            </button>
-                            <button type="button"
+                              <Pencil strokeWidth={1.5} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={rowIconClassName}
                               onClick={() => setMembersOrg(row)}
-                              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                              title="View members"
+                              aria-label="View members"
                             >
-                              <Users className="h-3.5 w-3.5" strokeWidth={1.5} />
-                            </button>
-                            <button type="button"
+                              <Users strokeWidth={1.5} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={rowIconDangerClassName}
                               onClick={() => handleDelete(row)}
-                              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                              title="Delete"
+                              aria-label="Delete"
                             >
-                              <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-                            </button>
+                              <Trash2 strokeWidth={1.5} />
+                            </Button>
                           </div>
                         </td>
                       </tr>

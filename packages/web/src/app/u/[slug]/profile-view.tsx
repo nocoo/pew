@@ -6,7 +6,9 @@ import {
   ArrowLeft,
   ShieldCheck,
 } from "lucide-react";
+import { Button } from "@nocoo/basalt/components/button";
 import { Github } from "@/components/icons/github";
+import { chromeIconClassName } from "@/components/ui/button";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -24,22 +26,21 @@ import { ProfileContent } from "@/components/profile/profile-content";
 function TopRightIcons() {
   return (
     <div className="absolute right-6 top-4 z-50 flex items-center gap-1">
-      <a
-        href="/privacy"
-        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-[color] duration-200 hover:text-foreground"
-        aria-label="Privacy policy"
-      >
-        <ShieldCheck className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
-      </a>
-      <a
-        href="https://github.com/nocoo/pew"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-[color] duration-200 hover:text-foreground"
-        aria-label="View source on GitHub"
-      >
-        <Github className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
-      </a>
+      <Button variant="ghost" size="icon" className={chromeIconClassName} asChild>
+        <a href="/privacy" aria-label="Privacy policy">
+          <ShieldCheck strokeWidth={1.5} aria-hidden="true" />
+        </a>
+      </Button>
+      <Button variant="ghost" size="icon" className={chromeIconClassName} asChild>
+        <a
+          href="https://github.com/nocoo/pew"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="View source on GitHub"
+        >
+          <Github strokeWidth={1.5} aria-hidden="true" />
+        </a>
+      </Button>
       <ThemeToggle />
     </div>
   );

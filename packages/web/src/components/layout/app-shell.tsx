@@ -3,6 +3,7 @@
 import { AppHeader } from "@nocoo/basalt/components/app-header";
 import { AppMain, AppShell as BasaltAppShell, AppSkipLink } from "@nocoo/basalt/components/app-shell";
 import { Button, ContentIsland, Sheet, SheetContent, SheetTitle } from "@nocoo/basalt";
+import { chromeIconClassName } from "@/components/ui/button";
 import { Menu, ShieldCheck } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -66,7 +67,7 @@ export function AppShell({ children }: AppShellProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-basalt-muted-foreground hover:text-basalt-foreground"
+                className={chromeIconClassName}
                 onClick={() => setMobileOpen(true)}
                 aria-label="Open navigation"
               >
@@ -81,7 +82,7 @@ export function AppShell({ children }: AppShellProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-basalt-muted-foreground hover:text-basalt-foreground [&_svg]:size-[18px]"
+                className={chromeIconClassName}
                 asChild
               >
                 <a href="/privacy" aria-label="Privacy policy">
@@ -91,7 +92,7 @@ export function AppShell({ children }: AppShellProps) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 text-basalt-muted-foreground hover:text-basalt-foreground [&_svg]:size-[18px]"
+                className={chromeIconClassName}
                 asChild
               >
                 <a

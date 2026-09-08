@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { Button } from "@nocoo/basalt/components/button";
+import { rowIconClassName } from "@/components/ui/button";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
@@ -984,63 +985,62 @@ function SeasonTableRow({
         <td className="px-4 py-3">
           <div className="flex items-center justify-end gap-1">
             {/* Edit */}
-            <button type="button"
+            <Button
+              variant="ghost"
+              size="icon"
+              className={rowIconClassName}
               onClick={onEdit}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              title="Edit season"
+              aria-label="Edit season"
             >
-              <Pencil className="h-3.5 w-3.5" strokeWidth={1.5} />
-            </button>
+              <Pencil strokeWidth={1.5} />
+            </Button>
 
             {/* View teams */}
             {row.team_count > 0 && (
-              <button type="button"
+              <Button
+                variant="ghost"
+                size="icon"
+                className={rowIconClassName}
                 onClick={onToggleTeams}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                title="View registered teams"
+                aria-label="View registered teams"
               >
                 {isExpanded ? (
-                  <ChevronUp className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  <ChevronUp strokeWidth={1.5} />
                 ) : (
-                  <Users className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  <Users strokeWidth={1.5} />
                 )}
-              </button>
+              </Button>
             )}
 
             {/* Sync rosters */}
             {row.status === "active" && row.allow_roster_changes && (
-              <button type="button"
+              <Button
+                variant="ghost"
+                size="icon"
+                className={rowIconClassName}
                 onClick={onSyncRosters}
                 disabled={syncing === row.id}
-                className={cn(
-                  "flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors",
-                  syncing === row.id && "opacity-50 cursor-not-allowed",
-                )}
-                title="Sync rosters"
+                aria-label="Sync rosters"
               >
                 <RefreshCw
-                  className={cn(
-                    "h-3.5 w-3.5",
-                    syncing === row.id && "animate-spin",
-                  )}
+                  className={cn(syncing === row.id && "animate-spin")}
                   strokeWidth={1.5}
                 />
-              </button>
+              </Button>
             )}
 
             {/* Snapshot */}
             {row.status === "ended" && (
-              <button type="button"
+              <Button
+                variant="ghost"
+                size="icon"
+                className={rowIconClassName}
                 onClick={onSnapshot}
                 disabled={snapshotting === row.id}
-                className={cn(
-                  "flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors",
-                  snapshotting === row.id && "opacity-50 cursor-not-allowed",
-                )}
-                title="Generate snapshot"
+                aria-label="Generate snapshot"
               >
-                <Camera className="h-3.5 w-3.5" strokeWidth={1.5} />
-              </button>
+                <Camera strokeWidth={1.5} />
+              </Button>
             )}
           </div>
         </td>

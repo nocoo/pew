@@ -26,6 +26,7 @@ import { DashboardSegment } from "@/components/dashboard/dashboard-segment";
 import { ModelInfoTooltip } from "@/components/dashboard/model-info-tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@nocoo/basalt/components/button";
+import { ghostIconClassName } from "@/components/ui/button";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import {
   groupByDate,
@@ -371,7 +372,7 @@ export default function DailyUsagePage() {
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-basalt-muted-foreground hover:text-basalt-foreground"
+              className={`${ghostIconClassName} h-8 w-8`}
               onClick={goToPrevMonth}
               aria-label="Previous month"
             >
@@ -384,7 +385,7 @@ export default function DailyUsagePage() {
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 text-basalt-muted-foreground hover:text-basalt-foreground"
+              className={`${ghostIconClassName} h-8 w-8`}
               onClick={goToNextMonth}
               disabled={isCurrentMonth}
               aria-label="Next month"

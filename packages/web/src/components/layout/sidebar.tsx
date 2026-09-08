@@ -54,6 +54,7 @@ import {
   type NavGroupDef,
 } from "@/lib/navigation";
 import { APP_VERSION } from "@/lib/version";
+import { ghostIconClassName } from "@/components/ui/button";
 
 const ICON_MAP: Record<string, ElementType> = {
   LayoutDashboard,
@@ -166,7 +167,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="mb-2 h-10 w-10 self-center text-basalt-muted-foreground hover:bg-basalt-accent hover:text-basalt-foreground"
+          className={`${ghostIconClassName} mb-2 h-10 w-10 self-center hover:bg-basalt-accent`}
           onClick={onToggle}
           aria-label="Expand sidebar"
         >
@@ -228,7 +229,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 shrink-0 text-basalt-muted-foreground hover:text-basalt-foreground"
+            className={`${ghostIconClassName} h-7 w-7 shrink-0`}
             onClick={onToggle}
             aria-label="Collapse sidebar"
           >
@@ -269,7 +270,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 shrink-0 text-basalt-muted-foreground hover:bg-basalt-accent hover:text-basalt-foreground"
+                  className={`${ghostIconClassName} h-8 w-8 shrink-0 hover:bg-basalt-accent`}
                   onClick={() => signOut({ callbackUrl: "/login" })}
                   aria-label="Sign out"
                 >

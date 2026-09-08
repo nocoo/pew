@@ -13,6 +13,7 @@ import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
 import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
 import { Button } from "@nocoo/basalt/components/button";
+import { rowIconDangerClassName } from "@/components/ui/button";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { toErrorMessage } from "@/lib/error-message";
 import type { InviteCodeRow } from "@/lib/rpc-types";
@@ -562,25 +563,24 @@ export default function AdminInvitesPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end">
                           {isDeletable(row) && (
-                            <button type="button"
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={rowIconDangerClassName}
                               onClick={() =>
                                 handleDelete(
                                   row.id,
                                   row.used_by?.startsWith("pending:") ?? false
                                 )
                               }
-                              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                              title={
+                              aria-label={
                                 row.used_by?.startsWith("pending:")
                                   ? "Reclaim burned code"
                                   : "Delete"
                               }
                             >
-                              <Trash2
-                                className="h-3.5 w-3.5"
-                                strokeWidth={1.5}
-                              />
-                            </button>
+                              <Trash2 strokeWidth={1.5} />
+                            </Button>
                           )}
                         </div>
                       </td>

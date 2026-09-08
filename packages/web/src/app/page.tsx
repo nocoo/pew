@@ -1,4 +1,5 @@
 import { Button } from "@nocoo/basalt/components/button";
+import { chromeIconClassName } from "@/components/ui/button";
 import { ShieldCheck } from "lucide-react";
 import { BadgeAmbientGlow } from "@/components/brand/badge-card";
 import { Github } from "@/components/icons/github";
@@ -15,7 +16,7 @@ export default function LandingPage() {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-basalt-muted-foreground hover:text-basalt-foreground [&_svg]:size-[18px]"
+          className={chromeIconClassName}
           asChild
         >
           <a href="/privacy" aria-label="Privacy policy">
@@ -25,7 +26,7 @@ export default function LandingPage() {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 text-basalt-muted-foreground hover:text-basalt-foreground [&_svg]:size-[18px]"
+          className={chromeIconClassName}
           asChild
         >
           <a

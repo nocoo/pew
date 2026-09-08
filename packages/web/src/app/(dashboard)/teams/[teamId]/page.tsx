@@ -17,6 +17,8 @@ import {
   Pencil,
   X,
 } from "lucide-react";
+import { Button } from "@nocoo/basalt/components/button";
+import { rowIconClassName } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -731,13 +733,15 @@ export default function TeamDetailPage() {
                   {team.name}
                 </h1>
                 {isOwner && (
-                  <button type="button"
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`${rowIconClassName} shrink-0 text-basalt-muted-foreground/50 group-hover/name:text-basalt-muted-foreground`}
                     onClick={startEditing}
-                    className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/50 group-hover/name:text-muted-foreground hover:!text-foreground hover:bg-accent transition-colors shrink-0"
-                    title="Rename team"
+                    aria-label="Rename team"
                   >
-                    <Pencil className="h-3.5 w-3.5" strokeWidth={1.5} />
-                  </button>
+                    <Pencil strokeWidth={1.5} />
+                  </Button>
                 )}
               </div>
             )}

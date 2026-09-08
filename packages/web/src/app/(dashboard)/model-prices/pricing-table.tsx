@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@nocoo/basalt/components/button";
 import { cn } from "@/lib/utils";
 import type { DynamicPricingEntryDto } from "@/lib/rpc-types";
 import {
@@ -217,23 +218,29 @@ export function PricingTable({ entries }: Props) {
         </span>
         {totalPages > 1 && (
           <div className="flex items-center gap-1">
-            <button type="button"
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={safePage === 0}
-              className="rounded p-1 hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              aria-label="Previous page"
             >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
+              <ChevronLeft strokeWidth={1.5} />
+            </Button>
             <span className="px-2">
               {safePage + 1} / {totalPages}
             </span>
-            <button type="button"
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={safePage >= totalPages - 1}
-              className="rounded p-1 hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              aria-label="Next page"
             >
-              <ChevronRight className="h-4 w-4" />
-            </button>
+              <ChevronRight strokeWidth={1.5} />
+            </Button>
           </div>
         )}
       </div>

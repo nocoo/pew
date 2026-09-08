@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@nocoo/basalt/components/button";
+import { chromeIconClassName } from "@/components/ui/button";
 import { Input } from "@nocoo/basalt/components/input";
 import { LoadingScreen } from "@nocoo/basalt/components/loading-screen";
 import { signIn } from "next-auth/react";
@@ -81,7 +82,7 @@ function LoginContent() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-basalt-muted-foreground hover:text-basalt-foreground [&_svg]:size-[18px]"
+            className={chromeIconClassName}
             asChild
           >
             <a

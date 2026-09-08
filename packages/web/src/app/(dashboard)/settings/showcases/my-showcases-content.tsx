@@ -6,6 +6,8 @@
 
 import { useState, useCallback } from "react";
 import { Plus, Pencil, Trash2, Eye, EyeOff, ExternalLink, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@nocoo/basalt/components/button";
+import { rowIconClassName, rowIconDangerClassName } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useShowcases, type Showcase } from "@/hooks/use-showcases";
 import { ShowcaseImage, ShowcaseFormModal } from "@/components/showcase";
@@ -181,22 +183,26 @@ export function MyShowcasesContent() {
 
             {/* Actions */}
             <div className="shrink-0 flex items-center gap-1">
-              <button type="button"
+              <Button
+                variant="ghost"
+                size="icon"
+                className={rowIconClassName}
                 onClick={() => setEditShowcase(showcase)}
                 disabled={deleting === showcase.id}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50"
-                title="Edit"
+                aria-label="Edit"
               >
-                <Pencil className="h-3.5 w-3.5" strokeWidth={1.5} />
-              </button>
-              <button type="button"
+                <Pencil strokeWidth={1.5} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={rowIconDangerClassName}
                 onClick={() => handleDelete(showcase.id)}
                 disabled={deleting === showcase.id}
-                className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
-                title="Delete"
+                aria-label="Delete"
               >
-                <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-              </button>
+                <Trash2 strokeWidth={1.5} />
+              </Button>
             </div>
           </div>
         ))}
@@ -205,35 +211,31 @@ export function MyShowcasesContent() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 pt-2">
-          <button type="button"
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
             onClick={() => setOffset(Math.max(0, offset - PAGE_SIZE))}
             disabled={offset === 0 || loading}
-            className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-md border border-border transition-colors",
-              offset === 0 || loading
-                ? "opacity-50 cursor-not-allowed"
-                : "hover:bg-accent hover:text-foreground"
-            )}
+            aria-label="Previous page"
           >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
+            <ChevronLeft strokeWidth={1.5} />
+          </Button>
 
           <span className="text-sm text-muted-foreground tabular-nums px-2">
             Page {currentPage} of {totalPages}
           </span>
 
-          <button type="button"
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
             onClick={() => setOffset(offset + PAGE_SIZE)}
             disabled={currentPage >= totalPages || loading}
-            className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-md border border-border transition-colors",
-              currentPage >= totalPages || loading
-                ? "opacity-50 cursor-not-allowed"
-                : "hover:bg-accent hover:text-foreground"
-            )}
+            aria-label="Next page"
           >
-            <ChevronRight className="h-4 w-4" />
-          </button>
+            <ChevronRight strokeWidth={1.5} />
+          </Button>
         </div>
       )}
 
