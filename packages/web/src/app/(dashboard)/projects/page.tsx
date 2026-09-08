@@ -15,6 +15,8 @@ import {
 import { ProjectShareChart } from "@/components/dashboard/project-share-chart";
 import type { ProjectBreakdownItem } from "@/lib/session-helpers";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
+import { Button } from "@nocoo/basalt/components/button";
+import { Input } from "@nocoo/basalt/components/input";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import {
   periodToDateRange,
@@ -218,26 +220,29 @@ function TagEditor({
           key={tag}
           className="inline-flex items-center gap-0.5 rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
         >
-          <button
+          <Button
             type="button"
-            className="hover:text-foreground transition-colors cursor-pointer"
+            variant="ghost"
+            className="h-auto px-0 py-0 text-[10px] hover:bg-transparent"
             onClick={() => onTagClick(tag)}
           >
             {tag}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="ml-0.5 hover:text-destructive transition-colors cursor-pointer"
+            variant="ghost"
+            size="icon"
+            className="ml-0.5 h-4 w-4 hover:text-basalt-destructive"
             onClick={() => onRemoveTag(project.id, tag)}
             aria-label={`Remove tag ${tag}`}
           >
             <X className="h-2.5 w-2.5" />
-          </button>
+          </Button>
         </span>
       ))}
       {editing ? (
         <div className="relative">
-          <input
+          <Input
             ref={inputRef}
             type="text"
             value={input}
@@ -252,42 +257,46 @@ function TagEditor({
               }
             }}
             onBlur={() => {
-              // Delay to allow suggestion click
               setTimeout(() => {
                 setInput("");
                 setEditing(false);
               }, 150);
             }}
             placeholder="tag..."
-            className="w-20 rounded bg-background px-1.5 py-0.5 text-[10px] text-foreground outline-none ring-1 ring-border focus:ring-primary"
+            className="h-6 w-20 px-1.5 py-0.5 text-[10px]"
+            aria-label="Add tag"
           />
           {suggestions.length > 0 && (
-            <div className="absolute left-0 top-full z-10 mt-1 rounded-md border border-border bg-secondary shadow-md">
+            <div className="absolute left-0 top-full z-10 mt-1">
               {suggestions.slice(0, 5).map((s) => (
-                <button
+                <Button
                   key={s}
                   type="button"
-                  className="block w-full px-2.5 py-1 text-left text-[10px] hover:bg-accent transition-colors cursor-pointer"
+                  variant="secondary"
+                  size="sm"
+                  className="block h-auto w-full justify-start px-2.5 py-1 text-[10px]"
                   onMouseDown={(e) => {
-                    e.preventDefault(); // prevent blur
+                    e.preventDefault();
                     handleAdd(s);
                   }}
                 >
                   {s}
-                </button>
+                </Button>
               ))}
             </div>
           )}
         </div>
       ) : (
-        <button
+        <Button
           type="button"
-          className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-accent hover:bg-accent/80 transition-colors cursor-pointer"
+          variant="secondary"
+          size="icon"
+          className="h-4 w-4 rounded-full"
           onClick={() => setEditing(true)}
           aria-label="Add tag"
         >
           <Plus className="h-2.5 w-2.5 text-muted-foreground" />
-        </button>
+        </Button>
       )}
     </div>
   );
