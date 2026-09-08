@@ -6,13 +6,14 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  ResponsiveContainer,
+
   CartesianGrid,
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { chart, chartAxis, CHART_COLORS } from "@/lib/palette";
 import type { ProjectBreakdownItem } from "@/lib/session-helpers";
 import { ChartTooltip, ChartTooltipRow } from "./chart-tooltip";
+import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -115,7 +116,7 @@ export function ProjectBreakdownChart({
       </p>
 
       <div style={{ height: chartHeight }}>
-        <ResponsiveContainer width="100%" height="100%">
+        <DashboardResponsiveContainer width="100%" height="100%">
           <BarChart
             data={chartData}
             layout="vertical"
@@ -149,7 +150,7 @@ export function ProjectBreakdownChart({
               radius={[0, 4, 4, 0]}
             />
           </BarChart>
-        </ResponsiveContainer>
+        </DashboardResponsiveContainer>
       </div>
     </div>
   );

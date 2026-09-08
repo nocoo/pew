@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Github } from "@/components/icons/github";
 import { Sidebar } from "./sidebar";
+import { SidebarAnimationProvider, useSidebarAnimation } from "./sidebar-animation";
 import { ThemeToggle } from "./theme-toggle";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { breadcrumbsFromPathname } from "@/lib/navigation";
@@ -16,10 +17,11 @@ interface AppShellProps {
   children: React.ReactNode;
 }
 
-export function AppShell({ children }: AppShellProps) {
+function AppShellInner({ children }: AppShellProps) {
   const isMobile = useIsMobile();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { begin: beginSidebarAnimation } = useSidebarAnimation();
   const pathname = usePathname();
   const prevPathname = useRef(pathname);
 
@@ -46,7 +48,13 @@ export function AppShell({ children }: AppShellProps) {
     <BasaltAppShell>
       <AppSkipLink>Skip to main content</AppSkipLink>
       {!isMobile ? (
-        <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((v) => !v)} />
+        <Sidebar
+          collapsed={collapsed}
+          onToggle={() => {
+            beginSidebarAnimation();
+            setCollapsed((v) => !v);
+          }}
+        />
       ) : (
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetContent
@@ -101,5 +109,13 @@ export function AppShell({ children }: AppShellProps) {
         </div>
       </AppMain>
     </BasaltAppShell>
+  );
+}
+
+export function AppShell({ children }: AppShellProps) {
+  return (
+    <SidebarAnimationProvider>
+      <AppShellInner>{children}</AppShellInner>
+    </SidebarAnimationProvider>
   );
 }
