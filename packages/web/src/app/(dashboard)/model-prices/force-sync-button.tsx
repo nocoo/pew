@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@/components/ui/button";
 import type { SyncOutcomeDto } from "@/lib/rpc-types";
 
@@ -61,17 +62,21 @@ export function ForceSyncButton({ onComplete }: Props) {
         {state.kind === "syncing" ? "Syncing…" : "Force sync"}
       </Button>
       {state.kind === "ok" && (
-        <span className="text-[10px] text-emerald-600 dark:text-emerald-400">
-          Synced {state.outcome.entriesWritten} entries
-        </span>
+        <Banner
+          variant="secondary"
+          size="sm"
+          description={`Synced ${state.outcome.entriesWritten} entries`}
+        />
       )}
       {state.kind === "partial" && (
-        <span className="text-[10px] text-yellow-600 dark:text-yellow-400">
-          Partial: {state.outcome.entriesWritten} written, {state.outcome.errors.length} failed
-        </span>
+        <Banner
+          variant="alert"
+          size="sm"
+          description={`Partial: ${state.outcome.entriesWritten} written, ${state.outcome.errors.length} failed`}
+        />
       )}
       {state.kind === "error" && (
-        <span className="text-[10px] text-destructive">{state.message}</span>
+        <Banner variant="error" size="sm" description={state.message} />
       )}
     </span>
   );

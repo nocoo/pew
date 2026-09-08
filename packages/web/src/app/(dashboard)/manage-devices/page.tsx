@@ -189,12 +189,11 @@ function DeviceCard({
 
       {/* Default device info badge */}
       {isDefault && (
-        <div className="flex items-start gap-2 rounded-lg bg-accent/50 px-3 py-2">
-          <Info className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" strokeWidth={1.5} />
-          <p className="text-[11px] text-muted-foreground">
-            Records from CLI versions before device tracking was added.
-          </p>
-        </div>
+        <Banner
+          size="sm"
+          icon={<Info className="h-3.5 w-3.5" strokeWidth={1.5} />}
+          description="Records from CLI versions before device tracking was added."
+        />
       )}
 
       {/* Stats row */}
