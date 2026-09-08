@@ -4,15 +4,18 @@ import { useState, useEffect, useCallback, useMemo, useId } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Copy, Check, ClipboardList } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Plus, Trash2 } from "lucide-react";
+
 import { useAdmin } from "@/hooks/use-admin";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
 import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
+import { Badge } from "@nocoo/basalt/components/badge";
 import { Button } from "@nocoo/basalt/components/button";
+import { ClipboardText } from "@nocoo/basalt/components/clipboard-text";
+import { Empty } from "@nocoo/basalt/components/empty";
 import { Field } from "@nocoo/basalt/components/field";
 import { Input } from "@nocoo/basalt/components/input";
 import { Switch } from "@nocoo/basalt/components/switch";
@@ -49,52 +52,12 @@ function InvitesSkeleton() {
 
 function StatusBadge({ usedBy }: { usedBy: string | null }) {
   if (!usedBy) {
-    return (
-      <span className="rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-medium text-success">
-        unused
-      </span>
-    );
+    return <Badge variant="success">unused</Badge>;
   }
   if (usedBy.startsWith("pending:")) {
-    return (
-      <span className="rounded-full bg-warning/15 px-2 py-0.5 text-[10px] font-medium text-warning">
-        pending
-      </span>
-    );
+    return <Badge variant="warning">pending</Badge>;
   }
-  return (
-    <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-      used
-    </span>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Copy button
-// ---------------------------------------------------------------------------
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <button type="button"
-      onClick={handleCopy}
-      className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-      title="Copy code"
-    >
-      {copied ? (
-        <Check className="h-3 w-3 text-success" strokeWidth={1.5} />
-      ) : (
-        <Copy className="h-3 w-3" strokeWidth={1.5} />
-      )}
-    </button>
-  );
+  return <Badge variant="secondary">used</Badge>;
 }
 
 // ---------------------------------------------------------------------------
@@ -153,7 +116,7 @@ export default function AdminInvitesPage() {
   const genCountId = `${uid}-gen-count`;
 
   // Copy all available
-  const [copiedAll, setCopiedAll] = useState(false);
+
   const { confirm, dialogProps } = useConfirm();
 
   // Derived: available codes + filtered rows
@@ -435,40 +398,24 @@ export default function AdminInvitesPage() {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 rounded-lg bg-secondary p-1">
             {(["all", "available"] as const).map((opt) => (
-              <button type="button"
+              <Button
+                type="button"
                 key={opt}
+                size="sm"
+                variant={statusFilter === opt ? "secondary" : "ghost"}
                 onClick={() => setStatusFilter(opt)}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
-                  statusFilter === opt
-                    ? "bg-secondary text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
               >
                 {opt === "all"
                   ? `All (${rows.length})`
                   : `Available (${availableCodes.length})`}
-              </button>
+              </Button>
             ))}
           </div>
           {availableCodes.length > 0 && (
-            <button type="button"
-              onClick={async () => {
-                const md = availableCodes.map((r) => `- ${r.code}`).join("\n");
-                await navigator.clipboard.writeText(md);
-                setCopiedAll(true);
-                setTimeout(() => setCopiedAll(false), 2000);
-              }}
-              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              title="Copy all available codes as Markdown list"
-            >
-              {copiedAll ? (
-                <Check className="h-3 w-3 text-success" strokeWidth={1.5} />
-              ) : (
-                <ClipboardList className="h-3 w-3" strokeWidth={1.5} />
-              )}
-              {copiedAll ? "Copied!" : "Copy Available"}
-            </button>
+            <ClipboardText
+              text="Copy available"
+              copyText={availableCodes.map((r) => `- ${r.code}`).join("\n")}
+            />
           )}
         </div>
       )}
@@ -479,11 +426,17 @@ export default function AdminInvitesPage() {
       {/* Table */}
       {!loading && (
         filteredRows.length === 0 ? (
-            <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
-              {statusFilter === "available"
-                ? "No available invite codes."
-                : "No invite codes yet. Generate some to get started."}
-            </div>
+            <Empty
+              title={
+                statusFilter === "available"
+                  ? "No available invite codes."
+                  : "No invite codes yet."
+              }
+              {...(statusFilter === "available"
+                ? {}
+                : { description: "Generate some to get started." })}
+              className="rounded-basalt-card bg-basalt-secondary p-8"
+            />
           ) : (
             <div className="rounded-xl bg-secondary p-1 overflow-x-auto">
               <table className="w-full">
@@ -520,7 +473,7 @@ export default function AdminInvitesPage() {
                           <span className="text-sm font-mono font-medium text-foreground">
                             {row.code}
                           </span>
-                          <CopyButton text={row.code} />
+                          <ClipboardText text={row.code} />
                         </div>
                       </td>
                       <td className="px-4 py-3">
