@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v2.29.1
+
+### Fixed
+- Use sidebar item for nav hover
+
 ## v2.29.0
 
 ### Added
