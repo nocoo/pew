@@ -6,7 +6,7 @@ import { AccentProvider } from "@nocoo/basalt/providers/accent";
 import { LinkProvider } from "@nocoo/basalt/providers/link";
 import { ThemeProvider } from "@nocoo/basalt/providers/theme";
 import NextLink from "next/link";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { AuthProvider } from "@/components/auth-provider";
 
 /** Electric Violet — pew brand accent, locked as the default primary. */
@@ -18,20 +18,21 @@ function AppLink({
   href,
   className,
   children,
+  ...props
 }: {
   href: string;
   className?: string;
   children?: ReactNode;
-}) {
+} & Omit<ComponentProps<"a">, "href">) {
   if (/^(https?:|mailto:|tel:)/.test(href)) {
     return (
-      <a href={href} className={className}>
+      <a href={href} className={className} {...props}>
         {children}
       </a>
     );
   }
   return (
-    <NextLink href={href} className={className}>
+    <NextLink href={href} className={className} {...(props as Omit<ComponentProps<typeof NextLink>, "href">)}>
       {children}
     </NextLink>
   );
