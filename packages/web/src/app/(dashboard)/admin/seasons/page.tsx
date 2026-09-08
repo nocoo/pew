@@ -24,6 +24,9 @@ import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { Button } from "@nocoo/basalt/components/button";
+import { Checkbox } from "@nocoo/basalt/components/checkbox";
+import { Field } from "@nocoo/basalt/components/field";
+import { Input } from "@nocoo/basalt/components/input";
 import { rowIconClassName } from "@/components/ui/button";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -279,111 +282,78 @@ function CreateSeasonForm({
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label htmlFor={nameId} className="block text-xs font-medium text-muted-foreground mb-1">
-            Name
-          </label>
-          <input
+        <Field label="Name" htmlFor={nameId}>
+          <Input
             id={nameId}
             type="text"
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
             placeholder="Season 1"
             maxLength={64}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
           />
-        </div>
-        <div>
-          <label htmlFor={slugId} className="block text-xs font-medium text-muted-foreground mb-1">
-            Slug
-          </label>
-          <input
+        </Field>
+        <Field label="Slug" htmlFor={slugId}>
+          <Input
             id={slugId}
             type="text"
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
             placeholder="season-1"
             maxLength={32}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
+            className="font-mono"
           />
-        </div>
-        <div>
-          <label htmlFor={startDateId} className="block text-xs font-medium text-muted-foreground mb-1">
-            Start Date
-          </label>
-          <input
+        </Field>
+        <Field label="Start Date" htmlFor={startDateId}>
+          <Input
             id={startDateId}
             type="datetime-local"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground tabular-nums focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
+            className="tabular-nums"
           />
-        </div>
-        <div>
-          <label htmlFor={endDateId} className="block text-xs font-medium text-muted-foreground mb-1">
-            End Date
-          </label>
-          <input
+        </Field>
+        <Field label="End Date" htmlFor={endDateId}>
+          <Input
             id={endDateId}
             type="datetime-local"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground tabular-nums focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
+            className="tabular-nums"
           />
-        </div>
+        </Field>
       </div>
-      <div className="mt-3">
-        <span className="block text-xs font-medium text-muted-foreground mb-2">
+      <Checkbox.Group
+        className="mt-3"
+        value={[
+          ...(allowLateRegistration ? ["late-reg"] : []),
+          ...(allowRosterChanges ? ["roster"] : []),
+          ...(allowLateWithdrawal ? ["late-wd"] : []),
+        ]}
+        onValueChange={(next) => {
+          setAllowLateRegistration(next.includes("late-reg"));
+          setAllowRosterChanges(next.includes("roster"));
+          setAllowLateWithdrawal(next.includes("late-wd"));
+        }}
+      >
+        <Checkbox.Legend className="text-xs font-medium text-muted-foreground">
           Rules
-        </span>
-        <div className="flex flex-col gap-2">
-          <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
-            <input
-              type="checkbox"
-              checked={allowLateRegistration}
-              onChange={(e) => setAllowLateRegistration(e.target.checked)}
-              className="rounded border-border"
-            />
-            Allow late registration
-          </label>
-          <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
-            <input
-              type="checkbox"
-              checked={allowRosterChanges}
-              onChange={(e) => setAllowRosterChanges(e.target.checked)}
-              className="rounded border-border"
-            />
-            Allow roster changes
-          </label>
-          <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
-            <input
-              type="checkbox"
-              checked={allowLateWithdrawal}
-              onChange={(e) => setAllowLateWithdrawal(e.target.checked)}
-              className="rounded border-border"
-            />
-            Allow late withdrawal
-          </label>
-        </div>
-      </div>
+        </Checkbox.Legend>
+        <Checkbox.Item value="late-reg">Allow late registration</Checkbox.Item>
+        <Checkbox.Item value="roster">Allow roster changes</Checkbox.Item>
+        <Checkbox.Item value="late-wd">Allow late withdrawal</Checkbox.Item>
+      </Checkbox.Group>
       <div className="flex items-center gap-2 mt-4">
-        <button type="button"
+        <Button
+          type="button"
           onClick={handleSubmit}
           disabled={submitting || !name.trim() || !slug.trim() || !startDate || !endDate}
-          className={cn(
-            "rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors",
-            (submitting || !name.trim() || !slug.trim() || !startDate || !endDate) &&
-              "opacity-50 cursor-not-allowed",
-          )}
+          loading={submitting}
         >
           {submitting ? "Creating..." : "Create"}
-        </button>
-        <button type="button"
-          onClick={onCancel}
-          className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-        >
+        </Button>
+        <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -472,121 +442,74 @@ function EditSeasonRow({
           </div>
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label htmlFor={nameId} className="block text-xs font-medium text-muted-foreground mb-1">
-              Name
-            </label>
-            <input
+          <Field label="Name" htmlFor={nameId}>
+            <Input
               id={nameId}
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={64}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
             />
-          </div>
-          <div>
-            <label htmlFor={slugId} className="block text-xs font-medium text-muted-foreground mb-1">
-              Slug (read-only)
-            </label>
-            <input
-              id={slugId}
-              type="text"
-              value={season.slug}
-              disabled
-              className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm text-muted-foreground font-mono cursor-not-allowed"
-            />
-          </div>
-          <div>
-            <label htmlFor={startDateId} className="block text-xs font-medium text-muted-foreground mb-1">
-              Start Date{!isUpcoming && " (locked)"}
-            </label>
-            <input
+          </Field>
+          <Field label="Slug (read-only)" htmlFor={slugId}>
+            <Input id={slugId} type="text" value={season.slug} disabled className="font-mono" />
+          </Field>
+          <Field label={`Start Date${!isUpcoming ? " (locked)" : ""}`} htmlFor={startDateId}>
+            <Input
               id={startDateId}
               type="datetime-local"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
               disabled={!isUpcoming}
-              className={cn(
-                "w-full rounded-lg border border-border px-3 py-2 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow",
-                isUpcoming
-                  ? "bg-background text-foreground"
-                  : "bg-muted text-muted-foreground cursor-not-allowed",
-              )}
+              className="tabular-nums"
             />
-          </div>
-          <div>
-            <label htmlFor={endDateId} className="block text-xs font-medium text-muted-foreground mb-1">
-              End Date{!isUpcoming && " (locked)"}
-            </label>
-            <input
+          </Field>
+          <Field label={`End Date${!isUpcoming ? " (locked)" : ""}`} htmlFor={endDateId}>
+            <Input
               id={endDateId}
               type="datetime-local"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               disabled={!isUpcoming}
-              className={cn(
-                "w-full rounded-lg border border-border px-3 py-2 text-sm tabular-nums focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow",
-                isUpcoming
-                  ? "bg-background text-foreground"
-                  : "bg-muted text-muted-foreground cursor-not-allowed",
-              )}
+              className="tabular-nums"
             />
-          </div>
+          </Field>
         </div>
-        <div className="mt-3">
-          <span className="block text-xs font-medium text-muted-foreground mb-2">
+        <Checkbox.Group
+          className="mt-3"
+          value={[
+            ...(allowLateRegistration ? ["late-reg"] : []),
+            ...(allowRosterChanges ? ["roster"] : []),
+            ...(allowLateWithdrawal ? ["late-wd"] : []),
+          ]}
+          onValueChange={(next) => {
+            setAllowLateRegistration(next.includes("late-reg"));
+            setAllowRosterChanges(next.includes("roster"));
+            setAllowLateWithdrawal(next.includes("late-wd"));
+          }}
+        >
+          <Checkbox.Legend className="text-xs font-medium text-muted-foreground">
             Rules
-          </span>
-          <div className="flex flex-col gap-2">
-            <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
-              <input
-                type="checkbox"
-                checked={allowLateRegistration}
-                onChange={(e) => setAllowLateRegistration(e.target.checked)}
-                className="rounded border-border"
-              />
-              Allow late registration
-            </label>
-            <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
-              <input
-                type="checkbox"
-                checked={allowRosterChanges}
-                onChange={(e) => setAllowRosterChanges(e.target.checked)}
-                className="rounded border-border"
-              />
-              Allow roster changes
-            </label>
-            <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
-              <input
-                type="checkbox"
-                checked={allowLateWithdrawal}
-                onChange={(e) => setAllowLateWithdrawal(e.target.checked)}
-                className="rounded border-border"
-              />
-              Allow late withdrawal
-            </label>
-          </div>
-        </div>
+          </Checkbox.Legend>
+          <Checkbox.Item value="late-reg">Allow late registration</Checkbox.Item>
+          <Checkbox.Item value="roster">Allow roster changes</Checkbox.Item>
+          <Checkbox.Item value="late-wd">Allow late withdrawal</Checkbox.Item>
+        </Checkbox.Group>
         <div className="flex items-center gap-2 mt-3">
-          <button type="button"
+          <Button
+            type="button"
+            size="sm"
             onClick={handleSave}
             disabled={submitting || !name.trim()}
-            className={cn(
-              "flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors",
-              (submitting || !name.trim()) && "opacity-50 cursor-not-allowed",
-            )}
+            loading={submitting}
           >
             <Check className="h-3.5 w-3.5" strokeWidth={1.5} />
             {submitting ? "Saving..." : "Save"}
-          </button>
-          <button type="button"
-            onClick={onCancel}
-            className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          >
+          </Button>
+          <Button type="button" size="sm" variant="secondary" onClick={onCancel}>
             <X className="h-3.5 w-3.5" strokeWidth={1.5} />
             Cancel
-          </button>
+          </Button>
         </div>
       </td>
     </tr>
