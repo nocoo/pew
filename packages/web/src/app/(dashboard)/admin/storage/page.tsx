@@ -18,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatTokens, formatTokensFull, formatDuration } from "@/lib/format";
 import { ErrorBanner } from "@/components/ui/error-banner";
+import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
 import { Input } from "@nocoo/basalt/components/input";
@@ -215,16 +216,19 @@ function SortHeader({
         className
       )}
     >
-      <button type="button"
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
         onClick={() => onSort(sortKey)}
         className={cn(
-          "inline-flex items-center gap-1 hover:text-foreground transition-colors ml-auto",
+          "ml-auto inline-flex h-auto items-center gap-1 px-0 py-0 text-xs font-medium hover:bg-transparent hover:text-foreground",
           isActive && "text-foreground"
         )}
       >
         {label}
         <Icon className="h-3 w-3" strokeWidth={1.5} />
-      </button>
+      </Button>
     </th>
   );
 }
@@ -608,9 +612,11 @@ export default function AdminStoragePage() {
                         >
                           {/* User */}
                           <td className="px-4 py-3">
-                            <button type="button"
+                            <Button
+                              type="button"
+                              variant="ghost"
                               onClick={() => openProfileDialog(user)}
-                              className="flex items-center gap-3 min-w-0 text-left hover:opacity-80 transition-opacity cursor-pointer"
+                              className="flex h-auto min-w-0 items-center gap-3 px-0 py-0 text-left hover:bg-transparent hover:opacity-80"
                             >
                               <Avatar className="h-7 w-7 shrink-0">
                                 {user.image && (
@@ -637,7 +643,7 @@ export default function AdminStoragePage() {
                                   {user.email ?? user.user_id}
                                 </p>
                               </div>
-                            </button>
+                            </Button>
                           </td>
                           {/* Usage rows */}
                           <td className="px-4 py-3 text-right">
@@ -684,10 +690,12 @@ export default function AdminStoragePage() {
                   <h2 className="font-medium">Edge Cache (KV)</h2>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button type="button"
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
                     onClick={fetchCacheKeys}
                     disabled={cacheLoading}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-secondary px-3 py-1.5 text-xs font-medium hover:bg-accent transition-colors disabled:opacity-50"
                   >
                     <RefreshCw
                       className={cn(
@@ -697,23 +705,23 @@ export default function AdminStoragePage() {
                       strokeWidth={1.5}
                     />
                     Refresh
-                  </button>
-                  <button type="button"
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
                     onClick={handleClearCache}
                     disabled={cacheLoading || cacheClearing || cacheKeys.length === 0}
-                    className="inline-flex items-center gap-1.5 rounded-md bg-destructive/10 text-destructive px-3 py-1.5 text-xs font-medium hover:bg-destructive/20 transition-colors disabled:opacity-50"
                   >
                     <Trash2 className="h-3 w-3" strokeWidth={1.5} />
                     Clear All
-                  </button>
+                  </Button>
                 </div>
               </div>
 
               {/* Cache error */}
               {cacheError && (
-                <div className="rounded-md bg-destructive/10 p-3 text-xs text-destructive shrink-0">
-                  {cacheError}
-                </div>
+                <Banner variant="error" size="sm" description={cacheError} className="shrink-0" />
               )}
 
               {/* Clear All feedback */}
@@ -763,10 +771,11 @@ export default function AdminStoragePage() {
                   <Skeleton className="h-12 w-full" />
                 </div>
               ) : cacheKeys.length === 0 ? (
-                <div className="rounded-xl bg-secondary p-8 text-center text-sm text-muted-foreground">
-                  No cached entries. Cache will be populated as users access
-                  pricing, seasons, and leaderboards.
-                </div>
+                <Empty
+                  title="No cached entries."
+                  description="Cache will be populated as users access pricing, seasons, and leaderboards."
+                  className="rounded-basalt-card bg-basalt-secondary p-8"
+                />
               ) : (
                 <div className="rounded-xl bg-secondary p-1 space-y-1 flex-1 lg:overflow-y-auto min-h-0">
                   {cacheKeys.map((key) => {
@@ -810,14 +819,18 @@ export default function AdminStoragePage() {
                             {key}
                           </code>
                         </div>
-                        <button type="button"
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleInvalidateKey(key)}
                           disabled={isDeleting}
-                          className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 focus:text-destructive focus:bg-destructive/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 disabled:opacity-50"
+                          className="h-auto shrink-0 p-1.5 text-muted-foreground opacity-0 hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 focus:opacity-100"
+                          aria-label="Delete this cache entry"
                           title="Delete this cache entry"
                         >
                           <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-                        </button>
+                        </Button>
                       </div>
                     );
                   })}

@@ -20,8 +20,10 @@ import {
   Users,
 } from "lucide-react";
 import { Github } from "@/components/icons/github";
+import { Badge } from "@nocoo/basalt/components/badge";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
+import { Empty } from "@nocoo/basalt/components/empty";
 import { rowIconClassName, rowIconDangerClassName } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ShowcaseImage } from "@/components/showcase";
@@ -262,21 +264,19 @@ export function AdminShowcasesContent() {
           {/* Status filter */}
           <div className="flex items-center gap-1 rounded-lg bg-secondary p-1">
             {(["all", "public", "hidden"] as const).map((opt) => (
-              <button type="button"
+              <Button
+                type="button"
                 key={opt}
+                size="sm"
+                variant={statusFilter === opt ? "secondary" : "ghost"}
+                className="capitalize"
                 onClick={() => {
                   setStatusFilter(opt);
                   setOffset(0);
                 }}
-                className={cn(
-                  "rounded-md px-3 py-1.5 text-xs font-medium transition-colors capitalize",
-                  statusFilter === opt
-                    ? "bg-secondary text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
               >
                 {opt}
-              </button>
+              </Button>
             ))}
           </div>
 
@@ -302,9 +302,10 @@ export function AdminShowcasesContent() {
 
       {/* Table */}
       {showcases.length === 0 ? (
-        <div className="rounded-xl bg-secondary p-8 text-center">
-          <p className="text-muted-foreground">No showcases found.</p>
-        </div>
+        <Empty
+          title="No showcases found."
+          className="rounded-basalt-card bg-basalt-secondary p-8"
+        />
       ) : (
         <div className="rounded-xl bg-secondary p-1 overflow-x-auto">
           <table className="w-full">
@@ -407,17 +408,14 @@ export function AdminShowcasesContent() {
 
                     {/* Status */}
                     <td className="px-4 py-3 text-center">
-                      {showcase.is_public ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-medium text-success">
+                      <Badge variant={showcase.is_public ? "success" : "secondary"}>
+                        {showcase.is_public ? (
                           <Eye className="h-2.5 w-2.5" />
-                          Public
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                        ) : (
                           <EyeOff className="h-2.5 w-2.5" />
-                          Hidden
-                        </span>
-                      )}
+                        )}
+                        {showcase.is_public ? "Public" : "Hidden"}
+                      </Badge>
                     </td>
 
                     {/* Actions */}
