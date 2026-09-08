@@ -14,8 +14,11 @@ import {
   ChevronRight,
   UserPlus,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
+import { Button } from "@nocoo/basalt/components/button";
+import { Empty } from "@nocoo/basalt/components/empty";
+import { Input } from "@nocoo/basalt/components/input";
+import { Label } from "@nocoo/basalt/components/label";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
 import { InviteDialog, useInviteDialog } from "@/components/teams/invite-dialog";
@@ -135,26 +138,26 @@ function TeamCard({
         <div className="flex items-center gap-1 shrink-0">
           {/* Invite button (owner only) */}
           {isOwner && (
-            <button type="button"
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
               onClick={() => openInviteDialog(team.name, team.invite_code)}
-              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              title="Invite members"
+              aria-label="Invite members"
             >
               <UserPlus className="h-3.5 w-3.5" strokeWidth={1.5} />
               <span className="hidden sm:inline">Invite</span>
-            </button>
+            </Button>
           )}
           {/* Leave/delete button — hidden for owner when other members exist */}
           {!(isOwner && hasOtherMembers) && (
-            <button type="button"
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
               onClick={handleLeave}
-              className={cn(
-                "flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors",
-                isOwner
-                  ? "text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent",
-              )}
-              title={isOwner ? "Delete team" : "Leave team"}
+              className={isOwner ? "hover:bg-basalt-destructive/10 hover:text-basalt-destructive" : undefined}
+              aria-label={isOwner ? "Delete team" : "Leave team"}
             >
               {isOwner ? (
                 <>
@@ -167,7 +170,7 @@ function TeamCard({
                   <span className="hidden sm:inline">Leave</span>
                 </>
               )}
-            </button>
+            </Button>
           )}
           {/* Navigate to detail */}
           <Link
@@ -304,26 +307,29 @@ export default function TeamsPage() {
             Your Teams
           </h2>
           <div className="flex gap-2">
-            <button type="button"
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
               onClick={() => {
                 setShowJoinTeam(!showJoinTeam);
                 setShowCreateTeam(false);
               }}
-              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             >
               <LogIn className="h-3.5 w-3.5" strokeWidth={1.5} />
               Join
-            </button>
-            <button type="button"
+            </Button>
+            <Button
+              type="button"
+              size="sm"
               onClick={() => {
                 setShowCreateTeam(!showCreateTeam);
                 setShowJoinTeam(false);
               }}
-              className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
             >
               <Plus className="h-3.5 w-3.5" strokeWidth={1.5} />
               Create
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -333,31 +339,28 @@ export default function TeamsPage() {
         {/* Create team form */}
         {showCreateTeam && (
           <div className="rounded-xl bg-secondary p-4 mb-3">
-            <label htmlFor={newTeamNameId} className="block text-xs font-medium text-muted-foreground mb-1.5">
-              Team Name
-            </label>
-            <div className="flex gap-2">
-              <input
+            <Label htmlFor={newTeamNameId}>Team Name</Label>
+            <div className="mt-1.5 flex gap-2">
+              <Input
                 id={newTeamNameId}
                 type="text"
                 value={newTeamName}
                 onChange={(e) => setNewTeamName(e.target.value)}
                 placeholder="My Team"
                 maxLength={64}
-                className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow min-w-0"
+                className="min-w-0 flex-1"
                 onKeyDown={(e) => e.key === "Enter" && handleCreateTeam()}
               />
-              <button type="button"
+              <Button
+                type="button"
                 onClick={handleCreateTeam}
                 disabled={creatingTeam || !newTeamName.trim()}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shrink-0",
-                  (creatingTeam || !newTeamName.trim()) && "opacity-50 cursor-not-allowed",
-                )}
+                loading={creatingTeam}
+                className="shrink-0"
               >
                 <Plus className="h-3.5 w-3.5" strokeWidth={1.5} />
                 {creatingTeam ? "Creating..." : "Create"}
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -365,40 +368,39 @@ export default function TeamsPage() {
         {/* Join team form */}
         {showJoinTeam && (
           <div className="rounded-xl bg-secondary p-4 mb-3">
-            <label htmlFor={inviteCodeId} className="block text-xs font-medium text-muted-foreground mb-1.5">
-              Invite Code
-            </label>
-            <div className="flex gap-2">
-              <input
+            <Label htmlFor={inviteCodeId}>Invite Code</Label>
+            <div className="mt-1.5 flex gap-2">
+              <Input
                 id={inviteCodeId}
                 type="text"
                 value={inviteCode}
                 onChange={(e) => setInviteCode(e.target.value)}
                 placeholder="e.g. abc12345"
                 maxLength={32}
-                className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow min-w-0"
+                className="min-w-0 flex-1 font-mono"
                 onKeyDown={(e) => e.key === "Enter" && handleJoinTeam()}
               />
-              <button type="button"
+              <Button
+                type="button"
                 onClick={handleJoinTeam}
                 disabled={joiningTeam || !inviteCode.trim()}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shrink-0",
-                  (joiningTeam || !inviteCode.trim()) && "opacity-50 cursor-not-allowed",
-                )}
+                loading={joiningTeam}
+                className="shrink-0"
               >
                 <LogIn className="h-3.5 w-3.5" strokeWidth={1.5} />
                 {joiningTeam ? "Joining..." : "Join"}
-              </button>
+              </Button>
             </div>
           </div>
         )}
 
         {/* Teams list */}
         {teams.length === 0 ? (
-          <div className="rounded-xl bg-secondary p-6 text-center text-sm text-muted-foreground">
-            You&apos;re not in any teams yet. Create one or join with an invite code.
-          </div>
+          <Empty
+            title="You're not in any teams yet."
+            description="Create one or join with an invite code."
+            className="rounded-basalt-card bg-basalt-secondary p-6"
+          />
         ) : (
           <div className="space-y-2">
             {teams.map((team) => (
