@@ -88,7 +88,7 @@ function TeamCard({
       description: isOwner
         ? "This will permanently delete the team and all its data. This action cannot be undone."
         : "You will be removed from this team. You can rejoin if you have a valid invite code.",
-      confirmText: isOwner ? "Delete" : "Leave",
+      confirmLabel: isOwner ? "Delete" : "Leave",
       variant: "destructive",
     });
     if (!confirmed) return;

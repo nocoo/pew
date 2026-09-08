@@ -388,7 +388,7 @@ function MembersModal({
     const confirmed = await confirm({
       title: "Remove member?",
       description: `Remove ${member.user.name || member.user.email} from ${org.name}?`,
-      confirmText: "Remove",
+      confirmLabel: "Remove",
     });
     if (!confirmed) return;
 
@@ -693,7 +693,7 @@ export default function AdminOrganizationsPage() {
     const confirmed = await confirm({
       title: "Delete organization?",
       description: `This will permanently delete "${org.name}" and remove all ${org.memberCount} member(s).`,
-      confirmText: "Delete",
+      confirmLabel: "Delete",
     });
     if (!confirmed) return;
 

@@ -275,7 +275,7 @@ export default function AdminInvitesPage() {
       description: isPending
         ? "This will reclaim the burned invite code, making it available for use again."
         : "This invite code will be permanently deleted.",
-      confirmText: isPending ? "Reclaim" : "Delete",
+      confirmLabel: isPending ? "Reclaim" : "Delete",
       variant: isPending ? "default" : "destructive",
     });
     if (!confirmed) return;

@@ -453,7 +453,7 @@ export default function TeamDetailPage() {
     const confirmed = await confirm({
       title: "Remove team logo?",
       description: "The current logo will be deleted. You can upload a new one anytime.",
-      confirmText: "Remove",
+      confirmLabel: "Remove",
       variant: "destructive",
     });
     if (!confirmed) return;
@@ -536,7 +536,7 @@ export default function TeamDetailPage() {
     const confirmed = await confirm({
       title: `Remove ${displayName}?`,
       description: `${displayName} will be removed from the team and will need a new invite to rejoin.`,
-      confirmText: "Remove",
+      confirmLabel: "Remove",
       variant: "destructive",
     });
     if (!confirmed) return;
@@ -575,7 +575,7 @@ export default function TeamDetailPage() {
       description: isSoloOwner
         ? "This will permanently delete the team and all its data. This action cannot be undone."
         : "You will be removed from this team. You can rejoin if you have a valid invite code.",
-      confirmText: isSoloOwner ? "Delete" : "Leave",
+      confirmLabel: isSoloOwner ? "Delete" : "Leave",
       variant: "destructive",
     });
     if (!confirmed) return;

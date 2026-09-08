@@ -897,7 +897,7 @@ export default function AdminBadgesPage() {
       title: "Archive Badge",
       description:
         "Archived badges cannot be assigned to users but remain visible on existing assignments.",
-      confirmText: "Archive",
+      confirmLabel: "Archive",
       variant: "destructive",
     });
     if (!confirmed) return;

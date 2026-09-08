@@ -717,7 +717,7 @@ export default function AdminSeasonsPage() {
     const confirmed = await confirm({
       title: "Generate final snapshot?",
       description: `This will freeze rankings for "${season.name}". Once generated, rankings cannot be changed.`,
-      confirmText: "Generate Snapshot",
+      confirmLabel: "Generate Snapshot",
     });
     if (!confirmed) return;
 

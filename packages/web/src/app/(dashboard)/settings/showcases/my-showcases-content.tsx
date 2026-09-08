@@ -30,7 +30,7 @@ export function MyShowcasesContent() {
     const confirmed = await confirm({
       title: "Delete showcase?",
       description: "Are you sure you want to delete this showcase? This action cannot be undone.",
-      confirmText: "Delete",
+      confirmLabel: "Delete",
       variant: "destructive",
     });
     if (!confirmed) return;
