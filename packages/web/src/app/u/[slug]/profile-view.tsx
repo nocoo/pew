@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
+import { Empty } from "@nocoo/basalt/components/empty";
 import { Github } from "@/components/icons/github";
 import { chromeIconClassName } from "@/components/ui/button";
 import { useUserProfile } from "@/hooks/use-user-profile";
@@ -86,12 +87,10 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
           <PewPageHeader />
           <main className="flex-1 py-8">
             <div className="text-center space-y-4">
-              <h2 className="text-4xl font-bold font-display text-foreground">
-                404
-              </h2>
-              <p className="text-muted-foreground">
-                No public profile found for &ldquo;{slug}&rdquo;
-              </p>
+              <Empty
+                title="404"
+                description={`No public profile found for “${slug}”`}
+              />
               <Link
                 href="/leaderboard"
                 className="inline-flex items-center gap-2 text-sm text-primary hover:underline"

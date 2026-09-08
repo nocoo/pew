@@ -1,7 +1,9 @@
 "use client";
 
 import { Info } from "lucide-react";
+import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
+import { Empty } from "@nocoo/basalt/components/empty";
 import {
   HoverCard,
   HoverCardContent,
@@ -77,15 +79,15 @@ export function ModelInfoTooltip({ model, className }: Props) {
         )}
 
         {!loading && matches.length === 0 && !error && (
-          <div className="text-xs text-muted-foreground">
-            No pricing data found for this model.
-          </div>
+          <Empty title="No pricing data found for this model." />
         )}
 
         {error && matches.length === 0 && (
-          <div className="text-xs text-destructive">
-            Failed to load pricing: {error}
-          </div>
+          <Banner
+            variant="error"
+            size="sm"
+            description={`Failed to load pricing: ${error}`}
+          />
         )}
 
         {matches.length > 0 && (
