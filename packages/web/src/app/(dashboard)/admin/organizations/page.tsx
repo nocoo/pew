@@ -13,13 +13,21 @@ import {
   Check,
   Upload,
   Building2,
-  Search,
   UserPlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { Button } from "@nocoo/basalt/components/button";
-import { rowIconClassName, rowIconDangerClassName } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@nocoo/basalt/components/dialog";
+import { Input } from "@nocoo/basalt/components/input";
+import { chromeIconClassName, rowIconClassName, rowIconDangerClassName } from "@/components/ui/button";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { useAdmin } from "@/hooks/use-admin";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -453,84 +461,59 @@ function MembersModal({
 
   return (
     <>
-      {/* biome-ignore lint/a11y/useSemanticElements: modal backdrop needs a clickable overlay div, not a <button> element — a <button> would break the child dialog's own event flow and interrupt focus trapping. */}
-      <div
-        role="button"
-        tabIndex={0}
-        aria-label="Close members modal"
-        className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
-        onClick={onClose}
-        onKeyDown={(e) => {
-          if (e.key === "Escape" || e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onClose();
-          }
-        }}
-      >
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="bg-background rounded-xl shadow-lg w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col"
-          onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-        >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <div className="flex items-center gap-3">
+      <Dialog open onOpenChange={(next) => { if (!next) onClose(); }}>
+        <DialogContent size="lg">
+          <DialogClose asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`absolute top-4 right-4 ${chromeIconClassName}`}
+              aria-label="Close"
+            >
+              <X aria-hidden="true" strokeWidth={1.5} />
+            </Button>
+          </DialogClose>
+          <DialogHeader>
+            <div className="flex items-center gap-3 pr-16">
               <OrgLogo logoUrl={org.logoUrl} name={org.name} size="sm" />
-              <h3 className="text-sm font-medium text-foreground">
-                {org.name} — Members ({members.length})
-              </h3>
-            </div>
-            <div className="flex items-center gap-2">
-              <button type="button"
+              <div className="min-w-0">
+                <DialogTitle className="text-sm">{org.name}</DialogTitle>
+                <DialogDescription>Members ({members.length})</DialogDescription>
+              </div>
+              <Button
+                type="button"
+                variant={showAddForm ? "default" : "ghost"}
+                size="icon"
+                className={rowIconClassName}
                 onClick={() => setShowAddForm(!showAddForm)}
-                className={cn(
-                  "p-1.5 rounded-md transition-colors",
-                  showAddForm
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-accent text-muted-foreground hover:text-foreground"
-                )}
-                title="Add member"
+                aria-label="Add member"
               >
-                <UserPlus className="h-4 w-4" strokeWidth={1.5} />
-              </button>
-              <button type="button"
-                onClick={onClose}
-                className="p-1 rounded-md hover:bg-accent transition-colors"
-              >
-                <X className="h-4 w-4 text-muted-foreground" />
-              </button>
+                <UserPlus strokeWidth={1.5} />
+              </Button>
             </div>
-          </div>
+          </DialogHeader>
 
-          {/* Add member form */}
           {showAddForm && (
-            <div className="px-4 py-3 border-b border-border bg-accent/30">
+            <div className="mt-4 space-y-2">
               <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    placeholder="Search users by name or email..."
-                    className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20"
-                  />
-                </div>
-                <button type="button"
+                <Input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  placeholder="Search users by name or email..."
+                />
+                <Button
+                  type="button"
                   onClick={handleSearch}
                   disabled={searching || !searchQuery.trim()}
-                  className={cn(
-                    "px-3 py-2 rounded-lg bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors",
-                    (searching || !searchQuery.trim()) && "opacity-50 cursor-not-allowed"
-                  )}
+                  loading={searching}
                 >
                   {searching ? "..." : "Search"}
-                </button>
+                </Button>
               </div>
               {searchResults.length > 0 && (
-                <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                <div className="space-y-1 max-h-40 overflow-y-auto">
                   {searchResults.map((user) => (
                     <div
                       key={user.id}
@@ -556,16 +539,14 @@ function MembersModal({
                           {user.email}
                         </p>
                       </div>
-                      <button type="button"
+                      <Button
+                        type="button"
+                        size="sm"
                         onClick={() => handleAddMember(user)}
                         disabled={adding}
-                        className={cn(
-                          "px-2 py-1 rounded-md bg-primary text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors",
-                          adding && "opacity-50 cursor-not-allowed"
-                        )}
                       >
                         Add
-                      </button>
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -573,7 +554,7 @@ function MembersModal({
             </div>
           )}
 
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="mt-4">
             {loading ? (
               <div className="space-y-3">
                 {Array.from({ length: 3 }).map((_, i) => (
@@ -612,24 +593,24 @@ function MembersModal({
                         {member.user.email}
                       </p>
                     </div>
-                    <button type="button"
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className={rowIconDangerClassName}
                       onClick={() => handleRemove(member)}
                       disabled={removing === member.userId}
-                      className={cn(
-                        "p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors",
-                        removing === member.userId && "opacity-50 cursor-not-allowed"
-                      )}
-                      title="Remove member"
+                      aria-label="Remove member"
                     >
-                      <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-                    </button>
+                      <Trash2 strokeWidth={1.5} />
+                    </Button>
                   </div>
                 ))}
               </div>
             )}
           </div>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
       <ConfirmDialog {...dialogProps} />
     </>
   );
