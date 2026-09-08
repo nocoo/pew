@@ -76,30 +76,12 @@ How to join:
               {inviteMessage}
             </pre>
           </div>
-          <div className="mt-3 flex justify-end">
-            <CopyMessageButton text={inviteMessage} />
+          <div className="mt-3">
+            <ClipboardText text={inviteMessage} className="w-full max-w-full" />
           </div>
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function CopyMessageButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-
-  return (
-    <Button
-      variant={copied ? "secondary" : "default"}
-      size="sm"
-      onClick={async () => {
-        await navigator.clipboard.writeText(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      }}
-    >
-      {copied ? "Copied!" : "Copy Message"}
-    </Button>
   );
 }
 

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
+import { ClipboardText } from "@nocoo/basalt/components/clipboard-text";
 import {
   Dialog,
   DialogClose,
@@ -13,7 +15,7 @@ import {
 import { chromeIconClassName } from "@/lib/ghost-icon";
 import { Input } from "@nocoo/basalt/components/input";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
-import { Monitor, Info, Trash2, Terminal, Copy, Check, X } from "lucide-react";
+import { Monitor, Info, Trash2, Terminal, X } from "lucide-react";
 import { cn, formatTokens } from "@/lib/utils";
 import { sourceLabel } from "@/hooks/use-usage-data";
 import { deviceLabel, shortDeviceId } from "@/lib/device-helpers";
@@ -281,7 +283,7 @@ function AuthCodeModal({
   const [authCodeExpiresAt, setAuthCodeExpiresAt] = useState<Date | null>(null);
   const [authCodeRemaining, setAuthCodeRemaining] = useState<number>(0);
   const [generatingCode, setGeneratingCode] = useState(false);
-  const [copiedCode, setCopiedCode] = useState(false);
+
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const restoreFocus = useRestoreDialogFocus(open);
 
@@ -295,7 +297,6 @@ function AuthCodeModal({
       setAuthCode(null);
       setAuthCodeExpiresAt(null);
       setAuthCodeRemaining(0);
-      setCopiedCode(false);
     }
   }
 
@@ -329,7 +330,6 @@ function AuthCodeModal({
 
   const handleGenerateAuthCode = async () => {
     setGeneratingCode(true);
-    setCopiedCode(false);
 
     try {
       const res = await fetch("/api/auth/code", {
@@ -376,30 +376,7 @@ function AuthCodeModal({
           {authCode ? (
             <div className="space-y-4">
               {/* Code display */}
-              <div className="flex items-center gap-2">
-                <div className="flex-1 rounded-lg bg-secondary border border-border px-4 py-3">
-                  <code className="block text-center font-mono text-xl font-bold tracking-[0.2em] text-foreground">
-                    {authCode}
-                  </code>
-                </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-12 w-12 shrink-0"
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(authCode);
-                    setCopiedCode(true);
-                    setTimeout(() => setCopiedCode(false), 2000);
-                  }}
-                  aria-label="Copy code"
-                >
-                  {copiedCode ? (
-                    <Check className="h-4 w-4" strokeWidth={2} />
-                  ) : (
-                    <Copy className="h-4 w-4" strokeWidth={1.5} />
-                  )}
-                </Button>
-              </div>
+              <ClipboardText text={authCode} className="w-full" />
 
               {/* Expiry countdown */}
               <div className="flex items-center justify-center gap-2 text-sm">
@@ -497,9 +474,7 @@ export default function ManageDevicesPage() {
 
       {/* Error */}
       {error && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
+        <Banner variant="error" description={error} />
       )}
 
       {/* Empty state */}
