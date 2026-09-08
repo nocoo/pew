@@ -9,6 +9,8 @@ import { formatTokens, formatTokensFull } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
 import { useTzOffset } from "@/hooks/use-tz-offset";
 import { ErrorBanner } from "@/components/ui/error-banner";
+import { Button } from "@nocoo/basalt/components/button";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -288,25 +290,24 @@ function CompareResultContent() {
   return (
     <TooltipProvider delayDuration={300}>
       <div className="space-y-4 md:space-y-6">
-        {/* Header with back button */}
-        <div className="flex items-start gap-4">
-          <button type="button"
-            onClick={() => router.push(`/admin/compare?userIds=${userIdsParam}`)}
-            className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-border bg-background hover:bg-accent transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
-          </button>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">
-              Compare Users
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {data
-                ? `Comparing ${data.users.length} user${data.users.length !== 1 ? "s" : ""}.`
-                : "Loading comparison..."}
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          title="Compare Users"
+          description={
+            data
+              ? `Comparing ${data.users.length} user${data.users.length !== 1 ? "s" : ""}.`
+              : "Loading comparison..."
+          }
+          actions={
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Back to user selection"
+              onClick={() => router.push(`/admin/compare?userIds=${userIdsParam}`)}
+            >
+              <ArrowLeft strokeWidth={1.5} />
+            </Button>
+          }
+        />
 
         {/* Selected user chips */}
         {data && data.users.length > 0 && (

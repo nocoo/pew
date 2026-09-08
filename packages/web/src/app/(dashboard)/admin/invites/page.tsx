@@ -12,6 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
 import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
+import { Button } from "@nocoo/basalt/components/button";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { toErrorMessage } from "@/lib/error-message";
 import type { InviteCodeRow } from "@/lib/rpc-types";
 
@@ -343,22 +345,16 @@ export default function AdminInvitesPage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">Invite Codes</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage single-use invite codes for new user registration.
-          </p>
-        </div>
-        <button type="button"
-          onClick={() => setShowGenerate(!showGenerate)}
-          className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
-        >
-          <Plus className="h-4 w-4" strokeWidth={1.5} />
-          Generate Codes
-        </button>
-      </div>
+      <PageHeader
+        title="Invite Codes"
+        description="Manage single-use invite codes for new user registration."
+        actions={
+          <Button onClick={() => setShowGenerate(!showGenerate)}>
+            <Plus strokeWidth={1.5} />
+            Generate Codes
+          </Button>
+        }
+      />
 
       {/* Require invite code toggle */}
       <div className="rounded-xl bg-secondary p-4">

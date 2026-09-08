@@ -15,6 +15,7 @@ import {
 import { ProjectShareChart } from "@/components/dashboard/project-share-chart";
 import type { ProjectBreakdownItem } from "@/lib/session-helpers";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 import {
   periodToDateRange,
   periodLabel,
@@ -653,27 +654,24 @@ export default function ProjectsPage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">Projects</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Compare usage across your projects ({subtitle}).
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          {allTags.length > 0 && (
-            <FilterDropdown
-              label="Tag"
-              value={tagFilter}
-              onChange={setTagFilter}
-              options={tagFilterOptions}
-              allLabel="All Tags"
-            />
-          )}
-          <PeriodSelector value={period} onChange={setPeriod} />
-        </div>
-      </div>
+      <PageHeader
+        title="Projects"
+        description={`Compare usage across your projects (${subtitle}).`}
+        filters={
+          <>
+            {allTags.length > 0 ? (
+              <FilterDropdown
+                label="Tag"
+                value={tagFilter}
+                onChange={setTagFilter}
+                options={tagFilterOptions}
+                allLabel="All Tags"
+              />
+            ) : null}
+            <PeriodSelector value={period} onChange={setPeriod} />
+          </>
+        }
+      />
 
       {/* Error */}
       <ErrorBanner messagePrefix="Failed to load project data" error={error} />

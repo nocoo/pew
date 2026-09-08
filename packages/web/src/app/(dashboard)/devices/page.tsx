@@ -13,6 +13,7 @@ import { toSourceTrendPoints } from "@/lib/usage-helpers";
 import { toModelEvolutionPoints } from "@/lib/model-helpers";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChartCardSkeleton } from "@/components/dashboard/chart-card-skeleton";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { CHART_COLORS } from "@/lib/palette";
 import { DeviceTrendChart } from "@/components/dashboard/device-trend-chart";
 import { DeviceShareChart } from "@/components/dashboard/device-share-chart";
@@ -258,16 +259,11 @@ export default function ByDevicePage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">By Device</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Compare usage across your devices ({subtitle}).
-          </p>
-        </div>
-        <PeriodSelector value={period} onChange={setPeriod} />
-      </div>
+      <PageHeader
+        title="By Device"
+        description={`Compare usage across your devices (${subtitle}).`}
+        actions={<PeriodSelector value={period} onChange={setPeriod} />}
+      />
 
       {/* Error */}
       <ErrorBanner messagePrefix="Failed to load device data" error={error} />

@@ -30,6 +30,8 @@ import { useAdmin } from "@/hooks/use-admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
+import { Button } from "@nocoo/basalt/components/button";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { BadgeIcon, type BadgeIconType } from "@/components/badges/badge-icon";
 import type { BadgeColorPalette } from "@pew/core";
 import type { BadgeRow, BadgeAssignmentRow, UserSearchResult } from "@/lib/rpc-types";
@@ -962,31 +964,22 @@ export default function AdminBadgesPage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">Badges</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Create and assign badges to recognize users on the leaderboard.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button type="button"
-            onClick={() => setShowAssignDialog(true)}
-            className="flex items-center gap-2 rounded-lg bg-secondary px-4 py-2 text-sm hover:bg-secondary/80"
-          >
-            <UserPlus className="h-4 w-4" />
-            Assign
-          </button>
-          <button type="button"
-            onClick={() => setShowCreateDialog(true)}
-            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" />
-            Create Badge
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Badges"
+        description="Create and assign badges to recognize users on the leaderboard."
+        actions={
+          <>
+            <Button variant="secondary" onClick={() => setShowAssignDialog(true)}>
+              <UserPlus />
+              Assign
+            </Button>
+            <Button onClick={() => setShowCreateDialog(true)}>
+              <Plus />
+              Create Badge
+            </Button>
+          </>
+        }
+      />
 
       {/* Tabs */}
       <div className="flex gap-1 rounded-lg bg-secondary/50 p-1">

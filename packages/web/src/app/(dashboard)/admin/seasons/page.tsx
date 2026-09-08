@@ -23,6 +23,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
 import { ErrorBanner } from "@/components/ui/error-banner";
+import { Button } from "@nocoo/basalt/components/button";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
 import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
@@ -808,26 +810,21 @@ export default function AdminSeasonsPage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">Seasons</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage competition seasons. Teams register and compete on token
-            usage.
-          </p>
-        </div>
-        <button type="button"
-          onClick={() => {
-            setShowCreate(!showCreate);
-            setEditingId(null);
-          }}
-          className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
-        >
-          <Plus className="h-4 w-4" strokeWidth={1.5} />
-          Create Season
-        </button>
-      </div>
+      <PageHeader
+        title="Seasons"
+        description="Manage competition seasons. Teams register and compete on token usage."
+        actions={
+          <Button
+            onClick={() => {
+              setShowCreate(!showCreate);
+              setEditingId(null);
+            }}
+          >
+            <Plus strokeWidth={1.5} />
+            Create Season
+          </Button>
+        }
+      />
 
       {/* Messages */}
       <MessageBanner message={message} />

@@ -8,6 +8,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { MyShowcasesContent } from "./my-showcases-content";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 
 export const metadata = {
   title: "My Showcases | Settings | pew",
@@ -22,15 +23,10 @@ export default async function MyShowcasesPage() {
 
   return (
     <div className="max-w-3xl space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">
-          My Showcases
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Manage your submitted GitHub projects.
-        </p>
-      </div>
+      <PageHeader
+        title="My Showcases"
+        description="Manage your submitted GitHub projects."
+      />
 
       <Suspense
         fallback={

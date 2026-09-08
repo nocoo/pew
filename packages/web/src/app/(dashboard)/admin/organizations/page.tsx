@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ErrorBanner } from "@/components/ui/error-banner";
+import { Button } from "@nocoo/basalt/components/button";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { useAdmin } from "@/hooks/use-admin";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
@@ -755,28 +757,21 @@ export default function AdminOrganizationsPage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">
-            Organizations
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage interest-based organizations. Users can join to filter
-            leaderboards.
-          </p>
-        </div>
-        <button type="button"
-          onClick={() => {
-            setShowCreate(!showCreate);
-            setEditingId(null);
-          }}
-          className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors shrink-0"
-        >
-          <Plus className="h-4 w-4" strokeWidth={1.5} />
-          Create Organization
-        </button>
-      </div>
+      <PageHeader
+        title="Organizations"
+        description="Manage interest-based organizations. Users can join to filter leaderboards."
+        actions={
+          <Button
+            onClick={() => {
+              setShowCreate(!showCreate);
+              setEditingId(null);
+            }}
+          >
+            <Plus strokeWidth={1.5} />
+            Create Organization
+          </Button>
+        }
+      />
 
       {/* Messages */}
       <MessageBanner message={message} />

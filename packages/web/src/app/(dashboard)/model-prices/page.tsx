@@ -3,6 +3,7 @@
 import { useAdmin } from "@/hooks/use-admin";
 import { invalidatePricingEntries } from "@/hooks/use-pricing-entries";
 import { ErrorBanner } from "@/components/ui/error-banner";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
@@ -43,12 +44,10 @@ export default function ModelPricesPage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">Model Prices</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Dynamic pricing entries published by the worker-read sync (baseline JSON, openrouter, models.dev). Read-only view.
-        </p>
-      </div>
+      <PageHeader
+        title="Model Prices"
+        description="Dynamic pricing entries published by the worker-read sync (baseline JSON, openrouter, models.dev). Read-only view."
+      />
 
       <ErrorBanner messagePrefix="Failed to load" error={error} />
 

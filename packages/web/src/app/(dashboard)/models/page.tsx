@@ -18,6 +18,7 @@ import { ModelInfoTooltip } from "@/components/dashboard/model-info-tooltip";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
 import { periodToDateRange, periodLabel, getLocalToday, fillDateRange } from "@/lib/date-helpers";
 import type { Period } from "@/lib/date-helpers";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 
 // ---------------------------------------------------------------------------
 // Skeleton
@@ -125,16 +126,11 @@ export default function ModelsPage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">By Model</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Token usage grouped by AI model ({subtitle}).
-          </p>
-        </div>
-        <PeriodSelector value={period} onChange={setPeriod} />
-      </div>
+      <PageHeader
+        title="By Model"
+        description={`Token usage grouped by AI model (${subtitle}).`}
+        actions={<PeriodSelector value={period} onChange={setPeriod} />}
+      />
 
       {/* Error */}
       <ErrorBanner messagePrefix="Failed to load usage data" error={error} />

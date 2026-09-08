@@ -6,6 +6,7 @@ import { fetcher } from "@/lib/fetcher";
 import { Building2, Users, Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -166,27 +167,24 @@ export default function OrganizationsPage() {
 
   return (
     <div className="max-w-3xl space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">
-          Organizations
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Join or leave organizations to filter your leaderboard.
-        </p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Want to add a new organization?{" "}
-          <a
-            href="https://github.com/nocoo/pew/issues/new?labels=organization&title=[Org]+Request:+"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:underline"
-          >
-            Submit a request on GitHub
-          </a>
-          .
-        </p>
-      </div>
+      <PageHeader
+        title="Organizations"
+        description={
+          <>
+            Join or leave organizations to filter your leaderboard. Want to add a new
+            organization?{" "}
+            <a
+              href="https://github.com/nocoo/pew/issues/new?labels=organization&title=[Org]+Request:+"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-basalt-primary hover:underline"
+            >
+              Submit a request on GitHub
+            </a>
+            .
+          </>
+        }
+      />
 
       {/* Organization List */}
       <section>

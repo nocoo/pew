@@ -15,6 +15,7 @@ import { ModelInfoTooltip } from "@/components/dashboard/model-info-tooltip";
 import { periodToDateRange, periodLabel } from "@/lib/date-helpers";
 import type { Period } from "@/lib/date-helpers";
 import { useTzOffset } from "@/hooks/use-tz-offset";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 
 // ---------------------------------------------------------------------------
 // Agent card
@@ -170,16 +171,11 @@ export default function AgentsPage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">By Agent</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Token usage grouped by AI coding tool ({subtitle}).
-          </p>
-        </div>
-        <PeriodSelector value={period} onChange={setPeriod} />
-      </div>
+      <PageHeader
+        title="By Agent"
+        description={`Token usage grouped by AI coding tool (${subtitle}).`}
+        actions={<PeriodSelector value={period} onChange={setPeriod} />}
+      />
 
       {/* Error */}
       <ErrorBanner messagePrefix="Failed to load usage data" error={error} />

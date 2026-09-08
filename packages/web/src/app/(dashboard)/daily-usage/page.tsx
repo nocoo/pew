@@ -10,7 +10,7 @@ import {
 import { useDeviceData } from "@/hooks/use-device-data";
 import { useTzOffset } from "@/hooks/use-tz-offset";
 import { ErrorBanner } from "@/components/ui/error-banner";
-import { formatTokens, cn } from "@/lib/utils";
+import { formatTokens } from "@/lib/utils";
 import { usePricingMap, lookupPricing, estimateCost, formatCost } from "@/hooks/use-pricing";
 import type { PricingMap } from "@/hooks/use-pricing";
 import { UsageTrendChart } from "@/components/dashboard/usage-trend-chart";
@@ -25,6 +25,8 @@ import {
 import { DashboardSegment } from "@/components/dashboard/dashboard-segment";
 import { ModelInfoTooltip } from "@/components/dashboard/model-info-tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@nocoo/basalt/components/button";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 import {
   groupByDate,
   toSourceTrendPoints,
@@ -360,43 +362,38 @@ export default function DailyUsagePage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      {/* Header + month nav */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">
-            Daily Usage
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Token usage for {formatMonth(year, month)}.
-          </p>
-        </div>
-        {/* Month pagination */}
-        <div className="flex items-center gap-2">
-          <button type="button"
-            onClick={goToPrevMonth}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            aria-label="Previous month"
-          >
-            <ChevronLeft className="h-4 w-4" strokeWidth={1.5} />
-          </button>
-          <span className="min-w-[140px] text-center text-sm font-medium">
-            {formatMonth(year, month)}
-          </span>
-          <button type="button"
-            onClick={goToNextMonth}
-            disabled={isCurrentMonth}
-            className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
-              isCurrentMonth
-                ? "text-muted-foreground/30 cursor-not-allowed"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent"
-            )}
-            aria-label="Next month"
-          >
-            <ChevronRight className="h-4 w-4" strokeWidth={1.5} />
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Daily Usage"
+        description={`Token usage for ${formatMonth(year, month)}.`}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={goToPrevMonth}
+              aria-label="Previous month"
+            >
+              <ChevronLeft strokeWidth={1.5} />
+            </Button>
+            <span className="min-w-[140px] text-center text-sm font-medium">
+              {formatMonth(year, month)}
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={goToNextMonth}
+              disabled={isCurrentMonth}
+              aria-label="Next month"
+            >
+              <ChevronRight strokeWidth={1.5} />
+            </Button>
+          </div>
+        }
+      />
 
       {/* Error */}
       <ErrorBanner messagePrefix="Failed to load usage data" error={error} />

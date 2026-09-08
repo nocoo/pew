@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
 import { InviteDialog, useInviteDialog } from "@/components/teams/invite-dialog";
 
@@ -290,13 +291,10 @@ export default function TeamsPage() {
 
   return (
     <div className="max-w-3xl space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">Teams</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Create or join teams to share usage data with your group.
-        </p>
-      </div>
+      <PageHeader
+        title="Teams"
+        description="Create or join teams to share usage data with your group."
+      />
 
       {/* Teams Section */}
       <section>

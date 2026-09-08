@@ -16,6 +16,7 @@ import {
 import { cn, formatTokens, formatTokensFull } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
 import { ErrorBanner } from "@/components/ui/error-banner";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -276,15 +277,10 @@ function ComparePageContent() {
   return (
     <TooltipProvider delayDuration={300}>
       <div className="space-y-4 md:space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">
-            Compare Users
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Select 2-10 users to compare their token usage trends.
-          </p>
-        </div>
+        <PageHeader
+          title="Compare Users"
+          description="Select 2-10 users to compare their token usage trends."
+        />
 
         {/* Selected user chips */}
         {selectedUsers.length > 0 && (

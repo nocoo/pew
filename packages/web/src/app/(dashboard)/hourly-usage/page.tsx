@@ -27,6 +27,7 @@ import type { DailyGroup } from "@/lib/usage-helpers";
 import { usePricingMap, lookupPricing, estimateCost, formatCost } from "@/hooks/use-pricing";
 import type { PricingMap } from "@/hooks/use-pricing";
 import { formatDate, getLocalToday } from "@/lib/date-helpers";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 
 // ---------------------------------------------------------------------------
 // Transform UsageRow[] → HalfHourPoint[] (zero-filled 144 slots)
@@ -453,15 +454,10 @@ export default function RecentPage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">
-          Hourly Usage
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Token usage over the last 72 hours.
-        </p>
-      </div>
+      <PageHeader
+        title="Hourly Usage"
+        description="Token usage over the last 72 hours."
+      />
 
       {/* Error */}
       <ErrorBanner messagePrefix="Failed to load usage data" error={error} />

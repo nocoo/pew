@@ -18,6 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { formatTokens, formatTokensFull, formatDuration } from "@/lib/format";
 import { ErrorBanner } from "@/components/ui/error-banner";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
 import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
 import { toErrorMessage } from "@/lib/error-message";
@@ -447,15 +448,10 @@ export default function AdminStoragePage() {
   return (
     <TooltipProvider delayDuration={300}>
       <div className="space-y-4 md:space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">
-            Storage
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Database and cache storage overview.
-          </p>
-        </div>
+        <PageHeader
+          title="Storage"
+          description="Database and cache storage overview."
+        />
 
         {/* Error */}
         <ErrorBanner messagePrefix="Failed to load storage stats" error={error} />

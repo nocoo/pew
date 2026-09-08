@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
 import { Separator } from "@/components/ui/separator";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -167,13 +168,10 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-3xl space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">General</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Account settings and public profile.
-        </p>
-      </div>
+      <PageHeader
+        title="General"
+        description="Account settings and public profile."
+      />
 
       {/* Account Section */}
       <section>

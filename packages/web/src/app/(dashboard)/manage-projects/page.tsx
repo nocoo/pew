@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { formatDuration } from "@/lib/date-helpers";
 import { sourceLabel } from "@/hooks/use-usage-data";
 import { agentColor, withAlpha } from "@/lib/palette";
@@ -381,12 +382,7 @@ export default function ProjectsPage() {
   if (loading) {
     return (
       <div className="space-y-8">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">Projects</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Loading project data…
-          </p>
-        </div>
+        <PageHeader title="Projects" description="Loading project data…" />
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <div
@@ -405,14 +401,10 @@ export default function ProjectsPage() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">Projects</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Group anonymous project references from different AI tools into
-          named projects.
-        </p>
-      </div>
+      <PageHeader
+        title="Projects"
+        description="Group anonymous project references from different AI tools into named projects."
+      />
 
       {/* Errors */}
       {(error || actionError) && (

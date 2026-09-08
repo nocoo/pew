@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { isAdmin } from "@/lib/admin";
 import { AdminShowcasesContent } from "./admin-showcases-content";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 
 export const metadata = {
   title: "Showcase Moderation | Admin | pew",
@@ -21,13 +22,10 @@ export default async function AdminShowcasesPage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">Showcase Moderation</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Review and moderate community-submitted GitHub showcases.
-        </p>
-      </div>
+      <PageHeader
+        title="Showcase Moderation"
+        description="Review and moderate community-submitted GitHub showcases."
+      />
 
       <Suspense
         fallback={

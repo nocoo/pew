@@ -33,6 +33,7 @@ import { ErrorBanner } from "@/components/ui/error-banner";
 import { DashboardEmptyState } from "@/components/dashboard/empty-state";
 import { DashboardSegment } from "@/components/dashboard/dashboard-segment";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { periodToDateRange, periodLabel, getLocalToday, fillDateRange } from "@/lib/date-helpers";
 import type { Period } from "@/lib/date-helpers";
 import type { DailyCostPoint, DailyCacheRate } from "@/lib/cost-helpers";
@@ -187,17 +188,10 @@ export default function DashboardPage() {
       {/* Admin alert: ended seasons without snapshot */}
       <SnapshotAlert />
 
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-2">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">Dashboard</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Token usage overview for your AI coding tools.
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="Dashboard"
+        description="Token usage overview for your AI coding tools."
+      />
 
       {/* Error state */}
       <ErrorBanner messagePrefix="Failed to load usage data" error={error} />

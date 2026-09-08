@@ -24,6 +24,7 @@ import { computeTokensPerHour } from "@/lib/session-helpers";
 import { computeReasoningRatio } from "@/lib/cost-helpers";
 import { detectPeakHours, getLocalToday, aggregateHourlyTokens } from "@/lib/date-helpers";
 import { formatTokens } from "@/lib/utils";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 
 // ---------------------------------------------------------------------------
 // Skeleton
@@ -126,16 +127,11 @@ export default function SessionsPage() {
 
   return (
     <div className="space-y-4 md:space-y-6">
-      {/* Header + period selector */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">Sessions</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Session activity across your AI coding tools.
-          </p>
-        </div>
-        <PeriodSelector value={period} onChange={setPeriod} />
-      </div>
+      <PageHeader
+        title="Sessions"
+        description="Session activity across your AI coding tools."
+        actions={<PeriodSelector value={period} onChange={setPeriod} />}
+      />
 
       {/* Error state */}
       <ErrorBanner messagePrefix="Failed to load session data" error={sessionData.error} />

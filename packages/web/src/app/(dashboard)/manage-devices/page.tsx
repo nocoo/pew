@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Dialog } from "radix-ui";
+import { Button } from "@nocoo/basalt/components/button";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { Monitor, Info, Trash2, Terminal, Copy, Check, X } from "lucide-react";
 import { cn, formatTokens } from "@/lib/utils";
 import { sourceLabel } from "@/hooks/use-usage-data";
@@ -459,12 +461,7 @@ export default function ManageDevicesPage() {
   if (loading) {
     return (
       <div className="space-y-8">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">Devices</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Loading device data...
-          </p>
-        </div>
+        <PageHeader title="Devices" description="Loading device data..." />
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <div
@@ -481,22 +478,16 @@ export default function ManageDevicesPage() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight">Devices</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage your synced devices and set aliases.
-          </p>
-        </div>
-        <button type="button"
-          onClick={() => setShowAuthCodeModal(true)}
-          className="flex items-center gap-2 rounded-lg bg-secondary border border-border px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
-        >
-          <Terminal className="h-3.5 w-3.5" strokeWidth={1.5} />
-          CLI Login Code
-        </button>
-      </div>
+      <PageHeader
+        title="Devices"
+        description="Manage your synced devices and set aliases."
+        actions={
+          <Button variant="outline" size="sm" onClick={() => setShowAuthCodeModal(true)}>
+            <Terminal className="h-3.5 w-3.5" strokeWidth={1.5} />
+            CLI Login Code
+          </Button>
+        }
+      />
 
       {/* Auth Code Modal */}
       <AuthCodeModal
