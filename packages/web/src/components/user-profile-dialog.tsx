@@ -298,7 +298,7 @@ export function UserProfileDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="xl" className="sm:w-[72rem] sm:max-w-6xl">
+      <DialogContent size="xl">
         {configReady ? (
           <>
             <ProfileDialogHeader

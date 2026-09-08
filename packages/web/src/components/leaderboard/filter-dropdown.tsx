@@ -44,7 +44,11 @@ export function FilterDropdown({
           <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.5} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" style={{ minWidth: panelMinWidth }}>
+      <DropdownMenuContent
+        align="start"
+        className="max-h-[min(24rem,var(--radix-dropdown-menu-content-available-height))] overflow-y-auto"
+        style={{ minWidth: panelMinWidth }}
+      >
         {items.map((item) => (
           <DropdownMenuItem
             key={item.key}

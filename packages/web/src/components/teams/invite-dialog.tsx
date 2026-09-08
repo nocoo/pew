@@ -5,12 +5,14 @@ import { Button } from "@nocoo/basalt/components/button";
 import { ClipboardText } from "@nocoo/basalt/components/clipboard-text";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@nocoo/basalt/components/dialog";
-import { UserPlus } from "lucide-react";
+import { UserPlus, X } from "lucide-react";
+import { chromeIconClassName } from "@/lib/ghost-icon";
 
 export interface InviteDialogProps {
   open: boolean;
@@ -36,6 +38,16 @@ How to join:
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
+        <DialogClose asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`absolute top-4 right-4 ${chromeIconClassName}`}
+            aria-label="Close"
+          >
+            <X aria-hidden="true" strokeWidth={1.5} />
+          </Button>
+        </DialogClose>
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-basalt-primary/10 text-basalt-primary">
           <UserPlus className="h-6 w-6" strokeWidth={1.5} />
         </div>

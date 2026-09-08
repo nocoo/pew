@@ -4,14 +4,16 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@nocoo/basalt/components/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@nocoo/basalt/components/dialog";
+import { chromeIconClassName } from "@/lib/ghost-icon";
 import { Input } from "@nocoo/basalt/components/input";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
-import { Monitor, Info, Trash2, Terminal, Copy, Check } from "lucide-react";
+import { Monitor, Info, Trash2, Terminal, Copy, Check, X } from "lucide-react";
 import { cn, formatTokens } from "@/lib/utils";
 import { sourceLabel } from "@/hooks/use-usage-data";
 import { deviceLabel, shortDeviceId } from "@/lib/device-helpers";
@@ -343,6 +345,16 @@ function AuthCodeModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="sm">
+          <DialogClose asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`absolute top-4 right-4 ${chromeIconClassName}`}
+              aria-label="Close"
+            >
+              <X aria-hidden="true" strokeWidth={1.5} />
+            </Button>
+          </DialogClose>
           <DialogHeader>
             <div className="flex items-center gap-2.5">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-basalt-primary/10">
