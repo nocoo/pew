@@ -13,6 +13,9 @@ import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
 import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
 import { Button } from "@nocoo/basalt/components/button";
+import { Field } from "@nocoo/basalt/components/field";
+import { Input } from "@nocoo/basalt/components/input";
+import { Switch } from "@nocoo/basalt/components/switch";
 import { rowIconDangerClassName } from "@/components/ui/button";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { toErrorMessage } from "@/lib/error-message";
@@ -360,25 +363,15 @@ export default function AdminInvitesPage() {
       {/* Require invite code toggle */}
       <div className="rounded-xl bg-secondary p-4">
         <div className="flex items-start gap-3">
-          <button
-            type="button"
-            role="switch"
-            aria-checked={requireInvite}
+          <Switch
+            checked={requireInvite}
             disabled={requireInviteLoading || togglingRequireInvite}
-            onClick={handleToggleRequireInvite}
-            className={cn(
-              "relative mt-0.5 inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-              requireInvite ? "bg-primary" : "bg-border",
-              (requireInviteLoading || togglingRequireInvite) && "opacity-50 cursor-not-allowed",
-            )}
-          >
-            <span
-              className={cn(
-                "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-background shadow-sm ring-0 transition-transform",
-                requireInvite ? "translate-x-4" : "translate-x-0",
-              )}
-            />
-          </button>
+            onCheckedChange={() => {
+              void handleToggleRequireInvite();
+            }}
+            aria-label="Require invite code for registration"
+            className="mt-0.5"
+          />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-foreground">
               Require invite code for registration
@@ -405,11 +398,8 @@ export default function AdminInvitesPage() {
             Generate Invite Codes
           </h3>
           <div className="flex items-end gap-3">
-            <div>
-              <label htmlFor={genCountId} className="block text-xs font-medium text-muted-foreground mb-1">
-                Count (1-20)
-              </label>
-              <input
+            <Field label="Count (1-20)" htmlFor={genCountId}>
+              <Input
                 id={genCountId}
                 type="number"
                 min={1}
@@ -420,28 +410,22 @@ export default function AdminInvitesPage() {
                     Math.max(1, Math.min(20, parseInt(e.target.value, 10) || 1))
                   )
                 }
-                className="w-24 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground tabular-nums focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
+                className="w-24 tabular-nums"
               />
-            </div>
-            <button type="button"
-              onClick={handleGenerate}
-              disabled={generating}
-              className={cn(
-                "rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors",
-                generating && "opacity-50 cursor-not-allowed"
-              )}
-            >
+            </Field>
+            <Button type="button" onClick={handleGenerate} disabled={generating} loading={generating}>
               {generating ? "Generating..." : "Generate"}
-            </button>
-            <button type="button"
+            </Button>
+            <Button
+              type="button"
+              variant="secondary"
               onClick={() => {
                 setShowGenerate(false);
                 setGenCount(1);
               }}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </div>
       )}

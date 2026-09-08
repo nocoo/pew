@@ -11,11 +11,13 @@ import {
   Search,
   X,
   Users,
-  Check,
 } from "lucide-react";
 import { cn, formatTokens, formatTokensFull } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
 import { ErrorBanner } from "@/components/ui/error-banner";
+import { Button } from "@nocoo/basalt/components/button";
+import { Checkbox } from "@nocoo/basalt/components/checkbox";
+import { Input } from "@nocoo/basalt/components/input";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -329,14 +331,16 @@ function ComparePageContent() {
                 Clear
               </button>
             )}
-            <button type="button"
+            <Button
+              type="button"
+              size="sm"
+              className="ml-2"
               onClick={handleCompare}
               disabled={selectedUsers.length < 2}
-              className="ml-2 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Users className="h-3.5 w-3.5" strokeWidth={1.5} />
               Compare
-            </button>
+            </Button>
           </div>
         )}
 
@@ -351,20 +355,25 @@ function ComparePageContent() {
                 className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground"
                 strokeWidth={1.5}
               />
-              <input
+              <Input
                 type="text"
                 placeholder="Filter by name or email..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full rounded-lg border border-border bg-background pl-9 pr-8 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
+                className="pl-9 pr-8"
+                aria-label="Filter by name or email"
               />
               {search && (
-                <button type="button"
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setSearch("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 flex h-4 w-4 items-center justify-center rounded text-muted-foreground hover:text-foreground transition-colors"
+                  className="absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2"
+                  aria-label="Clear search"
                 >
                   <X className="h-3 w-3" strokeWidth={1.5} />
-                </button>
+                </Button>
               )}
             </div>
             <span className="text-xs text-muted-foreground tabular-nums">
@@ -454,21 +463,12 @@ function ComparePageContent() {
                         >
                           {/* Checkbox */}
                           <td className="px-4 py-3">
-                            <button type="button"
-                              onClick={() => toggleUser(user.user_id)}
+                            <Checkbox
+                              checked={isSelected}
                               disabled={isDisabled}
-                              className={cn(
-                                "flex h-5 w-5 items-center justify-center rounded border-2 transition-colors",
-                                isSelected
-                                  ? "border-primary bg-primary"
-                                  : "border-muted-foreground/30 bg-background hover:border-primary/50",
-                                isDisabled && "cursor-not-allowed opacity-50"
-                              )}
-                            >
-                              {isSelected && (
-                                <Check className="h-3.5 w-3.5 text-primary-foreground" strokeWidth={3} />
-                              )}
-                            </button>
+                              onCheckedChange={() => toggleUser(user.user_id)}
+                              aria-label={`Select ${user.name ?? user.email ?? "user"}`}
+                            />
                           </td>
                           {/* User */}
                           <td className="px-4 py-3">
