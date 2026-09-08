@@ -4,11 +4,13 @@ import { Button } from "@nocoo/basalt/components/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@nocoo/basalt/components/dropdown-menu";
 import { Globe, ChevronDown } from "lucide-react";
 import { TeamLogoIcon, OrgLogoIcon } from "@/components/leaderboard/logo-icons";
+import { cn } from "@/lib/utils";
 import type { ScopeSelection, Organization, Team } from "@/lib/leaderboard-scope";
 
 export type { ScopeSelection, Organization, Team } from "@/lib/leaderboard-scope";
@@ -57,30 +59,59 @@ export function ScopeDropdown({
         align="start"
         className="max-h-[min(24rem,var(--radix-dropdown-menu-content-available-height))] overflow-y-auto"
       >
-        <DropdownMenuItem className="gap-2" onSelect={() => onChange({ type: "global" })}>
+        <DropdownMenuItem
+          className={cn("gap-2", value.type === "global" && "bg-basalt-accent")}
+          onSelect={() => onChange({ type: "global" })}
+        >
           <Globe className={iconClass} strokeWidth={1.5} />
           Global
         </DropdownMenuItem>
-        {organizations.map((org) => (
-          <DropdownMenuItem
-            key={org.id}
-            className="gap-2"
-            onSelect={() => onChange({ type: "org", id: org.id })}
-          >
-            <OrgLogoIcon logoUrl={org.logoUrl} name={org.name} />
-            {org.name}
-          </DropdownMenuItem>
-        ))}
-        {teams.map((team) => (
-          <DropdownMenuItem
-            key={team.id}
-            className="gap-2"
-            onSelect={() => onChange({ type: "team", id: team.id })}
-          >
-            <TeamLogoIcon logoUrl={team.logoUrl} name={team.name} />
-            {team.name}
-          </DropdownMenuItem>
-        ))}
+        {organizations.length > 0 && (
+          <DropdownMenuGroup>
+            <div
+              role="presentation"
+              className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-basalt-muted-foreground"
+            >
+              Organizations
+            </div>
+            {organizations.map((org) => (
+              <DropdownMenuItem
+                key={org.id}
+                className={cn(
+                  "gap-2",
+                  value.type === "org" && value.id === org.id && "bg-basalt-accent",
+                )}
+                onSelect={() => onChange({ type: "org", id: org.id })}
+              >
+                <OrgLogoIcon logoUrl={org.logoUrl} name={org.name} />
+                {org.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuGroup>
+        )}
+        {teams.length > 0 && (
+          <DropdownMenuGroup>
+            <div
+              role="presentation"
+              className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-basalt-muted-foreground"
+            >
+              Teams
+            </div>
+            {teams.map((team) => (
+              <DropdownMenuItem
+                key={team.id}
+                className={cn(
+                  "gap-2",
+                  value.type === "team" && value.id === team.id && "bg-basalt-accent",
+                )}
+                onSelect={() => onChange({ type: "team", id: team.id })}
+              >
+                <TeamLogoIcon logoUrl={team.logoUrl} name={team.name} />
+                {team.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuGroup>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
