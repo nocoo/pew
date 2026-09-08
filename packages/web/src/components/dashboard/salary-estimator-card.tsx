@@ -9,6 +9,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
+import { Slider } from "@nocoo/basalt/components/slider";
 import { Banknote, ExternalLink, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { chart, chartAxis, chartMuted } from "@/lib/palette";
@@ -472,7 +473,6 @@ function SliderControl({
   defaultValue: number;
 }) {
   const isDefault = value === defaultValue;
-  const pct = ((value - min) / (max - min)) * 100;
 
   return (
     <div className="space-y-2">
@@ -492,75 +492,18 @@ function SliderControl({
           {formatValue(value)}
         </span>
       </div>
-      <div className="relative">
-        <input
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          className="slider-input w-full"
-          style={
-            {
-              "--slider-pct": `${pct}%`,
-            } as React.CSSProperties
-          }
-        />
-      </div>
+      <Slider
+        min={min}
+        max={max}
+        step={step}
+        value={[value]}
+        onValueChange={(values) => {
+          const next = values[0];
+          if (next !== undefined) onChange(next);
+        }}
+        aria-label={label}
+      />
       <p className="text-[10px] text-muted-foreground/70">{description}</p>
-
-      <style jsx>{`
-        .slider-input {
-          -webkit-appearance: none;
-          appearance: none;
-          height: 6px;
-          border-radius: 3px;
-          background: linear-gradient(
-            to right,
-            hsl(var(--basalt-primary)) 0%,
-            hsl(var(--basalt-primary)) var(--slider-pct),
-            hsl(var(--basalt-muted)) var(--slider-pct),
-            hsl(var(--basalt-muted)) 100%
-          );
-          cursor: pointer;
-        }
-
-        .slider-input::-webkit-slider-thumb {
-          -webkit-appearance: none;
-          appearance: none;
-          width: 16px;
-          height: 16px;
-          border-radius: 50%;
-          background: hsl(var(--basalt-primary));
-          border: 2px solid hsl(var(--basalt-background));
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-          cursor: pointer;
-          transition: transform 0.1s ease;
-        }
-
-        .slider-input::-webkit-slider-thumb:hover {
-          transform: scale(1.1);
-        }
-
-        .slider-input::-moz-range-thumb {
-          width: 16px;
-          height: 16px;
-          border-radius: 50%;
-          background: hsl(var(--basalt-primary));
-          border: 2px solid hsl(var(--basalt-background));
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-          cursor: pointer;
-        }
-
-        .slider-input:focus {
-          outline: none;
-        }
-
-        .slider-input:focus::-webkit-slider-thumb {
-          box-shadow: 0 0 0 3px hsl(var(--basalt-primary) / 0.2);
-        }
-      `}</style>
     </div>
   );
 }
