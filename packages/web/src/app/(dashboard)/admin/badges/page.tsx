@@ -402,7 +402,7 @@ function AssignBadgeDialog({
   }, [userQuery]);
 
   // Search users via SWR
-  const { data: searchData, isLoading: searching } = useSWR<{
+  const { data: searchData } = useSWR<{
     users: UserSearchResult[];
   }>(
     debouncedQuery.length >= 2
@@ -554,7 +554,6 @@ function AssignBadgeDialog({
                   if (target instanceof HTMLInputElement) setUserQuery(target.value);
                 }}
                 placeholder="Search users..."
-                loading={searching}
               />
             )}
           </div>
