@@ -2,6 +2,124 @@
 
 ## Unreleased
 
+## v2.29.0
+
+### Added
+- Load og card from hexly share api
+- Wire basalt providers and tokens
+- Adopt pew logo across app surfaces
+
+### Changed
+- Bump @nocoo/basalt to 2.1.2
+- Use banner for remaining errors
+- Use empty for leftover placeholders
+- Use banner for leftover notices
+- Use badge for leftover status pills
+- Use empty for remaining empty states
+- Replace leftover feedback banners
+- Use badge for showcase visibility
+- Use clipboard text for profile url
+- Migrate remaining admin buttons
+- Migrate remaining public buttons
+- Migrate remaining dashboard buttons
+- Use button for members opener
+- Migrate remaining badge controls
+- Use autocomplete for tag input
+- Migrate remaining badge actions
+- Migrate remaining compare buttons
+- Use button on public row actions
+- Replace leftover error banners
+- Reuse shared season status badge
+- Migrate invite badges and empty
+- Use clipboard text for copy actions
+- Migrate project tag editor
+- Migrate project manager controls
+- Migrate team detail controls
+- Migrate teams list controls
+- Migrate remaining admin controls
+- Migrate admin org form controls
+- Wrap skeleton with skeletonline
+- Migrate badge dialogs to basalt
+- Use dialog for org members
+- Migrate settings org controls
+- Migrate compare result filters
+- Migrate season form controls
+- Migrate settings general controls
+- Use basalt slider on salary card
+- Use basalt badge for season status
+- Use banner empty on showcases
+- Use banner for login invite error
+- Use button on device actions
+- Use button for show more
+- Use clipboard text on landing
+- Migrate remaining select input controls
+- Use basalt banner empty leftovers
+- Retarget admin e2e to basalt dialogs
+- Use basalt banners and empty
+- Migrate dialogs to basalt
+- Use basalt chrome icon controls
+- Use basalt page headers
+- Replace local ui with basalt
+- Migrate app chrome to basalt
+- Add @nocoo/basalt 2.1.0
+- Bump workers types to 5.20260906.1
+- Upgrade lint-staged to 17.5.0
+- Bump workers types to 5.20260905.1
+- Bump playwright to 1.63.0
+- Bump @types/bun to 1.4.1
+- Bump workers types to 5.20260904.1
+- Bump aws s3 sdk to 3.1127.0
+- Bump S3 client to 3.1126.0
+- Bump oxc-parser to 0.148.0
+- Align workers types with wrangler
+- Bump wrangler to 4.129.0
+- Bump @cloudflare/workers-types to 5.20260903.1
+- Bump @types/react-dom to 19.2.7
+- Upgrade Vitest coverage to v5
+- Upgrade Biome to 2.5.12
+- Bump lucide-react to 1.40.0
+- Bump @types/node to 26.4.1
+
+### Fixed
+- Keep achievement ring svg size
+- Cancel tag editor without persisting
+- Show logo upload on keyboard focus
+- Stack achievement card button layout
+- Keep badge user search focus
+- Commit autocomplete tags on enter
+- Use button for org logo upload
+- Make pricing sort keyboard accessible
+- Constrain assign menu height
+- Restore opener focus for mounted dialogs
+- Show badge select placeholder
+- Add usage row disclosure buttons
+- Stop join keys opening org modal
+- Restore focus after overlay close
+- Restore settings org dialog focus
+- Expose scope dropdown selected state
+- Constrain filter dropdown menu height
+- Associate labels with grouped inputs
+- Restore scope dropdown group labels
+- Constrain pricing select menu height
+- Forward extra props through applink
+- Restore sidebar items as real links
+- Drop duplicate appheader page title
+- Migrate leftover tokens to basalt
+- Restore dialog close and menu scroll
+- Space color dots away from labels
+- Add gap between dropdown color dots
+- Match breadcrumb chevron stroke and size
+- Unify ghost icon buttons on basalt
+- Restore chrome icon size and tone
+- Restore sidebar icons and chart debounce
+- Freeze recharts during sidebar motion
+- Drop period selector fieldset chrome
+- Emit missing basalt tailwind utilities
+
+### Removed
+- Drop unused class-variance-authority
+- Drop confirm-dialog compat shim
+
 ## v2.28.1
 
 ### Fixed
