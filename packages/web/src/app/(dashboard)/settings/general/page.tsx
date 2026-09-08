@@ -11,13 +11,15 @@ import {
   Check,
   AlertTriangle,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
 import { Separator } from "@/components/ui/separator";
+import { Button } from "@nocoo/basalt/components/button";
 import { Field } from "@nocoo/basalt/components/field";
 import { Input } from "@nocoo/basalt/components/input";
+import { InputGroup } from "@nocoo/basalt/components/input-group";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
+import { Switch } from "@nocoo/basalt/components/switch";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -225,72 +227,51 @@ export default function SettingsPage() {
             />
           </Field>
 
-          {/* Slug */}
-          <div>
-            <label htmlFor="slug" className="block text-xs font-medium text-muted-foreground mb-1.5">
-              Profile URL
-            </label>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-0 rounded-lg border border-border bg-background overflow-hidden flex-1 min-w-0">
-                <span className="px-3 py-2 text-sm text-muted-foreground bg-accent/50 border-r border-border shrink-0">
-                  pew.md/u/
-                </span>
-                <input
-                  id="slug"
-                  type="text"
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
-                  placeholder={userId ?? "your-slug"}
-                  maxLength={32}
-                  className="flex-1 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none bg-transparent min-w-0"
-                />
-              </div>
-              {profileUrl && (
-                <button
-                  type="button"
+          <Field
+            label="Profile URL"
+            htmlFor="slug"
+            hint={
+              <>
+                Your public profile URL. Lowercase letters, numbers, and hyphens only.
+                {!slug && userId ? " Using your user ID as default." : null}
+              </>
+            }
+          >
+            <InputGroup>
+              <InputGroup.Addon>pew.md/u/</InputGroup.Addon>
+              <InputGroup.Input
+                id="slug"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))}
+                placeholder={userId ?? "your-slug"}
+                maxLength={32}
+              />
+              {profileUrl ? (
+                <InputGroup.Button
+                  aria-label="Copy profile URL"
                   onClick={async () => {
                     await navigator.clipboard.writeText(profileUrl);
                     setCopiedUrl(true);
                     setTimeout(() => setCopiedUrl(false), 2000);
                   }}
-                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
-                  title="Copy profile URL"
                 >
                   {copiedUrl ? (
                     <Check className="h-4 w-4 text-success" strokeWidth={1.5} />
                   ) : (
                     <Copy className="h-4 w-4" strokeWidth={1.5} />
                   )}
-                </button>
-              )}
-            </div>
-            <p className="mt-1 text-[10px] text-muted-foreground">
-              Your public profile URL. Lowercase letters, numbers, and hyphens only.
-              {!slug && userId && (
-                <span className="text-muted-foreground/70"> Using your user ID as default.</span>
-              )}
-            </p>
-          </div>
+                </InputGroup.Button>
+              ) : null}
+            </InputGroup>
+          </Field>
 
-          {/* Public visibility toggle */}
           <div className="flex items-start gap-3">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={isPublic}
-              onClick={() => setIsPublic(!isPublic)}
-              className={cn(
-                "relative mt-0.5 inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-                isPublic ? "bg-primary" : "bg-border",
-              )}
-            >
-              <span
-                className={cn(
-                  "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-background shadow-sm ring-0 transition-transform",
-                  isPublic ? "translate-x-4" : "translate-x-0",
-                )}
-              />
-            </button>
+            <Switch
+              checked={isPublic}
+              onCheckedChange={setIsPublic}
+              aria-label="Show my profile publicly"
+              className="mt-0.5"
+            />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-medium text-foreground">
                 Show my profile publicly
@@ -301,18 +282,10 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Save button */}
           <div className="space-y-3">
-            <button type="button"
-              onClick={handleSaveSettings}
-              disabled={saving}
-              className={cn(
-                "rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90",
-                saving && "opacity-50 cursor-not-allowed",
-              )}
-            >
+            <Button type="button" onClick={handleSaveSettings} disabled={saving} loading={saving}>
               {saving ? "Saving..." : "Save Changes"}
-            </button>
+            </Button>
             <MessageBanner message={saveMessage} />
           </div>
         </div>
@@ -337,31 +310,34 @@ export default function SettingsPage() {
             </p>
           </div>
 
-          <div>
-            <label htmlFor="confirm-email" className="block text-xs font-medium text-muted-foreground mb-1.5">
-              To confirm, type your email: <span className="font-mono text-foreground">{userEmail}</span>
-            </label>
-            <input
+          <Field
+            label={
+              <>
+                To confirm, type your email:{" "}
+                <span className="font-mono text-foreground">{userEmail}</span>
+              </>
+            }
+            htmlFor="confirm-email"
+          >
+            <Input
               id="confirm-email"
               type="email"
               value={deleteConfirmEmail}
               onChange={(e) => setDeleteConfirmEmail(e.target.value)}
               placeholder="your-email@example.com"
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-destructive/20 transition-shadow"
             />
-          </div>
+          </Field>
 
           <div className="flex items-center gap-3">
-            <button type="button"
+            <Button
+              type="button"
+              variant="destructive"
               onClick={handleDeleteAccount}
               disabled={deleting || deleteConfirmEmail.toLowerCase() !== userEmail.toLowerCase()}
-              className={cn(
-                "rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90",
-                (deleting || deleteConfirmEmail.toLowerCase() !== userEmail.toLowerCase()) && "opacity-50 cursor-not-allowed",
-              )}
+              loading={deleting}
             >
               {deleting ? "Deleting..." : "Delete My Account"}
-            </button>
+            </Button>
             {deleteError && (
               <span className="text-xs text-destructive">
                 {deleteError}
