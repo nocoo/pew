@@ -78,14 +78,19 @@ function LoginContent() {
         <BadgeAmbientGlow />
 
         <div className="absolute top-4 right-4 z-10 flex items-center gap-1">
-          <Button variant="ghost" size="icon" asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-basalt-muted-foreground hover:text-basalt-foreground [&_svg]:size-[18px]"
+            asChild
+          >
             <a
               href="https://github.com/nocoo/pew"
               target="_blank"
               rel="noopener noreferrer"
               aria-label="GitHub repository"
             >
-              <Github className="h-[18px] w-[18px]" aria-hidden="true" strokeWidth={1.5} />
+              <Github aria-hidden="true" strokeWidth={1.5} />
             </a>
           </Button>
           <ThemeToggle />

@@ -60,16 +60,17 @@ export function AppShell({ children }: AppShellProps) {
       )}
       <AppMain>
         <AppHeader
+          className="[&_svg]:[stroke-width:1.5]"
           leading={
             isMobile ? (
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                className="h-8 w-8 text-basalt-muted-foreground hover:text-basalt-foreground"
                 onClick={() => setMobileOpen(true)}
                 aria-label="Open navigation"
               >
-                <Menu aria-hidden="true" />
+                <Menu aria-hidden="true" strokeWidth={1.5} />
               </Button>
             ) : null
           }
@@ -77,19 +78,29 @@ export function AppShell({ children }: AppShellProps) {
           title={title}
           actions={
             <>
-              <Button variant="ghost" size="icon" asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-basalt-muted-foreground hover:text-basalt-foreground [&_svg]:size-[18px]"
+                asChild
+              >
                 <a href="/privacy" aria-label="Privacy policy">
-                  <ShieldCheck className="h-[18px] w-[18px]" aria-hidden="true" strokeWidth={1.5} />
+                  <ShieldCheck aria-hidden="true" strokeWidth={1.5} />
                 </a>
               </Button>
-              <Button variant="ghost" size="icon" asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-basalt-muted-foreground hover:text-basalt-foreground [&_svg]:size-[18px]"
+                asChild
+              >
                 <a
                   href="https://github.com/nocoo/pew"
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="GitHub repository"
                 >
-                  <Github className="h-[18px] w-[18px]" aria-hidden="true" strokeWidth={1.5} />
+                  <Github aria-hidden="true" strokeWidth={1.5} />
                 </a>
               </Button>
               <ThemeToggle />

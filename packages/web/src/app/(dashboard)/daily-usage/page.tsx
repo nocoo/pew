@@ -371,7 +371,7 @@ export default function DailyUsagePage() {
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8"
+              className="h-8 w-8 text-basalt-muted-foreground hover:text-basalt-foreground"
               onClick={goToPrevMonth}
               aria-label="Previous month"
             >
@@ -384,7 +384,7 @@ export default function DailyUsagePage() {
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8"
+              className="h-8 w-8 text-basalt-muted-foreground hover:text-basalt-foreground"
               onClick={goToNextMonth}
               disabled={isCurrentMonth}
               aria-label="Next month"

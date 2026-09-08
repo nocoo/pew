@@ -166,11 +166,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <Button
           variant="ghost"
           size="icon"
-          className="mb-1 self-center"
+          className="mb-2 h-10 w-10 self-center text-basalt-muted-foreground hover:bg-basalt-accent hover:text-basalt-foreground"
           onClick={onToggle}
           aria-label="Expand sidebar"
         >
-          <PanelLeft aria-hidden="true" />
+          <PanelLeft aria-hidden="true" strokeWidth={1.5} />
         </Button>
         <SidebarNav className="w-full items-center gap-1 pt-1">
           {allNavItems.map((item) => (
@@ -228,11 +228,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 shrink-0"
+            className="h-7 w-7 shrink-0 text-basalt-muted-foreground hover:text-basalt-foreground"
             onClick={onToggle}
             aria-label="Collapse sidebar"
           >
-            <PanelLeft aria-hidden="true" />
+            <PanelLeft aria-hidden="true" strokeWidth={1.5} />
           </Button>
         </div>
       </SidebarHeader>
@@ -269,11 +269,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 shrink-0"
+                  className="h-8 w-8 shrink-0 text-basalt-muted-foreground hover:bg-basalt-accent hover:text-basalt-foreground"
                   onClick={() => signOut({ callbackUrl: "/login" })}
                   aria-label="Sign out"
                 >
-                  <LogOut aria-hidden="true" />
+                  <LogOut aria-hidden="true" strokeWidth={1.5} />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top">Sign out</TooltipContent>
