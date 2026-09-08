@@ -15,6 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@nocoo/basalt/components/button";
 import { Field } from "@nocoo/basalt/components/field";
 import { Input } from "@nocoo/basalt/components/input";
+import { Banner } from "@nocoo/basalt/components/banner";
 import { ClipboardText } from "@nocoo/basalt/components/clipboard-text";
 import { InputGroup } from "@nocoo/basalt/components/input-group";
 import { Label } from "@nocoo/basalt/components/label";
@@ -318,9 +319,7 @@ export default function SettingsPage() {
               {deleting ? "Deleting..." : "Delete My Account"}
             </Button>
             {deleteError && (
-              <span className="text-xs text-destructive">
-                {deleteError}
-              </span>
+              <Banner variant="error" size="sm" description={deleteError} />
             )}
           </div>
         </div>

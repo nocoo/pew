@@ -288,7 +288,12 @@ export function ShowcaseFormModal({
                 </div>
               </div>
               {previewError && (
-                <p className="mt-1.5 text-xs text-destructive">{previewError}</p>
+                <Banner
+                  variant="error"
+                  size="sm"
+                  className="mt-1.5"
+                  description={previewError}
+                />
               )}
             </div>
           )}

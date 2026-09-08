@@ -139,7 +139,7 @@ function DeviceCard({
                 className={cn("w-full max-w-xs", aliasError && "ring-basalt-danger", saving && "opacity-50")}
               />
               {aliasError && (
-                <p className="text-[11px] text-destructive">{aliasError}</p>
+                <Banner variant="error" size="sm" description={aliasError} />
               )}
             </div>
           ) : (
