@@ -405,7 +405,7 @@ function AchievementCard({ achievement, index, isExpanded, onToggle, onUserClick
         type="button"
         variant="ghost"
         onClick={onToggle}
-        className="flex h-auto w-full cursor-pointer flex-col items-stretch rounded-lg p-0 text-left hover:bg-transparent"
+        className="flex h-auto w-full cursor-pointer flex-col items-stretch rounded-lg p-0 text-left hover:bg-transparent [&_svg]:size-[unset]"
       >
         {/* Top row: ring + name/tier */}
         <div className="flex items-start gap-3">
