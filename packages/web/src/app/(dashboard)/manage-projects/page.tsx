@@ -110,7 +110,10 @@ function AssignDropdown({
   onCreateNew: () => void;
 }) {
   return (
-    <DropdownMenuContent align="end" className="w-56">
+    <DropdownMenuContent
+      align="end"
+      className="w-56 max-h-[min(24rem,var(--radix-dropdown-menu-content-available-height))] overflow-y-auto"
+    >
         {projects.length > 0 && (
           <DropdownMenuGroup aria-label="Existing projects">
             <div
