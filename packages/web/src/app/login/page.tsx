@@ -152,9 +152,7 @@ function LoginContent() {
                   className="rounded-xl py-3 text-center font-mono tracking-widest placeholder:font-sans placeholder:tracking-normal"
                 />
                 {inviteError && (
-                  <div className="w-full rounded-lg bg-basalt-destructive/10 px-3 py-2 text-center text-xs text-basalt-destructive">
-                    {inviteError}
-                  </div>
+                  <Banner variant="error" size="sm" description={inviteError} />
                 )}
                 <Button
                   variant="secondary"
