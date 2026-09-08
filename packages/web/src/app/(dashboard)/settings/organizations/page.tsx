@@ -220,20 +220,9 @@ export default function OrganizationsPage() {
               const isPending = pendingAction === org.id;
 
               return (
-                // biome-ignore lint/a11y/useSemanticElements: list row acts as a link/button; using a real <button> would break the inline layout (avatar + name + role badges + hover chrome) and require reworking the Flex row.
                 <div
                   key={org.id}
-                  role="button"
-                  tabIndex={0}
-                  className="flex items-center gap-4 p-4 hover:bg-accent/50 transition-colors cursor-pointer"
-                  onClick={() => openMembersModal(org)}
-                  onKeyDown={(e) => {
-                    if (e.target !== e.currentTarget) return;
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      openMembersModal(org);
-                    }
-                  }}
+                  className="flex items-center gap-4 p-4 hover:bg-accent/50 transition-colors"
                 >
                   {/* Logo */}
                   <Avatar className="h-10 w-10">
@@ -244,22 +233,29 @@ export default function OrganizationsPage() {
                   </Avatar>
 
                   {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
-                      {org.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {org.memberCount} {org.memberCount === 1 ? "member" : "members"}
-                    </p>
-                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-auto min-w-0 flex-1 justify-start px-0 py-0 text-left hover:bg-transparent"
+                    onClick={() => openMembersModal(org)}
+                    aria-label={`View members of ${org.name}`}
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-sm font-medium text-foreground">
+                        {org.name}
+                      </span>
+                      <span className="block text-xs text-muted-foreground">
+                        {org.memberCount} {org.memberCount === 1 ? "member" : "members"}
+                      </span>
+                    </span>
+                  </Button>
 
                   {/* Join/Leave button */}
                   <Button
                     type="button"
                     size="sm"
                     variant={isMember ? "secondary" : "default"}
-                    onClick={(e) => {
-                      e.stopPropagation();
+                    onClick={() => {
                       if (isPending) return;
                       if (isMember) {
                         handleLeave(org.id);
