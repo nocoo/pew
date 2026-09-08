@@ -154,7 +154,7 @@ test.describe("Feature: Admin", () => {
         .filter({ hasText: badgeText })
         .filter({ has: page.getByRole("button", { name: "Archive" }) });
       await badgeRow.first().getByRole("button", { name: "Archive" }).click();
-      const dialog = page.getByRole("dialog");
+      const dialog = page.getByRole("alertdialog");
       await expect(dialog).toBeVisible();
       await dialog.getByRole("button", { name: "Archive" }).click();
 
@@ -261,9 +261,7 @@ test.describe("Feature: Admin", () => {
       await page.goto("/admin/seasons");
       await expect(page.getByText(seasonName)).toBeVisible({ timeout: 10_000 });
       const row = page.locator("tr", { hasText: seasonName });
-      // [title="Edit season"] CSS selector is used because the edit icon button
-      // exposes its meaning only via the title attribute, same as the original spec.
-      await row.locator('[title="Edit season"]').click();
+      await row.getByRole("button", { name: "Edit season" }).click();
       const editRow = page.locator("tr", {
         has: page.getByRole("button", { name: "Save" }),
       });
