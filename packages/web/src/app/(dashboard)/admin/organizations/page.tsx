@@ -149,7 +149,7 @@ function LogoUploadButton({
         aria-label={`Upload logo for ${orgName}`}
         disabled={uploading}
         className={cn(
-          "absolute inset-0 h-auto w-auto rounded-lg bg-black/50 text-white opacity-0 hover:bg-black/50 hover:opacity-100 hover:text-white",
+          "absolute inset-0 h-auto w-auto rounded-lg bg-black/50 text-white opacity-0 hover:bg-black/50 hover:opacity-100 hover:text-white focus-visible:opacity-100",
           uploading && "opacity-100",
         )}
         onClick={() => inputRef.current?.click()}
