@@ -1,8 +1,14 @@
 "use client";
 
 import { useMemo } from "react";
-import { Dialog } from "radix-ui";
-import { X, Calendar } from "lucide-react";
+import { Button } from "@nocoo/basalt/components/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+} from "@nocoo/basalt/components/dialog";
+import { Calendar, X } from "lucide-react";
 import { formatMemberSince } from "@/lib/date-helpers";
 import { useAdmin } from "@/hooks/use-admin";
 import { useSeasons } from "@/hooks/use-seasons";
@@ -90,20 +96,17 @@ function ConfigLoadingSkeleton({
             </AvatarFallback>
           </Avatar>
           <div>
-            <Dialog.Title className="text-xl font-semibold text-foreground">
+            <DialogTitle className="text-xl font-semibold text-basalt-foreground">
               {displayName}
-            </Dialog.Title>
+            </DialogTitle>
             <Skeleton className="h-4 w-32 mt-1" />
           </div>
         </div>
-        <Dialog.Close asChild>
-          <button type="button"
-            className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            aria-label="Close"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </Dialog.Close>
+        <DialogClose asChild>
+          <Button variant="ghost" size="icon" aria-label="Close">
+            <X aria-hidden="true" />
+          </Button>
+        </DialogClose>
       </div>
 
       {/* Tab bar skeleton */}
@@ -151,7 +154,7 @@ function ConfigLoadingSkeleton({
 // Dialog header — remounted via key to reset when slug changes
 // ---------------------------------------------------------------------------
 
-interface DialogHeaderProps {
+interface ProfileDialogHeaderProps {
   name?: string | null | undefined;
   image?: string | null | undefined;
   badges?: LeaderboardBadge[];
@@ -161,14 +164,14 @@ interface DialogHeaderProps {
   loading?: boolean;
 }
 
-function DialogHeader({
+function ProfileDialogHeader({
   name,
   image,
   badges: badgesProp,
   isAdmin,
   user,
   loading = false,
-}: DialogHeaderProps) {
+}: ProfileDialogHeaderProps) {
   const displayName = user?.name ?? name ?? "User";
   const displayImage = user?.image ?? image;
   const initial = displayName[0]?.toUpperCase() ?? "?";
@@ -190,13 +193,13 @@ function DialogHeader({
         </Avatar>
         <div>
           <div className="flex items-center gap-2">
-            <Dialog.Title className="text-xl font-semibold text-foreground">
+            <DialogTitle className="text-xl font-semibold text-basalt-foreground">
               {isFirstLoad ? (
                 <Skeleton className="h-6 w-40" />
               ) : (
                 displayName
               )}
-            </Dialog.Title>
+            </DialogTitle>
             {displayBadges.length > 0 && (
               <div className="flex gap-1">
                 {displayBadges.map((badge) => (
@@ -225,14 +228,11 @@ function DialogHeader({
           )}
         </div>
       </div>
-      <Dialog.Close asChild>
-        <button type="button"
-          className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          aria-label="Close"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </Dialog.Close>
+      <DialogClose asChild>
+        <Button variant="ghost" size="icon" aria-label="Close">
+          <X aria-hidden="true" />
+        </Button>
+      </DialogClose>
     </div>
   );
 }
@@ -296,34 +296,31 @@ export function UserProfileDialog({
     !adminLoading && (seasonFromProps !== null || !seasonsLoading);
 
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-6xl max-h-[90vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl bg-card p-6 md:p-8 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95">
-          {configReady ? (
-            <>
-              <DialogHeader
-                key={`header-${slug}`}
-                name={name}
-                image={image}
-                {...(badges && badges.length > 0 && { badges })}
-                isAdmin={isAdmin}
-                user={profileUser}
-                loading={profileLoading}
-              />
-              <ProfileContent
-                key={`content-${slug}-${defaultTab}`}
-                slug={slug ?? ""}
-                defaultTab={defaultTab}
-                season={season ?? undefined}
-                showAdminTabs={isAdmin}
-              />
-            </>
-          ) : (
-            <ConfigLoadingSkeleton name={name} image={image} />
-          )}
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent size="xl" className="sm:w-[72rem] sm:max-w-6xl">
+        {configReady ? (
+          <>
+            <ProfileDialogHeader
+              key={`header-${slug}`}
+              name={name}
+              image={image}
+              {...(badges && badges.length > 0 && { badges })}
+              isAdmin={isAdmin}
+              user={profileUser}
+              loading={profileLoading}
+            />
+            <ProfileContent
+              key={`content-${slug}-${defaultTab}`}
+              slug={slug ?? ""}
+              defaultTab={defaultTab}
+              season={season ?? undefined}
+              showAdminTabs={isAdmin}
+            />
+          </>
+        ) : (
+          <ConfigLoadingSkeleton name={name} image={image} />
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }

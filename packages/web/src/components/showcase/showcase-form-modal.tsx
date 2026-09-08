@@ -5,9 +5,22 @@
 "use client";
 
 import { useState, useCallback, useEffect, useId } from "react";
-import { Dialog } from "radix-ui";
-import { X, Loader2, ExternalLink, AlertCircle, Star, GitFork, Code, Scale } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Banner } from "@nocoo/basalt/components/banner";
+import { Button } from "@nocoo/basalt/components/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@nocoo/basalt/components/dialog";
+import { Field } from "@nocoo/basalt/components/field";
+import { Input } from "@nocoo/basalt/components/input";
+import { InputArea } from "@nocoo/basalt/components/input-area";
+import { Switch } from "@nocoo/basalt/components/switch";
+import { ExternalLink, AlertCircle, Star, GitFork, Code, Scale } from "lucide-react";
 import { ShowcaseImage } from "./showcase-image";
 import { useShowcasePreview } from "@/hooks/use-showcases";
 
@@ -223,68 +236,53 @@ export function ShowcaseFormModal({
     : !submitting && preview && !preview.already_exists;
 
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-lg max-h-[90vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl bg-card p-6 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95">
-          {/* Close button */}
-          <Dialog.Close asChild>
-            <button type="button" className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
-              <X className="h-4 w-4" />
-            </button>
-          </Dialog.Close>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent size="lg">
+          <DialogHeader>
+            <DialogTitle className="text-xl">
+              {editMode ? "Edit Showcase" : "Add Showcase"}
+            </DialogTitle>
+            <DialogDescription className="text-sm">
+              {editMode
+                ? "Update your showcase details."
+                : "Share a GitHub repository with the community."}
+            </DialogDescription>
+          </DialogHeader>
 
-          {/* Title */}
-          <Dialog.Title className="text-xl font-semibold text-foreground mb-1">
-            {editMode ? "Edit Showcase" : "Add Showcase"}
-          </Dialog.Title>
-          <Dialog.Description className="text-sm text-muted-foreground mb-5">
-            {editMode
-              ? "Update your showcase details."
-              : "Share a GitHub repository with the community."}
-          </Dialog.Description>
-
-          {/* Error */}
-          {submitError && (
-            <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive mb-4 flex items-start gap-2">
-              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>{submitError}</span>
-            </div>
-          )}
+          {submitError ? (
+            <Banner
+              variant="error"
+              size="sm"
+              className="mb-4"
+              icon={<AlertCircle strokeWidth={1.5} />}
+              description={submitError}
+            />
+          ) : null}
 
           {/* GitHub URL input (add mode only) */}
           {!editMode && (
             <div className="mb-4">
-              <label htmlFor={githubUrlId} className="block text-xs font-medium text-muted-foreground mb-1.5">
-                GitHub Repository URL
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id={githubUrlId}
-                  type="url"
-                  value={githubUrl}
-                  onChange={(e) => setGithubUrl(e.target.value)}
-                  placeholder="https://github.com/owner/repo"
-                  className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
-                  disabled={submitting}
-                />
-                <button type="button"
-                  onClick={handlePreview}
-                  disabled={!githubUrl.trim() || previewLoading || submitting}
-                  className={cn(
-                    "rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors",
-                    previewLoading
-                      ? "opacity-50 cursor-not-allowed"
-                      : "hover:bg-accent hover:text-foreground"
-                  )}
-                >
-                  {previewLoading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "Preview"
-                  )}
-                </button>
-              </div>
+              <Field label="GitHub Repository URL" htmlFor={githubUrlId}>
+                <div className="flex gap-2">
+                  <Input
+                    id={githubUrlId}
+                    type="url"
+                    value={githubUrl}
+                    onChange={(e) => setGithubUrl(e.target.value)}
+                    placeholder="https://github.com/owner/repo"
+                    className="flex-1"
+                    disabled={submitting}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={handlePreview}
+                    disabled={!githubUrl.trim() || previewLoading || submitting}
+                    loading={previewLoading}
+                  >
+                    Preview
+                  </Button>
+                </div>
+              </Field>
               {previewError && (
                 <p className="mt-1.5 text-xs text-destructive">{previewError}</p>
               )}
@@ -372,23 +370,15 @@ export function ShowcaseFormModal({
                   <p className="text-[10px] text-muted-foreground">
                     Title and description are synced from GitHub.
                   </p>
-                  <button type="button"
+                  <Button
+                    variant="link"
+                    size="sm"
                     onClick={handleRefresh}
                     disabled={refreshing || submitting}
-                    className={cn(
-                      "text-xs text-primary hover:text-primary/80 transition-colors",
-                      (refreshing || submitting) && "opacity-50 cursor-not-allowed"
-                    )}
+                    loading={refreshing}
                   >
-                    {refreshing ? (
-                      <span className="flex items-center gap-1">
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        Refreshing...
-                      </span>
-                    ) : (
-                      "Refresh from GitHub"
-                    )}
-                  </button>
+                    Refresh from GitHub
+                  </Button>
                 </div>
               )}
             </div>
@@ -396,24 +386,23 @@ export function ShowcaseFormModal({
 
           {/* Tagline input */}
           {(editMode || displayData) && (
-            <div className="mb-4">
-              <label htmlFor={taglineId} className="block text-xs font-medium text-muted-foreground mb-1.5">
-                Your Recommendation (optional)
-              </label>
-              <textarea
+            <Field
+              className="mb-4"
+              label="Your Recommendation"
+              htmlFor={taglineId}
+              required={false}
+              hint={`${tagline.length}/280`}
+            >
+              <InputArea
                 id={taglineId}
                 value={tagline}
                 onChange={(e) => setTagline(e.target.value)}
                 placeholder="Why do you recommend this project?"
                 maxLength={280}
                 rows={2}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow resize-none"
                 disabled={submitting}
               />
-              <p className="mt-1 text-right text-[10px] text-muted-foreground">
-                {tagline.length}/280
-              </p>
-            </div>
+            </Field>
           )}
 
           {/* Visibility toggle (edit mode) */}
@@ -427,52 +416,32 @@ export function ShowcaseFormModal({
                   Show this showcase on the public leaderboard.
                 </p>
               </div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={isPublic}
-                onClick={() => setIsPublic(!isPublic)}
+              <Switch
+                checked={isPublic}
+                onCheckedChange={setIsPublic}
                 disabled={submitting}
-                className={cn(
-                  "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors",
-                  isPublic ? "bg-primary" : "bg-border",
-                  submitting && "opacity-50 cursor-not-allowed"
-                )}
-              >
-                <span
-                  className={cn(
-                    "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-background shadow-sm ring-0 transition-transform",
-                    isPublic ? "translate-x-4" : "translate-x-0"
-                  )}
-                />
-              </button>
+                size="sm"
+                aria-label="Public"
+              />
             </div>
           )}
 
           {/* Actions */}
-          <div className="flex justify-end gap-2">
-            <Dialog.Close asChild>
-              <button type="button"
-                disabled={submitting}
-                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" disabled={submitting}>
                 Cancel
-              </button>
-            </Dialog.Close>
-            <button type="button"
+              </Button>
+            </DialogClose>
+            <Button
               onClick={handleSubmit}
               disabled={!canSubmit}
-              className={cn(
-                "flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors",
-                !canSubmit && "opacity-50 cursor-not-allowed"
-              )}
+              loading={submitting}
             >
-              {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
               {editMode ? "Save Changes" : "Add Showcase"}
-            </button>
-          </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+            </Button>
+          </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

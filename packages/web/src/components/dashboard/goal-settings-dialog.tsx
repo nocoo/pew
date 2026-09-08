@@ -1,8 +1,18 @@
 "use client";
 
 import { useCallback, useId, useState } from "react";
-import { Dialog } from "radix-ui";
-import { Settings, X } from "lucide-react";
+import { Button } from "@nocoo/basalt/components/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@nocoo/basalt/components/dialog";
+import { Field } from "@nocoo/basalt/components/field";
+import { Input } from "@nocoo/basalt/components/input";
+import { Settings } from "lucide-react";
 import { formatTokensFull } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -89,68 +99,49 @@ function GoalSettingsForm({
 
   return (
     <>
-      {/* Form */}
       <div className="space-y-4">
-        <div>
-          <label htmlFor={lowerId} className="block text-sm font-medium text-foreground mb-1">
-            Lower threshold (M tokens/day)
-          </label>
-          <input
+        <Field
+          label="Lower threshold (M tokens/day)"
+          htmlFor={lowerId}
+          hint={`Below = red · ${formatTokensFull(parseFloat(lower || "0") * 1_000_000)} tokens`}
+        >
+          <Input
             id={lowerId}
             type="number"
             min="0"
             step="any"
             value={lower}
             onChange={(e) => setLower(e.target.value)}
-            className="w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             placeholder="50"
           />
-          <p className="mt-1 text-xs text-muted-foreground">
-            Below = red · {formatTokensFull(parseFloat(lower || "0") * 1_000_000)} tokens
-          </p>
-        </div>
+        </Field>
 
-        <div>
-          <label htmlFor={upperId} className="block text-sm font-medium text-foreground mb-1">
-            Upper threshold (M tokens/day)
-          </label>
-          <input
+        <Field
+          label="Upper threshold (M tokens/day)"
+          htmlFor={upperId}
+          hint={`Above = green · ${formatTokensFull(parseFloat(upper || "0") * 1_000_000)} tokens`}
+          {...(error ? { error } : {})}
+        >
+          <Input
             id={upperId}
             type="number"
             min="0"
             step="any"
             value={upper}
             onChange={(e) => setUpper(e.target.value)}
-            className="w-full rounded-lg border border-border bg-secondary px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             placeholder="200"
           />
-          <p className="mt-1 text-xs text-muted-foreground">
-            Above = green · {formatTokensFull(parseFloat(upper || "0") * 1_000_000)} tokens
-          </p>
-        </div>
-
-        {error && (
-          <p className="text-sm text-destructive">{error}</p>
-        )}
+        </Field>
       </div>
 
-      {/* Actions */}
-      <div className="flex gap-3 mt-6">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="flex-1 rounded-lg border border-border bg-secondary px-4 py-2.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
-        >
+      <DialogFooter>
+        <Button variant="outline" className="flex-1" onClick={onCancel}>
           Cancel
-        </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          className="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-        >
+        </Button>
+        <Button className="flex-1" onClick={handleSave}>
           Save
-        </button>
-      </div>
+        </Button>
+      </DialogFooter>
     </>
   );
 }
@@ -185,42 +176,23 @@ export function GoalSettingsDialog({
   }, [onOpenChange]);
 
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl bg-card p-6 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95">
-          {/* Close button */}
-          <Dialog.Close asChild>
-            <button type="button"
-              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </Dialog.Close>
-
-          {/* Icon */}
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary mb-4">
-            <Settings className="h-6 w-6" strokeWidth={1.5} />
-          </div>
-
-          {/* Title */}
-          <Dialog.Title className="text-center text-lg font-semibold text-foreground mb-1">
-            Goal Thresholds
-          </Dialog.Title>
-
-          <Dialog.Description className="text-center text-sm text-muted-foreground mb-5">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent size="sm">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-basalt-primary/10 text-basalt-primary">
+          <Settings className="h-6 w-6" strokeWidth={1.5} />
+        </div>
+        <DialogHeader className="text-center">
+          <DialogTitle className="text-center text-lg">Goal Thresholds</DialogTitle>
+          <DialogDescription className="text-center text-sm">
             Set daily token thresholds for the goal heatmap.
-          </Dialog.Description>
-
-          {/* Form — remounts each open, resetting state */}
-          <GoalSettingsForm
-            current={current}
-            onSave={handleSave}
-            onCancel={handleCancel}
-          />
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+          </DialogDescription>
+        </DialogHeader>
+        <GoalSettingsForm
+          current={current}
+          onSave={handleSave}
+          onCancel={handleCancel}
+        />
+      </DialogContent>
+    </Dialog>
   );
 }

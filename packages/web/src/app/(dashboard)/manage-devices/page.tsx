@@ -1,10 +1,17 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Dialog } from "radix-ui";
 import { Button } from "@nocoo/basalt/components/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@nocoo/basalt/components/dialog";
+import { Input } from "@nocoo/basalt/components/input";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
-import { Monitor, Info, Trash2, Terminal, Copy, Check, X } from "lucide-react";
+import { Monitor, Info, Trash2, Terminal, Copy, Check } from "lucide-react";
 import { cn, formatTokens } from "@/lib/utils";
 import { sourceLabel } from "@/hooks/use-usage-data";
 import { deviceLabel, shortDeviceId } from "@/lib/device-helpers";
@@ -114,8 +121,9 @@ function DeviceCard({
         <div className="flex-1 min-w-0">
           {editing ? (
             <div className="space-y-1">
-              <input
+              <Input
                 type="text"
+                size="sm"
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
                 onBlur={handleSave}
@@ -123,11 +131,7 @@ function DeviceCard({
                 maxLength={50}
                 disabled={saving}
                 placeholder={isDefault ? "Legacy Device" : shortDeviceId(device.device_id)}
-                className={cn(
-                  "w-full max-w-xs rounded-lg border bg-background px-2 py-1 text-sm font-medium text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow",
-                  aliasError ? "border-destructive" : "border-border",
-                  saving && "opacity-50"
-                )}
+                className={cn("w-full max-w-xs", aliasError && "ring-basalt-danger", saving && "opacity-50")}
               />
               {aliasError && (
                 <p className="text-[11px] text-destructive">{aliasError}</p>
@@ -337,33 +341,19 @@ function AuthCodeModal({
   };
 
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/60 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-xl bg-card p-6 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95">
-          {/* Header */}
-          <div className="flex items-start justify-between mb-4">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent size="sm">
+          <DialogHeader>
             <div className="flex items-center gap-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
-                <Terminal className="h-4 w-4 text-primary" strokeWidth={1.5} />
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-basalt-primary/10">
+                <Terminal className="h-4 w-4 text-basalt-primary" strokeWidth={1.5} />
               </div>
-              <Dialog.Title className="text-base font-semibold text-foreground">
-                CLI Login Code
-              </Dialog.Title>
+              <DialogTitle className="text-base">CLI Login Code</DialogTitle>
             </div>
-            <Dialog.Close asChild>
-              <button type="button"
-                className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" strokeWidth={1.5} />
-              </button>
-            </Dialog.Close>
-          </div>
-
-          <Dialog.Description className="text-sm text-muted-foreground mb-5">
-            Generate a one-time code to authenticate the pew CLI on a headless machine (no browser).
-          </Dialog.Description>
+            <DialogDescription>
+              Generate a one-time code to authenticate the pew CLI on a headless machine (no browser).
+            </DialogDescription>
+          </DialogHeader>
 
           {authCode ? (
             <div className="space-y-4">
@@ -374,27 +364,23 @@ function AuthCodeModal({
                     {authCode}
                   </code>
                 </div>
-                <button
-                  type="button"
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-12 w-12 shrink-0"
                   onClick={async () => {
                     await navigator.clipboard.writeText(authCode);
                     setCopiedCode(true);
                     setTimeout(() => setCopiedCode(false), 2000);
                   }}
-                  className={cn(
-                    "flex h-12 w-12 items-center justify-center rounded-lg border transition-all shrink-0",
-                    copiedCode
-                      ? "border-success/30 bg-success/10 text-success"
-                      : "border-border bg-secondary text-muted-foreground hover:text-foreground hover:bg-accent"
-                  )}
-                  title="Copy code"
+                  aria-label="Copy code"
                 >
                   {copiedCode ? (
                     <Check className="h-4 w-4" strokeWidth={2} />
                   ) : (
                     <Copy className="h-4 w-4" strokeWidth={1.5} />
                   )}
-                </button>
+                </Button>
               </div>
 
               {/* Expiry countdown */}
@@ -417,32 +403,28 @@ function AuthCodeModal({
               </div>
 
               {/* Regenerate button */}
-              <button type="button"
+              <Button
+                variant="outline"
+                className="w-full"
                 onClick={handleGenerateAuthCode}
                 disabled={generatingCode}
-                className={cn(
-                  "w-full rounded-lg border border-border bg-secondary px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent",
-                  generatingCode && "opacity-50 cursor-not-allowed",
-                )}
+                loading={generatingCode}
               >
                 Generate New Code
-              </button>
+              </Button>
             </div>
           ) : (
-            <button type="button"
+            <Button
+              className="w-full"
               onClick={handleGenerateAuthCode}
               disabled={generatingCode}
-              className={cn(
-                "w-full rounded-lg bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90",
-                generatingCode && "opacity-50 cursor-not-allowed",
-              )}
+              loading={generatingCode}
             >
-              {generatingCode ? "Generating..." : "Generate Code"}
-            </button>
+              Generate Code
+            </Button>
           )}
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+      </DialogContent>
+    </Dialog>
   );
 }
 
