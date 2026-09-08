@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useId } from "react";
+import { useState, useEffect, useId, useRef } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
@@ -26,6 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@nocoo/basalt/components/dialog";
+import { Field } from "@nocoo/basalt/components/field";
 import { Input } from "@nocoo/basalt/components/input";
 import { chromeIconClassName, rowIconClassName, rowIconDangerClassName } from "@/components/ui/button";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
@@ -186,53 +187,40 @@ function CreateOrgForm({
         </div>
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div>
-          <label htmlFor={nameId} className="block text-xs font-medium text-muted-foreground mb-1">
-            Name
-          </label>
-          <input
+        <Field label="Name" htmlFor={nameId}>
+          <Input
             id={nameId}
             type="text"
             value={name}
             onChange={(e) => handleNameChange(e.target.value)}
             placeholder="Anthropic"
             maxLength={64}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
           />
-        </div>
-        <div>
-          <label htmlFor={slugId} className="block text-xs font-medium text-muted-foreground mb-1">
-            Slug
-          </label>
-          <input
+        </Field>
+        <Field label="Slug" htmlFor={slugId}>
+          <Input
             id={slugId}
             type="text"
             value={slug}
             onChange={(e) => setSlug(e.target.value)}
             placeholder="anthropic"
             maxLength={32}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
+            className="font-mono"
           />
-        </div>
+        </Field>
       </div>
       <div className="flex items-center gap-2 mt-4">
-        <button type="button"
+        <Button
+          type="button"
           onClick={handleSubmit}
           disabled={submitting || !name.trim() || !slug.trim()}
-          className={cn(
-            "rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors",
-            (submitting || !name.trim() || !slug.trim()) &&
-              "opacity-50 cursor-not-allowed"
-          )}
+          loading={submitting}
         >
           {submitting ? "Creating..." : "Create"}
-        </button>
-        <button type="button"
-          onClick={onCancel}
-          className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-        >
+        </Button>
+        <Button type="button" variant="secondary" onClick={onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -298,53 +286,41 @@ function EditOrgRow({
           </div>
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label htmlFor={nameId} className="block text-xs font-medium text-muted-foreground mb-1">
-              Name
-            </label>
-            <input
+          <Field label="Name" htmlFor={nameId}>
+            <Input
               id={nameId}
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={64}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
             />
-          </div>
-          <div>
-            <label htmlFor={slugId} className="block text-xs font-medium text-muted-foreground mb-1">
-              Slug
-            </label>
-            <input
+          </Field>
+          <Field label="Slug" htmlFor={slugId}>
+            <Input
               id={slugId}
               type="text"
               value={slug}
               onChange={(e) => setSlug(e.target.value)}
               maxLength={32}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground font-mono focus:outline-none focus:ring-2 focus:ring-ring/20 transition-shadow"
+              className="font-mono"
             />
-          </div>
+          </Field>
         </div>
         <div className="flex items-center gap-2 mt-3">
-          <button type="button"
+          <Button
+            type="button"
+            size="sm"
             onClick={handleSave}
             disabled={submitting || !name.trim() || !slug.trim()}
-            className={cn(
-              "flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors",
-              (submitting || !name.trim() || !slug.trim()) &&
-                "opacity-50 cursor-not-allowed"
-            )}
+            loading={submitting}
           >
             <Check className="h-3.5 w-3.5" strokeWidth={1.5} />
             {submitting ? "Saving..." : "Save"}
-          </button>
-          <button type="button"
-            onClick={onCancel}
-            className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-          >
+          </Button>
+          <Button type="button" size="sm" variant="secondary" onClick={onCancel}>
             <X className="h-3.5 w-3.5" strokeWidth={1.5} />
             Cancel
-          </button>
+          </Button>
         </div>
       </td>
     </tr>
@@ -373,6 +349,11 @@ function MembersModal({
   const [searching, setSearching] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const { confirm, dialogProps } = useConfirm();
+  const restoreFocusRef = useRef<HTMLElement | null>(
+    typeof document !== "undefined" && document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null,
+  );
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -462,7 +443,13 @@ function MembersModal({
   return (
     <>
       <Dialog open onOpenChange={(next) => { if (!next) onClose(); }}>
-        <DialogContent size="lg">
+        <DialogContent
+          size="lg"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            restoreFocusRef.current?.focus();
+          }}
+        >
           <DialogClose asChild>
             <Button
               variant="ghost"
