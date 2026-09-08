@@ -9,6 +9,7 @@ import {
 import type { UsageRow } from "@/hooks/use-usage-data";
 import { useTzOffset } from "@/hooks/use-tz-offset";
 import { ErrorBanner } from "@/components/ui/error-banner";
+import { Button } from "@nocoo/basalt/components/button";
 import { useDeviceData } from "@/hooks/use-device-data";
 import { TimelineInOutChart } from "@/components/dashboard/timeline-inout-chart";
 import { TimelineDeviceChart } from "@/components/dashboard/timeline-device-chart";
@@ -176,17 +177,24 @@ function DayRow({
       >
         <td className="px-4 py-3 text-sm">
           <div className="flex items-center gap-2">
-            {expanded ? (
-              <ChevronDown
-                className="h-3.5 w-3.5 text-muted-foreground shrink-0"
-                strokeWidth={1.5}
-              />
-            ) : (
-              <ChevronRight
-                className="h-3.5 w-3.5 text-muted-foreground shrink-0"
-                strokeWidth={1.5}
-              />
-            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              aria-expanded={expanded}
+              aria-label={expanded ? "Collapse hour" : "Expand hour"}
+              onClick={(e) => {
+                e.stopPropagation();
+                setExpanded(!expanded);
+              }}
+            >
+              {expanded ? (
+                <ChevronDown strokeWidth={1.5} />
+              ) : (
+                <ChevronRight strokeWidth={1.5} />
+              )}
+            </Button>
             <span className="font-medium">{formatDate(group.date)}</span>
           </div>
         </td>

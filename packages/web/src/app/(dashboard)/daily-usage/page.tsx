@@ -99,17 +99,24 @@ function DayRow({ group, pricingMap }: { group: DailyGroup; pricingMap: PricingM
       >
         <td className="px-4 py-3 text-sm">
           <div className="flex items-center gap-2">
-            {expanded ? (
-              <ChevronDown
-                className="h-3.5 w-3.5 text-muted-foreground shrink-0"
-                strokeWidth={1.5}
-              />
-            ) : (
-              <ChevronRight
-                className="h-3.5 w-3.5 text-muted-foreground shrink-0"
-                strokeWidth={1.5}
-              />
-            )}
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              aria-expanded={expanded}
+              aria-label={expanded ? "Collapse day" : "Expand day"}
+              onClick={(e) => {
+                e.stopPropagation();
+                setExpanded(!expanded);
+              }}
+            >
+              {expanded ? (
+                <ChevronDown strokeWidth={1.5} />
+              ) : (
+                <ChevronRight strokeWidth={1.5} />
+              )}
+            </Button>
             <span className="font-medium">{formatDate(group.date)}</span>
           </div>
         </td>
