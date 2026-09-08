@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
+import { Empty } from "@nocoo/basalt/components/empty";
 import {
   Dialog,
   DialogClose,
@@ -126,6 +127,48 @@ function OrgLogo({
       className={cn(sizeClasses[size], "rounded-lg object-cover")}
       onError={() => setError(true)}
     />
+  );
+}
+
+function LogoUploadButton({
+  orgName,
+  uploading,
+  onFile,
+}: {
+  orgName: string;
+  uploading: boolean;
+  onFile: (file: File) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        aria-label={`Upload logo for ${orgName}`}
+        disabled={uploading}
+        className={cn(
+          "absolute inset-0 h-auto w-auto rounded-lg bg-black/50 text-white opacity-0 hover:bg-black/50 hover:opacity-100 hover:text-white",
+          uploading && "opacity-100",
+        )}
+        onClick={() => inputRef.current?.click()}
+      >
+        <Upload className={cn("h-4 w-4", uploading && "animate-pulse")} />
+      </Button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg"
+        className="hidden"
+        disabled={uploading}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) onFile(file);
+          e.target.value = "";
+        }}
+      />
+    </>
   );
 }
 
@@ -547,9 +590,7 @@ function MembersModal({
                 ))}
               </div>
             ) : members.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                No members yet.
-              </p>
+              <Empty title="No members yet." className="py-8" />
             ) : (
               <div className="space-y-2">
                 {members.map((member) => (
@@ -763,9 +804,10 @@ export default function AdminOrganizationsPage() {
       {/* Table */}
       {!loading && (
         rows.length === 0 ? (
-            <div className="rounded-card bg-secondary p-8 text-center text-sm text-muted-foreground">
-              No organizations yet. Create one to get started.
-            </div>
+            <Empty
+              title="No organizations yet. Create one to get started."
+              className="rounded-basalt-card bg-basalt-secondary p-8"
+            />
           ) : (
             <div className="rounded-xl bg-secondary p-1 overflow-x-auto">
               <table className="w-full">
@@ -814,30 +856,11 @@ export default function AdminOrganizationsPage() {
                                 name={row.name}
                                 size="md"
                               />
-                              <label
-                                className={cn(
-                                  "absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg opacity-0 hover:opacity-100 transition-opacity cursor-pointer",
-                                  uploadingId === row.id && "opacity-100"
-                                )}
-                              >
-                                <Upload
-                                  className={cn(
-                                    "h-4 w-4 text-white",
-                                    uploadingId === row.id && "animate-pulse"
-                                  )}
-                                />
-                                <input
-                                  type="file"
-                                  accept="image/png,image/jpeg"
-                                  className="hidden"
-                                  disabled={uploadingId === row.id}
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) handleLogoUpload(row, file);
-                                    e.target.value = "";
-                                  }}
-                                />
-                              </label>
+                              <LogoUploadButton
+                                orgName={row.name}
+                                uploading={uploadingId === row.id}
+                                onFile={(file) => handleLogoUpload(row, file)}
+                              />
                             </div>
                             <span className="text-sm font-medium text-foreground">
                               {row.name}
