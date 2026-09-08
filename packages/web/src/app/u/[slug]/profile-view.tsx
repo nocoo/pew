@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ShieldCheck,
 } from "lucide-react";
+import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
 import { Github } from "@/components/icons/github";
 import { chromeIconClassName } from "@/components/ui/button";
@@ -115,9 +116,7 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
           <PewPageHeader />
           <main className="flex-1 py-8">
             <div className="text-center space-y-4">
-              <p className="text-destructive">
-                Failed to load profile: {error}
-              </p>
+              <Banner variant="error" description={`Failed to load profile: ${error}`} />
               <Link
                 href="/leaderboard"
                 className="inline-flex items-center gap-2 text-sm text-primary hover:underline"

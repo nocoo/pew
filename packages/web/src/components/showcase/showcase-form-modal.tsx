@@ -362,10 +362,13 @@ export function ShowcaseFormModal({
 
               {/* Already exists warning */}
               {!editMode && displayData.already_exists && (
-                <div className="mt-3 rounded-md bg-warning/10 px-3 py-2 text-xs text-warning flex items-center gap-2">
-                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                  This repository has already been showcased.
-                </div>
+                <Banner
+                  variant="alert"
+                  size="sm"
+                  className="mt-3"
+                  icon={<AlertCircle className="h-3.5 w-3.5 shrink-0" />}
+                  description="This repository has already been showcased."
+                />
               )}
 
               {/* Refresh button (edit mode) */}
