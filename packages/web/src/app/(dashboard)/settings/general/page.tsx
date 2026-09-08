@@ -18,6 +18,7 @@ import { Button } from "@nocoo/basalt/components/button";
 import { Field } from "@nocoo/basalt/components/field";
 import { Input } from "@nocoo/basalt/components/input";
 import { InputGroup } from "@nocoo/basalt/components/input-group";
+import { Label } from "@nocoo/basalt/components/label";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { Switch } from "@nocoo/basalt/components/switch";
 
@@ -227,16 +228,8 @@ export default function SettingsPage() {
             />
           </Field>
 
-          <Field
-            label="Profile URL"
-            htmlFor="slug"
-            hint={
-              <>
-                Your public profile URL. Lowercase letters, numbers, and hyphens only.
-                {!slug && userId ? " Using your user ID as default." : null}
-              </>
-            }
-          >
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="slug">Profile URL</Label>
             <InputGroup>
               <InputGroup.Addon>pew.md/u/</InputGroup.Addon>
               <InputGroup.Input
@@ -263,7 +256,11 @@ export default function SettingsPage() {
                 </InputGroup.Button>
               ) : null}
             </InputGroup>
-          </Field>
+            <p className="text-xs text-basalt-muted-foreground">
+              Your public profile URL. Lowercase letters, numbers, and hyphens only.
+              {!slug && userId ? " Using your user ID as default." : null}
+            </p>
+          </div>
 
           <div className="flex items-start gap-3">
             <Switch

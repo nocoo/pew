@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useId } from "react";
+import { useState, useEffect, useCallback, useId, useRef } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
@@ -44,6 +44,7 @@ import {
 import { Field } from "@nocoo/basalt/components/field";
 import { Input } from "@nocoo/basalt/components/input";
 import { InputArea } from "@nocoo/basalt/components/input-area";
+import { Label } from "@nocoo/basalt/components/label";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import {
   Select,
@@ -187,6 +188,12 @@ function CreateBadgeDialog({ open, onClose, onCreated }: CreateBadgeDialogProps)
   const uid = useId();
   const textId = `${uid}-text`;
   const descriptionId = `${uid}-description`;
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
+  const wasOpenRef = useRef(open);
+  if (open && !wasOpenRef.current) {
+    restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }
+  wasOpenRef.current = open;
 
   // Always exists because PALETTES is non-empty const array
   const defaultPalette = { value: "ocean" as const, label: "Ocean", bg: "#3B82F6", text: "#FFFFFF" };
@@ -233,7 +240,12 @@ function CreateBadgeDialog({ open, onClose, onCreated }: CreateBadgeDialogProps)
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent>
+      <DialogContent
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          restoreFocusRef.current?.focus();
+        }}
+      >
         <DialogClose asChild>
           <Button
             variant="ghost"
@@ -402,6 +414,12 @@ function AssignBadgeDialog({
   const badgeSelectId = `${uid}-badge`;
   const userQueryId = `${uid}-user-query`;
   const noteId = `${uid}-note`;
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
+  const wasOpenRef = useRef(open);
+  if (open && !wasOpenRef.current) {
+    restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }
+  wasOpenRef.current = open;
 
   const activeBadges = badges.filter((b) => b.is_archived === 0);
   const selectedBadge = badges.find((b) => b.id === selectedBadgeId);
@@ -465,7 +483,12 @@ function AssignBadgeDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent>
+      <DialogContent
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          restoreFocusRef.current?.focus();
+        }}
+      >
         <DialogClose asChild>
           <Button
             variant="ghost"
@@ -514,7 +537,8 @@ function AssignBadgeDialog({
             </div>
           )}
 
-          <Field label="User" htmlFor={userQueryId}>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={userQueryId}>User</Label>
             {selectedUser ? (
               <div className="flex items-center gap-2 rounded-lg bg-secondary p-2">
                 {selectedUser.image && (
@@ -591,7 +615,7 @@ function AssignBadgeDialog({
                 )}
               </div>
             )}
-          </Field>
+          </div>
 
           <div className="rounded-lg bg-secondary/50 p-3 text-sm">
             <p className="text-muted-foreground">
@@ -646,6 +670,12 @@ function RevokeDialog({ open, isActive, onClose, onConfirm }: RevokeDialogProps)
   const [prevOpen, setPrevOpen] = useState(open);
   const uid = useId();
   const reasonId = `${uid}-reason`;
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
+  const wasOpenRef = useRef(open);
+  if (open && !wasOpenRef.current) {
+    restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  }
+  wasOpenRef.current = open;
 
   const action = isActive ? "Revoke" : "Clear";
 
@@ -667,7 +697,12 @@ function RevokeDialog({ open, isActive, onClose, onConfirm }: RevokeDialogProps)
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent>
+      <DialogContent
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          restoreFocusRef.current?.focus();
+        }}
+      >
         <DialogClose asChild>
           <Button
             variant="ghost"
