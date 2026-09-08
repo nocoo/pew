@@ -1,6 +1,6 @@
 "use client";
 
-import { SegmentControl } from "@nocoo/basalt/components/segment-control";
+import { ToggleGroup, ToggleGroupItem } from "@nocoo/basalt/components/toggle-group";
 import { PERIOD_OPTIONS, type Period } from "@/lib/date-helpers";
 
 export { periodToDateRange, periodLabel } from "@/lib/date-helpers";
@@ -13,11 +13,19 @@ interface PeriodSelectorProps {
 
 export function PeriodSelector({ value, onChange }: PeriodSelectorProps) {
   return (
-    <SegmentControl
-      legend="Period"
+    <ToggleGroup
+      type="single"
       value={value}
-      onValueChange={(next) => onChange(next as Period)}
-      options={PERIOD_OPTIONS.map((opt) => ({ value: opt.value, label: opt.label }))}
-    />
+      onValueChange={(next) => {
+        if (next) onChange(next as Period);
+      }}
+      aria-label="Period"
+    >
+      {PERIOD_OPTIONS.map((opt) => (
+        <ToggleGroupItem key={opt.value} value={opt.value}>
+          {opt.label}
+        </ToggleGroupItem>
+      ))}
+    </ToggleGroup>
   );
 }
