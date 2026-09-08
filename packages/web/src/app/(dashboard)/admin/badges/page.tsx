@@ -505,10 +505,8 @@ function AssignBadgeDialog({
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <Field label="Badge" htmlFor={badgeSelectId}>
             <Select
-              value={selectedBadgeId || "__pending__"}
-              onValueChange={(next) => {
-                if (next !== "__pending__") setSelectedBadgeId(next);
-              }}
+              {...(selectedBadgeId ? { value: selectedBadgeId } : {})}
+              onValueChange={setSelectedBadgeId}
             >
               <SelectTrigger id={badgeSelectId} aria-label="Badge">
                 <SelectValue placeholder="Select a badge..." />
