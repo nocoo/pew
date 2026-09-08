@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
+import { Banner } from "@nocoo/basalt/components/banner";
+import { Empty } from "@nocoo/basalt/components/empty";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { formatDuration } from "@/lib/date-helpers";
 import { sourceLabel } from "@/hooks/use-usage-data";
@@ -407,24 +409,18 @@ export default function ProjectsPage() {
       />
 
       {/* Errors */}
-      {(error || actionError) && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error || actionError}
-        </div>
-      )}
+      {error || actionError ? (
+        <Banner variant="error" size="sm" description={error || actionError} />
+      ) : null}
 
-      {/* Empty state */}
-      {hasNoData && (
-        <div className="rounded-xl bg-secondary p-8 text-center">
-          <FolderKanban
-            className="mx-auto h-10 w-10 text-muted-foreground/40"
-            strokeWidth={1}
-          />
-          <p className="mt-3 text-sm text-muted-foreground">
-            No projects found. Sync your AI tools to see project data.
-          </p>
-        </div>
-      )}
+      {hasNoData ? (
+        <Empty
+          className="rounded-basalt-card bg-basalt-secondary p-8"
+          icon={<FolderKanban strokeWidth={1.5} />}
+          title="No projects found"
+          description="Sync your AI tools to see project data."
+        />
+      ) : null}
 
       {/* Your Projects */}
       {(projects.length > 0 || showCreate) && (

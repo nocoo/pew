@@ -1,5 +1,6 @@
 "use client";
 
+import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
 import { chromeIconClassName } from "@/components/ui/button";
 import { Input } from "@nocoo/basalt/components/input";
@@ -116,13 +117,18 @@ function LoginContent() {
             <p className="mt-5 text-lg font-semibold text-basalt-foreground">Show your tokens</p>
             <p className="mt-1 text-xs text-basalt-muted-foreground">Sign in to view your dashboard</p>
 
-            {error && error !== "InviteRequired" && (
-              <div className="mt-3 w-full rounded-lg bg-basalt-destructive/10 px-3 py-2 text-center text-xs text-basalt-destructive">
-                {error === "AccessDenied"
-                  ? "Your account is not authorized to access this application."
-                  : "Sign in failed. Please try again."}
-              </div>
-            )}
+            {error && error !== "InviteRequired" ? (
+              <Banner
+                variant="error"
+                size="sm"
+                className="mt-3 w-full"
+                description={
+                  error === "AccessDenied"
+                    ? "Your account is not authorized to access this application."
+                    : "Sign in failed. Please try again."
+                }
+              />
+            ) : null}
 
             <div className="mt-5 h-px w-full bg-basalt-border" />
             <div className="mt-5" />

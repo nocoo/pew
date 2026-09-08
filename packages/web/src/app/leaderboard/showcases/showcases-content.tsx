@@ -7,7 +7,9 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, RefreshCw, ChevronLeft, ChevronRight } from "lucide-react";
+import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
+import { Empty } from "@nocoo/basalt/components/empty";
 import { rowIconClassName } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useShowcases, type Showcase } from "@/hooks/use-showcases";
@@ -61,9 +63,12 @@ export function ShowcasesContent({ isLoggedIn }: ShowcasesContentProps) {
   // Error state
   if (error) {
     return (
-      <div className="rounded-card bg-destructive/10 p-4 text-sm text-destructive mt-4">
-        Failed to load showcases: {error}
-      </div>
+      <Banner
+        variant="error"
+        size="sm"
+        className="mt-4"
+        description={`Failed to load showcases: ${error}`}
+      />
     );
   }
 
@@ -96,32 +101,28 @@ export function ShowcasesContent({ isLoggedIn }: ShowcasesContentProps) {
         </div>
 
         {isLoggedIn && (
-          <button type="button"
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            <Plus className="h-4 w-4" strokeWidth={1.5} />
+          <Button onClick={() => setShowModal(true)} icon={<Plus strokeWidth={1.5} />}>
             Add Showcase
-          </button>
+          </Button>
         )}
       </div>
 
       {/* Empty state */}
       {showcases.length === 0 && (
-        <div className="rounded-xl bg-secondary p-8 text-center">
-          <p className="text-muted-foreground">
-            No showcases yet. Be the first to share a project!
-          </p>
-          {isLoggedIn && (
-            <button type="button"
-              onClick={() => setShowModal(true)}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              <Plus className="h-4 w-4" strokeWidth={1.5} />
-              Add Showcase
-            </button>
-          )}
-        </div>
+        <Empty
+          className="rounded-basalt-card bg-basalt-secondary p-8"
+          title="No showcases yet"
+          description="Be the first to share a project!"
+          {...(isLoggedIn
+            ? {
+                action: (
+                  <Button onClick={() => setShowModal(true)} icon={<Plus strokeWidth={1.5} />}>
+                    Add Showcase
+                  </Button>
+                ),
+              }
+            : {})}
+        />
       )}
 
       {/* Showcase list */}
