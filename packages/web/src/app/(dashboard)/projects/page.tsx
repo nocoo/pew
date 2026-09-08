@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useProjects } from "@/hooks/use-projects";
 import { useTzOffset } from "@/hooks/use-tz-offset";
 import { ErrorBanner } from "@/components/ui/error-banner";
@@ -195,11 +195,34 @@ function TagEditor({
   const [editing, setEditing] = useState(false);
   const [input, setInput] = useState("");
   const tagInputId = useId();
+  const skipCommitRef = useRef(false);
+
+  const dismissEditor = () => {
+    skipCommitRef.current = true;
+    setInput("");
+    setEditing(false);
+  };
 
   useEffect(() => {
     if (!editing) return;
+    skipCommitRef.current = false;
     document.getElementById(tagInputId)?.focus();
   }, [editing, tagInputId]);
+
+  useLayoutEffect(() => {
+    if (!editing) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.isComposing) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      skipCommitRef.current = true;
+      setInput("");
+      setEditing(false);
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [editing]);
 
   const suggestions = useMemo(() => {
     if (!input) return allTags.filter((t) => !project.tags.includes(t));
@@ -250,17 +273,17 @@ function TagEditor({
           id={tagInputId}
           items={suggestions.slice(0, 5).map((s) => ({ value: s, label: s }))}
           onValueChange={(next) => {
-            if (next.trim()) handleAdd(next);
+            if (skipCommitRef.current || !next.trim()) return;
+            handleAdd(next);
           }}
           onInput={(event) => {
             const target = event.target;
             if (target instanceof HTMLInputElement) setInput(target.value);
           }}
-          onKeyDown={(event) => {
-            if (event.key !== "Escape") return;
-            event.stopPropagation();
-            setInput("");
-            setEditing(false);
+          onBlur={(event) => {
+            const related = event.relatedTarget;
+            if (related instanceof Element && related.closest('[role="listbox"]')) return;
+            dismissEditor();
           }}
           placeholder="tag..."
           aria-label="Add tag"
