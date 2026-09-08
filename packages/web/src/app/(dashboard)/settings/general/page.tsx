@@ -7,8 +7,6 @@ import { fetcher } from "@/lib/fetcher";
 import {
   User,
   ExternalLink,
-  Copy,
-  Check,
   AlertTriangle,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,6 +15,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@nocoo/basalt/components/button";
 import { Field } from "@nocoo/basalt/components/field";
 import { Input } from "@nocoo/basalt/components/input";
+import { ClipboardText } from "@nocoo/basalt/components/clipboard-text";
 import { InputGroup } from "@nocoo/basalt/components/input-group";
 import { Label } from "@nocoo/basalt/components/label";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
@@ -73,8 +72,6 @@ export default function SettingsPage() {
   const userImage = session?.user?.image;
   const userId = session?.user?.id;
 
-  // Profile URL state
-  const [copiedUrl, setCopiedUrl] = useState(false);
   const profileIdentifier = slug || userId;
   const profileUrl = profileIdentifier ? `https://pew.md/u/${profileIdentifier}` : null;
 
@@ -239,23 +236,8 @@ export default function SettingsPage() {
                 placeholder={userId ?? "your-slug"}
                 maxLength={32}
               />
-              {profileUrl ? (
-                <InputGroup.Button
-                  aria-label="Copy profile URL"
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(profileUrl);
-                    setCopiedUrl(true);
-                    setTimeout(() => setCopiedUrl(false), 2000);
-                  }}
-                >
-                  {copiedUrl ? (
-                    <Check className="h-4 w-4 text-success" strokeWidth={1.5} />
-                  ) : (
-                    <Copy className="h-4 w-4" strokeWidth={1.5} />
-                  )}
-                </InputGroup.Button>
-              ) : null}
             </InputGroup>
+            {profileUrl ? <ClipboardText text={profileUrl} /> : null}
             <p className="text-xs text-basalt-muted-foreground">
               Your public profile URL. Lowercase letters, numbers, and hyphens only.
               {!slug && userId ? " Using your user ID as default." : null}
