@@ -1,5 +1,8 @@
 "use client";
 
+import { Button } from "@nocoo/basalt/components/button";
+import { Input } from "@nocoo/basalt/components/input";
+import { LoadingScreen } from "@nocoo/basalt/components/loading-screen";
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -70,21 +73,21 @@ function LoginContent() {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-background">
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-basalt-background">
       <div className="flex flex-1 items-center justify-center p-4">
         <BadgeAmbientGlow />
 
-        {/* Top-right controls */}
         <div className="absolute top-4 right-4 z-10 flex items-center gap-1">
-          <a
-            href="https://github.com/nocoo/pew"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="GitHub repository"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          >
-            <Github className="h-[18px] w-[18px]" aria-hidden="true" strokeWidth={1.5} />
-          </a>
+          <Button variant="ghost" size="icon" asChild>
+            <a
+              href="https://github.com/nocoo/pew"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="GitHub repository"
+            >
+              <Github className="h-[18px] w-[18px]" aria-hidden="true" strokeWidth={1.5} />
+            </a>
+          </Button>
           <ThemeToggle />
         </div>
 
@@ -96,34 +99,34 @@ function LoginContent() {
             footer={
               <div className="flex items-center gap-1.5">
                 <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
-                <span className="text-[10px] text-muted-foreground">Secure Auth</span>
+                <span className="text-[10px] text-basalt-muted-foreground">Secure Auth</span>
               </div>
             }
           >
-            <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-secondary ring-1 ring-border dark:bg-[#171717]">
+            <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-basalt-secondary p-2.5 ring-1 ring-basalt-border">
               <Image src="/logo-80.png" alt="pew" width={80} height={80} />
             </div>
 
-            <p className="mt-5 text-lg font-semibold text-foreground">Show your tokens</p>
-            <p className="mt-1 text-xs text-muted-foreground">Sign in to view your dashboard</p>
+            <p className="mt-5 text-lg font-semibold text-basalt-foreground">Show your tokens</p>
+            <p className="mt-1 text-xs text-basalt-muted-foreground">Sign in to view your dashboard</p>
 
             {error && error !== "InviteRequired" && (
-              <div className="mt-3 w-full rounded-lg bg-destructive/10 px-3 py-2 text-center text-xs text-destructive">
+              <div className="mt-3 w-full rounded-lg bg-basalt-destructive/10 px-3 py-2 text-center text-xs text-basalt-destructive">
                 {error === "AccessDenied"
                   ? "Your account is not authorized to access this application."
                   : "Sign in failed. Please try again."}
               </div>
             )}
 
-            <div className="mt-5 h-px w-full bg-border" />
+            <div className="mt-5 h-px w-full bg-basalt-border" />
             <div className="mt-5" />
 
             {error === "InviteRequired" ? (
               <div className="w-full space-y-3">
-                <p className="text-center text-xs text-muted-foreground">
+                <p className="text-center text-xs text-basalt-muted-foreground">
                   An invite code is required to create your account.
                 </p>
-                <input
+                <Input
                   type="text"
                   maxLength={8}
                   placeholder="Enter invite code"
@@ -134,39 +137,40 @@ function LoginContent() {
                       handleInviteSubmit();
                     }
                   }}
-                  className="w-full rounded-xl border border-border bg-secondary px-4 py-3 text-center font-mono text-sm tracking-widest text-foreground placeholder:font-sans placeholder:tracking-normal placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="rounded-xl py-3 text-center font-mono tracking-widest placeholder:font-sans placeholder:tracking-normal"
                 />
                 {inviteError && (
-                  <div className="w-full rounded-lg bg-destructive/10 px-3 py-2 text-center text-xs text-destructive">
+                  <div className="w-full rounded-lg bg-basalt-destructive/10 px-3 py-2 text-center text-xs text-basalt-destructive">
                     {inviteError}
                   </div>
                 )}
-                <button
-                  type="button"
+                <Button
+                  variant="secondary"
+                  className="w-full rounded-xl py-3"
                   onClick={handleInviteSubmit}
                   disabled={inviteCode.trim().length === 0 || verifying}
-                  className="flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl bg-secondary px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                  loading={verifying}
                 >
                   <GoogleIcon />
                   {verifying ? "Verifying..." : "Verify & Sign In"}
-                </button>
+                </Button>
               </div>
             ) : (
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                className="w-full rounded-xl py-3"
                 onClick={handleGoogleLogin}
-                className="flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-xl bg-secondary px-4 py-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
               >
                 <GoogleIcon />
                 Sign in with Google
-              </button>
+              </Button>
             )}
 
-            <p className="mt-3 text-center text-[10px] leading-relaxed text-muted-foreground/60">
+            <p className="mt-3 text-center text-[10px] leading-relaxed text-basalt-muted-foreground/60">
               By signing in you agree to our{" "}
               <a
                 href="/privacy"
-                className="underline transition-colors hover:text-muted-foreground"
+                className="underline transition-colors hover:text-basalt-muted-foreground"
               >
                 privacy policy
               </a>
@@ -183,9 +187,10 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center">
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
+        <LoadingScreen
+          label="Loading"
+          mark={<Image src="/logo-24.png" alt="" width={32} height={32} />}
+        />
       }
     >
       <LoginContent />

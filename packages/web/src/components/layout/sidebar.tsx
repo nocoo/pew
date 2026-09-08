@@ -1,10 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
-import type { ElementType } from "react";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+  Button,
+  Sidebar as BasaltSidebar,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarHeader,
+  SidebarIconItem,
+  SidebarItem,
+  SidebarNav,
+  SidebarUser,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@nocoo/basalt";
 import {
   LayoutDashboard,
   Settings,
@@ -18,7 +30,6 @@ import {
   Monitor,
   MonitorSmartphone,
   MessagesSquare,
-  ChevronUp,
   DollarSign,
   Tag,
   Users,
@@ -32,27 +43,17 @@ import {
   Medal,
   GitCompareArrows,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { APP_VERSION } from "@/lib/version";
+import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
+import { signOut, useSession } from "next-auth/react";
+import type { ElementType } from "react";
+import { useAdmin } from "@/hooks/use-admin";
 import {
-  BASE_NAV_GROUPS as NAV_GROUP_DEFS,
-  ADMIN_NAV_GROUP as ADMIN_GROUP_DEF,
+  ADMIN_NAV_GROUP,
+  BASE_NAV_GROUPS,
   type NavGroupDef,
 } from "@/lib/navigation";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Collapsible, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useAdmin } from "@/hooks/use-admin";
-import { useSidebar } from "./sidebar-context";
-
-// ---------------------------------------------------------------------------
-// Map icon names to Lucide components
-// ---------------------------------------------------------------------------
+import { APP_VERSION } from "@/lib/version";
 
 const ICON_MAP: Record<string, ElementType> = {
   LayoutDashboard,
@@ -106,117 +107,28 @@ function resolveNavGroup(def: NavGroupDef): NavGroup {
 }
 
 function getNavGroups(isAdmin: boolean): NavGroup[] {
-  const base = NAV_GROUP_DEFS.map(resolveNavGroup);
-  return isAdmin ? [...base, resolveNavGroup(ADMIN_GROUP_DEF)] : base;
+  const base = BASE_NAV_GROUPS.map(resolveNavGroup);
+  return isAdmin ? [...base, resolveNavGroup(ADMIN_NAV_GROUP)] : base;
 }
 
-// ---------------------------------------------------------------------------
-// Collapsible nav group (expanded sidebar)
-// ---------------------------------------------------------------------------
+function isActivePath(pathname: string, href: string) {
+  return href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
+}
 
-function NavGroupSection({
-  group,
-  pathname,
-}: {
-  group: NavGroup;
-  pathname: string;
-}) {
-  const [open, setOpen] = useState(group.defaultOpen ?? true);
-
+function PewMark() {
   return (
-    <Collapsible open={open} onOpenChange={setOpen}>
-      <div className="px-3 mt-2">
-        <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2">
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground/70">
-            {group.label}
-          </span>
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center">
-            <ChevronUp
-              className={cn(
-                "h-3.5 w-3.5 text-muted-foreground/50 transition-transform duration-200",
-                !open && "rotate-180"
-              )}
-              strokeWidth={1.5}
-            />
-          </span>
-        </CollapsibleTrigger>
-      </div>
-      <div
-        className="grid overflow-hidden"
-        style={{
-          gridTemplateRows: open ? "1fr" : "0fr",
-          transition: "grid-template-rows 200ms ease-out",
-        }}
-      >
-        <div className="min-h-0 overflow-hidden">
-          <div className="flex flex-col gap-0.5 px-3">
-            {group.items.map((item) => {
-              const isActive =
-                item.href === "/dashboard"
-                  ? pathname === "/dashboard"
-                  : pathname.startsWith(item.href);
-
-              const classes = cn(
-                "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-normal transition-colors",
-                isActive
-                  ? "bg-accent text-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              );
-
-              const inner = (
-                <>
-                  <item.icon
-                    className="h-4 w-4 shrink-0"
-                    strokeWidth={1.5}
-                  />
-                  <span className="flex-1 text-left">{item.label}</span>
-                  {item.external && (
-                    <ArrowUpRight
-                      className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50"
-                      strokeWidth={1.5}
-                    />
-                  )}
-                </>
-              );
-
-              if (item.external) {
-                return (
-                  <a
-                    key={item.href}
-                    href={item.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={classes}
-                  >
-                    {inner}
-                  </a>
-                );
-              }
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={classes}
-                >
-                  {inner}
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-    </Collapsible>
+    <Image src="/logo-24.png" alt="pew" width={24} height={24} className="shrink-0" />
   );
 }
 
-// ---------------------------------------------------------------------------
-// Main sidebar
-// ---------------------------------------------------------------------------
+interface SidebarProps {
+  collapsed: boolean;
+  onToggle: () => void;
+}
 
-export function Sidebar() {
+export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
-  const { collapsed, toggle } = useSidebar();
+  const router = useRouter();
   const { data: session } = useSession();
   const { isAdmin } = useAdmin();
 
@@ -228,205 +140,147 @@ export function Sidebar() {
   const userImage = session?.user?.image;
   const userInitial = userName[0] ?? "?";
 
-  return (
-    <TooltipProvider delayDuration={0}>
-      <aside
-        className={cn(
-          "sticky top-0 flex h-screen shrink-0 flex-col bg-background transition-all duration-300 ease-in-out overflow-hidden",
-          collapsed ? "w-[68px]" : "w-[260px]"
-        )}
-      >
-        {collapsed ? (
-          /* -- Collapsed (icon-only) view -- */
-          <div className="flex h-screen w-[68px] flex-col items-center">
-            {/* Logo */}
-            <div className="flex h-14 w-full items-center justify-start pl-6 pr-3">
-              {/* biome-ignore lint/performance/noImgElement: user-supplied image URL, not amenable to next/image domain allowlist */}
-              <img
-                src="/logo-24.png"
-                alt="pew"
-                width={24}
-                height={24}
-                className="shrink-0"
-              />
-            </div>
+  const go = (item: NavItem) => {
+    if (item.external) {
+      window.open(item.href, "_blank", "noopener,noreferrer");
+      return;
+    }
+    router.push(item.href);
+  };
 
-            {/* Expand toggle */}
-            <Tooltip>
+  const avatar = (
+    <Avatar className="h-9 w-9 shrink-0">
+      {userImage ? <AvatarImage src={userImage} alt={userName} /> : null}
+      <AvatarFallback className="text-xs bg-basalt-primary text-basalt-primary-foreground">
+        {userInitial}
+      </AvatarFallback>
+    </Avatar>
+  );
+
+  if (collapsed) {
+    return (
+      <BasaltSidebar collapsed>
+        <SidebarHeader className="justify-start px-0 pl-6">
+          <PewMark />
+        </SidebarHeader>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="mb-1 self-center"
+          onClick={onToggle}
+          aria-label="Expand sidebar"
+        >
+          <PanelLeft aria-hidden="true" />
+        </Button>
+        <SidebarNav className="w-full items-center gap-1 pt-1">
+          {allNavItems.map((item) => (
+            <Tooltip key={item.href} delayDuration={0}>
               <TooltipTrigger asChild>
-                <button type="button"
-                  onClick={toggle}
-                  aria-label="Expand sidebar"
-                  className="flex h-10 w-10 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors mb-2"
+                <SidebarIconItem
+                  active={isActivePath(pathname, item.href)}
+                  aria-label={item.label}
+                  className="self-center"
+                  onClick={() => go(item)}
                 >
-                  <PanelLeft
-                    className="h-4 w-4"
-                    aria-hidden="true"
-                    strokeWidth={1.5}
-                  />
-                </button>
+                  <item.icon className="h-4 w-4" strokeWidth={1.5} />
+                </SidebarIconItem>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
-                Expand sidebar
+                {item.label}
               </TooltipContent>
             </Tooltip>
+          ))}
+        </SidebarNav>
+        <SidebarFooter className="flex w-full justify-center px-0">
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className="cursor-pointer"
+                onClick={() => signOut({ callbackUrl: "/login" })}
+                aria-label={`${userName} · Click to sign out`}
+              >
+                {avatar}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8}>
+              {userName} · Click to sign out
+            </TooltipContent>
+          </Tooltip>
+        </SidebarFooter>
+      </BasaltSidebar>
+    );
+  }
 
-            {/* Navigation — flattened icon-only list */}
-            <nav className="flex-1 flex flex-col items-center gap-1 overflow-y-auto pt-1">
-              {allNavItems.map((item) => {
-                const isActive =
-                  item.href === "/dashboard"
-                    ? pathname === "/dashboard"
-                    : pathname.startsWith(item.href);
-
-                const classes = cn(
-                  "relative flex h-10 w-10 items-center justify-center rounded-lg transition-colors",
-                  isActive
-                    ? "bg-accent text-foreground"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                );
-
-                const linkContent = (
-                  <item.icon className="h-4 w-4" strokeWidth={1.5} />
-                );
-
-                return (
-                  <Tooltip key={item.href}>
-                    <TooltipTrigger asChild>
-                      {item.external ? (
-                        <a
-                          href={item.href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={classes}
-                        >
-                          {linkContent}
-                        </a>
-                      ) : (
-                        <Link href={item.href} className={classes}>
-                          {linkContent}
-                        </Link>
-                      )}
-                    </TooltipTrigger>
-                    <TooltipContent side="right" sideOffset={8}>
-                      {item.label}
-                    </TooltipContent>
-                  </Tooltip>
-                );
-              })}
-            </nav>
-
-            {/* User avatar + sign out */}
-            <div className="py-3 flex justify-center w-full">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button type="button"
-                    onClick={() => signOut({ callbackUrl: "/login" })}
-                    className="cursor-pointer"
-                  >
-                    <Avatar className="h-9 w-9">
-                      {userImage && (
-                        <AvatarImage src={userImage} alt={userName} />
-                      )}
-                      <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                        {userInitial}
-                      </AvatarFallback>
-                    </Avatar>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={8}>
-                  {userName} · Click to sign out
-                </TooltipContent>
-              </Tooltip>
-            </div>
+  return (
+    <BasaltSidebar collapsed={false}>
+      <SidebarHeader>
+        <div className="flex w-full items-center justify-between">
+          <div className="flex min-w-0 items-center gap-3 pl-3">
+            <PewMark />
+            <span className="mt-[-12px] truncate font-handwriting text-[31px] font-bold tracking-tighter text-basalt-foreground">
+              pew
+            </span>
+            <span className="shrink-0 rounded-md bg-basalt-secondary px-1.5 py-0.5 text-[10px] leading-none font-medium text-basalt-muted-foreground">
+              v{APP_VERSION}
+            </span>
           </div>
-        ) : (
-          /* -- Expanded view -- */
-          <div className="flex h-screen w-[260px] flex-col">
-            {/* Header: logo + collapse toggle */}
-            <div className="px-3 h-14 flex items-center">
-              <div className="flex w-full items-center justify-between px-3">
-                <div className="flex items-center gap-3">
-                  {/* biome-ignore lint/performance/noImgElement: user-supplied image URL, not amenable to next/image domain allowlist */}
-                  <img
-                    src="/logo-24.png"
-                    alt="pew"
-                    width={24}
-                    height={24}
-                    className="shrink-0"
-                  />
-                  <span className="text-[31px] font-bold font-handwriting tracking-tighter mt-[-12px]">
-                    pew
-                  </span>
-                  <span className="rounded-md bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground leading-none">
-                    v{APP_VERSION}
-                  </span>
-                </div>
-                <button type="button"
-                  onClick={toggle}
-                  aria-label="Collapse sidebar"
-                  className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <PanelLeft
-                    className="h-4 w-4"
-                    aria-hidden="true"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 shrink-0"
+            onClick={onToggle}
+            aria-label="Collapse sidebar"
+          >
+            <PanelLeft aria-hidden="true" />
+          </Button>
+        </div>
+      </SidebarHeader>
+      <SidebarNav className="pt-1">
+        {navGroups.map((group) => (
+          <SidebarGroup key={group.label} label={group.label} defaultOpen={group.defaultOpen ?? true}>
+            {group.items.map((item) => (
+              <SidebarItem
+                key={item.href}
+                active={isActivePath(pathname, item.href)}
+                onClick={() => go(item)}
+              >
+                <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+                <span className="flex-1 truncate text-left">{item.label}</span>
+                {item.external ? (
+                  <ArrowUpRight
+                    className="h-3.5 w-3.5 shrink-0 text-basalt-muted-foreground/50"
                     strokeWidth={1.5}
                   />
-                </button>
-              </div>
-            </div>
-
-            {/* Navigation — collapsible groups */}
-            <nav className="flex-1 overflow-y-auto pt-1">
-              {navGroups.map((group) => (
-                <NavGroupSection
-                  key={group.label}
-                  group={group}
-                  pathname={pathname}
-                />
-              ))}
-            </nav>
-
-            {/* User info + sign out */}
-            <div className="px-4 py-3">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-9 w-9 shrink-0">
-                  {userImage && (
-                    <AvatarImage src={userImage} alt={userName} />
-                  )}
-                  <AvatarFallback className="text-xs bg-primary text-primary-foreground">
-                    {userInitial}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">
-                    {userName}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {userEmail}
-                  </p>
-                </div>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button type="button"
-                      onClick={() => signOut({ callbackUrl: "/login" })}
-                      aria-label="Sign out"
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors shrink-0"
-                    >
-                      <LogOut
-                        className="h-4 w-4"
-                        aria-hidden="true"
-                        strokeWidth={1.5}
-                      />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">Sign out</TooltipContent>
-                </Tooltip>
-              </div>
-            </div>
-          </div>
-        )}
-      </aside>
-    </TooltipProvider>
+                ) : null}
+              </SidebarItem>
+            ))}
+          </SidebarGroup>
+        ))}
+      </SidebarNav>
+      <SidebarFooter>
+        <SidebarUser
+          name={userName}
+          email={userEmail}
+          avatar={avatar}
+          action={
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                  onClick={() => signOut({ callbackUrl: "/login" })}
+                  aria-label="Sign out"
+                >
+                  <LogOut aria-hidden="true" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">Sign out</TooltipContent>
+            </Tooltip>
+          }
+        />
+      </SidebarFooter>
+    </BasaltSidebar>
   );
 }

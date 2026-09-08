@@ -1,134 +1,105 @@
 "use client";
 
-import { useEffect } from "react";
-import { usePathname } from "next/navigation";
+import { AppHeader } from "@nocoo/basalt/components/app-header";
+import { AppMain, AppShell as BasaltAppShell, AppSkipLink } from "@nocoo/basalt/components/app-shell";
+import { Button, ContentIsland, Sheet, SheetContent, SheetTitle } from "@nocoo/basalt";
 import { Menu, ShieldCheck } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { Github } from "@/components/icons/github";
 import { Sidebar } from "./sidebar";
-import { SidebarProvider, useSidebar } from "./sidebar-context";
 import { ThemeToggle } from "./theme-toggle";
-import { Breadcrumbs } from "./breadcrumbs";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { breadcrumbsFromPathname } from "@/lib/navigation";
-
-// Re-export for tests that already import from here
-// Re-export removed 2026-07-08 (G1 cleanup): every consumer imports
-// `ROUTE_LABELS` / `breadcrumbsFromPathname` directly from `@/lib/navigation`.
-
-
-// ---------------------------------------------------------------------------
-// AppShell
-// ---------------------------------------------------------------------------
 
 interface AppShellProps {
   children: React.ReactNode;
 }
 
-function AppShellInner({ children }: AppShellProps) {
+export function AppShell({ children }: AppShellProps) {
   const isMobile = useIsMobile();
-  const { mobileOpen, setMobileOpen } = useSidebar();
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
+  const prevPathname = useRef(pathname);
 
-  // Close mobile sidebar on route change
   useEffect(() => {
-    setMobileOpen(false);
-  }, [setMobileOpen]);
-
-  // Prevent body scroll when mobile sidebar is open
-  useEffect(() => {
-    if (mobileOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
+    if (prevPathname.current !== pathname) {
+      prevPathname.current = pathname;
+      setMobileOpen(false);
     }
+  }, [pathname]);
+
+  useEffect(() => {
+    document.body.style.overflow = mobileOpen ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
   }, [mobileOpen]);
 
-  const breadcrumbs = breadcrumbsFromPathname(pathname);
+  const items = breadcrumbsFromPathname(pathname);
+  const current = items.at(-1);
+  const crumbs = items.slice(0, -1);
+  const title = current?.label ?? "";
 
   return (
-    <div className="flex min-h-screen w-full bg-background">
-      {/* Desktop sidebar */}
-      {!isMobile && <Sidebar />}
-
-      {/* Mobile overlay */}
-      {isMobile && mobileOpen && (
-        <>
-          {/* biome-ignore lint/a11y/useSemanticElements: sidebar-close backdrop overlay — using a real <button> here would break the sibling <Sidebar> layout stacked over the same z-index band. */}
-          <div
-            role="button"
-            tabIndex={0}
-            aria-label="Close sidebar"
-            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs"
-            onClick={() => setMobileOpen(false)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape" || e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                setMobileOpen(false);
-              }
-            }}
-          />
-          <div className="fixed inset-y-0 left-0 z-50 w-[260px]">
-            <Sidebar />
-          </div>
-        </>
+    <BasaltAppShell>
+      <AppSkipLink>Skip to main content</AppSkipLink>
+      {!isMobile ? (
+        <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((v) => !v)} />
+      ) : (
+        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+          <SheetContent
+            side="left"
+            className="w-[260px] max-w-[260px] border-0 bg-basalt-background p-0"
+          >
+            <SheetTitle className="sr-only">Navigation</SheetTitle>
+            <Sidebar collapsed={false} onToggle={() => setMobileOpen(false)} />
+          </SheetContent>
+        </Sheet>
       )}
-
-      <main className="flex flex-1 flex-col min-h-screen min-w-0">
-        {/* Header */}
-        <header className="flex h-14 shrink-0 items-center justify-between px-4 md:px-6">
-          <div className="flex items-center gap-3">
-            {isMobile && (
-              <button type="button"
+      <AppMain>
+        <AppHeader
+          leading={
+            isMobile ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
                 onClick={() => setMobileOpen(true)}
                 aria-label="Open navigation"
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               >
-                <Menu className="h-5 w-5" aria-hidden="true" strokeWidth={1.5} />
-              </button>
-            )}
-            <Breadcrumbs items={breadcrumbs} />
-          </div>
-          <div className="flex items-center gap-1">
-            <a
-              href="/privacy"
-              aria-label="Privacy policy"
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            >
-              <ShieldCheck className="h-[18px] w-[18px]" aria-hidden="true" strokeWidth={1.5} />
-            </a>
-            <a
-              href="https://github.com/nocoo/pew"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="GitHub repository"
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            >
-              <Github className="h-[18px] w-[18px]" aria-hidden="true" strokeWidth={1.5} />
-            </a>
-            <ThemeToggle />
-          </div>
-        </header>
-
-        {/* Floating island content area */}
-        <div className="flex-1 px-2 pb-2 md:px-3 md:pb-3">
-          <div className="h-full rounded-[16px] md:rounded-[20px] bg-card p-3 md:p-5 overflow-y-auto">
-            {children}
-          </div>
+                <Menu aria-hidden="true" />
+              </Button>
+            ) : null
+          }
+          breadcrumbs={crumbs}
+          title={title}
+          actions={
+            <>
+              <Button variant="ghost" size="icon" asChild>
+                <a href="/privacy" aria-label="Privacy policy">
+                  <ShieldCheck className="h-[18px] w-[18px]" aria-hidden="true" strokeWidth={1.5} />
+                </a>
+              </Button>
+              <Button variant="ghost" size="icon" asChild>
+                <a
+                  href="https://github.com/nocoo/pew"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="GitHub repository"
+                >
+                  <Github className="h-[18px] w-[18px]" aria-hidden="true" strokeWidth={1.5} />
+                </a>
+              </Button>
+              <ThemeToggle />
+            </>
+          }
+        />
+        <div className="flex min-h-0 flex-1 flex-col px-2 pb-2 md:px-3 md:pb-3">
+          <ContentIsland>{children}</ContentIsland>
         </div>
-      </main>
-    </div>
-  );
-}
-
-export function AppShell({ children }: AppShellProps) {
-  return (
-    <SidebarProvider>
-      <AppShellInner>
-        {children}
-      </AppShellInner>
-    </SidebarProvider>
+      </AppMain>
+    </BasaltAppShell>
   );
 }

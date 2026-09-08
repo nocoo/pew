@@ -20,7 +20,7 @@ export function Barcode() {
         <div
           // biome-ignore lint/suspicious/noArrayIndexKey: compile-time constant tuple; positional key is authoritative.
           key={`bar-${i}`}
-          className="rounded-[0.5px] bg-primary-foreground"
+          className="rounded-[0.5px] bg-basalt-primary-foreground"
           style={{ width: `${w * 1.5}px`, opacity: i % 3 === 0 ? 0.9 : 0.5 }}
         />
       ))}
@@ -41,7 +41,7 @@ export interface BadgeCardProps {
 export function PunchHole({ className }: { className?: string }) {
   return (
     <div
-      className={cn("h-4 w-8 shrink-0 rounded-full bg-background/80", className)}
+      className={cn("h-4 w-8 shrink-0 rounded-full bg-basalt-background/80", className)}
       style={{
         boxShadow:
           "inset 0 1.5px 3px rgba(0,0,0,0.35), inset 0 -0.5px 1px rgba(255,255,255,0.1)",
@@ -78,7 +78,7 @@ export function PassHeader({
   className,
 }: PassHeaderProps) {
   return (
-    <div className={cn("bg-primary px-4 py-2.5 sm:px-5 sm:py-3", className)}>
+    <div className={cn("bg-basalt-primary px-4 py-2.5 sm:px-5 sm:py-3", className)}>
       <div className="flex items-center gap-3 sm:gap-4">
         <PunchHole />
 
@@ -91,27 +91,27 @@ export function PassHeader({
             className="brightness-0 invert"
             aria-hidden="true"
           />
-          <span className="font-handwriting text-base font-semibold leading-none text-primary-foreground">
+          <span className="font-handwriting text-base font-semibold leading-none text-basalt-primary-foreground">
             pew
           </span>
           <span
-            className="hidden text-primary-foreground/30 sm:inline"
+            className="hidden text-basalt-primary-foreground/30 sm:inline"
             aria-hidden="true"
           >
             ·
           </span>
-          <span className="hidden text-xs text-primary-foreground/55 sm:inline">
+          <span className="hidden text-xs text-basalt-primary-foreground/55 sm:inline">
             Show your tokens
           </span>
           {destination ? (
             <>
               <span
-                className="hidden text-primary-foreground/30 md:inline"
+                className="hidden text-basalt-primary-foreground/30 md:inline"
                 aria-hidden="true"
               >
                 ·
               </span>
-              <span className="hidden font-display text-xs font-semibold tracking-wide text-primary-foreground/80 md:inline">
+              <span className="hidden font-display text-xs font-semibold tracking-wide text-basalt-primary-foreground/80 md:inline">
                 {destination}
               </span>
             </>
@@ -119,7 +119,7 @@ export function PassHeader({
         </div>
 
         <div className="flex shrink-0 items-center gap-3">
-          <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-primary-foreground/70">
+          <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-basalt-primary-foreground/70">
             {badge}
           </span>
           <div className="h-5" aria-hidden="true">
@@ -128,11 +128,11 @@ export function PassHeader({
         </div>
       </div>
 
-      <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 font-mono text-[9px] tracking-wider text-primary-foreground/40">
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 font-mono text-[9px] tracking-wider text-basalt-primary-foreground/40">
         <span>{credentialId()}</span>
         {meta ? (
           <>
-            <span className="text-primary-foreground/25" aria-hidden="true">
+            <span className="text-basalt-primary-foreground/25" aria-hidden="true">
               ·
             </span>
             <span>{meta}</span>
@@ -156,14 +156,15 @@ export function BadgeCard({
 }: BadgeCardProps) {
   return (
     <div
+      data-basalt-surface-root=""
       className={cn(
-        "relative flex flex-col overflow-hidden rounded-2xl bg-card",
+        "relative flex flex-col overflow-hidden rounded-2xl bg-basalt-card",
         "ring-1 ring-black/[0.08] dark:ring-white/[0.06]",
         className,
       )}
       style={{ boxShadow: BADGE_CARD_SHADOW }}
     >
-      <div className="bg-primary px-5 py-4">
+      <div className="bg-basalt-primary px-5 py-4">
         <div className="flex items-center justify-between">
           <PunchHole />
           <div className="flex items-center gap-2">
@@ -175,16 +176,16 @@ export function BadgeCard({
               className="brightness-0 invert"
               aria-hidden="true"
             />
-            <span className="font-handwriting text-sm font-semibold text-primary-foreground">
+            <span className="font-handwriting text-sm font-semibold text-basalt-primary-foreground">
               pew
             </span>
           </div>
-          <span className="text-[10px] font-medium uppercase tracking-widest text-primary-foreground/60">
+          <span className="text-[10px] font-medium uppercase tracking-widest text-basalt-primary-foreground/60">
             {badge}
           </span>
         </div>
         <div className="mt-3 flex items-center justify-between">
-          <span className="font-mono text-[9px] tracking-wider text-primary-foreground/40">
+          <span className="font-mono text-[9px] tracking-wider text-basalt-primary-foreground/40">
             {credentialId()}
           </span>
           <div className="h-6" aria-hidden="true">
@@ -196,7 +197,7 @@ export function BadgeCard({
       <div className={cn("flex flex-1 flex-col", contentClassName)}>{children}</div>
 
       {footer != null && (
-        <div className="mt-auto flex items-center justify-center border-t border-border bg-secondary/50 py-2.5">
+        <div className="mt-auto flex items-center justify-center border-t border-basalt-border bg-basalt-secondary/50 py-2.5">
           {footer}
         </div>
       )}
@@ -218,9 +219,9 @@ export function PassPerforation({
         className={cn("flex items-center gap-2 px-3", className)}
         aria-hidden="true"
       >
-        <div className="h-2 w-2 shrink-0 rounded-full border border-border bg-background" />
-        <div className="h-px flex-1 border-t border-dashed border-border" />
-        <div className="h-2 w-2 shrink-0 rounded-full border border-border bg-background" />
+        <div className="h-2 w-2 shrink-0 rounded-full border border-basalt-border bg-basalt-background" />
+        <div className="h-px flex-1 border-t border-dashed border-basalt-border" />
+        <div className="h-2 w-2 shrink-0 rounded-full border border-basalt-border bg-basalt-background" />
       </div>
     );
   }
@@ -233,9 +234,9 @@ export function PassPerforation({
       )}
       aria-hidden="true"
     >
-      <div className="h-2 w-2 shrink-0 rounded-full border border-border bg-background" />
-      <div className="w-px flex-1 border-l border-dashed border-border" />
-      <div className="h-2 w-2 shrink-0 rounded-full border border-border bg-background" />
+      <div className="h-2 w-2 shrink-0 rounded-full border border-basalt-border bg-basalt-background" />
+      <div className="w-px flex-1 border-l border-dashed border-basalt-border" />
+      <div className="h-2 w-2 shrink-0 rounded-full border border-basalt-border bg-basalt-background" />
     </div>
   );
 }
