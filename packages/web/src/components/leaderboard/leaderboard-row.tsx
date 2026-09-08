@@ -1,6 +1,7 @@
 "use client";
 
 import { memo, useCallback } from "react";
+import { Button } from "@nocoo/basalt/components/button";
 import { cn, formatTokensFull } from "@/lib/utils";
 import { formatDuration } from "@/lib/date-helpers";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -114,8 +115,13 @@ export const LeaderboardRow = memo(function LeaderboardRow({
   );
 
   return (
-    <button type="button" className="block w-full text-left" onClick={handleClick}>
+    <Button
+      type="button"
+      variant="ghost"
+      className="block h-auto w-full justify-start p-0 text-left hover:bg-transparent"
+      onClick={handleClick}
+    >
       {content}
-    </button>
+    </Button>
   );
 });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { Button } from "@nocoo/basalt/components/button";
 import { ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -78,18 +79,17 @@ export function UpvoteButton({
   }, [showcaseId, count, upvoted, override, loading, disabled, isLoggedIn, onLoginRequired, onUpvoteChange]);
 
   return (
-    <button type="button"
+    <Button
+      type="button"
+      variant={upvoted ? "secondary" : "outline"}
       onClick={handleClick}
       disabled={loading || disabled}
+      loading={loading}
       className={cn(
-        "flex flex-col items-center justify-center gap-0.5 rounded-lg border px-3 py-2 min-w-[56px] transition-all",
-        upvoted
-          ? "border-primary bg-primary/10 text-primary"
-          : "border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground",
-        (loading || disabled) && "opacity-50 cursor-not-allowed",
-        !isLoggedIn && "hover:border-warning/50"
+        "h-auto min-w-[56px] flex-col gap-0.5 px-3 py-2",
+        upvoted && "text-basalt-primary",
       )}
-      title={!isLoggedIn ? "Login to upvote" : upvoted ? "Remove upvote" : "Upvote"}
+      aria-label={!isLoggedIn ? "Login to upvote" : upvoted ? "Remove upvote" : "Upvote"}
     >
       <ChevronUp
         className={cn(
@@ -101,6 +101,6 @@ export function UpvoteButton({
       <span className={cn("text-xs font-semibold tabular-nums", upvoted && "text-primary")}>
         {count}
       </span>
-    </button>
+    </Button>
   );
 }
