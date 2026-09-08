@@ -120,7 +120,7 @@ test.describe("Feature: Dashboard", () => {
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
     await page
       .locator("aside nav")
-      .getByRole("link", { name: "Daily Usage" })
+      .getByRole("button", { name: "Daily Usage" })
       .click();
     // Then: URL updates to /daily-usage
     await expect(page).toHaveURL(/\/daily-usage/, { timeout: 15_000 });
@@ -131,7 +131,7 @@ test.describe("Feature: Dashboard", () => {
     // When: visit /dashboard and click the sidebar General link
     await page.goto("/dashboard");
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
-    await page.locator("aside nav").getByRole("link", { name: "General" }).click();
+    await page.locator("aside nav").getByRole("button", { name: "General" }).click();
     // Then: URL updates to /settings and General heading renders
     await expect(page).toHaveURL(/\/settings/, { timeout: 15_000 });
     await expect(page.getByRole("heading", { name: "General" })).toBeVisible();

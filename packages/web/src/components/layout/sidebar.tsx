@@ -6,10 +6,11 @@ import {
   AvatarImage,
   Button,
   Sidebar as BasaltSidebar,
-  Link,
   SidebarFooter,
   SidebarGroup,
   SidebarHeader,
+  SidebarIconItem,
+  SidebarItem,
   SidebarNav,
   SidebarUser,
   Tooltip,
@@ -43,10 +44,9 @@ import {
   GitCompareArrows,
 } from "lucide-react";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import type { ElementType } from "react";
-import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
 import {
   ADMIN_NAV_GROUP,
@@ -116,22 +116,12 @@ function isActivePath(pathname: string, href: string) {
   return href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
 }
 
-function navItemClass(active: boolean) {
-  return cn(
-    "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-normal no-underline transition-colors",
-    active
-      ? "bg-basalt-accent text-basalt-foreground"
-      : "text-basalt-muted-foreground hover:bg-basalt-accent hover:text-basalt-foreground",
-  );
-}
-
-function navIconClass(active: boolean) {
-  return cn(
-    "relative flex h-10 w-10 items-center justify-center rounded-lg no-underline transition-colors",
-    active
-      ? "bg-basalt-accent text-basalt-foreground"
-      : "text-basalt-muted-foreground hover:bg-basalt-accent hover:text-basalt-foreground",
-  );
+function openNavItem(href: string, external: boolean | undefined, push: (href: string) => void) {
+  if (external) {
+    window.open(href, "_blank", "noopener,noreferrer");
+    return;
+  }
+  push(href);
 }
 
 function PewMark() {
@@ -147,6 +137,7 @@ interface SidebarProps {
 
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { data: session } = useSession();
   const { isAdmin } = useAdmin();
 
@@ -186,17 +177,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           {allNavItems.map((item) => (
             <Tooltip key={item.href} delayDuration={0}>
               <TooltipTrigger asChild>
-                <Link
-                  href={item.href}
+                <SidebarIconItem
+                  active={!item.external && isActivePath(pathname, item.href)}
                   aria-label={item.label}
-                  aria-current={isActivePath(pathname, item.href) ? "page" : undefined}
-                  className={`${navIconClass(isActivePath(pathname, item.href))} self-center`}
-                  {...(item.external
-                    ? { target: "_blank", rel: "noopener noreferrer" }
-                    : {})}
+                  className="self-center"
+                  onClick={() => openNavItem(item.href, item.external, router.push)}
                 >
                   <item.icon className="h-4 w-4" strokeWidth={1.5} />
-                </Link>
+                </SidebarIconItem>
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={8}>
                 {item.label}
@@ -253,24 +241,22 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {navGroups.map((group) => (
           <SidebarGroup key={group.label} label={group.label} defaultOpen={group.defaultOpen ?? true}>
             {group.items.map((item) => (
-              <Link
+              <SidebarItem
                 key={item.href}
-                href={item.href}
-                aria-current={isActivePath(pathname, item.href) ? "page" : undefined}
-                className={navItemClass(isActivePath(pathname, item.href))}
-                {...(item.external
-                  ? { target: "_blank", rel: "noopener noreferrer" }
-                  : {})}
+                active={!item.external && isActivePath(pathname, item.href)}
+                onClick={() => openNavItem(item.href, item.external, router.push)}
               >
                 <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.5} />
                 <span className="flex-1 truncate text-left">{item.label}</span>
                 {item.external ? (
-                  <ArrowUpRight
-                    className="h-3.5 w-3.5 shrink-0 text-basalt-muted-foreground/50"
-                    strokeWidth={1.5}
-                  />
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center">
+                    <ArrowUpRight
+                      className="h-3 w-3 text-basalt-muted-foreground"
+                      strokeWidth={1.5}
+                    />
+                  </span>
                 ) : null}
-              </Link>
+              </SidebarItem>
             ))}
           </SidebarGroup>
         ))}
