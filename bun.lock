@@ -18,7 +18,7 @@
     },
     "packages/cli": {
       "name": "@nocoo/pew",
-      "version": "2.28.1",
+      "version": "2.29.1",
       "bin": {
         "pew": "dist/bin.js",
       },
@@ -32,14 +32,14 @@
     },
     "packages/core": {
       "name": "@pew/core",
-      "version": "2.28.1",
+      "version": "2.29.1",
       "devDependencies": {
         "@types/node": "26.5.0",
       },
     },
     "packages/web": {
       "name": "@pew/web",
-      "version": "2.28.1",
+      "version": "2.29.1",
       "dependencies": {
         "@aws-sdk/client-s3": "3.1127.0",
         "@nocoo/basalt": "2.1.2",
@@ -68,7 +68,7 @@
     },
     "packages/worker": {
       "name": "@pew/worker",
-      "version": "2.28.1",
+      "version": "2.29.1",
       "devDependencies": {
         "@cloudflare/workers-types": "5.20260907.1",
         "@pew/core": "workspace:*",
@@ -77,7 +77,7 @@
     },
     "packages/worker-read": {
       "name": "@pew/worker-read",
-      "version": "2.28.1",
+      "version": "2.29.1",
       "devDependencies": {
         "@cloudflare/workers-types": "5.20260907.1",
         "@pew/core": "workspace:*",
@@ -87,6 +87,7 @@
   },
   "overrides": {
     "@babel/core": "^7.29.6",
+    "baseline-browser-mapping": "^2.11.0",
     "brace-expansion@^2": {
       ".": "2.0.3",
     },
@@ -717,7 +718,7 @@
 
     "ast-v8-to-istanbul": ["ast-v8-to-istanbul@1.0.5", "", { "dependencies": { "@jridgewell/trace-mapping": "^0.3.31", "estree-walker": "^3.0.3", "js-tokens": "^10.0.0" } }, "sha512-UPAgKJFSEGMWSDr3LX4tqnAb4f7KGT8O40Tyx8wbYmmZ/yn58lNCm8h3svs3eXgiGd5AXxz8NDOvXWvicq+rJA=="],
 
-    "baseline-browser-mapping": ["baseline-browser-mapping@2.10.31", "", { "bin": { "baseline-browser-mapping": "dist/cli.cjs" } }, "sha512-MujYO3eP72uvmSE0i4wltsodRfIpZATP3jvzRNRGGxgzId7aVocVJJV3nf01qnzzKFGxQVC9bpWxl5cjxTr/7Q=="],
+    "baseline-browser-mapping": ["baseline-browser-mapping@2.11.21", "", { "bin": { "baseline-browser-mapping": "dist/cli.cjs" } }, "sha512-uh8vpY/1/YyFkunIDFH/12p7/7VdPKA1hejMVEbdkEaWnUz0Hesvx5EbiU6XxjyHZIOju+ZMbQJkRh+es3/spQ=="],
 
     "blake3-wasm": ["blake3-wasm@2.1.5", "", {}, "sha512-F1+K8EbfOZE49dtoPtmxUQrpXaBIl3ICvasLh+nJta0xkz+9kF/7uet9fLnwKqhDrmj6g+6K3Tw9yQPUg2ka5g=="],
 
