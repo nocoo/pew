@@ -34,4 +34,13 @@ describe("Hermes numeric review log parser", () => {
     const completion = done.replace("calls=1 in=100 out=10", "calls=20 in=21 out=20");
     expect(parseHermesReviewLines([...repeated, completion], "default", 480)).toEqual([]);
   });
+
+  it("bounds candidate inspections as well as recursive states before declaring a unique match", () => {
+    const sequence = Array.from({ length: 30 }, (_, i) => call.replace("#1", `#${i + 1}`) + ` id=sequence-${i}`);
+    const unrelated = Array.from({ length: 970 }, (_, i) => call.replace("#1", "#999") + ` id=unrelated-${i}`);
+    const completion = done.replace("calls=1 in=100 out=10", "calls=30 in=3000 out=300");
+    // There is one numeric match, but proving uniqueness scans the unrelated
+    // tail at every depth. Once the work budget is spent, retain coarse DB usage.
+    expect(parseHermesReviewLines([...sequence, ...unrelated, completion], "default", 480).length).toBe(0);
+  });
 });

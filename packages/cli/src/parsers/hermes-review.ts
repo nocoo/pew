@@ -80,6 +80,7 @@ function uniqueSequence(calls: HermesReviewCall[], done: Completion): HermesRevi
       return;
     }
     for (let i = start; i < calls.length; i++) {
+      if (++steps > 20_000) return; // Count rejected candidates too, not just recursion.
       const c = calls[i];
       if (c.call !== chosen.length + 1 || (chosen[0] && (c.model !== chosen[0].model || c.provider !== chosen[0].provider))) continue;
       const next = [input + c.tokens.inputTokens, output + c.tokens.outputTokens, cache + c.cacheRead];
