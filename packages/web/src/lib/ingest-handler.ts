@@ -153,19 +153,16 @@ export function createIngestHandler<T>(
       });
 
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as Record<
-          string,
-          unknown
-        > | null;
-        const msg = body?.error ?? `Worker returned ${res.status}`;
-        console.error(`Worker ${entityName} ingest failed:`, msg);
+        // Upstream bodies/exceptions can include credentials or submitted
+        // values. A fixed category and HTTP status are sufficient here.
+        console.error(`Worker ${entityName} ingest failed (${res.status})`);
         return NextResponse.json(
           { error: `Failed to ingest ${entityName}` },
           { status: 500 },
         );
       }
-    } catch (err) {
-      console.error(`Failed to ingest ${entityName}:`, err);
+    } catch {
+      console.error(`Failed to ingest ${entityName}`);
       return NextResponse.json(
         { error: `Failed to ingest ${entityName}` },
         { status: 500 },
