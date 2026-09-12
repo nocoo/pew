@@ -135,7 +135,7 @@ async function handleGetRecentActivity(
       ur.input_tokens,
       ur.output_tokens,
       ur.hour_start AS created_at
-    FROM usage_records ur
+    FROM usage_totals ur
     JOIN users u ON u.id = ur.user_id
     WHERE ${conditions.join(" AND ")}
     ORDER BY ur.hour_start DESC
@@ -154,9 +154,9 @@ async function handleGetLiveStats(db: D1Database): Promise<Response> {
   const sql = `
     SELECT
       (SELECT COUNT(*) FROM session_records WHERE last_message_at >= datetime('now', '-30 minutes')) AS active_sessions,
-      (SELECT COALESCE(SUM(input_tokens + output_tokens), 0) FROM usage_records WHERE hour_start >= datetime('now', '-1 hour')) AS tokens_last_hour,
-      (SELECT COUNT(*) FROM usage_records WHERE hour_start >= datetime('now', '-1 hour')) AS requests_last_hour,
-      (SELECT COUNT(DISTINCT user_id) FROM usage_records WHERE hour_start >= datetime('now', '-1 hour')) AS unique_users_last_hour
+      (SELECT COALESCE(SUM(input_tokens + output_tokens), 0) FROM usage_totals WHERE hour_start >= datetime('now', '-1 hour')) AS tokens_last_hour,
+      (SELECT COUNT(*) FROM usage_totals WHERE hour_start >= datetime('now', '-1 hour')) AS requests_last_hour,
+      (SELECT COUNT(DISTINCT user_id) FROM usage_totals WHERE hour_start >= datetime('now', '-1 hour')) AS unique_users_last_hour
   `;
 
   const result = await db.prepare(sql).first<LiveStatsRow>();
@@ -176,8 +176,8 @@ async function handleGetUserLiveStats(
   const sql = `
     SELECT
       (SELECT COUNT(*) FROM session_records WHERE user_id = ? AND last_message_at >= datetime('now', '-30 minutes')) AS active_sessions,
-      (SELECT COALESCE(SUM(input_tokens + output_tokens), 0) FROM usage_records WHERE user_id = ? AND hour_start >= datetime('now', '-1 hour')) AS tokens_last_hour,
-      (SELECT COUNT(*) FROM usage_records WHERE user_id = ? AND hour_start >= datetime('now', '-1 hour')) AS requests_last_hour
+      (SELECT COALESCE(SUM(input_tokens + output_tokens), 0) FROM usage_totals WHERE user_id = ? AND hour_start >= datetime('now', '-1 hour')) AS tokens_last_hour,
+      (SELECT COUNT(*) FROM usage_totals WHERE user_id = ? AND hour_start >= datetime('now', '-1 hour')) AS requests_last_hour
   `;
 
   const result = await db

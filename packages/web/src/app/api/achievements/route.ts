@@ -363,9 +363,9 @@ export async function GET(request: Request) {
         await queryEarnedBy(
           def,
           `SELECT u.id, u.name, u.image, u.slug, COALESCE(SUM(ur.total_tokens), 0) AS value
-           FROM users u JOIN usage_records ur ON ur.user_id = u.id
+           FROM users u JOIN usage_totals ur ON ur.user_id = u.id
            WHERE u.is_public = 1 GROUP BY u.id HAVING value >= ? ORDER BY value DESC LIMIT ? OFFSET ?`,
-          `SELECT COUNT(*) AS count FROM (SELECT u.id FROM users u JOIN usage_records ur ON ur.user_id = u.id WHERE u.is_public = 1 GROUP BY u.id HAVING COALESCE(SUM(ur.total_tokens), 0) >= ?)`,
+          `SELECT COUNT(*) AS count FROM (SELECT u.id FROM users u JOIN usage_totals ur ON ur.user_id = u.id WHERE u.is_public = 1 GROUP BY u.id HAVING COALESCE(SUM(ur.total_tokens), 0) >= ?)`,
           bronzeThreshold
         );
       }
@@ -374,9 +374,9 @@ export async function GET(request: Request) {
         await queryEarnedBy(
           def,
           `SELECT u.id, u.name, u.image, u.slug, COALESCE(SUM(ur.input_tokens), 0) AS value
-           FROM users u JOIN usage_records ur ON ur.user_id = u.id
+           FROM users u JOIN usage_totals ur ON ur.user_id = u.id
            WHERE u.is_public = 1 GROUP BY u.id HAVING value >= ? ORDER BY value DESC LIMIT ? OFFSET ?`,
-          `SELECT COUNT(*) AS count FROM (SELECT u.id FROM users u JOIN usage_records ur ON ur.user_id = u.id WHERE u.is_public = 1 GROUP BY u.id HAVING COALESCE(SUM(ur.input_tokens), 0) >= ?)`,
+          `SELECT COUNT(*) AS count FROM (SELECT u.id FROM users u JOIN usage_totals ur ON ur.user_id = u.id WHERE u.is_public = 1 GROUP BY u.id HAVING COALESCE(SUM(ur.input_tokens), 0) >= ?)`,
           bronzeThreshold
         );
       }
@@ -385,9 +385,9 @@ export async function GET(request: Request) {
         await queryEarnedBy(
           def,
           `SELECT u.id, u.name, u.image, u.slug, COALESCE(SUM(ur.output_tokens), 0) AS value
-           FROM users u JOIN usage_records ur ON ur.user_id = u.id
+           FROM users u JOIN usage_totals ur ON ur.user_id = u.id
            WHERE u.is_public = 1 GROUP BY u.id HAVING value >= ? ORDER BY value DESC LIMIT ? OFFSET ?`,
-          `SELECT COUNT(*) AS count FROM (SELECT u.id FROM users u JOIN usage_records ur ON ur.user_id = u.id WHERE u.is_public = 1 GROUP BY u.id HAVING COALESCE(SUM(ur.output_tokens), 0) >= ?)`,
+          `SELECT COUNT(*) AS count FROM (SELECT u.id FROM users u JOIN usage_totals ur ON ur.user_id = u.id WHERE u.is_public = 1 GROUP BY u.id HAVING COALESCE(SUM(ur.output_tokens), 0) >= ?)`,
           bronzeThreshold
         );
       }
@@ -396,9 +396,9 @@ export async function GET(request: Request) {
         await queryEarnedBy(
           def,
           `SELECT u.id, u.name, u.image, u.slug, COALESCE(SUM(ur.reasoning_output_tokens), 0) AS value
-           FROM users u JOIN usage_records ur ON ur.user_id = u.id
+           FROM users u JOIN usage_totals ur ON ur.user_id = u.id
            WHERE u.is_public = 1 GROUP BY u.id HAVING value >= ? ORDER BY value DESC LIMIT ? OFFSET ?`,
-          `SELECT COUNT(*) AS count FROM (SELECT u.id FROM users u JOIN usage_records ur ON ur.user_id = u.id WHERE u.is_public = 1 GROUP BY u.id HAVING COALESCE(SUM(ur.reasoning_output_tokens), 0) >= ?)`,
+          `SELECT COUNT(*) AS count FROM (SELECT u.id FROM users u JOIN usage_totals ur ON ur.user_id = u.id WHERE u.is_public = 1 GROUP BY u.id HAVING COALESCE(SUM(ur.reasoning_output_tokens), 0) >= ?)`,
           bronzeThreshold
         );
       }
@@ -407,9 +407,9 @@ export async function GET(request: Request) {
         await queryEarnedBy(
           def,
           `SELECT u.id, u.name, u.image, u.slug, COUNT(DISTINCT DATE(ur.hour_start)) AS value
-           FROM users u JOIN usage_records ur ON ur.user_id = u.id
+           FROM users u JOIN usage_totals ur ON ur.user_id = u.id
            WHERE u.is_public = 1 GROUP BY u.id HAVING value >= ? ORDER BY value DESC LIMIT ? OFFSET ?`,
-          `SELECT COUNT(*) AS count FROM (SELECT u.id FROM users u JOIN usage_records ur ON ur.user_id = u.id WHERE u.is_public = 1 GROUP BY u.id HAVING COUNT(DISTINCT DATE(ur.hour_start)) >= ?)`,
+          `SELECT COUNT(*) AS count FROM (SELECT u.id FROM users u JOIN usage_totals ur ON ur.user_id = u.id WHERE u.is_public = 1 GROUP BY u.id HAVING COUNT(DISTINCT DATE(ur.hour_start)) >= ?)`,
           bronzeThreshold
         );
       }
@@ -418,9 +418,9 @@ export async function GET(request: Request) {
         await queryEarnedBy(
           def,
           `SELECT u.id, u.name, u.image, u.slug, COUNT(DISTINCT ur.source) AS value
-           FROM users u JOIN usage_records ur ON ur.user_id = u.id
+           FROM users u JOIN usage_totals ur ON ur.user_id = u.id
            WHERE u.is_public = 1 GROUP BY u.id HAVING value >= ? ORDER BY value DESC LIMIT ? OFFSET ?`,
-          `SELECT COUNT(*) AS count FROM (SELECT u.id FROM users u JOIN usage_records ur ON ur.user_id = u.id WHERE u.is_public = 1 GROUP BY u.id HAVING COUNT(DISTINCT ur.source) >= ?)`,
+          `SELECT COUNT(*) AS count FROM (SELECT u.id FROM users u JOIN usage_totals ur ON ur.user_id = u.id WHERE u.is_public = 1 GROUP BY u.id HAVING COUNT(DISTINCT ur.source) >= ?)`,
           bronzeThreshold
         );
       }
@@ -428,9 +428,9 @@ export async function GET(request: Request) {
         await queryEarnedBy(
           def,
           `SELECT u.id, u.name, u.image, u.slug, COUNT(DISTINCT ur.model) AS value
-           FROM users u JOIN usage_records ur ON ur.user_id = u.id
+           FROM users u JOIN usage_totals ur ON ur.user_id = u.id
            WHERE u.is_public = 1 GROUP BY u.id HAVING value >= ? ORDER BY value DESC LIMIT ? OFFSET ?`,
-          `SELECT COUNT(*) AS count FROM (SELECT u.id FROM users u JOIN usage_records ur ON ur.user_id = u.id WHERE u.is_public = 1 GROUP BY u.id HAVING COUNT(DISTINCT ur.model) >= ?)`,
+          `SELECT COUNT(*) AS count FROM (SELECT u.id FROM users u JOIN usage_totals ur ON ur.user_id = u.id WHERE u.is_public = 1 GROUP BY u.id HAVING COUNT(DISTINCT ur.model) >= ?)`,
           bronzeThreshold
         );
       }
@@ -438,9 +438,9 @@ export async function GET(request: Request) {
         await queryEarnedBy(
           def,
           `SELECT u.id, u.name, u.image, u.slug, COUNT(DISTINCT ur.device_id) AS value
-           FROM users u JOIN usage_records ur ON ur.user_id = u.id
+           FROM users u JOIN usage_totals ur ON ur.user_id = u.id
            WHERE u.is_public = 1 GROUP BY u.id HAVING value >= ? ORDER BY value DESC LIMIT ? OFFSET ?`,
-          `SELECT COUNT(*) AS count FROM (SELECT u.id FROM users u JOIN usage_records ur ON ur.user_id = u.id WHERE u.is_public = 1 GROUP BY u.id HAVING COUNT(DISTINCT ur.device_id) >= ?)`,
+          `SELECT COUNT(*) AS count FROM (SELECT u.id FROM users u JOIN usage_totals ur ON ur.user_id = u.id WHERE u.is_public = 1 GROUP BY u.id HAVING COUNT(DISTINCT ur.device_id) >= ?)`,
           bronzeThreshold
         );
       }
@@ -491,7 +491,7 @@ export async function GET(request: Request) {
           def,
           `WITH daily AS (
              SELECT user_id, DATE(hour_start) AS day, SUM(total_tokens) AS day_tokens
-             FROM usage_records GROUP BY user_id, DATE(hour_start)
+             FROM usage_totals GROUP BY user_id, DATE(hour_start)
            ), user_max AS (
              SELECT user_id, MAX(day_tokens) AS value FROM daily GROUP BY user_id
            )
@@ -501,7 +501,7 @@ export async function GET(request: Request) {
            ORDER BY um.value DESC LIMIT ? OFFSET ?`,
           `WITH daily AS (
              SELECT user_id, DATE(hour_start) AS day, SUM(total_tokens) AS day_tokens
-             FROM usage_records GROUP BY user_id, DATE(hour_start)
+             FROM usage_totals GROUP BY user_id, DATE(hour_start)
            ), user_max AS (
              SELECT user_id, MAX(day_tokens) AS value FROM daily GROUP BY user_id
            )
@@ -537,14 +537,14 @@ export async function GET(request: Request) {
                   CASE WHEN (SUM(ur.cached_input_tokens) + SUM(ur.input_tokens)) > 0
                        THEN (SUM(ur.cached_input_tokens) * 100.0 / (SUM(ur.cached_input_tokens) + SUM(ur.input_tokens)))
                        ELSE 0 END AS value
-           FROM users u JOIN usage_records ur ON ur.user_id = u.id
+           FROM users u JOIN usage_totals ur ON ur.user_id = u.id
            WHERE u.is_public = 1 GROUP BY u.id HAVING value >= ? ORDER BY value DESC LIMIT ? OFFSET ?`,
           `SELECT COUNT(*) AS count FROM (
              SELECT u.id,
                     CASE WHEN (SUM(ur.cached_input_tokens) + SUM(ur.input_tokens)) > 0
                          THEN (SUM(ur.cached_input_tokens) * 100.0 / (SUM(ur.cached_input_tokens) + SUM(ur.input_tokens)))
                          ELSE 0 END AS value
-             FROM users u JOIN usage_records ur ON ur.user_id = u.id
+             FROM users u JOIN usage_totals ur ON ur.user_id = u.id
              WHERE u.is_public = 1 GROUP BY u.id HAVING value >= ?
            )`,
           bronzeThreshold

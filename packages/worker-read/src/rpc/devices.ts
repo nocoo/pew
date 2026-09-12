@@ -91,7 +91,7 @@ async function handleListDevices(
           SUM(total_tokens) AS total_tokens,
           GROUP_CONCAT(DISTINCT source) AS sources,
           COUNT(DISTINCT model) AS model_count
-        FROM usage_records
+        FROM usage_totals
         WHERE user_id = ?
         GROUP BY device_id
         UNION ALL
@@ -105,7 +105,7 @@ async function handleListDevices(
         FROM device_aliases da2
         WHERE da2.user_id = ?
           AND da2.device_id NOT IN (
-            SELECT DISTINCT device_id FROM usage_records WHERE user_id = ?
+            SELECT DISTINCT device_id FROM usage_totals WHERE user_id = ?
           )
       ) d
       LEFT JOIN device_aliases da
@@ -132,7 +132,7 @@ async function handleCheckDeviceExists(
   const result = await db
     .prepare(
       `SELECT device_id FROM (
-        SELECT DISTINCT device_id FROM usage_records
+        SELECT DISTINCT device_id FROM usage_totals
         WHERE user_id = ? AND device_id = ?
         UNION
         SELECT device_id FROM device_aliases
@@ -181,7 +181,7 @@ async function handleCheckDeviceHasRecords(
 
   const result = await db
     .prepare(
-      `SELECT COUNT(*) AS cnt FROM usage_records
+      `SELECT COUNT(*) AS cnt FROM usage_totals
        WHERE user_id = ? AND device_id = ?`
     )
     .bind(req.userId, req.deviceId)

@@ -12,6 +12,8 @@
 // ---------------------------------------------------------------------------
 
 export interface UsageRow {
+  evidence_tokens?: number;
+  approximate_tokens?: number;
   source: string;
   model: string;
   hour_start: string;
@@ -23,6 +25,8 @@ export interface UsageRow {
 }
 
 export interface UsageSummary {
+  evidence_tokens?: number;
+  approximate_tokens?: number;
   input_tokens: number;
   cached_input_tokens: number;
   output_tokens: number;

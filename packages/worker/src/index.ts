@@ -22,6 +22,7 @@ import {
   MAX_INGEST_BATCH_SIZE,
   validateIngestRecord,
   validateSessionIngestRecord,
+  validateEvidenceRecord,
 } from "@pew/core";
 import type {
   IngestRecord,
@@ -29,7 +30,9 @@ import type {
   SessionIngestRecord,
   SessionIngestRequest,
   ValidationResult,
+  EvidenceRecord,
 } from "@pew/core";
+import { EVIDENCE_UPSERT_SQL } from "./evidence-sql";
 
 // Re-export types for test imports
 export type { IngestRecord, IngestRequest, SessionIngestRecord, SessionIngestRequest };
@@ -265,6 +268,28 @@ async function handleSessionIngest(body: unknown, env: Env): Promise<Response> {
   }
 }
 
+async function handleEvidenceIngest(body: unknown, env: Env): Promise<Response> {
+  const validation = validateRequest<EvidenceRecord>(body, validateEvidenceRecord);
+  if (!validation.ok) return Response.json({ error: validation.error }, { status: 400 });
+  const { userId, records } = validation;
+  try {
+    await env.DB.batch(records.map((r) => {
+      const e = r.evidence;
+      return env.DB.prepare(EVIDENCE_UPSERT_SQL).bind(
+        userId, r.device_id, e.eventId, e.groupId, r.source, r.model, r.hour_start, r.timestamp,
+        e.callType, e.origin, e.provider, e.granularity, e.timePrecision, e.intervalStart, e.intervalEnd,
+        e.callCount, e.snapshotSeq, r.input_tokens, r.cached_input_tokens, r.output_tokens,
+        r.reasoning_output_tokens, r.total_tokens,
+      );
+    }));
+    return Response.json({ ingested: records.length });
+  } catch {
+    // Do not log bound values, source identifiers or request bodies.
+    console.error("Usage evidence ingest failed");
+    return Response.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Router
 // ---------------------------------------------------------------------------
@@ -305,6 +330,8 @@ export default {
     if (path === "/ingest/sessions") {
       return handleSessionIngest(body, env);
     }
+
+    if (path === "/ingest/evidence") return handleEvidenceIngest(body, env);
 
     if (path === "/ingest/tokens" || path === "/ingest") {
       return handleTokenIngest(body, env);

@@ -166,7 +166,7 @@ export async function GET(request: Request) {
         SUM(total_tokens) as total_tokens,
         source,
         model
-      FROM usage_records
+      FROM usage_totals
       WHERE user_id IN (${userPlaceholders})
         AND hour_start >= ?
         AND hour_start < ?

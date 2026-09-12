@@ -348,7 +348,7 @@ async function handleGetUserFirstSeen(
   }
 
   const row = await db
-    .prepare("SELECT MIN(hour_start) AS first_seen FROM usage_records WHERE user_id = ?")
+    .prepare("SELECT MIN(hour_start) AS first_seen FROM usage_totals WHERE user_id = ?")
     .bind(req.userId)
     .first<{ first_seen: string | null }>();
 

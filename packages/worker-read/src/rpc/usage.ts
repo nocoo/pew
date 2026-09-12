@@ -19,6 +19,8 @@ interface UsageRow {
   output_tokens: number;
   reasoning_output_tokens: number;
   total_tokens: number;
+  evidence_tokens?: number;
+  approximate_tokens?: number;
 }
 
 interface DeviceSummaryRow {
@@ -162,8 +164,10 @@ async function handleGetUsage(
       SUM(cached_input_tokens) AS cached_input_tokens,
       SUM(output_tokens) AS output_tokens,
       SUM(reasoning_output_tokens) AS reasoning_output_tokens,
-      SUM(total_tokens) AS total_tokens
-    FROM usage_records
+      SUM(total_tokens) AS total_tokens,
+      SUM(evidence_tokens) AS evidence_tokens,
+      SUM(approximate_tokens) AS approximate_tokens
+    FROM usage_totals
     WHERE ${conditions.join(" AND ")}
     GROUP BY ${groupBy}
     ORDER BY hour_start ASC, source, model
@@ -202,7 +206,7 @@ async function handleGetDeviceSummary(
         SUM(ur.reasoning_output_tokens) AS reasoning_output_tokens,
         GROUP_CONCAT(DISTINCT ur.source) AS sources,
         GROUP_CONCAT(DISTINCT ur.model) AS models
-      FROM usage_records ur
+      FROM usage_totals ur
       LEFT JOIN device_aliases da
         ON da.user_id = ur.user_id AND da.device_id = ur.device_id
       WHERE ur.user_id = ?
@@ -238,7 +242,7 @@ async function handleGetDeviceCostDetails(
         SUM(ur.output_tokens) AS output_tokens,
         SUM(ur.cached_input_tokens) AS cached_input_tokens,
         SUM(ur.reasoning_output_tokens) AS reasoning_output_tokens
-      FROM usage_records ur
+      FROM usage_totals ur
       WHERE ur.user_id = ?
         AND ur.hour_start >= ?
         AND ur.hour_start < ?
@@ -296,7 +300,7 @@ async function handleGetDeviceTimeline(
       SUM(ur.output_tokens) AS output_tokens,
       SUM(ur.cached_input_tokens) AS cached_input_tokens,
       SUM(ur.reasoning_output_tokens) AS reasoning_output_tokens
-    FROM usage_records ur
+    FROM usage_totals ur
     WHERE ur.user_id = ?
       AND ur.hour_start >= ?
       AND ur.hour_start < ?

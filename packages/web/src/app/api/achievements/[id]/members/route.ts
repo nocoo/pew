@@ -79,13 +79,13 @@ function getQueryBuilder(achievementId: string): QueryBuilder | null {
         sql: `
           WITH user_totals AS (
             SELECT user_id, SUM(total_tokens) AS value
-            FROM usage_records
+            FROM usage_totals
             GROUP BY user_id
           ),
           cumulative AS (
             SELECT user_id, hour_start,
                    SUM(total_tokens) OVER (PARTITION BY user_id ORDER BY hour_start) AS running_total
-            FROM usage_records
+            FROM usage_totals
           ),
           threshold_crossed AS (
             SELECT user_id, MIN(hour_start) AS earned_at
@@ -109,13 +109,13 @@ function getQueryBuilder(achievementId: string): QueryBuilder | null {
         sql: `
           WITH user_totals AS (
             SELECT user_id, SUM(input_tokens) AS value
-            FROM usage_records
+            FROM usage_totals
             GROUP BY user_id
           ),
           cumulative AS (
             SELECT user_id, hour_start,
                    SUM(input_tokens) OVER (PARTITION BY user_id ORDER BY hour_start) AS running_total
-            FROM usage_records
+            FROM usage_totals
           ),
           threshold_crossed AS (
             SELECT user_id, MIN(hour_start) AS earned_at
@@ -139,13 +139,13 @@ function getQueryBuilder(achievementId: string): QueryBuilder | null {
         sql: `
           WITH user_totals AS (
             SELECT user_id, SUM(output_tokens) AS value
-            FROM usage_records
+            FROM usage_totals
             GROUP BY user_id
           ),
           cumulative AS (
             SELECT user_id, hour_start,
                    SUM(output_tokens) OVER (PARTITION BY user_id ORDER BY hour_start) AS running_total
-            FROM usage_records
+            FROM usage_totals
           ),
           threshold_crossed AS (
             SELECT user_id, MIN(hour_start) AS earned_at
@@ -169,13 +169,13 @@ function getQueryBuilder(achievementId: string): QueryBuilder | null {
         sql: `
           WITH user_totals AS (
             SELECT user_id, SUM(reasoning_output_tokens) AS value
-            FROM usage_records
+            FROM usage_totals
             GROUP BY user_id
           ),
           cumulative AS (
             SELECT user_id, hour_start,
                    SUM(reasoning_output_tokens) OVER (PARTITION BY user_id ORDER BY hour_start) AS running_total
-            FROM usage_records
+            FROM usage_totals
           ),
           threshold_crossed AS (
             SELECT user_id, MIN(hour_start) AS earned_at
@@ -201,12 +201,12 @@ function getQueryBuilder(achievementId: string): QueryBuilder | null {
         sql: `
           WITH user_totals AS (
             SELECT user_id, COUNT(DISTINCT DATE(hour_start)) AS value
-            FROM usage_records
+            FROM usage_totals
             GROUP BY user_id
           ),
           daily AS (
             SELECT user_id, DATE(hour_start) AS day, MIN(hour_start) AS first_hour
-            FROM usage_records
+            FROM usage_totals
             GROUP BY user_id, DATE(hour_start)
           ),
           numbered AS (
@@ -238,7 +238,7 @@ function getQueryBuilder(achievementId: string): QueryBuilder | null {
           WITH daily AS (
             SELECT user_id, DATE(hour_start) AS day, SUM(total_tokens) AS day_tokens,
                    MIN(hour_start) AS first_hour
-            FROM usage_records
+            FROM usage_totals
             GROUP BY user_id, DATE(hour_start)
           ),
           user_max AS (
@@ -274,7 +274,7 @@ function getQueryBuilder(achievementId: string): QueryBuilder | null {
                       ELSE 0 END AS value,
                  NULL AS earned_at
           FROM users u
-          JOIN usage_records ur ON ur.user_id = u.id
+          JOIN usage_totals ur ON ur.user_id = u.id
           WHERE u.is_public = 1
           GROUP BY u.id
           HAVING value >= ?
@@ -290,12 +290,12 @@ function getQueryBuilder(achievementId: string): QueryBuilder | null {
         sql: `
           WITH user_totals AS (
             SELECT user_id, COUNT(DISTINCT source) AS value
-            FROM usage_records
+            FROM usage_totals
             GROUP BY user_id
           ),
           first_source AS (
             SELECT user_id, source, MIN(hour_start) AS first_hour
-            FROM usage_records
+            FROM usage_totals
             GROUP BY user_id, source
           ),
           numbered AS (
@@ -325,12 +325,12 @@ function getQueryBuilder(achievementId: string): QueryBuilder | null {
         sql: `
           WITH user_totals AS (
             SELECT user_id, COUNT(DISTINCT model) AS value
-            FROM usage_records
+            FROM usage_totals
             GROUP BY user_id
           ),
           first_model AS (
             SELECT user_id, model, MIN(hour_start) AS first_hour
-            FROM usage_records
+            FROM usage_totals
             GROUP BY user_id, model
           ),
           numbered AS (
@@ -360,12 +360,12 @@ function getQueryBuilder(achievementId: string): QueryBuilder | null {
         sql: `
           WITH user_totals AS (
             SELECT user_id, COUNT(DISTINCT device_id) AS value
-            FROM usage_records
+            FROM usage_totals
             GROUP BY user_id
           ),
           first_device AS (
             SELECT user_id, device_id, MIN(hour_start) AS first_hour
-            FROM usage_records
+            FROM usage_totals
             GROUP BY user_id, device_id
           ),
           numbered AS (

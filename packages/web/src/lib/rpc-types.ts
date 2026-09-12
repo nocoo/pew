@@ -469,6 +469,8 @@ export interface SessionRecordRow {
 
 /** Usage record row (aggregated by time/source/model) */
 export interface UsageRecordRow {
+  evidence_tokens?: number;
+  approximate_tokens?: number;
   source: string;
   model: string;
   hour_start: string;

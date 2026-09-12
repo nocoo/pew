@@ -237,7 +237,7 @@ async function handleGetGlobalLeaderboard(
       SUM(ur.input_tokens) AS input_tokens,
       SUM(ur.output_tokens) AS output_tokens,
       SUM(ur.cached_input_tokens) AS cached_input_tokens
-    FROM usage_records ur
+    FROM usage_totals ur
     JOIN users u ON u.id = ur.user_id
     WHERE ${conditions.join(" AND ")}
     GROUP BY ur.user_id

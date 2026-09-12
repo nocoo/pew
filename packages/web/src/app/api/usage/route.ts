@@ -159,7 +159,11 @@ export async function GET(request: Request) {
       }
     );
 
-    return NextResponse.json({ records, summary });
+    const evidenceTokens = records.reduce((n, r) => n + (r.evidence_tokens ?? 0), 0);
+    const approximateTokens = records.reduce((n, r) => n + (r.approximate_tokens ?? 0), 0);
+    return NextResponse.json({ records, summary: evidenceTokens > 0
+      ? { ...summary, evidence_tokens: evidenceTokens, approximate_tokens: approximateTokens }
+      : summary });
   } catch (err) {
     console.error("Failed to query usage:", err);
     return NextResponse.json(

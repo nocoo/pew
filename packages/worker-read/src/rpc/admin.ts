@@ -131,7 +131,7 @@ async function handleGetSystemStats(db: D1Database): Promise<Response> {
     SELECT
       (SELECT COUNT(*) FROM users) AS total_users,
       (SELECT COUNT(*) FROM session_records) AS total_sessions,
-      (SELECT COALESCE(SUM(input_tokens + output_tokens), 0) FROM usage_records) AS total_tokens,
+      (SELECT COALESCE(SUM(input_tokens + output_tokens), 0) FROM usage_totals) AS total_tokens,
       (SELECT COUNT(DISTINCT user_id) FROM session_records WHERE started_at >= datetime('now', '-1 day')) AS active_users_24h
   `;
 
@@ -228,7 +228,7 @@ async function handleGetStorageStats(db: D1Database): Promise<Response> {
     ) tm_cnt ON tm_cnt.user_id = u.id
     LEFT JOIN (
       SELECT user_id, COUNT(DISTINCT device_id) AS device_count
-      FROM usage_records
+      FROM usage_totals
       GROUP BY user_id
     ) dev_cnt ON dev_cnt.user_id = u.id
     LEFT JOIN (
@@ -238,18 +238,18 @@ async function handleGetStorageStats(db: D1Database): Promise<Response> {
         COUNT(*)                        AS usage_row_count,
         MIN(hour_start)                AS first_seen,
         MAX(hour_start)                AS last_seen
-      FROM usage_records
+      FROM usage_totals
       GROUP BY user_id
     ) tok ON tok.user_id = u.id
     LEFT JOIN (
       SELECT user_id, SUM(total_tokens) AS tokens_7d
-      FROM usage_records
+      FROM usage_totals
       WHERE datetime(hour_start) >= datetime('now', '-7 days')
       GROUP BY user_id
     ) tok7 ON tok7.user_id = u.id
     LEFT JOIN (
       SELECT user_id, SUM(total_tokens) AS tokens_30d
-      FROM usage_records
+      FROM usage_totals
       WHERE datetime(hour_start) >= datetime('now', '-30 days')
       GROUP BY user_id
     ) tok30 ON tok30.user_id = u.id

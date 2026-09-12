@@ -85,7 +85,7 @@ async function handleGetUsageAggregates(
         COALESCE(SUM(output_tokens), 0) AS output_tokens,
         COALESCE(SUM(cached_input_tokens), 0) AS cached_input_tokens,
         COALESCE(SUM(reasoning_output_tokens), 0) AS reasoning_output_tokens
-      FROM usage_records
+      FROM usage_totals
       WHERE user_id = ?`
     )
     .bind(req.userId)
@@ -105,7 +105,7 @@ async function handleGetDailyUsage(
   const results = await db
     .prepare(
       `SELECT DATE(hour_start) AS day, SUM(total_tokens) AS total_tokens
-       FROM usage_records
+       FROM usage_totals
        WHERE user_id = ?
        GROUP BY DATE(hour_start)
        ORDER BY day`
@@ -131,7 +131,7 @@ async function handleGetDailyCostBreakdown(
               SUM(output_tokens) AS output_tokens,
               SUM(cached_input_tokens) AS cached_input_tokens,
               SUM(reasoning_output_tokens) AS reasoning_output_tokens
-       FROM usage_records
+       FROM usage_totals
        WHERE user_id = ?
        GROUP BY DATE(hour_start), model, source`
     )
@@ -155,7 +155,7 @@ async function handleGetDiversityCounts(
         COUNT(DISTINCT source) AS source_count,
         COUNT(DISTINCT model) AS model_count,
         COUNT(DISTINCT device_id) AS device_count
-      FROM usage_records
+      FROM usage_totals
       WHERE user_id = ?`
     )
     .bind(req.userId)
@@ -200,7 +200,7 @@ async function handleGetHourlyUsage(
   const results = await db
     .prepare(
       `SELECT hour_start, SUM(total_tokens) AS total_tokens
-       FROM usage_records
+       FROM usage_totals
        WHERE user_id = ?
        GROUP BY hour_start`
     )
@@ -225,7 +225,7 @@ async function handleGetCostByModelSource(
               SUM(output_tokens) AS output_tokens,
               SUM(cached_input_tokens) AS cached_input_tokens,
               SUM(reasoning_output_tokens) AS reasoning_output_tokens
-       FROM usage_records
+       FROM usage_totals
        WHERE user_id = ?
        GROUP BY model, source`
     )

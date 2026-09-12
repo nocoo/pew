@@ -487,7 +487,7 @@ async function handleGetSeasonTeamTokens(
       FROM season_teams st
       JOIN teams t ON t.id = st.team_id
       LEFT JOIN season_team_members tm ON tm.team_id = st.team_id AND tm.season_id = st.season_id
-      LEFT JOIN usage_records ur ON ur.user_id = tm.user_id
+      LEFT JOIN usage_totals ur ON ur.user_id = tm.user_id
         AND ur.hour_start >= ?
         AND ur.hour_start < ?
       WHERE st.season_id = ?
@@ -526,7 +526,7 @@ async function handleGetSeasonMemberTokens(
       COALESCE(SUM(ur.cached_input_tokens), 0) AS cached_input_tokens
     FROM season_team_members tm
     JOIN users u ON u.id = tm.user_id
-    LEFT JOIN usage_records ur ON ur.user_id = tm.user_id
+    LEFT JOIN usage_totals ur ON ur.user_id = tm.user_id
       AND ur.hour_start >= ?
       AND ur.hour_start < ?
     WHERE tm.season_id = ?
@@ -646,7 +646,7 @@ async function handleAggregateTeamTokens(
         COALESCE(SUM(ur.cached_input_tokens), 0) AS cached_input_tokens
       FROM season_teams st
       LEFT JOIN season_team_members tm ON tm.team_id = st.team_id AND tm.season_id = st.season_id
-      LEFT JOIN usage_records ur ON ur.user_id = tm.user_id
+      LEFT JOIN usage_totals ur ON ur.user_id = tm.user_id
         AND ur.hour_start >= ?
         AND ur.hour_start < ?
       WHERE st.season_id = ?
@@ -681,7 +681,7 @@ async function handleAggregateMemberTokens(
         COALESCE(SUM(ur.output_tokens), 0) AS output_tokens,
         COALESCE(SUM(ur.cached_input_tokens), 0) AS cached_input_tokens
       FROM season_team_members tm
-      LEFT JOIN usage_records ur ON ur.user_id = tm.user_id
+      LEFT JOIN usage_totals ur ON ur.user_id = tm.user_id
         AND ur.hour_start >= ?
         AND ur.hour_start < ?
       WHERE tm.season_id = ?
