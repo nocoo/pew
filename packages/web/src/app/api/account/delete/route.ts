@@ -95,6 +95,10 @@ export async function DELETE(request: Request) {
 
     // 2. Usage and session data
     await dbWrite.execute(
+      "DELETE FROM usage_evidence WHERE user_id = ?",
+      [userId],
+    );
+    await dbWrite.execute(
       "DELETE FROM usage_records WHERE user_id = ?",
       [userId],
     );

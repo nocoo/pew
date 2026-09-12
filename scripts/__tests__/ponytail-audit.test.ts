@@ -76,6 +76,22 @@ describe("Pew ponytail readonly audit", () => {
     expect(JSON.stringify(report)).not.toContain("PRIVATE_FIXTURE_BODY");
   });
 
+  it("requires awaited, user-scoped evidence deletion before account deletion", () => {
+    const path = "packages/web/src/app/api/account/delete/route.ts";
+    const call = /await dbWrite\.execute\(\s*"DELETE FROM usage_evidence WHERE user_id = \?",\s*\[userId\],?\s*\);/;
+    for (const change of [
+      (s: string) => s.replace(call, "// DELETE FROM usage_evidence WHERE user_id = ?"),
+      (s: string) => s.replace(call, (match) => match.replace("await ", "")),
+      (s: string) => s.replace(call, (match) => match.replace("[userId]", "[]")),
+      (s: string) => s.replace(/DELETE FROM (?:usage_evidence WHERE user_id|users WHERE id) = \?/g,
+        (sql) => sql.includes("usage_evidence") ? "DELETE FROM users WHERE id = ?" : "DELETE FROM usage_evidence WHERE user_id = ?"),
+    ]) {
+      const report = run(mutate(path, change));
+      expect(hasError(report, "api.account-deletion")).toBe(true);
+      expect(report.exitCode).toBe(1);
+    }
+  });
+
   it("catches the evidence cursor committing before its ledger promise completes", () => {
     const report = run(mutate("packages/cli/src/commands/sync.ts", (s) => s.replace("await evidenceQueue.merge(evidenceRecords, initialCursorEmpty)", "evidenceQueue.merge(evidenceRecords, initialCursorEmpty)")));
     expect(hasError(report, "cursor.evidence-before-commit")).toBe(true);

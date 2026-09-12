@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { DatabaseSync } from "node:sqlite";
 import { DELETE } from "@/app/api/account/delete/route";
 import * as dbModule from "@/lib/db";
 import * as authModule from "@/lib/auth-helpers";
@@ -134,6 +135,34 @@ describe("DELETE /api/account/delete", () => {
   });
 
   describe("successful deletion", () => {
+    it.each([0, 1])("removes only the deleted user's evidence with foreign_keys=%i", async (foreignKeys) => {
+      const db = new DatabaseSync(":memory:");
+      try {
+        db.exec(`PRAGMA foreign_keys = ${foreignKeys};
+          CREATE TABLE users (id TEXT PRIMARY KEY);
+          CREATE TABLE usage_evidence (
+            user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+            device_id TEXT, event_id TEXT);
+          INSERT INTO users VALUES ('u1'), ('u2');
+          INSERT INTO usage_evidence VALUES ('u1', 'd1', 'a'), ('u1', 'd2', 'b'), ('u2', 'd1', 'c');`);
+        vi.mocked(authModule.resolveUser).mockResolvedValueOnce({ userId: "u1" });
+        mockReadClient.getUserById.mockResolvedValueOnce({ id: "u1", email: "user@example.com" });
+        // Exercise the route's real deletion SQL; unrelated tables stay mocked.
+        mockWriteClient.execute.mockImplementation(async (sql: string, params: string[]) => {
+          if (/^DELETE FROM (?:usage_evidence|users) WHERE /.test(sql)) db.prepare(sql).run(...params);
+          return { results: [] };
+        });
+
+        const res = await DELETE(makeDeleteRequest({ confirm_email: "user@example.com" }));
+
+        expect(res.status).toBe(200);
+        expect(db.prepare("SELECT * FROM usage_evidence").all()).toEqual([
+          { user_id: "u2", device_id: "d1", event_id: "c" },
+        ]);
+        expect(db.prepare("SELECT id FROM users").all()).toEqual([{ id: "u2" }]);
+      } finally { db.close(); }
+    });
+
     it("should delete all user data and return success", async () => {
       vi.mocked(authModule.resolveUser).mockResolvedValueOnce({ userId: "u1" });
       mockReadClient.getUserById.mockResolvedValueOnce({
@@ -173,6 +202,20 @@ describe("DELETE /api/account/delete", () => {
   });
 
   describe("error handling", () => {
+    it("does not delete the user or report success when evidence deletion fails", async () => {
+      vi.mocked(authModule.resolveUser).mockResolvedValueOnce({ userId: "u1" });
+      mockReadClient.getUserById.mockResolvedValueOnce({ id: "u1", email: "user@example.com" });
+      mockWriteClient.execute.mockImplementation(async (sql: string) => {
+        if (sql.includes("usage_evidence")) throw new Error("Synthetic deletion failure");
+        return { results: [] };
+      });
+
+      const res = await DELETE(makeDeleteRequest({ confirm_email: "user@example.com" }));
+
+      expect(res.status).toBe(500);
+      expect(mockWriteClient.execute.mock.calls.some(([sql]) => /^DELETE FROM users\b/.test(sql))).toBe(false);
+    });
+
     it("should return 500 on database error", async () => {
       vi.mocked(authModule.resolveUser).mockResolvedValueOnce({ userId: "u1" });
       mockReadClient.getUserById.mockResolvedValueOnce({
