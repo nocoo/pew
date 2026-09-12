@@ -7,142 +7,75 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Note: concurrency is handled by individual jobs to avoid deadlock with reusable workflows.
-# The base-ci workflow has its own concurrency settings.
-
 jobs:
-  # ─────────────────────────────────────────────────────
-  # L1 + G1 + G2 — Core quality gate from base-ci
-  # ─────────────────────────────────────────────────────
   quality:
-    uses: nocoo/base-ci/.github/workflows/bun-quality.yml@aec4adc1a817c56790d1698329ef9398a15a754a  # v2026.5
+    uses: nocoo/base-ci/.github/workflows/quality.yml@ab52d72877d386c9a8fd224e9ac868e88be90539
     with:
-      bun-version: "1.4.0"
-      pre-command: "bun run build"
-      typecheck-command: "" # Included in lint script
+      runtime-version: "1.4.0"
+      install-policy: "blocked"
+      prepare-command: "bun run build"
+      lint-command: "bun run lint"
       test-command: "bun run test:coverage"
+      typecheck: false
+      disabled-check-reasons: '{"typecheck": "typecheck already executed as first step inside bun run lint"}'
       osv-config: "osv-scanner.toml"
-      # L2/L3 are defined locally for full secret control
-      enable-l2: "false"
-      enable-l3: "false"
-      enable-worker: "false"
     secrets: inherit
 
-  # ─────────────────────────────────────────────────────
-  # L2: API E2E (real HTTP against test D1)
-  # Runs in PARALLEL with quality for faster CI.
-  # ─────────────────────────────────────────────────────
   api-e2e:
     name: "L2 API E2E"
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    # Only run if secrets are available (skip for external PRs)
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    env:
-      CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-      CF_D1_DATABASE_ID: ${{ secrets.CF_D1_DATABASE_ID }}
-      CF_D1_API_TOKEN: ${{ secrets.CF_D1_API_TOKEN }}
-      CF_D1_DATABASE_ID_TEST: ${{ secrets.CF_D1_DATABASE_ID_TEST }}
-      WORKER_INGEST_URL: ${{ secrets.WORKER_INGEST_URL }}
-      WORKER_INGEST_URL_TEST: ${{ secrets.WORKER_INGEST_URL_TEST }}
-      WORKER_READ_URL: ${{ secrets.WORKER_READ_URL }}
-      WORKER_READ_URL_TEST: ${{ secrets.WORKER_READ_URL_TEST }}
-      WORKER_SECRET: ${{ secrets.WORKER_SECRET }}
-      WORKER_READ_SECRET: ${{ secrets.WORKER_READ_SECRET }}
-      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
-    steps:
-      - uses: actions/checkout@v4
+    uses: nocoo/base-ci/.github/workflows/test-job.yml@ab52d72877d386c9a8fd224e9ac868e88be90539
+    with:
+      runtime-version: "1.4.0"
+      install-policy: "blocked"
+      timeout-minutes: 15
+      pre-command: |
+        bun run build
+        cat > packages/web/.env.local << 'ENVEOF'
+        CF_ACCOUNT_ID=${CF_ACCOUNT_ID}
+        CF_D1_DATABASE_ID=${CF_D1_DATABASE_ID}
+        CF_D1_API_TOKEN=${CF_D1_API_TOKEN}
+        WORKER_INGEST_URL=${WORKER_INGEST_URL}
+        WORKER_READ_URL=${WORKER_READ_URL}
+        WORKER_SECRET=${WORKER_SECRET}
+        WORKER_READ_SECRET=${WORKER_READ_SECRET}
+        AUTH_SECRET=${AUTH_SECRET}
+        ENVEOF
+        cat > packages/web/.env.test << 'ENVEOF'
+        CF_D1_DATABASE_ID_TEST=${CF_D1_DATABASE_ID_TEST}
+        WORKER_INGEST_URL_TEST=${WORKER_INGEST_URL_TEST}
+        WORKER_READ_URL_TEST=${WORKER_READ_URL_TEST}
+        ENVEOF
+      command: "bun run test:e2e"
+    secrets:
+      test-env-json: ${{ toJson(secrets) }}
 
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: "1.4.0"
-
-      - run: bun install --frozen-lockfile --ignore-scripts
-
-      - name: Build
-        run: bun run build
-
-      - name: Write .env.local
-        run: |
-          cat > packages/web/.env.local << 'EOF'
-          CF_ACCOUNT_ID=${{ secrets.CF_ACCOUNT_ID }}
-          CF_D1_DATABASE_ID=${{ secrets.CF_D1_DATABASE_ID }}
-          CF_D1_API_TOKEN=${{ secrets.CF_D1_API_TOKEN }}
-          WORKER_INGEST_URL=${{ secrets.WORKER_INGEST_URL }}
-          WORKER_READ_URL=${{ secrets.WORKER_READ_URL }}
-          WORKER_SECRET=${{ secrets.WORKER_SECRET }}
-          WORKER_READ_SECRET=${{ secrets.WORKER_READ_SECRET }}
-          AUTH_SECRET=${{ secrets.AUTH_SECRET }}
-          EOF
-
-      - name: Write .env.test
-        run: |
-          cat > packages/web/.env.test << 'EOF'
-          CF_D1_DATABASE_ID_TEST=${{ secrets.CF_D1_DATABASE_ID_TEST }}
-          WORKER_INGEST_URL_TEST=${{ secrets.WORKER_INGEST_URL_TEST }}
-          WORKER_READ_URL_TEST=${{ secrets.WORKER_READ_URL_TEST }}
-          EOF
-
-      - name: "L2: API E2E tests"
-        run: bun run test:e2e
-
-  # ─────────────────────────────────────────────────────
-  # L3: Browser E2E (Playwright against test D1)
-  # Runs in PARALLEL with quality for faster CI.
-  # ─────────────────────────────────────────────────────
   browser-e2e:
     name: "L3 Browser E2E"
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    # Only run if secrets are available (skip for external PRs)
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    env:
-      CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-      CF_D1_DATABASE_ID: ${{ secrets.CF_D1_DATABASE_ID }}
-      CF_D1_API_TOKEN: ${{ secrets.CF_D1_API_TOKEN }}
-      CF_D1_DATABASE_ID_TEST: ${{ secrets.CF_D1_DATABASE_ID_TEST }}
-      WORKER_INGEST_URL: ${{ secrets.WORKER_INGEST_URL }}
-      WORKER_INGEST_URL_TEST: ${{ secrets.WORKER_INGEST_URL_TEST }}
-      WORKER_READ_URL: ${{ secrets.WORKER_READ_URL }}
-      WORKER_READ_URL_TEST: ${{ secrets.WORKER_READ_URL_TEST }}
-      WORKER_SECRET: ${{ secrets.WORKER_SECRET }}
-      WORKER_READ_SECRET: ${{ secrets.WORKER_READ_SECRET }}
-      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: "1.4.0"
-
-      - run: bun install --frozen-lockfile --ignore-scripts
-
-      - name: Install Playwright browsers
-        run: bunx playwright install --with-deps chromium
-
-      - name: Build
-        run: bun run build
-
-      - name: Write .env.local
-        run: |
-          cat > packages/web/.env.local << 'EOF'
-          CF_ACCOUNT_ID=${{ secrets.CF_ACCOUNT_ID }}
-          CF_D1_DATABASE_ID=${{ secrets.CF_D1_DATABASE_ID }}
-          CF_D1_API_TOKEN=${{ secrets.CF_D1_API_TOKEN }}
-          WORKER_INGEST_URL=${{ secrets.WORKER_INGEST_URL }}
-          WORKER_READ_URL=${{ secrets.WORKER_READ_URL }}
-          WORKER_SECRET=${{ secrets.WORKER_SECRET }}
-          WORKER_READ_SECRET=${{ secrets.WORKER_READ_SECRET }}
-          AUTH_SECRET=${{ secrets.AUTH_SECRET }}
-          EOF
-
-      - name: Write .env.test
-        run: |
-          cat > packages/web/.env.test << 'EOF'
-          CF_D1_DATABASE_ID_TEST=${{ secrets.CF_D1_DATABASE_ID_TEST }}
-          WORKER_INGEST_URL_TEST=${{ secrets.WORKER_INGEST_URL_TEST }}
-          WORKER_READ_URL_TEST=${{ secrets.WORKER_READ_URL_TEST }}
-          EOF
-
-      - name: "L3: Playwright E2E tests"
-        run: bun run test:e2e:ui
+    uses: nocoo/base-ci/.github/workflows/test-job.yml@ab52d72877d386c9a8fd224e9ac868e88be90539
+    with:
+      runtime-version: "1.4.0"
+      install-policy: "blocked"
+      browser: "chromium"
+      timeout-minutes: 20
+      pre-command: |
+        bun run build
+        cat > packages/web/.env.local << 'ENVEOF'
+        CF_ACCOUNT_ID=${CF_ACCOUNT_ID}
+        CF_D1_DATABASE_ID=${CF_D1_DATABASE_ID}
+        CF_D1_API_TOKEN=${CF_D1_API_TOKEN}
+        WORKER_INGEST_URL=${WORKER_INGEST_URL}
+        WORKER_READ_URL=${WORKER_READ_URL}
+        WORKER_SECRET=${WORKER_SECRET}
+        WORKER_READ_SECRET=${WORKER_READ_SECRET}
+        AUTH_SECRET=${AUTH_SECRET}
+        ENVEOF
+        cat > packages/web/.env.test << 'ENVEOF'
+        CF_D1_DATABASE_ID_TEST=${CF_D1_DATABASE_ID_TEST}
+        WORKER_INGEST_URL_TEST=${WORKER_INGEST_URL_TEST}
+        WORKER_READ_URL_TEST=${WORKER_READ_URL_TEST}
+        ENVEOF
+      command: "bun run test:e2e:ui"
+    secrets:
+      test-env-json: ${{ toJson(secrets) }}
