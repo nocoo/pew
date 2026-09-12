@@ -32,6 +32,32 @@ export interface SessionRow {
  */
 export type QuerySessionsFn = () => SessionRow[];
 
+/** Strict projection of Hermes' auxiliary cumulative ledger, never messages or billing URLs. */
+export interface AuxiliaryUsageRow {
+  session_id: string;
+  model: string;
+  billing_provider: string;
+  /** Hash of the billing route fields in the source primary key. */
+  route_key: string;
+  task: string;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_tokens: number;
+  cache_write_tokens: number;
+  reasoning_tokens: number;
+  api_call_count: number;
+  first_seen: number | null;
+  last_seen: number | null;
+  started_at: number | null;
+  source: string | null;
+}
+
+export interface HermesQueryHandle {
+  querySessions: QuerySessionsFn;
+  queryAuxiliaryUsage?: () => AuxiliaryUsageRow[];
+  close: () => void;
+}
+
 /**
  * Parse Hermes Agent SQLite database using session-level diff model.
  *

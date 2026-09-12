@@ -25,7 +25,7 @@ import { toEvidenceRecord } from "../utils/usage-evidence.js";
 import { pruneAliasCursors } from "../storage/prune-alias-cursors.js";
 import type { OnCorruptLine } from "../storage/base-queue.js";
 import type { QueryMessagesFn } from "../parsers/opencode-sqlite.js";
-import type { QuerySessionsFn } from "../parsers/hermes-sqlite.js";
+import type { HermesQueryHandle } from "../parsers/hermes-sqlite.js";
 import type { ZcodeUsageDb } from "../parsers/zcode-types.js";
 import type { ParsedDelta } from "../parsers/claude.js";
 import { toUtcHalfHourStart, bucketKey, addTokens, emptyTokenDelta } from "../utils/buckets.js";
@@ -83,7 +83,7 @@ export interface SyncOptions {
   /** Override: Hermes profile database paths (~/.hermes/profiles/<name>/state.db) */
   hermesProfileDbPaths?: Array<{ dbPath: string; dbKey: string }>;
   /** Factory for opening the Hermes SQLite DB (DI for testability) */
-  openHermesDb?: (dbPath: string) => { querySessions: QuerySessionsFn; close: () => void } | null;
+  openHermesDb?: (dbPath: string) => HermesQueryHandle | null;
   /** Override: Kosmos data directory (kosmos-app) */
   kosmosDataDir?: string;
   /** Override: PM Studio data directory (pm-studio-app) */
@@ -396,7 +396,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   // counter across many rollouts, and the rollout that first observed an edge is
   // routinely pruned before its siblings. Per-file storage lost the edge with the
   // file, so the next replay counted it again.
-  const ctx: SyncContext = { dirMtimes: cursors.dirMtimes, evidenceRecords: priorEvidence };
+  const ctx: SyncContext = { dirMtimes: cursors.dirMtimes, evidenceRecords: priorEvidence.filter((r) => r.device_id === opts.deviceId) };
   const persistedScopes = cursors.codexScopes ?? {};
   ctx.codexScopeTotals = new Map(
     Object.entries(persistedScopes)

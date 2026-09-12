@@ -1,5 +1,6 @@
 import { createRequire } from "node:module";
-import type { QuerySessionsFn, SessionRow } from "./hermes-sqlite.js";
+import type { AuxiliaryUsageRow, HermesQueryHandle, SessionRow } from "./hermes-sqlite.js";
+import { evidenceId } from "../utils/usage-evidence.js";
 
 /**
  * Unified SQLite database interface that works across Bun and Node.js runtimes.
@@ -96,7 +97,7 @@ function getSqliteOpener(): ((dbPath: string) => SqliteDb) | null {
  */
 export function openHermesDb(
   dbPath: string,
-): { querySessions: QuerySessionsFn; close: () => void } | null {
+): HermesQueryHandle | null {
   const opener = getSqliteOpener();
   if (!opener) return null;
 
@@ -129,8 +130,32 @@ export function openHermesDb(
     return null;
   }
 
+  let queryAuxiliaryUsage: HermesQueryHandle["queryAuxiliaryUsage"];
+  try {
+    const columns = new Set((db.prepare("PRAGMA table_info(session_model_usage)").all() as { name: string }[]).map((r) => r.name));
+    const sessionColumns = new Set((db.prepare("PRAGMA table_info(sessions)").all() as { name: string }[]).map((r) => r.name));
+    if (["session_id", "model", "task", "input_tokens", "output_tokens"].every((c) => columns.has(c))) {
+      const optional = (name: string, fallback: string) => `${columns.has(name) ? `u.${name}` : fallback} AS ${name}`;
+      const auxiliary = db.prepare(`SELECT u.session_id, u.model, u.task, u.input_tokens, u.output_tokens,
+        ${optional("billing_provider", "''")}, ${optional("billing_base_url", "''")}, ${optional("billing_mode", "''")},
+        ${optional("cache_read_tokens", "0")}, ${optional("cache_write_tokens", "0")}, ${optional("reasoning_tokens", "0")},
+        ${optional("api_call_count", "0")}, ${optional("first_seen", "NULL")}, ${optional("last_seen", "NULL")},
+        s.started_at, ${sessionColumns.has("source") ? "s.source" : "NULL"} AS source
+        FROM session_model_usage u LEFT JOIN sessions s ON s.id = u.session_id
+        WHERE COALESCE(u.task, '') <> ''`);
+      queryAuxiliaryUsage = () => (auxiliary.all() as Array<Omit<AuxiliaryUsageRow, "route_key"> & {
+        billing_base_url: string; billing_mode: string;
+      }>).map(({ billing_base_url, billing_mode, ...row }) => ({
+        ...row, route_key: evidenceId([billing_base_url, billing_mode]),
+      }));
+    }
+  } catch {
+    // An older/partial auxiliary schema must not disable main session usage.
+  }
+
   return {
     querySessions: () => stmt.all() as SessionRow[],
+    ...(queryAuxiliaryUsage ? { queryAuxiliaryUsage } : {}),
     close: () => db.close(),
   };
 }

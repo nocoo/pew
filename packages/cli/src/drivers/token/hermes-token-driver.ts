@@ -12,7 +12,9 @@
 import { stat } from "node:fs/promises";
 import type { HermesSqliteCursor } from "@pew/core";
 import { parseHermesDatabase } from "../../parsers/hermes-sqlite.js";
-import type { QuerySessionsFn } from "../../parsers/hermes-sqlite.js";
+import type { HermesQueryHandle } from "../../parsers/hermes-sqlite.js";
+import { readHermesReviewCalls } from "../../parsers/hermes-review.js";
+import { collectHermesUsageEvidence } from "../../parsers/hermes-usage-evidence.js";
 import type { DbTokenDriver, DbTokenResult, SyncContext } from "../types.js";
 
 /** Options needed to construct the Hermes SQLite token driver */
@@ -25,7 +27,9 @@ export interface HermesSqliteTokenDriverOpts {
    */
   dbKey: string;
   /** Factory for opening the DB (DI for testability — native SQLite not always available) */
-  openHermesDb: (dbPath: string) => { querySessions: QuerySessionsFn; close: () => void } | null;
+  openHermesDb: (dbPath: string) => HermesQueryHandle | null;
+  /** Explicit log timezone for isolated fixtures; real Hermes uses local wall time. */
+  logUtcOffsetMinutes?: number;
 }
 
 export function createHermesSqliteTokenDriver(
@@ -38,7 +42,7 @@ export function createHermesSqliteTokenDriver(
 
     async run(
       prevCursor: HermesSqliteCursor | undefined,
-      _ctx: SyncContext,
+      ctx: SyncContext,
     ): Promise<DbTokenResult<HermesSqliteCursor>> {
       // Check if DB file exists
       const dbStat = await stat(opts.dbPath).catch(() => null);
@@ -74,10 +78,24 @@ export function createHermesSqliteTokenDriver(
           prevCursor,
         );
 
+        const warnings: string[] = [];
+        if (handle.queryAuxiliaryUsage) {
+          try {
+            const rows = handle.queryAuxiliaryUsage();
+            const calls = await readHermesReviewCalls(opts.dbPath, opts.dbKey, opts.logUtcOffsetMinutes).catch(() => {
+              warnings.push("Hermes review timestamps unavailable; retaining cumulative ledger usage");
+              return [];
+            });
+            result.deltas.push(...collectHermesUsageEvidence({ dbKey: opts.dbKey, rows, calls, previous: ctx.evidenceRecords ?? [] }));
+          } catch {
+            warnings.push("Hermes auxiliary evidence unavailable; main session accounting preserved");
+          }
+        }
         return {
           deltas: result.deltas,
           cursor: result.cursor,
           rowCount: result.rowCount,
+          ...(warnings.length ? { warnings } : {}),
         };
       } finally {
         handle.close();
