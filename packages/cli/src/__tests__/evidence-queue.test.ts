@@ -32,7 +32,7 @@ describe("durable usage evidence", () => {
   it("fails closed for conflicting same-revision values and rebucketing attempts", async () => {
     await queue.merge([good]);
     await expect(queue.merge([{ ...good, input_tokens: 200, total_tokens: 220 }])).rejects.toThrow("Conflicting usage evidence snapshot");
-    await expect(queue.merge([{ ...good, timestamp: "2026-09-07T16:00:01.000Z",
+    await expect(queue.merge([{ ...good, timestamp: "2026-09-07T16:00:01.000Z", hour_start: "2026-09-07T16:00:00.000Z",
       evidence: { ...good.evidence, snapshotSeq: 2 } }])).rejects.toThrow("Conflicting usage evidence snapshot");
     expect((await queue.readFromOffset(0)).records).toEqual([good]);
   });
@@ -50,5 +50,47 @@ describe("durable usage evidence", () => {
     expect(() => toEvidenceRecord({ source: "pi", model: "m", timestamp: good.timestamp,
       tokens: { inputTokens: 1, cachedInputTokens: 0, outputTokens: 0, reasoningOutputTokens: 0 } }, "d"))
       .toThrow("Invalid usage evidence");
+  });
+
+  it("rejects immutable provenance changes that the server cannot accept", async () => {
+    await queue.merge([good]);
+    for (const change of [
+      { origin: "hermes-acp-ledger" as const }, { provider: "anthropic" }, { granularity: "operation" as const },
+      { timePrecision: "unattributed" as const }, { intervalStart: "2026-09-05T00:00:00.000Z" },
+    ]) {
+      await expect(queue.merge([{ ...good, evidence: { ...good.evidence, ...change, snapshotSeq: 2 } }]))
+        .rejects.toThrow("Conflicting usage evidence snapshot");
+    }
+    expect((await queue.readFromOffset(0)).records).toEqual([good]);
+  });
+
+  it("fails closed before persisting unknown incoming payload fields", async () => {
+    await expect(queue.merge([{ ...good, prompt: "PRIVATE_FIXTURE_BODY" } as EvidenceRecord]))
+      .rejects.toThrow("Invalid usage evidence ledger");
+    expect((await queue.readFromOffset(0)).records).toEqual([]);
+  });
+
+  it("rejects saved device IDs, source/origin mismatches and invalid interval bounds", async () => {
+    for (const r of [
+      { ...good, device_id: "PRIVATE FIXTURE BODY" },
+      { ...good, evidence: { ...good.evidence, origin: "pi-session" } },
+      { ...good, evidence: { ...good.evidence, intervalStart: "2026-09-06T00:00:00" } },
+      { ...good, evidence: { ...good.evidence, intervalStart: "2026-09-08T00:00:00Z", intervalEnd: "2026-09-07T00:00:00Z" } },
+    ]) {
+      await writeFile(queue.queuePath, `${JSON.stringify(r)}\n`);
+      await expect(queue.readFromOffset(0)).rejects.toThrow("Invalid usage evidence ledger");
+    }
+  });
+
+  it("never constructs unsafe counters or an unhashable accounting identity", () => {
+    const delta = { source: good.source, model: good.model, timestamp: good.timestamp,
+      tokens: { inputTokens: 1, cachedInputTokens: 0, outputTokens: 0, reasoningOutputTokens: 0 }, evidence: good.evidence };
+    for (const changed of [
+      { ...delta, evidence: { ...good.evidence, eventId: "raw-private-id" } },
+      { ...delta, evidence: { ...good.evidence, groupId: "raw-private-id" } },
+      { ...delta, evidence: { ...good.evidence, snapshotSeq: 0 } },
+      { ...delta, tokens: { ...delta.tokens, inputTokens: -1 } },
+      { ...delta, tokens: { ...delta.tokens, inputTokens: Number.MAX_SAFE_INTEGER, outputTokens: 1 } },
+    ]) expect(() => toEvidenceRecord(changed, "test-device")).toThrow("Invalid usage evidence");
   });
 });

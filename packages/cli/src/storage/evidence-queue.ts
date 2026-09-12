@@ -3,6 +3,20 @@ import type { EvidenceRecord } from "@pew/core";
 import { BaseQueue } from "./base-queue.js";
 import { evidenceKey, toEvidenceRecord } from "../utils/usage-evidence.js";
 
+function checkedRecord(r: EvidenceRecord): EvidenceRecord {
+  try {
+    const projected = toEvidenceRecord({ source: r.source, model: r.model, timestamp: r.timestamp,
+      tokens: { inputTokens: r.input_tokens, cachedInputTokens: r.cached_input_tokens,
+        outputTokens: r.output_tokens, reasoningOutputTokens: r.reasoning_output_tokens }, evidence: r.evidence }, r.device_id);
+    const sameFields = (a: object, b: object) => Object.keys(a).length === Object.keys(b).length &&
+      Object.entries(b).every(([key, value]) => (a as Record<string, unknown>)[key] === value);
+    const { evidence, ...fields } = r;
+    const { evidence: projectedEvidence, ...projectedFields } = projected;
+    if (!sameFields(fields, projectedFields) || !sameFields(evidence, projectedEvidence)) throw new Error();
+    return projected;
+  } catch { throw new Error("Invalid usage evidence ledger"); }
+}
+
 /**
  * Durable accounting evidence, also used as the absolute-snapshot outbox.
  * Reset removes parsing cursors, NEVER this ledger: rotated logs cannot
@@ -22,25 +36,7 @@ export class EvidenceQueue extends BaseQueue<EvidenceRecord> {
       throw new Error("Invalid usage evidence ledger");
     }
     try {
-      const records = raw.subarray(offset).toString("utf8").split("\n").filter(Boolean).map((line) => {
-        const r = JSON.parse(line) as EvidenceRecord;
-        if (!r.evidence || !/^[a-f0-9]{64}$/.test(r.evidence.eventId) ||
-          !/^[a-f0-9]{64}$/.test(r.evidence.groupId) ||
-          !Number.isSafeInteger(r.evidence.snapshotSeq) || r.evidence.snapshotSeq < 1 ||
-          ![r.input_tokens, r.cached_input_tokens, r.output_tokens, r.reasoning_output_tokens, r.total_tokens]
-            .every((n) => Number.isSafeInteger(n) && n >= 0)) throw new Error();
-        const projected = toEvidenceRecord({ source: r.source, model: r.model, timestamp: r.timestamp,
-          tokens: { inputTokens: r.input_tokens, cachedInputTokens: r.cached_input_tokens,
-            outputTokens: r.output_tokens, reasoningOutputTokens: r.reasoning_output_tokens },
-          evidence: r.evidence }, r.device_id);
-        // Reject unknown fields and inconsistent counters/buckets; never
-        // forward a corrupted ledger's arbitrary objects to the uploader.
-        if (Object.keys(r).length !== Object.keys(projected).length ||
-          Object.keys(r.evidence).length !== Object.keys(projected.evidence).length ||
-          r.hour_start !== projected.hour_start || r.total_tokens !== projected.total_tokens ||
-          r.model !== projected.model || r.evidence.provider !== projected.evidence.provider) throw new Error();
-        return projected;
-      });
+      const records = raw.subarray(offset).toString("utf8").split("\n").filter(Boolean).map((line) => checkedRecord(JSON.parse(line)));
       return { records, newOffset: raw.byteLength };
     } catch {
       throw new Error("Invalid usage evidence ledger");
@@ -54,7 +50,8 @@ export class EvidenceQueue extends BaseQueue<EvidenceRecord> {
     const dirty = new Set(await this.loadDirtyKeys());
     if (replay) for (const key of merged.keys()) dirty.add(key);
     let changed = false;
-    for (const r of incoming) {
+    for (const raw of incoming) {
+      const r = checkedRecord(raw);
       const key = evidenceKey(r);
       const prev = merged.get(key);
       if (prev) {
@@ -63,7 +60,10 @@ export class EvidenceQueue extends BaseQueue<EvidenceRecord> {
         if (r.evidence.snapshotSeq === prev.evidence.snapshotSeq ||
           r.timestamp !== prev.timestamp || r.hour_start !== prev.hour_start ||
           r.model !== prev.model || r.source !== prev.source ||
-          r.evidence.groupId !== prev.evidence.groupId || r.evidence.callType !== prev.evidence.callType) {
+          r.evidence.groupId !== prev.evidence.groupId || r.evidence.callType !== prev.evidence.callType ||
+          r.evidence.origin !== prev.evidence.origin || r.evidence.provider !== prev.evidence.provider ||
+          r.evidence.granularity !== prev.evidence.granularity || r.evidence.timePrecision !== prev.evidence.timePrecision ||
+          r.evidence.intervalStart !== prev.evidence.intervalStart) {
           throw new Error("Conflicting usage evidence snapshot");
         }
       }
