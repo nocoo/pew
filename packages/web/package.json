@@ -16,8 +16,8 @@
     "nanoid": "6.0.1",
     "next": "16.3.4",
     "next-auth": "^5.0.0-beta.32",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "recharts": "^3.10.1",
     "sharp": "^0.35.4",
     "swr": "2.5.1",
@@ -28,8 +28,8 @@
     "@pew/core": "workspace:*",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "26.5.0",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "19.2.7",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "@typescript/native-preview": "7.0.0-dev.20260707.2",
     "tailwindcss": "^4.3.3"
   }
