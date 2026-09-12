@@ -32,6 +32,10 @@ Three inviolable rules govern how pew interacts with source data:
 - **Commits**: Conventional Commits, atomic, auto-commit after changes
 - **`@pew/core` is NOT published**: Pure types, `import type` only, `devDependencies`
 
+### Pew ponytail audit
+
+For `ponytail-audit`, read `.agents/skills/ponytail-audit/SKILL.md`. Its Pew-specific scope extends the global complexity audit to parser → cursor → spool → upload → Worker UPSERT → API/UI correctness, privacy, timestamps and compatibility. Run `sh scripts/ponytail-audit.sh` for deterministic JSON on stdout; audit/review must not write reports or touch real logs, state, queues or services. Full tests and independent reviews remain separate from this readonly audit.
+
 ### DateTime Strategy
 
 All date/time values follow a strict UTC-in, local-out pattern:
