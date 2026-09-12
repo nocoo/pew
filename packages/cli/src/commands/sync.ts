@@ -20,6 +20,8 @@ import type {
 const ACCOUNTING_SCHEMA_VERSION = 2;
 import { CursorStore } from "../storage/cursor-store.js";
 import { LocalQueue } from "../storage/local-queue.js";
+import { EvidenceQueue } from "../storage/evidence-queue.js";
+import { toEvidenceRecord } from "../utils/usage-evidence.js";
 import { pruneAliasCursors } from "../storage/prune-alias-cursors.js";
 import type { OnCorruptLine } from "../storage/base-queue.js";
 import type { QueryMessagesFn } from "../parsers/opencode-sqlite.js";
@@ -234,6 +236,8 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
 
   const cursorStore = new CursorStore(stateDir);
   const queue = new LocalQueue(stateDir, opts.onCorruptLine);
+  const evidenceQueue = new EvidenceQueue(stateDir);
+  const priorEvidence = (await evidenceQueue.readFromOffset(0)).records;
   const cursors = await cursorStore.load();
 
   // Migrate hermesSqlite from flat object (pre-multi-profile) to Record format.
@@ -392,7 +396,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   // counter across many rollouts, and the rollout that first observed an edge is
   // routinely pruned before its siblings. Per-file storage lost the edge with the
   // file, so the next replay counted it again.
-  const ctx: SyncContext = { dirMtimes: cursors.dirMtimes };
+  const ctx: SyncContext = { dirMtimes: cursors.dirMtimes, evidenceRecords: priorEvidence };
   const persistedScopes = cursors.codexScopes ?? {};
   ctx.codexScopeTotals = new Map(
     Object.entries(persistedScopes)
@@ -1137,6 +1141,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   const buckets = new Map<string, Bucket>();
 
   for (const delta of allDeltas) {
+    if (delta.evidence) continue;
     const hourStart = toUtcHalfHourStart(delta.timestamp);
     if (!hourStart) continue;
 
@@ -1227,6 +1232,9 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
     }
   }
 
+  const evidenceRecords = allDeltas.filter((d) => d.evidence).map((d) => toEvidenceRecord(d, opts.deviceId));
+  await evidenceQueue.merge(evidenceRecords, initialCursorEmpty);
+
   // ---------- Write to queue (overwrite, not append) ----------
   // Design note: this is O(total_queue) not O(delta), which is intentional.
   //
@@ -1291,7 +1299,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
 
   return {
     totalDeltas: allDeltas.length,
-    totalRecords: records.length,
+    totalRecords: records.length + evidenceRecords.length,
     sources: sourceCounts,
     filesScanned,
     dbsScanned,

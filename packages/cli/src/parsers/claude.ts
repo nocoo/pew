@@ -1,7 +1,7 @@
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
-import type { Source, TokenDelta } from "@pew/core";
+import type { Source, TokenDelta, UsageEvidence } from "@pew/core";
 import { jsonlCompleteBound } from "../utils/jsonl-offset.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
 
@@ -11,6 +11,8 @@ export interface ParsedDelta {
   model: string;
   timestamp: string;
   tokens: TokenDelta;
+  /** Absolute supplemental usage, kept out of the legacy additive bucket path. */
+  evidence?: UsageEvidence;
 }
 
 /** Result of parsing a single Claude JSONL file */

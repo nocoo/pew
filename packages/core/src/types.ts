@@ -43,6 +43,23 @@ export interface TokenDelta {
   reasoningOutputTokens: number;
 }
 
+/** Provenance for usage absent from the legacy main-session counters. */
+export interface UsageEvidence {
+  /** SHA-256 identities; never raw session, request, route or profile strings. */
+  eventId: string;
+  groupId: string;
+  callType: "compaction" | "background_review" | "approval" | "compression" | "title_generation" | "vision" | "auxiliary";
+  origin: "pi-session" | "hermes-review-log" | "hermes-aux-ledger" | "hermes-acp-ledger";
+  provider: string;
+  granularity: "call" | "operation" | "session";
+  timePrecision: "exact" | "interval" | "session-start" | "unattributed";
+  intervalStart: string | null;
+  intervalEnd: string | null;
+  callCount: number | null;
+  /** Source revision, never collection time. Immutable events use 1. */
+  snapshotSeq: number;
+}
+
 // ---------------------------------------------------------------------------
 // Usage record
 // ---------------------------------------------------------------------------
@@ -344,6 +361,12 @@ export interface QueueRecord {
   output_tokens: number;
   reasoning_output_tokens: number;
   total_tokens: number;
+}
+
+/** An absolute supplemental snapshot. Legacy bucket records remain unchanged. */
+export interface EvidenceRecord extends QueueRecord {
+  timestamp: string;
+  evidence: UsageEvidence;
 }
 
 // ---------------------------------------------------------------------------

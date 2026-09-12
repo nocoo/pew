@@ -6,13 +6,15 @@
  */
 
 import { LocalQueue } from "../storage/local-queue.js";
+import { EvidenceQueue } from "../storage/evidence-queue.js";
+import { evidenceKey } from "../utils/usage-evidence.js";
 import type { OnCorruptLine } from "../storage/base-queue.js";
 import { createUploadEngine } from "./upload-engine.js";
 import type {
   UploadResult,
   UploadProgressEvent,
 } from "./upload-engine.js";
-import type { QueueRecord } from "@pew/core";
+import type { EvidenceRecord, QueueRecord } from "@pew/core";
 
 // ---------------------------------------------------------------------------
 // Types (re-exported for backward compatibility)
@@ -94,5 +96,12 @@ export async function executeUpload(opts: UploadOptions): Promise<UploadResult> 
     recordKey: (r) => `${r.source}|${r.model}|${r.hour_start}|${r.device_id}`,
   });
 
-  return engine.execute(opts);
+  const main = await engine.execute(opts);
+  if (!main.success) return main;
+  const supplemental = await createUploadEngine<EvidenceRecord>({
+    queue: new EvidenceQueue(opts.stateDir), endpoint: "/api/ingest/evidence",
+    entityName: "usage evidence", preprocess: (records) => records,
+    recordKey: evidenceKey,
+  }).execute(opts);
+  return { ...supplemental, uploaded: main.uploaded + supplemental.uploaded, batches: main.batches + supplemental.batches };
 }

@@ -4,6 +4,7 @@ import type { Source, TokenDelta } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
 import { clampedJsonlEndOffset, jsonlStreamBound } from "../utils/jsonl-offset.js";
+import { evidenceId, usageLabel } from "../utils/usage-evidence.js";
 
 /** Result of parsing a single pi-format JSONL session file */
 export interface PiFileResult {
@@ -101,7 +102,15 @@ export async function parsePiFile(opts: {
 
   // `end` is inclusive — pin the read to the snapshot bound so bytes appended
   // mid-parse stay unread (and unaccounted) until the next run.
-  const stream = createReadStream(filePath, { start: startOffset, end: bound - 1 });
+  // ponytail: changed Pi files replay their metadata prefix to recover the
+  // model/session after legacy cursor upgrades. Persist metadata if this
+  // becomes a measured bottleneck; usage before startOffset is never emitted.
+  const readStart = source === "pi" ? 0 : startOffset;
+  const stream = createReadStream(filePath, { start: readStart, end: bound - 1 });
+  let sessionId: string | null = null;
+  let currentModel = "unknown";
+  let currentProvider = "unknown";
+  const seenCompactions = new Set<string>();
   // Carry incomplete trailing bytes across chunks (Uint8Array avoids Buffer generics)
   let pending: Uint8Array = new Uint8Array(0);
   // Bytes of complete lines (ending in \n) consumed relative to startOffset
@@ -134,7 +143,7 @@ export async function parsePiFile(opts: {
         const line = Buffer.from(lineBuf).toString("utf8");
 
         // Fast-path: skip lines that can't contain usage data
-        if (!line.includes('"usage"')) continue;
+        if (!line.includes('"usage"') && !line.includes('"session"') && !line.includes('"model_change"')) continue;
 
         let obj: Record<string, unknown>;
         try {
@@ -144,7 +153,44 @@ export async function parsePiFile(opts: {
           continue;
         }
 
-        // Only process assistant messages
+        if (obj.type === "session") {
+          sessionId = typeof obj.id === "string" ? obj.id : null;
+          currentModel = "unknown";
+          currentProvider = "unknown";
+          continue;
+        }
+        if (obj.type === "model_change") {
+          currentModel = usageLabel(obj.modelId);
+          currentProvider = usageLabel(obj.provider);
+          continue;
+        }
+
+        const beforeCursor = readStart + completeBytes <= startOffset;
+        if (obj.type === "compaction" && source === "pi") {
+          if (!sessionId || typeof obj.id !== "string" || !obj.id ||
+            typeof obj.timestamp !== "string" || !Number.isFinite(Date.parse(obj.timestamp)) ||
+            !obj.usage || typeof obj.usage !== "object") continue;
+          // Pi copies entry IDs and timestamps when forking into a NEW session
+          // header. Scope by the immutable entry tuple, not pathname/header.
+          // The timestamp also separates reused short entry IDs in new calls.
+          const eventId = evidenceId(["pi", "compaction", obj.id, new Date(obj.timestamp).toISOString()]);
+          const tokens = normalizePiUsage(obj.usage as Record<string, unknown>);
+          if (isAllZero(tokens)) continue;
+          if (seenCompactions.has(eventId)) continue;
+          seenCompactions.add(eventId);
+          if (beforeCursor) continue;
+          const model = obj.model ? usageLabel(obj.model) : obj.fromHook ? "unknown" : currentModel;
+          deltas.push({ source, model, timestamp: obj.timestamp, tokens, evidence: {
+            eventId, groupId: eventId,
+            callType: "compaction", origin: "pi-session", provider: currentProvider,
+            granularity: "operation", timePrecision: "exact",
+            intervalStart: null, intervalEnd: null, callCount: null, snapshotSeq: 1,
+          } });
+          continue;
+        }
+
+        // Assistant usage remains in the original accounting path. Custom
+        // provider/proxy request copies are not a second ingest source.
         if (obj.type !== "message") continue;
 
         const msg = obj.message as Record<string, unknown> | undefined;
@@ -157,6 +203,8 @@ export async function parsePiFile(opts: {
         // Extract model
         const model = typeof msg.model === "string" ? msg.model.trim() : null;
         if (!model) continue;
+        currentModel = usageLabel(model);
+        if (beforeCursor) continue;
 
         // Extract timestamp from the outer JSONL entry
         const timestamp =
@@ -178,5 +226,5 @@ export async function parsePiFile(opts: {
   }
 
   // Trailing partial line is NOT counted in endOffset
-  return { deltas, endOffset: clampedJsonlEndOffset(startOffset, bound, completeBytes) };
+  return { deltas, endOffset: clampedJsonlEndOffset(readStart, bound, completeBytes) };
 }

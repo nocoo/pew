@@ -15,6 +15,7 @@ import type {
   SessionSnapshot,
   SessionFileCursor,
   TokenDelta,
+  EvidenceRecord,
 } from "@pew/core";
 import type { ParsedDelta } from "../parsers/claude.js";
 import type { FileFingerprint } from "../utils/file-changed.js";
@@ -39,6 +40,8 @@ export type { FileFingerprint } from "../utils/file-changed.js";
  * knowledge of OpenCode internals (messageKey collection, dirMtimes).
  */
 export interface SyncContext {
+  /** Durable supplemental evidence survives parsing cursor resets. */
+  evidenceRecords?: EvidenceRecord[];
   /**
    * Message keys deposited by OpenCode JSON token driver.
    * Read by OpenCode SQLite token driver for cross-source dedup.
