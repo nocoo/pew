@@ -11,6 +11,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useUsageData, toHeatmapData } from "@/hooks/use-usage-data";
+import { UsageTimingNotice } from "@/components/dashboard/usage-timing-notice";
 import { useTzOffset } from "@/hooks/use-tz-offset";
 import { useAchievements } from "@/hooks/use-achievements";
 import { formatTokens } from "@/lib/utils";
@@ -196,6 +197,7 @@ export default function DashboardPage() {
 
       {/* Error state */}
       <ErrorBanner messagePrefix="Failed to load usage data" error={error} />
+      <UsageTimingNotice records={data?.records} />
 
       {/* Loading state */}
       {loading && <DashboardSkeleton />}

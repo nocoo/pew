@@ -139,7 +139,7 @@ export function openHermesDb(
       const auxiliary = db.prepare(`SELECT u.session_id, u.model, u.task, u.input_tokens, u.output_tokens,
         ${optional("billing_provider", "''")}, ${optional("billing_base_url", "''")}, ${optional("billing_mode", "''")},
         ${optional("cache_read_tokens", "0")}, ${optional("cache_write_tokens", "0")}, ${optional("reasoning_tokens", "0")},
-        ${optional("api_call_count", "0")}, ${optional("first_seen", "NULL")}, ${optional("last_seen", "NULL")},
+        ${optional("api_call_count", "NULL")}, ${optional("first_seen", "NULL")}, ${optional("last_seen", "NULL")},
         s.started_at, ${sessionColumns.has("source") ? "s.source" : "NULL"} AS source
         FROM session_model_usage u LEFT JOIN sessions s ON s.id = u.session_id
         WHERE COALESCE(u.task, '') <> ''`);

@@ -18,6 +18,7 @@ import { computeTotalCost } from "@/lib/cost-helpers";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatCard, StatGrid } from "@/components/dashboard/stat-card";
 import { UsageTrendChart } from "@/components/dashboard/usage-trend-chart";
+import { UsageTimingNotice } from "@/components/dashboard/usage-timing-notice";
 import { SourceDonutChart } from "@/components/dashboard/source-donut-chart";
 import { ModelBreakdownChart } from "@/components/dashboard/model-breakdown-chart";
 import { HeatmapCalendar } from "@/components/dashboard/heatmap-calendar";
@@ -254,6 +255,7 @@ export function ProfileContent({
               isRefreshing && "opacity-50",
             )}
           >
+            <UsageTimingNotice records={data.records} />
             {/* Stat cards — row 1: Total, Est. Cost, Cache Savings */}
             <StatGrid columns={3}>
               <StatCard

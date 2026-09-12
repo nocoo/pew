@@ -9,6 +9,7 @@ import {
 import type { UsageRow } from "@/hooks/use-usage-data";
 import { useTzOffset } from "@/hooks/use-tz-offset";
 import { ErrorBanner } from "@/components/ui/error-banner";
+import { UsageTimingNotice } from "@/components/dashboard/usage-timing-notice";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
 import { useDeviceData } from "@/hooks/use-device-data";
@@ -470,6 +471,7 @@ export default function RecentPage() {
 
       {/* Error */}
       <ErrorBanner messagePrefix="Failed to load usage data" error={error} />
+      <UsageTimingNotice records={data?.records} />
 
       {/* Loading */}
       {allLoading && <RecentSkeleton />}

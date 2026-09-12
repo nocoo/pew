@@ -63,7 +63,7 @@ describe("Hermes auxiliary SQLite projection", () => {
     db.close();
     const handle = openHermesDb(path);
     try {
-      expect(handle?.queryAuxiliaryUsage?.()).toMatchObject([{ first_seen: null, last_seen: null, input_tokens: 30, output_tokens: 3 }]);
+      expect(handle?.queryAuxiliaryUsage?.()).toMatchObject([{ first_seen: null, last_seen: null, api_call_count: null, input_tokens: 30, output_tokens: 3 }]);
     } finally { handle?.close(); }
   });
 });

@@ -45,7 +45,7 @@ export interface AuxiliaryUsageRow {
   cache_read_tokens: number;
   cache_write_tokens: number;
   reasoning_tokens: number;
-  api_call_count: number;
+  api_call_count: number | null;
   first_seen: number | null;
   last_seen: number | null;
   started_at: number | null;

@@ -5,6 +5,8 @@ import { resolve } from "node:path";
 import worker, { type Env } from "../../packages/worker/src/index";
 import { handleUsageRpc } from "../../packages/worker-read/src/rpc/usage";
 import type { EvidenceRecord } from "@pew/core";
+import { collectHermesUsageEvidence } from "../../packages/cli/src/parsers/hermes-usage-evidence";
+import { toEvidenceRecord } from "../../packages/cli/src/utils/usage-evidence";
 
 const record: EvidenceRecord = {
   source: "pi", model: "test-model", device_id: "test-device",
@@ -22,7 +24,8 @@ describe("evidence ingest and additive migration", () => {
   let env: Env;
   beforeEach(() => {
     db = new DatabaseSync(":memory:");
-    db.exec(`CREATE TABLE users (id TEXT PRIMARY KEY); INSERT INTO users VALUES ('synthetic-user');
+    db.exec(`PRAGMA foreign_keys = ON;
+      CREATE TABLE users (id TEXT PRIMARY KEY); INSERT INTO users VALUES ('synthetic-user');
       CREATE TABLE usage_records (
         id INTEGER PRIMARY KEY, user_id TEXT, device_id TEXT DEFAULT 'default', source TEXT, model TEXT, hour_start TEXT,
         input_tokens INTEGER, cached_input_tokens INTEGER, output_tokens INTEGER, reasoning_output_tokens INTEGER,
@@ -88,5 +91,35 @@ describe("evidence ingest and additive migration", () => {
     const response = await handleUsageRpc({ method: "usage.get", userId: "synthetic-user",
       fromDate: "2026-09-06T00:00:00.000Z", toDate: "2026-09-08T00:00:00.000Z", granularity: "day", tzOffset: -480 }, env.DB);
     expect(await response.json()).toMatchObject({ result: [{ hour_start: "2026-09-07", total_tokens: 120 }] });
+  });
+
+  it("keeps Hermes main totals unchanged while offline auxiliary snapshots converge without rebucketing history", async () => {
+    const { timestamp: _timestamp, evidence: _evidence, ...legacy } = record;
+    await ingest([{ ...legacy, source: "hermes" }], "/ingest");
+    const row = { session_id: "synthetic-session", model: "test-model", billing_provider: "openai", route_key: "c".repeat(64), task: "approval",
+      input_tokens: 100, output_tokens: 10, cache_read_tokens: 0, cache_write_tokens: 0, reasoning_tokens: 0, api_call_count: 1,
+      first_seen: Date.parse("2026-09-06T15:58:00Z") / 1000, last_seen: Date.parse("2026-09-06T15:58:00Z") / 1000,
+      started_at: Date.parse("2026-09-05T00:00:00Z") / 1000, source: "acp" };
+    const first = collectHermesUsageEvidence({ dbKey: "default", rows: [row], calls: [], previous: [] }).map((d) => toEvidenceRecord(d, "test-device"));
+    const grown = { ...row, input_tokens: 150, output_tokens: 15, api_call_count: 2, last_seen: Date.parse("2026-09-06T16:02:00Z") / 1000 };
+    const update = collectHermesUsageEvidence({ dbKey: "default", rows: [grown], calls: [], previous: first }).map((d) => toEvidenceRecord(d, "test-device"));
+    for (const batch of [update, first, update]) expect((await ingest(batch)).status).toBe(200);
+    expect(db.prepare("SELECT total_tokens FROM usage_records").get()).toMatchObject({ total_tokens: 120 });
+    expect(db.prepare("SELECT hour_start,SUM(total_tokens) AS total FROM usage_evidence GROUP BY hour_start ORDER BY hour_start").all()).toEqual([
+      { hour_start: "2026-09-05T00:00:00.000Z", total: 110 },
+      { hour_start: "2026-09-06T16:00:00.000Z", total: 55 },
+    ]);
+    const response = await handleUsageRpc({ method: "usage.get", userId: "synthetic-user",
+      fromDate: "2026-09-05T00:00:00.000Z", toDate: "2026-09-08T00:00:00.000Z", granularity: "day", tzOffset: -480 }, env.DB);
+    expect(await response.json()).toMatchObject({ result: [
+      { hour_start: "2026-09-05", total_tokens: 110, evidence_tokens: 110, approximate_tokens: 110 },
+      { hour_start: "2026-09-07", total_tokens: 175, evidence_tokens: 55, approximate_tokens: 55 },
+    ] });
+  });
+
+  it("removes supplementary accounting when the owning account is deleted", async () => {
+    await ingest([record]);
+    db.prepare("DELETE FROM users WHERE id = ?").run("synthetic-user");
+    expect(db.prepare("SELECT COUNT(*) AS n FROM usage_evidence").get()).toMatchObject({ n: 0 });
   });
 });

@@ -10,6 +10,7 @@ import {
 import { useDeviceData } from "@/hooks/use-device-data";
 import { useTzOffset } from "@/hooks/use-tz-offset";
 import { ErrorBanner } from "@/components/ui/error-banner";
+import { UsageTimingNotice } from "@/components/dashboard/usage-timing-notice";
 import { formatTokens } from "@/lib/utils";
 import { usePricingMap, lookupPricing, estimateCost, formatCost } from "@/hooks/use-pricing";
 import type { PricingMap } from "@/hooks/use-pricing";
@@ -406,6 +407,7 @@ export default function DailyUsagePage() {
 
       {/* Error */}
       <ErrorBanner messagePrefix="Failed to load usage data" error={error} />
+      <UsageTimingNotice records={data?.records} />
 
       {/* Loading */}
       {loading && <DailySkeleton />}
