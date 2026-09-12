@@ -91,7 +91,7 @@ export async function PUT(request: Request) {
   const dbWrite = await getDbWrite();
 
   try {
-    // 1. Verify device exists in user's usage_records OR device_aliases
+    // 1. Verify device exists in user's usage_totals OR device_aliases
     const deviceExists = await dbRead.checkDeviceExists(userId, deviceId);
 
     if (!deviceExists) {

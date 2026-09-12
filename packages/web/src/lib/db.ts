@@ -514,7 +514,7 @@ export interface DbRead {
   /** List devices with usage stats for a user */
   listDevices(userId: string): Promise<DeviceRow[]>;
 
-  /** Check if a device exists for user (in usage_records or device_aliases) */
+  /** Check if a device exists for user (in usage_totals or device_aliases) */
   checkDeviceExists(userId: string, deviceId: string): Promise<boolean>;
 
   /** Check for duplicate alias (case-insensitive, different device) */

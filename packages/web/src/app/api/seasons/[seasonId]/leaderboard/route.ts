@@ -8,7 +8,7 @@
  *
  * Logic:
  *   - If snapshot exists (season_snapshots rows for this season): read frozen data
- *   - Otherwise: real-time aggregation from usage_records within season date range
+ *   - Otherwise: real-time aggregation from usage_totals within season date range
  *
  * Date range: start_date 00:00:00Z to end_date+1 00:00:00Z (end_date inclusive).
  */
@@ -223,7 +223,7 @@ export async function GET(
         }
       }
     } else {
-      // Real-time aggregation from usage_records
+      // Real-time aggregation from usage_totals
       const teamRows = await db.getSeasonTeamTokens(season.id, fromDate, toDate);
 
       const membersByTeam = new Map<string, SeasonMemberTokenRow[]>();
