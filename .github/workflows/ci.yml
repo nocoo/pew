@@ -9,7 +9,7 @@ on:
 
 jobs:
   quality:
-    uses: nocoo/base-ci/.github/workflows/quality.yml@ab52d72877d386c9a8fd224e9ac868e88be90539
+    uses: nocoo/base-ci/.github/workflows/quality.yml@ad43150de3a2be2fa464b5cd2f921dc4fa9f8f0f
     with:
       runtime-version: "1.4.0"
       install-policy: "blocked"
@@ -20,41 +20,35 @@ jobs:
       typecheck: false
       disabled-check-reasons: '{"typecheck": "typecheck already executed as first step inside bun run lint"}'
       osv-config: "osv-scanner.toml"
-    secrets: inherit
 
   api-e2e:
     name: "L2 API E2E"
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    uses: nocoo/base-ci/.github/workflows/test-job.yml@ab52d72877d386c9a8fd224e9ac868e88be90539
+    uses: nocoo/base-ci/.github/workflows/test-job.yml@ad43150de3a2be2fa464b5cd2f921dc4fa9f8f0f
     with:
       runtime-version: "1.4.0"
       install-policy: "blocked"
       timeout-minutes: 15
       pre-command: |
         bun run build
-        cat > packages/web/.env.local << 'ENVEOF'
-        CF_ACCOUNT_ID=${CF_ACCOUNT_ID}
-        CF_D1_DATABASE_ID=${CF_D1_DATABASE_ID}
-        CF_D1_API_TOKEN=${CF_D1_API_TOKEN}
-        WORKER_INGEST_URL=${WORKER_INGEST_URL}
-        WORKER_READ_URL=${WORKER_READ_URL}
-        WORKER_SECRET=${WORKER_SECRET}
-        WORKER_READ_SECRET=${WORKER_READ_SECRET}
-        AUTH_SECRET=${AUTH_SECRET}
-        ENVEOF
-        cat > packages/web/.env.test << 'ENVEOF'
-        CF_D1_DATABASE_ID_TEST=${CF_D1_DATABASE_ID_TEST}
-        WORKER_INGEST_URL_TEST=${WORKER_INGEST_URL_TEST}
-        WORKER_READ_URL_TEST=${WORKER_READ_URL_TEST}
-        ENVEOF
+        node --input-type=module <<'ENV_JS'
+        import { writeFileSync } from 'node:fs';
+        const files = {
+          'packages/web/.env.local': ['CF_ACCOUNT_ID', 'CF_D1_DATABASE_ID', 'CF_D1_API_TOKEN', 'WORKER_INGEST_URL', 'WORKER_READ_URL', 'WORKER_SECRET', 'WORKER_READ_SECRET', 'AUTH_SECRET'],
+          'packages/web/.env.test': ['CF_D1_DATABASE_ID_TEST', 'WORKER_INGEST_URL_TEST', 'WORKER_READ_URL_TEST'],
+        };
+        for (const [path, keys] of Object.entries(files)) {
+          writeFileSync(path, keys.map(key => key + '=' + JSON.stringify(process.env[key] ?? '')).join('\n') + '\n', { mode: 0o600 });
+        }
+        ENV_JS
       command: "bun run test:e2e"
     secrets:
-      test-env-json: ${{ toJson(secrets) }}
+      test-env-json: ${{ format('{{"CF_ACCOUNT_ID":{0},"CF_D1_DATABASE_ID":{1},"CF_D1_API_TOKEN":{2},"CF_D1_DATABASE_ID_TEST":{3},"WORKER_INGEST_URL":{4},"WORKER_INGEST_URL_TEST":{5},"WORKER_READ_URL":{6},"WORKER_READ_URL_TEST":{7},"WORKER_SECRET":{8},"WORKER_READ_SECRET":{9},"AUTH_SECRET":{10}}}', toJSON(secrets.CF_ACCOUNT_ID), toJSON(secrets.CF_D1_DATABASE_ID), toJSON(secrets.CF_D1_API_TOKEN), toJSON(secrets.CF_D1_DATABASE_ID_TEST), toJSON(secrets.WORKER_INGEST_URL), toJSON(secrets.WORKER_INGEST_URL_TEST), toJSON(secrets.WORKER_READ_URL), toJSON(secrets.WORKER_READ_URL_TEST), toJSON(secrets.WORKER_SECRET), toJSON(secrets.WORKER_READ_SECRET), toJSON(secrets.AUTH_SECRET)) }}
 
   browser-e2e:
     name: "L3 Browser E2E"
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    uses: nocoo/base-ci/.github/workflows/test-job.yml@ab52d72877d386c9a8fd224e9ac868e88be90539
+    uses: nocoo/base-ci/.github/workflows/test-job.yml@ad43150de3a2be2fa464b5cd2f921dc4fa9f8f0f
     with:
       runtime-version: "1.4.0"
       install-policy: "blocked"
@@ -62,21 +56,16 @@ jobs:
       timeout-minutes: 20
       pre-command: |
         bun run build
-        cat > packages/web/.env.local << 'ENVEOF'
-        CF_ACCOUNT_ID=${CF_ACCOUNT_ID}
-        CF_D1_DATABASE_ID=${CF_D1_DATABASE_ID}
-        CF_D1_API_TOKEN=${CF_D1_API_TOKEN}
-        WORKER_INGEST_URL=${WORKER_INGEST_URL}
-        WORKER_READ_URL=${WORKER_READ_URL}
-        WORKER_SECRET=${WORKER_SECRET}
-        WORKER_READ_SECRET=${WORKER_READ_SECRET}
-        AUTH_SECRET=${AUTH_SECRET}
-        ENVEOF
-        cat > packages/web/.env.test << 'ENVEOF'
-        CF_D1_DATABASE_ID_TEST=${CF_D1_DATABASE_ID_TEST}
-        WORKER_INGEST_URL_TEST=${WORKER_INGEST_URL_TEST}
-        WORKER_READ_URL_TEST=${WORKER_READ_URL_TEST}
-        ENVEOF
+        node --input-type=module <<'ENV_JS'
+        import { writeFileSync } from 'node:fs';
+        const files = {
+          'packages/web/.env.local': ['CF_ACCOUNT_ID', 'CF_D1_DATABASE_ID', 'CF_D1_API_TOKEN', 'WORKER_INGEST_URL', 'WORKER_READ_URL', 'WORKER_SECRET', 'WORKER_READ_SECRET', 'AUTH_SECRET'],
+          'packages/web/.env.test': ['CF_D1_DATABASE_ID_TEST', 'WORKER_INGEST_URL_TEST', 'WORKER_READ_URL_TEST'],
+        };
+        for (const [path, keys] of Object.entries(files)) {
+          writeFileSync(path, keys.map(key => key + '=' + JSON.stringify(process.env[key] ?? '')).join('\n') + '\n', { mode: 0o600 });
+        }
+        ENV_JS
       command: "bun run test:e2e:ui"
     secrets:
-      test-env-json: ${{ toJson(secrets) }}
+      test-env-json: ${{ format('{{"CF_ACCOUNT_ID":{0},"CF_D1_DATABASE_ID":{1},"CF_D1_API_TOKEN":{2},"CF_D1_DATABASE_ID_TEST":{3},"WORKER_INGEST_URL":{4},"WORKER_INGEST_URL_TEST":{5},"WORKER_READ_URL":{6},"WORKER_READ_URL_TEST":{7},"WORKER_SECRET":{8},"WORKER_READ_SECRET":{9},"AUTH_SECRET":{10}}}', toJSON(secrets.CF_ACCOUNT_ID), toJSON(secrets.CF_D1_DATABASE_ID), toJSON(secrets.CF_D1_API_TOKEN), toJSON(secrets.CF_D1_DATABASE_ID_TEST), toJSON(secrets.WORKER_INGEST_URL), toJSON(secrets.WORKER_INGEST_URL_TEST), toJSON(secrets.WORKER_READ_URL), toJSON(secrets.WORKER_READ_URL_TEST), toJSON(secrets.WORKER_SECRET), toJSON(secrets.WORKER_READ_SECRET), toJSON(secrets.AUTH_SECRET)) }}
