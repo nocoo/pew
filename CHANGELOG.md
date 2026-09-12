@@ -2,6 +2,36 @@
 
 ## Unreleased
 
+## v2.29.2
+
+### Added
+- Add readonly Pew accounting gates to ponytail review
+- Ingest additive evidence snapshots alongside legacy buckets
+
+### Changed
+- Upgrade React to 19.3.0
+- Align read-path comments with combined totals
+- Document source timezone and retained-log limits
+- Preserve coverage-path report artifact in quality workflow
+- Migrate ci to base-ci quality and test-job
+- Upgrade basalt to 2.1.7
+- Bump @types/bun to 1.4.2
+- Upgrade lucide-react to 1.43.0
+- Bump aws s3 sdk to 3.1128.0
+- Fetch achievement counts alongside earners
+- Standardize bilingual project README
+
+### Fixed
+- Delete supplementary evidence with its account
+- Bound every review matching candidate inspection
+- Redact upstream failures for supplementary usage uploads
+- Align evidence ledger validation and immutable snapshot fields
+- Collect auxiliary ledger increments without recounting ACP sessions
+- Reconcile background review usage with its auxiliary ledger
+- Capture Pi compaction as replay-safe usage evidence
+- Preserve verified base-ci integration
+- Override baseline-browser-mapping
+
 ## v2.29.1
 
 ### Fixed
