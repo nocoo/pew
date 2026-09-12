@@ -13,6 +13,7 @@ jobs:
     with:
       runtime-version: "1.4.0"
       install-policy: "blocked"
+      coverage-path: "coverage"
       prepare-command: "bun run build"
       lint-command: "bun run lint"
       test-command: "bun run test:coverage"
