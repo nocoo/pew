@@ -18,7 +18,8 @@ const mutate = (path: string, change: (text: string) => string) => {
 };
 const hasError = (report: ReturnType<typeof run>, id: string) => report.findings.some((f) => f.id === id && f.severity === "error");
 
-describe("Pew ponytail readonly audit", () => {
+// Cases parse the whole repository several times; shared CI CPUs need headroom.
+describe("Pew ponytail readonly audit", { timeout: 15_000 }, () => {
   let temporary: string | undefined;
   afterEach(() => { if (temporary) rmSync(temporary, { recursive: true, force: true }); });
 
