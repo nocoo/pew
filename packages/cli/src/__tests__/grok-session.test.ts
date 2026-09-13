@@ -89,6 +89,64 @@ describe("parseGrokSession", () => {
     expect(snap!.model).toBeNull();
   });
 
+  it("keeps legacy session metadata when chat counts and last activity are absent", async () => {
+    await writeFile(
+      join(sessionDir, "summary.json"),
+      JSON.stringify({
+        info: { id: "legacy-session", cwd: "/tmp/legacy-project" },
+        created_at: "2026-07-10T00:00:00Z",
+        updated_at: "2026-07-10T00:10:00Z",
+        num_messages: 42,
+      }),
+    );
+
+    expect(await parseGrokSession(sessionDir)).toMatchObject({
+      sessionKey: "legacy-session",
+      source: "grok",
+      lastMessageAt: "2026-07-10T00:10:00Z",
+      projectRef: "/tmp/legacy-project",
+      totalMessages: 0,
+      userMessages: 0,
+      assistantMessages: 0,
+      durationSeconds: 0,
+    });
+  });
+
+  it("ignores an incomplete session summary without a creation timestamp", async () => {
+    await writeFile(
+      join(sessionDir, "summary.json"),
+      JSON.stringify({ info: { id: "incomplete-session" } }),
+    );
+
+    expect(await parseGrokSession(sessionDir)).toBeNull();
+  });
+
+  it("keeps malformed activity counters from producing negative or non-finite totals", async () => {
+    await writeFile(
+      join(sessionDir, "summary.json"),
+      JSON.stringify({
+        info: { id: "malformed-counters" },
+        created_at: "2026-07-10T00:00:00Z",
+        num_chat_messages: -5,
+      }),
+    );
+    await writeFile(
+      join(sessionDir, "signals.json"),
+      JSON.stringify({
+        sessionDurationSeconds: "Infinity",
+        userMessageCount: "unknown",
+        assistantMessageCount: -1,
+      }),
+    );
+
+    expect(await parseGrokSession(sessionDir)).toMatchObject({
+      durationSeconds: 0,
+      userMessages: 0,
+      assistantMessages: 0,
+      totalMessages: 0,
+    });
+  });
+
   it("returns null on corrupt summary.json", async () => {
     await writeFile(join(sessionDir, "summary.json"), "{not-json");
     const snap = await parseGrokSession(sessionDir);
