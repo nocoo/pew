@@ -247,15 +247,15 @@ export default function SettingsPage() {
 
           <div className="flex items-start gap-3">
             <Switch
+              id="public-profile"
               checked={isPublic}
               onCheckedChange={setIsPublic}
-              aria-label="Show my profile publicly"
               className="mt-0.5"
             />
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-foreground">
+              <Label htmlFor="public-profile" className="text-xs">
                 Show my profile publicly
-              </p>
+              </Label>
               <p className="mt-0.5 text-[10px] text-muted-foreground">
                 When enabled, your profile appears on the leaderboard and is accessible at your public URL.
               </p>

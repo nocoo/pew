@@ -12,12 +12,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
 import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
 import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
+import { CopyButton } from "@/components/ui/copy-button";
 import { Badge } from "@nocoo/basalt/components/badge";
 import { Button } from "@nocoo/basalt/components/button";
 import { ClipboardText } from "@nocoo/basalt/components/clipboard-text";
 import { Empty } from "@nocoo/basalt/components/empty";
 import { Field } from "@nocoo/basalt/components/field";
 import { Input } from "@nocoo/basalt/components/input";
+import { Label } from "@nocoo/basalt/components/label";
 import { Switch } from "@nocoo/basalt/components/switch";
 import { rowIconDangerClassName } from "@/components/ui/button";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
@@ -86,7 +88,7 @@ export default function AdminInvitesPage() {
     : null;
   const [message, setMessage] = useState<MessageBannerMsg | null>(null);
 
-  // Require invite code toggle — backed by SWR, synced to local state for optimistic toggles.
+  // Require invite code toggle — keep the saved state until the update succeeds.
   const {
     data: settingsData,
     isLoading: settingsLoading,
@@ -114,8 +116,7 @@ export default function AdminInvitesPage() {
   const [generating, setGenerating] = useState(false);
   const uid = useId();
   const genCountId = `${uid}-gen-count`;
-
-  // Copy all available
+  const requireInviteId = `${uid}-require-invite`;
 
   const { confirm, dialogProps } = useConfirm();
 
@@ -151,8 +152,7 @@ export default function AdminInvitesPage() {
   // Toggle require_invite_code
   // ---------------------------------------------------------------------------
 
-  const handleToggleRequireInvite = async () => {
-    const newValue = !requireInvite;
+  const handleToggleRequireInvite = async (newValue: boolean) => {
     setTogglingRequireInvite(true);
     setMessage(null);
 
@@ -327,18 +327,16 @@ export default function AdminInvitesPage() {
       <div className="rounded-xl bg-secondary p-4">
         <div className="flex items-start gap-3">
           <Switch
+            id={requireInviteId}
             checked={requireInvite}
             disabled={requireInviteLoading || togglingRequireInvite}
-            onCheckedChange={() => {
-              void handleToggleRequireInvite();
-            }}
-            aria-label="Require invite code for registration"
+            onCheckedChange={handleToggleRequireInvite}
             className="mt-0.5"
           />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground">
+            <Label htmlFor={requireInviteId}>
               Require invite code for registration
-            </p>
+            </Label>
             <p className="mt-0.5 text-xs text-muted-foreground">
               {requireInvite
                 ? "New users must enter a valid invite code to register."
@@ -395,7 +393,7 @@ export default function AdminInvitesPage() {
 
       {/* Toolbar: segment filter + copy available */}
       {!loading && rows.length > 0 && (
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1 rounded-lg bg-secondary p-1">
             {(["all", "available"] as const).map((opt) => (
               <Button
@@ -412,10 +410,9 @@ export default function AdminInvitesPage() {
             ))}
           </div>
           {availableCodes.length > 0 && (
-            <ClipboardText
-              text="Copy available"
-              copyText={availableCodes.map((r) => `- ${r.code}`).join("\n")}
-            />
+            <CopyButton text={availableCodes.map((r) => `- ${r.code}`).join("\n")}>
+              Copy available
+            </CopyButton>
           )}
         </div>
       )}
@@ -469,12 +466,7 @@ export default function AdminInvitesPage() {
                       className="border-b border-border/50 last:border-0 hover:bg-accent/50 transition-colors"
                     >
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-sm font-mono font-medium text-foreground">
-                            {row.code}
-                          </span>
-                          <ClipboardText text={row.code} />
-                        </div>
+                        <ClipboardText text={row.code} />
                       </td>
                       <td className="px-4 py-3">
                         <StatusBadge usedBy={row.used_by} />

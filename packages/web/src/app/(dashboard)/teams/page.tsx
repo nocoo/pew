@@ -356,9 +356,9 @@ export default function TeamsPage() {
                 onClick={handleCreateTeam}
                 disabled={creatingTeam || !newTeamName.trim()}
                 loading={creatingTeam}
+                icon={<Plus strokeWidth={1.5} />}
                 className="shrink-0"
               >
-                <Plus className="h-3.5 w-3.5" strokeWidth={1.5} />
                 {creatingTeam ? "Creating..." : "Create"}
               </Button>
             </div>
@@ -385,9 +385,9 @@ export default function TeamsPage() {
                 onClick={handleJoinTeam}
                 disabled={joiningTeam || !inviteCode.trim()}
                 loading={joiningTeam}
+                icon={<LogIn strokeWidth={1.5} />}
                 className="shrink-0"
               >
-                <LogIn className="h-3.5 w-3.5" strokeWidth={1.5} />
                 {joiningTeam ? "Joining..." : "Join"}
               </Button>
             </div>

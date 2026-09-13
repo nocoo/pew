@@ -158,8 +158,8 @@ function LoginContent() {
                   onClick={handleInviteSubmit}
                   disabled={inviteCode.trim().length === 0 || verifying}
                   loading={verifying}
+                  icon={<GoogleIcon />}
                 >
-                  <GoogleIcon />
                   {verifying ? "Verifying..." : "Verify & Sign In"}
                 </Button>
               </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useId } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { useParams, useRouter } from "next/navigation";
@@ -22,6 +22,7 @@ import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
 import { Input } from "@nocoo/basalt/components/input";
+import { Label } from "@nocoo/basalt/components/label";
 import { Switch } from "@nocoo/basalt/components/switch";
 import { rowIconClassName } from "@/components/ui/button";
 import { StatusBadge } from "@/components/leaderboard/status-badge";
@@ -110,15 +111,9 @@ function SeasonRow({
                 onClick={() => onWithdraw(season.id)}
                 disabled={isBusy}
                 loading={isBusy}
+                icon={<LogOut strokeWidth={1.5} />}
               >
-                {isBusy ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
-                ) : (
-                  <>
-                    <LogOut className="h-3.5 w-3.5" strokeWidth={1.5} />
-                    <span>Withdraw</span>
-                  </>
-                )}
+                Withdraw
               </Button>
             ) : null
           ) : season.status === "upcoming" || (season.status === "active" && season.allow_late_registration) ? (
@@ -128,15 +123,9 @@ function SeasonRow({
               onClick={() => onRegister(season.id)}
               disabled={isBusy}
               loading={isBusy}
+              icon={<Trophy strokeWidth={1.5} />}
             >
-              {isBusy ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.5} />
-              ) : (
-                <>
-                  <Trophy className="h-3.5 w-3.5" strokeWidth={1.5} />
-                  <span>Register</span>
-                </>
-              )}
+              Register
             </Button>
           ) : null}
         </div>
@@ -160,9 +149,9 @@ function AutoRegisterToggle({
 }) {
   const [enabled, setEnabled] = useState(initialValue);
   const [saving, setSaving] = useState(false);
+  const toggleId = useId();
 
-  const handleToggle = async () => {
-    const newValue = !enabled;
+  const handleToggle = async (newValue: boolean) => {
     setEnabled(newValue);
     onToggle?.(newValue);
     setSaving(true);
@@ -193,19 +182,17 @@ function AutoRegisterToggle({
   return (
     <div className="flex items-start gap-3 rounded-lg bg-accent/50 px-4 py-3">
       <Switch
+        id={toggleId}
         checked={enabled}
         disabled={saving}
-        onCheckedChange={() => {
-          void handleToggle();
-        }}
-        aria-label="Automatically register this team for new seasons"
+        onCheckedChange={handleToggle}
         className="mt-0.5"
       />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <p className="text-xs font-medium text-foreground">
+          <Label htmlFor={toggleId} className="text-xs">
             Auto-register for new seasons
-          </p>
+          </Label>
           {saving && (
             <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" strokeWidth={1.5} />
           )}

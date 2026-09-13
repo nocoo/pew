@@ -353,8 +353,8 @@ function EditOrgRow({
             onClick={handleSave}
             disabled={submitting || !name.trim() || !slug.trim()}
             loading={submitting}
+            icon={<Check strokeWidth={1.5} />}
           >
-            <Check className="h-3.5 w-3.5" strokeWidth={1.5} />
             {submitting ? "Saving..." : "Save"}
           </Button>
           <Button type="button" size="sm" variant="secondary" onClick={onCancel}>

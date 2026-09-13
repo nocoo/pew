@@ -265,17 +265,9 @@ export default function OrganizationsPage() {
                     }}
                     disabled={isPending}
                     loading={isPending}
+                    icon={isMember ? <Check strokeWidth={2} /> : undefined}
                   >
-                    {isPending ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : isMember ? (
-                      <>
-                        <Check className="h-3.5 w-3.5" strokeWidth={2} />
-                        Joined
-                      </>
-                    ) : (
-                      "Join"
-                    )}
+                    {isMember ? "Joined" : "Join"}
                   </Button>
                 </div>
               );

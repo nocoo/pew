@@ -14,6 +14,7 @@ import {
 import { UserPlus, X } from "lucide-react";
 import { chromeIconClassName } from "@/lib/ghost-icon";
 import { useRestoreDialogFocus } from "@/lib/restore-dialog-focus";
+import { CopyButton } from "@/components/ui/copy-button";
 
 export interface InviteDialogProps {
   open: boolean;
@@ -77,7 +78,7 @@ How to join:
             </pre>
           </div>
           <div className="mt-3">
-            <ClipboardText text={inviteMessage} className="w-full max-w-full" />
+            <CopyButton text={inviteMessage}>Copy message</CopyButton>
           </div>
         </div>
       </DialogContent>
