@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## v2.29.5
+
+### Changed
+- Retire badges feature
+- Bump biome to 2.5.13
+- Upgrade lucide-react to 1.45.0
+- Upgrade lint-staged to 17.5.1
+- Bump aws s3 sdk to 3.1131.0
+- Bump cloudflare workers types
+
+### Fixed
+- Correct Basalt switches and copy controls
+
 ## v2.29.4
 
 ### Changed
