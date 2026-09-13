@@ -110,9 +110,7 @@ function LoginContent() {
               </div>
             }
           >
-            <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-basalt-secondary p-2.5 ring-1 ring-basalt-border">
-              <Image src="/logo-80.png" alt="pew" width={80} height={80} />
-            </div>
+            <Image src="/logo-80.png" alt="pew" width={80} height={80} />
 
             <p className="mt-5 text-lg font-semibold text-basalt-foreground">Show your tokens</p>
             <p className="mt-1 text-xs text-basalt-muted-foreground">Sign in to view your dashboard</p>
@@ -199,7 +197,7 @@ export default function LoginPage() {
       fallback={
         <LoadingScreen
           label="Loading"
-          mark={<Image src="/logo-24.png" alt="" width={32} height={32} />}
+          mark={<Image src="/logo-80.png" alt="" width={32} height={32} />}
         />
       }
     >

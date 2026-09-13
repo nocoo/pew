@@ -84,11 +84,10 @@ export function PassHeader({
 
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
           <Image
-            src="/logo-24.png"
+            src="/logo-80.png"
             alt=""
             width={16}
             height={16}
-            className="brightness-0 invert"
             aria-hidden="true"
           />
           <span className="font-handwriting text-base font-semibold leading-none text-basalt-primary-foreground">
@@ -169,11 +168,10 @@ export function BadgeCard({
           <PunchHole />
           <div className="flex items-center gap-2">
             <Image
-              src="/logo-24.png"
+              src="/logo-80.png"
               alt=""
               width={16}
               height={16}
-              className="brightness-0 invert"
               aria-hidden="true"
             />
             <span className="font-handwriting text-sm font-semibold text-basalt-primary-foreground">

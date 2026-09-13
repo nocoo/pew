@@ -120,7 +120,7 @@ function openNavItem(href: string, external: boolean | undefined, push: (href: s
 
 function PewMark() {
   return (
-    <Image src="/logo-24.png" alt="pew" width={24} height={24} className="shrink-0" />
+    <Image src="/logo-80.png" alt="pew" width={24} height={24} className="shrink-0" />
   );
 }
 
@@ -155,7 +155,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   if (collapsed) {
     return (
       <BasaltSidebar collapsed>
-        <SidebarHeader className="justify-start px-0 pl-6">
+        <SidebarHeader className="justify-center px-0">
           <PewMark />
         </SidebarHeader>
         <Button
@@ -213,7 +213,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         <div className="flex w-full items-center justify-between">
           <div className="flex min-w-0 items-center gap-3 pl-3">
             <PewMark />
-            <span className="mt-[-12px] truncate font-handwriting text-[31px] font-bold tracking-tighter text-basalt-foreground">
+            <span className="truncate font-handwriting text-2xl leading-none font-bold tracking-tight text-basalt-foreground">
               pew
             </span>
             <span className="shrink-0 rounded-md bg-basalt-secondary px-1.5 py-0.5 text-[10px] leading-none font-medium text-basalt-muted-foreground">
