@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v2.29.4
+
+### Changed
+- Rename leaderboard agents tab to harness
+
 ## v2.29.3
 
 ### Changed

@@ -1,6 +1,6 @@
 {
   "name": "pew-monorepo",
-  "version": "2.29.3",
+  "version": "2.29.4",
   "private": true,
   "workspaces": [
     "packages/*"
