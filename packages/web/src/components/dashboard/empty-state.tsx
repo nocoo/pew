@@ -81,41 +81,6 @@ export function DashboardEmptyState({ className }: { className?: string }) {
   );
 }
 
-export function ProjectsEmptyState({
-  className,
-  isFilterEmpty,
-  filterValue,
-}: {
-  className?: string | undefined;
-  isFilterEmpty?: boolean;
-  filterValue?: string;
-}) {
-  if (isFilterEmpty) {
-    return (
-      <EmptyState
-        icon={Zap}
-        title="No Matching Projects"
-        description={`No projects match the filter "${filterValue}". Try a different filter or clear it to see all projects.`}
-        className={className}
-      />
-    );
-  }
-
-  return (
-    <EmptyState
-      icon={Zap}
-      title="No Projects Yet"
-      description="Projects appear automatically when you work on different codebases. Each git repository you code in becomes a project."
-      tips={[
-        "Open a project in your editor with an AI tool enabled",
-        "Make some edits — we'll detect the project automatically",
-        "Come back here to see project-level breakdowns",
-      ]}
-      className={className}
-    />
-  );
-}
-
 export function DevicesEmptyState({ className }: { className?: string }) {
   return (
     <EmptyState

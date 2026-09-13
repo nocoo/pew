@@ -5,12 +5,10 @@ import {
   toSessionOverview,
   toWorkingHoursGrid,
   toMessageDailyStats,
-  toProjectBreakdown,
   type SessionRow,
   type SessionOverview,
   type WorkingHoursDay,
   type MessageDailyStat,
-  type ProjectBreakdownItem,
 } from "@/lib/session-helpers";
 import { useFetchData } from "@/hooks/use-fetch-data";
 import { useTzOffset } from "@/hooks/use-tz-offset";
@@ -35,7 +33,6 @@ interface UseSessionDataResult {
   overview: SessionOverview;
   hoursGrid: WorkingHoursDay[];
   dailyMessages: MessageDailyStat[];
-  projectBreakdown: ProjectBreakdownItem[];
   loading: boolean;
   error: string | null;
   refetch: () => void;
@@ -70,14 +67,12 @@ export function useSessionData(
   const overview = useMemo(() => toSessionOverview(records), [records]);
   const hoursGrid = useMemo(() => toWorkingHoursGrid(records, tzOffset), [records, tzOffset]);
   const dailyMessages = useMemo(() => toMessageDailyStats(records, tzOffset), [records, tzOffset]);
-  const projectBreakdown = useMemo(() => toProjectBreakdown(records), [records]);
 
   return {
     records,
     overview,
     hoursGrid,
     dailyMessages,
-    projectBreakdown,
     loading,
     error,
     refetch,

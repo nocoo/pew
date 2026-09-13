@@ -102,7 +102,8 @@ export default function PrivacyPage() {
               Project references (hashed)
             </h3>
             <p className="text-muted-foreground leading-relaxed mb-2">
-              pew groups sessions by project but never transmits project names
+              Session records may include a hashed project reference for CLI
+              compatibility. pew never transmits project names
               or file paths. The process:
             </p>
             <ol className="list-decimal list-inside text-muted-foreground space-y-1 ml-2">

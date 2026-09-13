@@ -17,7 +17,6 @@
  */
 
 import { handleUsersRpc, type UsersRpcRequest } from "./rpc/users";
-import { handleProjectsRpc, type ProjectsRpcRequest } from "./rpc/projects";
 import { handleTeamsRpc, type TeamsRpcRequest } from "./rpc/teams";
 import { handleSeasonsRpc, type SeasonsRpcRequest } from "./rpc/seasons";
 import { handleUsageRpc, type UsageRpcRequest } from "./rpc/usage";
@@ -317,7 +316,6 @@ async function handleQuery(body: unknown, env: Env): Promise<Response> {
 // Exported for use in type guards and client-side type safety
 export type RpcRequest =
   | UsersRpcRequest
-  | ProjectsRpcRequest
   | TeamsRpcRequest
   | SeasonsRpcRequest
   | UsageRpcRequest
@@ -351,8 +349,6 @@ async function handleRpc(body: unknown, env: Env): Promise<Response> {
     switch (domain) {
       case "users":
         return handleUsersRpc(body as UsersRpcRequest, env.DB);
-      case "projects":
-        return handleProjectsRpc(body as ProjectsRpcRequest, env.DB);
       case "teams":
         return handleTeamsRpc(body as TeamsRpcRequest, env.DB);
       case "seasons":

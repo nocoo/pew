@@ -91,6 +91,20 @@ describe("GET /api/sessions", () => {
       expect(options.source).toBe("claude-code");
     });
 
+    it("keeps an explicit timestamp as the exclusive end bound in UTC", async () => {
+      mockDbRead.getSessionRecords.mockResolvedValueOnce([]);
+
+      const res = await GET(makeGetRequest("/api/sessions", {
+        from: "2026-09-13T09:00:00+08:00",
+        to: "2026-09-13T18:30:00+08:00",
+      }));
+
+      expect(res.status).toBe(200);
+      const [, fromDate, toDate] = mockDbRead.getSessionRecords.mock.calls[0]!;
+      expect(fromDate).toBe("2026-09-13T01:00:00.000Z");
+      expect(toDate).toBe("2026-09-13T10:30:00.000Z");
+    });
+
     it("should reject invalid source filter", async () => {
       const res = await GET(makeGetRequest("/api/sessions", { source: "invalid-tool" }));
 
@@ -155,7 +169,6 @@ describe("GET /api/sessions", () => {
           assistant_messages: 10,
           total_messages: 25,
           project_ref: "a1b2",
-          project_name: "pew",
           model: "claude-sonnet-4-20250514",
         },
         {
@@ -169,7 +182,6 @@ describe("GET /api/sessions", () => {
           assistant_messages: 7,
           total_messages: 18,
           project_ref: null,
-          project_name: null,
           model: "o3",
         },
       ]);
@@ -196,7 +208,6 @@ describe("GET /api/sessions", () => {
           assistant_messages: 10,
           total_messages: 25,
           project_ref: "a1b2",
-          project_name: "pew",
           model: "claude-sonnet-4-20250514",
         },
         {
@@ -210,7 +221,6 @@ describe("GET /api/sessions", () => {
           assistant_messages: 7,
           total_messages: 18,
           project_ref: null,
-          project_name: null,
           model: "o3",
         },
       ]);

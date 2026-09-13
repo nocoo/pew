@@ -259,7 +259,7 @@ describe("sessions RPC handlers", () => {
   // -------------------------------------------------------------------------
 
   describe("sessions.getRecords", () => {
-    it("should return session records with project info", async () => {
+    it("should return session records", async () => {
       const mockRecords = [
         {
           session_key: "sk1",
@@ -272,7 +272,6 @@ describe("sessions RPC handlers", () => {
           assistant_messages: 8,
           total_messages: 20,
           project_ref: "abc",
-          project_name: "pew",
           model: "claude-sonnet-4-20250514",
         },
       ];

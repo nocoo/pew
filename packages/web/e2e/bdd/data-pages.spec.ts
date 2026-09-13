@@ -1,10 +1,9 @@
-// Covers old: data-pages.spec.ts, devices.spec.ts, settings-projects.spec.ts
+// Covers data summary and device management pages.
 import { test, expect } from "./fixtures";
 
 const SUMMARY_PAGES: ReadonlyArray<{ path: string; keyword: string }> = [
   { path: "/agents", keyword: "Agent" },
   { path: "/models", keyword: "Model" },
-  { path: "/projects", keyword: "Project" },
   { path: "/sessions", keyword: "Session" },
   { path: "/daily-usage", keyword: "Daily" },
   { path: "/hourly-usage", keyword: "Hourly" },
@@ -34,8 +33,18 @@ test.describe("Feature: Data summary pages", () => {
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Device");
   });
 
-  test("Given auth is bypassed, When I visit /manage-projects, Then the Project heading is visible", async ({ page }) => {
-    await page.goto("/manage-projects");
-    await expect(page.getByRole("heading", { level: 1 })).toContainText("Project");
+  test("Given retired feature URLs, When I open them, Then they redirect to a retained page", async ({ request }) => {
+    for (const [source, destination] of [
+      ["/projects", "/dashboard"],
+      ["/manage-projects", "/dashboard"],
+      ["/leaderboard/achievements", "/leaderboard"],
+      ["/leaderboard/showcases", "/leaderboard"],
+      ["/settings/showcases", "/dashboard"],
+      ["/admin/showcases", "/dashboard"],
+    ] as const) {
+      const response = await request.get(source, { maxRedirects: 0 });
+      expect(response.status(), source).toBe(308);
+      expect(response.headers().location, source).toBe(destination);
+    }
   });
 });

@@ -21,7 +21,7 @@
 | 13 | [13-phase3-unified-source-drivers.md](13-phase3-unified-source-drivers.md) | Phase 3+4: Unified source driver architecture | done |
 | 15 | [15-dashboard-viz-improvements.md](15-dashboard-viz-improvements.md) | Dashboard visualization improvements roadmap | in-progress |
 | 16 | [16-public-leaderboard-overhaul.md](16-public-leaderboard-overhaul.md) | Public leaderboard & profile overhaul | done |
-| 17 | [17-projects.md](17-projects.md) | Two-layer project management | done |
+| 17 | [17-projects.md](17-projects.md) | Two-layer project management | retired |
 | 18 | [18-season-system.md](18-season-system.md) | 赛季系统 — team-based seasonal competition | in-progress |
 | 19 | [19-vscode-copilot-token-estimation.md](19-vscode-copilot-token-estimation.md) | VSCode Copilot token tracking research | done |
 | 19b | [19-leaderboard-agents-models.md](19-leaderboard-agents-models.md) | Leaderboard: Agents & Models tabs | draft |
@@ -31,7 +31,7 @@
 | 23 | [23-session-queue-growth.md](23-session-queue-growth.md) | Session queue unbounded growth fix | done |
 | 24 | [24-d1-query-optimization.md](24-d1-query-optimization.md) | D1 query optimization & index inventory | reference |
 | 25 | [25-leaderboard-armory-refactor.md](25-leaderboard-armory-refactor.md) | Leaderboard armory-style shared layout refactor | done |
-| 26 | [26-by-project.md](26-by-project.md) | By-project analytics page | done |
+| 26 | [26-by-project.md](26-by-project.md) | By-project analytics page | retired |
 | 27 | [27-token-queue-full-reupload.md](27-token-queue-full-reupload.md) | Token queue dirty-key tracking (eliminate full re-uploads) | done |
 | 28 | [28-notify-concurrency-dirty-key-loss.md](28-notify-concurrency-dirty-key-loss.md) | Notify concurrency: dirty-key loss under unlocked parallel sync | in-progress |
 | 29 | [29-worker-read-migration.md](29-worker-read-migration.md) | Worker read migration — D1 REST API → Worker native binding | in-progress |

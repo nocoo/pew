@@ -23,11 +23,11 @@ describe("sidebar navigation", () => {
       expect(labels).not.toContain("Account");
     });
 
-    it("Settings group should contain Teams, Projects, Devices, Organizations, then General", () => {
+    it("Settings group should contain Teams, Devices, Organizations, then General", () => {
       const settingsGroup = BASE_NAV_GROUPS.find((g) => g.label === "Settings");
       expect(settingsGroup).toBeDefined();
       const items = settingsGroup!.items.map((i) => i.label);
-      expect(items).toEqual(["Teams", "Projects", "Devices", "Organizations", "General"]);
+      expect(items).toEqual(["Teams", "Devices", "Organizations", "General"]);
     });
 
     it("Teams should link to /teams", () => {
@@ -54,9 +54,9 @@ describe("sidebar navigation", () => {
       expect(allHrefs).toContain("/agents");
       expect(allHrefs).toContain("/models");
       expect(allHrefs).toContain("/devices");
-      expect(allHrefs).toContain("/projects");
+      expect(allHrefs).not.toContain("/projects");
       expect(allHrefs).toContain("/teams");
-      expect(allHrefs).toContain("/manage-projects");
+      expect(allHrefs).not.toContain("/manage-projects");
       expect(allHrefs).toContain("/manage-devices");
       expect(allHrefs).toContain("/settings/general");
       expect(allHrefs).toContain("/settings/organizations");
@@ -101,22 +101,6 @@ describe("sidebar navigation", () => {
       expect(byDevice!.icon).toBe("Monitor");
     });
 
-    it("Analytics group should include By Project after By Model", () => {
-      const analyticsGroup = BASE_NAV_GROUPS.find((g) => g.label === "Analytics")!;
-      const items = analyticsGroup.items.map((i) => i.label);
-      const modelIdx = items.indexOf("By Model");
-      const projectIdx = items.indexOf("By Project");
-      expect(projectIdx).toBeGreaterThan(-1);
-      expect(projectIdx).toBe(modelIdx + 1);
-    });
-
-    it("By Project should link to /projects with FolderGit2 icon", () => {
-      const analyticsGroup = BASE_NAV_GROUPS.find((g) => g.label === "Analytics")!;
-      const projects = analyticsGroup.items.find((i) => i.label === "By Project" && i.icon === "FolderGit2");
-      expect(projects).toBeDefined();
-      expect(projects!.href).toBe("/projects");
-    });
-
     it("Analytics group should include Model Prices at /model-prices for all logged-in users", () => {
       const analyticsGroup = BASE_NAV_GROUPS.find((g) => g.label === "Analytics")!;
       const modelPrices = analyticsGroup.items.find((i) => i.label === "Model Prices");
@@ -125,21 +109,13 @@ describe("sidebar navigation", () => {
       expect(modelPrices!.icon).toBe("Tag");
     });
 
-    it("Settings group Projects should link to /manage-projects with FolderKanban icon", () => {
-      const settingsGroup = BASE_NAV_GROUPS.find((g) => g.label === "Settings")!;
-      const projects = settingsGroup.items.find((i) => i.label === "Projects");
-      expect(projects).toBeDefined();
-      expect(projects!.href).toBe("/manage-projects");
-      expect(projects!.icon).toBe("FolderKanban");
-    });
-
-    it("Settings group should include Devices after Projects", () => {
+    it("Settings group should include Devices after Teams", () => {
       const settingsGroup = BASE_NAV_GROUPS.find((g) => g.label === "Settings")!;
       const items = settingsGroup.items.map((i) => i.label);
-      const projectsIdx = items.indexOf("Projects");
+      const teamsIdx = items.indexOf("Teams");
       const devicesIdx = items.indexOf("Devices");
       expect(devicesIdx).toBeGreaterThan(-1);
-      expect(devicesIdx).toBe(projectsIdx + 1);
+      expect(devicesIdx).toBe(teamsIdx + 1);
     });
 
     it("Devices should link to /manage-devices with MonitorSmartphone icon", () => {
@@ -227,8 +203,6 @@ describe("route labels", () => {
       settings: "Settings",
       general: "General",
       teams: "Teams",
-      projects: "By Project",
-      "manage-projects": "Projects",
       "hourly-usage": "Hourly Usage",
       "daily-usage": "Daily Usage",
       agents: "By Agent",
@@ -335,11 +309,4 @@ describe("breadcrumbsFromPathname", () => {
     ]);
   });
 
-  it("should return breadcrumbs for /manage-projects", () => {
-    const crumbs = breadcrumbsFromPathname("/manage-projects");
-    expect(crumbs).toEqual([
-      { label: "Home", href: "/dashboard" },
-      { label: "Projects" },
-    ]);
-  });
 });

@@ -32,13 +32,13 @@ Token data is **aggregated into 30-minute buckets** before leaving your machine.
 
 ### Project references (hashed)
 
-pew groups sessions by project, but **never transmits project names or file paths**. Instead:
+For compatibility with existing CLI versions, session records may include a project reference. pew **never transmits project names or file paths**:
 
 1. Each parser extracts a raw project identifier (e.g. a directory name, a working directory path, an upstream project ID).
 2. The identifier is hashed: `SHA-256(raw)[0:16]` — a one-way, irreversible 16-character hex string.
 3. A defense-in-depth gateway in the CLI re-hashes any value that doesn't match the expected hex format before upload.
 
-The server stores only the hash. You can optionally assign these opaque hashes to human-readable project names in the web dashboard — that mapping is your choice, not automatic.
+The server stores only the hash. Project management and project-based statistics have been removed from the web dashboard.
 
 ### Account information
 

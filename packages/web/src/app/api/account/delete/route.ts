@@ -6,7 +6,6 @@
  * - User record and auth tokens
  * - Usage records and session records
  * - Team memberships (but not teams the user created)
- * - Projects and aliases
  * - Budget settings
  * - Invite codes created by user
  */
@@ -79,21 +78,7 @@ export async function DELETE(request: Request) {
 
     const userId = authResult.userId;
 
-    // 1. Project-related (has cascade from projects)
-    await dbWrite.execute(
-      "DELETE FROM project_tags WHERE user_id = ?",
-      [userId],
-    );
-    await dbWrite.execute(
-      "DELETE FROM project_aliases WHERE user_id = ?",
-      [userId],
-    );
-    await dbWrite.execute(
-      "DELETE FROM projects WHERE user_id = ?",
-      [userId],
-    );
-
-    // 2. Usage and session data
+    // 1. Usage and session data
     await dbWrite.execute(
       "DELETE FROM usage_evidence WHERE user_id = ?",
       [userId],
@@ -107,13 +92,13 @@ export async function DELETE(request: Request) {
       [userId],
     );
 
-    // 3. Team memberships (not the teams themselves)
+    // 2. Team memberships (not the teams themselves)
     await dbWrite.execute(
       "DELETE FROM team_members WHERE user_id = ?",
       [userId],
     );
 
-    // 4. Season member snapshots
+    // 3. Season member snapshots
     try {
       await dbWrite.execute(
         "DELETE FROM season_member_snapshots WHERE user_id = ?",
@@ -123,7 +108,7 @@ export async function DELETE(request: Request) {
       // Table may not exist
     }
 
-    // 5. Season team members (season-specific roster)
+    // 4. Season team members (season-specific roster)
     try {
       await dbWrite.execute(
         "DELETE FROM season_team_members WHERE user_id = ?",
@@ -133,19 +118,19 @@ export async function DELETE(request: Request) {
       // Table may not exist
     }
 
-    // 6. Budget settings
+    // 5. Budget settings
     await dbWrite.execute(
       "DELETE FROM user_budgets WHERE user_id = ?",
       [userId],
     );
 
-    // 7. Invite codes created by user (mark as orphaned, don't delete)
+    // 6. Invite codes created by user (mark as orphaned, don't delete)
     await dbWrite.execute(
       "UPDATE invite_codes SET created_by = 'deleted-user' WHERE created_by = ?",
       [userId],
     );
 
-    // 8. Device aliases
+    // 7. Device aliases
     try {
       await dbWrite.execute(
         "DELETE FROM device_aliases WHERE user_id = ?",
@@ -155,7 +140,7 @@ export async function DELETE(request: Request) {
       // Table may not exist
     }
 
-    // 9. Auth sessions and accounts (should cascade from users, but be explicit)
+    // 8. Auth sessions and accounts (should cascade from users, but be explicit)
     await dbWrite.execute(
       "DELETE FROM sessions WHERE user_id = ?",
       [userId],
@@ -165,7 +150,7 @@ export async function DELETE(request: Request) {
       [userId],
     );
 
-    // 10. Finally, delete the user record
+    // 9. Finally, delete the user record
     await dbWrite.execute(
       "DELETE FROM users WHERE id = ?",
       [userId],

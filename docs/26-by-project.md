@@ -1,5 +1,8 @@
 # By Project — Analytics Page
 
+> Retired on 2026-09-13. Project analytics and management have been removed.
+> The original design below is retained as history.
+
 > A dedicated analytics page for project-focused session metrics, with
 > tagging support and removal of the project filter from the Sessions page.
 

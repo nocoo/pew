@@ -16,11 +16,6 @@ import type {
   OrgRow,
   OrgWithCountRow,
   OrgMemberRow,
-  ProjectRow,
-  ProjectTagRow,
-  ProjectAliasStatsRow,
-  ProjectUnassignedRow,
-  ProjectTimelineRow,
   SeasonRow,
   SeasonDetailRow,
   SeasonTeamRegistrationRow,
@@ -165,88 +160,6 @@ export interface DbRead {
 
   /** List organization members */
   listOrgMembers(orgId: string): Promise<OrgMemberRow[]>;
-
-  // ---------------------------------------------------------------------------
-  // Projects domain RPC methods
-  // ---------------------------------------------------------------------------
-
-  /** List all projects for a user */
-  listProjects(userId: string): Promise<ProjectRow[]>;
-
-  /** List aliases with stats (optionally filtered by date range) */
-  listAliasesWithStats(
-    userId: string,
-    from?: string,
-    to?: string,
-  ): Promise<ProjectAliasStatsRow[]>;
-
-  /** List unassigned project refs (optionally filtered by date range) */
-  listUnassignedRefs(
-    userId: string,
-    from?: string,
-    to?: string,
-  ): Promise<ProjectUnassignedRow[]>;
-
-  /** List all project tags for a user */
-  listProjectTags(userId: string): Promise<ProjectTagRow[]>;
-
-  /** Get project by name (for uniqueness check) */
-  getProjectByName(userId: string, name: string): Promise<{ id: string } | null>;
-
-  /** Get project by ID */
-  getProjectById(userId: string, projectId: string): Promise<ProjectRow | null>;
-
-  /** Get project by name excluding a specific ID (for update uniqueness check) */
-  getProjectByNameExcluding(
-    userId: string,
-    name: string,
-    excludeId: string,
-  ): Promise<{ id: string } | null>;
-
-  /** Check if project exists for user */
-  projectExistsForUser(userId: string, projectId: string): Promise<boolean>;
-
-  /** Check if session record exists for alias */
-  sessionRecordExists(
-    userId: string,
-    source: string,
-    projectRef: string,
-  ): Promise<boolean>;
-
-  /** Get alias owner (project_id) */
-  getAliasOwner(
-    userId: string,
-    source: string,
-    projectRef: string,
-  ): Promise<{ project_id: string } | null>;
-
-  /** Check if alias is attached to a specific project */
-  aliasAttachedToProject(
-    userId: string,
-    projectId: string,
-    source: string,
-    projectRef: string,
-  ): Promise<boolean>;
-
-  /** Check if project tag exists */
-  projectTagExists(
-    userId: string,
-    projectId: string,
-    tag: string,
-  ): Promise<boolean>;
-
-  /** Get alias stats for a project */
-  getProjectAliasStats(projectId: string): Promise<ProjectAliasStatsRow[]>;
-
-  /** Get tag list for a project */
-  getProjectTagList(userId: string, projectId: string): Promise<string[]>;
-
-  /** Get project timeline data */
-  getProjectTimeline(
-    userId: string,
-    from: string,
-    to: string,
-  ): Promise<ProjectTimelineRow[]>;
 
   // ---------------------------------------------------------------------------
   // Seasons domain RPC methods

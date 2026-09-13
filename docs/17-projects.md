@@ -1,5 +1,9 @@
 # Projects — Two-Layer Project Management
 
+> Retired on 2026-09-13. Project management, aliases, tags, APIs, and tables
+> have been removed. CLI/session `project_ref` compatibility remains.
+> The original design below is retained as history.
+
 > Dashboard feature for grouping anonymized `project_ref` values from multiple
 > AI tools into user-defined **projects** with human-readable names.
 

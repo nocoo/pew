@@ -13,16 +13,16 @@
 
 ## What it does
 
-pew combines a local CLI with a web dashboard. The CLI reads logs and local databases from AI coding tools, extracts token usage and session statistics, and uploads them for analysis by time, tool, model, device, and project.
+pew combines a local CLI with a web dashboard. The CLI reads logs and local databases from AI coding tools, extracts token usage and session statistics, and uploads them for analysis by time, tool, model, and device.
 
 Source logs remain read-only. Token uploads are aggregated into half-hour buckets. Session records include timestamps, message counts, and hashed project references, without conversation bodies. Completeness depends on what each tool records. Costs are estimates based on model prices and may differ from provider invoices.
 
 ## Features
 
 - Collect input, cached-input, output, and reasoning tokens with incremental scanning, an offline upload queue, and upload deduplication.
-- Explore contribution heatmaps, hourly and daily trends, model and tool breakdowns, and device and project analytics.
+- Explore contribution heatmaps, hourly and daily trends, model and tool breakdowns, and device analytics.
 - Inspect session times, duration, message counts, and human or automated session classification.
-- Manage device names and project mappings, explore team, organization, and season totals, and browse public leaderboards.
+- Manage device names, explore team, organization, and season totals, and browse public leaderboards.
 - Estimate usage costs with dynamic model prices and fallback tables, including price sources and update times.
 - Configure automatic synchronization after sessions for supported tools, and use `pew sync` for other sources.
 

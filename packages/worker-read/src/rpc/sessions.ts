@@ -29,7 +29,7 @@ interface SessionStatsRow {
   avg_messages: number;
 }
 
-/** Session record with project info for /api/sessions */
+/** Session record for /api/sessions */
 interface SessionRecordRow {
   session_key: string;
   source: string;
@@ -41,7 +41,6 @@ interface SessionRecordRow {
   assistant_messages: number;
   total_messages: number;
   project_ref: string | null;
-  project_name: string | null;
   model: string | null;
 }
 
@@ -243,14 +242,8 @@ async function handleGetSessionRecords(
       sr.assistant_messages,
       sr.total_messages,
       sr.project_ref,
-      p.name AS project_name,
       sr.model
     FROM session_records sr
-    LEFT JOIN project_aliases pa
-      ON pa.user_id = sr.user_id
-      AND pa.source = sr.source
-      AND pa.project_ref = sr.project_ref
-    LEFT JOIN projects p ON p.id = pa.project_id
     WHERE ${conditions.join(" AND ")}
     ORDER BY sr.started_at DESC
   `;

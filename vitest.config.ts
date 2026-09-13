@@ -80,7 +80,7 @@ export default defineConfig({
         // ---------------------------------------------------------------------------
         // React hooks — client-side data-fetching / state hooks ("use client").
         //
-        // These hooks (use-budget, use-projects, use-leaderboard, etc.) wrap
+        // These hooks (use-budget, use-leaderboard, etc.) wrap
         // fetch calls with React state management (useState/useEffect/useCallback).
         // They have zero extractable business logic and belong in L4 BDD E2E
         // tests via Playwright, not L1 unit tests.

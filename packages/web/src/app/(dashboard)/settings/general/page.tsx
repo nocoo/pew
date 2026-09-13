@@ -286,7 +286,7 @@ export default function SettingsPage() {
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
               Permanently delete your account and all associated data. This action cannot be undone.
-              All your usage records, session history, projects, and team memberships will be removed.
+              All your usage records, session history, and team memberships will be removed.
             </p>
           </div>
 

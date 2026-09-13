@@ -135,7 +135,7 @@ describe("DELETE /api/account/delete", () => {
   });
 
   describe("successful deletion", () => {
-    it.each([0, 1])("removes only the deleted user's evidence with foreign_keys=%i", async (foreignKeys) => {
+    it.each([0, 1])("deletes an account without retired tables, preserving other users with foreign_keys=%i", async (foreignKeys) => {
       const db = new DatabaseSync(":memory:");
       try {
         db.exec(`PRAGMA foreign_keys = ${foreignKeys};
@@ -145,11 +145,18 @@ describe("DELETE /api/account/delete", () => {
             device_id TEXT, event_id TEXT);
           INSERT INTO users VALUES ('u1'), ('u2');
           INSERT INTO usage_evidence VALUES ('u1', 'd1', 'a'), ('u1', 'd2', 'b'), ('u2', 'd1', 'c');`);
+        const userTables = ["usage_records", "session_records", "team_members", "season_member_snapshots",
+          "season_team_members", "user_budgets", "device_aliases", "sessions", "accounts"];
+        for (const table of userTables) {
+          db.exec(`CREATE TABLE ${table} (user_id TEXT REFERENCES users(id));
+            INSERT INTO ${table} VALUES ('u1'), ('u2');`);
+        }
+        db.exec("CREATE TABLE invite_codes (created_by TEXT); INSERT INTO invite_codes VALUES ('u1'), ('u2');");
         vi.mocked(authModule.resolveUser).mockResolvedValueOnce({ userId: "u1" });
         mockReadClient.getUserById.mockResolvedValueOnce({ id: "u1", email: "user@example.com" });
-        // Exercise the route's real deletion SQL; unrelated tables stay mocked.
+        // Execute every statement; any lingering reference to a retired table fails.
         mockWriteClient.execute.mockImplementation(async (sql: string, params: string[]) => {
-          if (/^DELETE FROM (?:usage_evidence|users) WHERE /.test(sql)) db.prepare(sql).run(...params);
+          db.prepare(sql).run(...params);
           return { results: [] };
         });
 
@@ -160,6 +167,13 @@ describe("DELETE /api/account/delete", () => {
           { user_id: "u2", device_id: "d1", event_id: "c" },
         ]);
         expect(db.prepare("SELECT id FROM users").all()).toEqual([{ id: "u2" }]);
+        for (const table of userTables) {
+          expect(db.prepare(`SELECT * FROM ${table}`).all()).toEqual([{ user_id: "u2" }]);
+        }
+        expect(db.prepare("SELECT * FROM invite_codes").all()).toEqual([
+          { created_by: "deleted-user" }, { created_by: "u2" },
+        ]);
+        expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
       } finally { db.close(); }
     });
 
@@ -186,9 +200,6 @@ describe("DELETE /api/account/delete", () => {
 
       // Check some key deletions happened
       const sqls = executeCalls.map((call) => call[0]);
-      expect(sqls.some((sql: string) => sql.includes("DELETE FROM project_tags"))).toBe(true);
-      expect(sqls.some((sql: string) => sql.includes("DELETE FROM project_aliases"))).toBe(true);
-      expect(sqls.some((sql: string) => sql.includes("DELETE FROM projects"))).toBe(true);
       expect(sqls.some((sql: string) => sql.includes("DELETE FROM usage_records"))).toBe(true);
       expect(sqls.some((sql: string) => sql.includes("DELETE FROM session_records"))).toBe(true);
       expect(sqls.some((sql: string) => sql.includes("DELETE FROM team_members"))).toBe(true);

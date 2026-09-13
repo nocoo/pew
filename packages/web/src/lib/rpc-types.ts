@@ -98,54 +98,6 @@ export interface OrgMemberRow {
 }
 
 // ---------------------------------------------------------------------------
-// Projects domain types
-// ---------------------------------------------------------------------------
-
-/** Project record */
-export interface ProjectRow {
-  id: string;
-  name: string;
-  created_at: string;
-}
-
-/** Project tag record */
-export interface ProjectTagRow {
-  project_id: string;
-  tag: string;
-}
-
-/** Alias stats row for projects list (from Worker RPC) */
-export interface ProjectAliasStatsRow {
-  source: string;
-  project_ref: string;
-  project_id: string | null;
-  session_count: number;
-  last_active: string | null;
-  total_messages: number;
-  total_duration_seconds: number;
-  models: string | null;
-  absolute_last_active: string | null;
-}
-
-/** Unassigned ref row */
-export interface ProjectUnassignedRow {
-  source: string;
-  project_ref: string;
-  session_count: number;
-  last_active: string | null;
-  total_messages: number;
-  total_duration_seconds: number;
-  models: string | null;
-}
-
-/** Timeline row for project activity (per day, per project) */
-export interface ProjectTimelineRow {
-  date: string;
-  project_name: string;
-  session_count: number;
-}
-
-// ---------------------------------------------------------------------------
 // Seasons domain types
 // ---------------------------------------------------------------------------
 
@@ -404,7 +356,7 @@ export interface AdminStorageUserRow {
 // Sessions domain types
 // ---------------------------------------------------------------------------
 
-/** Session record with project info */
+/** Session record */
 export interface SessionRecordRow {
   session_key: string;
   source: string;
@@ -416,7 +368,6 @@ export interface SessionRecordRow {
   assistant_messages: number;
   total_messages: number;
   project_ref: string | null;
-  project_name: string | null;
   model: string | null;
 }
 

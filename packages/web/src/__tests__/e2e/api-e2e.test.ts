@@ -79,8 +79,6 @@ async function cleanupTestData(d1: D1Client): Promise<void> {
     { sql: "DELETE FROM season_team_members WHERE user_id = ?", params: [TEST_USER_ID] },
     { sql: "DELETE FROM season_leaderboard WHERE user_id = ?", params: [TEST_USER_ID] },
     { sql: "DELETE FROM device_aliases WHERE user_id = ?", params: [TEST_USER_ID] },
-    { sql: "DELETE FROM project_aliases WHERE project_id IN (SELECT id FROM projects WHERE user_id = ?)", params: [TEST_USER_ID] },
-    { sql: "DELETE FROM projects WHERE user_id = ?", params: [TEST_USER_ID] },
     { sql: "DELETE FROM session_records WHERE user_id = ?", params: [TEST_USER_ID] },
     { sql: "DELETE FROM usage_records WHERE user_id = ?", params: [TEST_USER_ID] },
     { sql: "DELETE FROM accounts WHERE user_id = ?", params: [TEST_USER_ID] },
@@ -285,21 +283,7 @@ describe("POST /api/ingest", () => {
     });
     expect(ingest.status).toBe(200);
 
-    // 2. Seed session_records so project alias validation passes
-    const projectRefCreate = `e2e-repo-${RUN_SUFFIX}`;
-    const projectRefPatch = `e2e-repo-${RUN_SUFFIX}-2`;
-    for (const project_ref of [projectRefCreate, projectRefPatch]) {
-      await d1.execute(
-        `INSERT INTO session_records (user_id, session_key, source, kind,
-           started_at, last_message_at, duration_seconds, user_messages,
-           assistant_messages, total_messages, project_ref, model, snapshot_at)
-         VALUES (?, ?, 'grok', 'human', datetime('now'), datetime('now'), 0, 0, 0, 0, ?, 'grok-4.5', datetime('now'))
-         ON CONFLICT (user_id, session_key) DO NOTHING`,
-        [TEST_USER_ID, `${TEST_USER_ID}-${project_ref}`, project_ref],
-      );
-    }
-
-    // 3. Every ?source= route whitelist entry
+    // 2. Every ?source= route whitelist entry
     for (const path of [
       "/api/usage?source=grok&from=2026-03-01&to=2026-03-31",
       "/api/sessions?source=grok",
@@ -324,27 +308,6 @@ describe("POST /api/ingest", () => {
       expect(reasoning).toBeGreaterThanOrEqual(111);
     }
 
-    // 4. POST /api/projects with grok alias
-    const create = await fetch(`${BASE_URL}/api/projects`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: `grok-e2e-${RUN_SUFFIX}`,
-        aliases: [{ source: "grok", project_ref: projectRefCreate }],
-      }),
-    });
-    expect(create.status).toBe(201);
-    const project = await create.json();
-
-    // 5. PATCH /api/projects/[id] with add_aliases
-    const patch = await fetch(`${BASE_URL}/api/projects/${project.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        add_aliases: [{ source: "grok", project_ref: projectRefPatch }],
-      }),
-    });
-    expect(patch.status).toBe(200);
   });
 
   it("accepts and reads back zcode source records — every whitelist entry point", async () => {
@@ -369,21 +332,7 @@ describe("POST /api/ingest", () => {
     });
     expect(ingest.status).toBe(200);
 
-    // 2. Seed session_records so project alias validation passes
-    const projectRefCreate = `e2e-repo-zcode-${RUN_SUFFIX}`;
-    const projectRefPatch = `e2e-repo-zcode-${RUN_SUFFIX}-2`;
-    for (const project_ref of [projectRefCreate, projectRefPatch]) {
-      await d1.execute(
-        `INSERT INTO session_records (user_id, session_key, source, kind,
-           started_at, last_message_at, duration_seconds, user_messages,
-           assistant_messages, total_messages, project_ref, model, snapshot_at)
-         VALUES (?, ?, 'zcode', 'human', datetime('now'), datetime('now'), 0, 0, 0, 0, ?, 'GLM-5.2', datetime('now'))
-         ON CONFLICT (user_id, session_key) DO NOTHING`,
-        [TEST_USER_ID, `${TEST_USER_ID}-${project_ref}`, project_ref],
-      );
-    }
-
-    // 3. Every ?source= query allowlist route
+    // 2. Every ?source= query allowlist route
     for (const path of [
       "/api/usage?source=zcode&from=2026-07-01&to=2026-07-31",
       "/api/sessions?source=zcode",
@@ -408,27 +357,6 @@ describe("POST /api/ingest", () => {
       expect(cached).toBeGreaterThanOrEqual(52992);
     }
 
-    // 4. POST /api/projects with zcode alias in body (body allowlist)
-    const create = await fetch(`${BASE_URL}/api/projects`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: `zcode-e2e-${RUN_SUFFIX}`,
-        aliases: [{ source: "zcode", project_ref: projectRefCreate }],
-      }),
-    });
-    expect(create.status).toBe(201);
-    const project = await create.json();
-
-    // 5. PATCH /api/projects/[id] with add_aliases (body allowlist)
-    const patch = await fetch(`${BASE_URL}/api/projects/${project.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        add_aliases: [{ source: "zcode", project_ref: projectRefPatch }],
-      }),
-    });
-    expect(patch.status).toBe(200);
   });
 });
 
@@ -780,127 +708,6 @@ describe("GET /api/usage/by-device", () => {
 });
 
 // ===========================================================================
-// GET/POST /api/projects
-// ===========================================================================
-
-describe("GET /api/projects", () => {
-  it("should return user projects", async () => {
-    const res = await fetch(`${BASE_URL}/api/projects`);
-    expect(res.status).toBe(200);
-    const body = await res.json();
-
-    expect(Array.isArray(body.projects)).toBe(true);
-    expect(Array.isArray(body.unassigned)).toBe(true);
-  });
-
-  it("should accept date range filter", async () => {
-    const res = await fetch(`${BASE_URL}/api/projects?from=2026-01-01&to=2026-12-31`);
-    expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(Array.isArray(body.projects)).toBe(true);
-  });
-});
-
-let testProjectId: string | null = null;
-
-describe("POST /api/projects", () => {
-  it("should create a new project", async () => {
-    const res = await fetch(`${BASE_URL}/api/projects`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "E2E Test Project" }),
-    });
-    expect(res.status).toBe(201);
-    const body = await res.json();
-
-    expect(body.id).toBeTruthy();
-    expect(body.name).toBe("E2E Test Project");
-    testProjectId = body.id;
-  });
-
-  it("should reject empty name", async () => {
-    const res = await fetch(`${BASE_URL}/api/projects`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "" }),
-    });
-    expect(res.status).toBe(400);
-  });
-
-  it("should reject reserved name", async () => {
-    const res = await fetch(`${BASE_URL}/api/projects`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "unassigned" }),
-    });
-    expect(res.status).toBe(400);
-  });
-});
-
-// ===========================================================================
-// PATCH/DELETE /api/projects/[id] (no GET endpoint)
-// ===========================================================================
-
-describe("PATCH /api/projects/[id]", () => {
-  it("should update project name", async () => {
-    if (!testProjectId) throw new Error("Test project not created");
-    const res = await fetch(`${BASE_URL}/api/projects/${testProjectId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "E2E Renamed Project" }),
-    });
-    expect(res.status).toBe(200);
-  });
-
-  it("should return 404 for non-existent project", async () => {
-    const res = await fetch(`${BASE_URL}/api/projects/non-existent-id`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: "Test" }),
-    });
-    expect(res.status).toBe(404);
-  });
-});
-
-describe("DELETE /api/projects/[id]", () => {
-  it("should delete the test project", async () => {
-    if (!testProjectId) throw new Error("Test project not created");
-    const res = await fetch(`${BASE_URL}/api/projects/${testProjectId}`, {
-      method: "DELETE",
-    });
-    expect(res.status).toBe(200);
-  });
-
-  it("should return 404 for non-existent project", async () => {
-    const res = await fetch(`${BASE_URL}/api/projects/non-existent-id`, {
-      method: "DELETE",
-    });
-    expect(res.status).toBe(404);
-  });
-});
-
-// ===========================================================================
-// GET /api/projects/timeline
-// ===========================================================================
-
-describe("GET /api/projects/timeline", () => {
-  it("should return project timeline with date range", async () => {
-    const res = await fetch(`${BASE_URL}/api/projects/timeline?from=2026-01-01&to=2026-12-31`);
-    // May return 200 with empty data or 500 if table doesn't exist in test DB
-    expect([200, 500]).toContain(res.status);
-    if (res.status === 200) {
-      const body = await res.json();
-      expect(Array.isArray(body.timeline)).toBe(true);
-    }
-  });
-
-  it("should reject missing from param", async () => {
-    const res = await fetch(`${BASE_URL}/api/projects/timeline`);
-    expect(res.status).toBe(400);
-  });
-});
-
-// ===========================================================================
 // GET /api/teams
 // ===========================================================================
 
@@ -946,6 +753,46 @@ describe("GET /api/organizations/mine", () => {
 // ===========================================================================
 
 describe("POST /api/ingest/sessions", () => {
+  it.each(["grok", "zcode"])("ingests and reads %s sessions after project tables are retired", async (source) => {
+    const record = {
+      session_key: `${source}:e2e-${RUN_SUFFIX}`,
+      source,
+      kind: "human",
+      started_at: "2026-09-13T10:00:00.000Z",
+      last_message_at: "2026-09-13T10:10:00.000Z",
+      duration_seconds: 600,
+      user_messages: 2,
+      assistant_messages: 3,
+      total_messages: 5,
+      project_ref: "0123456789abcdef",
+      model: "test-model",
+      snapshot_at: "2026-09-13T10:10:00.000Z",
+    };
+    for (let replay = 0; replay < 2; replay++) {
+      const response = await fetch(`${BASE_URL}/api/ingest/sessions`, {
+        method: "POST",
+        headers: INGEST_HEADERS,
+        body: JSON.stringify([record]),
+      });
+      expect(response.status).toBe(200);
+      expect((await response.json()).ingested).toBe(1);
+    }
+
+    const response = await fetch(`${BASE_URL}/api/sessions?source=${source}&kind=human&from=2026-09-13&to=2026-09-13`);
+    expect(response.status).toBe(200);
+    const { snapshot_at: _snapshot, ...expected } = record;
+    expect(await response.json()).toEqual({
+      records: [expected],
+      summary: {
+        total_sessions: 1,
+        total_duration_seconds: 600,
+        total_user_messages: 2,
+        total_assistant_messages: 3,
+        total_messages: 5,
+      },
+    });
+  });
+
   it("should reject requests without client version header", async () => {
     const res = await fetch(`${BASE_URL}/api/ingest/sessions`, {
       method: "POST",
@@ -1425,6 +1272,9 @@ describe("retired feature endpoints", () => {
     "/api/achievements",
     "/api/achievements/retired/members",
     "/api/users/retired/achievements",
+    "/api/projects",
+    "/api/projects/retired",
+    "/api/projects/timeline?from=2026-01-01&to=2026-12-31",
   ])("returns 404 for %s", async (path) => {
     const response = await fetch(`${BASE_URL}${path}`);
     expect(response.status).toBe(404);
@@ -1435,6 +1285,15 @@ describe("retired feature endpoints", () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ github_url: "https://github.com/nocoo/pew" }),
+    });
+    expect(response.status).toBe(404);
+  });
+
+  it("rejects project creation", async () => {
+    const response = await fetch(`${BASE_URL}/api/projects`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Retired project" }),
     });
     expect(response.status).toBe(404);
   });
