@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## v2.29.3
+
+### Changed
+- Cover incomplete Grok session summaries
+- Allow repository audits time on shared CI runners
+
+### Fixed
+- Prevent sidebar wordmark clipping
+- Align sidebar branding and preserve logo colors
+
+### Removed
+- Retire projects and remove feature tables
+- Remove achievements and simplify dashboard hero
+- Remove showcases
+
 ## v2.29.2
 
 ### Added
