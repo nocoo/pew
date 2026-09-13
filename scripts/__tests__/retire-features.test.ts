@@ -17,6 +17,8 @@ describe("retired feature migration", () => {
     }
     db.exec(`
       INSERT INTO users (id, email) VALUES ('u1', 'one@example.test'), ('u2', 'two@example.test');
+      INSERT INTO user_budgets (user_id, month, budget_usd, budget_tokens)
+        VALUES ('u1', '2026-09', 100, 1000000), ('u2', '2026-09', 50, 500000);
       INSERT INTO usage_records (user_id, source, model, hour_start, input_tokens, output_tokens, total_tokens)
         VALUES ('u1', 'claude-code', 'test-model', '2026-09-13T10:00:00Z', 10, 2, 12);
       INSERT INTO usage_evidence (user_id, device_id, event_id, group_id, source, model, hour_start,
@@ -51,17 +53,19 @@ describe("retired feature migration", () => {
 
   afterEach(() => db.close());
 
-  it("drops only the retired tables, is repeatable, and preserves usage and session data", () => {
+  it.each([
+    { file: "023-retire-features.sql", retired: ["projects", "project_aliases", "project_tags", "showcases", "showcase_upvotes"] },
+    { file: "025-retire-budgets.sql", retired: ["user_budgets"] },
+  ])("$file drops only retired tables, is repeatable, and preserves usage and session data", ({ file, retired }) => {
     const tablesBefore = db.prepare("SELECT name FROM sqlite_schema WHERE type = 'table' ORDER BY name").all();
     const retained = ["users", "usage_records", "usage_evidence", "usage_totals", "session_records"];
     const rowsBefore = retained.map((table) => db.prepare(`SELECT * FROM ${table}`).all());
 
-    db.exec(migration("023-retire-features.sql"));
-    db.exec(migration("023-retire-features.sql"));
+    db.exec(migration(file));
+    db.exec(migration(file));
 
-    const retired = new Set(["projects", "project_aliases", "project_tags", "showcases", "showcase_upvotes"]);
     expect(db.prepare("SELECT name FROM sqlite_schema WHERE type = 'table' ORDER BY name").all())
-      .toEqual(tablesBefore.filter((row) => !retired.has(String(row.name))));
+      .toEqual(tablesBefore.filter((row) => !retired.includes(String(row.name))));
     expect(retained.map((table) => db.prepare(`SELECT * FROM ${table}`).all())).toEqual(rowsBefore);
     expect(db.prepare("SELECT SUM(total_tokens) AS total FROM usage_totals").get()).toEqual({ total: 15 });
     expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);

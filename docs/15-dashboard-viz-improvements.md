@@ -2,6 +2,8 @@
 
 > Roadmap for enriching the pew dashboard with advanced visualizations and insights.
 
+> Budget tracking was retired on 2026-09-13. The budget design below is historical; migration `025-retire-budgets.sql` removes the unused table. The existing Goal Tracker uses local thresholds and is unchanged.
+
 ## Product Positioning
 
 pew tracks token usage from local AI coding tools (Claude Code, Codex, Gemini CLI, OpenCode, OpenClaw, VS Code Copilot). The dashboard should:

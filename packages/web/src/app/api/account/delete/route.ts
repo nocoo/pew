@@ -6,7 +6,6 @@
  * - User record and auth tokens
  * - Usage records and session records
  * - Team memberships (but not teams the user created)
- * - Budget settings
  * - Invite codes created by user
  */
 
@@ -118,19 +117,13 @@ export async function DELETE(request: Request) {
       // Table may not exist
     }
 
-    // 5. Budget settings
-    await dbWrite.execute(
-      "DELETE FROM user_budgets WHERE user_id = ?",
-      [userId],
-    );
-
-    // 6. Invite codes created by user (mark as orphaned, don't delete)
+    // 5. Invite codes created by user (mark as orphaned, don't delete)
     await dbWrite.execute(
       "UPDATE invite_codes SET created_by = 'deleted-user' WHERE created_by = ?",
       [userId],
     );
 
-    // 7. Device aliases
+    // 6. Device aliases
     try {
       await dbWrite.execute(
         "DELETE FROM device_aliases WHERE user_id = ?",
@@ -140,7 +133,7 @@ export async function DELETE(request: Request) {
       // Table may not exist
     }
 
-    // 8. Auth sessions and accounts (should cascade from users, but be explicit)
+    // 7. Auth sessions and accounts (should cascade from users, but be explicit)
     await dbWrite.execute(
       "DELETE FROM sessions WHERE user_id = ?",
       [userId],
@@ -150,7 +143,7 @@ export async function DELETE(request: Request) {
       [userId],
     );
 
-    // 9. Finally, delete the user record
+    // 8. Finally, delete the user record
     await dbWrite.execute(
       "DELETE FROM users WHERE id = ?",
       [userId],
