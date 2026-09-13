@@ -34,6 +34,21 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: "/leaderboard/showcases",
+        destination: "/leaderboard",
+        permanent: true,
+      },
+      {
+        source: "/settings/showcases",
+        destination: "/dashboard",
+        permanent: true,
+      },
+      {
+        source: "/admin/showcases",
+        destination: "/dashboard",
+        permanent: true,
+      },
+      {
         // Model Prices moved out of /admin to a user-facing route.
         source: "/admin/model-prices",
         destination: "/model-prices",

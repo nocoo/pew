@@ -71,7 +71,6 @@ async function main() {
       ...mergedEnv,
       NEXT_DIST_DIR: ".next-e2e",
       E2E_SKIP_AUTH: "true",
-      E2E_MOCK_GITHUB: "1",
     },
     stdout: "pipe",
     stderr: "pipe",

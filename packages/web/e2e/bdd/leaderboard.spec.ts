@@ -5,7 +5,6 @@ const LEADERBOARD_SUB_PAGES: ReadonlyArray<string> = [
   "achievements",
   "agents",
   "models",
-  "showcases",
   "seasons",
 ];
 

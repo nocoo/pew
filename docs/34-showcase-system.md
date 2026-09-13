@@ -1,5 +1,7 @@
 # 34 — Showcase System
 
+> Retired in September 2026. Kept as a historical design record.
+
 > ProductHunt-style project showcase: users submit GitHub projects, others can upvote.
 
 ## Overview

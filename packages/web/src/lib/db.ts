@@ -32,9 +32,6 @@ import type {
   SeasonMemberTokenRow,
   SeasonTeamSessionStatsRow,
   SeasonMemberSessionStatsRow,
-  ShowcaseRpcRow,
-  ShowcaseOwnerRow,
-  ShowcaseExistsResult,
   SessionRecordRow,
   DynamicPricingMetaDto,
   SyncOutcomeDto,
@@ -339,50 +336,6 @@ export interface DbRead {
     fromDate: string,
     toDate: string,
   ): Promise<SeasonMemberSessionStatsRow[]>;
-
-  // ---------------------------------------------------------------------------
-  // Showcases domain RPC methods
-  // ---------------------------------------------------------------------------
-
-  /** Get showcase by ID */
-  getShowcaseById(
-    showcaseId: string,
-    currentUserId?: string,
-  ): Promise<ShowcaseRpcRow | null>;
-
-  /** Get showcase owner info */
-  getShowcaseOwner(showcaseId: string): Promise<ShowcaseOwnerRow | null>;
-
-  /** Check if showcase exists by user ID and GitHub URL */
-  checkShowcaseExists(
-    userId: string,
-    githubUrl: string,
-  ): Promise<ShowcaseExistsResult>;
-
-  /** Check if showcase exists by repo key */
-  checkShowcaseExistsByRepoKey(repoKey: string): Promise<ShowcaseExistsResult>;
-
-  /** Check if user has upvoted a showcase */
-  checkShowcaseUpvote(showcaseId: string, userId: string): Promise<boolean>;
-
-  /** Get upvote count for a showcase */
-  getShowcaseUpvoteCount(showcaseId: string): Promise<number>;
-
-  /** List showcases */
-  listShowcases(options: {
-    userId?: string | undefined;
-    publicOnly?: boolean | undefined;
-    currentUserId?: string | undefined;
-    orderBy?: "created_at" | "upvote_count" | undefined;
-    limit: number;
-    offset: number;
-  }): Promise<ShowcaseRpcRow[]>;
-
-  /** Count showcases */
-  countShowcases(options?: {
-    userId?: string | undefined;
-    publicOnly?: boolean | undefined;
-  }): Promise<number>;
 
   // ---------------------------------------------------------------------------
   // Teams domain RPC methods

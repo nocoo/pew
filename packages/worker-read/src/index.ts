@@ -24,7 +24,6 @@ import { handleUsageRpc, type UsageRpcRequest } from "./rpc/usage";
 import { handleAchievementsRpc, type AchievementsRpcRequest } from "./rpc/achievements";
 import { handleDevicesRpc, type DevicesRpcRequest } from "./rpc/devices";
 import { handleOrganizationsRpc, type OrganizationsRpcRequest } from "./rpc/organizations";
-import { handleShowcasesRpc, type ShowcasesRpcRequest } from "./rpc/showcases";
 import { handleSettingsRpc, type SettingsRpcRequest } from "./rpc/settings";
 import { handleAuthRpc, type AuthRpcRequest } from "./rpc/auth";
 import { handleSessionsRpc, type SessionsRpcRequest } from "./rpc/sessions";
@@ -326,7 +325,6 @@ export type RpcRequest =
   | AchievementsRpcRequest
   | DevicesRpcRequest
   | OrganizationsRpcRequest
-  | ShowcasesRpcRequest
   | SettingsRpcRequest
   | AuthRpcRequest
   | SessionsRpcRequest
@@ -369,8 +367,6 @@ async function handleRpc(body: unknown, env: Env): Promise<Response> {
         return handleDevicesRpc(body as DevicesRpcRequest, env.DB);
       case "organizations":
         return handleOrganizationsRpc(body as OrganizationsRpcRequest, env.DB);
-      case "showcases":
-        return handleShowcasesRpc(body as ShowcasesRpcRequest, env.DB);
       case "settings":
         return handleSettingsRpc(body as SettingsRpcRequest, env.DB);
       case "auth":

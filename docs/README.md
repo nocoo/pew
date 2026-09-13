@@ -39,7 +39,7 @@
 | 31 | [31-d1-test-isolation.md](31-d1-test-isolation.md) | D1 test isolation — quality system → Tier S | done |
 | 32 | [32-proxy-token-gap-investigation.md](32-proxy-token-gap-investigation.md) | Proxy token gap investigation | reference |
 | 33 | [33-achievement-system-overhaul.md](33-achievement-system-overhaul.md) | Achievement system overhaul | in-progress |
-| 34 | [34-showcase-system.md](34-showcase-system.md) | ProductHunt-style showcase system | design-complete |
+| 34 | [34-showcase-system.md](34-showcase-system.md) | ProductHunt-style showcase system | retired |
 | 35 | [35-hermes-support.md](35-hermes-support.md) | Hermes Agent token tracking (SQLite session-level diff) | done |
 | 36 | [36-kosmos-support-design.md](36-kosmos-support-design.md) | Kosmos / PM Studio token + session tracking | done |
 | 36b | [36-organization-system.md](36-organization-system.md) | Organization entity for interest-based grouping | done |

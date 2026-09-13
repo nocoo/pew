@@ -42,15 +42,6 @@ test.describe("Feature: Admin", () => {
       // Then: Compare heading is visible (covers old: admin.spec.ts "compare result page loads")
       await expect(page.getByRole("heading", { level: 1 })).toContainText("Compare");
     });
-
-    test("Given auth is bypassed, When I visit /admin/showcases, Then the main content area is visible", async ({ page }) => {
-      // Given: E2E_SKIP_AUTH=true is set by the runner
-      // When: visit the showcases admin page
-      await page.goto("/admin/showcases");
-      // Then: main content area renders (this page has no level-1 heading, so the
-      // original spec asserted main visibility instead — keep the same assertion)
-      await expect(page.locator("main")).toBeVisible();
-    });
   });
 
   test.describe("Badges CRUD", () => {

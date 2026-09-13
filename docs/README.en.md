@@ -22,7 +22,7 @@ Source logs remain read-only. Token uploads are aggregated into half-hour bucket
 - Collect input, cached-input, output, and reasoning tokens with incremental scanning, an offline upload queue, and upload deduplication.
 - Explore contribution heatmaps, hourly and daily trends, model and tool breakdowns, and device and project analytics.
 - Inspect session times, duration, message counts, and human or automated session classification.
-- Manage device names and project mappings, explore team, organization, and season totals, and browse public leaderboards, achievements, and showcases.
+- Manage device names and project mappings, explore team, organization, and season totals, and browse public leaderboards and achievements.
 - Estimate usage costs with dynamic model prices and fallback tables, including price sources and update times.
 - Configure automatic synchronization after sessions for supported tools, and use `pew sync` for other sources.
 

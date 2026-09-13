@@ -34,16 +34,8 @@ test.describe("Feature: Data summary pages", () => {
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Device");
   });
 
-  test("Given auth is bypassed, When I visit /settings/showcases and /manage-projects, Then settings resolves under /settings or /login and projects shows the Project heading", async ({ page }) => {
-    // Given: E2E_SKIP_AUTH=true is set by the runner
-    // When: visit settings showcases
-    await page.goto("/settings/showcases");
-    // Then: URL stays under /settings or redirects to /login (covers old: "settings showcases page loads")
-    const settingsUrl = page.url();
-    expect(settingsUrl.includes("/settings") || settingsUrl.includes("/login")).toBe(true);
-    // When: visit manage projects
+  test("Given auth is bypassed, When I visit /manage-projects, Then the Project heading is visible", async ({ page }) => {
     await page.goto("/manage-projects");
-    // Then: Project heading is visible (covers old: "manage projects page loads")
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Project");
   });
 });

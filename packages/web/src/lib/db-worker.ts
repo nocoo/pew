@@ -33,9 +33,6 @@ import type {
   SeasonMemberTokenRow,
   SeasonTeamSessionStatsRow,
   SeasonMemberSessionStatsRow,
-  ShowcaseRpcRow,
-  ShowcaseOwnerRow,
-  ShowcaseExistsResult,
   SessionRecordRow,
   DynamicPricingMetaDto,
   SyncOutcomeDto,
@@ -591,90 +588,6 @@ export function createWorkerDbRead(): DbRead {
         teamIds,
         fromDate,
         toDate,
-      });
-    },
-
-    // -------------------------------------------------------------------------
-    // Showcases domain RPC methods
-    // -------------------------------------------------------------------------
-
-    async getShowcaseById(
-      showcaseId: string,
-      currentUserId?: string,
-    ): Promise<ShowcaseRpcRow | null> {
-      return rpc<ShowcaseRpcRow | null>({
-        method: "showcases.getById",
-        showcaseId,
-        currentUserId,
-      });
-    },
-
-    async getShowcaseOwner(
-      showcaseId: string,
-    ): Promise<ShowcaseOwnerRow | null> {
-      return rpc<ShowcaseOwnerRow | null>({
-        method: "showcases.getOwner",
-        showcaseId,
-      });
-    },
-
-    async checkShowcaseExists(
-      userId: string,
-      githubUrl: string,
-    ): Promise<ShowcaseExistsResult> {
-      return rpc<ShowcaseExistsResult>({
-        method: "showcases.checkExists",
-        userId,
-        githubUrl,
-      });
-    },
-
-    async checkShowcaseExistsByRepoKey(
-      repoKey: string,
-    ): Promise<ShowcaseExistsResult> {
-      return rpc<ShowcaseExistsResult>({
-        method: "showcases.checkExistsByRepoKey",
-        repoKey,
-      });
-    },
-
-    async checkShowcaseUpvote(
-      showcaseId: string,
-      userId: string,
-    ): Promise<boolean> {
-      const result = await rpc<{ exists: boolean }>({
-        method: "showcases.checkUpvote",
-        showcaseId,
-        visitorId: userId,
-      });
-      return result.exists;
-    },
-
-    async getShowcaseUpvoteCount(showcaseId: string): Promise<number> {
-      return rpc<number>({ method: "showcases.getUpvoteCount", showcaseId });
-    },
-
-    async listShowcases(options: {
-      userId?: string;
-      publicOnly?: boolean;
-      currentUserId?: string;
-      orderBy?: "created_at" | "upvote_count";
-      limit: number;
-      offset: number;
-    }): Promise<ShowcaseRpcRow[]> {
-      return rpc<ShowcaseRpcRow[]>({
-        method: "showcases.list",
-        ...options,
-      });
-    },
-
-    async countShowcases(options?: {
-      userId?: string;
-      publicOnly?: boolean;
-    }): Promise<number> {
-      return rpc<number>({
-        method: "showcases.count",
-        ...options,
       });
     },
 
