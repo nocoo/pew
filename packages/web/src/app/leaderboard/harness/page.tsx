@@ -54,15 +54,15 @@ const AGENT_ITEMS: FilterDropdownItem[] = AGENTS.map((a) => ({
 // Page
 // ---------------------------------------------------------------------------
 
-export default function AgentsLeaderboardPage() {
+export default function HarnessLeaderboardPage() {
   return (
     <Suspense>
-      <AgentsLeaderboardContent />
+      <HarnessLeaderboardContent />
     </Suspense>
   );
 }
 
-function AgentsLeaderboardContent() {
+function HarnessLeaderboardContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -94,7 +94,7 @@ function AgentsLeaderboardContent() {
         params.set("source", agent);
       }
       const qs = params.toString();
-      router.replace(`/leaderboard/agents${qs ? `?${qs}` : ""}`, { scroll: false });
+      router.replace(`/leaderboard/harness${qs ? `?${qs}` : ""}`, { scroll: false });
     },
     [searchParams, router],
   );
@@ -121,7 +121,7 @@ function AgentsLeaderboardContent() {
       {/* Header */}
       <LeaderboardPageTitle
         subtitle="Leaderboard"
-        description="Top users by agent — who's burning the most tokens?"
+        description="Top users by harness — who's burning the most tokens?"
       />
 
       {/* Main content */}
