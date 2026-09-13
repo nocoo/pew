@@ -45,7 +45,7 @@ export function GoalHeatmap({ data, year, className }: GoalHeatmapProps) {
   );
 
   // Compute stats from data
-  const { daysOnTarget, achievementRate } = useMemo(() => {
+  const { daysOnTarget, onTargetRate } = useMemo(() => {
     let onTarget = 0;
     let activeDays = 0;
     for (const d of data) {
@@ -57,7 +57,7 @@ export function GoalHeatmap({ data, year, className }: GoalHeatmapProps) {
       }
     }
     const rate = activeDays > 0 ? Math.round((onTarget / activeDays) * 100) : 0;
-    return { daysOnTarget: onTarget, achievementRate: rate };
+    return { daysOnTarget: onTarget, onTargetRate: rate };
   }, [data, thresholds]);
 
   return (
@@ -81,11 +81,11 @@ export function GoalHeatmap({ data, year, className }: GoalHeatmapProps) {
         </Button>
       </div>
 
-      {/* Header: achievement rate + days on target — fixed height for alignment */}
+      {/* Header: target rate + days on target — fixed height for alignment */}
       <div className="mb-3 h-14">
         <div className="flex items-baseline gap-1.5">
           <span className="text-2xl md:text-3xl font-bold font-display tracking-tight text-foreground">
-            {achievementRate}%
+            {onTargetRate}%
           </span>
           <span className="text-xs text-muted-foreground">on target</span>
         </div>

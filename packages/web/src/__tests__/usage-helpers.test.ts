@@ -7,7 +7,7 @@ import {
   sourceLabel,
   type UsageRow,
 } from "@/hooks/use-usage-data";
-import { toLocalDailyBuckets, compareWeekdayWeekend, computeMoMGrowth, computeStreak, toSourceTrendPoints, toDominantSourceTimeline, computeWoWGrowth, toHourlyWeekdayWeekend } from "@/lib/usage-helpers";
+import { toLocalDailyBuckets, compareWeekdayWeekend, computeMoMGrowth, toSourceTrendPoints, toDominantSourceTimeline, computeWoWGrowth, toHourlyWeekdayWeekend } from "@/lib/usage-helpers";
 import { getDefaultPricingMap } from "@/lib/pricing";
 import type { PricingMap } from "@/lib/pricing";
 
@@ -620,116 +620,6 @@ describe("computeMoMGrowth", () => {
 });
 
 // ---------------------------------------------------------------------------
-// computeStreak
-// ---------------------------------------------------------------------------
-
-describe("computeStreak", () => {
-  it("should return zeros for empty input", () => {
-    const result = computeStreak([], "2026-03-10");
-
-    expect(result.currentStreak).toBe(0);
-    expect(result.longestStreak).toBe(0);
-    expect(result.longestStreakStart).toBe("");
-    expect(result.longestStreakEnd).toBe("");
-    expect(result.isActiveToday).toBe(false);
-  });
-
-  it("should detect single-day current streak (active today)", () => {
-    const rows = [
-      makeRow({ hour_start: "2026-03-10T10:00:00Z", total_tokens: 1000, input_tokens: 800, output_tokens: 200, cached_input_tokens: 100 }),
-    ];
-
-    const result = computeStreak(rows, "2026-03-10");
-
-    expect(result.currentStreak).toBe(1);
-    expect(result.longestStreak).toBe(1);
-    expect(result.isActiveToday).toBe(true);
-  });
-
-  it("should detect multi-day consecutive streak", () => {
-    const rows = [
-      makeRow({ hour_start: "2026-03-07T10:00:00Z", total_tokens: 100, input_tokens: 80, output_tokens: 20, cached_input_tokens: 10 }),
-      makeRow({ hour_start: "2026-03-08T10:00:00Z", total_tokens: 200, input_tokens: 160, output_tokens: 40, cached_input_tokens: 20 }),
-      makeRow({ hour_start: "2026-03-09T10:00:00Z", total_tokens: 300, input_tokens: 240, output_tokens: 60, cached_input_tokens: 30 }),
-      makeRow({ hour_start: "2026-03-10T10:00:00Z", total_tokens: 400, input_tokens: 320, output_tokens: 80, cached_input_tokens: 40 }),
-    ];
-
-    const result = computeStreak(rows, "2026-03-10");
-
-    expect(result.currentStreak).toBe(4);
-    expect(result.longestStreak).toBe(4);
-    expect(result.longestStreakStart).toBe("2026-03-07");
-    expect(result.longestStreakEnd).toBe("2026-03-10");
-    expect(result.isActiveToday).toBe(true);
-  });
-
-  it("should count current streak from yesterday if not active today", () => {
-    const rows = [
-      makeRow({ hour_start: "2026-03-08T10:00:00Z", total_tokens: 100, input_tokens: 80, output_tokens: 20, cached_input_tokens: 10 }),
-      makeRow({ hour_start: "2026-03-09T10:00:00Z", total_tokens: 200, input_tokens: 160, output_tokens: 40, cached_input_tokens: 20 }),
-    ];
-
-    const result = computeStreak(rows, "2026-03-10");
-
-    expect(result.currentStreak).toBe(2);
-    expect(result.isActiveToday).toBe(false);
-  });
-
-  it("should track longest streak separately from current", () => {
-    // Longest streak: Mar 1-5 (5 days), gap on Mar 6, current: Mar 7-10 (4 days)
-    const rows = [
-      makeRow({ hour_start: "2026-03-01T10:00:00Z", total_tokens: 100, input_tokens: 80, output_tokens: 20, cached_input_tokens: 10 }),
-      makeRow({ hour_start: "2026-03-02T10:00:00Z", total_tokens: 100, input_tokens: 80, output_tokens: 20, cached_input_tokens: 10 }),
-      makeRow({ hour_start: "2026-03-03T10:00:00Z", total_tokens: 100, input_tokens: 80, output_tokens: 20, cached_input_tokens: 10 }),
-      makeRow({ hour_start: "2026-03-04T10:00:00Z", total_tokens: 100, input_tokens: 80, output_tokens: 20, cached_input_tokens: 10 }),
-      makeRow({ hour_start: "2026-03-05T10:00:00Z", total_tokens: 100, input_tokens: 80, output_tokens: 20, cached_input_tokens: 10 }),
-      // gap on Mar 6
-      makeRow({ hour_start: "2026-03-07T10:00:00Z", total_tokens: 100, input_tokens: 80, output_tokens: 20, cached_input_tokens: 10 }),
-      makeRow({ hour_start: "2026-03-08T10:00:00Z", total_tokens: 100, input_tokens: 80, output_tokens: 20, cached_input_tokens: 10 }),
-      makeRow({ hour_start: "2026-03-09T10:00:00Z", total_tokens: 100, input_tokens: 80, output_tokens: 20, cached_input_tokens: 10 }),
-      makeRow({ hour_start: "2026-03-10T10:00:00Z", total_tokens: 100, input_tokens: 80, output_tokens: 20, cached_input_tokens: 10 }),
-    ];
-
-    const result = computeStreak(rows, "2026-03-10");
-
-    expect(result.currentStreak).toBe(4);
-    expect(result.longestStreak).toBe(5);
-    expect(result.longestStreakStart).toBe("2026-03-01");
-    expect(result.longestStreakEnd).toBe("2026-03-05");
-    expect(result.isActiveToday).toBe(true);
-  });
-
-  it("should handle timezone offset shifting dates across midnight", () => {
-    // In PST (UTC-8), a record at 2026-03-11T03:00Z is actually
-    // 2026-03-10T19:00 PST → should count as Mar 10 activity
-    const rows = [
-      makeRow({ hour_start: "2026-03-10T18:00:00Z", total_tokens: 100, input_tokens: 80, output_tokens: 20, cached_input_tokens: 10 }), // Mar 10 10:00 PST
-      makeRow({ hour_start: "2026-03-11T03:00:00Z", total_tokens: 200, input_tokens: 160, output_tokens: 40, cached_input_tokens: 20 }), // Mar 10 19:00 PST
-    ];
-
-    const result = computeStreak(rows, "2026-03-10", 480); // PST
-
-    expect(result.currentStreak).toBe(1);
-    expect(result.isActiveToday).toBe(true);
-    expect(result.longestStreak).toBe(1);
-  });
-
-  it("should return 0 current streak when gap is more than 1 day from today", () => {
-    const rows = [
-      makeRow({ hour_start: "2026-03-05T10:00:00Z", total_tokens: 100, input_tokens: 80, output_tokens: 20, cached_input_tokens: 10 }),
-      makeRow({ hour_start: "2026-03-06T10:00:00Z", total_tokens: 100, input_tokens: 80, output_tokens: 20, cached_input_tokens: 10 }),
-    ];
-
-    // Today is Mar 10, last activity Mar 6 — gap of 4 days
-    const result = computeStreak(rows, "2026-03-10");
-
-    expect(result.currentStreak).toBe(0);
-    expect(result.longestStreak).toBe(2);
-    expect(result.isActiveToday).toBe(false);
-  });
-});
-
-// ---------------------------------------------------------------------------
 // toSourceTrendPoints
 // ---------------------------------------------------------------------------
 
@@ -1060,7 +950,7 @@ describe("toHourlyWeekdayWeekend", () => {
 // Defensive default-argument paths
 // ---------------------------------------------------------------------------
 
-describe("default `now` and `today` arguments", () => {
+describe("default `now` arguments", () => {
   it("computeMoMGrowth handles January reference (previous month wraps to December of previous year)", () => {
     const rows = [
       // December 2025 (previous month when ref = Jan 2026)
@@ -1080,14 +970,6 @@ describe("default `now` and `today` arguments", () => {
     expect(result.currentWeek.tokens).toBe(0);
     expect(result.previousWeek.tokens).toBe(0);
     expect(result.tokenGrowth).toBe(0);
-  });
-
-  it("computeStreak uses getLocalToday when `today` argument is omitted", () => {
-    // Empty rows — the only effect of the default branch is to assign today; result still zeros.
-    const result = computeStreak([]);
-    expect(result.currentStreak).toBe(0);
-    expect(result.longestStreak).toBe(0);
-    expect(result.isActiveToday).toBe(false);
   });
 
   it("toDominantSourceTimeline returns dominantShare=0 for a day with all-zero token rows", () => {

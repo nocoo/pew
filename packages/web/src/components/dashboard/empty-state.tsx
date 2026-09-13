@@ -66,7 +66,7 @@ export function DashboardEmptyState({ className }: { className?: string }) {
     <EmptyState
       icon={Zap}
       title="Ready to Track Your AI Usage"
-      description="Connect your first AI coding tool and watch your token usage come to life. We'll show you insights, trends, and achievements."
+      description="Connect your first AI coding tool and watch your token usage come to life. We'll show you insights and trends."
       action={{
         label: "Get Started",
         href: "/agents",

@@ -156,16 +156,6 @@ export function createMockDbRead() {
     // Settings RPC methods
     getAllAppSettings: vi.fn(),
     getAllUserSettings: vi.fn(),
-    // Achievements RPC methods
-    getAchievementUsageAggregates: vi.fn(),
-    getAchievementDailyUsage: vi.fn(),
-    getAchievementDailyCostBreakdown: vi.fn(),
-    getAchievementDiversityCounts: vi.fn(),
-    getAchievementSessionAggregates: vi.fn(),
-    getAchievementHourlyUsage: vi.fn(),
-    getAchievementCostByModelSource: vi.fn(),
-    getAchievementEarners: vi.fn(),
-    getAchievementEarnersCount: vi.fn(),
     // Leaderboard RPC methods
     getGlobalLeaderboard: vi.fn(),
     getLeaderboardUserTeams: vi.fn(),
@@ -266,15 +256,6 @@ export function createMockDbRead() {
     checkUserHasUnusedInvite: ReturnType<typeof vi.fn>;
     getAllAppSettings: ReturnType<typeof vi.fn>;
     getAllUserSettings: ReturnType<typeof vi.fn>;
-    getAchievementUsageAggregates: ReturnType<typeof vi.fn>;
-    getAchievementDailyUsage: ReturnType<typeof vi.fn>;
-    getAchievementDailyCostBreakdown: ReturnType<typeof vi.fn>;
-    getAchievementDiversityCounts: ReturnType<typeof vi.fn>;
-    getAchievementSessionAggregates: ReturnType<typeof vi.fn>;
-    getAchievementHourlyUsage: ReturnType<typeof vi.fn>;
-    getAchievementCostByModelSource: ReturnType<typeof vi.fn>;
-    getAchievementEarners: ReturnType<typeof vi.fn>;
-    getAchievementEarnersCount: ReturnType<typeof vi.fn>;
     getGlobalLeaderboard: ReturnType<typeof vi.fn>;
     getLeaderboardUserTeams: ReturnType<typeof vi.fn>;
     getLeaderboardSessionStats: ReturnType<typeof vi.fn>;
@@ -328,16 +309,6 @@ export function createMockClient() {
     checkSharedSeason: vi.fn(),
     getUserFirstSeen: vi.fn(),
     getPublicUserBySlugOrId: vi.fn(),
-    // Achievements RPC methods
-    getAchievementUsageAggregates: vi.fn(),
-    getAchievementDailyUsage: vi.fn(),
-    getAchievementDailyCostBreakdown: vi.fn(),
-    getAchievementDiversityCounts: vi.fn(),
-    getAchievementSessionAggregates: vi.fn(),
-    getAchievementHourlyUsage: vi.fn(),
-    getAchievementCostByModelSource: vi.fn(),
-    getAchievementEarners: vi.fn(),
-    getAchievementEarnersCount: vi.fn(),
     // Leaderboard RPC methods
     getGlobalLeaderboard: vi.fn(),
     getLeaderboardUserTeams: vi.fn(),

@@ -34,6 +34,11 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: "/leaderboard/achievements",
+        destination: "/leaderboard",
+        permanent: true,
+      },
+      {
         source: "/leaderboard/showcases",
         destination: "/leaderboard",
         permanent: true,

@@ -2,14 +2,13 @@
 import { test, expect, mockLeaderboardApi } from "./fixtures";
 
 const LEADERBOARD_SUB_PAGES: ReadonlyArray<string> = [
-  "achievements",
   "agents",
   "models",
   "seasons",
 ];
 
 test.describe("Feature: Leaderboard", () => {
-  test("Given auth is bypassed, When I visit /leaderboard, Then the pew heading and Individual/Seasons/Achievements tabs are visible", async ({ page }) => {
+  test("Given auth is bypassed, When I visit /leaderboard, Then the pew heading and Individual/Seasons/Agents tabs are visible", async ({ page }) => {
     // Given: E2E_SKIP_AUTH=true is set by the runner
     // When: visit /leaderboard
     await page.goto("/leaderboard");
@@ -17,16 +16,16 @@ test.describe("Feature: Leaderboard", () => {
     await expect(page.getByRole("heading", { level: 1 })).toContainText("pew");
     await expect(page.getByRole("link", { name: "Individual" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Seasons" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Achievements" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Agents" })).toBeVisible();
   });
 
-  test("Given auth is bypassed, When I click the Achievements tab from /leaderboard, Then the URL updates to /leaderboard/achievements", async ({ page }) => {
+  test("Given auth is bypassed, When I click the Agents tab from /leaderboard, Then the URL updates to /leaderboard/agents", async ({ page }) => {
     // Given: E2E_SKIP_AUTH=true is set by the runner
-    // When: visit /leaderboard and click the Achievements tab
+    // When: visit /leaderboard and click the Agents tab
     await page.goto("/leaderboard");
-    await page.getByRole("link", { name: "Achievements" }).click();
-    // Then: URL updates to the achievements sub-page
-    await expect(page).toHaveURL(/\/leaderboard\/achievements/);
+    await page.getByRole("link", { name: "Agents" }).click();
+    // Then: URL updates to the agents sub-page
+    await expect(page).toHaveURL(/\/leaderboard\/agents/);
   });
 
   for (const subPage of LEADERBOARD_SUB_PAGES) {

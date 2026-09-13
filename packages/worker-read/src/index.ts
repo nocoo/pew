@@ -21,7 +21,6 @@ import { handleProjectsRpc, type ProjectsRpcRequest } from "./rpc/projects";
 import { handleTeamsRpc, type TeamsRpcRequest } from "./rpc/teams";
 import { handleSeasonsRpc, type SeasonsRpcRequest } from "./rpc/seasons";
 import { handleUsageRpc, type UsageRpcRequest } from "./rpc/usage";
-import { handleAchievementsRpc, type AchievementsRpcRequest } from "./rpc/achievements";
 import { handleDevicesRpc, type DevicesRpcRequest } from "./rpc/devices";
 import { handleOrganizationsRpc, type OrganizationsRpcRequest } from "./rpc/organizations";
 import { handleSettingsRpc, type SettingsRpcRequest } from "./rpc/settings";
@@ -322,7 +321,6 @@ export type RpcRequest =
   | TeamsRpcRequest
   | SeasonsRpcRequest
   | UsageRpcRequest
-  | AchievementsRpcRequest
   | DevicesRpcRequest
   | OrganizationsRpcRequest
   | SettingsRpcRequest
@@ -361,8 +359,6 @@ async function handleRpc(body: unknown, env: Env): Promise<Response> {
         return handleSeasonsRpc(body as SeasonsRpcRequest, env.DB, env.CACHE);
       case "usage":
         return handleUsageRpc(body as UsageRpcRequest, env.DB);
-      case "achievements":
-        return handleAchievementsRpc(body as AchievementsRpcRequest, env.DB, env.CACHE);
       case "devices":
         return handleDevicesRpc(body as DevicesRpcRequest, env.DB);
       case "organizations":

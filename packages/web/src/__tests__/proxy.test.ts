@@ -132,7 +132,7 @@ describe("isPublicRoute", () => {
     "/leaderboard",
     "/leaderboard/seasons",
     "/leaderboard/seasons/2026-spring",
-    "/leaderboard/achievements",
+    "/leaderboard/models",
   ])("should return false for protected route: %s", (path) => {
     expect(isPublicRoute(path)).toBe(false);
   });

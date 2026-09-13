@@ -23,7 +23,7 @@ export const chart = {
   orange:  v("chart-5"),
   gold:    v("chart-6"),
   lime:    v("chart-7"),
-  acid:    v("chart-8"),  // Acid Lime — heatmap/achievement accent
+  acid:    v("chart-8"),  // Acid Lime — heatmap accent
   teal:    v("chart-9"),  // Teal/Cyan — 9th color
   sky:     v("chart-10"), // Sky blue — 10th color
   indigo:  v("chart-11"), // Indigo — 11th color

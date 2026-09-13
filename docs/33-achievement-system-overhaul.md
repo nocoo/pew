@@ -1,5 +1,7 @@
 # 33 — Achievement System Overhaul
 
+> Retired in September 2026. Kept as a historical design record.
+
 > "Welcome to the Hall of Shame, where every token spent is a badge of dishonor."
 
 ## Background

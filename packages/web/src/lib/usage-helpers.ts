@@ -9,7 +9,6 @@ import type { UsageRow } from "@/lib/usage-transforms";
 import { sourceLabel, toLocalDateStr } from "@/lib/usage-transforms";
 import { lookupPricing, estimateCost } from "@/lib/pricing";
 import type { PricingMap } from "@/lib/pricing";
-import { getLocalToday } from "@/lib/date-helpers";
 
 // ---------------------------------------------------------------------------
 // Re-export toLocalDateStr for backward compatibility
@@ -111,20 +110,6 @@ export interface WoWComparison {
   sameDayTokenGrowth: number;
   /** Same-day cost growth: current week vs previous week up to same day-of-week */
   sameDayCostGrowth: number;
-}
-
-/** Consecutive usage day streak info. */
-export interface StreakInfo {
-  /** Consecutive days ending today (or yesterday) */
-  currentStreak: number;
-  /** Longest streak within available data */
-  longestStreak: number;
-  /** Start date of longest streak ("YYYY-MM-DD") */
-  longestStreakStart: string;
-  /** End date of longest streak ("YYYY-MM-DD") */
-  longestStreakEnd: string;
-  /** Whether there is usage today */
-  isActiveToday: boolean;
 }
 
 export interface SourceTrendPoint {
@@ -710,108 +695,6 @@ export function computeWoWGrowth(
     costGrowth,
     sameDayTokenGrowth,
     sameDayCostGrowth,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// computeStreak
-// ---------------------------------------------------------------------------
-
-/**
- * Compute consecutive-day usage streaks, similar to GitHub contribution streaks.
- *
- * Re-buckets rows into local days using `toLocalDailyBuckets()`, then walks
- * the sorted dates to find current and longest streaks.
- *
- * Current streak: consecutive days ending at `today` or `yesterday`.
- * Longest streak: maximum consecutive run in available data.
- *
- * @param rows     — raw UsageRow[] (half-hour granularity for timezone accuracy)
- * @param today    — local date string "YYYY-MM-DD" (defaults to today)
- * @param tzOffset — minutes from UTC (positive = west), default 0
- */
-export function computeStreak(
-  rows: UsageRow[],
-  today?: string,
-  tzOffset = 0,
-): StreakInfo {
-  const buckets = toLocalDailyBuckets(rows, tzOffset);
-  const activeDates = new Set(buckets.map((b) => b.date));
-
-  if (activeDates.size === 0) {
-    return {
-      currentStreak: 0,
-      longestStreak: 0,
-      longestStreakStart: "",
-      longestStreakEnd: "",
-      isActiveToday: false,
-    };
-  }
-
-  const todayStr = today ?? getLocalToday(tzOffset);
-  const isActiveToday = activeDates.has(todayStr);
-  const DAY_MS = 86_400_000;
-
-  // Helper: get date string N days before a given date
-  const dayBefore = (dateStr: string, n = 1): string => {
-    const ms = new Date(`${dateStr}T00:00:00Z`).getTime() - n * DAY_MS;
-    return new Date(ms).toISOString().slice(0, 10);
-  };
-
-  // Current streak: walk backwards from today (or yesterday if not active today)
-  let currentStreak = 0;
-  let checkDate = isActiveToday ? todayStr : dayBefore(todayStr);
-
-  // If not active today and not active yesterday, current streak is 0
-  if (!isActiveToday && !activeDates.has(checkDate)) {
-    currentStreak = 0;
-  } else {
-    while (activeDates.has(checkDate)) {
-      currentStreak++;
-      checkDate = dayBefore(checkDate);
-    }
-  }
-
-  // Longest streak: sort all dates and walk forward
-  const sortedDates = Array.from(activeDates).sort();
-  let longestStreak = 0;
-  let longestStart = "";
-  let longestEnd = "";
-  let runLength = 1;
-  let runStart = sortedDates[0] as string;
-
-  for (let i = 1; i < sortedDates.length; i++) {
-    const prevDate = sortedDates[i - 1] as string;
-    const currDate = sortedDates[i] as string;
-    const prevMs = new Date(`${prevDate}T00:00:00Z`).getTime();
-    const currMs = new Date(`${currDate}T00:00:00Z`).getTime();
-
-    if (currMs - prevMs === DAY_MS) {
-      runLength++;
-    } else {
-      if (runLength > longestStreak) {
-        longestStreak = runLength;
-        longestStart = runStart;
-        longestEnd = prevDate;
-      }
-      runLength = 1;
-      runStart = currDate;
-    }
-  }
-
-  // Check the last run
-  if (runLength > longestStreak) {
-    longestStreak = runLength;
-    longestStart = runStart;
-    longestEnd = sortedDates[sortedDates.length - 1] as string;
-  }
-
-  return {
-    currentStreak,
-    longestStreak,
-    longestStreakStart: longestStart,
-    longestStreakEnd: longestEnd,
-    isActiveToday,
   };
 }
 

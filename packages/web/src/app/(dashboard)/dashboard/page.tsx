@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Zap,
   ArrowDownToLine,
@@ -13,7 +13,6 @@ import {
 import { useUsageData, toHeatmapData } from "@/hooks/use-usage-data";
 import { UsageTimingNotice } from "@/components/dashboard/usage-timing-notice";
 import { useTzOffset } from "@/hooks/use-tz-offset";
-import { useAchievements } from "@/hooks/use-achievements";
 import { formatTokens } from "@/lib/utils";
 import { usePricingMap, formatCost } from "@/hooks/use-pricing";
 import { computeTotalCost, toDailyCostPoints, computeCacheSavings, forecastMonthlyCost, toDailyCacheRates } from "@/lib/cost-helpers";
@@ -55,6 +54,8 @@ export default function DashboardPage() {
   // and by periodToDateRange below). Read once via the hook so every API
   // query and local aggregation on this page sees the same offset.
   const tzOffset = useTzOffset();
+  const today = useMemo(() => getLocalToday(tzOffset), [tzOffset]);
+  const currentYear = Number(today.slice(0, 4));
 
   const { from, to } = periodToDateRange(period, tzOffset);
 
@@ -62,7 +63,7 @@ export default function DashboardPage() {
     from,
     ...(to ? { to } : {}),
   });
-  const yearData = useUsageData({ days: 365 });
+  const yearData = useUsageData({ from: `${currentYear}-01-01`, to: today });
 
   // Half-hour granularity fetch for weekday/weekend analysis (period-bounded)
   const halfHourData = useUsageData({
@@ -77,33 +78,10 @@ export default function DashboardPage() {
   // Fixed 62-day window for MoM comparison (ensures both months are present)
   const momData = useUsageData({ days: 62, granularity: "half-hour" });
 
-  // Responsive achievements limit: 9 on large screens, 6 on medium, 3 on small
-  const [achievementsLimit, setAchievementsLimit] = useState<3 | 6 | 9>(9);
-  useEffect(() => {
-    const updateLimit = () => {
-      // These breakpoints match the TopAchievement grid layout
-      if (window.innerWidth >= 768) {
-        setAchievementsLimit(9); // 3x3 grid
-      } else if (window.innerWidth >= 480) {
-        setAchievementsLimit(6); // 2x3 grid
-      } else {
-        setAchievementsLimit(3); // 1x3 grid
-      }
-    };
-    updateLimit();
-    window.addEventListener("resize", updateLimit);
-    return () => window.removeEventListener("resize", updateLimit);
-  }, []);
-
-  // Server-side achievements
-  const { data: achievementsData, loading: achievementsLoading } = useAchievements({ limit: achievementsLimit });
-
-  const currentYear = new Date().getFullYear();
   const heatmapData = toHeatmapData(yearData.daily);
+  const activeDays = yearData.daily.filter((day) => day.total > 0).length;
 
   const { pricingMap } = usePricingMap();
-
-  const today = useMemo(() => getLocalToday(tzOffset), [tzOffset]);
 
   // Fill date gaps + extend to today so charts always show up to the current day
   const filledDaily = useMemo<DailyPoint[]>(
@@ -173,11 +151,6 @@ export default function DashboardPage() {
     return toHourlyWeekdayWeekend(halfHourData.data.records, { from, to: toStr }, tzOffset);
   }, [halfHourData.data, from, to, tzOffset]);
 
-  // Streak data for HeatmapHero (from server-side achievements)
-  const currentStreak = achievementsData?.summary.currentStreak ?? 0;
-  const longestStreak = achievementsData?.summary.longestStreak ?? 0;
-  const activeDays = achievementsData?.summary.activeDays ?? 0;
-
   // Year total tokens for HeatmapHero
   const yearTotalTokens = yearData.data?.summary.total_tokens ?? 0;
 
@@ -210,16 +183,13 @@ export default function DashboardPage() {
       {/* Content — only show when there's actual data */}
       {!loading && data && data.summary.total_tokens > 0 && (
         <>
-          {/* ── Hero: Year Activity Heatmap + Achievements ────── */}
+          {/* ── Hero: Year Activity + Goal Tracker ───────────── */}
           <HeatmapHero
             data={heatmapData}
             year={currentYear}
             totalTokens={yearTotalTokens}
-            currentStreak={currentStreak}
-            longestStreak={longestStreak}
             activeDays={activeDays}
-            achievements={achievementsData?.achievements ?? []}
-            loading={yearData.loading || achievementsLoading}
+            loading={yearData.loading}
           />
 
           {/* ── Overview ────────────────────────────────────── */}

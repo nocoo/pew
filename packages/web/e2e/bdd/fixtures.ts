@@ -53,18 +53,6 @@ export const DASHBOARD_USAGE_EMPTY_FIXTURE = {
   },
 } as const;
 
-export const DASHBOARD_ACHIEVEMENTS_FIXTURE = {
-  achievements: [],
-  summary: {
-    totalUnlocked: 0,
-    totalAchievements: 0,
-    diamondCount: 0,
-    currentStreak: 0,
-    longestStreak: 0,
-    activeDays: 0,
-  },
-} as const;
-
 export const DASHBOARD_PRICING_FIXTURE = {
   models: {},
   prefixes: [],
@@ -74,7 +62,6 @@ export const DASHBOARD_PRICING_FIXTURE = {
 
 export type DashboardMockOptions = {
   usage: unknown;
-  achievements: unknown;
   pricing: unknown;
 };
 
@@ -141,13 +128,6 @@ export async function mockDashboardApis(
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(opts.usage),
-    }),
-  );
-  await page.route("**/api/achievements*", (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(opts.achievements),
     }),
   );
   await page.route("**/api/pricing", (route) =>

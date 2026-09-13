@@ -100,7 +100,6 @@ test.describe("Feature: Collaboration", () => {
       // Then: navigation tabs are visible (covers "navigation tabs are present")
       await expect(page.getByRole("link", { name: "Individual" })).toBeVisible();
       await expect(page.getByRole("link", { name: "Seasons" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Achievements" })).toBeVisible();
     });
 
     test("Given auth is bypassed, When I click the All Time period tab on /leaderboard, Then the All Time tab stays visible", async ({ page }) => {

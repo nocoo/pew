@@ -766,20 +766,6 @@ describe("GET /api/seasons", () => {
 });
 
 // ===========================================================================
-// GET /api/achievements
-// ===========================================================================
-
-describe("GET /api/achievements", () => {
-  it("should return achievements for user", async () => {
-    const res = await fetch(`${BASE_URL}/api/achievements`);
-    expect(res.status).toBe(200);
-    const body = await res.json();
-
-    expect(Array.isArray(body.achievements)).toBe(true);
-  });
-});
-
-// ===========================================================================
 // GET /api/usage/by-device
 // ===========================================================================
 
@@ -993,28 +979,6 @@ describe("GET /api/users/[slug]", () => {
 
   // Note: Testing own profile requires user to be public or authorized
   // The test user may not be public, so we just test the 404 case
-});
-
-// ===========================================================================
-// GET /api/users/[slug]/achievements
-// ===========================================================================
-
-describe("GET /api/users/[slug]/achievements", () => {
-  it("should return 404 for non-existent user", async () => {
-    const res = await fetch(`${BASE_URL}/api/users/non-existent-slug/achievements`);
-    expect(res.status).toBe(404);
-  });
-});
-
-// ===========================================================================
-// GET /api/achievements/[id]/members
-// ===========================================================================
-
-describe("GET /api/achievements/[id]/members", () => {
-  it("should return 404 for non-existent achievement", async () => {
-    const res = await fetch(`${BASE_URL}/api/achievements/non-existent/members`);
-    expect(res.status).toBe(404);
-  });
 });
 
 // ===========================================================================
@@ -1458,6 +1422,9 @@ describe("retired feature endpoints", () => {
     "/api/showcases/retired/upvote",
     "/api/showcases/retired/refresh",
     "/api/admin/showcases",
+    "/api/achievements",
+    "/api/achievements/retired/members",
+    "/api/users/retired/achievements",
   ])("returns 404 for %s", async (path) => {
     const response = await fetch(`${BASE_URL}${path}`);
     expect(response.status).toBe(404);

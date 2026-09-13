@@ -55,14 +55,6 @@ import type {
   LeaderboardEntryRow,
   LeaderboardUserTeamRow,
   LeaderboardSessionStatsRow,
-  AchievementUsageAggregates,
-  AchievementDailyUsageRow,
-  AchievementDailyCostRow,
-  AchievementDiversityCounts,
-  AchievementSessionAggregates,
-  AchievementHourlyUsageRow,
-  AchievementCostByModelSourceRow,
-  AchievementEarnerRow,
   BadgeRow,
   BadgeAssignmentRow,
   ActiveBadgeRow,
@@ -889,99 +881,6 @@ export function createWorkerDbRead(): DbRead {
 
     async getAllUserSettings(userId: string): Promise<UserSettingRow[]> {
       return rpc<UserSettingRow[]>({ method: "settings.getAllUser", userId });
-    },
-
-    // -------------------------------------------------------------------------
-    // Achievements domain RPC methods
-    // -------------------------------------------------------------------------
-
-    async getAchievementUsageAggregates(
-      userId: string,
-    ): Promise<AchievementUsageAggregates | null> {
-      return rpc<AchievementUsageAggregates | null>({
-        method: "achievements.getUsageAggregates",
-        userId,
-      });
-    },
-
-    async getAchievementDailyUsage(
-      userId: string,
-    ): Promise<AchievementDailyUsageRow[]> {
-      return rpc<AchievementDailyUsageRow[]>({
-        method: "achievements.getDailyUsage",
-        userId,
-      });
-    },
-
-    async getAchievementDailyCostBreakdown(
-      userId: string,
-    ): Promise<AchievementDailyCostRow[]> {
-      return rpc<AchievementDailyCostRow[]>({
-        method: "achievements.getDailyCostBreakdown",
-        userId,
-      });
-    },
-
-    async getAchievementDiversityCounts(
-      userId: string,
-    ): Promise<AchievementDiversityCounts | null> {
-      return rpc<AchievementDiversityCounts | null>({
-        method: "achievements.getDiversityCounts",
-        userId,
-      });
-    },
-
-    async getAchievementSessionAggregates(
-      userId: string,
-    ): Promise<AchievementSessionAggregates | null> {
-      return rpc<AchievementSessionAggregates | null>({
-        method: "achievements.getSessionAggregates",
-        userId,
-      });
-    },
-
-    async getAchievementHourlyUsage(
-      userId: string,
-    ): Promise<AchievementHourlyUsageRow[]> {
-      return rpc<AchievementHourlyUsageRow[]>({
-        method: "achievements.getHourlyUsage",
-        userId,
-      });
-    },
-
-    async getAchievementCostByModelSource(
-      userId: string,
-    ): Promise<AchievementCostByModelSourceRow[]> {
-      return rpc<AchievementCostByModelSourceRow[]>({
-        method: "achievements.getCostByModelSource",
-        userId,
-      });
-    },
-
-    async getAchievementEarners(
-      achievementId: string,
-      sql: string,
-      params: unknown[],
-    ): Promise<AchievementEarnerRow[]> {
-      return rpc<AchievementEarnerRow[]>({
-        method: "achievements.getEarners",
-        achievementId,
-        sql,
-        params,
-      });
-    },
-
-    async getAchievementEarnersCount(
-      achievementId: string,
-      sql: string,
-      params: unknown[],
-    ): Promise<number> {
-      return rpc<number>({
-        method: "achievements.getEarnersCount",
-        achievementId,
-        sql,
-        params,
-      });
     },
 
     // -------------------------------------------------------------------------

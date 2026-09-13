@@ -22,7 +22,6 @@ import { UsageTimingNotice } from "@/components/dashboard/usage-timing-notice";
 import { SourceDonutChart } from "@/components/dashboard/source-donut-chart";
 import { ModelBreakdownChart } from "@/components/dashboard/model-breakdown-chart";
 import { HeatmapCalendar } from "@/components/dashboard/heatmap-calendar";
-import { ProfileAchievements } from "@/components/profile/profile-achievements";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -312,8 +311,6 @@ export function ProfileContent({
             {/* Model breakdown */}
             <ModelBreakdownChart data={models} />
 
-            {/* Achievements */}
-            <ProfileAchievements slug={slug} />
 
             {/* Activity heatmap */}
             <div className="rounded-card bg-secondary p-4 md:p-5">

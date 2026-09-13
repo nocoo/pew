@@ -4,7 +4,6 @@ import {
   expect,
   DASHBOARD_USAGE_FIXTURE,
   DASHBOARD_USAGE_EMPTY_FIXTURE,
-  DASHBOARD_ACHIEVEMENTS_FIXTURE,
   DASHBOARD_PRICING_FIXTURE,
   mockDashboardApis,
 } from "./fixtures";
@@ -23,10 +22,9 @@ test.describe("Feature: Dashboard", () => {
 
   test.describe("with mocked usage data present", () => {
     test.beforeEach(async ({ page }) => {
-      // Given: usage / achievements / pricing APIs return non-empty data
+      // Given: usage and pricing APIs return non-empty data
       await mockDashboardApis(page, {
         usage: DASHBOARD_USAGE_FIXTURE,
-        achievements: DASHBOARD_ACHIEVEMENTS_FIXTURE,
         pricing: DASHBOARD_PRICING_FIXTURE,
       });
     });
@@ -68,6 +66,38 @@ test.describe("Feature: Dashboard", () => {
       await expect(page.getByText("Total Tokens")).toBeVisible({ timeout: 10_000 });
       await expect(page.getByText("Ready to Track Your AI Usage")).not.toBeVisible();
     });
+
+    for (const width of [1440, 390]) {
+      test(`Given usage data, When I open the dashboard at ${width}px, Then activity and goal cards work without achievements`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 1000 });
+        await page.clock.setFixedTime(new Date("2026-09-13T12:00:00Z"));
+        const retiredRequests: string[] = [];
+        page.on("request", (request) => {
+          if (new URL(request.url()).pathname.startsWith("/api/achievements")) {
+            retiredRequests.push(request.url());
+          }
+        });
+
+        await page.goto("/dashboard");
+        const activity = page.getByRole("region", { name: "Activity", exact: true });
+        const goal = page.getByRole("region", { name: "Goal Tracker", exact: true });
+        await expect(activity.getByText("3 active days", { exact: true })).toBeVisible();
+        await expect(activity.getByText("1.5M", { exact: true })).toBeVisible();
+        await expect(goal.getByRole("button", { name: "Goal settings" })).toBeVisible();
+        expect(retiredRequests).toEqual([]);
+
+        const activityBox = (await activity.boundingBox())!;
+        const goalBox = (await goal.boundingBox())!;
+        if (width >= 1024) {
+          expect(Math.abs(activityBox.y - goalBox.y)).toBeLessThan(2);
+          expect(Math.abs(activityBox.width - goalBox.width)).toBeLessThan(2);
+        } else {
+          expect(goalBox.y).toBeGreaterThanOrEqual(activityBox.y + activityBox.height);
+        }
+        const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+        expect(scrollWidth).toBeLessThanOrEqual(width + 1);
+      });
+    }
   });
 
   test.describe("with mocked empty usage data", () => {
@@ -75,7 +105,6 @@ test.describe("Feature: Dashboard", () => {
       // Given: usage API returns summary.total_tokens === 0 -> empty state branch
       await mockDashboardApis(page, {
         usage: DASHBOARD_USAGE_EMPTY_FIXTURE,
-        achievements: DASHBOARD_ACHIEVEMENTS_FIXTURE,
         pricing: DASHBOARD_PRICING_FIXTURE,
       });
     });

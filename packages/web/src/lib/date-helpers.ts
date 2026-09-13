@@ -27,7 +27,7 @@ export const PERIOD_OPTIONS: { value: Period; label: string }[] = [
  * Get today's date string in the user's local timezone.
  *
  * Uses the same UTC-shift technique as `toLocalDailyBuckets()` so that
- * "today" aligns with the bucket dates used by `computeStreak()`.
+ * "today" aligns with the local dates used by usage charts.
  *
  * @param tzOffset — `new Date().getTimezoneOffset()`: minutes from UTC
  *   (positive = west of UTC, e.g. 480 for PST; negative = east, e.g. -540 for JST)

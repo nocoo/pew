@@ -38,7 +38,7 @@
 | 30 | [30-quality-system-upgrade.md](30-quality-system-upgrade.md) | Quality system upgrade — L1+L2+L3+G1+G2 | done |
 | 31 | [31-d1-test-isolation.md](31-d1-test-isolation.md) | D1 test isolation — quality system → Tier S | done |
 | 32 | [32-proxy-token-gap-investigation.md](32-proxy-token-gap-investigation.md) | Proxy token gap investigation | reference |
-| 33 | [33-achievement-system-overhaul.md](33-achievement-system-overhaul.md) | Achievement system overhaul | in-progress |
+| 33 | [33-achievement-system-overhaul.md](33-achievement-system-overhaul.md) | Achievement system overhaul | retired |
 | 34 | [34-showcase-system.md](34-showcase-system.md) | ProductHunt-style showcase system | retired |
 | 35 | [35-hermes-support.md](35-hermes-support.md) | Hermes Agent token tracking (SQLite session-level diff) | done |
 | 36 | [36-kosmos-support-design.md](36-kosmos-support-design.md) | Kosmos / PM Studio token + session tracking | done |
