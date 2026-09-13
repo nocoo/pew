@@ -75,7 +75,6 @@ async function cleanupTestData(d1: D1Client): Promise<void> {
   // Tables without ON DELETE CASCADE must be cleaned manually
   // Use try/catch per table to handle missing tables in test DB (schema drift)
   const tables = [
-    { sql: "DELETE FROM badge_assignments WHERE user_id = ? OR assigned_by = ? OR revoked_by = ?", params: [TEST_USER_ID, TEST_USER_ID, TEST_USER_ID] },
     { sql: "DELETE FROM season_team_members WHERE user_id = ?", params: [TEST_USER_ID] },
     { sql: "DELETE FROM season_leaderboard WHERE user_id = ?", params: [TEST_USER_ID] },
     { sql: "DELETE FROM device_aliases WHERE user_id = ?", params: [TEST_USER_ID] },
@@ -1012,13 +1011,6 @@ describe("GET /api/admin/invites", () => {
   });
 });
 
-describe("GET /api/admin/badges", () => {
-  it("should return 403 for non-admin", async () => {
-    const res = await fetch(`${BASE_URL}/api/admin/badges`);
-    expect(res.status).toBe(403);
-  });
-});
-
 describe("GET /api/admin/seasons", () => {
   it("should return 403 for non-admin", async () => {
     const res = await fetch(`${BASE_URL}/api/admin/seasons`);
@@ -1054,13 +1046,6 @@ describe("GET /api/admin/usage/compare", () => {
   });
 });
 
-describe("GET /api/admin/badges/assignments", () => {
-  it("should return 403 for non-admin", async () => {
-    const res = await fetch(`${BASE_URL}/api/admin/badges/assignments`);
-    expect(res.status).toBe(403);
-  });
-});
-
 // ===========================================================================
 // Account routes
 // ===========================================================================
@@ -1087,37 +1072,6 @@ describe("DELETE /api/account/delete", () => {
   });
 
   // Note: We don't test successful deletion as it would delete the test user
-});
-
-// ===========================================================================
-// Admin badge management routes
-// ===========================================================================
-
-describe("POST /api/admin/badges/[id]/archive", () => {
-  it("should return 403 for non-admin", async () => {
-    const res = await fetch(`${BASE_URL}/api/admin/badges/non-existent/archive`, {
-      method: "POST",
-    });
-    expect(res.status).toBe(403);
-  });
-});
-
-describe("POST /api/admin/badges/[id]/unarchive", () => {
-  it("should return 403 for non-admin", async () => {
-    const res = await fetch(`${BASE_URL}/api/admin/badges/non-existent/unarchive`, {
-      method: "POST",
-    });
-    expect(res.status).toBe(403);
-  });
-});
-
-describe("POST /api/admin/badges/assignments/[id]/revoke", () => {
-  it("should return 403 for non-admin", async () => {
-    const res = await fetch(`${BASE_URL}/api/admin/badges/assignments/non-existent/revoke`, {
-      method: "POST",
-    });
-    expect(res.status).toBe(403);
-  });
 });
 
 // ===========================================================================

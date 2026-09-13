@@ -1,5 +1,7 @@
 # 39 — Badge System
 
+> Retired in September 2026. Kept as a historical design record.
+
 > Admin-assigned badges that shine on the leaderboard — a 7-day spotlight for exceptional contributors.
 
 ## Overview

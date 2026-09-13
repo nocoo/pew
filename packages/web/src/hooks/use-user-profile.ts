@@ -13,15 +13,7 @@ import type {
 import { toHeatmapData } from "@/hooks/use-usage-data";
 import { useDerivedUsageData } from "@/hooks/use-derived-usage-data";
 import { useTzOffset } from "@/hooks/use-tz-offset";
-import type { BadgeIconType } from "@pew/core";
 import { throwApiError } from "@/lib/api-error";
-
-interface UserProfileBadge {
-  text: string;
-  icon: BadgeIconType;
-  colorBg: string;
-  colorText: string;
-}
 
 interface UserProfileUser {
   name: string | null;
@@ -30,7 +22,6 @@ interface UserProfileUser {
   slug: string;
   created_at: string;
   first_seen: string | null;
-  badges?: UserProfileBadge[];
 }
 
 interface UserProfileData {

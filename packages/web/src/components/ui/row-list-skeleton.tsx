@@ -12,7 +12,7 @@ interface RowListSkeletonProps {
 }
 
 /**
- * Loading skeleton for admin row-list pages (organizations, seasons, invites, badges).
+ * Loading skeleton for admin row-list pages (organizations, seasons, invites).
  *
  * Renders the shared shell `rounded-xl bg-secondary p-4` containing a flex row of
  * `h-4` skeletons separated by a flex spacer, with an optional leading element.

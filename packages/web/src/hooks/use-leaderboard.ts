@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { BadgeIconType } from "@pew/core";
 import { throwApiError } from "@/lib/api-error";
 import { toErrorMessage } from "@/lib/error-message";
 
@@ -12,13 +11,6 @@ import { toErrorMessage } from "@/lib/error-message";
 export type LeaderboardPeriod = "week" | "month" | "all";
 type LeaderboardScope = "global" | "org" | "team";
 
-export interface LeaderboardBadge {
-  text: string;
-  icon: BadgeIconType;
-  colorBg: string;
-  colorText: string;
-}
-
 export interface LeaderboardEntry {
   rank: number;
   user: {
@@ -28,7 +20,6 @@ export interface LeaderboardEntry {
     slug: string | null;
   };
   teams: { id: string; name: string; logoUrl: string | null }[];
-  badges: LeaderboardBadge[];
   total_tokens: number;
   input_tokens: number;
   output_tokens: number;

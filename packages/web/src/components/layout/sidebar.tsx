@@ -37,7 +37,6 @@ import {
   ArrowUpRight,
   Database,
   Building2,
-  Medal,
   GitCompareArrows,
 } from "lucide-react";
 import Image from "next/image";
@@ -71,7 +70,6 @@ const ICON_MAP: Record<string, ElementType> = {
   ArrowUpRight,
   Database,
   Building2,
-  Medal,
   GitCompareArrows,
 };
 

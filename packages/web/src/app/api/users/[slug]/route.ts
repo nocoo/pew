@@ -209,20 +209,6 @@ export async function GET(
       // Non-critical — graceful fallthrough
     }
 
-    // Fetch active badges for this user
-    let badges: { text: string; icon: string; colorBg: string; colorText: string }[] = [];
-    try {
-      const activeBadges = await db.getActiveBadgesForUser(user.id);
-      badges = activeBadges.map((b) => ({
-        text: b.text,
-        icon: b.icon,
-        colorBg: b.color_bg,
-        colorText: b.color_text,
-      }));
-    } catch {
-      // Non-critical — graceful fallthrough
-    }
-
     return NextResponse.json({
       user: {
         name: user.name,
@@ -230,7 +216,6 @@ export async function GET(
         slug: user.slug,
         created_at: user.created_at,
         first_seen: firstSeen,
-        badges,
       },
       records,
       summary,

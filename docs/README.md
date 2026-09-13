@@ -46,7 +46,7 @@
 | 36c | [36-github-actions-ci.md](36-github-actions-ci.md) | GitHub Actions CI — Phase 1 (no secrets) | in-progress |
 | 37 | [37-worker-read-security-hardening.md](37-worker-read-security-hardening.md) | Worker-read security hardening | reference |
 | 38 | [38-cloudflare-kv-cache.md](38-cloudflare-kv-cache.md) | Edge caching for worker-read via Cloudflare KV | design |
-| 39 | [39-badge-system.md](39-badge-system.md) | Admin-assigned leaderboard badges (7-day spotlight) | design |
+| 39 | [39-badge-system.md](39-badge-system.md) | Admin-assigned leaderboard badges (7-day spotlight) | retired |
 | 40 | [40-dynamic-model-pricing.md](40-dynamic-model-pricing.md) | Dynamic model pricing (shipped) + [c1–c6 subdocs](40-dynamic-model-pricing/) | done |
 | 40b | [40-l3-bdd-refactor.md](40-l3-bdd-refactor.md) | L3 → BDD test refactor plan | reference |
 | 41 | [41-code-hygiene-metrics.md](41-code-hygiene-metrics.md) | Code hygiene metrics (G1–G10) baseline + cleanup roadmap | in-progress |

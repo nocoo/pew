@@ -29,7 +29,7 @@ export const LeaderboardRow = memo(function LeaderboardRow({
   /** Callback when user clicks the row */
   onSelect: (entry: LeaderboardEntry) => void;
 }) {
-  const { rank, user, teams, badges, total_tokens, session_count, total_duration_seconds } =
+  const { rank, user, teams, total_tokens, session_count, total_duration_seconds } =
     entry;
   const displayName = user.name ?? "Anonymous";
   const initial = displayName[0]?.toUpperCase() ?? "?";
@@ -57,7 +57,7 @@ export const LeaderboardRow = memo(function LeaderboardRow({
 
       {/* Rank — fixed w-8, tabular-nums for alignment */}
       <div className={cn(COL_RANK, "flex items-center justify-center tabular-nums")}>
-        <RankBadge rank={rank} {...(badges[0] && { badge: badges[0] })} />
+        <RankBadge rank={rank} />
       </div>
 
       {/* Avatar + Name + Teams */}

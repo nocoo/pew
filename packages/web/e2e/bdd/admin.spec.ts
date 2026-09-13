@@ -1,23 +1,12 @@
-// Covers old: admin.spec.ts, admin-badges-crud.spec.ts, admin-seasons-crud.spec.ts
+// Covers old: admin.spec.ts, admin-seasons-crud.spec.ts
 import { test, expect } from "./fixtures";
 
 const ADMIN_HEADING_PAGES: ReadonlyArray<{ path: string; keyword: string }> = [
-  { path: "/admin/badges", keyword: "Badge" },
   { path: "/admin/invites", keyword: "Invite" },
   { path: "/admin/model-prices", keyword: "Model Prices" },
   { path: "/admin/seasons", keyword: "Season" },
   { path: "/admin/storage", keyword: "Storage" },
 ];
-
-function randomBadgeText(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  const len = 2 + Math.floor(Math.random() * 2); // 2 or 3 chars
-  let result = "";
-  for (let i = 0; i < len; i++) {
-    result += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return result;
-}
 
 test.describe("Feature: Admin", () => {
   test.describe("page loads", () => {
@@ -41,118 +30,6 @@ test.describe("Feature: Admin", () => {
       await page.goto("/admin/compare/result");
       // Then: Compare heading is visible (covers old: admin.spec.ts "compare result page loads")
       await expect(page.getByRole("heading", { level: 1 })).toContainText("Compare");
-    });
-  });
-
-  test.describe("Badges CRUD", () => {
-    // Serial mode preserved from admin-badges-crud.spec.ts — the second scenario
-    // depends on the badge created by the first scenario in shared module-level state.
-    test.describe.configure({ mode: "serial" });
-
-    const badgeText = randomBadgeText();
-    const badgeId = `test-badge-${Date.now()}`;
-    const badges: Record<string, unknown>[] = [];
-
-    test("Given a route-mocked badges API, When I create a badge via the dialog, Then the new badge text becomes visible", async ({ page }) => {
-      // Given: route-mocked /api/admin/badges with in-memory list, plus empty assignments
-      await page.route("**/api/admin/badges", async (route) => {
-        if (route.request().method() === "GET") {
-          return route.fulfill({
-            status: 200,
-            contentType: "application/json",
-            body: JSON.stringify({ badges }),
-          });
-        }
-        if (route.request().method() === "POST") {
-          const body = route.request().postDataJSON();
-          const badge = {
-            id: badgeId,
-            text: body.text,
-            icon: body.icon,
-            color_bg: "#3B82F6",
-            color_text: "#FFFFFF",
-            description: body.description || null,
-            is_archived: 0,
-            created_at: new Date().toISOString(),
-          };
-          badges.push(badge);
-          return route.fulfill({
-            status: 201,
-            contentType: "application/json",
-            body: JSON.stringify({ badge }),
-          });
-        }
-      });
-      await page.route("**/api/admin/badges/assignments*", (route) =>
-        route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({ assignments: [] }),
-        }),
-      );
-
-      // When: open /admin/badges, click Create Badge, fill the dialog, submit
-      await page.goto("/admin/badges");
-      await expect(page.getByRole("heading", { level: 1 })).toContainText("Badge");
-      await page.getByRole("button", { name: "Create Badge" }).click();
-      await page.getByPlaceholder("MVP").fill(badgeText);
-      await page.getByRole("button", { name: "Shield" }).click();
-      await page.getByRole("button", { name: "Ocean" }).click();
-      const createBtn = page.getByRole("button", { name: "Create", exact: true });
-      await expect(createBtn).toBeEnabled({ timeout: 5_000 });
-      await createBtn.click();
-
-      // Then: the new badge text becomes visible in the list
-      await expect(page.getByText(badgeText).first()).toBeVisible({ timeout: 10_000 });
-    });
-
-    test("Given the badge created in the previous scenario, When I archive it via the confirm dialog, Then the Unarchive button becomes visible", async ({ page }) => {
-      // Given: route-mocked badges GET + assignments + archive POST; the badge from
-      // the previous scenario is still in the shared in-memory `badges` list (serial mode)
-      await page.route("**/api/admin/badges", async (route) => {
-        if (route.request().method() === "GET") {
-          return route.fulfill({
-            status: 200,
-            contentType: "application/json",
-            body: JSON.stringify({ badges }),
-          });
-        }
-      });
-      await page.route("**/api/admin/badges/assignments*", (route) =>
-        route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({ assignments: [] }),
-        }),
-      );
-      await page.route(`**/api/admin/badges/${badgeId}/archive`, async (route) => {
-        if (route.request().method() === "POST") {
-          const badge = badges.find((b) => b.id === badgeId);
-          if (badge) badge.is_archived = 1;
-          return route.fulfill({
-            status: 200,
-            contentType: "application/json",
-            body: JSON.stringify({ success: true }),
-          });
-        }
-      });
-
-      // When: open /admin/badges, click the row's Archive button, confirm in dialog
-      await page.goto("/admin/badges");
-      await expect(page.getByText(badgeText).first()).toBeVisible({ timeout: 10_000 });
-      const badgeRow = page
-        .locator("div")
-        .filter({ hasText: badgeText })
-        .filter({ has: page.getByRole("button", { name: "Archive" }) });
-      await badgeRow.first().getByRole("button", { name: "Archive" }).click();
-      const dialog = page.getByRole("alertdialog");
-      await expect(dialog).toBeVisible();
-      await dialog.getByRole("button", { name: "Archive" }).click();
-
-      // Then: the row now shows an Unarchive button (state flipped)
-      await expect(page.getByRole("button", { name: "Unarchive" })).toBeVisible({
-        timeout: 10_000,
-      });
     });
   });
 

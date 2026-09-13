@@ -17,13 +17,10 @@ import { useSeasons } from "@/hooks/use-seasons";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BadgeIcon } from "@/components/badges/badge-icon";
 import {
   ProfileContent,
   type ProfileTab,
 } from "@/components/profile/profile-content";
-import type { BadgeIconType } from "@pew/core";
-import type { LeaderboardBadge } from "@/hooks/use-leaderboard";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -45,7 +42,6 @@ interface DialogUserData {
   image: string | null;
   created_at: string;
   first_seen: string | null;
-  badges?: { text: string; icon: BadgeIconType; colorBg: string; colorText: string }[];
 }
 
 export interface UserProfileDialogProps {
@@ -57,8 +53,6 @@ export interface UserProfileDialogProps {
   name?: string | null;
   /** Avatar image URL (shown while loading) */
   image?: string | null;
-  /** Active badges for this user (from leaderboard entry) */
-  badges?: LeaderboardBadge[];
   /** Which tab to select initially (default: "7d") */
   defaultTab?: ProfileDialogTab;
   /** Pre-fetched season name (from season leaderboard entry point) */
@@ -159,7 +153,6 @@ function ConfigLoadingSkeleton({
 interface ProfileDialogHeaderProps {
   name?: string | null | undefined;
   image?: string | null | undefined;
-  badges?: LeaderboardBadge[];
   isAdmin: boolean;
   /** Pre-fetched user data from dialog level (avoids duplicate fetch) */
   user?: DialogUserData | null;
@@ -169,7 +162,6 @@ interface ProfileDialogHeaderProps {
 function ProfileDialogHeader({
   name,
   image,
-  badges: badgesProp,
   isAdmin,
   user,
   loading = false,
@@ -178,9 +170,6 @@ function ProfileDialogHeader({
   const displayImage = user?.image ?? image;
   const initial = displayName[0]?.toUpperCase() ?? "?";
   const isFirstLoad = loading && !user;
-
-  // Prefer fresh badges from fetched profile, fall back to prop
-  const displayBadges = user?.badges ?? badgesProp ?? [];
 
   return (
     <div className="flex items-start justify-between mb-5">
@@ -194,29 +183,13 @@ function ProfileDialogHeader({
           </AvatarFallback>
         </Avatar>
         <div>
-          <div className="flex items-center gap-2">
-            <DialogTitle className="text-xl font-semibold text-basalt-foreground">
-              {isFirstLoad ? (
-                <Skeleton className="h-6 w-40" />
-              ) : (
-                displayName
-              )}
-            </DialogTitle>
-            {displayBadges.length > 0 && (
-              <div className="flex gap-1">
-                {displayBadges.map((badge) => (
-                  <BadgeIcon
-                    key={`${badge.text}:${badge.icon}`}
-                    text={badge.text}
-                    icon={badge.icon}
-                    colorBg={badge.colorBg}
-                    colorText={badge.colorText}
-                    size="sm"
-                  />
-                ))}
-              </div>
+          <DialogTitle className="text-xl font-semibold text-basalt-foreground">
+            {isFirstLoad ? (
+              <Skeleton className="h-6 w-40" />
+            ) : (
+              displayName
             )}
-          </div>
+          </DialogTitle>
           {user && (
             <p className="flex items-center gap-1.5 text-sm text-muted-foreground mt-0.5">
               <Calendar className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -249,7 +222,6 @@ export function UserProfileDialog({
   slug,
   name,
   image,
-  badges,
   defaultTab = "7d",
   seasonName,
   seasonStart,
@@ -307,7 +279,6 @@ export function UserProfileDialog({
               key={`header-${slug}`}
               name={name}
               image={image}
-              {...(badges && badges.length > 0 && { badges })}
               isAdmin={isAdmin}
               user={profileUser}
               loading={profileLoading}
