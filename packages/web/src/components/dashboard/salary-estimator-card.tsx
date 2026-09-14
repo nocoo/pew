@@ -21,25 +21,10 @@ import { ChartTooltip, ChartTooltipRow } from "./chart-tooltip";
 // Types
 // ---------------------------------------------------------------------------
 
-interface DailyCostWithRatio {
+interface DailySalaryCost {
   date: string;
   totalCost: number;
-  inputTokens: number;
-  outputTokens: number;
 }
-
-type TimeRange = "7d" | "30d" | "all";
-
-interface RangeOption {
-  value: TimeRange;
-  label: string;
-}
-
-const RANGE_OPTIONS: RangeOption[] = [
-  { value: "7d", label: "7 days" },
-  { value: "30d", label: "30 days" },
-  { value: "all", label: "All time" },
-];
 
 // Upper/lower bound multipliers for salary range
 // Based on typical I/O ratio variance: more output = higher cost = higher implied salary
@@ -246,7 +231,7 @@ function SalaryEstimatorCard({
 // ---------------------------------------------------------------------------
 
 interface SalaryTrendChartProps {
-  data: DailyCostWithRatio[];
+  data: DailySalaryCost[];
   className?: string;
 }
 
@@ -303,7 +288,7 @@ function SalaryTrendChart({ data, className }: SalaryTrendChartProps) {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
             <div className="h-0.5 w-3 rounded-full" style={{ background: chart.violet }} />
-            <span className="text-xs text-muted-foreground">Actual</span>
+            <span className="text-xs text-muted-foreground">Estimated</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div
@@ -316,7 +301,7 @@ function SalaryTrendChart({ data, className }: SalaryTrendChartProps) {
       </div>
 
       {/* Chart fills remaining height */}
-      <div className="flex-1 min-h-0">
+      <div className="min-h-[260px] flex-1">
         <DashboardResponsiveContainer width="100%" height="100%">
           <LineChart
             data={chartData}
@@ -355,6 +340,7 @@ function SalaryTrendChart({ data, className }: SalaryTrendChartProps) {
               strokeDasharray="4 4"
               dot={false}
               strokeOpacity={0.6}
+              isAnimationActive={false}
             />
             {/* Actual (solid) */}
             <Line
@@ -363,6 +349,7 @@ function SalaryTrendChart({ data, className }: SalaryTrendChartProps) {
               stroke={chart.violet}
               strokeWidth={2}
               dot={false}
+              isAnimationActive={false}
             />
             {/* Lower bound (dashed) */}
             <Line
@@ -373,6 +360,7 @@ function SalaryTrendChart({ data, className }: SalaryTrendChartProps) {
               strokeDasharray="4 4"
               dot={false}
               strokeOpacity={0.6}
+              isAnimationActive={false}
             />
           </LineChart>
         </DashboardResponsiveContainer>
@@ -393,7 +381,7 @@ function SalaryTooltip({
   if (!active || !payload?.length) return null;
 
   const labels: Record<string, string> = {
-    actual: "Actual",
+    actual: "Estimated",
     upper: "Upper Bound",
     lower: "Lower Bound",
   };
@@ -511,130 +499,25 @@ function SliderControl({
 }
 
 // ---------------------------------------------------------------------------
-// Data computation
-// ---------------------------------------------------------------------------
-
-interface SalaryEstimatorData {
-  ranges: {
-    "7d": { dailyAvg: number; days: number };
-    "30d": { dailyAvg: number; days: number };
-    all: { dailyAvg: number; days: number };
-  };
-}
-
-function computeSalaryEstimatorData(
-  dailyCosts: Array<{ date: string; totalCost: number }>
-): SalaryEstimatorData {
-  const today = new Date();
-  const todayStr = today.toISOString().slice(0, 10);
-
-  const filterByDays = (days: number) => {
-    const cutoff = new Date(today);
-    cutoff.setDate(cutoff.getDate() - days);
-    const cutoffStr = cutoff.toISOString().slice(0, 10);
-    return dailyCosts.filter(
-      (d) => d.date >= cutoffStr && d.date <= todayStr
-    );
-  };
-
-  const last7 = filterByDays(7);
-  const last30 = filterByDays(30);
-
-  const sum = (arr: typeof dailyCosts) =>
-    arr.reduce((acc, d) => acc + d.totalCost, 0);
-
-  return {
-    ranges: {
-      "7d": {
-        dailyAvg: last7.length > 0 ? sum(last7) / Math.min(7, last7.length) : 0,
-        days: last7.length,
-      },
-      "30d": {
-        dailyAvg: last30.length > 0 ? sum(last30) / Math.min(30, last30.length) : 0,
-        days: last30.length,
-      },
-      all: {
-        dailyAvg:
-          dailyCosts.length > 0 ? sum(dailyCosts) / dailyCosts.length : 0,
-        days: dailyCosts.length,
-      },
-    },
-  };
-}
-
-// ---------------------------------------------------------------------------
 // Main Wrapper Component
 // ---------------------------------------------------------------------------
 
 interface SalaryEstimatorProps {
-  /** Daily cost points with token breakdown */
-  dailyCosts: Array<{
-    date: string;
-    totalCost: number;
-    inputCost?: number;
-    outputCost?: number;
-  }>;
-  /** Daily token breakdown for ratio calculation */
-  dailyTokens?: Array<{
-    date: string;
-    input: number;
-    output: number;
-  }>;
+  /** Use the same selected period and calendar-day average as Overview. */
+  rangeLabel: string;
+  dailyAverageCost: number;
+  dailyCosts: DailySalaryCost[];
   className?: string;
 }
 
 export function SalaryEstimator({
+  rangeLabel,
+  dailyAverageCost,
   dailyCosts,
-  dailyTokens,
   className,
 }: SalaryEstimatorProps) {
-  const [timeRange, setTimeRange] = useState<TimeRange>("7d");
   const [huangRatio, setHuangRatio] = useState(50);
   const [priceMultiplier, setPriceMultiplier] = useState(100);
-
-  const data = useMemo(
-    () => computeSalaryEstimatorData(dailyCosts),
-    [dailyCosts]
-  );
-
-  // Merge cost and token data for the chart
-  const chartData = useMemo<DailyCostWithRatio[]>(() => {
-    const tokenMap = new Map<string, { input: number; output: number }>();
-    if (dailyTokens) {
-      for (const t of dailyTokens) {
-        tokenMap.set(t.date, { input: t.input, output: t.output });
-      }
-    }
-
-    const today = new Date();
-    const todayStr = today.toISOString().slice(0, 10);
-
-    // Filter by selected time range
-    const days = timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : 365;
-    const cutoff = new Date(today);
-    cutoff.setDate(cutoff.getDate() - days);
-    const cutoffStr = cutoff.toISOString().slice(0, 10);
-
-    return dailyCosts
-      .filter((d) => d.date >= cutoffStr && d.date <= todayStr)
-      .map((d) => {
-        const tokens = tokenMap.get(d.date);
-        return {
-          date: d.date,
-          totalCost: d.totalCost,
-          inputTokens: tokens?.input ?? 0,
-          outputTokens: tokens?.output ?? 0,
-        };
-      });
-  }, [dailyCosts, dailyTokens, timeRange]);
-
-  const currentRange = data.ranges[timeRange];
-  const rangeLabel =
-    timeRange === "7d"
-      ? "last 7 days"
-      : timeRange === "30d"
-        ? "last 30 days"
-        : "all time";
 
   const contextValue = useMemo(
     () => ({ huangRatio, setHuangRatio, priceMultiplier, setPriceMultiplier }),
@@ -644,32 +527,13 @@ export function SalaryEstimator({
   return (
     <SalaryEstimatorContext.Provider value={contextValue}>
       <div className={cn("space-y-3", className)}>
-        {/* Time Range Selector */}
-        <div className="flex items-center gap-1 rounded-lg bg-muted p-1 w-fit">
-          {RANGE_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => setTimeRange(opt.value)}
-              className={cn(
-                "rounded-md px-3 py-1 text-xs font-medium transition-colors",
-                timeRange === opt.value
-                  ? "bg-secondary text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-
         {/* Two-column layout: Card (50%) + Chart (50%) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
           <SalaryEstimatorCard
-            dailyAvgCost={currentRange.dailyAvg}
+            dailyAvgCost={dailyAverageCost}
             rangeLabel={rangeLabel}
           />
-          <SalaryTrendChart data={chartData} />
+          <SalaryTrendChart data={dailyCosts} />
         </div>
       </div>
     </SalaryEstimatorContext.Provider>

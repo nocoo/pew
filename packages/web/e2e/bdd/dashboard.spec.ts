@@ -1,168 +1,167 @@
-// Covers old: dashboard.spec.ts, dashboard-data.spec.ts, navigation.spec.ts
 import {
-  test,
-  expect,
-  DASHBOARD_USAGE_FIXTURE,
-  DASHBOARD_USAGE_EMPTY_FIXTURE,
-  DASHBOARD_PRICING_FIXTURE,
-  mockDashboardApis,
+  test, expect, DASHBOARD_USAGE_FIXTURE, DASHBOARD_USAGE_EMPTY_FIXTURE,
+  DASHBOARD_PRICING_FIXTURE, mockDashboardApis,
 } from "./fixtures";
+import { buildPricingMap } from "../../src/lib/pricing";
 
-test.describe("Feature: Dashboard", () => {
-  test("Given auth is bypassed, When I visit /dashboard, Then the Dashboard heading and tagline are visible", async ({ page }) => {
-    // Given: E2E_SKIP_AUTH=true is set by the runner
-    // When: visit /dashboard
-    await page.goto("/dashboard");
-    // Then: Dashboard heading is visible and tagline renders
-    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
-    await expect(
-      page.getByText("Token usage overview for your AI coding tools."),
-    ).toBeVisible();
+test.describe("Feature: Overview", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.clock.setFixedTime(new Date("2026-09-15T12:00:00Z"));
+    await mockDashboardApis(page, { usage: DASHBOARD_USAGE_FIXTURE, pricing: DASHBOARD_PRICING_FIXTURE });
   });
 
-  test.describe("with mocked usage data present", () => {
-    test.beforeEach(async ({ page }) => {
-      // Given: usage and pricing APIs return non-empty data
-      await mockDashboardApis(page, {
-        usage: DASHBOARD_USAGE_FIXTURE,
-        pricing: DASHBOARD_PRICING_FIXTURE,
-      });
-    });
-
-    test("Given the usage API returns data, When I visit /dashboard, Then the four token stat cards are visible", async ({ page }) => {
-      // When: visit /dashboard
-      await page.goto("/dashboard");
-      // Then: all four token stat cards show their labels and aggregated values
-      await expect(page.getByText("Total Tokens")).toBeVisible({ timeout: 10_000 });
-      await expect(page.getByText("1.5M").first()).toBeVisible();
-      await expect(page.getByText("Input Tokens")).toBeVisible();
-      await expect(page.getByText("900.0K").first()).toBeVisible();
-      await expect(page.getByText("Output Tokens")).toBeVisible();
-      await expect(page.getByText("450.0K").first()).toBeVisible();
-      await expect(page.getByText("Cached Tokens")).toBeVisible();
-      await expect(page.getByText("300.0K").first()).toBeVisible();
-    });
-
-    test("Given the usage API returns data, When I visit /dashboard, Then the cost section is visible", async ({ page }) => {
-      // When: visit /dashboard
-      await page.goto("/dashboard");
-      // Then: Est. Cost + Cache Savings labels render
-      await expect(page.getByText("Est. Cost")).toBeVisible({ timeout: 10_000 });
-      await expect(page.getByText("Cache Savings")).toBeVisible();
-    });
-
-    test("Given the usage API returns data, When I visit /dashboard, Then the Overview and Trends segments are visible", async ({ page }) => {
-      // When: visit /dashboard
-      await page.goto("/dashboard");
-      // Then: both segment headings render
-      await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
-      await expect(page.getByRole("heading", { name: "Trends" })).toBeVisible();
-    });
-
-    test("Given the usage API returns data, When I visit /dashboard, Then the empty state is not visible", async ({ page }) => {
-      // When: visit /dashboard
-      await page.goto("/dashboard");
-      // Then: empty state stays hidden once data has loaded
-      await expect(page.getByText("Total Tokens")).toBeVisible({ timeout: 10_000 });
-      await expect(page.getByText("Ready to Track Your AI Usage")).not.toBeVisible();
-    });
-
-    for (const width of [1440, 390]) {
-      test(`Given usage data, When I open the dashboard at ${width}px, Then activity and goal cards work without achievements`, async ({ page }) => {
-        await page.setViewportSize({ width, height: 1000 });
-        await page.clock.setFixedTime(new Date("2026-09-13T12:00:00Z"));
-        const retiredRequests: string[] = [];
-        page.on("request", (request) => {
-          if (new URL(request.url()).pathname.startsWith("/api/achievements")) {
-            retiredRequests.push(request.url());
-          }
-        });
-
-        await page.goto("/dashboard");
-        const activity = page.getByRole("region", { name: "Activity", exact: true });
-        const goal = page.getByRole("region", { name: "Goal Tracker", exact: true });
-        await expect(activity.getByText("3 active days", { exact: true })).toBeVisible();
-        await expect(activity.getByText("1.5M", { exact: true })).toBeVisible();
-        await expect(goal.getByRole("button", { name: "Goal settings" })).toBeVisible();
-        expect(retiredRequests).toEqual([]);
-
-        const activityBox = (await activity.boundingBox())!;
-        const goalBox = (await goal.boundingBox())!;
-        if (width >= 1024) {
-          expect(Math.abs(activityBox.y - goalBox.y)).toBeLessThan(2);
-          expect(Math.abs(activityBox.width - goalBox.width)).toBeLessThan(2);
-        } else {
-          expect(goalBox.y).toBeGreaterThanOrEqual(activityBox.y + activityBox.height);
-        }
-        const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
-        expect(scrollWidth).toBeLessThanOrEqual(width + 1);
-      });
+  test("tokens, cost and cache control the same heatmap, line and breakdowns", async ({ page }) => {
+    await page.goto("/dashboard");
+    await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible();
+    const tokens = page.getByRole("button", { name: "Total Tokens", exact: true });
+    await expect(tokens).toHaveAttribute("aria-pressed", "true");
+    await expect(tokens.getByText("1.8M", { exact: true })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Activity heatmap" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Daily tokens", exact: true })).toBeVisible();
+    for (const dimension of ["machine", "model", "harness"]) {
+      await expect(page.getByRole("region", { name: `By ${dimension}`, exact: true })).toBeVisible();
     }
+
+    await page.getByRole("button", { name: "Cost", exact: true }).click();
+    await expect(page.getByRole("heading", { name: "Daily estimated cost", exact: true })).toBeVisible();
+    await expect(page.getByRole("region", { name: "By machine", exact: true }).getByText("$7.86", { exact: true })).toBeVisible();
+
+    const cache = page.getByRole("button", { name: "Cache", exact: true });
+    await cache.click();
+    await expect(cache).toHaveAttribute("aria-pressed", "true");
+    await expect(cache.getByText("300.0K", { exact: true }).first()).toBeVisible();
+    await expect(cache.getByText("Write —", { exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Daily cache tokens", exact: true })).toBeVisible();
+    await expect(page.getByRole("region", { name: "By machine", exact: true }).getByText("Partial", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("Salary Estimator", { exact: true })).not.toBeVisible();
   });
 
-  test.describe("with mocked empty usage data", () => {
-    test.beforeEach(async ({ page }) => {
-      // Given: usage API returns summary.total_tokens === 0 -> empty state branch
-      await mockDashboardApis(page, {
-        usage: DASHBOARD_USAGE_EMPTY_FIXTURE,
-        pricing: DASHBOARD_PRICING_FIXTURE,
-      });
+  test("one period selector updates both queries and an empty period keeps controls available", async ({ page }) => {
+    const requests: URL[] = [];
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (url.pathname === "/api/usage" || url.pathname === "/api/usage/by-device") requests.push(url);
     });
-
-    test("Given the usage API returns no data, When I visit /dashboard, Then the empty state title is visible", async ({ page }) => {
-      // When: visit /dashboard
-      await page.goto("/dashboard");
-      // Then: empty-state title renders
-      await expect(page.getByText("Ready to Track Your AI Usage")).toBeVisible({
-        timeout: 10_000,
-      });
-    });
-
-    test("Given the usage API returns no data, When I visit /dashboard, Then the empty state shows the Install pew CLI step and Get Started CTA", async ({ page }) => {
-      // When: visit /dashboard
-      await page.goto("/dashboard");
-      // Then: getting-started CTA + CLI install step both render
-      await expect(page.getByText("Install the pew CLI")).toBeVisible({
-        timeout: 10_000,
-      });
-      await expect(page.getByRole("link", { name: "Get Started" })).toBeVisible();
-    });
-  });
-
-  test("Given auth is bypassed, When I visit /dashboard, Then the sidebar shows Dashboard/Hourly Usage/Daily Usage/Sessions links", async ({ page }) => {
-    // Given: E2E_SKIP_AUTH=true is set by the runner
-    // When: visit /dashboard
     await page.goto("/dashboard");
-    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
-    // Then: aside nav contains the four core navigation labels
+    await expect(page.getByRole("button", { name: "Total Tokens", exact: true })).toBeVisible();
+    requests.length = 0;
+    await page.getByRole("button", { name: "This Month", exact: true }).click();
+    await expect(page.getByText("No usage in this period.", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "All Time", exact: true })).toBeVisible();
+    await expect(page.getByText("Ready to Track Your AI Usage")).not.toBeVisible();
+    expect(requests).toHaveLength(2);
+    expect(requests[0]?.searchParams.get("from")).toBe(requests[1]?.searchParams.get("from"));
+    expect(requests[0]?.searchParams.get("to")).toBe(requests[1]?.searchParams.get("to"));
+  });
+
+  for (const width of [1440, 390]) {
+    test(`salary calculator opens in a large accessible dialog at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 1000 });
+      await page.goto("/dashboard");
+      const trigger = page.getByRole("button", { name: "Salary calculator", exact: true });
+      await expect(trigger).toBeEnabled();
+      const heatmap = page.getByRole("region", { name: "Activity heatmap" });
+      await heatmap.scrollIntoViewIfNeeded();
+      await expect(heatmap.getByRole("img", { name: "2026-05-03: Tokens 600,000", exact: true })).toBeInViewport();
+      await trigger.click();
+      const dialog = page.getByRole("dialog", { name: "Salary calculator", exact: true });
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByText("Huang Ratio", { exact: true })).toBeVisible();
+      const slider = dialog.getByRole("slider").first();
+      const before = await slider.getAttribute("aria-valuenow");
+      await slider.focus();
+      await page.keyboard.press("ArrowRight");
+      await expect(slider).not.toHaveAttribute("aria-valuenow", before!);
+      const box = (await dialog.boundingBox())!;
+      expect(box.width).toBeLessThanOrEqual(width - 16);
+      if (width >= 1024) expect(box.width).toBeGreaterThan(1000);
+      await page.keyboard.press("Escape");
+      await expect(dialog).not.toBeVisible();
+      await expect(trigger).toBeFocused();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1);
+      await trigger.click();
+      await dialog.getByRole("button", { name: "Close salary calculator" }).click();
+      await expect(dialog).not.toBeVisible();
+    });
+  }
+
+  test("unknown cache is unavailable in the card, heatmap and machine bars", async ({ page }) => {
+    const records = DASHBOARD_USAGE_FIXTURE.records.map((row) => ({
+      ...row, source: "hermes", cached_input_tokens: 0, input_tokens: 400_000,
+    }));
+    await mockDashboardApis(page, { usage: { ...DASHBOARD_USAGE_FIXTURE, records }, pricing: DASHBOARD_PRICING_FIXTURE });
+    await page.goto("/dashboard");
+    const cache = page.getByRole("button", { name: "Cache", exact: true });
+    await cache.click();
+    await expect(cache.getByText("Unavailable", { exact: true })).toBeVisible();
+    await expect(cache.getByText("—", { exact: true })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Activity heatmap" }).getByRole("img", { name: /2026-05-01: Cache tokens unavailable/ })).toBeVisible();
+    await expect(page.getByRole("region", { name: "By machine", exact: true }).getByText("Unavailable", { exact: true }).first()).toBeVisible();
+  });
+
+  test("new clients display cache reads and writes throughout Overview", async ({ page }) => {
+    const row = DASHBOARD_USAGE_FIXTURE.records[0];
+    const basis = { input_tokens: row.input_tokens, cached_input_tokens: row.cached_input_tokens,
+      output_tokens: row.output_tokens, reasoning_output_tokens: row.reasoning_output_tokens, total_tokens: row.total_tokens };
+    const record = { ...row, accounting: [{ status: "matched", basis, groups: [{
+      basis, counts: { input_total_tokens: 400_000, output_total_tokens: 200_000,
+        cache_read_input_tokens: 100_000, cache_write_input_tokens: 50_000,
+        cache_write_5m_input_tokens: 50_000, cache_write_1h_input_tokens: 0, reasoning_output_tokens: 50_000 },
+      model: row.model, provider: "anthropic", route: "direct", service_tier: "default",
+      origin: "claude:usage", quality: "reported", context_tokens_min: 400_000, context_tokens_max: 400_000,
+      request_count: 1, diagnostics: [], reported_costs: [],
+    }] }] };
+    const pricing = buildPricingMap({ dynamic: [{ model: `anthropic/${row.model}`, provider: "Anthropic", displayName: row.model,
+      inputPerMillion: 3, outputPerMillion: 15, cachedPerMillion: 0.3, cacheWritePerMillion: 3.75,
+      origin: "models.dev", route: "direct", contextWindow: 1_000_000, updatedAt: "2026-09-01T00:00:00Z" }] });
+    await mockDashboardApis(page, { usage: { records: [record], summary: basis }, pricing });
+    await page.goto("/dashboard");
+    const cache = page.getByRole("button", { name: "Cache", exact: true });
+    await cache.click();
+    await expect(cache.getByText("150.0K", { exact: true })).toBeVisible();
+    await expect(cache.getByText("Read 100.0K", { exact: true })).toBeVisible();
+    await expect(cache.getByText("Write 50.0K", { exact: true })).toBeVisible();
+    await expect(cache.getByText("Complete counts", { exact: true })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Activity heatmap" }).getByRole("img", { name: "2026-05-01: Cache tokens 150,000", exact: true })).toBeVisible();
+    for (const dimension of ["machine", "model", "harness"]) {
+      await expect(page.getByRole("region", { name: `By ${dimension}`, exact: true }).getByText("150.0K", { exact: true })).toBeVisible();
+    }
+    await page.getByText("Cache & cost details", { exact: true }).click();
+    await expect(page.getByText("Net cache savings: $0.23", { exact: false })).toBeVisible();
+
+    const counts = record.accounting[0]!.groups[0]!.counts;
+    counts.cache_read_input_tokens = 0;
+    counts.cache_write_input_tokens = 400_000;
+    counts.cache_write_5m_input_tokens = 400_000;
+    await mockDashboardApis(page, { usage: { records: [record], summary: basis }, pricing });
+    await page.reload();
+    await page.getByText("Cache & cost details", { exact: true }).click();
+    await expect(page.getByText("Net cache savings: -$0.30", { exact: false })).toBeVisible();
+  });
+
+  test("a machine request failure does not erase the other metrics", async ({ page }) => {
+    await page.route("**/api/usage/by-device?*", (route) => route.fulfill({ status: 500, json: { error: "Machine data unavailable" } }));
+    await page.goto("/dashboard");
+    await expect(page.getByRole("button", { name: "Total Tokens", exact: true }).getByText("1.8M", { exact: true })).toBeVisible();
+    await expect(page.getByRole("region", { name: "By machine", exact: true }).getByText(/Could not load machine usage/)).toBeVisible();
+    await expect(page.getByRole("region", { name: "By model", exact: true })).toBeVisible();
+  });
+
+  test("accounts without usage retain the getting started state", async ({ page }) => {
+    await mockDashboardApis(page, { usage: DASHBOARD_USAGE_EMPTY_FIXTURE, pricing: DASHBOARD_PRICING_FIXTURE });
+    await page.goto("/dashboard");
+    await expect(page.getByText("Ready to Track Your AI Usage")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Get Started" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Salary calculator", exact: true })).toBeDisabled();
+  });
+
+  test("the Overview navigation still links to daily usage and settings", async ({ page }) => {
+    await page.goto("/dashboard");
     const nav = page.locator("aside nav");
-    await expect(nav.getByText("Dashboard", { exact: true })).toBeVisible();
-    await expect(nav.getByText("Hourly Usage")).toBeVisible();
-    await expect(nav.getByText("Daily Usage")).toBeVisible();
-    await expect(nav.getByText("Sessions")).toBeVisible();
-  });
-
-  test("Given auth is bypassed, When I click Daily Usage in the sidebar, Then I land on /daily-usage", async ({ page }) => {
-    // Given: E2E_SKIP_AUTH=true is set by the runner
-    // When: visit /dashboard and click the sidebar Daily Usage link
-    await page.goto("/dashboard");
-    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
-    await page
-      .locator("aside nav")
-      .getByRole("button", { name: "Daily Usage" })
-      .click();
-    // Then: URL updates to /daily-usage
-    await expect(page).toHaveURL(/\/daily-usage/, { timeout: 15_000 });
-  });
-
-  test("Given auth is bypassed, When I click General in the sidebar, Then I land on /settings with the General heading", async ({ page }) => {
-    // Given: E2E_SKIP_AUTH=true is set by the runner
-    // When: visit /dashboard and click the sidebar General link
-    await page.goto("/dashboard");
-    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
-    await page.locator("aside nav").getByRole("button", { name: "General" }).click();
-    // Then: URL updates to /settings and General heading renders
-    await expect(page).toHaveURL(/\/settings/, { timeout: 15_000 });
-    await expect(page.getByRole("heading", { name: "General" })).toBeVisible();
+    await expect(nav.getByText("Overview", { exact: true })).toBeVisible();
+    await nav.getByRole("button", { name: "Daily Usage" }).click();
+    await expect(page).toHaveURL(/\/daily-usage/);
+    await nav.getByRole("button", { name: "General" }).click();
+    await expect(page).toHaveURL(/\/settings/);
   });
 });

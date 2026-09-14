@@ -1,367 +1,93 @@
 "use client";
 
-import { AccountingNotice } from "@/components/dashboard/accounting-notice";
-import { summarizeAccounting } from "@/lib/accounting";
 import { useMemo, useState } from "react";
-import {
-  Zap,
-  ArrowDownToLine,
-  ArrowUpFromLine,
-  Database,
-  DollarSign,
-  PiggyBank,
-  TrendingUp,
-} from "lucide-react";
-import { useUsageData, toHeatmapData } from "@/hooks/use-usage-data";
-import { UsageTimingNotice } from "@/components/dashboard/usage-timing-notice";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
+import { useUsageData } from "@/hooks/use-usage-data";
+import { useDeviceData } from "@/hooks/use-device-data";
+import { usePricingMap } from "@/hooks/use-pricing";
 import { useTzOffset } from "@/hooks/use-tz-offset";
-import { formatTokens } from "@/lib/utils";
-import { usePricingMap, formatCost } from "@/hooks/use-pricing";
-import { computeTotalCost, toDailyCostPoints, computeCacheSavings, forecastMonthlyCost, toDailyCacheRates } from "@/lib/cost-helpers";
-import { compareWeekdayWeekend, computeMoMGrowth, computeWoWGrowth, toHourlyWeekdayWeekend } from "@/lib/usage-helpers";
-import { StatCard, StatGrid } from "@/components/dashboard/stat-card";
-import { UsageTrendChart } from "@/components/dashboard/usage-trend-chart";
-import { CostTrendChart } from "@/components/dashboard/cost-trend-chart";
-import { CacheRateChart } from "@/components/dashboard/cache-rate-chart";
-import { IoRatioChart } from "@/components/dashboard/io-ratio-chart";
-import { SourceDonutChart } from "@/components/dashboard/source-donut-chart";
-import { HeatmapHero } from "@/components/dashboard/heatmap-hero";
-import { WeekdayWeekendChart } from "@/components/dashboard/weekday-weekend-chart";
-import { HourlyChart } from "@/components/dashboard/hourly-chart";
-import { SalaryEstimator } from "@/components/dashboard/salary-estimator-card";
+import { buildOverview, groupOverview, overviewDateRange, type OverviewMetric } from "@/lib/overview-helpers";
+import { getLocalToday, periodLabel, type Period } from "@/lib/date-helpers";
+import { buildDeviceLabelMap, deviceLabel } from "@/lib/device-helpers";
+import { sourceLabel } from "@/lib/usage-transforms";
+import { OverviewMetrics, OverviewHeatmap, OverviewTrend, OverviewBreakdown } from "@/components/dashboard/overview-charts";
+import { SalaryCalculatorDialog } from "@/components/dashboard/salary-calculator-dialog";
+import { AccountingNotice } from "@/components/dashboard/accounting-notice";
+import { UsageTimingNotice } from "@/components/dashboard/usage-timing-notice";
+import { PeriodSelector } from "@/components/dashboard/period-selector";
 import { SnapshotAlert } from "@/components/dashboard/snapshot-alert";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
-import { ErrorBanner } from "@/components/ui/error-banner";
 import { DashboardEmptyState } from "@/components/dashboard/empty-state";
-import { DashboardSegment } from "@/components/dashboard/dashboard-segment";
-import { PeriodSelector } from "@/components/dashboard/period-selector";
-import { Button } from "@nocoo/basalt/components/button";
-import { PageHeader } from "@nocoo/basalt/components/page-header";
-import { periodToDateRange, periodLabel, getLocalToday, fillDateRange } from "@/lib/date-helpers";
-import type { Period } from "@/lib/date-helpers";
-import type { DailyCostPoint, DailyCacheRate } from "@/lib/cost-helpers";
-import type { DailyPoint } from "@/hooks/use-usage-data";
+import { ErrorBanner } from "@/components/ui/error-banner";
 
-// ---------------------------------------------------------------------------
-// Page
-// ---------------------------------------------------------------------------
-
-type ChartTab = "tokens" | "cost";
+function dateLabel(date: string): string {
+  return new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", {
+    month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
+  });
+}
 
 export default function DashboardPage() {
   const [period, setPeriod] = useState<Period>("all");
-  const [chartTab, setChartTab] = useState<ChartTab>("tokens");
-
-  // Timezone offset for UTC→local date conversion (used by multiple helpers
-  // and by periodToDateRange below). Read once via the hook so every API
-  // query and local aggregation on this page sees the same offset.
+  const [metric, setMetric] = useState<OverviewMetric>("tokens");
   const tzOffset = useTzOffset();
   const today = useMemo(() => getLocalToday(tzOffset), [tzOffset]);
-  const currentYear = Number(today.slice(0, 4));
-
-  const { from, to } = periodToDateRange(period, tzOffset);
-
-  const { data, daily, sources, models, loading, error } = useUsageData({
-    from,
-    ...(to ? { to } : {}),
-  });
-  const yearData = useUsageData({ from: `${currentYear}-01-01`, to: today });
-
-  // Half-hour granularity fetch for weekday/weekend analysis (period-bounded)
-  const halfHourData = useUsageData({
-    from,
-    ...(to ? { to } : {}),
-    granularity: "half-hour",
-  });
-
-  // Fixed 14-day window for WoW comparison (ensures both weeks are present)
-  const wowData = useUsageData({ days: 14, granularity: "half-hour" });
-
-  // Fixed 62-day window for MoM comparison (ensures both months are present)
-  const momData = useUsageData({ days: 62, granularity: "half-hour" });
-
-  const heatmapData = toHeatmapData(yearData.daily);
-  const activeDays = yearData.daily.filter((day) => day.total > 0).length;
-
+  const range = useMemo(() => overviewDateRange(period, today, tzOffset), [period, today, tzOffset]);
+  const { data, loading, error, refetch } = useUsageData({ from: range.from, to: range.to });
+  const devices = useDeviceData({ from: range.from, to: range.to });
   const { pricingMap, loading: pricingLoading } = usePricingMap();
-  const accountingSummary = useMemo(() => summarizeAccounting(data?.records ?? []), [data]);
-
-  // Fill date gaps + extend to today so charts always show up to the current day
-  const filledDaily = useMemo<DailyPoint[]>(
-    () => fillDateRange(daily, "date", (d) => ({
-      date: d, input: 0, output: 0, cached: 0, reasoning: 0, total: 0,
-    }), today),
-    [daily, today],
-  );
-
-  const estimatedCost = useMemo(() => computeTotalCost(models, pricingMap), [models, pricingMap]);
-
-  const dailyCostPoints = useMemo(
-    () => {
-      if (!data) return [];
-      const sparse = toDailyCostPoints(data.records, pricingMap, tzOffset);
-      return fillDateRange<DailyCostPoint>(sparse, "date", (d) => ({
-        date: d, inputCost: 0, outputCost: 0, cachedCost: 0, totalCost: 0,
-      }), today);
-    },
-    [data, pricingMap, tzOffset, today],
-  );
-
-  const cacheSavings = useMemo(
-    () => computeCacheSavings(models, pricingMap),
-    [models, pricingMap],
-  );
-
-  const costForecast = useMemo(
-    () => forecastMonthlyCost(dailyCostPoints),
-    [dailyCostPoints],
-  );
-
-  const dailyCacheRates = useMemo(
-    () => {
-      if (!data) return [];
-      const sparse = toDailyCacheRates(data.records, tzOffset);
-      return fillDateRange<DailyCacheRate>(sparse, "date", (d) => ({
-        date: d, cacheRate: null, cachedTokens: 0, inputTokens: 0, coverage: 0, coveredInputTokens: 0,
-      }), today);
-    },
-    [data, tzOffset, today],
-  );
-
-  // MoM growth (fixed 62-day window ensures both months are present)
-  const mom = useMemo(
-    () => (momData.data ? computeMoMGrowth(momData.data.records, pricingMap, undefined, tzOffset) : null),
-    [momData.data, pricingMap, tzOffset],
-  );
-
-  // WoW growth (fixed 14-day window ensures both weeks are present)
-  const wow = useMemo(
-    () => (wowData.data ? computeWoWGrowth(wowData.data.records, pricingMap, undefined, tzOffset) : null),
-    [wowData.data, pricingMap, tzOffset],
-  );
-
-  // Weekday vs weekend comparison
-  const weekdayWeekend = useMemo(() => {
-    if (!halfHourData.data) return null;
-    const toStr = to ?? getLocalToday(tzOffset);
-    return compareWeekdayWeekend(halfHourData.data.records, { from, to: toStr }, pricingMap, tzOffset);
-  }, [halfHourData.data, from, to, pricingMap, tzOffset]);
-
-  // Hourly weekday/weekend breakdown
-  const hourlyData = useMemo(() => {
-    if (!halfHourData.data) return [];
-    const toStr = to ?? getLocalToday(tzOffset);
-    return toHourlyWeekdayWeekend(halfHourData.data.records, { from, to: toStr }, tzOffset);
-  }, [halfHourData.data, from, to, tzOffset]);
-
-  // Year total tokens for HeatmapHero
-  const yearTotalTokens = useMemo(() => summarizeAccounting(yearData.data?.records ?? []).totalTokens, [yearData.data]);
-
-  const showForecast = costForecast !== null;
-
-  const subtitle = periodLabel(period);
+  const overview = useMemo(() => buildOverview(data?.records ?? [], pricingMap, range, tzOffset), [data, pricingMap, range, tzOffset]);
+  const machines = useMemo(() => groupOverview(devices.data?.deviceDetails ?? [], pricingMap, (row) => row.device_id), [devices.data, pricingMap]);
+  const deviceLabels = useMemo(() => buildDeviceLabelMap(devices.data?.devices ?? []), [devices.data]);
+  const { summary, daily } = overview;
+  const firstDay = daily[0]?.date;
+  const hasRecords = overview.records.length > 0;
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      {/* Admin alert: ended seasons without snapshot */}
+    <div className="space-y-5 md:space-y-6">
       <SnapshotAlert />
-
       <PageHeader
-        title="Dashboard"
-        description="Token usage overview for your AI coding tools."
+        title="Overview"
+        description="Choose tokens, cost, or cache to explore your usage."
+        actions={<SalaryCalculatorDialog
+          daily={daily} dailyAverageCost={overview.dailyAverageCost} rangeLabel={periodLabel(period)}
+          incomplete={!summary.costComplete} disabled={loading || pricingLoading || !hasRecords}
+        />}
       />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <PeriodSelector value={period} onChange={setPeriod} />
+        <p className="text-xs text-muted-foreground">
+          {firstDay ? `${dateLabel(firstDay)} – ${dateLabel(today)} · Local time` : "All charts follow the selected period · Local time"}
+        </p>
+      </div>
 
-      {/* Error state */}
       <ErrorBanner messagePrefix="Failed to load usage data" error={error} />
-      <UsageTimingNotice records={data?.records} />
-
-      {/* Loading state */}
+      {error && <button type="button" className="text-sm underline underline-offset-4" onClick={refetch}>Retry usage</button>}
       {loading && <DashboardSkeleton />}
+      {!loading && data && !hasRecords && period === "all" && <DashboardEmptyState />}
 
-      {/* Empty state — no usage data yet */}
-      {!loading && data && data.summary.total_tokens === 0 && (
-        <DashboardEmptyState />
-      )}
+      {!loading && data && (hasRecords || period !== "all") && <>
+        <OverviewMetrics summary={summary} metric={metric} onChange={setMetric} pricingLoading={pricingLoading} />
+        {hasRecords ? <details className="group text-xs text-muted-foreground">
+          <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 rounded-lg py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+            <span>{summary.input === 0 ? "No input recorded" : `Cache coverage · Read ${Math.round(summary.readCoverage * 100)}% · Write ${Math.round(summary.writeCoverage * 100)}%`}</span>
+            <span className="underline underline-offset-4">Cache & cost details</span>
+          </summary>
+          <div className="mt-3"><AccountingNotice records={overview.records} pricingMap={pricingMap} loading={pricingLoading} /></div>
+        </details> : <p className="rounded-card bg-secondary px-4 py-3 text-sm text-muted-foreground">No usage in this period.</p>}
+        <UsageTimingNotice records={overview.records} />
 
-      {/* Content — only show when there's actual data */}
-      {!loading && data && data.summary.total_tokens > 0 && (
-        <>
-          {/* ── Hero: Year Activity + Goal Tracker ───────────── */}
-          <HeatmapHero
-            data={heatmapData}
-            year={currentYear}
-            totalTokens={yearTotalTokens}
-            activeDays={activeDays}
-            loading={yearData.loading}
-          />
-
-          {/* ── Overview ────────────────────────────────────── */}
-          <AccountingNotice records={data.records} pricingMap={pricingMap} loading={pricingLoading} />
-          <DashboardSegment title="Overview" action={<PeriodSelector value={period} onChange={setPeriod} />}>
-            {/* Row 1 — Token metrics: Total, Input, Output, Cache */}
-            <StatGrid columns={4}>
-              <StatCard
-                title="Total Tokens"
-                value={formatTokens(accountingSummary.totalTokens)}
-                subtitle={subtitle}
-                icon={Zap}
-                iconColor="text-primary"
-                variant="primary"
-                accentColor="bg-gradient-to-r from-primary to-chart-8"
-                trendsLayout="side"
-                trends={[
-                  ...(wow && wow.previousWeekSameDay.tokens > 0 && wow.previousWeekSameDay.tokens !== wow.previousWeek.tokens
-                    ? [{ value: Math.round(wow.sameDayTokenGrowth), label: "vs week TD" }]
-                    : []),
-                  ...(wow && wow.previousWeek.tokens > 0
-                    ? [{ value: Math.round(wow.tokenGrowth), label: "vs last week" }]
-                    : []),
-                  ...(mom && mom.previousMonthSameDate.tokens > 0 && mom.previousMonthSameDate.tokens !== mom.previousMonth.tokens
-                    ? [{ value: Math.round(mom.sameDateTokenGrowth), label: "vs month TD" }]
-                    : []),
-                  ...(mom && mom.previousMonth.tokens > 0
-                    ? [{ value: Math.round(mom.tokenGrowth), label: "vs last month" }]
-                    : []),
-                ]}
-              />
-              <StatCard
-                title="Input Tokens"
-                value={formatTokens(accountingSummary.inputTokens)}
-                subtitle="Prompts & context"
-                icon={ArrowDownToLine}
-                accentColor="bg-chart-3"
-              />
-              <StatCard
-                title="Output Tokens"
-                value={formatTokens(accountingSummary.outputTokens)}
-                subtitle="Responses & reasoning"
-                icon={ArrowUpFromLine}
-                accentColor="bg-chart-5"
-              />
-              <StatCard
-                title="Cache Read Tokens"
-                value={formatTokens(accountingSummary.cacheReadTokens)}
-                subtitle={
-                  accountingSummary.readCoverage === 0 ? "Read counts unavailable" : `${Math.round(accountingSummary.cacheReadRate)}% of input with known read counts`
-                }
-                icon={Database}
-                accentColor="bg-chart-2"
-              />
-            </StatGrid>
-
-            {/* Row 2 — Cost metrics: Est. Cost, Cache Savings, Monthly, Daily */}
-            <StatGrid columns={showForecast ? 4 : 2}>
-              <StatCard
-                title="Est. Cost"
-                value={pricingLoading ? "…" : formatCost(estimatedCost)}
-                subtitle="Based on public pricing"
-                icon={DollarSign}
-                iconColor="text-chart-6"
-                variant="primary"
-                trendsLayout="side"
-                trends={[
-                  ...(wow && wow.previousWeekSameDay.cost > 0 && wow.previousWeekSameDay.cost !== wow.previousWeek.cost
-                    ? [{ value: -Math.round(wow.sameDayCostGrowth), label: "vs week TD" }]
-                    : []),
-                  ...(wow && wow.previousWeek.cost > 0
-                    ? [{ value: -Math.round(wow.costGrowth), label: "vs last week" }]
-                    : []),
-                  ...(mom && mom.previousMonthSameDate.cost > 0 && mom.previousMonthSameDate.cost !== mom.previousMonth.cost
-                    ? [{ value: -Math.round(mom.sameDateCostGrowth), label: "vs month TD" }]
-                    : []),
-                  ...(mom && mom.previousMonth.cost > 0
-                    ? [{ value: -Math.round(mom.costGrowth), label: "vs last month" }]
-                    : []),
-                ]}
-              />
-              <StatCard
-                title="Net Cache Savings"
-                value={cacheSavings.netSavings === null ? "—" : formatCost(cacheSavings.netSavings)}
-                subtitle={cacheSavings.netSavings === null ? "Cache or pricing details incomplete" : "Read discount less write premium"}
-                icon={PiggyBank}
-                iconColor={(cacheSavings.netSavings ?? 0) < 0 ? "text-destructive" : "text-success"}
-              />
-              {showForecast && (
-                <StatCard
-                  title="Monthly Forecast"
-                  value={formatCost(costForecast.projectedMonthCost)}
-                  subtitle={`${formatCost(costForecast.currentMonthCost)} estimated so far (${costForecast.daysElapsed} days)`}
-                  icon={TrendingUp}
-                  iconColor="text-chart-6"
-                />
-              )}
-              {showForecast && (
-                <StatCard
-                  title="Daily Average"
-                  value={formatCost(costForecast.dailyAverage)}
-                  subtitle={`${costForecast.daysInMonth - costForecast.daysElapsed} days remaining`}
-                  icon={DollarSign}
-                  iconColor="text-muted-foreground"
-                />
-              )}
-            </StatGrid>
-          </DashboardSegment>
-
-          {/* ── Trends ──────────────────────────────────────── */}
-          <DashboardSegment title="Trends">
-            {/* Charts — left: trends + cache, right: donut + io ratio */}
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-3 md:gap-4">
-              {/* Left column */}
-              <div className="flex flex-col gap-3 md:gap-4">
-                <div>
-                  {/* Tab toggle: Tokens | Cost */}
-                  <div className="mb-3 flex w-fit items-center gap-1 rounded-lg bg-muted p-1">
-                    {(["tokens", "cost"] as const).map((tab) => (
-                      <Button
-                        key={tab}
-                        type="button"
-                        size="sm"
-                        variant={chartTab === tab ? "secondary" : "ghost"}
-                        onClick={() => setChartTab(tab)}
-                      >
-                        {tab === "tokens" ? "Tokens" : "Cost"}
-                      </Button>
-                    ))}
-                  </div>
-                  {chartTab === "tokens" ? (
-                    <UsageTrendChart data={filledDaily} />
-                  ) : (
-                    <CostTrendChart data={dailyCostPoints} />
-                  )}
-                </div>
-                <CacheRateChart data={dailyCacheRates} />
-              </div>
-
-              {/* Right column — top spacer matches the tab toggle height so charts align */}
-              <div className="flex flex-col gap-3 md:gap-4">
-                {/* Invisible spacer matching the tab toggle row height (p-1 + text + mb-3) */}
-                <div className="hidden lg:block h-[28px] shrink-0" />
-                <SourceDonutChart data={sources} className="flex-1" />
-                <IoRatioChart
-                  inputTokens={accountingSummary.inputTokens}
-                  outputTokens={accountingSummary.outputTokens}
-                />
-              </div>
-            </div>
-          </DashboardSegment>
-
-          {/* ── Insights ────────────────────────────────────── */}
-          {weekdayWeekend && (
-            <DashboardSegment title="Insights">
-              {/* Row 1: Weekday vs Weekend (50%) + Hourly Chart (50%) */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-                <WeekdayWeekendChart stats={weekdayWeekend} />
-                <HourlyChart data={hourlyData} />
-              </div>
-              {/* Row 2: Salary Estimator with internal 50/50 split (card + chart) */}
-              <SalaryEstimator
-                dailyCosts={dailyCostPoints}
-                dailyTokens={filledDaily}
-              />
-            </DashboardSegment>
-          )}
-        </>
-      )}
+        <div id="overview-charts" className="space-y-4 md:space-y-5">
+          <OverviewHeatmap daily={daily} metric={metric} />
+          <OverviewTrend daily={daily} metric={metric} />
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <OverviewBreakdown dimension="machine" groups={machines} metric={metric}
+              label={(id) => deviceLabels.get(id) ?? deviceLabel({ device_id: id, alias: null })}
+              loading={devices.loading} error={devices.error} onRetry={devices.refetch} />
+            <OverviewBreakdown dimension="model" groups={overview.models} metric={metric} label={(id) => id} />
+            <OverviewBreakdown dimension="harness" groups={overview.harnesses} metric={metric} label={sourceLabel} />
+          </div>
+        </div>
+      </>}
     </div>
   );
 }

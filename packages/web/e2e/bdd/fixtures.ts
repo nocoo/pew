@@ -10,7 +10,7 @@ export const DASHBOARD_USAGE_FIXTURE = {
       cached_input_tokens: 100_000,
       output_tokens: 150_000,
       reasoning_output_tokens: 50_000,
-      total_tokens: 500_000,
+      total_tokens: 600_000,
     },
     {
       source: "claude-code",
@@ -20,7 +20,7 @@ export const DASHBOARD_USAGE_FIXTURE = {
       cached_input_tokens: 100_000,
       output_tokens: 150_000,
       reasoning_output_tokens: 50_000,
-      total_tokens: 500_000,
+      total_tokens: 600_000,
     },
     {
       source: "claude-code",
@@ -30,11 +30,11 @@ export const DASHBOARD_USAGE_FIXTURE = {
       cached_input_tokens: 100_000,
       output_tokens: 150_000,
       reasoning_output_tokens: 50_000,
-      total_tokens: 500_000,
+      total_tokens: 600_000,
     },
   ],
   summary: {
-    total_tokens: 1_500_000,
+    total_tokens: 1_800_000,
     input_tokens: 900_000,
     output_tokens: 450_000,
     cached_input_tokens: 300_000,
@@ -54,7 +54,7 @@ export const DASHBOARD_USAGE_EMPTY_FIXTURE = {
 } as const;
 
 export const DASHBOARD_PRICING_FIXTURE = {
-  models: {},
+  models: { "claude-sonnet-4-20250514": { input: 3, output: 15, cached: 0.3 } },
   prefixes: [],
   sourceDefaults: {},
   fallback: { input: 0, output: 0 },
@@ -120,6 +120,15 @@ export async function mockDashboardApis(
   page: Page,
   opts: DashboardMockOptions,
 ): Promise<void> {
+  // Overview tests only consume synthetic data, including ancillary shell APIs.
+  await page.route("**/api/**", (route) => {
+    const path = new URL(route.request().url()).pathname;
+    const user = { id: "overview-test", name: "Overview Test", email: "overview@local.invalid", image: null };
+    const json = path === "/api/auth/session" ? { user, expires: "2099-01-01T00:00:00Z" }
+      : path === "/api/admin/check" ? { isAdmin: false }
+        : path === "/api/settings" ? { ...user, slug: "overview-test", is_public: 1 } : {};
+    return route.fulfill({ json });
+  });
   await page.route("**/api/usage*", (route) =>
     route.fulfill({
       status: 200,
@@ -127,6 +136,23 @@ export async function mockDashboardApis(
       body: JSON.stringify(opts.usage),
     }),
   );
+  await page.route("**/api/usage/by-device?*", (route) => {
+    const { records } = opts.usage as { records: Array<Record<string, unknown>> };
+    const params = new URL(route.request().url()).searchParams;
+    const from = new Date(params.get("from")!).getTime();
+    const to = new Date(params.get("to")!).getTime();
+    const details = records.filter((row) => {
+      const time = new Date(row.hour_start as string).getTime();
+      return time >= from && time < to;
+    }).map((row, i) => ({ ...row, device_id: i < 2 ? "work" : "home" }));
+    return route.fulfill({ json: { deviceDetails: details, timeline: [],
+      devices: ["work", "home"].map((id) => ({
+        device_id: id, alias: id === "work" ? "Work Mac" : "Home Mac", sources: [], models: [],
+        first_seen: "2026-05-01", last_seen: "2026-05-03", estimated_cost: 0,
+        input_tokens: 0, output_tokens: 0, cached_input_tokens: 0, reasoning_output_tokens: 0, total_tokens: 0,
+      })),
+    } });
+  });
   await page.route("**/api/pricing", (route) =>
     route.fulfill({
       status: 200,

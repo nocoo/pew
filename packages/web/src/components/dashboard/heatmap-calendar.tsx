@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useCallback, useRef, useState } from "react";
+import { useMemo, useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { getYearWeeks, getColorIndex, formatDateISO, computePercentileBoundaries } from "@/lib/calendar-helpers";
 
@@ -14,8 +14,12 @@ export interface HeatmapDataPoint {
 }
 
 export interface HeatmapCalendarProps {
-  data: HeatmapDataPoint[];
+  data: Array<{ date: string; value: number | null }>;
   year: number;
+  /** Dates outside the selected period are context only, never zero-valued data. */
+  dateRange?: { from: string; to: string };
+  /** Keep the relevant activity visible when the year needs horizontal scrolling. */
+  focusDate?: string;
   colorScale?: readonly string[];
   /** External boundaries — when provided, skip internal percentile computation */
   boundaries?: number[];
@@ -57,6 +61,8 @@ const MONTHS = [
 export function HeatmapCalendar({
   data,
   year,
+  dateRange,
+  focusDate,
   colorScale = defaultColorScale,
   boundaries: externalBoundaries,
   valueFormatter = (v) => v.toLocaleString(),
@@ -68,12 +74,12 @@ export function HeatmapCalendar({
 }: HeatmapCalendarProps) {
   const { weeks, dataMap, boundaries, monthLabels } = useMemo(() => {
     const weeks = getYearWeeks(year);
-    const dataMap = new Map<string, number>();
+    const dataMap = new Map<string, number | null>();
     const nonZeroValues: number[] = [];
 
     for (const d of data) {
       dataMap.set(d.date, d.value);
-      if (d.value > 0) nonZeroValues.push(d.value);
+      if (d.value !== null && d.value > 0) nonZeroValues.push(d.value);
     }
 
     // Use external boundaries if provided, otherwise compute percentile-based
@@ -107,17 +113,29 @@ export function HeatmapCalendar({
   }, [data, year, colorScale, externalBoundaries]);
 
   const labelWidth = 30;
+  const rangeStart = dateRange ? new Date(`${dateRange.from}T00:00:00`).getTime() : -Infinity;
+  const rangeEnd = dateRange ? new Date(`${dateRange.to}T00:00:00`).getTime() : Infinity;
 
   // Single tooltip state — avoids Radix multi-Tooltip stale-content bug
   const [hoveredCell, setHoveredCell] = useState<{
     dateStr: string;
-    value: number;
+    value: number | null;
     rect: { top: number; left: number; width: number; height: number };
   } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    if (!scroller || !focusDate) return;
+    const weekIndex = weeks.findIndex((week) => week.some((date) => formatDateISO(date) === focusDate));
+    if (weekIndex >= 0) {
+      scroller.scrollLeft = Math.max(0, (weekIndex + 2) * (cellSize + cellGap) + labelWidth - scroller.clientWidth);
+    }
+  }, [focusDate, weeks, cellSize, cellGap]);
 
   const handleCellEnter = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>, dateStr: string, value: number) => {
+    (e: React.MouseEvent<HTMLDivElement>, dateStr: string, value: number | null) => {
       const cellRect = e.currentTarget.getBoundingClientRect();
       const containerRect = containerRef.current?.getBoundingClientRect();
       if (!containerRect) return;
@@ -144,7 +162,7 @@ export function HeatmapCalendar({
       {/* Scroll container — only handles horizontal overflow.
           Tooltip lives outside so it is never clipped (overflow-x:auto
           forces overflow-y:auto, which would hide the upward tooltip). */}
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" ref={scrollRef}>
         <div className="inline-block">
           {/* Month labels */}
           <div
@@ -193,22 +211,26 @@ export function HeatmapCalendar({
                 >
                   {week.map((date) => {
                     const dateStr = formatDateISO(date);
-                    const value = dataMap.get(dateStr) ?? 0;
+                    const stored = dataMap.get(dateStr);
+                    const value = stored === undefined ? 0 : stored;
                     const isCurrentYear = date.getFullYear() === year;
+                    const inRange = date.getTime() >= rangeStart && date.getTime() <= rangeEnd;
                     const colorIndex = getColorIndex(
-                      value,
+                      value ?? 0,
                       boundaries,
                       colorScale
                     );
 
-                    if (!isCurrentYear) {
+                    if (!isCurrentYear || !inRange) {
                       return (
                         <div
                           key={dateStr}
+                          aria-hidden="true"
+                          className="rounded-sm bg-muted/30"
                           style={{
                             width: cellSize,
                             height: cellSize,
-                            visibility: "hidden",
+                            visibility: isCurrentYear ? "visible" : "hidden",
                           }}
                         />
                       );
@@ -218,7 +240,7 @@ export function HeatmapCalendar({
                       <div
                         key={dateStr}
                         role="img"
-                        aria-label={`${dateStr}: ${metricLabel} ${valueFormatter(value, dateStr)}`}
+                        aria-label={`${dateStr}: ${metricLabel} ${value === null ? "unavailable" : valueFormatter(value, dateStr)}`}
                         className={cn(
                           "rounded-sm cursor-pointer transition-colors hover:ring-1 hover:ring-foreground",
                           colorIndex === 0 && "border border-border/60",
@@ -227,6 +249,7 @@ export function HeatmapCalendar({
                           width: cellSize,
                           height: cellSize,
                           backgroundColor: colorScale[colorIndex],
+                          ...(value === null ? { backgroundImage: "repeating-linear-gradient(135deg, transparent, transparent 2px, hsl(var(--basalt-muted-foreground) / 0.45) 2px, hsl(var(--basalt-muted-foreground) / 0.45) 3px)" } : {}),
                         }}
                         onMouseEnter={(e) => handleCellEnter(e, dateStr, value)}
                         onMouseLeave={handleCellLeave}
@@ -276,7 +299,7 @@ export function HeatmapCalendar({
           <div className="text-sm">
             <div className="font-medium">{hoveredCell.dateStr}</div>
             <div className="text-muted-foreground">
-              {metricLabel}: {valueFormatter(hoveredCell.value, hoveredCell.dateStr)}
+              {metricLabel}: {hoveredCell.value === null ? "unavailable" : valueFormatter(hoveredCell.value, hoveredCell.dateStr)}
             </div>
           </div>
         </div>

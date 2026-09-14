@@ -1,82 +1,21 @@
-import { HeatmapHero } from "./heatmap-hero";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatGrid } from "./stat-card";
-import { DashboardSegment } from "./dashboard-segment";
 import { ChartCardSkeleton } from "./chart-card-skeleton";
-import { StatCardSkeleton } from "./stat-card-skeleton";
 
-/** Loading skeleton for the dashboard overview. */
+/** Preserve the three metrics and shared chart layout while the period loads. */
 export function DashboardSkeleton() {
   return (
-    <div className="space-y-4 md:space-y-6">
-      <HeatmapHero data={[]} year={new Date().getFullYear()} totalTokens={0} activeDays={0} loading />
-
-      {/* ── Overview ────────────────────────────────────── */}
-      <DashboardSegment title="Overview">
-        {/* Row 1 — Core metrics skeleton (4 cols) */}
-        <StatGrid columns={4}>
-          {Array.from({ length: 4 }).map((_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-            <StatCardSkeleton key={`slot-${i}`} />
-          ))}
-        </StatGrid>
-
-        {/* Row 2 — Economy metrics skeleton (4 cols) */}
-        <StatGrid columns={4}>
-          {Array.from({ length: 4 }).map((_, i) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-            <StatCardSkeleton key={`econ-${i}`} />
-          ))}
-        </StatGrid>
-      </DashboardSegment>
-
-      {/* ── Trends ──────────────────────────────────────── */}
-      <DashboardSegment title="Trends">
-        {/* Charts — left: tab toggle + trend + cache, right: donut + io ratio */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-3 md:gap-4">
-          {/* Left column */}
-          <div className="flex flex-col gap-3 md:gap-4">
-            <div>
-              <Skeleton className="h-8 w-36 mb-3 rounded-lg" />
-              <ChartCardSkeleton titleWidth="w-24" chartHeight="h-[240px] md:h-[280px]" />
-            </div>
-            <ChartCardSkeleton titleWidth="w-20" chartHeight="h-[200px] md:h-[240px]" />
-          </div>
-          {/* Right column */}
-          <div className="flex flex-col gap-3 md:gap-4">
-            <div className="hidden lg:block h-[28px] shrink-0" />
-            <div className="rounded-card bg-secondary p-4 md:p-5">
-              <Skeleton className="h-3 w-20 mb-4" />
-              <div className="flex justify-center">
-                <Skeleton className="h-[180px] w-[180px] rounded-full" />
-              </div>
-            </div>
-            <div className="rounded-card bg-secondary p-4 md:p-5">
-              <Skeleton className="h-3 w-20 mb-4" />
-              <div className="flex justify-center">
-                <Skeleton className="h-[180px] w-[180px] rounded-full" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </DashboardSegment>
-
-      {/* ── Insights ────────────────────────────────────── */}
-      <DashboardSegment title="Insights">
-        {/* Row 1: Weekday vs Weekend + Hourly Chart */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-          <ChartCardSkeleton titleWidth="w-28" chartHeight="h-[180px]" />
-          <ChartCardSkeleton titleWidth="w-24" chartHeight="h-[180px]" />
-        </div>
-        {/* Row 2: Salary Estimator */}
-        <div className="rounded-card bg-secondary p-4 md:p-5">
-          <Skeleton className="h-3 w-32 mb-4" />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Skeleton className="h-[200px] w-full" />
-            <Skeleton className="h-[200px] w-full" />
-          </div>
-        </div>
-      </DashboardSegment>
+    <div className="space-y-5" role="status" aria-label="Loading overview" aria-busy="true">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
+        {["tokens", "cost", "cache"].map((metric) => <div key={metric} className="space-y-5 rounded-card bg-secondary p-6">
+          <Skeleton className="h-4 w-24" /><Skeleton className="h-10 w-36" /><Skeleton className="h-4 w-full" />
+        </div>)}
+      </div>
+      <Skeleton className="h-4 w-64" />
+      <ChartCardSkeleton titleWidth="w-32" chartHeight="h-[160px]" />
+      <ChartCardSkeleton titleWidth="w-32" chartHeight="h-[240px] md:h-[280px]" />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {["machine", "model", "harness"].map((dimension) => <ChartCardSkeleton key={dimension} titleWidth="w-24" chartHeight="h-48" />)}
+      </div>
     </div>
   );
 }

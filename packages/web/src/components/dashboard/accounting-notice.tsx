@@ -27,18 +27,25 @@ function exactUsd(cost: ReportedCost): string {
 
 /** Coverage and price provenance belong beside every dashboard cost total. */
 export function AccountingNotice({ records, pricingMap, loading = false }: { records: AccountedUsage[]; pricingMap: PricingMap; loading?: boolean }) {
-  const { summary, writeCost, complete, reported } = useMemo(() => {
+  const { summary, writeCost, complete, netSavings, reported } = useMemo(() => {
     const costs = records.map((r) => estimateUsageCost(r, pricingMap));
+    const complete = costs.every((c) => c.complete);
     return { summary: summarizeAccounting(records), writeCost: costs.reduce((n, c) => n + c.cacheWriteCost, 0),
-      complete: costs.every((c) => c.complete), reported: reportedTotals(costs.flatMap((c) => c.reportedCosts)) };
+      complete, netSavings: complete ? costs.reduce((n, c) => n + (c.netSavings ?? 0), 0) : null,
+      reported: reportedTotals(costs.flatMap((c) => c.reportedCosts)) };
   }, [records, pricingMap]);
   if (records.length === 0) return null;
   const meta = pricingMap.meta;
   return (
     <div role="note" className="rounded-card border border-border/50 bg-secondary/50 px-4 py-3 text-xs text-muted-foreground space-y-2">
       <p>
-        Cache writes: <span className="text-foreground tabular-nums">{formatTokens(summary.cacheWriteTokens)}</span> known tokens
-        {` · ${Math.round(summary.writeCoverage * 100)}% of input covered · ${formatCost(writeCost)} estimated write cost on covered usage.`}
+        Cache writes: {summary.inputTokens > 0 && summary.writeCoverage === 0 ? "unavailable · 0% of input covered." : <>
+          <span className="text-foreground tabular-nums">{formatTokens(summary.cacheWriteTokens)}</span> known tokens
+          {` · ${Math.round(summary.writeCoverage * 100)}% of input covered · ${formatCost(writeCost)} estimated write cost on covered usage.`}
+        </>}
+      </p>
+      <p>Net cache savings: <span className="text-foreground tabular-nums">{netSavings === null ? "—" : formatCost(netSavings)}</span>
+        {netSavings === null ? " · Cache or pricing details are incomplete." : " · Read discount less cache write premium."}
       </p>
       <p>
         {`Cache read rate covers ${Math.round(summary.readCoverage * 100)}% of recorded input. `}

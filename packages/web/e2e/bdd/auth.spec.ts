@@ -2,13 +2,13 @@
 import { test, expect } from "./fixtures";
 
 test.describe("Feature: Auth bypass (E2E_SKIP_AUTH=true)", () => {
-  test("Given auth is bypassed, When I visit /dashboard, Then I land on /dashboard with the Dashboard heading", async ({ page }) => {
+  test("Given auth is bypassed, When I visit /dashboard, Then I land on /dashboard with the Overview heading", async ({ page }) => {
     // Given: E2E_SKIP_AUTH=true is set by the runner
     // When: navigate to /dashboard
     await page.goto("/dashboard");
     // Then: no redirect to /login; dashboard heading renders
     await expect(page).toHaveURL(/\/dashboard/);
-    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible();
   });
 
   test("Given auth is bypassed, When I visit /settings, Then I land on /settings with the General heading", async ({ page }) => {

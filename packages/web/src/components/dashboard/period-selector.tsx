@@ -18,6 +18,7 @@ export function PeriodSelector({ value, onChange }: PeriodSelectorProps) {
         <button
           type="button"
           key={opt.value}
+          aria-pressed={value === opt.value}
           onClick={() => onChange(opt.value)}
           className={cn(
             "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",

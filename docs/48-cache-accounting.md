@@ -81,6 +81,10 @@ Dashboard headline totals use P and Q. Stacked token charts use disjoint display
 
 Cache read rate uses `R / known-read P`, accompanied by the fraction of all recorded input that has read coverage. Write coverage independently measures input with known W. An unsupported zero is not evidence of a cache miss. Cache read rate replaces the old cache/non-cache percentage. Unknown chart intervals remain gaps; aggregate rates are weighted by covered input. Net savings may be negative when the write premium exceeds the read discount.
 
+Overview organizes its cards, daily heatmap, line chart and machine/model/harness bars around three selectable metrics: total tokens (P + Q), public-price cost, and known cache tokens (R + W). Cache is already included in P, so it must never be added to the token total again. Mixed legacy and annotated records use the same accounting helpers in every view. Unknown cache counts render as unavailable; partial totals show known counts and read/write coverage. No-usage dates can be zero without turning uncollected cache on recorded usage into a measured zero.
+
+All Overview views share one local calendar period. Usage and machine queries receive identical UTC timestamps (`from` inclusive, `to` exclusive), avoiding padded-day differences between totals and bars. All-time charts begin at the first recorded day. The salary calculator opens from the header and uses the selected period's estimated cost divided by its calendar days, including inactive days. This presentation change does not require an API or database migration.
+
 The public pricing API includes a content snapshot ID, fetch time and dynamic/baseline/fallback status. `effectiveAt` remains null: a fetch timestamp is not a historical rate schedule. Estimates cover token charges; storage fees, subscriptions and historical/provider-specific billing adjustments are not modeled as a complete invoice.
 
 ## Durable local state and delivery
