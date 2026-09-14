@@ -27,14 +27,14 @@
       },
       "devDependencies": {
         "@pew/core": "workspace:*",
-        "@types/node": "26.5.0",
+        "@types/node": "26.5.1",
       },
     },
     "packages/core": {
       "name": "@pew/core",
       "version": "2.29.1",
       "devDependencies": {
-        "@types/node": "26.5.0",
+        "@types/node": "26.5.1",
       },
     },
     "packages/web": {
@@ -59,7 +59,7 @@
       "devDependencies": {
         "@pew/core": "workspace:*",
         "@tailwindcss/postcss": "^4.3.3",
-        "@types/node": "26.5.0",
+        "@types/node": "26.5.1",
         "@types/react": "^19.3.0",
         "@types/react-dom": "^19.3.0",
         "@typescript/native-preview": "7.0.0-dev.20260707.2",
@@ -636,7 +636,7 @@
 
     "@types/estree": ["@types/estree@1.0.9", "", {}, "sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg=="],
 
-    "@types/node": ["@types/node@26.5.0", "", { "dependencies": { "undici-types": "~8.9.0" } }, "sha512-dVSGpriSoCgz8WnDNTuSSuSv1PC/ALXihO4ulRZt7Md8k9mlbdin3lGOcDE8SnWOgf513ByWlXd7BK4azmyg/A=="],
+    "@types/node": ["@types/node@26.5.1", "", { "dependencies": { "undici-types": "~8.9.0" } }, "sha512-CzNm2FezW4VR/LjG6yUdiEgLE/rAQ9Slj5gCu/C2VrdcW7I0ahNZ8DRbHT7zOZ6r3ONgd/bsQIeSaoDGrd1C6g=="],
 
     "@types/react": ["@types/react@19.3.0", "", { "dependencies": { "csstype": "^3.2.2" } }, "sha512-N0rFCuH9YoxG9/m61l9MfpJKfmLOVU0em7ipIz6TRgSSkvReLB9vL85GB+yr8Bs5leqpvg96JSwF4ZS1s4viQg=="],
 
