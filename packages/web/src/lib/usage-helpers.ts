@@ -5,9 +5,9 @@
  * (by model, by agent/source, by date) for the dashboard views.
  */
 
+import { estimateUsageCost, accountedTotal, displayCounters } from "@/lib/accounting";
 import type { UsageRow } from "@/lib/usage-transforms";
 import { sourceLabel, toLocalDateStr } from "@/lib/usage-transforms";
-import { lookupPricing, estimateCost } from "@/lib/pricing";
 import type { PricingMap } from "@/lib/pricing";
 
 // ---------------------------------------------------------------------------
@@ -145,25 +145,25 @@ export function groupByModel(records: UsageRow[], pricingMap: PricingMap): Model
   let grandTotal = 0;
 
   for (const r of records) {
-    grandTotal += r.total_tokens;
+    const display = displayCounters(r);
+    grandTotal += display.total_tokens;
     const existing = byModel.get(r.model);
-    const pricing = lookupPricing(pricingMap, r.model, r.source);
-    const cost = estimateCost(r.input_tokens, r.output_tokens, r.cached_input_tokens, r.reasoning_output_tokens ?? 0, pricing);
+    const cost = estimateUsageCost(r, pricingMap);
 
     if (existing) {
       existing.sources.add(r.source);
-      existing.inputTokens += r.input_tokens;
-      existing.outputTokens += r.output_tokens;
-      existing.cachedTokens += r.cached_input_tokens;
-      existing.totalTokens += r.total_tokens;
+      existing.inputTokens += display.input_tokens;
+      existing.outputTokens += (display.output_tokens + display.reasoning_output_tokens);
+      existing.cachedTokens += display.cached_input_tokens;
+      existing.totalTokens += accountedTotal(r);
       existing.estimatedCost += cost.totalCost;
     } else {
       byModel.set(r.model, {
         sources: new Set([r.source]),
-        inputTokens: r.input_tokens,
-        outputTokens: r.output_tokens,
-        cachedTokens: r.cached_input_tokens,
-        totalTokens: r.total_tokens,
+        inputTokens: display.input_tokens,
+        outputTokens: (display.output_tokens + display.reasoning_output_tokens),
+        cachedTokens: display.cached_input_tokens,
+        totalTokens: accountedTotal(r),
         estimatedCost: cost.totalCost,
       });
     }
@@ -211,29 +211,29 @@ export function groupByAgent(records: UsageRow[], pricingMap: PricingMap): Agent
       const byModel = new Map<string, ModelRow>();
 
       for (const r of recs) {
-        inputTokens += r.input_tokens;
-        outputTokens += r.output_tokens;
-        cachedTokens += r.cached_input_tokens;
-        totalTokens += r.total_tokens;
+        const display = displayCounters(r);
+        inputTokens += display.input_tokens;
+        outputTokens += (display.output_tokens + display.reasoning_output_tokens);
+        cachedTokens += display.cached_input_tokens;
+        totalTokens += accountedTotal(r);
 
-        const pricing = lookupPricing(pricingMap, r.model, r.source);
-        const cost = estimateCost(r.input_tokens, r.output_tokens, r.cached_input_tokens, r.reasoning_output_tokens ?? 0, pricing);
+        const cost = estimateUsageCost(r, pricingMap);
         estimatedCost += cost.totalCost;
 
         const existing = byModel.get(r.model);
         if (existing) {
-          existing.input += r.input_tokens;
-          existing.output += r.output_tokens;
-          existing.cached += r.cached_input_tokens;
-          existing.total += r.total_tokens;
+          existing.input += display.input_tokens;
+          existing.output += (display.output_tokens + display.reasoning_output_tokens);
+          existing.cached += display.cached_input_tokens;
+          existing.total += accountedTotal(r);
           existing.cost += cost.totalCost;
         } else {
           byModel.set(r.model, {
             model: r.model,
-            input: r.input_tokens,
-            output: r.output_tokens,
-            cached: r.cached_input_tokens,
-            total: r.total_tokens,
+            input: display.input_tokens,
+            output: (display.output_tokens + display.reasoning_output_tokens),
+            cached: display.cached_input_tokens,
+            total: accountedTotal(r),
             cost: cost.totalCost,
           });
         }
@@ -283,18 +283,12 @@ export function groupByDate(records: UsageRow[], pricingMap: PricingMap, tzOffse
       let cost = 0;
 
       for (const r of recs) {
-        inputTokens += r.input_tokens;
-        outputTokens += r.output_tokens;
-        cachedTokens += r.cached_input_tokens;
-        totalTokens += r.total_tokens;
-        const pricing = lookupPricing(pricingMap, r.model, r.source);
-        const c = estimateCost(
-          r.input_tokens,
-          r.output_tokens,
-          r.cached_input_tokens,
-          r.reasoning_output_tokens ?? 0,
-          pricing,
-        );
+        const display = displayCounters(r);
+        inputTokens += display.input_tokens;
+        outputTokens += (display.output_tokens + display.reasoning_output_tokens);
+        cachedTokens += display.cached_input_tokens;
+        totalTokens += accountedTotal(r);
+        const c = estimateUsageCost(r, pricingMap);
         cost += c.totalCost;
       }
 
@@ -355,20 +349,21 @@ export function toLocalDailyBuckets(
     const localMs = utcMs - tzOffset * 60_000;
     const localDate = new Date(localMs);
     const date = localDate.toISOString().slice(0, 10);
+    const display = displayCounters(r);
 
     const existing = byDate.get(date);
     if (existing) {
-      existing.inputTokens += r.input_tokens;
-      existing.outputTokens += r.output_tokens;
-      existing.cachedTokens += r.cached_input_tokens;
-      existing.totalTokens += r.total_tokens;
+      existing.inputTokens += display.input_tokens;
+      existing.outputTokens += (display.output_tokens + display.reasoning_output_tokens);
+      existing.cachedTokens += display.cached_input_tokens;
+      existing.totalTokens += accountedTotal(r);
     } else {
       byDate.set(date, {
         date,
-        inputTokens: r.input_tokens,
-        outputTokens: r.output_tokens,
-        cachedTokens: r.cached_input_tokens,
-        totalTokens: r.total_tokens,
+        inputTokens: display.input_tokens,
+        outputTokens: (display.output_tokens + display.reasoning_output_tokens),
+        cachedTokens: display.cached_input_tokens,
+        totalTokens: accountedTotal(r),
       });
     }
   }
@@ -411,14 +406,7 @@ export function compareWeekdayWeekend(
     const utcMs = new Date(r.hour_start).getTime();
     const localMs = utcMs - tzOffset * 60_000;
     const localDate = new Date(localMs).toISOString().slice(0, 10);
-    const pricing = lookupPricing(pricingMap, r.model, r.source);
-    const cost = estimateCost(
-      r.input_tokens,
-      r.output_tokens,
-      r.cached_input_tokens,
-      r.reasoning_output_tokens ?? 0,
-      pricing,
-    );
+    const cost = estimateUsageCost(r, pricingMap);
     costByDate.set(localDate, (costByDate.get(localDate) ?? 0) + cost.totalCost);
   }
 
@@ -522,27 +510,20 @@ export function computeMoMGrowth(
     const m = parseInt(dateStr.slice(5, 7), 10) - 1; // 0-indexed
     const d = parseInt(dateStr.slice(8, 10), 10); // day of month
 
-    const pricing = lookupPricing(pricingMap, r.model, r.source);
-    const cost = estimateCost(
-      r.input_tokens,
-      r.output_tokens,
-      r.cached_input_tokens,
-      r.reasoning_output_tokens ?? 0,
-      pricing,
-    );
+    const cost = estimateUsageCost(r, pricingMap);
 
     if (y === currentYear && m === currentMonth) {
-      curTokens += r.total_tokens;
+      curTokens += accountedTotal(r);
       curCost += cost.totalCost;
       curDays.add(dateStr);
     } else if (y === prevYear && m === prevMonth) {
-      prevTokens += r.total_tokens;
+      prevTokens += accountedTotal(r);
       prevCost += cost.totalCost;
       prevDays.add(dateStr);
 
       // Same-date subset: only count days up to the current day-of-month
       if (d <= currentDay) {
-        prevSameDateTokens += r.total_tokens;
+        prevSameDateTokens += accountedTotal(r);
         prevSameDateCost += cost.totalCost;
         prevSameDateDays.add(dateStr);
       }
@@ -643,30 +624,23 @@ export function computeWoWGrowth(
 
   for (const r of rows) {
     const dateStr = toLocalDateStr(r.hour_start, tzOffset);
-    const pricing = lookupPricing(pricingMap, r.model, r.source);
-    const cost = estimateCost(
-      r.input_tokens,
-      r.output_tokens,
-      r.cached_input_tokens,
-      r.reasoning_output_tokens ?? 0,
-      pricing,
-    );
+    const cost = estimateUsageCost(r, pricingMap);
 
     // Current week: curWeekStart <= date <= todayStr
     if (dateStr >= curWeekStart && dateStr <= todayStr) {
-      curTokens += r.total_tokens;
+      curTokens += accountedTotal(r);
       curCost += cost.totalCost;
       curDays.add(dateStr);
     }
     // Previous week: prevWeekStart <= date <= prevWeekEnd
     else if (dateStr >= prevWeekStart && dateStr <= prevWeekEnd) {
-      prevTokens += r.total_tokens;
+      prevTokens += accountedTotal(r);
       prevCost += cost.totalCost;
       prevDays.add(dateStr);
 
       // Same-day subset: only include up to prevWeekSameDayEnd
       if (dateStr <= prevWeekSameDayEnd) {
-        prevSameDayTokens += r.total_tokens;
+        prevSameDayTokens += accountedTotal(r);
         prevSameDayCost += cost.totalCost;
         prevSameDayDays.add(dateStr);
       }
@@ -723,7 +697,7 @@ export function toSourceTrendPoints(rows: UsageRow[], tzOffset = 0): SourceTrend
       dateMap = new Map<string, number>();
       byDate.set(date, dateMap);
     }
-    dateMap.set(r.source, (dateMap.get(r.source) ?? 0) + r.total_tokens);
+    dateMap.set(r.source, (dateMap.get(r.source) ?? 0) + accountedTotal(r));
   }
 
   // Build result with zero-fill for missing sources
@@ -761,7 +735,7 @@ export function toDominantSourceTimeline(rows: UsageRow[], tzOffset = 0): DailyD
       dateMap = new Map<string, number>();
       byDate.set(date, dateMap);
     }
-    dateMap.set(r.source, (dateMap.get(r.source) ?? 0) + r.total_tokens);
+    dateMap.set(r.source, (dateMap.get(r.source) ?? 0) + accountedTotal(r));
   }
 
   return Array.from(byDate.entries())
@@ -854,9 +828,9 @@ export function toHourlyWeekdayWeekend(
     const bucket = hourly[localHour];
     if (bucket) {
       if (dow === 0 || dow === 6) {
-        bucket.weekendTokens += r.total_tokens;
+        bucket.weekendTokens += accountedTotal(r);
       } else {
-        bucket.weekdayTokens += r.total_tokens;
+        bucket.weekdayTokens += accountedTotal(r);
       }
     }
   }
@@ -932,7 +906,7 @@ export function toHourlyByDevice(
 
     const bucket = hourly[localHour];
     if (bucket) {
-      bucket.set(deviceId, (bucket.get(deviceId) ?? 0) + r.total_tokens);
+      bucket.set(deviceId, (bucket.get(deviceId) ?? 0) + accountedTotal(r));
     }
   }
 
@@ -1002,7 +976,7 @@ export function toHourlyByModel(
   // 1. Compute global totals per model to determine top N
   const globalTotals = new Map<string, number>();
   for (const r of rows) {
-    globalTotals.set(r.model, (globalTotals.get(r.model) ?? 0) + r.total_tokens);
+    globalTotals.set(r.model, (globalTotals.get(r.model) ?? 0) + accountedTotal(r));
   }
 
   // Sort by total descending, pick top N
@@ -1028,7 +1002,7 @@ export function toHourlyByModel(
 
     const bucket = hourly[localHour];
     if (bucket) {
-      bucket.set(model, (bucket.get(model) ?? 0) + r.total_tokens);
+      bucket.set(model, (bucket.get(model) ?? 0) + accountedTotal(r));
     }
   }
 
@@ -1102,7 +1076,7 @@ export function toHourlyByAgent(
 
     const bucket = hourly[localHour];
     if (bucket) {
-      bucket.set(r.source, (bucket.get(r.source) ?? 0) + r.total_tokens);
+      bucket.set(r.source, (bucket.get(r.source) ?? 0) + accountedTotal(r));
     }
   }
 

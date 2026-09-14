@@ -12,6 +12,7 @@
  */
 
 import type { DbRead } from "./db";
+import { createHash } from "node:crypto";
 import {
   buildPricingMap,
   getDefaultPricingMap,
@@ -24,9 +25,17 @@ export async function loadPricingMap(db: PricingMapDb): Promise<PricingMap> {
   try {
     const dynamicResult = await db.getDynamicPricing();
     const dynamic = dynamicResult?.entries ?? [];
-    return buildPricingMap({ dynamic });
-  } catch (err) {
-    console.error("loadPricingMap: getDynamicPricing failed", err);
-    return getDefaultPricingMap();
+    const map = buildPricingMap({ dynamic });
+    // Price identity excludes fetch timestamps: fetchedAt is not effectiveAt.
+    const snapshot = JSON.stringify(dynamic, (key, value) => key === "updatedAt" ? undefined : value);
+    map.meta = { status: dynamic.length === 0 ? "fallback" : dynamicResult.servedFrom === "baseline" ? "baseline" : "dynamic",
+      snapshotId: createHash("sha256").update(snapshot || "[]").digest("hex"),
+      fetchedAt: dynamic.map((e) => e.updatedAt).filter(Boolean).sort().at(-1) ?? null, effectiveAt: null };
+    return map;
+  } catch {
+    console.error("loadPricingMap: dynamic pricing unavailable");
+    const map = getDefaultPricingMap();
+    map.meta = { status: "fallback", snapshotId: createHash("sha256").update(JSON.stringify(map)).digest("hex"), fetchedAt: null, effectiveAt: null };
+    return map;
   }
 }

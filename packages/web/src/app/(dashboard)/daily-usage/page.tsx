@@ -1,5 +1,6 @@
 "use client";
 
+import { estimateUsageCost, accountedTotal, displayCounters } from "@/lib/accounting";
 import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, ChevronLeft } from "lucide-react";
 import {
@@ -10,9 +11,10 @@ import {
 import { useDeviceData } from "@/hooks/use-device-data";
 import { useTzOffset } from "@/hooks/use-tz-offset";
 import { ErrorBanner } from "@/components/ui/error-banner";
+import { AccountingNotice } from "@/components/dashboard/accounting-notice";
 import { UsageTimingNotice } from "@/components/dashboard/usage-timing-notice";
 import { formatTokens } from "@/lib/utils";
-import { usePricingMap, lookupPricing, estimateCost, formatCost } from "@/hooks/use-pricing";
+import { usePricingMap, formatCost } from "@/hooks/use-pricing";
 import type { PricingMap } from "@/hooks/use-pricing";
 import { UsageTrendChart } from "@/components/dashboard/usage-trend-chart";
 import { DeviceAreaChart } from "@/components/dashboard/device-area-chart";
@@ -60,31 +62,25 @@ function DayRow({ group, pricingMap }: { group: DailyGroup; pricingMap: PricingM
     >();
 
     for (const r of group.records) {
+      const display = displayCounters(r);
       const key = `${r.source}:${r.model}`;
       const existing = byKey.get(key);
-      const pricing = lookupPricing(pricingMap, r.model, r.source);
-      const cost = estimateCost(
-        r.input_tokens,
-        r.output_tokens,
-        r.cached_input_tokens,
-        r.reasoning_output_tokens ?? 0,
-        pricing
-      );
+      const cost = estimateUsageCost(r, pricingMap);
 
       if (existing) {
-        existing.input += r.input_tokens;
-        existing.output += r.output_tokens;
-        existing.cached += r.cached_input_tokens;
-        existing.total += r.total_tokens;
+        existing.input += display.input_tokens;
+        existing.output += (display.output_tokens + display.reasoning_output_tokens);
+        existing.cached += display.cached_input_tokens;
+        existing.total += accountedTotal(r);
         existing.cost += cost.totalCost;
       } else {
         byKey.set(key, {
           source: r.source,
           model: r.model,
-          input: r.input_tokens,
-          output: r.output_tokens,
-          cached: r.cached_input_tokens,
-          total: r.total_tokens,
+          input: display.input_tokens,
+          output: (display.output_tokens + display.reasoning_output_tokens),
+          cached: display.cached_input_tokens,
+          total: accountedTotal(r),
           cost: cost.totalCost,
         });
       }
@@ -297,7 +293,7 @@ export default function DailyUsagePage() {
   // Wait for all data before showing content
   const loading = usageLoading || deviceLoading;
 
-  const { pricingMap } = usePricingMap();
+  const { pricingMap, loading: pricingLoading } = usePricingMap();
 
   const tzOffset = useTzOffset();
 
@@ -408,6 +404,7 @@ export default function DailyUsagePage() {
       {/* Error */}
       <ErrorBanner messagePrefix="Failed to load usage data" error={error} />
       <UsageTimingNotice records={data?.records} />
+      <AccountingNotice records={data?.records ?? []} pricingMap={pricingMap} loading={pricingLoading} />
 
       {/* Loading */}
       {loading && <DailySkeleton />}

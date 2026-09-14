@@ -1,5 +1,6 @@
 "use client";
 
+import { estimateUsageCost, accountedTotal, displayCounters } from "@/lib/accounting";
 import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import {
@@ -9,6 +10,7 @@ import {
 import type { UsageRow } from "@/hooks/use-usage-data";
 import { useTzOffset } from "@/hooks/use-tz-offset";
 import { ErrorBanner } from "@/components/ui/error-banner";
+import { AccountingNotice } from "@/components/dashboard/accounting-notice";
 import { UsageTimingNotice } from "@/components/dashboard/usage-timing-notice";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
@@ -27,7 +29,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatTokens } from "@/lib/utils";
 import { groupByDate, toHourlyByAgent, toHourlyByModel, toHourlyByDevice } from "@/lib/usage-helpers";
 import type { DailyGroup } from "@/lib/usage-helpers";
-import { usePricingMap, lookupPricing, estimateCost, formatCost } from "@/hooks/use-pricing";
+import { usePricingMap, formatCost } from "@/hooks/use-pricing";
 import type { PricingMap } from "@/hooks/use-pricing";
 import { formatDate, getLocalToday } from "@/lib/date-helpers";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
@@ -65,20 +67,21 @@ function toHalfHourPoints(
     { input: number; output: number; total: number }
   >();
   for (const r of records) {
+    const display = displayCounters(r);
     // Floor to 30-min boundary in UTC
     const ms = new Date(r.hour_start).getTime();
     const key = ms - (ms % SLOT_MS);
 
     const existing = byUtcKey.get(key);
     if (existing) {
-      existing.input += r.input_tokens;
-      existing.output += r.output_tokens;
-      existing.total += r.total_tokens;
+      existing.input += (display.input_tokens + display.cached_input_tokens);
+      existing.output += (display.output_tokens + display.reasoning_output_tokens);
+      existing.total += accountedTotal(r);
     } else {
       byUtcKey.set(key, {
-        input: r.input_tokens,
-        output: r.output_tokens,
-        total: r.total_tokens,
+        input: (display.input_tokens + display.cached_input_tokens),
+        output: (display.output_tokens + display.reasoning_output_tokens),
+        total: accountedTotal(r),
       });
     }
   }
@@ -138,31 +141,25 @@ function DayRow({
     >();
 
     for (const r of group.records) {
+      const display = displayCounters(r);
       const key = `${r.source}:${r.model}`;
       const existing = byKey.get(key);
-      const pricing = lookupPricing(pricingMap, r.model, r.source);
-      const cost = estimateCost(
-        r.input_tokens,
-        r.output_tokens,
-        r.cached_input_tokens,
-        r.reasoning_output_tokens ?? 0,
-        pricing,
-      );
+      const cost = estimateUsageCost(r, pricingMap);
 
       if (existing) {
-        existing.input += r.input_tokens;
-        existing.output += r.output_tokens;
-        existing.cached += r.cached_input_tokens;
-        existing.total += r.total_tokens;
+        existing.input += display.input_tokens;
+        existing.output += (display.output_tokens + display.reasoning_output_tokens);
+        existing.cached += display.cached_input_tokens;
+        existing.total += accountedTotal(r);
         existing.cost += cost.totalCost;
       } else {
         byKey.set(key, {
           source: r.source,
           model: r.model,
-          input: r.input_tokens,
-          output: r.output_tokens,
-          cached: r.cached_input_tokens,
-          total: r.total_tokens,
+          input: display.input_tokens,
+          output: (display.output_tokens + display.reasoning_output_tokens),
+          cached: display.cached_input_tokens,
+          total: accountedTotal(r),
           cost: cost.totalCost,
         });
       }
@@ -411,7 +408,7 @@ export default function RecentPage() {
   // Wait for ALL data before showing content to avoid staggered animations
   const allLoading = loading || patternChartsLoading;
 
-  const { pricingMap } = usePricingMap();
+  const { pricingMap, loading: pricingLoading } = usePricingMap();
 
   const halfHourPoints = useMemo(() => {
     return data
@@ -472,6 +469,7 @@ export default function RecentPage() {
       {/* Error */}
       <ErrorBanner messagePrefix="Failed to load usage data" error={error} />
       <UsageTimingNotice records={data?.records} />
+      <AccountingNotice records={data?.records ?? []} pricingMap={pricingMap} loading={pricingLoading} />
 
       {/* Loading */}
       {allLoading && <RecentSkeleton />}

@@ -8,6 +8,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from "recharts";
+import { displayCounters, modelUsage } from "@/lib/accounting";
 import { cn } from "@/lib/utils";
 import { formatTokens } from "@/lib/utils";
 import { chart, chartAxis, CHART_COLORS } from "@/lib/palette";
@@ -124,11 +125,12 @@ export function ModelBreakdownChart({
     { model: string; sources: string[]; input: number; output: number; cached: number; total: number }
   >();
   for (const m of data) {
+    const display = displayCounters(modelUsage(m));
     const existing = merged.get(m.model);
     if (existing) {
-      existing.input += m.input;
-      existing.output += m.output;
-      existing.cached += m.cached;
+      existing.input += display.input_tokens;
+      existing.output += display.output_tokens + display.reasoning_output_tokens;
+      existing.cached += display.cached_input_tokens;
       existing.total += m.total;
       if (!existing.sources.includes(m.source)) {
         existing.sources.push(m.source);
@@ -137,9 +139,9 @@ export function ModelBreakdownChart({
       merged.set(m.model, {
         model: m.model,
         sources: [m.source],
-        input: m.input,
-        output: m.output,
-        cached: m.cached,
+        input: display.input_tokens,
+        output: display.output_tokens + display.reasoning_output_tokens,
+        cached: display.cached_input_tokens,
         total: m.total,
       });
     }

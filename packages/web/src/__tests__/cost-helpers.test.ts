@@ -200,13 +200,13 @@ describe("toDailyCostPoints", () => {
 describe("computeCacheSavings", () => {
   const pm = makePricingMap();
 
-  it("returns zero savings when no cached tokens", () => {
+  it("keeps net savings unknown when legacy zero counters do not establish writes", () => {
     const models = [makeAggregate({ cached: 0 })];
     const result = computeCacheSavings(models, pm);
     expect(result.savedDollars).toBe(0);
     expect(result.actualCachedCost).toBe(0);
-    expect(result.netSavings).toBe(0);
-    expect(result.savingsPercent).toBe(0);
+    expect(result.netSavings).toBeNull();
+    expect(result.savingsPercent).toBeNull();
   });
 
   it("computes savings for partial cache hits", () => {
@@ -219,8 +219,8 @@ describe("computeCacheSavings", () => {
     const result = computeCacheSavings(models, pm);
     expect(result.savedDollars).toBeCloseTo(0.60, 3);
     expect(result.actualCachedCost).toBeCloseTo(0.06, 3);
-    expect(result.netSavings).toBeCloseTo(0.54, 3);
-    expect(result.savingsPercent).toBeCloseTo(90, 1);
+    expect(result.netSavings).toBeNull();
+    expect(result.savingsPercent).toBeNull();
   });
 
   it("computes savings with full cache (all input cached)", () => {
@@ -229,8 +229,8 @@ describe("computeCacheSavings", () => {
     const result = computeCacheSavings(models, pm);
     expect(result.savedDollars).toBeCloseTo(3.0, 2);
     expect(result.actualCachedCost).toBeCloseTo(0.3, 2);
-    expect(result.netSavings).toBeCloseTo(2.7, 2);
-    expect(result.savingsPercent).toBeCloseTo(90, 1);
+    expect(result.netSavings).toBeNull();
+    expect(result.savingsPercent).toBeNull();
   });
 
   it("sums savings across multiple models", () => {
@@ -243,7 +243,7 @@ describe("computeCacheSavings", () => {
     const result = computeCacheSavings(models, pm);
     expect(result.savedDollars).toBeCloseTo(1.10, 2);
     expect(result.actualCachedCost).toBeCloseTo(0.184, 3);
-    expect(result.netSavings).toBeCloseTo(0.916, 3);
+    expect(result.netSavings).toBeNull();
   });
 
   it("falls back to input * 0.1 when pricing.cached is null/undefined", () => {
@@ -441,13 +441,13 @@ describe("toDailyCacheRates", () => {
     expect(result[0]!.inputTokens).toBe(0);
   });
 
-  it("computes 0% cache rate when nothing is cached", () => {
+  it("keeps cache rate unknown for legacy zero counters", () => {
     const rows = [
       makeRow({ hour_start: "2026-03-10", input_tokens: 200_000, cached_input_tokens: 0 }),
     ];
     const result = toDailyCacheRates(rows);
     expect(result).toHaveLength(1);
-    expect(result[0]!.cacheRate).toBe(0);
+    expect(result[0]!.cacheRate).toBeNull();
     expect(result[0]!.cachedTokens).toBe(0);
     expect(result[0]!.inputTokens).toBe(200_000);
   });
@@ -466,21 +466,21 @@ describe("toDailyCacheRates", () => {
     expect(result[0]!.cacheRate).toBeCloseTo(50, 1);
     expect(result[0]!.inputTokens).toBe(150_000);
     expect(result[0]!.cachedTokens).toBe(150_000);
-    // Mar 11: 400k uncached + 0 cached → 0%
+    // Mar 11: legacy zero cannot distinguish unreported reads from no reads.
     expect(result[1]!.date).toBe("2026-03-11");
-    expect(result[1]!.cacheRate).toBe(0);
+    expect(result[1]!.cacheRate).toBeNull();
     // Mar 12: 20k uncached + 80k cached → 80%
     expect(result[2]!.date).toBe("2026-03-12");
     expect(result[2]!.cacheRate).toBeCloseTo(80, 1);
   });
 
-  it("returns 0% cache rate for days with zero total input tokens", () => {
+  it("returns no cache rate for days with zero total input tokens", () => {
     const rows = [
       makeRow({ hour_start: "2026-03-10", input_tokens: 0, cached_input_tokens: 0 }),
     ];
     const result = toDailyCacheRates(rows);
     expect(result).toHaveLength(1);
-    expect(result[0]!.cacheRate).toBe(0);
+    expect(result[0]!.cacheRate).toBeNull();
     expect(result[0]!.inputTokens).toBe(0);
     expect(result[0]!.cachedTokens).toBe(0);
   });
@@ -539,18 +539,18 @@ describe("computeReasoningRatio", () => {
   });
 
   it("computes partial reasoning ratio", () => {
-    // 200k reasoning out of 500k output = 40%
+    // Legacy visible output is exclusive: 200k / (500k + 200k).
     const result = computeReasoningRatio(
       makeSummary({ output_tokens: 500_000, reasoning_output_tokens: 200_000 }),
     );
     expect(result.reasoningTokens).toBe(200_000);
-    expect(result.outputTokens).toBe(500_000);
-    expect(result.reasoningPercent).toBeCloseTo(40, 1);
+    expect(result.outputTokens).toBe(700_000);
+    expect(result.reasoningPercent).toBeCloseTo(200 / 7, 1);
   });
 
   it("computes 100% reasoning ratio", () => {
     const result = computeReasoningRatio(
-      makeSummary({ output_tokens: 300_000, reasoning_output_tokens: 300_000 }),
+      makeSummary({ output_tokens: 0, reasoning_output_tokens: 300_000 }),
     );
     expect(result.reasoningTokens).toBe(300_000);
     expect(result.outputTokens).toBe(300_000);

@@ -6,6 +6,7 @@ import { useUsageData } from "@/hooks/use-usage-data";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { formatTokens } from "@/lib/utils";
 import { usePricingMap, formatCost } from "@/hooks/use-pricing";
+import { AccountingNotice } from "@/components/dashboard/accounting-notice";
 import { groupByAgent } from "@/lib/usage-helpers";
 import type { AgentGroup } from "@/lib/usage-helpers";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -164,7 +165,7 @@ export default function AgentsPage() {
     ...(to ? { to } : {}),
   });
 
-  const { pricingMap } = usePricingMap();
+  const { pricingMap, loading: pricingLoading } = usePricingMap();
 
   const agentGroups = useMemo(
     () => (data ? groupByAgent(data.records, pricingMap) : []),
@@ -183,6 +184,7 @@ export default function AgentsPage() {
 
       {/* Error */}
       <ErrorBanner messagePrefix="Failed to load usage data" error={error} />
+      <AccountingNotice records={data?.records ?? []} pricingMap={pricingMap} loading={pricingLoading} />
 
       {/* Loading */}
       {loading && <AgentsSkeleton />}

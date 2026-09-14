@@ -42,12 +42,16 @@ describe("GET /api/pricing", () => {
     GET = mod.GET;
   });
 
-  it("should reject unauthenticated with 401", async () => {
+  it("serves the same public price map without authentication", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce(null);
 
     const res = await GET(new Request("http://localhost:7020/api/pricing"));
 
-    expect(res.status).toBe(401);
+    expect(res.status).toBe(200);
+    const publicMap = await res.json();
+    const signedInMap = await (await GET(new Request("http://localhost:7020/api/pricing", { headers: { Authorization: "Bearer synthetic" } }))).json();
+    expect(publicMap).toEqual(signedInMap);
+    expect(resolveUser).not.toHaveBeenCalled();
   });
 
   it("should return pricing map from dynamic entries", async () => {
@@ -89,6 +93,7 @@ describe("GET /api/pricing", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(typeof body).toBe("object");
+    expect(body.meta.status).toBe("fallback");
   });
 
   it("should fall back to defaults on unexpected error", async () => {

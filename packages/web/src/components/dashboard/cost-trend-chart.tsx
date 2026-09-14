@@ -69,13 +69,14 @@ function CostTrendTooltip({
   if (!active || !payload?.length) return null;
 
   const labels: Record<string, string> = {
-    inputCost: "Input",
-    outputCost: "Output",
-    cachedCost: "Cached",
+    inputCost: "Non-cache input",
+    outputCost: "Output incl. reasoning",
+    cachedCost: "Cache read",
+    cacheWriteCost: "Cache write",
   };
 
   const total = payload.reduce((sum, e) => sum + e.value, 0);
-  const orderedKeys = ["inputCost", "outputCost", "cachedCost"] as const;
+  const orderedKeys = ["inputCost", "cacheWriteCost", "outputCost", "cachedCost"] as const;
 
   return (
     <ChartTooltip title={label ? fmtDate(label) : undefined}>
@@ -135,7 +136,8 @@ export function CostTrendChart({ data, className }: CostTrendChartProps) {
           {[
             { key: "inputCost", label: "Input", color: chart.violet },
             { key: "outputCost", label: "Output", color: colorOutput },
-            { key: "cachedCost", label: "Cached", color: chartMuted },
+            { key: "cachedCost", label: "Cache read", color: chartMuted },
+            { key: "cacheWriteCost", label: "Cache write", color: CHART_COLORS[3] as string },
           ].map(({ key, label, color }) => (
             <div key={key} className="flex items-center gap-1.5">
               <div
@@ -151,7 +153,7 @@ export function CostTrendChart({ data, className }: CostTrendChartProps) {
       <div className="h-[240px] md:h-[280px]">
         <DashboardResponsiveContainer width="100%" height="100%">
           <AreaChart
-            data={data}
+            data={data.map((d) => ({ ...d, cacheWriteCost: d.cacheWriteCost ?? 0 }))}
             margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
           >
             <defs>
@@ -213,6 +215,8 @@ export function CostTrendChart({ data, className }: CostTrendChartProps) {
               strokeWidth={2}
               fill="url(#gradCostCached)"
             />
+            <Area type="monotone" dataKey="cacheWriteCost" stackId="1" stroke={CHART_COLORS[3] as string}
+              fill={CHART_COLORS[3] as string} fillOpacity={0.18} strokeWidth={1.5} />
           </AreaChart>
         </DashboardResponsiveContainer>
       </div>

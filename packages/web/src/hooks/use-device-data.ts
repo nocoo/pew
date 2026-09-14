@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import type { ByDeviceResponse } from "@pew/core";
 import { useFetchData } from "@/hooks/use-fetch-data";
 import { useTzOffset } from "@/hooks/use-tz-offset";
+import { toDeviceDisplayData } from "@/lib/device-helpers";
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -46,5 +47,7 @@ export function useDeviceData(
     return `/api/usage/by-device${qs ? `?${qs}` : ""}`;
   }, [fromDate, toDate, granularity, tzOffset]);
 
-  return useFetchData<ByDeviceResponse>(url);
+  const result = useFetchData<ByDeviceResponse>(url);
+  const data = useMemo(() => result.data ? toDeviceDisplayData(result.data) : null, [result.data]);
+  return { ...result, data };
 }

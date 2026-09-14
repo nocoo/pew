@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GET } from "@/app/api/usage/by-device/route";
 import * as dbModule from "@/lib/db";
 import { createMockDbRead, loadMockedAuthHelpers, makeGetRequest } from "./test-utils";
+import { accountingFixture } from "../../../core/src/__test-helpers__/accounting";
 
 // Mock DB
 vi.mock("@/lib/db", () => ({
@@ -30,6 +31,28 @@ describe("GET /api/usage/by-device", () => {
       servedFrom: "baseline",
     });
     vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDbRead as any);
+  });
+
+  it.each([null, 90])("retains raw bases and exposes estimate assumptions (write=%s)", async (write) => {
+    vi.mocked(resolveUser).mockResolvedValue({ userId: "u1", email: "test@example.com" });
+    const r = accountingFixture();
+    const accounting = [{ status: "matched", basis: r.basis, groups: [{ ...r.groups[0],
+      counts: { ...r.groups[0]!.counts, cache_write_input_tokens: write } }] }];
+    const row = { ...r.basis, source: r.source, model: r.model, device_id: r.device_id, accounting };
+    mockDbRead.getDeviceSummary.mockResolvedValue([{ ...row, alias: null, first_seen: r.hour_start, last_seen: r.hour_start,
+      sources: r.source, models: r.model }]);
+    mockDbRead.getDeviceCostDetails.mockResolvedValue([row]);
+    mockDbRead.getDeviceTimeline.mockResolvedValue([{ ...row, date: "2026-09-01" }]);
+    mockDbRead.getDynamicPricing.mockResolvedValue({ servedFrom: "kv", entries: [{ model: "openai/gpt-6-astra", provider: "OpenAI",
+      displayName: "GPT-6 Astra", inputPerMillion: 10, outputPerMillion: 50, cachedPerMillion: 1, cacheWritePerMillion: 12.5,
+      route: "direct", contextWindow: 1000000, origin: "models.dev", updatedAt: r.hour_start }] });
+    const response = await GET(makeGetRequest("/api/usage/by-device", { from: "2026-09-01", to: "2026-09-02" }));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.devices[0]).toMatchObject({ ...r.basis, accounting, estimated_cost_complete: write !== null });
+    expect(body.devices[0].estimated_cost).toBeGreaterThan(0);
+    expect(body.timeline[0]).toMatchObject({ ...r.basis, accounting });
+    expect(body.deviceDetails[0]).toMatchObject({ ...r.basis, accounting });
   });
 
   describe("authentication", () => {

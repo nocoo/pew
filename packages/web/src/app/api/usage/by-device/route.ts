@@ -11,12 +11,12 @@
  *   - timeline: token counts per device for charting (day or half-hour granularity)
  */
 
+import { estimateUsageCost } from "@/lib/accounting";
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
 import { unauthorizedResponse } from "@/lib/api-responses";
 import { parseBoundedInt } from "@/lib/query-params";
 import { getDbRead } from "@/lib/db";
-import { lookupPricing, estimateCost } from "@/lib/pricing";
 import { loadPricingMap } from "@/lib/load-pricing-map";
 
 // ---------------------------------------------------------------------------
@@ -117,21 +117,13 @@ export async function GET(request: Request) {
     const pricingMap = await loadPricingMap(db);
 
     // 5. Compute estimated_cost per device from cost detail rows
-    const costByDevice = new Map<string, number>();
+    const costByDevice = new Map<string, { total: number; complete: boolean }>();
 
     for (const row of costRows) {
-      const pricing = lookupPricing(pricingMap, row.model, row.source);
-      const { totalCost } = estimateCost(
-        row.input_tokens,
-        row.output_tokens,
-        row.cached_input_tokens,
-        row.reasoning_output_tokens ?? 0,
-        pricing
-      );
-      costByDevice.set(
-        row.device_id,
-        (costByDevice.get(row.device_id) ?? 0) + totalCost
-      );
+      const cost = estimateUsageCost(row, pricingMap);
+      const previous = costByDevice.get(row.device_id);
+      costByDevice.set(row.device_id, { total: (previous?.total ?? 0) + cost.totalCost,
+        complete: (previous?.complete ?? true) && cost.complete });
     }
 
     // 6. Assemble response
@@ -145,7 +137,9 @@ export async function GET(request: Request) {
       output_tokens: row.output_tokens,
       cached_input_tokens: row.cached_input_tokens,
       reasoning_output_tokens: row.reasoning_output_tokens,
-      estimated_cost: costByDevice.get(row.device_id) ?? 0,
+      estimated_cost: costByDevice.get(row.device_id)?.total ?? 0,
+      estimated_cost_complete: costByDevice.get(row.device_id)?.complete ?? row.total_tokens === 0,
+      ...(row.accounting ? { accounting: row.accounting } : {}),
       sources: row.sources ? row.sources.split(",") : [],
       models: row.models ? row.models.split(",") : [],
     }));
@@ -158,6 +152,7 @@ export async function GET(request: Request) {
       output_tokens: row.output_tokens,
       cached_input_tokens: row.cached_input_tokens,
       reasoning_output_tokens: row.reasoning_output_tokens ?? 0,
+      ...(row.accounting ? { accounting: row.accounting } : {}),
     }));
 
     // 7. Map cost detail rows for client-side drill-down charts
@@ -176,6 +171,7 @@ export async function GET(request: Request) {
         output_tokens: row.output_tokens,
         cached_input_tokens: row.cached_input_tokens,
         reasoning_output_tokens: reasoning,
+        ...(row.accounting ? { accounting: row.accounting } : {}),
       };
     });
 

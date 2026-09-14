@@ -6,7 +6,22 @@
  * side effects.
  */
 
-import type { DeviceTimelinePoint, DeviceCostDetail } from "@pew/core";
+import type { ByDeviceResponse, DeviceTimelinePoint, DeviceCostDetail } from "@pew/core";
+import { displayCounters } from "./accounting";
+
+/** Project API bases once for device charts; keep billing detail bases intact. */
+export function toDeviceDisplayData(data: ByDeviceResponse): ByDeviceResponse {
+  return { ...data,
+    devices: data.devices.map((d) => {
+      const { accounting: _accounting, ...row } = d;
+      return { ...row, ...displayCounters(d) };
+    }).sort((a, b) => b.total_tokens - a.total_tokens),
+    timeline: data.timeline.map((d) => {
+      const { accounting: _accounting, ...row } = d;
+      return { ...row, ...displayCounters(d) };
+    }),
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Display helpers
@@ -228,7 +243,8 @@ export function toDeviceAgentBreakdown(
     }
   >();
 
-  for (const d of details) {
+  for (const row of details) {
+    const d = { ...row, ...displayCounters(row) };
     const existing = map.get(d.source);
     if (existing) {
       existing.input_tokens += d.input_tokens;
@@ -270,7 +286,8 @@ export function toDeviceModelBreakdown(
     }
   >();
 
-  for (const d of details) {
+  for (const row of details) {
+    const d = { ...row, ...displayCounters(row) };
     const existing = map.get(d.model);
     if (existing) {
       existing.input_tokens += d.input_tokens;

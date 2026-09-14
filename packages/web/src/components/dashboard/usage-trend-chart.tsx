@@ -143,7 +143,7 @@ export function UsageTrendChart({ data, className }: UsageTrendChartProps) {
       <div className="h-[240px] md:h-[280px]">
         <DashboardResponsiveContainer width="100%" height="100%">
           <AreaChart
-            data={data}
+            data={data.map((d) => ({ ...d, output: d.output + (d.reasoning ?? 0) }))}
             margin={{ top: 4, right: 4, left: 0, bottom: 0 }}
           >
             <defs>

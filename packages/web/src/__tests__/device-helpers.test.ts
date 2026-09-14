@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import type { AccountingRecord, ByDeviceResponse, DeviceCostDetail } from "@pew/core";
+import { accountingFixture } from "../../../core/src/__test-helpers__/accounting";
 import {
   shortDeviceId,
   deviceLabel,
@@ -7,7 +9,40 @@ import {
   toDeviceSharePoints,
   toDeviceAgentBreakdown,
   toDeviceModelBreakdown,
+  toDeviceDisplayData,
 } from "@/lib/device-helpers";
+
+describe("device accounting display", () => {
+  it.each([null, 70])("counts Hermes reasoning once and preserves the cache partition (read=%s)", (read) => {
+    const record = accountingFixture() as AccountingRecord;
+    const basis = { input_tokens: 10, cached_input_tokens: 90, output_tokens: 30, reasoning_output_tokens: 5, total_tokens: 135 };
+    const group = { ...record.groups[0]!, basis, counts: { input_total_tokens: 100, cache_read_input_tokens: read,
+      cache_write_input_tokens: read === null ? null : 20, cache_write_5m_input_tokens: null, cache_write_1h_input_tokens: null,
+      output_total_tokens: 30, reasoning_output_tokens: 5 } };
+    const detail: DeviceCostDetail = { ...basis, device_id: "test-device", source: "hermes", model: record.model,
+      accounting: [{ status: "matched", basis, groups: [group] }] };
+    const data: ByDeviceResponse = {
+      devices: [{ ...detail, alias: null, first_seen: record.hour_start, last_seen: record.hour_start,
+        estimated_cost: 1, sources: ["hermes"], models: [record.model] }],
+      timeline: [{ ...detail, date: "2026-09-01" }], deviceDetails: [detail],
+    };
+    const display = toDeviceDisplayData(data);
+    const expected = { input_tokens: read === null ? 10 : 30, cached_input_tokens: read ?? 90,
+      output_tokens: 25, reasoning_output_tokens: 5, total_tokens: 130 };
+    expect(display.devices[0]).toMatchObject(expected);
+    expect(display.timeline[0]).toMatchObject(expected);
+    expect(display.devices[0]).not.toHaveProperty("accounting");
+    expect(toDeviceDisplayData(display)).toEqual(display);
+    expect(toDeviceTrendPoints(display.timeline)[0]?.["test-device"]).toBe(130);
+    const doubled = Object.fromEntries(Object.entries(expected).map(([key, value]) => [key, value * 2]));
+    expect(toDeviceAgentBreakdown([detail, detail])[0]).toMatchObject(doubled);
+    expect(toDeviceModelBreakdown([detail, detail])[0]).toMatchObject(doubled);
+    // Billing and reconciliation still receive the unmodified legacy basis.
+    expect(display.deviceDetails[0]).toBe(detail);
+    expect(data.devices[0]?.total_tokens).toBe(135);
+    expect(data.timeline[0]?.total_tokens).toBe(135);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // shortDeviceId

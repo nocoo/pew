@@ -24,6 +24,7 @@ import {
   normalizeForMatch,
   stripVariantSuffix,
 } from "@/lib/model-info-helpers";
+import type { CachePriceDetails, PublicContextTier } from "@pew/core";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,7 +40,7 @@ export type DynamicPricingOrigin =
  * Client-safe DTO for one dynamic pricing entry. Mirrors worker-read's
  * sync/types but lives here so callers don't pull server code transitively.
  */
-export interface DynamicPricingEntry {
+export interface DynamicPricingEntry extends CachePriceDetails {
   model: string;
   provider: string | null;
   displayName: string | null;
@@ -53,6 +54,10 @@ export interface DynamicPricingEntry {
 }
 
 export interface ModelPricing {
+  cacheWrite?: number;
+  cacheWrite5m?: number;
+  cacheWrite1h?: number;
+  contextTiers?: PublicContextTier[];
   /** Price per 1M input tokens (USD) */
   input: number;
   /** Price per 1M output tokens (USD) */
@@ -65,6 +70,9 @@ export interface ModelPricing {
 
 /** Serialisable pricing map sent to clients via /api/pricing */
 export interface PricingMap {
+  /** Billing context index, independent of the legacy display alias winner. */
+  contextualModels?: Record<string, DynamicPricingEntry>;
+  meta?: { status: "dynamic" | "baseline" | "fallback"; snapshotId: string; fetchedAt: string | null; effectiveAt: null };
   models: Record<string, ModelPricing>;
   prefixes: Array<{ prefix: string; pricing: ModelPricing }>;
   sourceDefaults: Record<string, ModelPricing>;
@@ -148,6 +156,7 @@ export interface BuildPricingMapInput {
 export function buildPricingMap({
   dynamic,
 }: BuildPricingMapInput): PricingMap {
+  if (dynamic.length === 0) return getDefaultPricingMap();
   const map: PricingMap = {
     models: {},
     prefixes: [...DEFAULT_PREFIX_PRICES],
@@ -156,6 +165,7 @@ export function buildPricingMap({
   };
 
   const originalKeys = new Set<string>();
+  map.contextualModels = {};
   const derivedEntries: Array<{ key: string; pricing: ModelPricing }> = [];
 
   for (const entry of dynamic) {
@@ -165,9 +175,22 @@ export function buildPricingMap({
       ...(entry.cachedPerMillion != null
         ? { cached: entry.cachedPerMillion }
         : {}),
+      ...(entry.cacheWritePerMillion != null ? { cacheWrite: entry.cacheWritePerMillion } : {}),
+      ...(entry.cacheWrite5mPerMillion != null ? { cacheWrite5m: entry.cacheWrite5mPerMillion } : {}),
+      ...(entry.cacheWrite1hPerMillion != null ? { cacheWrite1h: entry.cacheWrite1hPerMillion } : {}),
+      ...(entry.contextTiers?.length ? { contextTiers: entry.contextTiers } : {}),
     };
 
     const candidates = [entry.model, ...(entry.aliases ?? [])];
+    const route = entry.route ?? (entry.origin === "openrouter" ? "openrouter" : "direct");
+    for (const name of candidates) {
+      const billingRoute = route === "direct" ? `direct|${entry.provider?.toLowerCase().replace(/[^a-z0-9]/g, "") ?? "unknown"}` : route;
+      map.contextualModels[`${billingRoute}|${normalizeForMatch(name)}|${entry.serviceTier ?? "default"}`] = entry;
+      for (const [otherRoute, rates] of Object.entries(entry.routePrices ?? {})) {
+        const otherKey = otherRoute === "direct" ? `direct|${entry.provider?.toLowerCase().replace(/[^a-z0-9]/g, "") ?? "unknown"}` : otherRoute;
+        map.contextualModels[`${otherKey}|${normalizeForMatch(name)}|default`] = { ...entry, ...rates, route: otherRoute as "direct" | "openrouter", origin: rates.origin as DynamicPricingOrigin };
+      }
+    }
     for (const c of candidates) {
       originalKeys.add(c);
       setIfMoreExpensive(map.models, c, pricing);

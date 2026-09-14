@@ -10,8 +10,11 @@
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
+import type { AccountingAnnotation } from "@pew/core";
+import { accountedTotal, displayCounters } from "./accounting";
 
 export interface UsageRow {
+  accounting?: AccountingAnnotation[];
   evidence_tokens?: number;
   approximate_tokens?: number;
   source: string;
@@ -60,6 +63,7 @@ export interface HeatmapPoint {
 
 /** Model aggregate for bar chart */
 export interface ModelAggregate {
+  accounting?: AccountingAnnotation[];
   model: string;
   source: string;
   input: number;
@@ -104,21 +108,22 @@ export function toDailyPoints(records: UsageRow[], tzOffset = 0): DailyPoint[] {
 
   for (const r of records) {
     const date = toLocalDateStr(r.hour_start, tzOffset); // "2026-03-07"
+    const d = displayCounters(r);
     const existing = byDate.get(date);
     if (existing) {
-      existing.input += r.input_tokens;
-      existing.output += r.output_tokens;
-      existing.cached += r.cached_input_tokens;
-      existing.reasoning += r.reasoning_output_tokens;
-      existing.total += r.total_tokens;
+      existing.input += d.input_tokens;
+      existing.output += d.output_tokens;
+      existing.cached += d.cached_input_tokens;
+      existing.reasoning += d.reasoning_output_tokens;
+      existing.total += d.total_tokens;
     } else {
       byDate.set(date, {
         date,
-        input: r.input_tokens,
-        output: r.output_tokens,
-        cached: r.cached_input_tokens,
-        reasoning: r.reasoning_output_tokens,
-        total: r.total_tokens,
+        input: d.input_tokens,
+        output: d.output_tokens,
+        cached: d.cached_input_tokens,
+        reasoning: d.reasoning_output_tokens,
+        total: d.total_tokens,
       });
     }
   }
@@ -133,7 +138,7 @@ export function toSourceAggregates(records: UsageRow[]): SourceAggregate[] {
   const bySource = new Map<string, number>();
 
   for (const r of records) {
-    bySource.set(r.source, (bySource.get(r.source) ?? 0) + r.total_tokens);
+    bySource.set(r.source, (bySource.get(r.source) ?? 0) + accountedTotal(r));
   }
 
   return Array.from(bySource.entries())
@@ -158,7 +163,8 @@ export function toModelAggregates(records: UsageRow[]): ModelAggregate[] {
       existing.output += r.output_tokens;
       existing.cached += r.cached_input_tokens;
       existing.reasoning += r.reasoning_output_tokens;
-      existing.total += r.total_tokens;
+      existing.total += accountedTotal(r);
+      if (r.accounting) existing.accounting = [...(existing.accounting ?? []), ...r.accounting];
     } else {
       byModel.set(key, {
         model: r.model,
@@ -167,7 +173,8 @@ export function toModelAggregates(records: UsageRow[]): ModelAggregate[] {
         output: r.output_tokens,
         cached: r.cached_input_tokens,
         reasoning: r.reasoning_output_tokens,
-        total: r.total_tokens,
+        total: accountedTotal(r),
+        ...(r.accounting ? { accounting: [...r.accounting] } : {}),
       });
     }
   }

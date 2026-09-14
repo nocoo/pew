@@ -2,6 +2,7 @@
  * Model name formatting and evolution helpers.
  */
 
+import { accountedTotal } from "@/lib/accounting";
 import type { UsageRow } from "@/hooks/use-usage-data";
 import { toLocalDateStr } from "@/lib/usage-helpers";
 
@@ -51,7 +52,7 @@ export function toModelEvolutionPoints(
   // 1. Compute global totals per model to determine top N
   const globalTotals = new Map<string, number>();
   for (const r of rows) {
-    globalTotals.set(r.model, (globalTotals.get(r.model) ?? 0) + r.total_tokens);
+    globalTotals.set(r.model, (globalTotals.get(r.model) ?? 0) + accountedTotal(r));
   }
 
   // Sort by total descending, pick top N
@@ -73,7 +74,7 @@ export function toModelEvolutionPoints(
       dateMap = new Map<string, number>();
       byDate.set(date, dateMap);
     }
-    dateMap.set(model, (dateMap.get(model) ?? 0) + r.total_tokens);
+    dateMap.set(model, (dateMap.get(model) ?? 0) + accountedTotal(r));
   }
 
   // 3. Build result with zero-fill

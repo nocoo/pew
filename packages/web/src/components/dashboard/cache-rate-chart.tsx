@@ -40,11 +40,10 @@ function fmtDate(dateStr: string): string {
 }
 
 /** Compute the period-average cache rate across all data points. */
-function computeAverage(data: DailyCacheRate[]): number {
+function computeAverage(data: DailyCacheRate[]): number | null {
   const totalCached = data.reduce((sum, d) => sum + d.cachedTokens, 0);
-  const totalInput = data.reduce((sum, d) => sum + d.inputTokens, 0);
-  const denom = totalCached + totalInput;
-  if (denom === 0) return 0;
+  const denom = data.reduce((sum, d) => sum + (d.coveredInputTokens ?? d.inputTokens + d.cachedTokens), 0);
+  if (denom === 0) return null;
   return (totalCached / denom) * 100;
 }
 
@@ -67,10 +66,11 @@ function CacheRateTooltip({
   return (
     <ChartTooltip title={label ? fmtDate(label) : undefined}>
       <p className="text-sm font-semibold text-popover-foreground">
-        {point.cacheRate.toFixed(1)}%
+        {point.cacheRate === null ? "Unknown" : `${point.cacheRate.toFixed(1)}%`}
       </p>
       <ChartTooltipSubtitle>
-        {formatTokens(point.cachedTokens)} cached / {formatTokens(point.inputTokens)} input
+        {formatTokens(point.cachedTokens)} cache reads / {formatTokens(point.coveredInputTokens ?? point.inputTokens + point.cachedTokens)} covered input
+        {point.coverage !== undefined ? ` · ${Math.round(point.coverage * 100)}% coverage` : ""}
       </ChartTooltipSubtitle>
     </ChartTooltip>
   );
@@ -110,7 +110,7 @@ export function CacheRateChart({ data, className }: CacheRateChartProps) {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-xs md:text-sm text-muted-foreground">
-            Cache Hit Rate
+            Cache Read Rate
           </p>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -122,7 +122,7 @@ export function CacheRateChart({ data, className }: CacheRateChartProps) {
               borderTop: `1px dashed ${chart.pink}`,
             }}
           />
-          <span>Avg {average.toFixed(1)}%</span>
+          <span>Avg {average === null ? "—" : `${average.toFixed(1)}%`}</span>
         </div>
       </div>
 
@@ -153,12 +153,12 @@ export function CacheRateChart({ data, className }: CacheRateChartProps) {
               tickLine={false}
               width={44}
             />
-            <ReferenceLine
+            {average !== null && <ReferenceLine
               y={average}
               stroke={chart.pink}
               strokeDasharray="4 4"
               strokeOpacity={0.6}
-            />
+            />}
             <Tooltip content={<CacheRateTooltip />} isAnimationActive={false} />
             <Line
               type="monotone"

@@ -6,17 +6,11 @@
  */
 
 import { NextResponse } from "next/server";
-import { resolveUser } from "@/lib/auth-helpers";
 import { getDbRead } from "@/lib/db";
 import { loadPricingMap } from "@/lib/load-pricing-map";
 
-export async function GET(request: Request) {
-  const authResult = await resolveUser(request);
-  if (!authResult) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+export async function GET(_request: Request) {
   const db = await getDbRead();
   const pricingMap = await loadPricingMap(db);
-  return NextResponse.json(pricingMap);
+  return NextResponse.json(pricingMap, { headers: { "Cache-Control": "public, max-age=60" } });
 }

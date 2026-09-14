@@ -5,6 +5,7 @@ import * as dbModule from "@/lib/db";
 import * as authHelpersModule from "@/lib/auth-helpers";
 import * as adminModule from "@/lib/admin";
 import { createMockDbRead } from "./test-utils";
+import { accountingFixture } from "../../../core/src/__test-helpers__/accounting";
 
 // Mock DB
 vi.mock("@/lib/db", () => ({
@@ -49,6 +50,23 @@ describe("GET /api/users/[slug]", () => {
     // Default: unauthenticated caller (public access)
     vi.mocked(authHelpersModule.resolveUser).mockResolvedValue(null);
     vi.mocked(adminModule.isAdmin).mockReturnValue(false);
+  });
+
+  it("keeps billing amounts private even if an upstream read returns them", async () => {
+    mockDbRead.getPublicUserBySlugOrId.mockResolvedValue({ id: "u1", name: "Test", image: null, slug: "test", is_public: 1, created_at: "2026-01-01" });
+    const r = accountingFixture();
+    const amount = { units: "12345678901234567890", scale: 10, currency: "USD", source: "grok-server", kind: "actual", status: "complete" };
+    const group = { ...r.groups[0], reported_costs: [amount] };
+    const record = { ...r.basis, source: r.source, model: r.model, hour_start: r.hour_start,
+      accounting: [{ status: "matched", basis: r.basis, groups: [group] }] };
+    mockDbRead.getUsageRecords.mockResolvedValue([record]);
+    const response = await GET(...makeRequest("test"));
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.records[0]).toMatchObject({ ...r.basis, accounting: [{ groups: [{ counts: { cache_write_input_tokens: 90 }, reported_costs: [] }] }] });
+    expect(JSON.stringify(body)).not.toContain(amount.units);
+    expect(record.accounting[0]?.groups[0]?.reported_costs).toEqual([amount]);
+    expect(mockDbRead.getUsageRecords).toHaveBeenCalledWith("u1", expect.any(String), expect.any(String), { granularity: "day" });
   });
 
   describe("slug validation", () => {

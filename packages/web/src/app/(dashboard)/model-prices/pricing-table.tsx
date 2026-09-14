@@ -39,7 +39,9 @@ const COLUMNS: { key: SortKey; label: string; numeric?: boolean }[] = [
   { key: "displayName", label: "Display name" },
   { key: "inputPerMillion", label: "Input", numeric: true },
   { key: "outputPerMillion", label: "Output", numeric: true },
-  { key: "cachedPerMillion", label: "Cached", numeric: true },
+  { key: "cachedPerMillion", label: "Cache read", numeric: true },
+  { key: "cacheWritePerMillion", label: "Cache write", numeric: true },
+  { key: "cacheWrite1hPerMillion", label: "Write (1h)", numeric: true },
   { key: "contextWindow", label: "Context", numeric: true },
   { key: "origin", label: "Origin" },
   { key: "updatedAt", label: "Updated" },
@@ -101,6 +103,7 @@ export function PricingTable({ entries }: Props) {
 
   return (
     <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">USD per million tokens at base context rates. Cache writes replace the normal input rate; “—” means unreported.</p>
       <div className="flex flex-wrap gap-2 items-center">
         <Input
           type="search"
@@ -204,6 +207,21 @@ export function PricingTable({ entries }: Props) {
               >
                 <td className="px-4 py-3 text-sm font-mono text-foreground" title={e.aliases?.join(", ")}>
                   {e.model}
+                  {(e.contextTiers?.length || Object.keys(e.routePrices ?? {}).length > 0) ? (
+                    <details className="mt-1 font-sans text-xs text-muted-foreground">
+                      <summary className="cursor-pointer">Rates by route and context</summary>
+                      <div className="mt-2 space-y-1 min-w-80">
+                        <p>Base route: {e.route ?? (e.origin === "openrouter" ? "openrouter" : "direct")}</p>
+                        {e.contextTiers?.map((t) => <p key={t.minInputTokens}>
+                          {`Input ≥ ${t.minInputTokens.toLocaleString()}: input ${formatPrice(t.inputPerMillion)}, output ${formatPrice(t.outputPerMillion)}, read ${formatPrice(t.cachedPerMillion)}, write ${formatPrice(t.cacheWritePerMillion ?? null)}, write 1h ${formatPrice(t.cacheWrite1hPerMillion ?? null)}`}
+                        </p>)}
+                        {Object.entries(e.routePrices ?? {}).map(([route, p]) => <div key={route}>
+                          <p>{`${route}: input ${formatPrice(p.inputPerMillion)}, output ${formatPrice(p.outputPerMillion)}, read ${formatPrice(p.cachedPerMillion)}, write ${formatPrice(p.cacheWritePerMillion ?? null)}, write 1h ${formatPrice(p.cacheWrite1hPerMillion ?? null)}`}</p>
+                          {p.contextTiers?.map((t) => <p key={t.minInputTokens}>{`${route}, input ≥ ${t.minInputTokens.toLocaleString()}: input ${formatPrice(t.inputPerMillion)}, output ${formatPrice(t.outputPerMillion)}, read ${formatPrice(t.cachedPerMillion)}, write ${formatPrice(t.cacheWritePerMillion ?? null)}`}</p>)}
+                        </div>)}
+                      </div>
+                    </details>
+                  ) : null}
                 </td>
                 <td className="px-4 py-3 text-sm">
                   <span className="inline-flex items-center gap-1.5">
@@ -232,6 +250,8 @@ export function PricingTable({ entries }: Props) {
                 <td className="px-4 py-3 text-sm text-right tabular-nums">
                   {formatPrice(e.cachedPerMillion)}
                 </td>
+                <td className="px-4 py-3 text-sm text-right tabular-nums">{formatPrice(e.cacheWritePerMillion ?? null)}</td>
+                <td className="px-4 py-3 text-sm text-right tabular-nums">{formatPrice(e.cacheWrite1hPerMillion ?? null)}</td>
                 <td className="px-4 py-3 text-sm text-right tabular-nums">
                   {formatContext(e.contextWindow)}
                 </td>

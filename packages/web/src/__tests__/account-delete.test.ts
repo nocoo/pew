@@ -145,7 +145,7 @@ describe("DELETE /api/account/delete", () => {
             device_id TEXT, event_id TEXT);
           INSERT INTO users VALUES ('u1'), ('u2');
           INSERT INTO usage_evidence VALUES ('u1', 'd1', 'a'), ('u1', 'd2', 'b'), ('u2', 'd1', 'c');`);
-        const userTables = ["usage_records", "session_records", "team_members", "season_member_snapshots",
+        const userTables = ["usage_details", "usage_records", "session_records", "team_members", "season_member_snapshots",
           "season_team_members", "device_aliases", "sessions", "accounts"];
         for (const table of userTables) {
           db.exec(`CREATE TABLE ${table} (user_id TEXT REFERENCES users(id));

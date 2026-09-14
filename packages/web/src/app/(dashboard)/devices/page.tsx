@@ -6,7 +6,7 @@ import { useTzOffset } from "@/hooks/use-tz-offset";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { useUsageData } from "@/hooks/use-usage-data";
 import { formatTokens } from "@/lib/utils";
-import { formatCost } from "@/hooks/use-pricing";
+import { formatCost, usePricingMap } from "@/hooks/use-pricing";
 import { sourceLabel } from "@/hooks/use-usage-data";
 import { deviceLabel, shortDeviceId, toDeviceAgentBreakdown, toDeviceModelBreakdown } from "@/lib/device-helpers";
 import { toSourceTrendPoints } from "@/lib/usage-helpers";
@@ -17,6 +17,7 @@ import { Empty } from "@nocoo/basalt/components/empty";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { CHART_COLORS } from "@/lib/palette";
 import { DeviceTrendChart } from "@/components/dashboard/device-trend-chart";
+import { AccountingNotice } from "@/components/dashboard/accounting-notice";
 import { DeviceShareChart } from "@/components/dashboard/device-share-chart";
 import { DeviceBreakdownChart } from "@/components/dashboard/device-breakdown-chart";
 import { DeviceAgentChart } from "@/components/dashboard/device-agent-chart";
@@ -165,6 +166,7 @@ export default function ByDevicePage() {
   const [selectedDevice, setSelectedDevice] = useState("");
   const tzOffset = useTzOffset();
   const { from, to } = periodToDateRange(period, tzOffset);
+  const { pricingMap, loading: pricingLoading } = usePricingMap();
 
   const { data, loading, error } = useDeviceData({
     from,
@@ -389,7 +391,7 @@ export default function ByDevicePage() {
                             {formatTokens(device.input_tokens)}
                           </td>
                           <td className="px-4 py-3 text-sm text-right tabular-nums">
-                            {formatTokens(device.output_tokens)}
+                            {formatTokens(device.output_tokens + device.reasoning_output_tokens)}
                           </td>
                           <td className="px-4 py-3 text-sm text-right tabular-nums hidden md:table-cell">
                             {formatTokens(device.cached_input_tokens)}
@@ -399,6 +401,9 @@ export default function ByDevicePage() {
                           </td>
                           <td className="px-4 py-3 text-sm text-right tabular-nums hidden sm:table-cell">
                             {formatCost(device.estimated_cost)}
+                            {device.estimated_cost_complete !== true && (
+                              <span className="block text-[10px] text-muted-foreground">Includes assumptions</span>
+                            )}
                           </td>
                           <td className="px-4 py-3 hidden md:table-cell">
                             <div className="flex items-center gap-2">
@@ -442,6 +447,8 @@ export default function ByDevicePage() {
                   </tfoot>
                 </table>
               </div>
+
+              <AccountingNotice records={deviceDetails} pricingMap={pricingMap} loading={pricingLoading} />
 
               {/* Deep Dive — agent × model drill-down */}
               <DashboardSegment

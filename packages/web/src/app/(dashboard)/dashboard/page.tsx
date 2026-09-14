@@ -1,5 +1,7 @@
 "use client";
 
+import { AccountingNotice } from "@/components/dashboard/accounting-notice";
+import { summarizeAccounting } from "@/lib/accounting";
 import { useMemo, useState } from "react";
 import {
   Zap,
@@ -81,7 +83,8 @@ export default function DashboardPage() {
   const heatmapData = toHeatmapData(yearData.daily);
   const activeDays = yearData.daily.filter((day) => day.total > 0).length;
 
-  const { pricingMap } = usePricingMap();
+  const { pricingMap, loading: pricingLoading } = usePricingMap();
+  const accountingSummary = useMemo(() => summarizeAccounting(data?.records ?? []), [data]);
 
   // Fill date gaps + extend to today so charts always show up to the current day
   const filledDaily = useMemo<DailyPoint[]>(
@@ -119,7 +122,7 @@ export default function DashboardPage() {
       if (!data) return [];
       const sparse = toDailyCacheRates(data.records, tzOffset);
       return fillDateRange<DailyCacheRate>(sparse, "date", (d) => ({
-        date: d, cacheRate: 0, cachedTokens: 0, inputTokens: 0,
+        date: d, cacheRate: null, cachedTokens: 0, inputTokens: 0, coverage: 0, coveredInputTokens: 0,
       }), today);
     },
     [data, tzOffset, today],
@@ -152,7 +155,7 @@ export default function DashboardPage() {
   }, [halfHourData.data, from, to, tzOffset]);
 
   // Year total tokens for HeatmapHero
-  const yearTotalTokens = yearData.data?.summary.total_tokens ?? 0;
+  const yearTotalTokens = useMemo(() => summarizeAccounting(yearData.data?.records ?? []).totalTokens, [yearData.data]);
 
   const showForecast = costForecast !== null;
 
@@ -193,12 +196,13 @@ export default function DashboardPage() {
           />
 
           {/* ── Overview ────────────────────────────────────── */}
+          <AccountingNotice records={data.records} pricingMap={pricingMap} loading={pricingLoading} />
           <DashboardSegment title="Overview" action={<PeriodSelector value={period} onChange={setPeriod} />}>
             {/* Row 1 — Token metrics: Total, Input, Output, Cache */}
             <StatGrid columns={4}>
               <StatCard
                 title="Total Tokens"
-                value={formatTokens(data.summary.total_tokens)}
+                value={formatTokens(accountingSummary.totalTokens)}
                 subtitle={subtitle}
                 icon={Zap}
                 iconColor="text-primary"
@@ -222,25 +226,23 @@ export default function DashboardPage() {
               />
               <StatCard
                 title="Input Tokens"
-                value={formatTokens(data.summary.input_tokens)}
+                value={formatTokens(accountingSummary.inputTokens)}
                 subtitle="Prompts & context"
                 icon={ArrowDownToLine}
                 accentColor="bg-chart-3"
               />
               <StatCard
                 title="Output Tokens"
-                value={formatTokens(data.summary.output_tokens)}
+                value={formatTokens(accountingSummary.outputTokens)}
                 subtitle="Responses & reasoning"
                 icon={ArrowUpFromLine}
                 accentColor="bg-chart-5"
               />
               <StatCard
-                title="Cached Tokens"
-                value={formatTokens(data.summary.cached_input_tokens)}
+                title="Cache Read Tokens"
+                value={formatTokens(accountingSummary.cacheReadTokens)}
                 subtitle={
-                  data.summary.input_tokens > 0
-                    ? `${Math.round((data.summary.cached_input_tokens / data.summary.input_tokens) * 100)}% hit rate`
-                    : "0% hit rate"
+                  accountingSummary.readCoverage === 0 ? "Read counts unavailable" : `${Math.round(accountingSummary.cacheReadRate)}% of input with known read counts`
                 }
                 icon={Database}
                 accentColor="bg-chart-2"
@@ -251,7 +253,7 @@ export default function DashboardPage() {
             <StatGrid columns={showForecast ? 4 : 2}>
               <StatCard
                 title="Est. Cost"
-                value={formatCost(estimatedCost)}
+                value={pricingLoading ? "…" : formatCost(estimatedCost)}
                 subtitle="Based on public pricing"
                 icon={DollarSign}
                 iconColor="text-chart-6"
@@ -273,17 +275,17 @@ export default function DashboardPage() {
                 ]}
               />
               <StatCard
-                title="Cache Savings"
-                value={formatCost(cacheSavings.netSavings)}
-                subtitle={`${Math.round(cacheSavings.savingsPercent)}% vs full input price`}
+                title="Net Cache Savings"
+                value={cacheSavings.netSavings === null ? "—" : formatCost(cacheSavings.netSavings)}
+                subtitle={cacheSavings.netSavings === null ? "Cache or pricing details incomplete" : "Read discount less write premium"}
                 icon={PiggyBank}
-                iconColor="text-success"
+                iconColor={(cacheSavings.netSavings ?? 0) < 0 ? "text-destructive" : "text-success"}
               />
               {showForecast && (
                 <StatCard
                   title="Monthly Forecast"
                   value={formatCost(costForecast.projectedMonthCost)}
-                  subtitle={`${formatCost(costForecast.currentMonthCost)} spent so far (${costForecast.daysElapsed} days)`}
+                  subtitle={`${formatCost(costForecast.currentMonthCost)} estimated so far (${costForecast.daysElapsed} days)`}
                   icon={TrendingUp}
                   iconColor="text-chart-6"
                 />
@@ -336,8 +338,8 @@ export default function DashboardPage() {
                 <div className="hidden lg:block h-[28px] shrink-0" />
                 <SourceDonutChart data={sources} className="flex-1" />
                 <IoRatioChart
-                  inputTokens={data.summary.input_tokens}
-                  outputTokens={data.summary.output_tokens}
+                  inputTokens={accountingSummary.inputTokens}
+                  outputTokens={accountingSummary.outputTokens}
                 />
               </div>
             </div>

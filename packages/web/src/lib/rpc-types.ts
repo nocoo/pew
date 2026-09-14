@@ -377,6 +377,7 @@ export interface SessionRecordRow {
 
 /** Usage record row (aggregated by time/source/model) */
 export interface UsageRecordRow {
+  accounting?: import("@pew/core").AccountingAnnotation[];
   evidence_tokens?: number;
   approximate_tokens?: number;
   source: string;
@@ -391,6 +392,7 @@ export interface UsageRecordRow {
 
 /** Device summary row for by-device usage */
 export interface UsageDeviceSummaryRow {
+  accounting?: import("@pew/core").AccountingAnnotation[];
   device_id: string;
   alias: string | null;
   first_seen: string;
@@ -406,6 +408,7 @@ export interface UsageDeviceSummaryRow {
 
 /** Cost detail row for by-device pricing calculation */
 export interface UsageCostDetailRow {
+  accounting?: import("@pew/core").AccountingAnnotation[];
   device_id: string;
   source: string;
   model: string;
@@ -417,6 +420,7 @@ export interface UsageCostDetailRow {
 
 /** Timeline row for by-device charting */
 export interface UsageDeviceTimelineRow {
+  accounting?: import("@pew/core").AccountingAnnotation[];
   date: string;
   device_id: string;
   total_tokens: number;

@@ -38,6 +38,10 @@ describe("formatTokensFull", () => {
 });
 
 describe("formatCost", () => {
+  it("preserves a negative cache saving", () => {
+    expect(formatCost(-13.5)).toBe("-$13.50");
+    expect(formatCost(-0.0042)).toBe("-$0.0042");
+  });
   it("renders zero as $0.00", () => {
     expect(formatCost(0)).toBe("$0.00");
   });

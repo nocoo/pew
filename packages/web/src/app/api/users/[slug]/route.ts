@@ -217,7 +217,10 @@ export async function GET(
         created_at: user.created_at,
         first_seen: firstSeen,
       },
-      records,
+      // Enforce the public boundary even if the read service changes its default.
+      records: records.map((r) => r.accounting ? { ...r, accounting: r.accounting.map((a) => ({
+        ...a, groups: a.groups.map((g) => ({ ...g, reported_costs: [] })),
+      })) } : r),
       summary,
     });
   } catch (err) {

@@ -6,6 +6,7 @@ import { useTzOffset } from "@/hooks/use-tz-offset";
 import { ErrorBanner } from "@/components/ui/error-banner";
 import { formatTokens } from "@/lib/utils";
 import { usePricingMap, formatCost } from "@/hooks/use-pricing";
+import { AccountingNotice } from "@/components/dashboard/accounting-notice";
 import { groupByModel, toSourceTrendPoints } from "@/lib/usage-helpers";
 import { toModelEvolutionPoints } from "@/lib/model-helpers";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -89,7 +90,7 @@ export default function ModelsPage() {
     ...(to ? { to } : {}),
   });
 
-  const { pricingMap } = usePricingMap();
+  const { pricingMap, loading: pricingLoading } = usePricingMap();
   const today = useMemo(() => getLocalToday(tzOffset), [tzOffset]);
 
   const modelGroups = useMemo(
@@ -135,6 +136,7 @@ export default function ModelsPage() {
 
       {/* Error */}
       <ErrorBanner messagePrefix="Failed to load usage data" error={error} />
+      <AccountingNotice records={data?.records ?? []} pricingMap={pricingMap} loading={pricingLoading} />
 
       {/* Loading */}
       {loading && <ModelsSkeleton />}

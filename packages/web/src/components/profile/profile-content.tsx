@@ -1,5 +1,7 @@
 "use client";
 
+import { AccountingNotice } from "@/components/dashboard/accounting-notice";
+import { summarizeAccounting } from "@/lib/accounting";
 import { useState, useMemo } from "react";
 import {
   Zap,
@@ -160,18 +162,13 @@ export function ProfileContent({
   const yearData = useUserProfile({ slug, days: 365 });
 
   // Pricing
-  const { pricingMap } = usePricingMap();
+  const { pricingMap, loading: pricingLoading } = usePricingMap();
+  const accountingSummary = useMemo(() => summarizeAccounting(data?.records ?? []), [data]);
   const estimatedCost = useMemo(
     () => computeTotalCost(models, pricingMap),
     [models, pricingMap],
   );
 
-  // Cache savings %
-  const cacheSavingsPercent = data?.summary.input_tokens
-    ? Math.round(
-        (data.summary.cached_input_tokens / data.summary.input_tokens) * 100,
-      )
-    : 0;
 
   // ---- Loading states ------------------------------------------------------
 
@@ -255,26 +252,27 @@ export function ProfileContent({
             )}
           >
             <UsageTimingNotice records={data.records} />
+            <AccountingNotice records={data.records} pricingMap={pricingMap} loading={pricingLoading} />
             {/* Stat cards — row 1: Total, Est. Cost, Cache Savings */}
             <StatGrid columns={3}>
               <StatCard
                 title="Total Tokens"
-                value={formatTokens(data.summary.total_tokens)}
+                value={formatTokens(accountingSummary.totalTokens)}
                 subtitle={tabSubtitle}
                 icon={Zap}
                 iconColor="text-primary"
               />
               <StatCard
                 title="Est. Cost"
-                value={formatCost(estimatedCost)}
+                value={pricingLoading ? "…" : formatCost(estimatedCost)}
                 subtitle="Based on public pricing"
                 icon={DollarSign}
                 iconColor="text-chart-6"
               />
               <StatCard
-                title="Cache Savings"
-                value={`${cacheSavingsPercent}%`}
-                subtitle={`${formatTokens(data.summary.cached_input_tokens)} cached tokens`}
+                title="Cache Read Rate"
+                value={accountingSummary.readCoverage === 0 ? "—" : `${Math.round(accountingSummary.cacheReadRate)}%`}
+                subtitle={`${formatTokens(accountingSummary.cacheReadTokens)} known read tokens`}
                 icon={Database}
                 iconColor="text-success"
               />
@@ -284,20 +282,20 @@ export function ProfileContent({
             <StatGrid columns={3}>
               <StatCard
                 title="Input Tokens"
-                value={formatTokens(data.summary.input_tokens)}
+                value={formatTokens(accountingSummary.inputTokens)}
                 subtitle="Prompts & context"
                 icon={ArrowDownToLine}
               />
               <StatCard
                 title="Output Tokens"
-                value={formatTokens(data.summary.output_tokens)}
+                value={formatTokens(accountingSummary.outputTokens)}
                 subtitle="Responses & reasoning"
                 icon={ArrowUpFromLine}
               />
               <StatCard
-                title="Cached Tokens"
-                value={formatTokens(data.summary.cached_input_tokens)}
-                subtitle="Cache hits"
+                title="Cache Write Tokens"
+                value={formatTokens(accountingSummary.cacheWriteTokens)}
+                subtitle={`${Math.round(accountingSummary.writeCoverage * 100)}% of input covered`}
                 icon={Database}
               />
             </StatGrid>

@@ -17,6 +17,8 @@ export type SortKey =
   | "inputPerMillion"
   | "outputPerMillion"
   | "cachedPerMillion"
+  | "cacheWritePerMillion"
+  | "cacheWrite1hPerMillion"
   | "contextWindow"
   | "origin"
   | "updatedAt";
@@ -27,6 +29,8 @@ const NUMERIC_KEYS = new Set<SortKey>([
   "inputPerMillion",
   "outputPerMillion",
   "cachedPerMillion",
+  "cacheWritePerMillion",
+  "cacheWrite1hPerMillion",
   "contextWindow",
 ]);
 

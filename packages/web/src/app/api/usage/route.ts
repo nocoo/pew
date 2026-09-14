@@ -133,6 +133,7 @@ export async function GET(request: Request) {
 
   try {
     const records = await db.getUsageRecords(userId, fromDate, toDate, {
+      includeReportedCosts: true,
       ...(sourceFilter && { source: sourceFilter }),
       ...(deviceIdFilter && { deviceId: deviceIdFilter }),
       granularity: granularity as "half-hour" | "day",

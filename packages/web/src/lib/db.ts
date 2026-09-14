@@ -332,6 +332,7 @@ export interface DbRead {
     fromDate: string,
     toDate: string,
     options?: {
+      includeReportedCosts?: boolean;
       source?: string;
       deviceId?: string;
       granularity?: "half-hour" | "day";

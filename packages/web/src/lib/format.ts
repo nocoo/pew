@@ -27,6 +27,7 @@ export function formatTokensFull(count: number): string {
 
 /** Format USD cost with appropriate precision and thousand separators. */
 export function formatCost(cost: number): string {
+  if (cost < 0) return `-${formatCost(-cost)}`;
   if (cost === 0) return "$0.00";
   if (cost < 0.01) return `$${cost.toFixed(4)}`;
   if (cost < 1) return `$${cost.toFixed(2)}`;

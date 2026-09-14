@@ -41,6 +41,8 @@ export interface IngestHandlerConfig<T> {
 
   /** Human-readable entity name used in error messages, e.g. "records" or "session records" */
   entityName: string;
+  /** A versioned route can project an explicit receipt instead of legacy {ingested}. */
+  acknowledgment?: (body: unknown, records: T[]) => object | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -160,6 +162,11 @@ export function createIngestHandler<T>(
           { error: `Failed to ingest ${entityName}` },
           { status: 500 },
         );
+      }
+      if (config.acknowledgment) {
+        const receipt = config.acknowledgment(await res.json().catch(() => null), validated);
+        if (!receipt) return NextResponse.json({ error: "Worker did not acknowledge this accounting protocol" }, { status: 502 });
+        return NextResponse.json(receipt);
       }
     } catch {
       console.error(`Failed to ingest ${entityName}`);
