@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowDownToLine, ArrowUpFromLine, DollarSign, Gauge, TrendingUp, Zap } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, DollarSign, Gauge, TrendingUp, Zap, type LucideIcon } from "lucide-react";
 import { Button } from "@nocoo/basalt/components/button";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { useUsageData, toHeatmapData, type DailyPoint } from "@/hooks/use-usage-data";
@@ -25,7 +25,7 @@ import { WeekdayWeekendChart } from "@/components/dashboard/weekday-weekend-char
 import { HourlyChart } from "@/components/dashboard/hourly-chart";
 import { DashboardSegment } from "@/components/dashboard/dashboard-segment";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
-import { SalaryCalculatorDialog } from "@/components/dashboard/salary-calculator-dialog";
+import { SalaryCalculatorCard } from "@/components/dashboard/salary-estimator-card";
 import { AccountingNotice } from "@/components/dashboard/accounting-notice";
 import { UsageTimingNotice } from "@/components/dashboard/usage-timing-notice";
 import { SnapshotAlert } from "@/components/dashboard/snapshot-alert";
@@ -99,12 +99,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-4 md:space-y-6">
       <SnapshotAlert />
-      <PageHeader title="Overview" description="Token usage and cache efficiency for your AI coding tools."
-        actions={<SalaryCalculatorDialog dailyCosts={dailyCostPoints}
-          dailyAverageCost={dailyCostPoints.length > 0 ? estimatedCost / dailyCostPoints.length : 0}
-          rangeLabel={periodLabel(period)} incomplete={cacheSavings.netSavings === null}
-          disabled={loading || pricingLoading || !hasRecords} />}
-      />
+      <PageHeader title="Overview" description="Token usage and cache efficiency for your AI coding tools." />
       <ErrorBanner messagePrefix="Failed to load usage data" error={error} />
       {error && <button type="button" className="text-sm underline underline-offset-4" onClick={refetch}>Retry usage</button>}
       <UsageTimingNotice records={records} />
@@ -114,55 +109,90 @@ export default function DashboardPage() {
       {!loading && data && (hasRecords || period !== "all") && <>
         {!hasRecords && <p className="rounded-card bg-secondary px-4 py-3 text-sm text-muted-foreground">No usage in this period.</p>}
 
-        <ErrorBanner messagePrefix="Failed to load annual activity" error={yearData.error} />
-        {!yearData.error && <HeatmapHero
-          data={toHeatmapData(yearData.daily)} year={currentYear} totalTokens={yearTotalTokens}
-          activeDays={yearData.daily.filter((day) => day.total > 0).length} loading={yearData.loading}
-        />}
+        <div className="grid grid-cols-1 gap-3 md:gap-4 xl:grid-cols-3">
+          <div className="min-w-0 xl:col-span-2">
+            <ErrorBanner messagePrefix="Failed to load annual activity" error={yearData.error} />
+            {!yearData.error && <HeatmapHero
+              data={toHeatmapData(yearData.daily)} year={currentYear} totalTokens={yearTotalTokens}
+              activeDays={yearData.daily.filter((day) => day.total > 0).length} loading={yearData.loading}
+              className="h-full"
+            />}
+          </div>
+          <SalaryCalculatorCard dailyCosts={dailyCostPoints}
+            dailyAverageCost={dailyCostPoints.length > 0 ? estimatedCost / dailyCostPoints.length : 0}
+            rangeLabel={periodLabel(period)} incomplete={cacheSavings.netSavings === null}
+            disabled={pricingLoading || !hasRecords} />
+        </div>
 
-        <DashboardSegment title="Usage summary" action={<PeriodSelector value={period} onChange={setPeriod} />}>
+        <DashboardSegment title="Usage summary" action={<PeriodSelector value={period} onChange={setPeriod} />}
+          hint="Changes compare this week / month so far with the previous period. TD compares the same elapsed days. Cost estimates use public pricing.">
           <ErrorBanner messagePrefix="Failed to load growth comparisons" error={wowData.error ?? momData.error} />
-          <StatGrid columns={4}>
+          <StatGrid columns={3} className="sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
             <StatCard
               title="Total Tokens" value={formatTokens(accounting.totalTokens)} subtitle={periodLabel(period)}
               icon={Zap} iconColor="text-primary" variant="primary"
+              className="p-4 md:p-5"
               accentColor="bg-gradient-to-r from-primary to-chart-8"
+              trendsLayout="grid"
               trends={[
                 ...(wow && wow.previousWeekSameDay.tokens > 0
                   ? [{ value: Math.round(wow.sameDayTokenGrowth), label: "vs week TD" }] : []),
+                ...(wow && wow.previousWeek.tokens > 0
+                  ? [{ value: Math.round(wow.tokenGrowth), label: "vs last week" }] : []),
                 ...(mom && mom.previousMonthSameDate.tokens > 0
                   ? [{ value: Math.round(mom.sameDateTokenGrowth), label: "vs month TD" }] : []),
+                ...(mom && mom.previousMonth.tokens > 0
+                  ? [{ value: Math.round(mom.tokenGrowth), label: "vs last month" }] : []),
               ]}
-            />
-            <StatCard title="Cache Hit Rate"
+            >
+              <SummaryDetails items={[
+                { title: "Input Tokens", value: formatTokens(accounting.inputTokens), subtitle: "Prompts & context", icon: ArrowDownToLine, iconColor: "text-chart-3" },
+                { title: "Output Tokens", value: formatTokens(accounting.outputTokens), subtitle: "Responses & reasoning", icon: ArrowUpFromLine, iconColor: "text-chart-5" },
+              ]} />
+            </StatCard>
+            <StatCard title="Cache Hit Rate" className="p-4 md:p-5"
               value={accounting.readCoverage > 0 ? `${accounting.cacheReadRate.toFixed(1)}%` : "—"}
               subtitle={accounting.inputTokens === 0 ? "No input recorded" : accounting.readCoverage === 0
                 ? "Read counts unavailable" : `Token based · ${Math.floor(accounting.readCoverage * 100)}% read coverage${accounting.readCoverage < 1 ? " · partial" : ""}`}
-              icon={Gauge} iconColor="text-chart-2" accentColor="bg-chart-2" variant="primary" />
-            <StatCard title="Input Tokens" value={formatTokens(accounting.inputTokens)}
-              subtitle="Prompts & context" icon={ArrowDownToLine} accentColor="bg-chart-3" />
-            <StatCard title="Output Tokens" value={formatTokens(accounting.outputTokens)}
-              subtitle="Responses & reasoning" icon={ArrowUpFromLine} accentColor="bg-chart-5" />
-          </StatGrid>
-
-          <StatGrid columns={3}>
+              icon={Gauge} iconColor="text-chart-2" accentColor="bg-chart-2" variant="primary">
+              {accounting.readCoverage > 0 && <div className="mt-4 mb-2 space-y-2">
+                <meter aria-label="Cache hit rate" min={0} max={100} value={accounting.cacheReadRate} className="sr-only" />
+                <div aria-hidden="true" className="h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full bg-chart-2" style={{ width: `${accounting.cacheReadRate}%` }} />
+                </div>
+                <p className="text-xs text-muted-foreground">Share of known input served from cache</p>
+              </div>}
+              <SummaryDetails items={[
+                { title: "Cache Read", value: accounting.inputTokens === 0 || accounting.readCoverage > 0 ? formatTokens(accounting.cacheReadTokens) : "—",
+                  subtitle: accounting.inputTokens === 0 ? "No input recorded" : accounting.readCoverage > 0 ? `${Math.floor(accounting.readCoverage * 100)}% input covered${accounting.readCoverage < 1 ? " · partial" : ""}` : "Unavailable", icon: ArrowDownToLine, iconColor: "text-chart-2" },
+                { title: "Cache Write", value: accounting.inputTokens === 0 || accounting.writeCoverage > 0 ? formatTokens(accounting.cacheWriteTokens) : "—",
+                  subtitle: accounting.inputTokens === 0 ? "No input recorded" : accounting.writeCoverage > 0 ? `${Math.floor(accounting.writeCoverage * 100)}% input covered${accounting.writeCoverage < 1 ? " · partial" : ""}` : "Unavailable", icon: ArrowUpFromLine, iconColor: "text-chart-5" },
+              ]} />
+            </StatCard>
             <StatCard
               title="Est. Cost" value={pricingLoading ? "…" : formatCost(estimatedCost)}
               subtitle={cacheSavings.netSavings === null ? "Public-price estimate · incomplete details" : "Based on public pricing"}
-              icon={DollarSign} iconColor="text-chart-6" variant="primary"
+              icon={DollarSign} iconColor="text-chart-6" variant="primary" accentColor="bg-chart-6"
+              className="p-4 md:p-5 lg:col-span-2 xl:col-span-1"
+              trendsLayout="grid" trendUpIsGood={false}
               trends={[
                 ...(wow && wow.previousWeekSameDay.cost > 0
-                  ? [{ value: -Math.round(wow.sameDayCostGrowth), label: "vs week TD" }] : []),
+                  ? [{ value: Math.round(wow.sameDayCostGrowth), label: "vs week TD" }] : []),
+                ...(wow && wow.previousWeek.cost > 0
+                  ? [{ value: Math.round(wow.costGrowth), label: "vs last week" }] : []),
                 ...(mom && mom.previousMonthSameDate.cost > 0
-                  ? [{ value: -Math.round(mom.sameDateCostGrowth), label: "vs month TD" }] : []),
+                  ? [{ value: Math.round(mom.sameDateCostGrowth), label: "vs month TD" }] : []),
+                ...(mom && mom.previousMonth.cost > 0
+                  ? [{ value: Math.round(mom.costGrowth), label: "vs last month" }] : []),
               ]}
-            />
-            <StatCard title="Monthly Forecast" value={pricingLoading || momData.loading ? "…" : costForecast ? formatCost(costForecast.projectedMonthCost) : "—"}
-              subtitle={costForecast ? `This Month · ${formatCost(costForecast.currentMonthCost)} estimated so far (${costForecast.daysElapsed} days)` : "This Month · Not enough data yet"}
-              icon={TrendingUp} iconColor="text-chart-6" />
-            <StatCard title="Daily Average" value={pricingLoading || momData.loading ? "…" : costForecast ? formatCost(costForecast.dailyAverage) : "—"}
-              subtitle={costForecast ? `This Month · ${costForecast.daysInMonth - costForecast.daysElapsed} days remaining` : "This Month · Not enough data yet"}
-              icon={DollarSign} iconColor="text-muted-foreground" />
+            >
+              <SummaryDetails items={[
+                { title: "Monthly Forecast", value: pricingLoading || momData.loading ? "…" : costForecast ? formatCost(costForecast.projectedMonthCost) : "—",
+                  subtitle: costForecast ? `This month · ${formatCost(costForecast.currentMonthCost)} so far` : "This month · Not enough data", icon: TrendingUp, iconColor: "text-chart-6" },
+                { title: "Daily Average", value: pricingLoading || momData.loading ? "…" : costForecast ? formatCost(costForecast.dailyAverage) : "—",
+                  subtitle: costForecast ? `This month · ${costForecast.daysInMonth - costForecast.daysElapsed} days left` : "This month · Not enough data", icon: DollarSign, iconColor: "text-chart-6" },
+              ]} />
+            </StatCard>
           </StatGrid>
           {hasRecords && <details className="text-xs text-muted-foreground">
             <summary className="cursor-pointer rounded-lg py-1 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
@@ -206,6 +236,23 @@ export default function DashboardPage() {
           </div>}
         </DashboardSegment>
       </>}
+    </div>
+  );
+}
+
+function SummaryDetails({ items }: { items: { title: string; value: string; subtitle: string; icon: LucideIcon; iconColor: string }[] }) {
+  return (
+    <div className="mt-auto pt-4">
+      <dl className="grid grid-cols-2 gap-3 border-t border-border/50 pt-3">
+        {items.map(({ title, value, subtitle, icon: Icon, iconColor }) => <div key={title} className="min-w-0">
+          <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Icon className={`h-3.5 w-3.5 shrink-0 ${iconColor}`} strokeWidth={1.5} aria-hidden="true" />
+            <span>{title}</span>
+          </dt>
+          <dd className="mt-1 font-display text-xl font-semibold tabular-nums tracking-tight">{value}</dd>
+          <dd className="mt-1 text-xs text-muted-foreground">{subtitle}</dd>
+        </div>)}
+      </dl>
     </div>
   );
 }

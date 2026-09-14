@@ -58,15 +58,12 @@ export function HeatmapHero({
     return (
       <div className={cn("grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4", className)}>
         {["Activity", "Goal Tracker"].map((label) => (
-          <section key={label} aria-label={label} aria-busy="true" className="rounded-card bg-secondary p-4 md:p-5 min-w-0">
-            <div className="flex h-7 items-center mb-3">
-              <Skeleton className="h-4 w-24" />
+          <section key={label} aria-label={label} aria-busy="true" className="rounded-card bg-secondary p-4 min-w-0">
+            <div className="mb-3 flex h-12 items-center justify-between">
+              <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-3 w-32" /></div>
+              <Skeleton className="h-8 w-16" />
             </div>
-            <div className="space-y-1 mb-3 h-14">
-              <Skeleton className="h-7 w-28" />
-              <Skeleton className="h-3 w-40" />
-            </div>
-            <Skeleton className="h-[140px] w-full" />
+            <Skeleton className="h-[198px] w-full" />
             <div className="mt-3 flex gap-5 border-t border-border/50 pt-3">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-4 w-32" />
@@ -79,24 +76,21 @@ export function HeatmapHero({
 
   return (
     <div className={cn("grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4", className)}>
-      <section aria-label="Activity" className="rounded-card bg-secondary p-4 md:p-5 min-w-0 flex flex-col">
-        <div className="flex h-7 items-center gap-2 mb-3">
-          <Activity className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Activity
-          </span>
-        </div>
-
-        <div className="mb-3 h-14">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-2xl md:text-3xl font-bold font-display tracking-tight text-foreground">
+      <section aria-label="Activity" className="rounded-card bg-secondary p-4 min-w-0 flex flex-col">
+        <div className="mb-3 flex min-h-12 items-center justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Activity className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.5} />
+              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Activity</span>
+            </div>
+            <p className="text-xs text-muted-foreground">{year} · {activityRate}% active days</p>
+          </div>
+          <div className="shrink-0 text-right">
+            <span className="text-2xl font-bold font-display tracking-tight text-foreground">
               {formatTokens(totalTokens)}
             </span>
-            <span className="text-xs text-muted-foreground">tokens</span>
+            <p className="text-xs text-muted-foreground">tokens</p>
           </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {year} contribution · {activityRate}% active days
-          </p>
         </div>
 
         <div className="flex-1">
@@ -105,10 +99,11 @@ export function HeatmapHero({
             year={year}
             valueFormatter={(v) => formatTokens(v)}
             metricLabel="Tokens"
+            splitYear cellSize={8} cellGap={1}
           />
         </div>
 
-        <div className="mt-auto flex min-h-10 flex-wrap items-center gap-x-5 gap-y-1.5 border-t border-border/50 pt-3">
+        <div className="mt-3 flex min-h-9 flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border/50 pt-2">
           <MiniStat icon={Calendar} value={activeDays} label="active days" />
           <MiniStat
             icon={Zap}
@@ -118,7 +113,7 @@ export function HeatmapHero({
         </div>
       </section>
 
-      <section aria-label="Goal Tracker" className="rounded-card bg-secondary p-4 md:p-5 min-w-0 flex flex-col">
+      <section aria-label="Goal Tracker" className="rounded-card bg-secondary p-4 min-w-0 flex flex-col">
         <GoalHeatmap data={data} year={year} className="flex-1" />
       </section>
     </div>

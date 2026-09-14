@@ -6,6 +6,7 @@ import {
 import { buildPricingMap } from "../../src/lib/pricing";
 
 const stat = (page: Page, title: string) => page.getByText(title, { exact: true }).locator("..");
+const statCard = (page: Page, title: string) => page.getByText(title, { exact: true }).locator("xpath=ancestor::div[@data-basalt-surface][1]");
 
 function annotatedRecord() {
   const row = DASHBOARD_USAGE_FIXTURE.records[0];
@@ -27,36 +28,94 @@ test.describe("Feature: Overview", () => {
     await mockDashboardApis(page, { usage: DASHBOARD_USAGE_FIXTURE, pricing: DASHBOARD_PRICING_FIXTURE });
   });
 
-  test("usage summary fits two rows and keeps secondary cache metrics in details", async ({ page }) => {
+  test("usage summary groups supporting metrics into three aligned cards and retains its visual accents", async ({ page }) => {
     const records = DASHBOARD_USAGE_FIXTURE.records.map((row) => ({ ...row, hour_start: row.hour_start.replace("2026-05", "2026-09") }));
     await mockDashboardApis(page, { usage: { ...DASHBOARD_USAGE_FIXTURE, records }, pricing: DASHBOARD_PRICING_FIXTURE });
     await page.goto("/dashboard");
     await expect(stat(page, "Monthly Forecast")).toBeVisible();
-    for (const title of ["Cache Read Tokens", "Cache Write Tokens", "Net Cache Savings"]) {
-      await expect(page.getByText(title, { exact: true })).toHaveCount(0);
+    for (const [title, children] of [
+      ["Total Tokens", ["Input Tokens", "Output Tokens"]],
+      ["Cache Hit Rate", ["Cache Read", "Cache Write"]],
+      ["Est. Cost", ["Monthly Forecast", "Daily Average"]],
+    ] as const) {
+      const card = statCard(page, title);
+      for (const child of children) await expect(card.getByText(child, { exact: true })).toBeVisible();
+      await expect(card.locator("svg").first()).toBeVisible();
+      await expect(card.locator("[aria-hidden='true']").first()).toBeVisible();
     }
-    const cards = ["Total Tokens", "Cache Hit Rate", "Input Tokens", "Output Tokens", "Est. Cost", "Monthly Forecast", "Daily Average"];
-    const tops = await Promise.all(cards.map(async (title) => Math.round((await stat(page, title).boundingBox())!.y)));
-    expect(Math.max(...tops.slice(0, 4)) - Math.min(...tops.slice(0, 4))).toBeLessThan(20);
-    expect(Math.max(...tops.slice(4)) - Math.min(...tops.slice(4))).toBeLessThan(20);
+    const boxes = await Promise.all(["Total Tokens", "Cache Hit Rate", "Est. Cost"].map((title) => statCard(page, title).boundingBox()));
+    expect(Math.max(...boxes.map((box) => box!.y)) - Math.min(...boxes.map((box) => box!.y))).toBeLessThan(2);
+    expect(Math.max(...boxes.map((box) => box!.height)) - Math.min(...boxes.map((box) => box!.height))).toBeLessThan(2);
+    const summary = page.getByRole("heading", { name: "Usage summary", exact: true }).locator("xpath=ancestor::section[1]");
+    await expect(summary.locator(".border-dashed")).toBeVisible();
+    await summary.getByRole("button", { name: "More information", exact: true }).focus();
+    await expect(page.getByRole("tooltip")).toContainText("TD compares the same elapsed days");
     await page.getByText("Cache & cost details", { exact: true }).click();
     await expect(page.getByText(/Cache reads:.*300.0K/)).toBeVisible();
     await expect(page.getByText(/Cache writes:.*unavailable/)).toBeVisible();
   });
 
-  test("growth comparisons keep the summary compact on desktop", async ({ page }) => {
+  test("full week and month comparisons return without expanding the summary into extra rows", async ({ page }) => {
     const records = Array.from({ length: 46 }, (_, day) => ({ ...DASHBOARD_USAGE_FIXTURE.records[0],
       hour_start: new Date(Date.UTC(2026, 7, day + 1)).toISOString(),
     }));
     await mockDashboardApis(page, { usage: { ...DASHBOARD_USAGE_FIXTURE, records }, pricing: DASHBOARD_PRICING_FIXTURE });
     await page.goto("/dashboard");
-    await expect(page.getByText("vs week TD", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("vs month TD", { exact: true }).first()).toBeVisible();
-    await expect(page.getByText("vs last week", { exact: true })).toHaveCount(0);
-    await expect(page.getByText("vs last month", { exact: true })).toHaveCount(0);
     for (const title of ["Total Tokens", "Est. Cost"]) {
-      const card = page.getByText(title, { exact: true }).locator("xpath=ancestor::div[@data-basalt-surface][1]");
-      expect((await card.boundingBox())!.height).toBeLessThan(220);
+      const card = statCard(page, title);
+      for (const label of ["vs week TD", "vs month TD", "vs last week", "vs last month"]) {
+        await expect(card.getByText(label, { exact: true })).toBeVisible();
+      }
+      await expect(card.getByText("vs last week", { exact: true }).locator("..").getByText("-57%", { exact: true })).toBeVisible();
+      await expect(card.getByText("vs last month", { exact: true }).locator("..").getByText("-52%", { exact: true })).toBeVisible();
+      expect((await card.boundingBox())!.height).toBeLessThan(360);
+    }
+    await expect(statCard(page, "Est. Cost").getByText("vs last month", { exact: true }).locator("..").getByText("-52%", { exact: true })).toHaveClass(/text-success/);
+  });
+
+  for (const width of [1440, 1920, 2560, 768, 390]) {
+    test(`activity, goals and salary form an aligned top row with the full year visible at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 1000 });
+      await page.goto("/dashboard");
+      const regions = ["Activity", "Goal Tracker", "Salary calculator"].map((name) => page.getByRole("region", { name, exact: true }));
+      for (const region of regions) await expect(region).toBeVisible();
+      const boxes = await Promise.all(regions.map((region) => region.boundingBox()));
+      if (width >= 1280) {
+        expect(Math.max(...boxes.map((box) => box!.y)) - Math.min(...boxes.map((box) => box!.y))).toBeLessThan(2);
+        expect(Math.max(...boxes.map((box) => box!.height)) - Math.min(...boxes.map((box) => box!.height))).toBeLessThan(2);
+        expect(boxes[2]!.x).toBeGreaterThan(boxes[1]!.x);
+        if (width >= 2560) expect(boxes[0]!.height).toBeLessThan(300);
+      } else {
+        expect(boxes[1]!.y).toBeGreaterThan(boxes[0]!.y);
+        expect(boxes[2]!.y).toBeGreaterThan(boxes[1]!.y);
+      }
+      for (const region of regions.slice(0, 2)) {
+        const box = (await region.boundingBox())!;
+        const dates = region.getByRole("img", { name: /^2026-/ });
+        await expect(dates).toHaveCount(365);
+        for (const date of ["2026-01-01", "2026-06-30", "2026-07-01", "2026-09-15", "2026-12-31"]) {
+          const cell = region.getByRole("img", { name: new RegExp(`^${date}:`) });
+          const position = (await cell.boundingBox())!;
+          expect(position.x).toBeGreaterThanOrEqual(box.x);
+          expect(position.x + position.width).toBeLessThanOrEqual(box.x + box.width);
+        }
+      }
+      await expect(regions[2]!.getByRole("button", { name: "Salary settings", exact: true })).toBeEnabled();
+      await expect(page.getByRole("slider")).toHaveCount(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1);
+    });
+  }
+
+  test("compact annual calendars retain leap day and the six-month boundary tooltips", async ({ page }) => {
+    await page.clock.setFixedTime(new Date("2028-02-29T12:00:00Z"));
+    await page.goto("/dashboard");
+    for (const name of ["Activity", "Goal Tracker"]) {
+      const region = page.getByRole("region", { name, exact: true });
+      await expect(region.getByRole("img", { name: /^2028-/ })).toHaveCount(366);
+      for (const date of ["2028-02-29", "2028-06-30", "2028-07-01"]) {
+        await region.getByRole("img", { name: `${date}: Tokens 0`, exact: true }).hover();
+        await expect(region.getByRole("tooltip")).toContainText(date);
+      }
     }
   });
 
@@ -153,14 +212,14 @@ test.describe("Feature: Overview", () => {
       await expect(stat(page, "Cache Hit Rate").getByText("25.0%", { exact: true })).toBeVisible();
       const total = (await stat(page, "Total Tokens").boundingBox())!;
       const hit = (await stat(page, "Cache Hit Rate").boundingBox())!;
-      const input = (await stat(page, "Input Tokens").boundingBox())!;
+      const cost = (await stat(page, "Est. Cost").boundingBox())!;
       if (width >= 1024) {
         expect(Math.abs(hit.y - total.y)).toBeLessThan(2);
         expect(hit.x).toBeGreaterThan(total.x);
-        expect(hit.x).toBeLessThan(input.x);
+        expect(hit.x).toBeLessThan(cost.x);
       } else {
         expect(hit.y).toBeGreaterThan(total.y);
-        expect(hit.y).toBeLessThan(input.y);
+        expect(hit.y).toBeLessThan(cost.y);
       }
       await page.getByRole("button", { name: "Cost", exact: true }).click();
       await expect(page.getByText("Daily Cost", { exact: true })).toBeVisible();
@@ -181,17 +240,20 @@ test.describe("Feature: Overview", () => {
     test(`salary calculator retains the selected calendar period at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 1000 });
       await page.goto("/dashboard");
-      const trigger = page.getByRole("button", { name: "Salary calculator", exact: true });
+      const salary = page.getByRole("region", { name: "Salary calculator", exact: true });
+      const trigger = salary.getByRole("button", { name: "Salary settings", exact: true });
+      const monthly = salary.getByLabel("Monthly salary equivalent", { exact: true });
+      await expect(monthly).toHaveText("$5");
       await expect(trigger).toBeEnabled();
       await trigger.click();
-      const dialog = page.getByRole("dialog", { name: "Salary calculator", exact: true });
+      const dialog = page.getByRole("dialog", { name: "Salary settings", exact: true });
       await expect(dialog).toBeVisible();
       await expect(dialog.getByText(/138 calendar days/)).toBeVisible();
       await expect(dialog.getByText("Huang Ratio", { exact: true })).toBeVisible();
       const slider = dialog.getByRole("slider").first();
       const before = await slider.getAttribute("aria-valuenow");
       await slider.focus();
-      await page.keyboard.press("ArrowRight");
+      await page.keyboard.press("End");
       await expect(slider).not.toHaveAttribute("aria-valuenow", before!);
       const box = (await dialog.boundingBox())!;
       expect(box.width).toBeLessThanOrEqual(width - 16);
@@ -199,6 +261,11 @@ test.describe("Feature: Overview", () => {
       await page.keyboard.press("Escape");
       await expect(dialog).not.toBeVisible();
       await expect(trigger).toBeFocused();
+      await expect(monthly).toHaveText("$3");
+      await trigger.click();
+      await expect(slider).toHaveAttribute("aria-valuenow", "100");
+      await dialog.getByRole("button", { name: "Close salary settings", exact: true }).click();
+      await expect(monthly).toHaveText("$3");
       expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1);
     });
   }
@@ -294,7 +361,7 @@ test.describe("Feature: Overview", () => {
     await page.goto("/dashboard");
     await expect(page.getByText("Ready to Track Your AI Usage")).toBeVisible();
     await expect(page.getByRole("link", { name: "Get Started" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Salary calculator", exact: true })).toBeDisabled();
+    await expect(page.getByRole("region", { name: "Salary calculator", exact: true })).toHaveCount(0);
   });
 
   test("the Overview navigation still links to daily usage and settings", async ({ page }) => {

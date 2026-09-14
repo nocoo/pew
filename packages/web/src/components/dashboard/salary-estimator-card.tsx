@@ -11,7 +11,10 @@ import {
 } from "recharts";
 import { Badge } from "@nocoo/basalt/components/badge";
 import { Slider } from "@nocoo/basalt/components/slider";
-import { Banknote, ExternalLink, Info } from "lucide-react";
+import { Button } from "@nocoo/basalt/components/button";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@nocoo/basalt/components/dialog";
+import { Banknote, ExternalLink, Info, Settings, X } from "lucide-react";
+import { rowIconClassName } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { chart, chartAxis, chartMuted } from "@/lib/palette";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
@@ -111,7 +114,7 @@ function SalaryEstimatorCard({
   className,
 }: SalaryEstimatorCardProps) {
   const ctx = useContext(SalaryEstimatorContext);
-  if (!ctx) throw new Error("SalaryEstimatorCard must be used within SalaryEstimator");
+  if (!ctx) throw new Error("SalaryEstimatorCard must be used within SalaryCalculatorCard");
 
   const { huangRatio, setHuangRatio, priceMultiplier, setPriceMultiplier } = ctx;
 
@@ -232,12 +235,13 @@ function SalaryEstimatorCard({
 
 interface SalaryTrendChartProps {
   data: DailySalaryCost[];
+  compact?: boolean;
   className?: string;
 }
 
-function SalaryTrendChart({ data, className }: SalaryTrendChartProps) {
+function SalaryTrendChart({ data, compact = false, className }: SalaryTrendChartProps) {
   const ctx = useContext(SalaryEstimatorContext);
-  if (!ctx) throw new Error("SalaryTrendChart must be used within SalaryEstimator");
+  if (!ctx) throw new Error("SalaryTrendChart must be used within SalaryCalculatorCard");
 
   const { huangRatio, priceMultiplier } = ctx;
 
@@ -276,16 +280,17 @@ function SalaryTrendChart({ data, className }: SalaryTrendChartProps) {
   return (
     <div
       className={cn(
-        "rounded-card bg-secondary p-4 md:p-5 flex flex-col",
+        "min-w-0 flex flex-col",
+        !compact && "rounded-card bg-secondary p-4 md:p-5",
         className
       )}
     >
       {/* Header */}
-      <div className="mb-3 flex items-center justify-between">
-        <p className="text-xs md:text-sm text-muted-foreground">
+      <div className={cn("flex items-center justify-between", compact ? "mb-2" : "mb-3")}>
+        <p className={cn("text-xs text-muted-foreground", !compact && "md:text-sm")}>
           Salary Trend
         </p>
-        <div className="flex items-center gap-3">
+        {compact ? <span className="text-xs text-muted-foreground">Annualized</span> : <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
             <div className="h-0.5 w-3 rounded-full" style={{ background: chart.violet }} />
             <span className="text-xs text-muted-foreground">Estimated</span>
@@ -297,11 +302,11 @@ function SalaryTrendChart({ data, className }: SalaryTrendChartProps) {
             />
             <span className="text-xs text-muted-foreground">Range</span>
           </div>
-        </div>
+        </div>}
       </div>
 
       {/* Chart fills remaining height */}
-      <div className="min-h-[260px] flex-1">
+      <div className={compact ? "h-[140px] @[640px]:h-[90px]" : "min-h-[260px] flex-1"}>
         <DashboardResponsiveContainer width="100%" height="100%">
           <LineChart
             data={chartData}
@@ -321,6 +326,7 @@ function SalaryTrendChart({ data, className }: SalaryTrendChartProps) {
               tickLine={false}
             />
             <YAxis
+              hide={compact}
               tickFormatter={formatSalary}
               tick={{ fill: chartAxis, fontSize: 11 }}
               axisLine={false}
@@ -502,22 +508,27 @@ function SliderControl({
 // Main Wrapper Component
 // ---------------------------------------------------------------------------
 
-interface SalaryEstimatorProps {
+interface SalaryCalculatorCardProps {
   /** Use the same selected period and calendar-day average as Overview. */
   rangeLabel: string;
   dailyAverageCost: number;
   dailyCosts: DailySalaryCost[];
+  incomplete: boolean;
+  disabled: boolean;
   className?: string;
 }
 
-export function SalaryEstimator({
+export function SalaryCalculatorCard({
   rangeLabel,
   dailyAverageCost,
   dailyCosts,
+  incomplete,
+  disabled,
   className,
-}: SalaryEstimatorProps) {
+}: SalaryCalculatorCardProps) {
   const [huangRatio, setHuangRatio] = useState(50);
   const [priceMultiplier, setPriceMultiplier] = useState(100);
+  const yearlySalary = dailyCostToYearlySalary(dailyAverageCost, huangRatio, priceMultiplier);
 
   const contextValue = useMemo(
     () => ({ huangRatio, setHuangRatio, priceMultiplier, setPriceMultiplier }),
@@ -526,16 +537,65 @@ export function SalaryEstimator({
 
   return (
     <SalaryEstimatorContext.Provider value={contextValue}>
-      <div className={cn("space-y-3", className)}>
-        {/* Two-column layout: Card (50%) + Chart (50%) */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-          <SalaryEstimatorCard
-            dailyAvgCost={dailyAverageCost}
-            rangeLabel={rangeLabel}
-          />
-          <SalaryTrendChart data={dailyCosts} />
-        </div>
-      </div>
+      <Dialog>
+        <section aria-label="Salary calculator" className={cn("@container min-w-0 rounded-card bg-secondary p-4 flex flex-col", className)}>
+          <div className="mb-3 flex min-h-12 items-center justify-between gap-2">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Banknote className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+                <span className="text-xs font-medium uppercase tracking-wider">Salary Calculator</span>
+              </div>
+              <p className="text-xs text-muted-foreground">{rangeLabel} · {dailyCosts.length} days</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <div className="text-right">
+                <output aria-label="Monthly salary equivalent" className="block font-display text-2xl font-bold tracking-tight">{disabled ? "—" : formatSalary(yearlySalary / 12)}</output>
+                <p className="text-xs text-muted-foreground">/ month</p>
+              </div>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="icon" className={rowIconClassName} disabled={disabled} aria-label="Salary settings">
+                  <Settings strokeWidth={1.5} />
+                </Button>
+              </DialogTrigger>
+            </div>
+          </div>
+          <div className="flex-1">
+            {disabled ? <div className="flex h-[170px] items-center justify-center text-sm text-muted-foreground">Salary estimate unavailable</div>
+              : <SalaryTrendChart data={dailyCosts} compact />}
+          </div>
+          <div className="mt-3 border-t border-border/50 pt-3">
+            <dl className="grid grid-cols-3 gap-3 text-xs">
+              {[
+                ["Weekly", formatSalary(yearlySalary / 52)],
+                ["Yearly", formatSalary(yearlySalary)],
+                ["Daily cost", formatCostDisplay(dailyAverageCost * priceMultiplier / 100)],
+              ].map(([label, value]) => <div key={label} className="@[640px]:flex @[640px]:items-baseline @[640px]:gap-2">
+                <dt className="text-muted-foreground">{label}</dt>
+                <dd className="mt-1 font-medium tabular-nums">{disabled ? "—" : value}</dd>
+              </div>)}
+            </dl>
+            <p className="mt-2 text-[10px] text-muted-foreground">{incomplete ? "Salary equivalent · incomplete price details" : "Salary equivalent based on estimated token spend"}</p>
+          </div>
+        </section>
+        <DialogContent size="xl" className="sm:w-[72rem] p-4 sm:p-7">
+          <div className="mb-6 flex items-start justify-between gap-3">
+            <DialogHeader>
+              <DialogTitle>Salary settings</DialogTitle>
+              <DialogDescription className="text-sm">
+                {rangeLabel} · {dailyCosts.length} calendar days. Explore a salary equivalent from your estimated token spend. Adjustments apply immediately.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogClose asChild>
+              <Button variant="ghost" size="icon" aria-label="Close salary settings" className="shrink-0"><X className="h-4 w-4" aria-hidden="true" /></Button>
+            </DialogClose>
+          </div>
+          {incomplete && <p className="mb-4 text-xs text-muted-foreground">The underlying public-price estimate includes assumptions where cache or pricing details are unavailable.</p>}
+          <div className="grid grid-cols-1 gap-3 md:gap-4 lg:grid-cols-2">
+            <SalaryEstimatorCard dailyAvgCost={dailyAverageCost} rangeLabel={rangeLabel} />
+            <SalaryTrendChart data={dailyCosts} />
+          </div>
+        </DialogContent>
+      </Dialog>
     </SalaryEstimatorContext.Provider>
   );
 }

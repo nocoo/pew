@@ -62,53 +62,48 @@ export function GoalHeatmap({ data, year, className }: GoalHeatmapProps) {
 
   return (
     <div className={cn("min-w-0 flex flex-col", className)}>
-      {/* Section title */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <Target className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
-          <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Goal Tracker
-          </span>
+      <div className="mb-3 flex min-h-12 items-center justify-between gap-2">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Target className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.5} />
+            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Goal Tracker</span>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {daysOnTarget} day{daysOnTarget !== 1 ? "s" : ""} above {formatTokens(thresholds.upper)}/day
+          </p>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={rowIconClassName}
-          onClick={() => setSettingsOpen(true)}
-          aria-label="Goal settings"
-        >
-          <Settings strokeWidth={1.5} />
-        </Button>
-      </div>
-
-      {/* Header: target rate + days on target — fixed height for alignment */}
-      <div className="mb-3 h-14">
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-2xl md:text-3xl font-bold font-display tracking-tight text-foreground">
-            {onTargetRate}%
-          </span>
-          <span className="text-xs text-muted-foreground">on target</span>
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="text-right">
+            <span className="text-2xl font-bold font-display tracking-tight text-foreground">{onTargetRate}%</span>
+            <p className="text-xs text-muted-foreground">on target</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={rowIconClassName}
+            onClick={() => setSettingsOpen(true)}
+            aria-label="Goal settings"
+          >
+            <Settings strokeWidth={1.5} />
+          </Button>
         </div>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          {daysOnTarget} day{daysOnTarget !== 1 ? "s" : ""} above {formatTokens(thresholds.upper)}/day
-        </p>
       </div>
 
       {/* Heatmap — flex-1 to push footer down */}
       <div className="flex-1">
         <HeatmapCalendar
-        data={data}
-        year={year}
-        colorScale={goalColorScale}
-        boundaries={boundaries}
-        valueFormatter={(v) => formatTokens(v)}
+          data={data}
+          year={year}
+          colorScale={goalColorScale}
+          boundaries={boundaries}
+          valueFormatter={(v) => formatTokens(v)}
           metricLabel="Tokens"
           legendLabels={["Below", "Above"]}
+          splitYear cellSize={8} cellGap={1}
         />
       </div>
 
-      {/* Threshold hints — fixed height for alignment across cards */}
-      <div className="mt-auto flex h-10 flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border/50 pt-3 text-xs text-muted-foreground">
+      <div className="mt-3 flex min-h-9 flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border/50 pt-2 text-xs text-muted-foreground">
         <span>
           <span
             className="inline-block w-2.5 h-2.5 rounded-sm mr-1 align-[-1px]"

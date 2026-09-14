@@ -14,6 +14,8 @@ export interface StatCardProps {
   iconColor?: string;
   trend?: { value: number; label?: string };
   trends?: { value: number; label?: string }[] | undefined;
+  /** A lower value is favorable for costs; the numeric sign remains unchanged. */
+  trendUpIsGood?: boolean;
   /**
    * Visual variant:
    * - "primary": larger, more prominent (for key metrics like Total Tokens, Est. Cost)
@@ -29,8 +31,10 @@ export interface StatCardProps {
    * Layout mode for trends:
    * - "stacked": trends in a column below the value (default)
    * - "side": trends in a second column beside the value (for primary cards with many trends)
+   * - "grid": four calendar comparisons in two columns
    */
-  trendsLayout?: "stacked" | "side";
+  trendsLayout?: "stacked" | "side" | "grid";
+  children?: React.ReactNode;
   className?: string;
 }
 
@@ -50,9 +54,11 @@ export function StatCard({
   iconColor = "text-muted-foreground",
   trend,
   trends,
+  trendUpIsGood = true,
   variant = "secondary",
   accentColor,
   trendsLayout = "stacked",
+  children,
   className,
 }: StatCardProps) {
   // Merge single trend + trends array into one list
@@ -63,7 +69,7 @@ export function StatCard({
 
   const TrendsContent = allTrends.length > 0 ? (
     <div className={cn(
-      "flex flex-col gap-1",
+      trendsLayout === "grid" ? "grid grid-cols-2 gap-x-3 gap-y-2" : "flex flex-col gap-1",
       useSideLayout ? "justify-center" : "mt-3"
     )}>
       {allTrends.map((t, i) => {
@@ -71,15 +77,15 @@ export function StatCard({
         const isNeg = t.value < 0;
         return (
           <div
-            // biome-ignore lint/suspicious/noArrayIndexKey: `allTrends` is a small fixed-shape prop array (up to two trend rows) with no reorder path; positional key is authoritative.
+            // biome-ignore lint/suspicious/noArrayIndexKey: small fixed-shape trend array with no reorder path; positional key is authoritative.
             key={`${t.label ?? ""}:${t.value}:${i}`}
-            className="flex items-center gap-1 text-xs"
+            className="flex flex-wrap items-center gap-1 text-xs"
           >
             <span
               className={cn(
                 "font-medium",
-                isPos && "text-success",
-                isNeg && "text-destructive",
+                (trendUpIsGood ? isPos : isNeg) && "text-success",
+                (trendUpIsGood ? isNeg : isPos) && "text-destructive",
                 !isPos && !isNeg && "text-muted-foreground"
               )}
             >
@@ -98,14 +104,14 @@ export function StatCard({
   return (
     <LayerCard
       padding={isPrimary ? "lg" : "md"}
-      {...(className != null ? { className } : {})}
+      className={cn("min-w-0 flex flex-col", className)}
     >
       {/* Top accent bar — only shown when explicitly provided */}
       {accentColor && (
         <div className={cn(
           "h-0.5 w-8 rounded-full mb-4",
           accentColor
-        )} />
+        )} aria-hidden="true" />
       )}
 
       {/* Side layout: two columns on md+, stacked on mobile */}
@@ -158,8 +164,8 @@ export function StatCard({
       ) : (
         /* Stacked layout (default) */
         <>
-          <div className="flex items-start justify-between">
-            <div className="space-y-1">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 space-y-1">
               <p
                 className={cn(
                   "text-muted-foreground",
@@ -181,7 +187,7 @@ export function StatCard({
               )}
             </div>
             {Icon && (
-              <div className={cn("rounded-md bg-basalt-background p-2", iconColor)}>
+              <div className={cn("shrink-0 rounded-md bg-basalt-background p-2", iconColor)}>
                 <Icon className={cn(isPrimary ? "h-6 w-6" : "h-5 w-5")} strokeWidth={1.5} />
               </div>
             )}
@@ -189,6 +195,7 @@ export function StatCard({
           {TrendsContent}
         </>
       )}
+      {children}
     </LayerCard>
   );
 }
