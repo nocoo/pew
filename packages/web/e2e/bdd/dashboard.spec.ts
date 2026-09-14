@@ -22,7 +22,7 @@ test.describe("Feature: Overview", () => {
       await expect(page.getByRole("region", { name: `By ${dimension}`, exact: true })).toBeVisible();
     }
 
-    await page.getByRole("button", { name: "Cost", exact: true }).click();
+    await page.getByRole("group", { name: "Overview metrics" }).getByRole("button", { name: "Cost", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Daily estimated cost", exact: true })).toBeVisible();
     await expect(page.getByRole("region", { name: "By machine", exact: true }).getByText("$7.86", { exact: true })).toBeVisible();
 
@@ -36,7 +36,7 @@ test.describe("Feature: Overview", () => {
     await expect(page.getByText("Salary Estimator", { exact: true })).not.toBeVisible();
   });
 
-  test("one period selector updates both queries and an empty period keeps controls available", async ({ page }) => {
+  test("the shared period updates usage and machine queries and keeps legacy controls available", async ({ page }) => {
     const requests: URL[] = [];
     page.on("request", (request) => {
       const url = new URL(request.url());
@@ -45,16 +45,61 @@ test.describe("Feature: Overview", () => {
     await page.goto("/dashboard");
     await expect(page.getByRole("button", { name: "Total Tokens", exact: true })).toBeVisible();
     requests.length = 0;
-    await page.getByRole("button", { name: "This Month", exact: true }).click();
+    await page.getByRole("button", { name: "This Month", exact: true }).first().click();
     await expect(page.getByText("No usage in this period.", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "All Time", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "All Time", exact: true }).first()).toBeVisible();
     await expect(page.getByText("Ready to Track Your AI Usage")).not.toBeVisible();
-    expect(requests).toHaveLength(2);
-    expect(requests[0]?.searchParams.get("from")).toBe(requests[1]?.searchParams.get("from"));
-    expect(requests[0]?.searchParams.get("to")).toBe(requests[1]?.searchParams.get("to"));
+    const monthStart = await page.evaluate(() => new Date(2026, 8, 1).toISOString());
+    const usage = requests.find((url) => url.pathname === "/api/usage" && url.searchParams.get("granularity") === "day" && url.searchParams.get("from") === monthStart);
+    const machines = requests.find((url) => url.pathname === "/api/usage/by-device");
+    expect(usage).toBeDefined();
+    expect(machines).toBeDefined();
+    expect(usage?.searchParams.get("from")).toBe(machines?.searchParams.get("from"));
+    expect(usage?.searchParams.get("to")).toBe(machines?.searchParams.get("to"));
+    const legacy = page.getByRole("region", { name: "Legacy area", exact: true });
+    await expect(legacy.getByRole("button", { name: "This Month", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(legacy.getByRole("region", { name: "Activity", exact: true }).getByText("1.8M", { exact: true })).toBeVisible();
+    await legacy.getByRole("button", { name: "All Time", exact: true }).click();
+    await expect(page.getByRole("button", { name: "All Time", exact: true }).first()).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByRole("button", { name: "Total Tokens", exact: true }).getByText("1.8M", { exact: true })).toBeVisible();
   });
 
   for (const width of [1440, 390]) {
+    test(`legacy widgets remain below the new charts and work independently at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 1000 });
+      await page.goto("/dashboard");
+      const legacy = page.getByRole("region", { name: "Legacy area", exact: true });
+      await expect(legacy).toBeVisible();
+      const chartsBox = (await page.locator("#overview-charts").boundingBox())!;
+      const legacyBox = (await legacy.boundingBox())!;
+      expect(legacyBox.y).toBeGreaterThanOrEqual(chartsBox.y + chartsBox.height);
+      for (const name of ["Activity", "Goal Tracker"]) {
+        await expect(legacy.getByRole("region", { name, exact: true })).toBeVisible();
+      }
+      for (const name of ["Usage summary", "Trends", "Insights"]) {
+        await expect(legacy.getByRole("heading", { name, exact: true })).toBeVisible();
+      }
+      for (const name of ["Cache Read Rate", "By Agent", "Input / Output", "Weekday vs Weekend", "Hourly Usage"]) {
+        await expect(legacy.getByText(name, { exact: true })).toBeVisible();
+      }
+      await legacy.getByRole("button", { name: "Cost", exact: true }).click();
+      await expect(legacy.getByText("Daily Cost", { exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "Total Tokens", exact: true })).toHaveAttribute("aria-pressed", "true");
+      await expect(page.getByRole("heading", { name: "Daily tokens", exact: true })).toBeVisible();
+      const settings = legacy.getByRole("button", { name: "Goal settings", exact: true });
+      await settings.click();
+      const dialog = page.getByRole("dialog", { name: "Goal Thresholds", exact: true });
+      await expect(dialog).toBeVisible();
+      await dialog.getByLabel("Lower threshold (M tokens/day)").fill("10");
+      await dialog.getByRole("button", { name: "Save", exact: true }).click();
+      await expect(dialog).not.toBeVisible();
+      await expect(settings).toBeFocused();
+      await settings.click();
+      await expect(dialog.getByLabel("Lower threshold (M tokens/day)")).toHaveValue("10");
+      await page.keyboard.press("Escape");
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1);
+    });
+
     test(`salary calculator opens in a large accessible dialog at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 1000 });
       await page.goto("/dashboard");
@@ -97,6 +142,10 @@ test.describe("Feature: Overview", () => {
     await expect(cache.getByText("—", { exact: true })).toBeVisible();
     await expect(page.getByRole("region", { name: "Activity heatmap" }).getByRole("img", { name: /2026-05-01: Cache tokens unavailable/ })).toBeVisible();
     await expect(page.getByRole("region", { name: "By machine", exact: true }).getByText("Unavailable", { exact: true }).first()).toBeVisible();
+    const legacy = page.getByRole("region", { name: "Legacy area", exact: true });
+    const cacheCard = legacy.getByText("Cache Read Tokens", { exact: true }).locator("..");
+    await expect(cacheCard.getByText("—", { exact: true })).toBeVisible();
+    await expect(legacy.getByText("Avg —", { exact: true })).toBeVisible();
   });
 
   test("new clients display cache reads and writes throughout Overview", async ({ page }) => {

@@ -85,6 +85,8 @@ Overview organizes its cards, daily heatmap, line chart and machine/model/harnes
 
 All Overview views share one local calendar period. Usage and machine queries receive identical UTC timestamps (`from` inclusive, `to` exclusive), avoiding padded-day differences between totals and bars. All-time charts begin at the first recorded day. The salary calculator opens from the header and uses the selected period's estimated cost divided by its calendar days, including inactive days. This presentation change does not require an API or database migration.
 
+The original dashboard widgets remain below the new charts in a visible Legacy area. Its usage summary, token/cost trends and insights share the selected period and accounting rules. Annual Activity and Goal Tracker retain the current-year scope and existing local goal settings; growth comparisons and the monthly forecast retain their calendar windows. The legacy chart toggle is independent of the three primary metrics. Salary calculation stays in the header dialog.
+
 The public pricing API includes a content snapshot ID, fetch time and dynamic/baseline/fallback status. `effectiveAt` remains null: a fetch timestamp is not a historical rate schedule. Estimates cover token charges; storage fees, subscriptions and historical/provider-specific billing adjustments are not modeled as a complete invoice.
 
 ## Durable local state and delivery

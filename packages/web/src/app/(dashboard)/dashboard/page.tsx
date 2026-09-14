@@ -12,6 +12,7 @@ import { buildDeviceLabelMap, deviceLabel } from "@/lib/device-helpers";
 import { sourceLabel } from "@/lib/usage-transforms";
 import { OverviewMetrics, OverviewHeatmap, OverviewTrend, OverviewBreakdown } from "@/components/dashboard/overview-charts";
 import { SalaryCalculatorDialog } from "@/components/dashboard/salary-calculator-dialog";
+import { LegacyOverview } from "@/components/dashboard/legacy-overview";
 import { AccountingNotice } from "@/components/dashboard/accounting-notice";
 import { UsageTimingNotice } from "@/components/dashboard/usage-timing-notice";
 import { PeriodSelector } from "@/components/dashboard/period-selector";
@@ -87,6 +88,7 @@ export default function DashboardPage() {
             <OverviewBreakdown dimension="harness" groups={overview.harnesses} metric={metric} label={sourceLabel} />
           </div>
         </div>
+        <LegacyOverview records={overview.records} range={range} tzOffset={tzOffset} period={period} onPeriodChange={setPeriod} />
       </>}
     </div>
   );

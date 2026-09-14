@@ -129,13 +129,20 @@ export async function mockDashboardApis(
         : path === "/api/settings" ? { ...user, slug: "overview-test", is_public: 1 } : {};
     return route.fulfill({ json });
   });
-  await page.route("**/api/usage*", (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify(opts.usage),
-    }),
-  );
+  await page.route("**/api/usage*", (route) => {
+    const usage = opts.usage as { records: Array<Record<string, unknown>>; summary: Record<string, number> };
+    const params = new URL(route.request().url()).searchParams;
+    const from = params.has("from") ? new Date(params.get("from")!).getTime() : -Infinity;
+    const to = params.has("to") ? new Date(params.get("to")!).getTime() : Infinity;
+    const records = usage.records.filter((row) => {
+      const time = new Date(row.hour_start as string).getTime();
+      return time >= from && time < to;
+    });
+    const summary = Object.fromEntries(Object.keys(usage.summary).map((key) => [
+      key, records.reduce((total, row) => total + Number(row[key] ?? 0), 0),
+    ]));
+    return route.fulfill({ json: { records, summary } });
+  });
   await page.route("**/api/usage/by-device?*", (route) => {
     const { records } = opts.usage as { records: Array<Record<string, unknown>> };
     const params = new URL(route.request().url()).searchParams;
