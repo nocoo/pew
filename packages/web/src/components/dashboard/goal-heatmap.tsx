@@ -99,28 +99,27 @@ export function GoalHeatmap({ data, year, className }: GoalHeatmapProps) {
           valueFormatter={(v) => formatTokens(v)}
           metricLabel="Tokens"
           legendLabels={["Below", "Above"]}
-          splitYear cellSize={8} cellGap={1}
         />
       </div>
 
       <div className="mt-3 flex min-h-9 flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border/50 pt-2 text-xs text-muted-foreground">
         <span>
           <span
-            className="inline-block w-2.5 h-2.5 rounded-sm mr-1 align-[-1px]"
+            className="inline-block w-2.5 h-2.5 rounded-full mr-1 align-[-1px]"
             style={{ backgroundColor: goalColorScale[1] }}
           />
           &lt; {formatTokens(thresholds.lower)}
         </span>
         <span>
           <span
-            className="inline-block w-2.5 h-2.5 rounded-sm mr-1 align-[-1px]"
+            className="inline-block w-2.5 h-2.5 rounded-full mr-1 align-[-1px]"
             style={{ backgroundColor: goalColorScale[2] }}
           />
           {formatTokens(thresholds.lower)} – {formatTokens(thresholds.upper)}
         </span>
         <span>
           <span
-            className="inline-block w-2.5 h-2.5 rounded-sm mr-1 align-[-1px]"
+            className="inline-block w-2.5 h-2.5 rounded-full mr-1 align-[-1px]"
             style={{ backgroundColor: goalColorScale[3] }}
           />
           &gt; {formatTokens(thresholds.upper)}

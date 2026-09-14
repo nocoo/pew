@@ -74,7 +74,7 @@ test.describe("Feature: Overview", () => {
   });
 
   for (const width of [1440, 1920, 2560, 768, 390]) {
-    test(`activity, goals and salary form an aligned top row with the full year visible at ${width}px`, async ({ page }) => {
+    test(`activity and goals retain one annual strip of circular days beside salary at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 1000 });
       await page.goto("/dashboard");
       const regions = ["Activity", "Goal Tracker", "Salary calculator"].map((name) => page.getByRole("region", { name, exact: true }));
@@ -84,7 +84,7 @@ test.describe("Feature: Overview", () => {
         expect(Math.max(...boxes.map((box) => box!.y)) - Math.min(...boxes.map((box) => box!.y))).toBeLessThan(2);
         expect(Math.max(...boxes.map((box) => box!.height)) - Math.min(...boxes.map((box) => box!.height))).toBeLessThan(2);
         expect(boxes[2]!.x).toBeGreaterThan(boxes[1]!.x);
-        if (width >= 2560) expect(boxes[0]!.height).toBeLessThan(300);
+        expect(boxes[0]!.height).toBeLessThan(300);
       } else {
         expect(boxes[1]!.y).toBeGreaterThan(boxes[0]!.y);
         expect(boxes[2]!.y).toBeGreaterThan(boxes[1]!.y);
@@ -93,8 +93,21 @@ test.describe("Feature: Overview", () => {
         const box = (await region.boundingBox())!;
         const dates = region.getByRole("img", { name: /^2026-/ });
         await expect(dates).toHaveCount(365);
+        const geometry = await dates.evaluateAll((cells) => cells.map((cell) => {
+          const rect = cell.getBoundingClientRect();
+          return { x: rect.x, y: rect.y, width: rect.width, height: rect.height,
+            radius: Number.parseFloat(getComputedStyle(cell).borderTopLeftRadius) };
+        }));
+        expect(new Set(geometry.map((cell) => cell.y)).size).toBe(7);
+        expect(geometry.at(-1)!.x).toBeGreaterThan(geometry[0]!.x);
+        for (const cell of geometry) {
+          expect(cell.width).toBe(cell.height);
+          expect(cell.width).toBeGreaterThanOrEqual(10);
+          expect(cell.radius).toBeGreaterThanOrEqual(cell.width / 2);
+        }
         for (const date of ["2026-01-01", "2026-06-30", "2026-07-01", "2026-09-15", "2026-12-31"]) {
           const cell = region.getByRole("img", { name: new RegExp(`^${date}:`) });
+          await cell.scrollIntoViewIfNeeded();
           const position = (await cell.boundingBox())!;
           expect(position.x).toBeGreaterThanOrEqual(box.x);
           expect(position.x + position.width).toBeLessThanOrEqual(box.x + box.width);
@@ -106,20 +119,66 @@ test.describe("Feature: Overview", () => {
     });
   }
 
-  test("compact annual calendars retain leap day and the six-month boundary tooltips", async ({ page }) => {
+  test("annual calendars retain leap day and tooltips after scrolling across the year", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 1000 });
     await page.clock.setFixedTime(new Date("2028-02-29T12:00:00Z"));
     await page.goto("/dashboard");
     for (const name of ["Activity", "Goal Tracker"]) {
       const region = page.getByRole("region", { name, exact: true });
       await expect(region.getByRole("img", { name: /^2028-/ })).toHaveCount(366);
-      for (const date of ["2028-02-29", "2028-06-30", "2028-07-01"]) {
+      for (const date of ["2028-02-29", "2028-06-30", "2028-07-01", "2028-12-31"]) {
         await region.getByRole("img", { name: `${date}: Tokens 0`, exact: true }).hover();
-        await expect(region.getByRole("tooltip")).toContainText(date);
+        const tooltip = region.getByRole("tooltip");
+        await expect(tooltip).toContainText(date);
+        expect((await tooltip.getByText(date, { exact: true }).boundingBox())!.height).toBeLessThanOrEqual(20);
+        const box = (await tooltip.boundingBox())!;
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.x + box.width).toBeLessThanOrEqual(390);
       }
     }
   });
 
   for (const width of [1440, 390]) {
+    test(`the page header owns the period filter and discloses scope and timing through information at ${width}px`, async ({ page }) => {
+      const records = DASHBOARD_USAGE_FIXTURE.records.map((row, index) => ({ ...row, approximate_tokens: [1000, 234, 0][index] }));
+      await mockDashboardApis(page, { usage: { ...DASHBOARD_USAGE_FIXTURE, records }, pricing: DASHBOARD_PRICING_FIXTURE });
+      await page.setViewportSize({ width, height: 1000 });
+      await page.goto("/dashboard");
+      await expect(stat(page, "Total Tokens").getByText("1.8M", { exact: true })).toBeVisible();
+      const header = page.getByRole("heading", { name: "Overview", exact: true }).locator("xpath=ancestor::header[1]");
+      const summary = page.getByRole("heading", { name: "Usage summary", exact: true }).locator("xpath=ancestor::section[1]");
+      for (const name of ["All Time", "This Month", "This Week"]) {
+        await expect(header.getByRole("button", { name, exact: true })).toBeVisible();
+        await expect(summary.getByRole("button", { name, exact: true })).toHaveCount(0);
+      }
+      await expect(page.getByText(/tokens have approximate timing/)).toHaveCount(0);
+      const info = header.getByRole("button", { name: "Overview information", exact: true });
+      if (width >= 1024) {
+        await info.focus();
+        await page.keyboard.press("Enter");
+      } else {
+        await info.click();
+      }
+      const disclosure = page.getByRole("dialog", { name: "Overview information", exact: true });
+      await expect(disclosure).toBeVisible();
+      await expect(disclosure).toContainText("Usage Summary, Salary Calculator, Trends and Insights");
+      await expect(disclosure).toContainText("Activity and Goal Tracker always show 2026");
+      await expect(disclosure).toContainText("Monthly Forecast and Daily Average always use this month");
+      await expect(disclosure).toContainText("1,234 tokens have approximate timing");
+      const box = (await disclosure.boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(width);
+      await page.keyboard.press("Escape");
+      await expect(disclosure).not.toBeVisible();
+      await expect(info).toBeFocused();
+      await header.getByRole("button", { name: "This Month", exact: true }).click();
+      await expect(page.getByText("No usage in this period.", { exact: true })).toBeVisible();
+      await info.click();
+      await expect(disclosure).toBeVisible();
+      await expect(disclosure.getByText(/tokens have approximate timing/)).toHaveCount(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1);
+    });
+
     test(`daily stacked bars and the matching share chart switch dimensions at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 1000 });
       await page.goto("/dashboard");
@@ -183,24 +242,26 @@ test.describe("Feature: Overview", () => {
     const breakdown = page.getByRole("region", { name: "Usage breakdown", exact: true });
     await breakdown.getByRole("button", { name: "Device", exact: true }).click();
     await expect(breakdown.getByText("1.8M tokens", { exact: true })).toBeVisible();
-    requests.length = 0;
-    await page.getByRole("button", { name: "This Month", exact: true }).click();
-    await expect(page.getByText("No usage in this period.", { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "All Time", exact: true })).toBeVisible();
-    await expect(page.getByText("Ready to Track Your AI Usage")).not.toBeVisible();
-    await expect(stat(page, "Cache Hit Rate").getByText("—", { exact: true })).toBeVisible();
-    const from = await page.evaluate(() => new Date(2026, 8, 1).toISOString());
-    const day = requests.find((url) => url.searchParams.get("granularity") === "day" && url.searchParams.get("from") === from);
-    const hourly = requests.find((url) => url.searchParams.get("granularity") === "half-hour" && url.searchParams.get("from") === from);
-    expect(day).toBeDefined();
-    expect(hourly).toBeDefined();
-    expect(day?.searchParams.get("to")).toBe(hourly?.searchParams.get("to"));
-    await expect(breakdown.getByRole("button", { name: "Device", exact: true })).toHaveAttribute("aria-pressed", "true");
-    await expect(breakdown.getByRole("figure", { name: "Daily token breakdown" }).getByText("No tokens to display.")).toBeVisible();
-    const device = requests.find((url) => url.pathname === "/api/usage/by-device" && url.searchParams.get("from") === from);
-    expect(device).toBeDefined();
-    expect(device?.searchParams.get("to")).toBe(day?.searchParams.get("to"));
-    await expect(page.getByRole("region", { name: "Activity", exact: true }).getByText("1.8M", { exact: true })).toBeVisible();
+    for (const [label, startDay] of [["This Month", 1], ["This Week", 13]] as const) {
+      requests.length = 0;
+      await page.getByRole("button", { name: label, exact: true }).click();
+      await expect(page.getByText("No usage in this period.", { exact: true })).toBeVisible();
+      await expect(page.getByRole("button", { name: "All Time", exact: true })).toBeVisible();
+      await expect(page.getByText("Ready to Track Your AI Usage")).not.toBeVisible();
+      await expect(stat(page, "Cache Hit Rate").getByText("—", { exact: true })).toBeVisible();
+      const from = await page.evaluate((day) => new Date(2026, 8, day).toISOString(), startDay);
+      const day = requests.find((url) => url.searchParams.get("granularity") === "day" && url.searchParams.get("from") === from);
+      const hourly = requests.find((url) => url.searchParams.get("granularity") === "half-hour" && url.searchParams.get("from") === from);
+      expect(day).toBeDefined();
+      expect(hourly).toBeDefined();
+      expect(day?.searchParams.get("to")).toBe(hourly?.searchParams.get("to"));
+      await expect(breakdown.getByRole("button", { name: "Device", exact: true })).toHaveAttribute("aria-pressed", "true");
+      await expect(breakdown.getByRole("figure", { name: "Daily token breakdown" }).getByText("No tokens to display.")).toBeVisible();
+      const device = requests.find((url) => url.pathname === "/api/usage/by-device" && url.searchParams.get("from") === from);
+      expect(device).toBeDefined();
+      expect(device?.searchParams.get("to")).toBe(day?.searchParams.get("to"));
+      await expect(page.getByRole("region", { name: "Activity", exact: true }).getByText("1.8M", { exact: true })).toBeVisible();
+    }
     await page.getByRole("button", { name: "All Time", exact: true }).click();
     await expect(stat(page, "Total Tokens").getByText("1.8M", { exact: true })).toBeVisible();
   });

@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowDownToLine, ArrowUpFromLine, DollarSign, Gauge, TrendingUp, Zap, type LucideIcon } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, DollarSign, Gauge, Info, TrendingUp, Zap, type LucideIcon } from "lucide-react";
 import { Button } from "@nocoo/basalt/components/button";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
+import { Popover, PopoverContent, PopoverTrigger } from "@nocoo/basalt/components/popover";
 import { useUsageData, toHeatmapData, type DailyPoint } from "@/hooks/use-usage-data";
 import { useTzOffset } from "@/hooks/use-tz-offset";
 import { usePricingMap, formatCost } from "@/hooks/use-pricing";
@@ -99,10 +100,25 @@ export default function DashboardPage() {
   return (
     <div className="space-y-4 md:space-y-6">
       <SnapshotAlert />
-      <PageHeader title="Overview" description="Token usage and cache efficiency for your AI coding tools." />
+      <PageHeader title="Overview" description="Token usage and cache efficiency for your AI coding tools."
+        actions={<>
+          <PeriodSelector value={period} onChange={setPeriod} />
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button type="button" variant="ghost" size="icon" aria-label="Overview information">
+                <Info className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent aria-label="Overview information" align="end" collisionPadding={16}
+              className="w-80 max-w-[calc(100vw-2rem)] space-y-3 text-sm">
+              <p>The selected period applies to Usage Summary, Salary Calculator, Trends and Insights. Calendar weeks start on Sunday.</p>
+              <p>Activity and Goal Tracker always show {currentYear}. Week / month comparisons use their own calendar periods; Monthly Forecast and Daily Average always use this month.</p>
+              <UsageTimingNotice records={records} />
+            </PopoverContent>
+          </Popover>
+        </>} />
       <ErrorBanner messagePrefix="Failed to load usage data" error={error} />
       {error && <button type="button" className="text-sm underline underline-offset-4" onClick={refetch}>Retry usage</button>}
-      <UsageTimingNotice records={records} />
       {loading && <DashboardSkeleton />}
       {!loading && data && !hasRecords && period === "all" && <DashboardEmptyState />}
 
@@ -124,7 +140,7 @@ export default function DashboardPage() {
             disabled={pricingLoading || !hasRecords} />
         </div>
 
-        <DashboardSegment title="Usage summary" action={<PeriodSelector value={period} onChange={setPeriod} />}
+        <DashboardSegment title="Usage summary"
           hint="Changes compare this week / month so far with the previous period. TD compares the same elapsed days. Cost estimates use public pricing.">
           <ErrorBanner messagePrefix="Failed to load growth comparisons" error={wowData.error ?? momData.error} />
           <StatGrid columns={3} className="sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">

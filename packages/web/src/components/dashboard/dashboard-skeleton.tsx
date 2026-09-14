@@ -12,8 +12,8 @@ export function DashboardSkeleton() {
         <HeatmapHero data={[]} year={new Date().getFullYear()} totalTokens={0} activeDays={0} loading className="xl:col-span-2" />
         <div className="rounded-card bg-secondary p-4 space-y-3">
           <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-[198px] w-full" />
-          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-[114px] w-full" />
+          <Skeleton className="h-[72px] w-full" />
         </div>
       </div>
       <DashboardSegment title="Usage summary">

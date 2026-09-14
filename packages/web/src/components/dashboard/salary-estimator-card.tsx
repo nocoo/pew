@@ -306,7 +306,7 @@ function SalaryTrendChart({ data, compact = false, className }: SalaryTrendChart
       </div>
 
       {/* Chart fills remaining height */}
-      <div className={compact ? "h-[140px] @[640px]:h-[90px]" : "min-h-[260px] flex-1"}>
+      <div className={compact ? "h-[90px]" : "min-h-[260px] flex-1"}>
         <DashboardResponsiveContainer width="100%" height="100%">
           <LineChart
             data={chartData}
@@ -560,7 +560,7 @@ export function SalaryCalculatorCard({
             </div>
           </div>
           <div className="flex-1">
-            {disabled ? <div className="flex h-[170px] items-center justify-center text-sm text-muted-foreground">Salary estimate unavailable</div>
+            {disabled ? <div className="flex h-[114px] items-center justify-center text-sm text-muted-foreground">Salary estimate unavailable</div>
               : <SalaryTrendChart data={dailyCosts} compact />}
           </div>
           <div className="mt-3 border-t border-border/50 pt-3">

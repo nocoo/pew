@@ -63,7 +63,7 @@ export function HeatmapHero({
               <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-3 w-32" /></div>
               <Skeleton className="h-8 w-16" />
             </div>
-            <Skeleton className="h-[198px] w-full" />
+            <Skeleton className="h-[142px] w-full" />
             <div className="mt-3 flex gap-5 border-t border-border/50 pt-3">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-4 w-32" />
@@ -99,7 +99,6 @@ export function HeatmapHero({
             year={year}
             valueFormatter={(v) => formatTokens(v)}
             metricLabel="Tokens"
-            splitYear cellSize={8} cellGap={1}
           />
         </div>
 

@@ -25,8 +25,6 @@ export interface HeatmapCalendarProps {
   legendLabels?: [string, string];
   cellSize?: number;
   cellGap?: number;
-  /** Fit the full year into a card, stacking six-month panels when narrow. */
-  splitYear?: boolean;
   className?: string;
 }
 
@@ -66,10 +64,9 @@ export function HeatmapCalendar({
   legendLabels,
   cellSize = 12,
   cellGap = 2,
-  splitYear = false,
   className,
 }: HeatmapCalendarProps) {
-  const { panels, dataMap, boundaries } = useMemo(() => {
+  const { weeks, dataMap, boundaries, monthLabels } = useMemo(() => {
     const weeks = getYearWeeks(year);
     const dataMap = new Map<string, number>();
     const nonZeroValues: number[] = [];
@@ -89,27 +86,21 @@ export function HeatmapCalendar({
       boundaries = computePercentileBoundaries(nonZeroValues, levels);
     }
 
-    const panels = (splitYear ? [0, 6] : [0]).map((startMonth) => {
-      const endMonth = splitYear ? startMonth + 6 : 12;
-      const inPanel = (d: Date) => d.getFullYear() === year && d.getMonth() >= startMonth && d.getMonth() < endMonth;
-      const panelWeeks = weeks.filter((week) => week.some(inPanel));
-      const monthLabels: { month: string; weekIndex: number }[] = [];
-      let lastMonth = -1;
-      for (let weekIndex = 0; weekIndex < panelWeeks.length; weekIndex++) {
-        const firstDayOfWeek = panelWeeks[weekIndex]?.find(inPanel);
-        if (firstDayOfWeek) {
-          const month = firstDayOfWeek.getMonth();
-          if (month !== lastMonth) {
-            monthLabels.push({ month: MONTHS[month] as string, weekIndex });
-            lastMonth = month;
-          }
+    const monthLabels: { month: string; weekIndex: number }[] = [];
+    let lastMonth = -1;
+    for (let weekIndex = 0; weekIndex < weeks.length; weekIndex++) {
+      const firstDayOfWeek = weeks[weekIndex]?.find((date) => date.getFullYear() === year);
+      if (firstDayOfWeek) {
+        const month = firstDayOfWeek.getMonth();
+        if (month !== lastMonth) {
+          monthLabels.push({ month: MONTHS[month] as string, weekIndex });
+          lastMonth = month;
         }
       }
-      return { startMonth, endMonth, weeks: panelWeeks, monthLabels };
-    });
+    }
 
-    return { panels, dataMap, boundaries };
-  }, [data, year, colorScale, externalBoundaries, splitYear]);
+    return { weeks, dataMap, boundaries, monthLabels };
+  }, [data, year, colorScale, externalBoundaries]);
 
   const labelWidth = 30;
 
@@ -117,7 +108,7 @@ export function HeatmapCalendar({
   const [hoveredCell, setHoveredCell] = useState<{
     dateStr: string;
     value: number;
-    rect: { top: number; left: number; width: number; height: number };
+    rect: { top: number; left: number; right: number };
   } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -132,8 +123,7 @@ export function HeatmapCalendar({
         rect: {
           top: cellRect.top - containerRect.top,
           left: cellRect.left - containerRect.left,
-          width: cellRect.width,
-          height: cellRect.height,
+          right: containerRect.right - cellRect.right,
         },
       });
     },
@@ -149,16 +139,14 @@ export function HeatmapCalendar({
       {/* Scroll container — only handles horizontal overflow.
           Tooltip lives outside so it is never clipped (overflow-x:auto
           forces overflow-y:auto, which would hide the upward tooltip). */}
-      <div className={cn("overflow-x-auto", splitYear && "@container")}>
-        <div className={splitYear ? "w-full" : "inline-block"}>
-          <div className={splitYear ? "grid grid-cols-1 gap-x-3 gap-y-2 @[640px]:grid-cols-2" : undefined}>
-          {panels.map((panel) => <div key={panel.startMonth} className="min-w-0">
+      <div className="overflow-x-auto">
+        <div className="inline-block">
           {/* Month labels */}
           <div
             className="grid h-4 text-xs text-muted-foreground mb-1"
-            style={{ marginLeft: labelWidth + 4, gap: cellGap, gridTemplateColumns: `repeat(${panel.weeks.length}, ${splitYear ? "minmax(0, 1fr)" : `${cellSize}px`})` }}
+            style={{ marginLeft: labelWidth + 4, gap: cellGap, gridTemplateColumns: `repeat(${weeks.length}, ${cellSize}px)` }}
           >
-            {panel.monthLabels.map((label) => (
+            {monthLabels.map((label) => (
               <div
                 key={`${label.weekIndex}-${label.month}`}
                 className="whitespace-nowrap"
@@ -190,8 +178,8 @@ export function HeatmapCalendar({
             </div>
 
             {/* Heatmap grid */}
-            <div className={cn("grid", splitYear && "min-w-0 flex-1")} style={{ gap: cellGap, gridTemplateColumns: `repeat(${panel.weeks.length}, ${splitYear ? "minmax(0, 1fr)" : `${cellSize}px`})` }}>
-              {panel.weeks.map((week, weekIndex) => (
+            <div className="grid" style={{ gap: cellGap, gridTemplateColumns: `repeat(${weeks.length}, ${cellSize}px)` }}>
+              {weeks.map((week, weekIndex) => (
                 <div
                   // biome-ignore lint/suspicious/noArrayIndexKey: weeks are computed from a fixed year, positional order is authoritative.
                   key={`week-${weekIndex}`}
@@ -201,7 +189,7 @@ export function HeatmapCalendar({
                   {week.map((date) => {
                     const dateStr = formatDateISO(date);
                     const value = dataMap.get(dateStr) ?? 0;
-                    const isCurrentYear = date.getFullYear() === year && date.getMonth() >= panel.startMonth && date.getMonth() < panel.endMonth;
+                    const isCurrentYear = date.getFullYear() === year;
                     const colorIndex = getColorIndex(
                       value,
                       boundaries,
@@ -213,7 +201,7 @@ export function HeatmapCalendar({
                         <div
                           key={dateStr}
                           style={{
-                            width: splitYear ? "100%" : cellSize,
+                            width: cellSize,
                             height: cellSize,
                             visibility: "hidden",
                           }}
@@ -227,11 +215,11 @@ export function HeatmapCalendar({
                         role="img"
                         aria-label={`${dateStr}: ${metricLabel} ${valueFormatter(value, dateStr)}`}
                         className={cn(
-                          "rounded-sm cursor-pointer transition-colors hover:ring-1 hover:ring-foreground",
+                          "rounded-full cursor-pointer transition-colors hover:ring-1 hover:ring-foreground",
                           colorIndex === 0 && "border border-border/60",
                         )}
                         style={{
-                          width: splitYear ? "100%" : cellSize,
+                          width: cellSize,
                           height: cellSize,
                           backgroundColor: colorScale[colorIndex],
                         }}
@@ -244,8 +232,6 @@ export function HeatmapCalendar({
               ))}
             </div>
           </div>
-          </div>)}
-          </div>
 
           {/* Legend */}
           <div className="flex items-center justify-end gap-1 mt-2 text-xs text-muted-foreground">
@@ -255,7 +241,7 @@ export function HeatmapCalendar({
                 // biome-ignore lint/suspicious/noArrayIndexKey: compile-time constant tuple; positional key is authoritative.
                 key={`legend-${i}`}
                 className={cn(
-                  "rounded-sm",
+                  "rounded-full",
                   i === 0 && "border border-border/60",
                 )}
                 style={{
@@ -275,15 +261,17 @@ export function HeatmapCalendar({
       {hoveredCell && (
         <div
           role="tooltip"
-          className="pointer-events-none absolute z-50 w-fit rounded-[var(--radius-widget)] bg-popover px-3 py-2 text-xs text-popover-foreground shadow-lg ring-1 ring-border/50 animate-in fade-in-0 zoom-in-95"
+          className="pointer-events-none absolute z-50 w-fit max-w-full rounded-[var(--radius-widget)] bg-popover px-3 py-2 text-xs text-popover-foreground shadow-lg ring-1 ring-border/50 animate-in fade-in-0 zoom-in-95"
           style={{
             top: hoveredCell.rect.top - 4,
-            left: hoveredCell.rect.left + hoveredCell.rect.width / 2,
-            transform: "translate(-50%, -100%)",
+            ...(hoveredCell.rect.left > hoveredCell.rect.right
+              ? { right: Math.max(0, hoveredCell.rect.right) }
+              : { left: Math.max(0, hoveredCell.rect.left) }),
+            transform: "translateY(-100%)",
           }}
         >
           <div className="text-sm">
-            <div className="font-medium">{hoveredCell.dateStr}</div>
+            <div className="whitespace-nowrap font-medium">{hoveredCell.dateStr}</div>
             <div className="text-muted-foreground">
               {metricLabel}: {valueFormatter(hoveredCell.value, hoveredCell.dateStr)}
             </div>
