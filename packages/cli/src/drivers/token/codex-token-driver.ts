@@ -29,6 +29,7 @@ import type {
 
 /** Extended parse result carrying Codex-specific cursor state */
 interface CodexParseResult extends TokenParseResult {
+  accountingContext?: CodexCursor["accountingContext"];
   endOffset: number;
   lastTotals: TokenDelta | null;
   lastModel: string | null;
@@ -199,6 +200,7 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
       startOffset: sameFile ? (cursor.offset ?? 0) : 0,
       lastTotals: sameFile ? (cursor.lastTotals ?? null) : null,
       lastModel: sameFile ? (cursor.lastModel ?? null) : null,
+      ...(sameFile && cursor.accountingContext ? { accountingContext: cursor.accountingContext } : {}),
     };
   },
 
@@ -220,6 +222,7 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
       lastModel: r.lastModel,
       ...(sharedScope ? { highWaterTotals } : {}),
       seenUsageKeys,
+      ...(_ctx.collectAccounting ? { includeAccounting: true, lastAccountingContext: r.accountingContext } : {}),
     });
     if (sharedScope && scopeId && result.highWaterTotals) {
       _ctx.codexScopeTotals ??= new Map<string, TokenDelta>();
@@ -232,6 +235,7 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
       lastModel: result.lastModel,
       scopeId,
       usageKeys: result.usageKeys,
+      ...(result.lastAccountingContext || r.accountingContext ? { accountingContext: result.lastAccountingContext ?? r.accountingContext } : {}),
     };
   },
 
@@ -249,6 +253,7 @@ export const codexTokenDriver: FileTokenDriver<CodexCursor> = {
       lastTotals: r.lastTotals,
       lastModel: r.lastModel,
       scopeId: r.scopeId,
+      ...(r.accountingContext ? { accountingContext: r.accountingContext } : {}),
       updatedAt: new Date().toISOString(),
     };
   },

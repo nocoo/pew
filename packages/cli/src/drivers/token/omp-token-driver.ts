@@ -53,6 +53,7 @@ export const ompTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
       filePath,
       startOffset: r.startOffset,
       endBound: r.endBound,
+      ...(_ctx.collectAccounting ? { includeAccounting: true } : {}),
       source: "omp",
     });
     return { deltas: result.deltas, endOffset: result.endOffset };

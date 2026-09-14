@@ -55,6 +55,27 @@ describe("Hermes auxiliary SQLite projection", () => {
     check.close();
   });
 
+  it("projects persisted billing status and safe route classes for main model accounting", () => {
+    const db = new DatabaseSync(path); db.exec(sessionSchema);
+    db.exec(`ALTER TABLE sessions ADD COLUMN billing_provider TEXT;
+      ALTER TABLE sessions ADD COLUMN billing_base_url TEXT;
+      ALTER TABLE sessions ADD COLUMN actual_cost_usd REAL;
+      ALTER TABLE sessions ADD COLUMN cost_status TEXT;
+      ALTER TABLE sessions ADD COLUMN cost_source TEXT;
+      UPDATE sessions SET billing_provider='openrouter', billing_base_url='https://openrouter.ai/api/v1?key=PRIVATE_FIXTURE_BODY',
+        actual_cost_usd=0.125, cost_status='actual', cost_source='provider_cost_api';
+      CREATE TABLE session_model_usage (session_id TEXT, model TEXT, task TEXT, input_tokens INTEGER, output_tokens INTEGER);
+      INSERT INTO session_model_usage VALUES ('synthetic-session','main-model','',1000,100);`);
+    db.close();
+    const handle = openHermesDb(path);
+    try {
+      const rows = handle?.querySessions();
+      expect(rows).toMatchObject([{ billing_provider: "openrouter", billing_route: "openrouter", actual_cost_usd: "0.125", cost_status: "actual" }]);
+      expect(handle?.queryMainModelUsage?.()).toMatchObject([{ task: "", has_cache_write: false }]);
+      expect(JSON.stringify(rows)).not.toMatch(/PRIVATE_FIXTURE_BODY|billing_base_url|https:/);
+    } finally { handle?.close(); }
+  });
+
   it("labels missing optional timestamps as unknown rather than synthesizing a collection time", () => {
     const db = new DatabaseSync(path);
     db.exec(sessionSchema);

@@ -18,6 +18,7 @@ import type { Source, TokenDelta } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
 import { jsonlCompleteBound } from "../utils/jsonl-offset.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
+import { accountingLabel, inclusiveAccounting, type AccountingContext } from "../utils/accounting.js";
 
 /** Result of parsing a single Codex JSONL rollout file */
 export interface CodexFileResult {
@@ -31,6 +32,7 @@ export interface CodexFileResult {
   highWaterTotals: TokenDelta | null;
   /** Usage-edge keys first observed while parsing this file. */
   usageKeys: string[];
+  lastAccountingContext?: AccountingContext;
 }
 
 /**
@@ -139,11 +141,14 @@ export async function parseCodexFile(opts: {
   highWaterTotals?: TokenDelta | null;
   /** Dedup set shared by every rollout in the resolved Goal root scope. */
   seenUsageKeys?: Set<string>;
+  includeAccounting?: boolean;
+  lastAccountingContext?: AccountingContext;
 }): Promise<CodexFileResult> {
   const { filePath, startOffset } = opts;
   const deltas: ParsedDelta[] = [];
   let lastTotals = opts.lastTotals;
   let lastModel = opts.lastModel;
+  const accountingContext: AccountingContext = { ...opts.lastAccountingContext };
   const useHighWater = Object.hasOwn(opts, "highWaterTotals");
   let highWaterTotals = opts.highWaterTotals ?? null;
   const seenUsageKeys = opts.seenUsageKeys ?? new Set<string>();
@@ -195,6 +200,7 @@ export async function parseCodexFile(opts: {
 
       // Track model from session_meta
       if (type === "session_meta" && payload) {
+        accountingContext.provider = accountingLabel(payload.model_provider);
         const model = typeof payload.model === "string" ? payload.model.trim() : null;
         if (model) lastModel = model;
         continue;
@@ -202,6 +208,8 @@ export async function parseCodexFile(opts: {
 
       // Track model from turn_context (overrides session_meta)
       if (type === "turn_context" && payload) {
+        if (Object.hasOwn(payload, "service_tier")) accountingContext.service_tier = accountingLabel(payload.service_tier);
+        if (Object.hasOwn(payload, "model_provider")) accountingContext.provider = accountingLabel(payload.model_provider);
         const model = typeof payload.model === "string" ? payload.model.trim() : null;
         if (model) lastModel = model;
         continue;
@@ -267,6 +275,12 @@ export async function parseCodexFile(opts: {
           model: lastModel || "unknown",
           timestamp,
           tokens,
+          ...(opts.includeAccounting ? { accounting: inclusiveAccounting(tokens, {
+            input: lastUsage ? lastUsage.input_tokens : rawDelta.inputTokens, read: lastUsage ? lastUsage.cached_input_tokens : rawDelta.cachedInputTokens,
+            write: lastUsage?.cache_write_input_tokens, output: lastUsage ? lastUsage.output_tokens : rawDelta.outputTokens,
+            reasoning: lastUsage ? lastUsage.reasoning_output_tokens : rawDelta.reasoningOutputTokens,
+          }, { origin: lastUsage ? "codex:last_token_usage" : "codex:cumulative", model: lastModel || "unknown",
+            ...accountingContext, rawTotal: lastUsage?.total_tokens, aggregate: !lastUsage, quality: lastUsage ? "reported" : "derived" }) } : {}),
         });
       }
     }
@@ -275,5 +289,7 @@ export async function parseCodexFile(opts: {
     stream.destroy();
   }
 
-  return { deltas, endOffset, lastTotals, lastModel, highWaterTotals, usageKeys };
+  return { deltas, endOffset, lastTotals, lastModel, highWaterTotals, usageKeys,
+    ...(opts.includeAccounting ? { lastAccountingContext: accountingContext } : {}),
+  };
 }

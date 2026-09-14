@@ -18,7 +18,7 @@ export interface AuditDatabase {
 const skip = new Set(["node_modules", "dist", "build", "coverage", "cache", "logs", "sessions", "spool", "test-results", "playwright-report"]);
 const required: Record<Stage, string[]> = {
   parser: ["packages/cli/src/parsers/pi.ts", "packages/cli/src/parsers/hermes-review.ts", "packages/cli/src/parsers/hermes-usage-evidence.ts", "packages/cli/src/parsers/hermes-sqlite-db.ts"],
-  cursor: ["packages/cli/src/commands/sync.ts", "packages/cli/src/commands/reset.ts"],
+  cursor: ["packages/cli/src/commands/sync.ts", "packages/cli/src/commands/reset.ts", "packages/cli/src/storage/sync-commit.ts"],
   spool: ["packages/cli/src/storage/evidence-queue.ts", "packages/cli/src/storage/base-queue.ts", "packages/cli/src/utils/usage-evidence.ts"],
   upload: ["packages/cli/src/commands/upload.ts", "packages/cli/src/commands/upload-engine.ts", "packages/web/src/app/api/ingest/evidence/route.ts"],
   worker: ["packages/worker/src/index.ts", "packages/worker/src/evidence-sql.ts", "packages/core/src/evidence-validation.ts", "scripts/migrations/022-usage-evidence.sql"],
@@ -84,6 +84,7 @@ function member(value: unknown): string {
   if (!n) return "";
   if (n.type === "Identifier") return String(n.name);
   if (n.type === "ThisExpression") return "this";
+  if (n.type === "NewExpression") return `${member(n.callee)}()`;
   if (n.type === "MemberExpression") return `${member(n.object)}.${member(n.property)}`;
   return "";
 }
@@ -132,9 +133,15 @@ export function auditPew(files: ReadonlyMap<string, string>, db: AuditDatabase) 
   check("parser.no-body-logging", "parser", evidenceSource.every((p) => !nodes(p).some((n) => n.type === "CallExpression" && /^console\./.test(member(n.callee)))), required.parser[1], "Supplementary parsers must not log source objects or bodies.");
 
   const sync = required.cursor[0];
-  const merge = awaited(sync, "evidenceQueue.merge");
-  const saves = awaited(sync, "cursorStore.save");
-  check("cursor.evidence-before-commit", "cursor", merge.length === 1 && merge[0] < Math.max(...saves), sync, "Evidence ledger must finish before final cursor commit.");
+  const journal = required.cursor[2];
+  const merge = awaited(journal, "EvidenceQueue().merge");
+  const details = awaited(journal, "AccountingQueue().merge");
+  const saves = awaited(journal, "CursorStore().save");
+  check("cursor.evidence-before-commit", "cursor", merge.length === 1 && details.length === 1 && saves.length === 1 &&
+    merge[0] < details[0] && details[0] < saves[0] && awaited(sync, "commitSync").length === 1 &&
+    awaited(sync, "recoverSyncCommit")[0] < awaited(sync, "cursorStore.load")[0] &&
+    awaited(journal, "rename")[0] < awaited(journal, "recoverSyncCommit")[0], journal,
+    "The durable commit must await evidence and accounting before the cursor; recovery must precede source cursor reads.");
   check("cursor.main-isolation", "cursor", nodes(sync).some((n) => n.type === "IfStatement" && member(n.test) === "delta.evidence" && (n.consequent as Node)?.type === "ContinueStatement"), sync, "Supplementary evidence must not also enter legacy summed buckets.");
   const reset = required.cursor[1];
   check("cursor.reset-preserves-evidence", "cursor", !literals(reset).some((s) => s.startsWith("evidence-queue")) && !nodes(reset).some((n) => n.type === "CallExpression" && /(?:^|\.)(?:rm|rmdir)$/.test(member(n.callee))), reset, "Reset must retain the durable evidence ledger and outbox.");

@@ -33,10 +33,11 @@ describe("CLI main command", () => {
     expect(names).toContain("reset");
     expect(names).toContain("update");
     expect(names).toContain("logout");
+    expect(names).toContain("enrich");
   });
 
-  it("should have exactly 9 subcommands", () => {
+  it("should have exactly 10 subcommands", () => {
     const names = Object.keys(main.subCommands!);
-    expect(names).toHaveLength(9);
+    expect(names).toHaveLength(10);
   });
 });

@@ -6,6 +6,7 @@
  */
 
 import { SessionQueue } from "../storage/session-queue.js";
+import { withStateLock } from "../storage/state-lock.js";
 import type { OnCorruptLine } from "../storage/base-queue.js";
 import { createUploadEngine } from "./upload-engine.js";
 import type {
@@ -75,7 +76,11 @@ export function deduplicateSessionRecords(
 // Implementation
 // ---------------------------------------------------------------------------
 
-export async function executeSessionUpload(
+export async function executeSessionUpload(opts: SessionUploadOptions): Promise<SessionUploadResult> {
+  return withStateLock(opts.stateDir, () => sessionUploadLocked(opts));
+}
+
+async function sessionUploadLocked(
   opts: SessionUploadOptions,
 ): Promise<SessionUploadResult> {
   const queue = new SessionQueue(opts.stateDir, opts.onCorruptLine);

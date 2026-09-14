@@ -1,5 +1,7 @@
 import { unlink } from "node:fs/promises";
 import { join } from "node:path";
+import { recoverSyncCommit } from "../storage/sync-commit.js";
+import { withStateLock } from "../storage/state-lock.js";
 
 /**
  * Files to delete during reset — pew's own state only.
@@ -34,6 +36,11 @@ export interface ResetResult {
  * performs a clean full scan.
  */
 export async function executeReset(opts: ResetOptions): Promise<ResetResult> {
+  return withStateLock(opts.stateDir, () => resetLocked(opts));
+}
+
+async function resetLocked(opts: ResetOptions): Promise<ResetResult> {
+  await recoverSyncCommit(opts.stateDir);
   const unlinkFn = opts.unlinkFn ?? unlink;
   const files: ResetFileResult[] = [];
 

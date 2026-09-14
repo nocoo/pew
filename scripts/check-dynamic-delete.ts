@@ -64,10 +64,6 @@ const ALLOWED_SITES: Record<string, string> = {
     "hook cleanup: dynamic key = PLUGIN_ID const",
   "packages/cli/src/notifier/openclaw-hook.ts:135":
     "hook cleanup: dynamic key = installs entry from a loop over Object.entries",
-  "packages/cli/src/__tests__/sync.test.ts:1752":
-    "test fixture: delete synthetic cursor entry keyed by dynamically-built path",
-  "packages/cli/src/__tests__/sync.test.ts:2835":
-    "test fixture: delete synthetic cursor entry keyed by dynamically-built path",
 };
 
 interface Violation {

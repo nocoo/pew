@@ -33,11 +33,11 @@ export type Source =
 
 /** Token count breakdown for a single interaction */
 export interface TokenDelta {
-  /** Total input tokens consumed */
+  /** Legacy non-read input bucket (some sources fold cache writes into this). */
   inputTokens: number;
-  /** Input tokens served from cache (subset of inputTokens) */
+  /** Legacy cache bucket, disjoint from inputTokens; Hermes also includes writes. */
   cachedInputTokens: number;
-  /** Total output tokens generated */
+  /** Legacy visible output; Hermes historically includes reasoning here too. */
   outputTokens: number;
   /** Reasoning/thinking tokens reported separately by some sources */
   reasoningOutputTokens: number;
@@ -168,6 +168,8 @@ export const ACCOUNTING_SCHEMA_VERSION = 2 as const;
 
 /** Cursor for Codex CLI (byte offset + cumulative edge-dedup state) */
 export interface CodexCursor extends FileCursorBase {
+  /** Only source-serialized billing labels; never today's user configuration. */
+  accountingContext?: { provider?: string | null; route?: string | null; service_tier?: string | null };
   /** Byte offset where we last stopped reading */
   offset: number;
   /** Last seen cumulative token totals (for diff computation) */
@@ -203,6 +205,8 @@ export interface KosmosCursor extends FileCursorBase {
 export interface OpenCodeCursor extends FileCursorBase {
   /** Last seen cumulative token totals (for diff computation) */
   lastTotals: TokenDelta | null;
+  /** Optional cache-write baseline; absent on pre-details cursors. */
+  lastCacheWrite?: number | null;
   /** Composite key "sessionId|messageId" */
   messageKey: string | null;
 }
@@ -483,6 +487,7 @@ export interface SessionCursorState {
 
 /** Per-device aggregated stats returned by GET /api/usage/by-device */
 export interface DeviceAggregate {
+  accounting?: import("./accounting-types.js").AccountingAnnotation[];
   device_id: string;
   alias: string | null;
   first_seen: string;
@@ -493,12 +498,15 @@ export interface DeviceAggregate {
   cached_input_tokens: number;
   reasoning_output_tokens: number;
   estimated_cost: number;
+  /** False (or absent on older servers) means the estimate includes assumptions. */
+  estimated_cost_complete?: boolean;
   sources: string[];
   models: string[];
 }
 
 /** Daily timeline point with device dimension */
 export interface DeviceTimelinePoint {
+  accounting?: import("./accounting-types.js").AccountingAnnotation[];
   date: string;
   device_id: string;
   total_tokens: number;
@@ -510,6 +518,7 @@ export interface DeviceTimelinePoint {
 
 /** Per-(device, source, model) cost detail row for drill-down charts */
 export interface DeviceCostDetail {
+  accounting?: import("./accounting-types.js").AccountingAnnotation[];
   device_id: string;
   source: string;
   model: string;

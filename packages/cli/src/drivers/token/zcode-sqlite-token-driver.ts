@@ -72,6 +72,7 @@ export function createZcodeSqliteTokenDriver(
           db: handle,
           lastCompletedAt: lastCompletedAt === 0 ? null : lastCompletedAt,
           lastProcessedIds: priorIds,
+          ...(_ctx.collectAccounting ? { includeAccounting: true } : {}),
         });
 
         // Cursor advancement:

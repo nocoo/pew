@@ -1,7 +1,8 @@
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
-import type { Source, TokenDelta, UsageEvidence } from "@pew/core";
+import type { AccountingGroup, Source, TokenDelta, UsageEvidence } from "@pew/core";
+import { inclusiveAccounting } from "../utils/accounting.js";
 import { jsonlCompleteBound } from "../utils/jsonl-offset.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
 
@@ -13,6 +14,8 @@ export interface ParsedDelta {
   tokens: TokenDelta;
   /** Absolute supplemental usage, kept out of the legacy additive bucket path. */
   evidence?: UsageEvidence;
+  /** Annotation of these exact legacy counters, not supplementary usage. */
+  accounting?: AccountingGroup;
 }
 
 /** Result of parsing a single Claude JSONL file */
@@ -67,6 +70,7 @@ export async function parseClaudeFile(opts: {
   startOffset: number;
   endBound?: number;
   seenMessageIds?: Set<string>;
+  includeAccounting?: boolean;
 }): Promise<ClaudeFileResult> {
   const { filePath, startOffset, seenMessageIds } = opts;
   const deltas: ParsedDelta[] = [];
@@ -143,6 +147,14 @@ export async function parseClaudeFile(opts: {
         model,
         timestamp,
         tokens: delta,
+        ...(opts.includeAccounting ? { accounting: inclusiveAccounting(delta, {
+          input: delta.inputTokens + delta.cachedInputTokens, read: usage.cache_read_input_tokens,
+          uncachedInput: usage.input_tokens,
+          write: usage.cache_creation_input_tokens,
+          write5m: (usage.cache_creation as Record<string, unknown> | undefined)?.ephemeral_5m_input_tokens,
+          write1h: (usage.cache_creation as Record<string, unknown> | undefined)?.ephemeral_1h_input_tokens,
+          output: usage.output_tokens, reasoning: null,
+        }, { origin: "claude:usage", model }) } : {}),
       });
     }
   } finally {

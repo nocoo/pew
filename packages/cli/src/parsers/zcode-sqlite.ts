@@ -11,6 +11,7 @@
 
 import type { ParsedDelta } from "./claude.js";
 import { isAllZero } from "../utils/token-delta.js";
+import { inclusiveAccounting } from "../utils/accounting.js";
 import type {
   ZcodeUsageDb,
   ZcodeUsageRow,
@@ -105,6 +106,7 @@ export interface ParseZcodeSqliteOpts {
   db: ZcodeUsageDb;
   lastCompletedAt: number | null;
   lastProcessedIds?: readonly string[];
+  includeAccounting?: boolean;
 }
 
 /**
@@ -147,6 +149,12 @@ export function parseZcodeSqlite(opts: ParseZcodeSqliteOpts): ZcodeSqliteResult 
       model: row.modelId,
       timestamp: new Date(row.completedAt).toISOString(),
       tokens: normalized.tokens,
+      ...(opts.includeAccounting ? { accounting: inclusiveAccounting(normalized.tokens, {
+        input: row.inputTokens > 0 ? row.inputTokens : row.cacheReadInputTokens + row.cacheCreationInputTokens,
+        read: row.cacheReadInputTokens, write: row.cacheCreationInputTokens,
+        output: normalized.tokens.outputTokens + normalized.tokens.reasoningOutputTokens, reasoning: row.reasoningTokens,
+      }, { origin: "zcode:model_usage", model: row.modelId, provider: row.providerId,
+        rawTotal: row.providerTotalTokens ?? row.computedTotalTokens, quality: normalized.warn ? "derived" : "reported" }) } : {}),
     });
   }
 

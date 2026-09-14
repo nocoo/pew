@@ -10,6 +10,7 @@ import { dirname, join } from "node:path";
 import type { ByteOffsetCursor } from "@pew/core";
 import { discoverGrokLogFile } from "../../discovery/sources.js";
 import { buildGrokModelMaps, parseGrokLogFile } from "../../parsers/grok.js";
+import { readGrokAccountingSnapshots } from "../../parsers/grok-session-usage.js";
 import { fileUnchanged } from "../../utils/file-changed.js";
 import type {
   FileTokenDriver,
@@ -35,6 +36,11 @@ export const grokTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
     // Stash override so parse() can resolve models without hard-coding layout
     if (opts.grokSessionsDir) {
       ctx.grokSessionsDir = opts.grokSessionsDir;
+    }
+    if (ctx.collectAccounting) {
+      const sessions = opts.grokSessionsDir ?? join(dirname(opts.grokLogsPath), "..", "sessions");
+      ctx.accountingSnapshots ??= [];
+      ctx.accountingSnapshots.push(...await readGrokAccountingSnapshots(sessions));
     }
     return discoverGrokLogFile(opts.grokLogsPath);
   },
@@ -62,6 +68,7 @@ export const grokTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
       endBound: r.endBound,
       sidTurnTimeline: maps.sidTurnTimeline,
       sidPrimaryModel: maps.sidPrimaryModel,
+      ...(ctx.collectAccounting ? { includeAccounting: true } : {}),
     });
     return { deltas: result.deltas, endOffset: result.endOffset };
   },

@@ -1,6 +1,18 @@
 import { createRequire } from "node:module";
 import type { AuxiliaryUsageRow, HermesQueryHandle, SessionRow } from "./hermes-sqlite.js";
 import { evidenceId } from "../utils/usage-evidence.js";
+import { accountingLabel } from "../utils/accounting.js";
+
+/** Only a public billing class leaves the adapter; never serialize a URL, key or path. */
+function billingRoute(value: unknown): string | null {
+  if (typeof value !== "string" || !value) return null;
+  try {
+    const host = new URL(value).hostname.toLowerCase();
+    if (host === "openrouter.ai") return "openrouter";
+    if (["api.openai.com", "api.anthropic.com", "api.x.ai", "generativelanguage.googleapis.com", "api.deepseek.com"].includes(host)) return "direct";
+  } catch { /* Invalid or non-public routes remain unpriced. */ }
+  return "custom";
+}
 
 /**
  * Unified SQLite database interface that works across Bun and Node.js runtimes.
@@ -110,6 +122,8 @@ export function openHermesDb(
 
   let stmt: SqliteStmt;
   try {
+    const columns = new Set((db.prepare("PRAGMA table_info(sessions)").all() as { name: string }[]).map((r) => r.name));
+    const optional = (name: string) => `${columns.has(name) ? name.endsWith("_usd") ? `CAST(${name} AS TEXT)` : name : "NULL"} AS ${name}`;
     stmt = db.prepare(
       `SELECT
          id,
@@ -119,7 +133,8 @@ export function openHermesDb(
          cache_read_tokens,
          cache_write_tokens,
          reasoning_tokens,
-         started_at
+         started_at,
+         ${["billing_provider", "billing_base_url", "cost_status", "cost_source", "estimated_cost_usd", "actual_cost_usd"].map(optional).join(", ")}
        FROM sessions
        WHERE started_at IS NOT NULL
        ORDER BY started_at ASC`,
@@ -131,31 +146,41 @@ export function openHermesDb(
   }
 
   let queryAuxiliaryUsage: HermesQueryHandle["queryAuxiliaryUsage"];
+  let queryMainModelUsage: HermesQueryHandle["queryMainModelUsage"];
   try {
     const columns = new Set((db.prepare("PRAGMA table_info(session_model_usage)").all() as { name: string }[]).map((r) => r.name));
     const sessionColumns = new Set((db.prepare("PRAGMA table_info(sessions)").all() as { name: string }[]).map((r) => r.name));
     if (["session_id", "model", "task", "input_tokens", "output_tokens"].every((c) => columns.has(c))) {
-      const optional = (name: string, fallback: string) => `${columns.has(name) ? `u.${name}` : fallback} AS ${name}`;
-      const auxiliary = db.prepare(`SELECT u.session_id, u.model, u.task, u.input_tokens, u.output_tokens,
+      const optional = (name: string, fallback: string) => `${columns.has(name) ? name.endsWith("_usd") ? `CAST(u.${name} AS TEXT)` : `u.${name}` : fallback} AS ${name}`;
+      const select = `SELECT u.session_id, u.model, u.task, u.input_tokens, u.output_tokens,
         ${optional("billing_provider", "''")}, ${optional("billing_base_url", "''")}, ${optional("billing_mode", "''")},
         ${optional("cache_read_tokens", "0")}, ${optional("cache_write_tokens", "0")}, ${optional("reasoning_tokens", "0")},
         ${optional("api_call_count", "NULL")}, ${optional("first_seen", "NULL")}, ${optional("last_seen", "NULL")},
+        ${["cost_status", "cost_source", "estimated_cost_usd", "actual_cost_usd"].map((n) => optional(n, "NULL")).join(", ")},
         s.started_at, ${sessionColumns.has("source") ? "s.source" : "NULL"} AS source
-        FROM session_model_usage u LEFT JOIN sessions s ON s.id = u.session_id
-        WHERE COALESCE(u.task, '') <> ''`);
-      queryAuxiliaryUsage = () => (auxiliary.all() as Array<Omit<AuxiliaryUsageRow, "route_key"> & {
+        FROM session_model_usage u LEFT JOIN sessions s ON s.id = u.session_id`;
+      const project = (query: SqliteStmt) => (query.all() as Array<Omit<AuxiliaryUsageRow, "route_key"> & {
         billing_base_url: string; billing_mode: string;
       }>).map(({ billing_base_url, billing_mode, ...row }) => ({
-        ...row, route_key: evidenceId([billing_base_url, billing_mode]),
+        ...row, billing_provider: accountingLabel(row.billing_provider) ?? "unknown", cost_source: accountingLabel(row.cost_source),
+        billing_route: billingRoute(billing_base_url), route_key: evidenceId([billing_base_url, billing_mode]),
+        has_cache_read: columns.has("cache_read_tokens"), has_cache_write: columns.has("cache_write_tokens"), has_reasoning: columns.has("reasoning_tokens"),
       }));
+      const auxiliary = db.prepare(`${select} WHERE COALESCE(u.task, '') <> ''`);
+      const main = db.prepare(`${select} WHERE COALESCE(u.task, '') = ''`);
+      queryAuxiliaryUsage = () => project(auxiliary);
+      queryMainModelUsage = () => project(main);
     }
   } catch {
     // An older/partial auxiliary schema must not disable main session usage.
   }
 
   return {
-    querySessions: () => stmt.all() as SessionRow[],
+    querySessions: () => (stmt.all() as Array<SessionRow & { billing_base_url: unknown }>).map(({ billing_base_url, ...row }) => ({
+      ...row, billing_provider: accountingLabel(row.billing_provider), cost_source: accountingLabel(row.cost_source), billing_route: billingRoute(billing_base_url),
+    })),
     ...(queryAuxiliaryUsage ? { queryAuxiliaryUsage } : {}),
+    ...(queryMainModelUsage ? { queryMainModelUsage } : {}),
     close: () => db.close(),
   };
 }

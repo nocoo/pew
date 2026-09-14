@@ -21,6 +21,9 @@ const ACCOUNTING_SCHEMA_VERSION = 2;
 import { CursorStore } from "../storage/cursor-store.js";
 import { LocalQueue } from "../storage/local-queue.js";
 import { EvidenceQueue } from "../storage/evidence-queue.js";
+import { AccountingQueue, accountingKey, planAccountingUpdates } from "../storage/accounting-queue.js";
+import { commitSync, recoverSyncCommit } from "../storage/sync-commit.js";
+import { withStateLock } from "../storage/state-lock.js";
 import { toEvidenceRecord } from "../utils/usage-evidence.js";
 import { pruneAliasCursors } from "../storage/prune-alias-cursors.js";
 import type { OnCorruptLine } from "../storage/base-queue.js";
@@ -123,6 +126,8 @@ interface ProgressEvent {
 
 /** Result of a sync execution */
 export interface SyncResult {
+  /** Bases freshly parsed and verified, including unchanged accounting snapshots. */
+  accountingKeys: string[];
   totalDeltas: number;
   totalRecords: number;
   sources: {
@@ -228,7 +233,10 @@ function emptyEpochCursor(
  * Pure logic — no CLI I/O. Receives all dependencies via options.
  */
 export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
-  return executeSyncInternal(opts);
+  return withStateLock(opts.stateDir, async () => {
+    await recoverSyncCommit(opts.stateDir);
+    return executeSyncInternal(opts);
+  });
 }
 
 async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResult> {
@@ -238,6 +246,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   const queue = new LocalQueue(stateDir, opts.onCorruptLine);
   const evidenceQueue = new EvidenceQueue(stateDir);
   const priorEvidence = (await evidenceQueue.readFromOffset(0)).records;
+  const priorAccounting = (await new AccountingQueue(stateDir).readFromOffset(0)).records;
   const cursors = await cursorStore.load();
 
   // Migrate hermesSqlite from flat object (pre-multi-profile) to Record format.
@@ -396,7 +405,8 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   // counter across many rollouts, and the rollout that first observed an edge is
   // routinely pruned before its siblings. Per-file storage lost the edge with the
   // file, so the next replay counted it again.
-  const ctx: SyncContext = { dirMtimes: cursors.dirMtimes, evidenceRecords: priorEvidence.filter((r) => r.device_id === opts.deviceId) };
+  const ctx: SyncContext = { collectAccounting: true, dirMtimes: cursors.dirMtimes, evidenceRecords: priorEvidence.filter((r) => r.device_id === opts.deviceId),
+    accountingRecords: priorAccounting.filter((r) => r.device_id === opts.deviceId) };
   const persistedScopes = cursors.codexScopes ?? {};
   ctx.codexScopeTotals = new Map(
     Object.entries(persistedScopes)
@@ -1233,7 +1243,20 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   }
 
   const evidenceRecords = allDeltas.filter((d) => d.evidence).map((d) => toEvidenceRecord(d, opts.deviceId));
-  await evidenceQueue.merge(evidenceRecords, initialCursorEmpty);
+  const { records: oldRecords } = await queue.readFromOffset(0);
+  const finalRecords = initialCursorEmpty ? records : records.length > 0 ? aggregateRecords([...oldRecords, ...records]) : undefined;
+  const accountingWarnings = new Set<string>();
+  const verifiedAccountingKeys = new Set<string>();
+  const onVerified = (key: string) => { verifiedAccountingKeys.add(key); };
+  const onAccountingWarning = (source: string) => accountingWarnings.add(source);
+  const accounting = planAccountingUpdates({ previous: priorAccounting, before: oldRecords, after: finalRecords ?? oldRecords,
+    deltas: allDeltas, replay: initialCursorEmpty, deviceId: opts.deviceId, onWarning: onAccountingWarning, onVerified });
+  if (ctx.accountingSnapshots?.length) {
+    const current = [...new Map([...priorAccounting, ...accounting].map((r) => [accountingKey(r), r])).values()];
+    accounting.push(...planAccountingUpdates({ previous: current, before: [], after: finalRecords ?? oldRecords,
+      deltas: ctx.accountingSnapshots, replay: true, deviceId: opts.deviceId, onWarning: onAccountingWarning, onVerified }));
+  }
+  for (const source of accountingWarnings) onProgress?.({ source, phase: "warn", message: "Some accounting details are unavailable; original usage is preserved" });
 
   // ---------- Write to queue (overwrite, not append) ----------
   // Design note: this is O(total_queue) not O(delta), which is intentional.
@@ -1255,41 +1278,33 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
    // Dirty-key tracking: each branch saves the set of bucket keys that were
    // modified in this sync cycle. The upload engine uses dirtyKeys to filter
    // which records actually need sending, avoiding full re-upload on every sync.
+  let dirtyKeys: string[] | undefined;
   if (initialCursorEmpty) {
-    // Full scan: overwrite queue with complete snapshot
-    await queue.overwrite(records);
-    await queue.saveOffset(0);
     // All records are dirty (fresh full scan)
     const newKeys = records.map(
       (r) => `${r.source}|${r.model}|${r.hour_start}|${r.device_id}`,
     );
-    await queue.saveDirtyKeys([...new Set(newKeys)]);
+    dirtyKeys = [...new Set(newKeys)];
   } else if (records.length > 0) {
     // Incremental with new data: SUM with existing queue records
-    const { records: oldRecords } = await queue.readFromOffset(0);
-    const merged = aggregateRecords([...oldRecords, ...records]);
-    await queue.overwrite(merged);
-    await queue.saveOffset(0);
     // Union new bucket keys into existing dirtyKeys
     const newKeys = records.map(
       (r) => `${r.source}|${r.model}|${r.hour_start}|${r.device_id}`,
     );
     const existingDirty = (await queue.loadDirtyKeys()) ?? [];
     const unionSet = new Set([...existingDirty, ...newKeys]);
-    await queue.saveDirtyKeys([...unionSet]);
+    dirtyKeys = [...unionSet];
   }
   // else: incremental with no new data — skip queue write entirely
   // to preserve the upload offset and dirtyKeys (Bug B: re-marking uploaded records)
 
   // ---------- Save cursor state AFTER queue ----------
-  // Queue must be written before cursor so that a crash between the two
-  // does not lose data. Worst case: queue overwritten + cursor not saved
-  // → next sync re-scans from old cursor position → produces a superset
-  // of the current records → overwrite queue → values ≥ true (minor
-  // over-count for one sync cycle, recoverable via pew reset).
+  // A durable absolute commit is recovered before the next parse or upload.
+  // A crash between queue and cursor replacement cannot replay additive deltas.
   cursors.accountingSchemaVersion = ACCOUNTING_SCHEMA_VERSION;
   cursors.updatedAt = new Date().toISOString();
-  await cursorStore.save(cursors);
+  await commitSync(stateDir, { version: 1, records: finalRecords, dirtyKeys, evidence: evidenceRecords, accounting,
+    replay: initialCursorEmpty, cursors });
 
   onProgress?.({
     source: "all",
@@ -1298,6 +1313,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   });
 
   return {
+    accountingKeys: [...verifiedAccountingKeys].sort(),
     totalDeltas: allDeltas.length,
     totalRecords: records.length + evidenceRecords.length,
     sources: sourceCounts,

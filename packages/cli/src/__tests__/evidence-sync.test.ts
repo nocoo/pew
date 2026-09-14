@@ -7,6 +7,8 @@ import { executeReset } from "../commands/reset.js";
 import { CursorStore } from "../storage/cursor-store.js";
 import { executeUpload } from "../commands/upload.js";
 import { ConfigManager } from "../config/manager.js";
+import { accountingKey } from "../storage/accounting-queue.js";
+import type { AccountingRecord } from "@pew/core";
 
 const ts = "2026-09-06T16:00:01.000Z";
 const header = { type: "session", id: "synthetic", timestamp: ts };
@@ -85,16 +87,30 @@ describe("supplemental evidence sync", () => {
     await writeFile(file, jsonl([header, model, compaction]));
     await sync();
     await new ConfigManager(stateDir).save({ token: "synthetic-test-key" });
-    const fetch = vi.fn().mockResolvedValueOnce(new Response("{}", { status: 404 }))
-      .mockResolvedValue(new Response('{"ingested":1}', { status: 200 }));
+    let evidenceAttempts = 0;
+    const fetch = vi.fn(async (url: string, init: RequestInit) => {
+      if (url.endsWith("/evidence")) {
+        evidenceAttempts++;
+        return evidenceAttempts === 1 ? Response.json({}, { status: 404 }) : Response.json({ ingested: 1 });
+      }
+      if (url.endsWith("/details")) {
+        const records = JSON.parse(String(init.body)) as AccountingRecord[];
+        return Response.json({ details_version: 1, acknowledgments: records.map((r) => ({
+          key: accountingKey(r), source_revision: r.source_revision, parser_revision: r.parser_revision,
+          detail_revision: r.detail_revision, status: "applied",
+        })) });
+      }
+      throw new Error("Unexpected upload endpoint");
+    });
     const opts = { stateDir, apiUrl: "https://synthetic.invalid", fetch, retryDelayMs: 0 };
     expect((await executeUpload(opts)).success).toBe(false);
     expect(fetch.mock.calls[0][0]).toBe("https://synthetic.invalid/api/ingest/evidence");
     const firstBody = fetch.mock.calls[0][1].body;
-    expect((await executeUpload(opts)).uploaded).toBe(1);
+    expect((await executeUpload(opts)).uploaded).toBe(2); // one evidence and its accounting companion
     expect(fetch.mock.calls[1][1].body).toBe(firstBody);
     expect((await executeUpload(opts)).uploaded).toBe(0);
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(evidenceAttempts).toBe(2);
+    expect(fetch).toHaveBeenCalledTimes(3);
   });
 
   it("rejects private text hidden in provenance fields of an otherwise valid ledger", async () => {

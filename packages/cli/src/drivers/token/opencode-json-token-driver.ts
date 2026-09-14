@@ -28,6 +28,7 @@ import type {
 interface OpenCodeJsonParseResult extends TokenParseResult {
   messageKey: string | null;
   lastTotals: TokenDelta | null;
+  lastCacheWrite?: number | null;
 }
 
 export const openCodeJsonTokenDriver: FileTokenDriver<OpenCodeCursor> = {
@@ -60,16 +61,20 @@ export const openCodeJsonTokenDriver: FileTokenDriver<OpenCodeCursor> = {
     return {
       kind: "opencode-json",
       lastTotals: sameFile ? (cursor.lastTotals ?? null) : null,
+      ...(sameFile && cursor.lastCacheWrite !== undefined ? { lastCacheWrite: cursor.lastCacheWrite } : {}),
     };
   },
 
   async parse(filePath: string, resume: ResumeState, _ctx: SyncContext): Promise<OpenCodeJsonParseResult> {
     const r = resume as OpenCodeJsonResumeState;
-    const result = await parseOpenCodeFile({ filePath, lastTotals: r.lastTotals });
+    const result = await parseOpenCodeFile({ filePath, lastTotals: r.lastTotals,
+      ...(_ctx.collectAccounting ? { includeAccounting: true, lastCacheWrite: r.lastCacheWrite } : {}) });
     return {
       deltas: result.delta ? [result.delta] : [],
       messageKey: result.messageKey,
       lastTotals: result.lastTotals,
+      ...(result.lastCacheWrite !== undefined ? { lastCacheWrite: result.lastCacheWrite } :
+        r.lastCacheWrite !== undefined ? { lastCacheWrite: r.lastCacheWrite } : {}),
     };
   },
 
@@ -85,6 +90,7 @@ export const openCodeJsonTokenDriver: FileTokenDriver<OpenCodeCursor> = {
       size: fingerprint.size,
       lastTotals: r.lastTotals,
       messageKey: r.messageKey,
+      ...(r.lastCacheWrite !== undefined ? { lastCacheWrite: r.lastCacheWrite } : {}),
       updatedAt: new Date().toISOString(),
     };
   },

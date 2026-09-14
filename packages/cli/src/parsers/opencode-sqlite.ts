@@ -1,7 +1,7 @@
 import { stat } from "node:fs/promises";
 import type { Source } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
-import { normalizeOpenCodeTokens } from "./opencode.js";
+import { normalizeOpenCodeTokens, openCodeAccounting } from "./opencode.js";
 import { isAllZero } from "../utils/token-delta.js";
 import { coerceEpochMs } from "../utils/time.js";
 
@@ -49,6 +49,7 @@ export type QueryMessagesFn = (lastTimeCreated: number) => MessageRow[];
  */
 export function processOpenCodeMessages(
   rows: MessageRow[],
+  includeAccounting = false,
 ): Omit<OpenCodeSqliteResult, "inode"> {
   const deltas: ParsedDelta[] = [];
   const messageKeys = new Set<string>();
@@ -99,6 +100,7 @@ export function processOpenCodeMessages(
       model,
       timestamp: new Date(timestampMs).toISOString(),
       tokens,
+      ...(includeAccounting ? { accounting: openCodeAccounting(tokens, msg, model) } : {}),
     });
   }
 
@@ -115,6 +117,7 @@ export async function parseOpenCodeSqlite(opts: {
   dbPath: string;
   lastTimeCreated: number;
   queryMessages?: QueryMessagesFn;
+  includeAccounting?: boolean;
 }): Promise<OpenCodeSqliteResult> {
   const { dbPath, lastTimeCreated, queryMessages } = opts;
 
@@ -145,6 +148,6 @@ export async function parseOpenCodeSqlite(opts: {
     return empty;
   }
 
-  const result = processOpenCodeMessages(rows);
+  const result = processOpenCodeMessages(rows, opts.includeAccounting);
   return { ...result, inode: fileInode };
 }

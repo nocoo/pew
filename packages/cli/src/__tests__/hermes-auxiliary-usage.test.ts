@@ -8,6 +8,8 @@ import { collectHermesUsageEvidence } from "../parsers/hermes-usage-evidence.js"
 import { createHermesSqliteTokenDriver } from "../drivers/token/hermes-token-driver.js";
 import { EvidenceQueue } from "../storage/evidence-queue.js";
 import { toEvidenceRecord } from "../utils/usage-evidence.js";
+import { planAccountingUpdates } from "../storage/accounting-queue.js";
+import { hermesSessionKey } from "../parsers/hermes-review.js";
 
 const seconds = (time: string) => Date.parse(time) / 1000;
 const row: AuxiliaryUsageRow = {
@@ -33,6 +35,49 @@ describe("Hermes auxiliary and ACP ledger accounting", () => {
     expect(new Set(records.map((r) => r.evidence.eventId)).size).toBe(4);
     expect(records.every((r) => r.evidence.timePrecision === "session-start" && r.evidence.granularity === "session")).toBe(true);
     expect(records.every((r) => r.timestamp === "2026-09-05T12:00:00.000Z")).toBe(true);
+  });
+
+  it("classifies read/write evidence from the ledger without reallocating historical evidence", () => {
+    const first = collectHermesUsageEvidence({ dbKey: "default", rows: [row], calls: [], previous: [], includeAccounting: true });
+    expect(first[0].accounting?.counts).toMatchObject({ cache_read_input_tokens: 20, cache_write_input_tokens: 5, output_total_tokens: 10, reasoning_output_tokens: 2 });
+    const previous = first.map((d) => toEvidenceRecord(d, "test-device"));
+    const grown = { ...row, cache_read_tokens: 40, cache_write_tokens: 10, last_seen: (row.last_seen as number) + 60 };
+    const updated = collectHermesUsageEvidence({ dbKey: "default", rows: [grown], calls: [], previous, includeAccounting: true });
+    // The older ledger did not persist the split in its evidence vector. Do not guess it.
+    expect(updated.find((d) => d.evidence?.timePrecision === "interval")?.accounting?.counts?.cache_write_input_tokens).toBeNull();
+    expect(updated.find((d) => d.evidence?.eventId === previous[0].evidence.eventId)?.tokens).toEqual(first[0].tokens);
+  });
+
+  it("derives later cache splits only from matching saved evidence snapshots", () => {
+    const first = collectHermesUsageEvidence({ dbKey: "default", rows: [row], calls: [], previous: [], includeAccounting: true });
+    const previous = first.map((d) => toEvidenceRecord(d, "test-device"));
+    const details = planAccountingUpdates({ previous: [], before: [], after: [], deltas: first, replay: true, deviceId: "test-device" });
+    const grown = { ...row, cache_read_tokens: 40, cache_write_tokens: 10, api_call_count: 2, last_seen: (row.last_seen as number) + 60 };
+    const next = collectHermesUsageEvidence({ dbKey: "default", rows: [grown], calls: [], previous, accountingRecords: details, includeAccounting: true });
+    const interval = next.find((d) => d.evidence?.timePrecision === "interval");
+    expect(interval?.accounting?.counts).toMatchObject({ input_total_tokens: 25, cache_read_input_tokens: 20, cache_write_input_tokens: 5 });
+    const saved = [...new Map([...previous, ...next.map((d) => toEvidenceRecord(d, "test-device"))].map((r) => [r.evidence.eventId, r])).values()];
+    const updatedDetails = planAccountingUpdates({ previous: details, before: [], after: [], deltas: next, replay: true, deviceId: "test-device" });
+    const replay = collectHermesUsageEvidence({ dbKey: "default", rows: [grown], calls: [], previous: saved, accountingRecords: updatedDetails, includeAccounting: true });
+    expect(replay).toHaveLength(1);
+    expect(replay[0]?.timestamp).toBe(first[0]?.timestamp);
+    expect(replay[0]?.tokens).toEqual(first[0]?.tokens);
+    expect(replay[0]?.accounting?.counts).toMatchObject({ cache_read_input_tokens: 20, cache_write_input_tokens: 5 });
+    for (const stale of [details.map((r) => ({ ...r, evidence_snapshot_seq: r.evidence_snapshot_seq! + 1 })),
+      details.map((r) => ({ ...r, groups: r.groups.map((g) => ({ ...g, counts: null, quality: "legacy" as const })) }))]) {
+      const unverified = collectHermesUsageEvidence({ dbKey: "default", rows: [grown], calls: [], previous, accountingRecords: stale, includeAccounting: true });
+      expect(unverified.find((d) => d.evidence?.timePrecision === "interval")?.accounting?.counts).toMatchObject({ cache_read_input_tokens: null, cache_write_input_tokens: null });
+    }
+  });
+
+  it("keeps explicit review-call cache splits and never assigns a cumulative dollar amount to each call", () => {
+    const review = { ...row, task: "background_review", input_tokens: 100, output_tokens: 10, reasoning_tokens: 0,
+      cache_read_tokens: 20, cache_write_tokens: 5, actual_cost_usd: 9, cost_status: "actual", cost_source: "provider_response" };
+    const call = { eventId: "b".repeat(64), sessionKey: hermesSessionKey("default", row.session_id), model: row.model, provider: row.billing_provider,
+      timestamp: new Date((row.last_seen as number) * 1000).toISOString(), tokens: { inputTokens: 100, cachedInputTokens: 25, outputTokens: 10, reasoningOutputTokens: 0 }, cacheRead: 20, call: 1 };
+    const result = collectHermesUsageEvidence({ dbKey: "default", rows: [review], calls: [call], previous: [], includeAccounting: true });
+    expect(result.find((d) => d.evidence?.timePrecision === "exact")?.accounting).toMatchObject({ counts: { cache_read_input_tokens: 20, cache_write_input_tokens: 5 }, reported_costs: [] });
+    expect(result.find((d) => d.evidence?.timePrecision === "session-start")?.accounting).toMatchObject({ basis: { total_tokens: 0 }, reported_costs: [] });
   });
 
   it("adds only ACP auxiliary rows; the main ACP cumulative ledger remains counted once", async () => {

@@ -40,6 +40,10 @@ export type { FileFingerprint } from "../utils/file-changed.js";
  * knowledge of OpenCode internals (messageKey collection, dirMtimes).
  */
 export interface SyncContext {
+  collectAccounting?: boolean;
+  /** Absolute companions; never add these to usage. Only exact original buckets may be enriched. */
+  accountingSnapshots?: ParsedDelta[];
+  accountingRecords?: import("@pew/core").AccountingRecord[];
   /** Durable supplemental evidence survives parsing cursor resets. */
   evidenceRecords?: EvidenceRecord[];
   /**
@@ -201,12 +205,14 @@ export interface ArrayIndexResumeState {
 export interface OpenCodeJsonResumeState {
   readonly kind: "opencode-json";
   lastTotals: TokenDelta | null;
+  lastCacheWrite?: number | null;
 }
 
 /**
  * Resume state for Codex (byte-offset + cumulative diff state).
  */
 export interface CodexResumeState {
+  accountingContext?: { provider?: string | null; route?: string | null; service_tier?: string | null };
   readonly kind: "codex";
   startOffset: number;
   endBound?: number;

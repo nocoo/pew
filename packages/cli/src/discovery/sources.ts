@@ -310,6 +310,11 @@ export async function discoverGrokSessionDirs(
   return collectFiles(sessionsDir, (name) => name === "summary.json");
 }
 
+/** Accounting reads turn updates, including sessions without a summary file. */
+export async function discoverGrokUsageFiles(sessionsDir: string): Promise<string[]> {
+  return collectFiles(sessionsDir, (name) => name === "updates.jsonl");
+}
+
 /**
  * Discover Kosmos chat session JSON files.
  *

@@ -5,6 +5,7 @@ import type { Source, TokenDelta } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
 import { jsonlCompleteBound } from "../utils/jsonl-offset.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
+import { inclusiveAccounting, decimalCost, accountingLabel } from "../utils/accounting.js";
 
 /** Result of parsing an OpenClaw JSONL session file */
 export interface OpenClawFileResult {
@@ -34,6 +35,7 @@ export async function parseOpenClawFile(opts: {
   filePath: string;
   startOffset: number;
   endBound?: number;
+  includeAccounting?: boolean;
 }): Promise<OpenClawFileResult> {
   const { filePath, startOffset } = opts;
   const deltas: ParsedDelta[] = [];
@@ -94,11 +96,20 @@ export async function parseOpenClawFile(opts: {
 
       if (isAllZero(tokens)) continue;
 
+      const savedCost = (usage.cost as { total?: unknown } | undefined)?.total;
+      const cost = decimalCost(savedCost, "openclaw-sdk", "estimate", Number(savedCost) > 0 ? "complete" : "unknown");
+
       deltas.push({
         source: "openclaw" as Source,
         model,
         timestamp,
         tokens,
+        ...(opts.includeAccounting ? { accounting: inclusiveAccounting(tokens, {
+          input: tokens.inputTokens + tokens.cachedInputTokens, read: usage.cacheRead, write: usage.cacheWrite,
+          uncachedInput: usage.input,
+          write5m: usage.cacheWrite5m, write1h: usage.cacheWrite1h, output: usage.output, reasoning: usage.reasoningTokens ?? usage.reasoning,
+        }, { origin: "openclaw:usage", model, provider: accountingLabel(msg.provider), rawTotal: usage.totalTokens,
+          reportedCosts: cost ? [cost] : [] }) } : {}),
       });
     }
   } finally {

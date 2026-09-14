@@ -17,6 +17,7 @@ import type { Source, TokenDelta } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
 import { clampedJsonlEndOffset, jsonlStreamBound } from "../utils/jsonl-offset.js";
+import { inclusiveAccounting } from "../utils/accounting.js";
 
 /** Result of parsing the Grok unified log */
 export interface GrokFileResult {
@@ -100,6 +101,7 @@ export async function parseGrokLogFile(opts: {
   endBound?: number;
   sidTurnTimeline?: Map<string, GrokTurnTimeline>;
   sidPrimaryModel?: Map<string, string>;
+  includeAccounting?: boolean;
 }): Promise<GrokFileResult> {
   const {
     filePath,
@@ -191,6 +193,11 @@ export async function parseGrokLogFile(opts: {
           model,
           timestamp: ts,
           tokens,
+          ...(opts.includeAccounting ? { accounting: inclusiveAccounting(tokens, {
+            input: ctx.prompt_tokens, read: ctx.cached_prompt_tokens,
+            write: ctx.cache_write_tokens ?? ctx.cache_write_input_tokens,
+            output: ctx.completion_tokens, reasoning: ctx.reasoning_tokens,
+          }, { origin: "grok:inference", model, provider: "xai", rawTotal: ctx.total_tokens }) } : {}),
         });
       }
 

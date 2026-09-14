@@ -40,6 +40,10 @@ export interface UploadEngineConfig<T> {
    * When omitted, the engine falls back to offset-based upload (legacy).
    */
   recordKey?: (record: T) => string;
+  /** Optional versioned receipt protocol; HTTP 200 alone is insufficient. */
+  validateResponse?: (body: unknown, batch: T[]) => string | null;
+  maxBatchSize?: number;
+  maxBatchBytes?: number;
 }
 
 export interface UploadExecuteOptions {
@@ -76,6 +80,7 @@ export interface UploadResult {
   uploaded: number;
   batches: number;
   error?: string;
+  warning?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -99,7 +104,7 @@ export function createUploadEngine<T>(config: UploadEngineConfig<T>) {
       apiUrl,
       dev = false,
       fetch: fetchFn,
-      batchSize = DEFAULT_BATCH_SIZE,
+      batchSize: requestedBatchSize = DEFAULT_BATCH_SIZE,
       maxRetries = DEFAULT_MAX_RETRIES,
       retryDelayMs = DEFAULT_RETRY_DELAY_MS,
       onProgress,
@@ -168,10 +173,18 @@ export function createUploadEngine<T>(config: UploadEngineConfig<T>) {
     const records = preprocess(rawRecords);
 
     // 3. Split into batches
+    const batchSize = Math.max(1, Math.min(requestedBatchSize, config.maxBatchSize ?? DEFAULT_BATCH_SIZE));
     const batches: T[][] = [];
-    for (let i = 0; i < records.length; i += batchSize) {
-      batches.push(records.slice(i, i + batchSize));
+    let pending: T[] = []; let bytes = 2;
+    for (const record of records) {
+      const size = config.maxBatchBytes ? Buffer.byteLength(JSON.stringify(record)) + 1 : 0;
+      if (config.maxBatchBytes && size + 2 > config.maxBatchBytes) return { success: false, uploaded: 0, batches: 0, error: "Record exceeds the upload byte limit; retained locally" };
+      if (pending.length >= batchSize || (pending.length > 0 && config.maxBatchBytes && bytes + size > config.maxBatchBytes)) {
+        batches.push(pending); pending = []; bytes = 2;
+      }
+      pending.push(record); bytes += size;
     }
+    if (pending.length > 0) batches.push(pending);
 
     // 4. Upload each batch
     const fullEndpoint = `${apiUrl}${endpoint}`;
@@ -197,6 +210,7 @@ export function createUploadEngine<T>(config: UploadEngineConfig<T>) {
         maxRetries,
         retryDelayMs,
         clientVersion,
+        validateResponse: config.validateResponse,
       });
 
       if (!result.ok) {
@@ -251,6 +265,7 @@ async function sendBatchWithRetry<T>(opts: {
   maxRetries: number;
   retryDelayMs: number;
   clientVersion?: string;
+  validateResponse?: (body: unknown, batch: T[]) => string | null;
 }): Promise<SendResult> {
   const { endpoint, token, batch, fetchFn, maxRetries, retryDelayMs, clientVersion } = opts;
 
@@ -280,6 +295,10 @@ async function sendBatchWithRetry<T>(opts: {
       });
 
       if (resp.ok) {
+        if (opts.validateResponse) {
+          const error = opts.validateResponse(await resp.json().catch(() => null), batch);
+          if (error) return { ok: false, error };
+        }
         return { ok: true };
       }
 

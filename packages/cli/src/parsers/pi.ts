@@ -5,6 +5,7 @@ import type { ParsedDelta } from "./claude.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
 import { clampedJsonlEndOffset, jsonlStreamBound } from "../utils/jsonl-offset.js";
 import { evidenceId, usageLabel } from "../utils/usage-evidence.js";
+import { piAccounting } from "../utils/accounting.js";
 
 /** Result of parsing a single pi-format JSONL session file */
 export interface PiFileResult {
@@ -91,6 +92,7 @@ export async function parsePiFile(opts: {
   endBound?: number;
   /** Source tag for emitted deltas — "pi" (default) or "omp" */
   source?: Source;
+  includeAccounting?: boolean;
 }): Promise<PiFileResult> {
   const { filePath, startOffset, source = "pi" } = opts;
   const deltas: ParsedDelta[] = [];
@@ -180,7 +182,8 @@ export async function parsePiFile(opts: {
           seenCompactions.add(eventId);
           if (beforeCursor) continue;
           const model = obj.model ? usageLabel(obj.model) : obj.fromHook ? "unknown" : currentModel;
-          deltas.push({ source, model, timestamp: obj.timestamp, tokens, evidence: {
+          deltas.push({ source, model, timestamp: obj.timestamp, tokens,
+            ...(opts.includeAccounting ? { accounting: piAccounting(tokens, obj.usage as Record<string, unknown>, model, currentProvider, true) } : {}), evidence: {
             eventId, groupId: eventId,
             callType: "compaction", origin: "pi-session", provider: currentProvider,
             granularity: "operation", timePrecision: "exact",
@@ -215,7 +218,9 @@ export async function parsePiFile(opts: {
         const delta = normalizePiUsage(usage);
         if (isAllZero(delta)) continue;
 
-        deltas.push({ source, model, timestamp, tokens: delta });
+        deltas.push({ source, model, timestamp, tokens: delta,
+          ...(opts.includeAccounting ? { accounting: piAccounting(delta, usage, model, msg.provider ?? currentProvider) } : {}),
+        });
       }
 
       // Keep only the trailing partial line

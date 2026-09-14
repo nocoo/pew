@@ -11,7 +11,7 @@
 
 import { stat } from "node:fs/promises";
 import type { HermesSqliteCursor } from "@pew/core";
-import { parseHermesDatabase } from "../../parsers/hermes-sqlite.js";
+import { parseHermesDatabase, hermesAccountingSnapshots } from "../../parsers/hermes-sqlite.js";
 import type { HermesQueryHandle } from "../../parsers/hermes-sqlite.js";
 import { readHermesReviewCalls } from "../../parsers/hermes-review.js";
 import { collectHermesUsageEvidence } from "../../parsers/hermes-usage-evidence.js";
@@ -72,13 +72,21 @@ export function createHermesSqliteTokenDriver(
       }
 
       try {
+        const rows = handle.querySessions();
         const result = await parseHermesDatabase(
           opts.dbPath,
-          handle.querySessions,
+          () => rows,
           prevCursor,
+          ...(ctx.collectAccounting ? [true] as const : []),
         );
 
         const warnings: string[] = [];
+        if (ctx.collectAccounting) {
+          try {
+            ctx.accountingSnapshots ??= [];
+            ctx.accountingSnapshots.push(...hermesAccountingSnapshots(rows, handle.queryMainModelUsage?.() ?? []));
+          } catch { warnings.push("Hermes billing details unavailable; original usage preserved"); }
+        }
         if (handle.queryAuxiliaryUsage) {
           try {
             const rows = handle.queryAuxiliaryUsage();
@@ -86,7 +94,8 @@ export function createHermesSqliteTokenDriver(
               warnings.push("Hermes review timestamps unavailable; retaining cumulative ledger usage");
               return [];
             });
-            result.deltas.push(...collectHermesUsageEvidence({ dbKey: opts.dbKey, rows, calls, previous: ctx.evidenceRecords ?? [] }));
+            result.deltas.push(...collectHermesUsageEvidence({ dbKey: opts.dbKey, rows, calls, previous: ctx.evidenceRecords ?? [],
+              ...(ctx.collectAccounting ? { includeAccounting: true, accountingRecords: ctx.accountingRecords } : {}) }));
           } catch {
             warnings.push("Hermes auxiliary evidence unavailable; main session accounting preserved");
           }

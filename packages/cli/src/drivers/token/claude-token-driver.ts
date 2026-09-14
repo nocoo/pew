@@ -114,6 +114,7 @@ export const claudeTokenDriver: FileTokenDriver<ClaudeCursor> = {
     ctx.seenClaudeMessageIds = seen;
 
     const result = await parseClaudeFile({
+      ...(ctx.collectAccounting ? { includeAccounting: true } : {}),
       filePath,
       startOffset: r.startOffset,
       endBound: r.endBound,

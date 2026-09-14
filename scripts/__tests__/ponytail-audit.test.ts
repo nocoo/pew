@@ -94,8 +94,18 @@ describe("Pew ponytail readonly audit", { timeout: 15_000 }, () => {
   });
 
   it("catches the evidence cursor committing before its ledger promise completes", () => {
-    const report = run(mutate("packages/cli/src/commands/sync.ts", (s) => s.replace("await evidenceQueue.merge(evidenceRecords, initialCursorEmpty)", "evidenceQueue.merge(evidenceRecords, initialCursorEmpty)")));
-    expect(hasError(report, "cursor.evidence-before-commit")).toBe(true);
+    const journal = "packages/cli/src/storage/sync-commit.ts";
+    const sync = "packages/cli/src/commands/sync.ts";
+    for (const [path, before, after] of [
+      [journal, "await new EvidenceQueue(stateDir).merge", "new EvidenceQueue(stateDir).merge"],
+      [journal, "await new AccountingQueue(stateDir).merge", "new AccountingQueue(stateDir).merge"],
+      [journal, "await new EvidenceQueue(stateDir).merge(commit.evidence, commit.replay);", ""],
+      [sync, "await commitSync(stateDir,", "commitSync(stateDir,"],
+      [sync, "await recoverSyncCommit(opts.stateDir)", "recoverSyncCommit(opts.stateDir)"],
+    ]) {
+      const report = run(mutate(path, (s) => s.replace(before, after)));
+      expect(hasError(report, "cursor.evidence-before-commit")).toBe(true);
+    }
   });
 
   it("catches collection time in supplementary identities and a raw-object spread in the queue projection", () => {

@@ -98,7 +98,7 @@ export function createOpenCodeSqliteTokenDriver(
           return !jsonMessageKeys.has(key);
         });
 
-        const result = processOpenCodeMessages(filteredRows);
+        const result = processOpenCodeMessages(filteredRows, ...(ctx.collectAccounting ? [true] as const : []));
 
         // Update cursor — advance past ALL rows (including deduped).
         const maxTime = rawRows.length > 0

@@ -778,14 +778,16 @@ describe("executeSync", () => {
     const cursors = await cursorStore.load();
     expect(Object.keys(cursors.files)).toHaveLength(0);
 
-    // Next sync should re-process everything from scratch
+    // Next sync recovers the absolute commit before parsing source bytes
     const result = await executeSync({
       stateDir,
       claudeDir: join(dataDir, ".claude"),
     });
 
-    expect(result.totalDeltas).toBe(1);
-    expect(result.totalRecords).toBe(1);
+    expect(result.totalDeltas).toBe(0);
+    expect(result.totalRecords).toBe(0);
+    const recovered = JSON.parse((await readFile(join(stateDir, "queue.jsonl"), "utf8")).trim());
+    expect(recovered.total_tokens).toBe(1100);
   });
 
   it("should sync all five sources simultaneously", async () => {
@@ -1600,13 +1602,15 @@ describe("executeSync", () => {
     const cursors = await cursorStore.load();
     expect(Object.keys(cursors.files)).toHaveLength(0);
 
-    // Now run a normal sync — should process all data fresh
+    // Normal sync recovers the committed records exactly once
     const result = await executeSync({
       stateDir,
       claudeDir: join(dataDir, ".claude"),
     });
-    expect(result.totalDeltas).toBe(1);
-    expect(result.totalRecords).toBe(1);
+    expect(result.totalDeltas).toBe(0);
+    expect(result.totalRecords).toBe(0);
+    const recovered = JSON.parse((await readFile(join(stateDir, "queue.jsonl"), "utf8")).trim());
+    expect(recovered.total_tokens).toBe(1100);
   });
 
   // ===== Bug A: Partial replay inflation (inode change on single file) =====
@@ -1745,13 +1749,9 @@ describe("executeSync", () => {
     // Tamper with cursors.json: delete only the Claude file cursor entry
     const cursorsPath = join(stateDir, "cursors.json");
     const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    const fileKeys = Object.keys(cursorsData.files);
-    // Remove all entries matching the Claude file path
-    for (const key of fileKeys) {
-      if (key.includes("proj-cursor-miss") && key.includes(".claude")) {
-        delete cursorsData.files[key];
-      }
-    }
+    cursorsData.files = Object.fromEntries(Object.entries(cursorsData.files).filter(
+      ([key]) => !(key.includes("proj-cursor-miss") && key.includes(".claude")),
+    ));
     await writeFile(cursorsPath, JSON.stringify(cursorsData));
 
     // Second sync — Claude cursor is missing, Gemini cursor exists
@@ -2829,12 +2829,9 @@ describe("executeSync", () => {
     // Tamper: delete Claude file cursor but keep it in knownFilePaths
     const cursorsPath = join(stateDir, "cursors.json");
     const cursorsData = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    const fileKeys = Object.keys(cursorsData.files);
-    for (const key of fileKeys) {
-      if (key.includes("proj-file-loss") && key.includes(".claude")) {
-        delete cursorsData.files[key];
-      }
-    }
+    cursorsData.files = Object.fromEntries(Object.entries(cursorsData.files).filter(
+      ([key]) => !(key.includes("proj-file-loss") && key.includes(".claude")),
+    ));
     await writeFile(cursorsPath, JSON.stringify(cursorsData));
 
     // Second sync with onProgress — should capture cursor loss and replay events

@@ -1,6 +1,8 @@
-import type { EvidenceRecord, TokenDelta, UsageEvidence } from "@pew/core";
+import type { AccountingRecord, EvidenceRecord, TokenDelta, UsageEvidence } from "@pew/core";
 import type { ParsedDelta } from "./claude.js";
 import type { AuxiliaryUsageRow } from "./hermes-sqlite.js";
+import { hermesAccounting } from "./hermes-sqlite.js";
+import { sameBasis } from "../storage/accounting-queue.js";
 import { hermesSessionKey, type HermesReviewCall } from "./hermes-review.js";
 import { evidenceId, usageLabel } from "../utils/usage-evidence.js";
 import { addTokens, emptyTokenDelta } from "../utils/buckets.js";
@@ -13,6 +15,8 @@ export function collectHermesUsageEvidence(opts: {
   rows: AuxiliaryUsageRow[];
   calls: HermesReviewCall[];
   previous: EvidenceRecord[];
+  includeAccounting?: boolean;
+  accountingRecords?: AccountingRecord[];
 }): ParsedDelta[] {
   const output: ParsedDelta[] = [];
   const rows = opts.rows.filter((r) => typeof r.task === "string" && r.task.trim() !== "");
@@ -29,7 +33,7 @@ export function collectHermesUsageEvidence(opts: {
     // make a delayed snapshot overwrite a newer cumulative value.
     const seq = 1 + values.reduce((a, b) => a + b, 0);
     if (!Number.isSafeInteger(seq)) continue;
-    if (baseline && seq <= baseline.evidence.snapshotSeq) continue;
+    if (baseline && (seq < baseline.evidence.snapshotSeq || (seq === baseline.evidence.snapshotSeq && !opts.includeAccounting))) continue;
     const current: TokenDelta = { inputTokens: row.input_tokens, cachedInputTokens: row.cache_read_tokens + row.cache_write_tokens,
       outputTokens: row.output_tokens, reasoningOutputTokens: row.reasoning_tokens };
     const prior = emptyTokenDelta();
@@ -52,6 +56,19 @@ export function collectHermesUsageEvidence(opts: {
     const ceiling = validSeconds(row.last_seen) ? row.last_seen * 1000 : -Infinity;
     const routeCount = rows.filter((r) => r.session_id === row.session_id && r.model === row.model && r.billing_provider === row.billing_provider && r.task === row.task).length;
     const allocated = previous.filter((r) => r.evidence.eventId !== baselineId);
+    const split = (records: EvidenceRecord[]): { read: number | null; write: number | null } => {
+      let read = 0; let write = 0;
+      for (const record of records) {
+        const details = opts.accountingRecords?.find((a) => a.event_id === record.evidence.eventId &&
+          a.evidence_snapshot_seq === record.evidence.snapshotSeq && sameBasis(a.basis, record));
+        if (!details || details.groups.some((g) => !g.counts || g.counts.cache_read_input_tokens === null || g.counts.cache_write_input_tokens === null)) return { read: null, write: null };
+        for (const g of details.groups) { read += g.counts?.cache_read_input_tokens ?? 0; write += g.counts?.cache_write_input_tokens ?? 0; }
+      }
+      return { read, write };
+    };
+    const priorSplit = split(previous);
+    const allocatedSplit = split(allocated);
+    let newRead = 0; let newWrite = 0;
     const allocatedTotals = emptyTokenDelta();
     for (const r of allocated) addTokens(allocatedTotals, { inputTokens: r.input_tokens, cachedInputTokens: r.cached_input_tokens,
       outputTokens: r.output_tokens, reasoningOutputTokens: r.reasoning_output_tokens });
@@ -67,10 +84,12 @@ export function collectHermesUsageEvidence(opts: {
       remainingCalls--;
       allocatedCount++;
       addTokens(allocatedTotals, call.tokens);
+      const callWrite = call.tokens.cachedInputTokens - call.cacheRead;
+      newRead += call.cacheRead; newWrite += callWrite;
       output.push({ source: "hermes", model, timestamp: call.timestamp, tokens: call.tokens, evidence: {
         eventId: call.eventId, groupId, callType: "background_review", origin: "hermes-review-log", provider,
         granularity: "call", timePrecision: "exact", intervalStart: null, intervalEnd: null, callCount: 1, snapshotSeq: 1,
-      } });
+      }, ...(opts.includeAccounting ? { accounting: hermesAccounting(call.tokens, row, call.cacheRead, callWrite, "hermes:review_log") } : {}) });
     }
     // Only a previously observed ledger can bound an incremental interval.
     // These are ledger observation bounds, not invented per-call timestamps.
@@ -78,11 +97,15 @@ export function collectHermesUsageEvidence(opts: {
     if (baseline && Number.isFinite(cutoff) && ceiling > cutoff && fields.some((f) => remaining[f] > 0)) {
       const intervalStart = new Date(cutoff).toISOString();
       const intervalEnd = new Date(ceiling).toISOString();
+      const intervalRead = priorSplit.read === null ? null : row.cache_read_tokens - priorSplit.read - newRead;
+      const intervalWrite = priorSplit.write === null ? null : row.cache_write_tokens - priorSplit.write - newWrite;
       output.push({ source: "hermes", model, timestamp: intervalEnd, tokens: { ...remaining }, evidence: {
         eventId: evidenceId([groupId, "interval", baseline.evidence.snapshotSeq, seq]), groupId, callType, origin, provider,
         granularity: "session", timePrecision: "interval", intervalStart, intervalEnd,
         callCount: remainingCalls, snapshotSeq: 1,
-      } });
+      }, ...(opts.includeAccounting ? { accounting: hermesAccounting(remaining, row, intervalRead, intervalWrite, "hermes:interval") } : {}) });
+      if (intervalRead === null) allocatedSplit.read = null; else newRead += intervalRead;
+      if (intervalWrite === null) allocatedSplit.write = null; else newWrite += intervalWrite;
       addTokens(allocatedTotals, remaining);
       allocatedCount += remainingCalls ?? 0;
     }
@@ -94,13 +117,17 @@ export function collectHermesUsageEvidence(opts: {
     for (const f of fields) residual[f] -= allocatedTotals[f];
     const intervalStart = baseline?.evidence.intervalStart ?? timestamp;
     const watermark = Math.max(cutoff, ceiling);
+    const residualRead = allocatedSplit.read === null ? null : row.cache_read_tokens - allocatedSplit.read - newRead;
+    const residualWrite = allocatedSplit.write === null ? null : row.cache_write_tokens - allocatedSplit.write - newWrite;
     output.push({ source: "hermes", model, timestamp, tokens: residual, evidence: {
       eventId: baselineId, groupId, callType, origin, provider,
       granularity: "session", timePrecision: baseline?.evidence.timePrecision ?? (validSeconds(row.started_at) ? "session-start" : "unattributed"),
       intervalStart,
-      intervalEnd: Number.isFinite(watermark) && watermark >= Date.parse(intervalStart) ? new Date(watermark).toISOString() : null,
+      intervalEnd: baseline?.evidence.snapshotSeq === seq ? baseline.evidence.intervalEnd :
+        Number.isFinite(watermark) && watermark >= Date.parse(intervalStart) ? new Date(watermark).toISOString() : null,
       callCount: knownCount ? (row.api_call_count as number) - allocatedCount : null, snapshotSeq: seq,
-    } });
+    }, ...(opts.includeAccounting ? { accounting: hermesAccounting(residual, row, residualRead, residualWrite, "hermes:aux_ledger",
+      fields.every((f) => allocatedTotals[f] === 0)) } : {}) });
   }
   return output;
 }

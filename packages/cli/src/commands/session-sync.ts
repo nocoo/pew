@@ -22,6 +22,7 @@ import type {
 } from "@pew/core";
 import { SessionCursorStore } from "../storage/session-cursor-store.js";
 import { SessionQueue } from "../storage/session-queue.js";
+import { withStateLock } from "../storage/state-lock.js";
 import { pruneAliasCursors } from "../storage/prune-alias-cursors.js";
 import type { OnCorruptLine } from "../storage/base-queue.js";
 import { deduplicateSessionRecords } from "./session-upload.js";
@@ -154,7 +155,11 @@ export interface SessionSyncResult {
  * Execute session sync: discover files, full-scan changed files,
  * collect snapshots, deduplicate, and write to session queue.
  */
-export async function executeSessionSync(
+export async function executeSessionSync(opts: SessionSyncOptions): Promise<SessionSyncResult> {
+  return withStateLock(opts.stateDir, () => sessionSyncLocked(opts));
+}
+
+async function sessionSyncLocked(
   opts: SessionSyncOptions,
 ): Promise<SessionSyncResult> {
   const { stateDir, onProgress } = opts;

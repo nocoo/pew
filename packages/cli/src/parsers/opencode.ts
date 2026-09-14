@@ -4,12 +4,29 @@ import type { ParsedDelta } from "./claude.js";
 import { diffTotals } from "./gemini.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
 import { coerceEpochMs } from "../utils/time.js";
+import { decimalCost, inclusiveAccounting, optionalToken } from "../utils/accounting.js";
 
 /** Result of parsing a single OpenCode message file */
 export interface OpenCodeFileResult {
   delta: ParsedDelta | null;
   messageKey: string | null;
   lastTotals: TokenDelta | null;
+  lastCacheWrite?: number | null;
+}
+
+export function openCodeAccounting(tokens: TokenDelta, msg: Record<string, unknown>, model: string,
+  previous: TokenDelta | null = null, previousWrite?: number | null) {
+  const raw = msg.tokens as Record<string, unknown>;
+  const cache = raw.cache as Record<string, unknown> | undefined;
+  const difference = (value: unknown, prior: number | null | undefined) =>
+    optionalToken(value) === null || (previous && optionalToken(prior) === null) ? null : Number(value) - Number(prior ?? 0);
+  const cost = !previous ? decimalCost(msg.cost, "opencode-sdk", "estimate", Number(msg.cost) > 0 ? "complete" : "unknown") : null;
+  return inclusiveAccounting(tokens, { input: tokens.inputTokens + tokens.cachedInputTokens,
+    uncachedInput: raw.input, visibleOutput: raw.output,
+    read: difference(cache?.read, previous?.cachedInputTokens), write: difference(cache?.write, previousWrite),
+    output: tokens.outputTokens + tokens.reasoningOutputTokens, reasoning: difference(raw.reasoning, previous?.reasoningOutputTokens) },
+  { origin: "opencode:message", model, provider: typeof msg.providerID === "string" ? msg.providerID : null,
+    aggregate: !!previous, quality: previous ? "derived" : "reported", reportedCosts: cost ? [cost] : [] });
 }
 
 /**
@@ -48,6 +65,8 @@ export function normalizeOpenCodeTokens(
 export async function parseOpenCodeFile(opts: {
   filePath: string;
   lastTotals: TokenDelta | null;
+  lastCacheWrite?: number | null;
+  includeAccounting?: boolean;
 }): Promise<OpenCodeFileResult> {
   const { filePath, lastTotals } = opts;
 
@@ -116,8 +135,10 @@ export async function parseOpenCodeFile(opts: {
       model,
       timestamp: new Date(timestampMs).toISOString(),
       tokens: tokenDelta,
+      ...(opts.includeAccounting ? { accounting: openCodeAccounting(tokenDelta, msg, model, lastTotals, opts.lastCacheWrite) } : {}),
     },
     messageKey,
     lastTotals: currentTotals,
+    ...(opts.includeAccounting ? { lastCacheWrite: optionalToken((msg.tokens as { cache?: { write?: unknown } }).cache?.write) } : {}),
   };
 }

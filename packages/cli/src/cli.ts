@@ -6,6 +6,7 @@ import { homedir } from "node:os";
 import type { Source } from "@pew/core";
 import { resolveDefaultPaths } from "./utils/paths.js";
 import { executeSync } from "./commands/sync.js";
+import { executeEnrich } from "./commands/enrich.js";
 import { executeSessionSync } from "./commands/session-sync.js";
 import { executeStatus } from "./commands/status.js";
 import { executeLogin, resolveHost } from "./commands/login.js";
@@ -896,6 +897,7 @@ async function runUpload(stateDir: string, apiUrl: string, dev: boolean): Promis
       }
     },
   });
+  if (uploadResult.warning) log.warn(uploadResult.warning);
 
   if (!uploadResult.success && uploadResult.error?.match(/not logged in/i)) {
     log.info(
@@ -961,6 +963,28 @@ async function runSessionUpload(stateDir: string, apiUrl: string, dev: boolean):
   }
 }
 
+export const enrichCommand = defineCommand({
+  meta: { name: "enrich", description: "Preview cache accounting for retained history; --apply updates details only" },
+  args: {
+    source: { type: "string", description: "Source to inspect (or all)", required: true },
+    from: { type: "string", description: "Inclusive UTC date or half-hour boundary", required: true },
+    to: { type: "string", description: "Exclusive, closed UTC boundary", required: true },
+    apply: { type: "boolean", description: "Apply verified details to the local outbox", default: false },
+  },
+  async run({ args }) {
+    if (args.source !== "all" && !isSource(args.source)) throw new Error("Invalid accounting source");
+    const paths = resolveDefaultPaths();
+    const deviceId = new ConfigManager(paths.stateDir).getDeviceId();
+    if (!deviceId) throw new Error("An existing Pew device ID is required; enrichment does not create or migrate device identity");
+    const [opencode, hermes, zcode] = await Promise.all([
+      import("./parsers/opencode-sqlite-db.js"), import("./parsers/hermes-sqlite-db.js"), import("./parsers/zcode-sqlite-db.js"),
+    ]);
+    const result = await executeEnrich({ ...paths, deviceId, source: args.source, from: args.from, to: args.to, apply: args.apply,
+      openMessageDb: opencode.openMessageDb, openHermesDb: hermes.openHermesDb, openZcodeDb: zcode.openZcodeUsageDb });
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  },
+});
+
 const resetCommand = defineCommand({
   meta: {
     name: "reset",
@@ -1024,6 +1048,7 @@ export const main = defineCommand({
   },
   subCommands: {
     sync: syncCommand,
+    enrich: enrichCommand,
     status: statusCommand,
     login: loginCommand,
     logout: logoutCommand,
