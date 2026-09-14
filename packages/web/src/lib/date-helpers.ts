@@ -85,6 +85,21 @@ export function periodToDateRange(
   }
 }
 
+/** Exact UTC query bounds for a local calendar period. `to` is exclusive. */
+export function periodToUtcRange(period: Period, today: string, tzOffset: number) {
+  const dayMs = (date: string) => new Date(`${date}T00:00:00Z`).getTime();
+  const day = new Date(dayMs(today));
+  if (period === "month") day.setUTCDate(1);
+  if (period === "week") day.setUTCDate(day.getUTCDate() - day.getUTCDay());
+  const start = period === "all" ? null : day.toISOString().slice(0, 10);
+  return {
+    start,
+    end: today,
+    from: new Date(dayMs(start ?? "2020-01-01") + tzOffset * 60_000).toISOString(),
+    to: new Date(dayMs(today) + 86_400_000 + tzOffset * 60_000).toISOString(),
+  };
+}
+
 /** Human-readable label for a period. */
 export function periodLabel(period: Period): string {
   switch (period) {
@@ -351,4 +366,3 @@ export function aggregateHourlyTokens(
   }
   return buckets;
 }
-

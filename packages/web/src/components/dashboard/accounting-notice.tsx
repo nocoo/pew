@@ -48,7 +48,7 @@ export function AccountingNotice({ records, pricingMap, loading = false }: { rec
         {netSavings === null ? " · Cache or pricing details are incomplete." : " · Read discount less cache write premium."}
       </p>
       <p>
-        {`Cache read rate covers ${Math.round(summary.readCoverage * 100)}% of recorded input. `}
+        {`Cache hit rate = cache read tokens / input tokens with known read counts; covers ${Math.floor(summary.readCoverage * 100)}% of recorded input. `}
         {summary.pendingTokens > 0 ? `${formatTokens(summary.pendingTokens)} tokens await detail reconciliation. ` : ""}
         {!complete ? "Some cache, provider, service tier or context details are unavailable; cost includes assumptions and net cache savings are incomplete." : "Net cache savings deduct the cache write premium from the read discount."}
       </p>

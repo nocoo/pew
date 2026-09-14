@@ -3,11 +3,11 @@
 import { Calculator, X } from "lucide-react";
 import { Button } from "@nocoo/basalt/components/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@nocoo/basalt/components/dialog";
-import type { OverviewDay } from "@/lib/overview-helpers";
+import type { DailyCostPoint } from "@/lib/cost-helpers";
 import { SalaryEstimator } from "./salary-estimator-card";
 
-export function SalaryCalculatorDialog({ daily, dailyAverageCost, rangeLabel, incomplete, disabled }: {
-  daily: OverviewDay[];
+export function SalaryCalculatorDialog({ dailyCosts, dailyAverageCost, rangeLabel, incomplete, disabled }: {
+  dailyCosts: DailyCostPoint[];
   dailyAverageCost: number;
   rangeLabel: string;
   incomplete: boolean;
@@ -26,7 +26,7 @@ export function SalaryCalculatorDialog({ daily, dailyAverageCost, rangeLabel, in
           <DialogHeader>
             <DialogTitle>Salary calculator</DialogTitle>
             <DialogDescription className="text-sm">
-              {rangeLabel} · {daily.length} calendar days. Explore a salary equivalent from your estimated token spend.
+              {rangeLabel} · {dailyCosts.length} calendar days. Explore a salary equivalent from your estimated token spend.
             </DialogDescription>
           </DialogHeader>
           <DialogClose asChild>
@@ -38,7 +38,7 @@ export function SalaryCalculatorDialog({ daily, dailyAverageCost, rangeLabel, in
         {incomplete && <p className="mb-4 text-xs text-muted-foreground">The underlying public-price estimate includes assumptions where cache or pricing details are unavailable.</p>}
         <SalaryEstimator
           rangeLabel={rangeLabel} dailyAverageCost={dailyAverageCost}
-          dailyCosts={daily.map((day) => ({ date: day.date, totalCost: day.cost }))}
+          dailyCosts={dailyCosts}
         />
       </DialogContent>
     </Dialog>

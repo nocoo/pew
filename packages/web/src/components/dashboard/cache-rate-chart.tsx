@@ -110,7 +110,7 @@ export function CacheRateChart({ data, className }: CacheRateChartProps) {
       <div className="mb-4 flex items-center justify-between">
         <div>
           <p className="text-xs md:text-sm text-muted-foreground">
-            Cache Read Rate
+            Daily Cache Hit Rate
           </p>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">

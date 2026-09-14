@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   PERIOD_OPTIONS,
   periodToDateRange,
+  periodToUtcRange,
   periodLabel,
   formatDate,
   formatMemberSince,
@@ -49,6 +50,24 @@ describe("PERIOD_OPTIONS", () => {
     for (const opt of PERIOD_OPTIONS) {
       expect(opt.label.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("periodToUtcRange", () => {
+  it("preserves exact local calendar bounds, including year and leap-day transitions", () => {
+    expect(periodToUtcRange("month", "2026-09-15", -480)).toEqual({
+      start: "2026-09-01", end: "2026-09-15",
+      from: "2026-08-31T16:00:00.000Z", to: "2026-09-15T16:00:00.000Z",
+    });
+    expect(periodToUtcRange("week", "2026-09-15", 420)).toEqual({
+      start: "2026-09-13", end: "2026-09-15",
+      from: "2026-09-13T07:00:00.000Z", to: "2026-09-16T07:00:00.000Z",
+    });
+    expect(periodToUtcRange("week", "2026-01-01", 0).start).toBe("2025-12-28");
+    expect(periodToUtcRange("month", "2028-02-29", 0).to).toBe("2028-03-01T00:00:00.000Z");
+    expect(periodToUtcRange("all", "2026-09-15", 0)).toEqual({
+      start: null, end: "2026-09-15", from: "2020-01-01T00:00:00.000Z", to: "2026-09-16T00:00:00.000Z",
+    });
   });
 });
 
