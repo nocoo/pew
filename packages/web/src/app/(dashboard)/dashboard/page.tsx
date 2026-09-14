@@ -1,13 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowDownToLine, ArrowUpFromLine, Database, DollarSign, Gauge, PiggyBank, TrendingUp, Zap } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, DollarSign, Gauge, TrendingUp, Zap } from "lucide-react";
 import { Button } from "@nocoo/basalt/components/button";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { useUsageData, toHeatmapData, type DailyPoint } from "@/hooks/use-usage-data";
 import { useTzOffset } from "@/hooks/use-tz-offset";
 import { usePricingMap, formatCost } from "@/hooks/use-pricing";
 import { summarizeAccounting } from "@/lib/accounting";
+import type { UsageDimension } from "@/lib/usage-breakdown";
 import { computeTotalCost, toDailyCostPoints, computeCacheSavings, forecastMonthlyCost, toDailyCacheRates, type DailyCostPoint, type DailyCacheRate } from "@/lib/cost-helpers";
 import { compareWeekdayWeekend, computeMoMGrowth, computeWoWGrowth, toHourlyWeekdayWeekend } from "@/lib/usage-helpers";
 import { fillDateRange, getLocalToday, periodLabel, periodToUtcRange, type Period } from "@/lib/date-helpers";
@@ -17,6 +18,7 @@ import { HeatmapHero } from "@/components/dashboard/heatmap-hero";
 import { UsageTrendChart } from "@/components/dashboard/usage-trend-chart";
 import { CostTrendChart } from "@/components/dashboard/cost-trend-chart";
 import { CacheRateChart } from "@/components/dashboard/cache-rate-chart";
+import { UsageBreakdownCharts } from "@/components/dashboard/usage-breakdown-charts";
 import { SourceDonutChart } from "@/components/dashboard/source-donut-chart";
 import { IoRatioChart } from "@/components/dashboard/io-ratio-chart";
 import { WeekdayWeekendChart } from "@/components/dashboard/weekday-weekend-chart";
@@ -34,6 +36,7 @@ import { ErrorBanner } from "@/components/ui/error-banner";
 export default function DashboardPage() {
   const [period, setPeriod] = useState<Period>("all");
   const [chartTab, setChartTab] = useState<"tokens" | "cost">("tokens");
+  const [breakdownDimension, setBreakdownDimension] = useState<UsageDimension>("model");
   const tzOffset = useTzOffset();
   const today = useMemo(() => getLocalToday(tzOffset), [tzOffset]);
   const range = useMemo(() => periodToUtcRange(period, today, tzOffset), [period, today, tzOffset]);
@@ -123,16 +126,12 @@ export default function DashboardPage() {
             <StatCard
               title="Total Tokens" value={formatTokens(accounting.totalTokens)} subtitle={periodLabel(period)}
               icon={Zap} iconColor="text-primary" variant="primary"
-              accentColor="bg-gradient-to-r from-primary to-chart-8" trendsLayout="side"
+              accentColor="bg-gradient-to-r from-primary to-chart-8"
               trends={[
-                ...(wow && wow.previousWeekSameDay.tokens > 0 && wow.previousWeekSameDay.tokens !== wow.previousWeek.tokens
+                ...(wow && wow.previousWeekSameDay.tokens > 0
                   ? [{ value: Math.round(wow.sameDayTokenGrowth), label: "vs week TD" }] : []),
-                ...(wow && wow.previousWeek.tokens > 0
-                  ? [{ value: Math.round(wow.tokenGrowth), label: "vs last week" }] : []),
-                ...(mom && mom.previousMonthSameDate.tokens > 0 && mom.previousMonthSameDate.tokens !== mom.previousMonth.tokens
+                ...(mom && mom.previousMonthSameDate.tokens > 0
                   ? [{ value: Math.round(mom.sameDateTokenGrowth), label: "vs month TD" }] : []),
-                ...(mom && mom.previousMonth.tokens > 0
-                  ? [{ value: Math.round(mom.tokenGrowth), label: "vs last month" }] : []),
               ]}
             />
             <StatCard title="Cache Hit Rate"
@@ -146,45 +145,25 @@ export default function DashboardPage() {
               subtitle="Responses & reasoning" icon={ArrowUpFromLine} accentColor="bg-chart-5" />
           </StatGrid>
 
-          <StatGrid columns={4}>
+          <StatGrid columns={3}>
             <StatCard
               title="Est. Cost" value={pricingLoading ? "…" : formatCost(estimatedCost)}
               subtitle={cacheSavings.netSavings === null ? "Public-price estimate · incomplete details" : "Based on public pricing"}
-              icon={DollarSign} iconColor="text-chart-6" variant="primary" trendsLayout="side"
+              icon={DollarSign} iconColor="text-chart-6" variant="primary"
               trends={[
-                ...(wow && wow.previousWeekSameDay.cost > 0 && wow.previousWeekSameDay.cost !== wow.previousWeek.cost
+                ...(wow && wow.previousWeekSameDay.cost > 0
                   ? [{ value: -Math.round(wow.sameDayCostGrowth), label: "vs week TD" }] : []),
-                ...(wow && wow.previousWeek.cost > 0
-                  ? [{ value: -Math.round(wow.costGrowth), label: "vs last week" }] : []),
-                ...(mom && mom.previousMonthSameDate.cost > 0 && mom.previousMonthSameDate.cost !== mom.previousMonth.cost
+                ...(mom && mom.previousMonthSameDate.cost > 0
                   ? [{ value: -Math.round(mom.sameDateCostGrowth), label: "vs month TD" }] : []),
-                ...(mom && mom.previousMonth.cost > 0
-                  ? [{ value: -Math.round(mom.costGrowth), label: "vs last month" }] : []),
               ]}
             />
-            <StatCard title="Cache Read Tokens"
-              value={accounting.inputTokens === 0 || accounting.readCoverage > 0 ? formatTokens(accounting.cacheReadTokens) : "—"}
-              subtitle={accounting.inputTokens === 0 ? "No input recorded" : accounting.readCoverage === 0
-                ? "Read counts unavailable" : `${Math.floor(accounting.readCoverage * 100)}% input covered${accounting.readCoverage < 1 ? " · partial" : ""}`}
-              icon={Database} accentColor="bg-chart-2" />
-            <StatCard title="Cache Write Tokens"
-              value={accounting.inputTokens === 0 || accounting.writeCoverage > 0 ? formatTokens(accounting.cacheWriteTokens) : "—"}
-              subtitle={accounting.inputTokens === 0 ? "No input recorded" : accounting.writeCoverage === 0
-                ? "Write counts unavailable" : `${Math.floor(accounting.writeCoverage * 100)}% input covered${accounting.writeCoverage < 1 ? " · partial" : ""}`}
-              icon={Database} accentColor="bg-chart-3" />
-            <StatCard title="Net Cache Savings"
-              value={pricingLoading ? "…" : cacheSavings.netSavings === null ? "—" : formatCost(cacheSavings.netSavings)}
-              subtitle={cacheSavings.netSavings === null ? "Cache or pricing details incomplete" : "Read discount less write premium"}
-              icon={PiggyBank} iconColor={(cacheSavings.netSavings ?? 0) < 0 ? "text-destructive" : "text-success"} />
-          </StatGrid>
-          {costForecast && <StatGrid columns={2}>
-            <StatCard title="Monthly Forecast" value={pricingLoading ? "…" : formatCost(costForecast.projectedMonthCost)}
-              subtitle={`This Month · ${formatCost(costForecast.currentMonthCost)} estimated so far (${costForecast.daysElapsed} days)`}
+            <StatCard title="Monthly Forecast" value={pricingLoading || momData.loading ? "…" : costForecast ? formatCost(costForecast.projectedMonthCost) : "—"}
+              subtitle={costForecast ? `This Month · ${formatCost(costForecast.currentMonthCost)} estimated so far (${costForecast.daysElapsed} days)` : "This Month · Not enough data yet"}
               icon={TrendingUp} iconColor="text-chart-6" />
-            <StatCard title="Daily Average" value={pricingLoading ? "…" : formatCost(costForecast.dailyAverage)}
-              subtitle={`This Month · ${costForecast.daysInMonth - costForecast.daysElapsed} days remaining`}
+            <StatCard title="Daily Average" value={pricingLoading || momData.loading ? "…" : costForecast ? formatCost(costForecast.dailyAverage) : "—"}
+              subtitle={costForecast ? `This Month · ${costForecast.daysInMonth - costForecast.daysElapsed} days remaining` : "This Month · Not enough data yet"}
               icon={DollarSign} iconColor="text-muted-foreground" />
-          </StatGrid>}
+          </StatGrid>
           {hasRecords && <details className="text-xs text-muted-foreground">
             <summary className="cursor-pointer rounded-lg py-1 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
               Cache & cost details
@@ -215,6 +194,8 @@ export default function DashboardPage() {
               <IoRatioChart inputTokens={accounting.inputTokens} outputTokens={accounting.outputTokens} />
             </div>
           </div>
+          <UsageBreakdownCharts records={records} from={range.from} to={range.to} start={firstDay} end={today} tzOffset={tzOffset}
+            dimension={breakdownDimension} onDimensionChange={setBreakdownDimension} />
         </DashboardSegment>
 
         <DashboardSegment title="Insights">

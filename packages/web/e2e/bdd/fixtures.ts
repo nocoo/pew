@@ -152,7 +152,11 @@ export async function mockDashboardApis(
       const time = new Date(row.hour_start as string).getTime();
       return time >= from && time < to;
     }).map((row, i) => ({ ...row, device_id: i < 2 ? "work" : "home" }));
-    return route.fulfill({ json: { deviceDetails: details, timeline: [],
+    const tzOffset = Number(params.get("tzOffset") ?? 0);
+    const timeline = details.map((row) => ({ ...row,
+      date: new Date(new Date(row.hour_start as string).getTime() - tzOffset * 60_000).toISOString().slice(0, 10),
+    }));
+    return route.fulfill({ json: { deviceDetails: details, timeline,
       devices: ["work", "home"].map((id) => ({
         device_id: id, alias: id === "work" ? "Work Mac" : "Home Mac", sources: [], models: [],
         first_seen: "2026-05-01", last_seen: "2026-05-03", estimated_cost: 0,

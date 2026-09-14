@@ -39,12 +39,18 @@ export function AccountingNotice({ records, pricingMap, loading = false }: { rec
   return (
     <div role="note" className="rounded-card border border-border/50 bg-secondary/50 px-4 py-3 text-xs text-muted-foreground space-y-2">
       <p>
-        Cache writes: {summary.inputTokens > 0 && summary.writeCoverage === 0 ? "unavailable · 0% of input covered." : <>
-          <span className="text-foreground tabular-nums">{formatTokens(summary.cacheWriteTokens)}</span> known tokens
-          {` · ${Math.round(summary.writeCoverage * 100)}% of input covered · ${formatCost(writeCost)} estimated write cost on covered usage.`}
+        Cache reads: {summary.inputTokens > 0 && summary.readCoverage === 0 ? "unavailable · 0% of input covered." : <>
+          <span className="text-foreground tabular-nums">{formatTokens(summary.cacheReadTokens)}</span> known tokens
+          {` · ${Math.floor(summary.readCoverage * 100)}% of input covered${summary.readCoverage < 1 ? " · partial" : ""}.`}
         </>}
       </p>
-      <p>Net cache savings: <span className="text-foreground tabular-nums">{netSavings === null ? "—" : formatCost(netSavings)}</span>
+      <p>
+        Cache writes: {summary.inputTokens > 0 && summary.writeCoverage === 0 ? "unavailable · 0% of input covered." : <>
+          <span className="text-foreground tabular-nums">{formatTokens(summary.cacheWriteTokens)}</span> known tokens
+          {` · ${Math.floor(summary.writeCoverage * 100)}% of input covered${summary.writeCoverage < 1 ? " · partial" : ""} · ${loading ? "…" : formatCost(writeCost)} estimated write cost on covered usage.`}
+        </>}
+      </p>
+      <p>Net cache savings: <span className="text-foreground tabular-nums">{loading ? "…" : netSavings === null ? "—" : formatCost(netSavings)}</span>
         {netSavings === null ? " · Cache or pricing details are incomplete." : " · Read discount less cache write premium."}
       </p>
       <p>

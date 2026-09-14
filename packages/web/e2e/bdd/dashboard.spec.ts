@@ -27,14 +27,77 @@ test.describe("Feature: Overview", () => {
     await mockDashboardApis(page, { usage: DASHBOARD_USAGE_FIXTURE, pricing: DASHBOARD_PRICING_FIXTURE });
   });
 
+  test("usage summary fits two rows and keeps secondary cache metrics in details", async ({ page }) => {
+    const records = DASHBOARD_USAGE_FIXTURE.records.map((row) => ({ ...row, hour_start: row.hour_start.replace("2026-05", "2026-09") }));
+    await mockDashboardApis(page, { usage: { ...DASHBOARD_USAGE_FIXTURE, records }, pricing: DASHBOARD_PRICING_FIXTURE });
+    await page.goto("/dashboard");
+    await expect(stat(page, "Monthly Forecast")).toBeVisible();
+    for (const title of ["Cache Read Tokens", "Cache Write Tokens", "Net Cache Savings"]) {
+      await expect(page.getByText(title, { exact: true })).toHaveCount(0);
+    }
+    const cards = ["Total Tokens", "Cache Hit Rate", "Input Tokens", "Output Tokens", "Est. Cost", "Monthly Forecast", "Daily Average"];
+    const tops = await Promise.all(cards.map(async (title) => Math.round((await stat(page, title).boundingBox())!.y)));
+    expect(Math.max(...tops.slice(0, 4)) - Math.min(...tops.slice(0, 4))).toBeLessThan(20);
+    expect(Math.max(...tops.slice(4)) - Math.min(...tops.slice(4))).toBeLessThan(20);
+    await page.getByText("Cache & cost details", { exact: true }).click();
+    await expect(page.getByText(/Cache reads:.*300.0K/)).toBeVisible();
+    await expect(page.getByText(/Cache writes:.*unavailable/)).toBeVisible();
+  });
+
+  test("growth comparisons keep the summary compact on desktop", async ({ page }) => {
+    const records = Array.from({ length: 46 }, (_, day) => ({ ...DASHBOARD_USAGE_FIXTURE.records[0],
+      hour_start: new Date(Date.UTC(2026, 7, day + 1)).toISOString(),
+    }));
+    await mockDashboardApis(page, { usage: { ...DASHBOARD_USAGE_FIXTURE, records }, pricing: DASHBOARD_PRICING_FIXTURE });
+    await page.goto("/dashboard");
+    await expect(page.getByText("vs week TD", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("vs month TD", { exact: true }).first()).toBeVisible();
+    await expect(page.getByText("vs last week", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("vs last month", { exact: true })).toHaveCount(0);
+    for (const title of ["Total Tokens", "Est. Cost"]) {
+      const card = page.getByText(title, { exact: true }).locator("xpath=ancestor::div[@data-basalt-surface][1]");
+      expect((await card.boundingBox())!.height).toBeLessThan(220);
+    }
+  });
+
+  for (const width of [1440, 390]) {
+    test(`daily stacked bars and the matching share chart switch dimensions at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 1000 });
+      await page.goto("/dashboard");
+      const breakdown = page.getByRole("region", { name: "Usage breakdown", exact: true });
+      const bar = breakdown.getByRole("figure", { name: "Daily token breakdown", exact: true });
+      const share = breakdown.getByRole("figure", { name: "Token share", exact: true });
+      await expect(bar.getByText("Daily Tokens by Model", { exact: true })).toBeVisible();
+      await expect(share.getByText("1.8M tokens", { exact: true })).toBeVisible();
+      await expect(bar.locator(".recharts-bar")).toHaveCount(1);
+      await breakdown.getByRole("button", { name: "Harness", exact: true }).click();
+      await expect(bar.getByText("Daily Tokens by Harness", { exact: true })).toBeVisible();
+      await expect(share.getByText("Claude Code", { exact: true })).toBeVisible();
+      await breakdown.getByRole("button", { name: "Device", exact: true }).click();
+      await expect(bar.getByText("Daily Tokens by Device", { exact: true })).toBeVisible();
+      await expect(share.getByText("Work Mac", { exact: true })).toBeVisible();
+      await expect(share.getByText("Home Mac", { exact: true })).toBeVisible();
+      await expect(share.getByText("1.8M tokens", { exact: true })).toBeVisible();
+      await expect(bar.locator(".recharts-bar")).toHaveCount(2);
+      const left = (await bar.boundingBox())!;
+      const right = (await share.boundingBox())!;
+      if (width >= 1024) {
+        expect(Math.abs(left.y - right.y)).toBeLessThan(2);
+        expect(Math.abs(left.height - right.height)).toBeLessThan(2);
+        expect(right.x).toBeGreaterThan(left.x);
+      } else {
+        expect(right.y).toBeGreaterThan(left.y);
+      }
+      expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width + 1);
+    });
+  }
+
   test("the original overview highlights cache hit rate and removes the replacement view", async ({ page }) => {
     await page.goto("/dashboard");
     await expect(page.getByRole("heading", { name: "Overview", exact: true })).toBeVisible();
     await expect(stat(page, "Cache Hit Rate").getByText("25.0%", { exact: true })).toBeVisible();
     await expect(stat(page, "Cache Hit Rate").getByText(/100% read coverage/)).toBeVisible();
     await expect(stat(page, "Total Tokens").getByText("1.8M", { exact: true })).toBeVisible();
-    await expect(stat(page, "Cache Read Tokens").getByText("300.0K", { exact: true })).toBeVisible();
-    await expect(stat(page, "Cache Write Tokens").getByText("—", { exact: true })).toBeVisible();
     await expect(stat(page, "Est. Cost").getByText("$11.79", { exact: true })).toBeVisible();
     await expect(page.getByRole("region", { name: "Legacy area", exact: true })).toHaveCount(0);
     await expect(page.getByRole("group", { name: "Overview metrics" })).toHaveCount(0);
@@ -50,14 +113,17 @@ test.describe("Feature: Overview", () => {
     }
   });
 
-  test("the period selector bounds both daily and hourly queries and keeps annual goals", async ({ page }) => {
+  test("the period selector bounds daily, hourly and device queries and keeps annual goals", async ({ page }) => {
     const requests: URL[] = [];
     page.on("request", (request) => {
       const url = new URL(request.url());
-      if (url.pathname === "/api/usage") requests.push(url);
+      if (url.pathname === "/api/usage" || url.pathname === "/api/usage/by-device") requests.push(url);
     });
     await page.goto("/dashboard");
     await expect(stat(page, "Cache Hit Rate").getByText("25.0%", { exact: true })).toBeVisible();
+    const breakdown = page.getByRole("region", { name: "Usage breakdown", exact: true });
+    await breakdown.getByRole("button", { name: "Device", exact: true }).click();
+    await expect(breakdown.getByText("1.8M tokens", { exact: true })).toBeVisible();
     requests.length = 0;
     await page.getByRole("button", { name: "This Month", exact: true }).click();
     await expect(page.getByText("No usage in this period.", { exact: true })).toBeVisible();
@@ -70,6 +136,11 @@ test.describe("Feature: Overview", () => {
     expect(day).toBeDefined();
     expect(hourly).toBeDefined();
     expect(day?.searchParams.get("to")).toBe(hourly?.searchParams.get("to"));
+    await expect(breakdown.getByRole("button", { name: "Device", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(breakdown.getByRole("figure", { name: "Daily token breakdown" }).getByText("No tokens to display.")).toBeVisible();
+    const device = requests.find((url) => url.pathname === "/api/usage/by-device" && url.searchParams.get("from") === from);
+    expect(device).toBeDefined();
+    expect(device?.searchParams.get("to")).toBe(day?.searchParams.get("to"));
     await expect(page.getByRole("region", { name: "Activity", exact: true }).getByText("1.8M", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "All Time", exact: true }).click();
     await expect(stat(page, "Total Tokens").getByText("1.8M", { exact: true })).toBeVisible();
@@ -138,11 +209,13 @@ test.describe("Feature: Overview", () => {
     }));
     await mockDashboardApis(page, { usage: { ...DASHBOARD_USAGE_FIXTURE, records }, pricing: DASHBOARD_PRICING_FIXTURE });
     await page.goto("/dashboard");
-    for (const title of ["Cache Hit Rate", "Cache Read Tokens", "Cache Write Tokens", "Net Cache Savings"]) {
-      await expect(stat(page, title).getByText("—", { exact: true })).toBeVisible();
-    }
+    await expect(stat(page, "Cache Hit Rate").getByText("—", { exact: true })).toBeVisible();
     await expect(stat(page, "Cache Hit Rate").getByText("Read counts unavailable", { exact: true })).toBeVisible();
     await expect(page.getByText("Avg —", { exact: true })).toBeVisible();
+    await page.getByText("Cache & cost details", { exact: true }).click();
+    await expect(page.getByText(/Cache reads:.*unavailable/)).toBeVisible();
+    await expect(page.getByText(/Cache writes:.*unavailable/)).toBeVisible();
+    await expect(page.getByText(/Net cache savings:.*—/)).toBeVisible();
   });
 
   test("mixed clients use a weighted hit rate over covered input and disclose partial reads and writes", async ({ page }) => {
@@ -154,12 +227,12 @@ test.describe("Feature: Overview", () => {
     await page.goto("/dashboard");
     await expect(stat(page, "Cache Hit Rate").getByText("41.7%", { exact: true })).toBeVisible();
     await expect(stat(page, "Cache Hit Rate").getByText(/60% read coverage.*partial/i)).toBeVisible();
-    await expect(stat(page, "Cache Read Tokens").getByText("500.0K", { exact: true })).toBeVisible();
-    await expect(stat(page, "Cache Read Tokens").getByText(/60%.*partial/i)).toBeVisible();
-    await expect(stat(page, "Cache Write Tokens").getByText("50.0K", { exact: true })).toBeVisible();
-    await expect(stat(page, "Cache Write Tokens").getByText(/20%.*partial/i)).toBeVisible();
     await expect(stat(page, "Total Tokens").getByText("2.6M", { exact: true })).toBeVisible();
     await expect(page.getByText("Avg 41.7%", { exact: true })).toBeVisible();
+    await page.getByText("Cache & cost details", { exact: true }).click();
+    await expect(page.getByText(/Cache reads:.*500.0K.*60%.*partial/i)).toBeVisible();
+    await expect(page.getByText(/Cache writes:.*50.0K.*20%.*partial/i)).toBeVisible();
+    await expect(page.getByRole("figure", { name: "Token share" }).getByText("2.6M tokens", { exact: true })).toBeVisible();
   });
 
   test("complete cache writes, a measured zero hit rate and negative net savings remain visible", async ({ page }) => {
@@ -170,11 +243,9 @@ test.describe("Feature: Overview", () => {
     await mockDashboardApis(page, { usage: { records: [record], summary: DASHBOARD_USAGE_FIXTURE.summary }, pricing });
     await page.goto("/dashboard");
     await expect(stat(page, "Cache Hit Rate").getByText("25.0%", { exact: true })).toBeVisible();
-    await expect(stat(page, "Cache Read Tokens").getByText("100.0K", { exact: true })).toBeVisible();
-    await expect(stat(page, "Cache Write Tokens").getByText("50.0K", { exact: true })).toBeVisible();
-    await expect(stat(page, "Cache Write Tokens").getByText("100% input covered", { exact: true })).toBeVisible();
-    await expect(stat(page, "Net Cache Savings").getByText("$0.23", { exact: true })).toBeVisible();
     await page.getByText("Cache & cost details", { exact: true }).click();
+    await expect(page.getByText(/Cache reads:.*100.0K.*100%/)).toBeVisible();
+    await expect(page.getByText(/Cache writes:.*50.0K.*100%/)).toBeVisible();
     await expect(page.getByText("Net cache savings: $0.23", { exact: false })).toBeVisible();
 
     const counts = record.accounting[0]!.groups[0]!.counts;
@@ -185,8 +256,27 @@ test.describe("Feature: Overview", () => {
     await page.reload();
     await expect(stat(page, "Cache Hit Rate").getByText("0.0%", { exact: true })).toBeVisible();
     await expect(stat(page, "Cache Hit Rate").getByText(/100% read coverage/)).toBeVisible();
-    await expect(stat(page, "Net Cache Savings").getByText("-$0.30", { exact: true })).toBeVisible();
     await expect(page.getByText("Avg 0.0%", { exact: true })).toBeVisible();
+    await page.getByText("Cache & cost details", { exact: true }).click();
+    await expect(page.getByText(/Net cache savings:.*-\$0\.30/)).toBeVisible();
+  });
+
+  test("device query failures offer retry and do not hide model or harness usage", async ({ page }) => {
+    let unavailable = true;
+    await page.route("**/api/usage/by-device?*", (route) => unavailable
+      ? route.fulfill({ status: 500, json: { error: "Device query unavailable" } }) : route.fallback());
+    await page.goto("/dashboard");
+    const breakdown = page.getByRole("region", { name: "Usage breakdown", exact: true });
+    await expect(breakdown.getByText("1.8M tokens", { exact: true })).toBeVisible();
+    await breakdown.getByRole("button", { name: "Device", exact: true }).click();
+    await expect(breakdown.getByText(/Failed to load device usage/)).toBeVisible();
+    await expect(breakdown.getByRole("figure", { name: "Token share" }).getByText("Device usage unavailable")).toBeVisible();
+    await breakdown.getByRole("button", { name: "Harness", exact: true }).click();
+    await expect(breakdown.getByText("1.8M tokens", { exact: true })).toBeVisible();
+    await breakdown.getByRole("button", { name: "Device", exact: true }).click();
+    unavailable = false;
+    await breakdown.getByRole("button", { name: "Retry device usage", exact: true }).click();
+    await expect(breakdown.getByText("1.8M tokens", { exact: true })).toBeVisible();
   });
 
   test("usage request failures offer retry without presenting a zero hit rate", async ({ page }) => {

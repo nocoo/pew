@@ -12,7 +12,10 @@ export function DashboardSkeleton() {
       <HeatmapHero data={[]} year={new Date().getFullYear()} totalTokens={0} activeDays={0} loading />
       <DashboardSegment title="Usage summary">
         <StatGrid columns={4}>
-          {["total", "hit-rate", "input", "output", "cost", "read", "write", "savings"].map((metric) => <StatCardSkeleton key={metric} />)}
+          {["total", "hit-rate", "input", "output"].map((metric) => <StatCardSkeleton key={metric} />)}
+        </StatGrid>
+        <StatGrid columns={3}>
+          {["cost", "forecast", "daily-average"].map((metric) => <StatCardSkeleton key={metric} />)}
         </StatGrid>
       </DashboardSegment>
       <DashboardSegment title="Trends">
@@ -28,6 +31,11 @@ export function DashboardSkeleton() {
               <Skeleton className="mx-auto h-[180px] w-[180px] rounded-full" />
             </div>)}
           </div>
+        </div>
+        <Skeleton className="h-8 w-52 rounded-lg" />
+        <div className="grid grid-cols-1 gap-3 md:gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+          <ChartCardSkeleton titleWidth="w-40" chartHeight="h-[280px]" />
+          <ChartCardSkeleton titleWidth="w-24" chartHeight="h-[280px]" />
         </div>
       </DashboardSegment>
       <DashboardSegment title="Insights">
