@@ -101,7 +101,6 @@ export async function runSync(opts: SyncOptions): Promise<SyncResult> {
     baseline: prior,
     openRouter: orParse.entries,
     modelsDev: mdParse.entries,
-    admin: [],
     now: opts.now,
   });
 
@@ -125,22 +124,16 @@ export async function runSync(opts: SyncOptions): Promise<SyncResult> {
   // Preserve prior updatedAt when nothing meaningful changed — keeps re-runs
   // diff-free against the checked-in baseline file.
   const priorById = new Map(prior.map((e) => [e.model, e]));
+  const content = (value: unknown) => JSON.stringify(value, (key, v) => key === "updatedAt" ? undefined : v);
   const stabilized = merged.entries.map((e) => {
     const prev = priorById.get(e.model);
     if (!prev) return e;
-    if (
-      prev.inputPerMillion === e.inputPerMillion &&
-      prev.outputPerMillion === e.outputPerMillion &&
-      prev.cachedPerMillion === e.cachedPerMillion &&
-      prev.contextWindow === e.contextWindow &&
-      prev.displayName === e.displayName &&
-      prev.provider === e.provider &&
-      prev.origin === e.origin &&
-      JSON.stringify(prev.aliases ?? null) === JSON.stringify(e.aliases ?? null)
-    ) {
-      return { ...e, updatedAt: prev.updatedAt };
-    }
-    return e;
+    const routePrices = e.routePrices && Object.fromEntries(Object.entries(e.routePrices).map(([route, rates]) => {
+      const previous = prev.routePrices?.[route];
+      return [route, previous && content(previous) === content(rates) ? previous : rates];
+    }));
+    return { ...e, ...(routePrices ? { routePrices } : {}),
+      updatedAt: content(prev) === content(e) ? prev.updatedAt : e.updatedAt };
   });
 
   return {

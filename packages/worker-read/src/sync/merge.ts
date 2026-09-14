@@ -82,7 +82,20 @@ function applyLayer(
     const prior = exact ?? displaced;
     if (shouldSkipForZeroPrice(prior, entry)) continue;
     if (displacedKey) byModel.delete(displacedKey);
-    byModel.set(entry.model, cloneEntry(entry));
+    const next = cloneEntry(entry);
+    const routes = { ...prior?.routePrices, ...entry.routePrices };
+    if (prior?.route && prior.route !== entry.route) {
+      routes[prior.route] = {
+        inputPerMillion: prior.inputPerMillion, outputPerMillion: prior.outputPerMillion, cachedPerMillion: prior.cachedPerMillion,
+        cacheWritePerMillion: prior.cacheWritePerMillion, cacheWrite5mPerMillion: prior.cacheWrite5mPerMillion, cacheWrite1hPerMillion: prior.cacheWrite1hPerMillion,
+        contextTiers: prior.contextTiers, origin: prior.origin, updatedAt: prior.updatedAt,
+      };
+    }
+    // A previous primary route may become primary again in the next layer.
+    // Only retain alternate routes so an older copy cannot shadow fresh rates.
+    const alternateRoutes = Object.entries(routes).filter(([route]) => route !== entry.route);
+    if (alternateRoutes.length) next.routePrices = Object.fromEntries(alternateRoutes);
+    byModel.set(entry.model, next);
   }
 }
 
@@ -119,7 +132,7 @@ export function mergePricingSources(input: MergeInput): MergeResult {
       return i >= 0 && e.model.slice(i + 1) === bare;
     });
     if (collisions.length > 1) continue;
-    entry.aliases = entry.aliases ? [...entry.aliases, bare] : [bare];
+    entry.aliases = [...new Set([...(entry.aliases ?? []), bare])];
     claimed.add(bare);
   }
 

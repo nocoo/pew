@@ -59,6 +59,30 @@ describe("runSync", () => {
     expect(r.removedModels).toEqual([]);
   });
 
+  it("changes timestamps for write-price changes and preserves unchanged alternate routes", async () => {
+    const fixtureDir = resolve(outputPath, "..");
+    const orFile = resolve(fixtureDir, "openrouter.json");
+    const mdFile = resolve(fixtureDir, "models-dev.json");
+    writeFileSync(orFile, JSON.stringify({ data: [{ id: "openai/test", pricing: {
+      prompt: "0.000002", completion: "0.00001", input_cache_write: "0.0000025",
+    } }] }));
+    const direct = (write: number) => JSON.stringify({ openai: { models: { test: { cost: {
+      input: 4, output: 20, cache_write: write,
+    } } } } });
+    writeFileSync(mdFile, direct(5));
+    const options = { dryRun: false, allowRemovals: false, fixtureDir, outputPath, now: NOW };
+    const first = await runSync(options);
+    writeFileSync(outputPath, JSON.stringify(first.entries));
+    const later = "2026-05-01T00:00:00.000Z";
+    expect((await runSync({ ...options, now: later })).entries).toEqual(first.entries);
+    writeFileSync(mdFile, direct(6));
+    const changed = (await runSync({ ...options, now: later })).entries[0];
+    expect(changed.cacheWritePerMillion).toBe(6);
+    expect(changed.updatedAt).toBe(later);
+    expect(changed.routePrices?.openrouter.updatedAt).toBe(NOW);
+    expect(changed.routePrices?.direct).toBeUndefined();
+  });
+
   it("regression check reports removedModels when prior baseline has extras", async () => {
     writeFileSync(
       outputPath,

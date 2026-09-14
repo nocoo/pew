@@ -5,6 +5,7 @@
  */
 
 import type { DynamicPricingEntry } from "./types";
+import type { PublicContextTier } from "@pew/core";
 
 interface OpenRouterApiResponse {
   data: Array<{
@@ -15,6 +16,9 @@ interface OpenRouterApiResponse {
       prompt: string;
       completion: string;
       input_cache_read?: string;
+      input_cache_write?: string;
+      input_cache_write_1h?: string;
+      overrides?: Array<{ min_prompt_tokens?: number; prompt?: string; completion?: string; input_cache_read?: string; input_cache_write?: string; input_cache_write_1h?: string }>;
     };
   }>;
 }
@@ -64,10 +68,16 @@ function stripProviderPrefix(name: string, provider: string): string {
 }
 
 function parseDecimal(value: unknown): number | null {
+  if (typeof value === "string" && value.trim() === "") return null;
   if (typeof value !== "string" && typeof value !== "number") return null;
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n) || n < 0) return null;
   return n;
+}
+
+function perMillion(value: unknown): number | null {
+  const n = parseDecimal(value);
+  return n === null || !Number.isFinite(n * 1_000_000) ? null : n * 1_000_000;
 }
 
 export function parseOpenRouter(json: unknown, now: string): ParseResult {
@@ -94,13 +104,21 @@ export function parseOpenRouter(json: unknown, now: string): ParseResult {
       warnings.push(`openrouter: skipped ${id} — missing pricing`);
       continue;
     }
-    const prompt = parseDecimal(pricing.prompt);
-    const completion = parseDecimal(pricing.completion);
+    const prompt = perMillion(pricing.prompt);
+    const completion = perMillion(pricing.completion);
     if (prompt === null || completion === null) {
       warnings.push(`openrouter: skipped ${id} — invalid prompt/completion price`);
       continue;
     }
-    const cacheRead = parseDecimal(pricing.input_cache_read);
+    const cacheRead = perMillion(pricing.input_cache_read);
+    const contextTiers: PublicContextTier[] = [];
+    if (Array.isArray(pricing.overrides)) for (const t of pricing.overrides) {
+      if (!t || !Number.isSafeInteger(t.min_prompt_tokens) || Number(t.min_prompt_tokens) < 0) continue;
+      const input = perMillion(t.prompt); const output = perMillion(t.completion);
+      if (input === null || output === null) continue;
+      contextTiers.push({ minInputTokens: Number(t.min_prompt_tokens), inputPerMillion: input, outputPerMillion: output,
+        cachedPerMillion: perMillion(t.input_cache_read), cacheWritePerMillion: perMillion(t.input_cache_write), cacheWrite1hPerMillion: perMillion(t.input_cache_write_1h) });
+    }
 
     const provider = providerFromId(id);
     const rawName = typeof raw.name === "string" ? raw.name : "";
@@ -115,9 +133,13 @@ export function parseOpenRouter(json: unknown, now: string): ParseResult {
       model: id,
       provider,
       displayName,
-      inputPerMillion: prompt * 1_000_000,
-      outputPerMillion: completion * 1_000_000,
-      cachedPerMillion: cacheRead === null ? null : cacheRead * 1_000_000,
+      inputPerMillion: prompt,
+      outputPerMillion: completion,
+      cachedPerMillion: cacheRead,
+      cacheWritePerMillion: perMillion(pricing.input_cache_write),
+      cacheWrite1hPerMillion: perMillion(pricing.input_cache_write_1h),
+      route: "openrouter",
+      ...(contextTiers.length ? { contextTiers: contextTiers.sort((a, b) => a.minInputTokens - b.minInputTokens) } : {}),
       contextWindow: ctx,
       origin: "openrouter",
       updatedAt: now,

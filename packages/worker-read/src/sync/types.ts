@@ -5,7 +5,9 @@
  * ModelPricing shape used by the web cost-calc layer.
  */
 
-export interface DynamicPricingEntry {
+import type { CachePriceDetails } from "@pew/core";
+
+export interface DynamicPricingEntry extends CachePriceDetails {
   model: string;
   provider: string;
   displayName: string | null;

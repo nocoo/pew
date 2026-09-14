@@ -23,6 +23,7 @@ import {
   validateIngestRecord,
   validateSessionIngestRecord,
   validateEvidenceRecord,
+  validateAccountingRecord,
 } from "@pew/core";
 import type {
   IngestRecord,
@@ -33,6 +34,7 @@ import type {
   EvidenceRecord,
 } from "@pew/core";
 import { EVIDENCE_UPSERT_SQL } from "./evidence-sql";
+import { ingestAccounting } from "./accounting-sql";
 
 // Re-export types for test imports
 export type { IngestRecord, IngestRequest, SessionIngestRecord, SessionIngestRequest };
@@ -332,6 +334,19 @@ export default {
     }
 
     if (path === "/ingest/evidence") return handleEvidenceIngest(body, env);
+
+    if (path === "/ingest/details") {
+      const validation = validateRequest(body, validateAccountingRecord);
+      if (!validation.ok) return Response.json({ error: validation.error }, { status: 400 });
+      if (validation.records.length > 25) return Response.json({ error: "Accounting batch too large: max 25 records" }, { status: 400 });
+      try {
+        const acknowledgments = await ingestAccounting(env.DB, validation.userId, validation.records);
+        return Response.json({ details_version: 1, acknowledgments });
+      } catch {
+        console.error("Accounting detail ingest failed");
+        return Response.json({ error: "Internal server error" }, { status: 500 });
+      }
+    }
 
     if (path === "/ingest/tokens" || path === "/ingest") {
       return handleTokenIngest(body, env);

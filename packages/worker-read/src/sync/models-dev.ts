@@ -9,6 +9,7 @@
  */
 
 import type { DynamicPricingEntry } from "./types";
+import type { PublicContextTier } from "@pew/core";
 
 interface ModelsDevApiResponse {
   [providerId: string]: {
@@ -19,6 +20,9 @@ interface ModelsDevApiResponse {
           input?: number;
           output?: number;
           cache_read?: number;
+          cache_write?: number;
+          cache_write_1h?: number;
+          [key: string]: unknown;
         };
         limit?: { context?: number };
       };
@@ -93,6 +97,19 @@ export function parseModelsDev(json: unknown, now: string): ParseResult {
         continue;
       }
       const cacheRead = nonNegativeNumber(cost.cache_read);
+      const contextTiers: PublicContextTier[] = [];
+      for (const [key, raw] of Object.entries(cost)) {
+        const threshold = /^context_over_(\d+)k$/.exec(key);
+        if (!threshold || !raw || typeof raw !== "object") continue;
+        const minInputTokens = Number(threshold[1]) * 1000 + 1;
+        if (!Number.isSafeInteger(minInputTokens)) continue;
+        const tier = raw as Record<string, unknown>;
+        const ti = nonNegativeNumber(tier.input); const to = nonNegativeNumber(tier.output);
+        if (ti === null || to === null) continue;
+        contextTiers.push({ minInputTokens, inputPerMillion: ti, outputPerMillion: to,
+          cachedPerMillion: nonNegativeNumber(tier.cache_read), cacheWritePerMillion: nonNegativeNumber(tier.cache_write),
+          cacheWrite1hPerMillion: nonNegativeNumber(tier.cache_write_1h) });
+      }
       const ctx =
         typeof m.limit?.context === "number" && Number.isFinite(m.limit.context)
           ? m.limit.context
@@ -106,6 +123,10 @@ export function parseModelsDev(json: unknown, now: string): ParseResult {
         inputPerMillion: input,
         outputPerMillion: output,
         cachedPerMillion: cacheRead,
+        cacheWritePerMillion: nonNegativeNumber(cost.cache_write),
+        cacheWrite1hPerMillion: nonNegativeNumber(cost.cache_write_1h),
+        route: "direct",
+        ...(contextTiers.length ? { contextTiers: contextTiers.sort((a, b) => a.minInputTokens - b.minInputTokens) } : {}),
         contextWindow: ctx,
         origin: "models.dev",
         updatedAt: now,

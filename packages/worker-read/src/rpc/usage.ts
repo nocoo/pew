@@ -5,12 +5,14 @@
  */
 
 import type { D1Database } from "@cloudflare/workers-types";
+import { withAccounting } from "./accounting";
 
 // ---------------------------------------------------------------------------
 // Response Types
 // ---------------------------------------------------------------------------
 
 interface UsageRow {
+  accounting_json?: string;
   source: string;
   model: string;
   hour_start: string;
@@ -24,6 +26,7 @@ interface UsageRow {
 }
 
 interface DeviceSummaryRow {
+  accounting_json?: string;
   device_id: string;
   alias: string | null;
   first_seen: string;
@@ -38,6 +41,7 @@ interface DeviceSummaryRow {
 }
 
 interface CostDetailRow {
+  accounting_json?: string;
   device_id: string;
   source: string;
   model: string;
@@ -48,6 +52,7 @@ interface CostDetailRow {
 }
 
 interface TimelineRow {
+  accounting_json?: string;
   date: string;
   device_id: string;
   total_tokens: number;
@@ -60,6 +65,7 @@ interface TimelineRow {
 // ---------------------------------------------------------------------------
 
 export interface GetUsageRequest {
+  includeReportedCosts?: boolean;
   method: "usage.get";
   userId: string;
   fromDate: string;
@@ -166,7 +172,8 @@ async function handleGetUsage(
       SUM(reasoning_output_tokens) AS reasoning_output_tokens,
       SUM(total_tokens) AS total_tokens,
       SUM(evidence_tokens) AS evidence_tokens,
-      SUM(approximate_tokens) AS approximate_tokens
+      SUM(approximate_tokens) AS approximate_tokens,
+      json_group_array(json(accounting_json)) AS accounting_json
     FROM usage_totals
     WHERE ${conditions.join(" AND ")}
     GROUP BY ${groupBy}
@@ -178,7 +185,7 @@ async function handleGetUsage(
     .bind(...prependParams, ...params)
     .all<UsageRow>();
 
-  return Response.json({ result: results.results });
+  return Response.json({ result: results.results.map((r) => withAccounting(r, req.includeReportedCosts === true)) });
 }
 
 async function handleGetDeviceSummary(
@@ -204,6 +211,7 @@ async function handleGetDeviceSummary(
         SUM(ur.output_tokens) AS output_tokens,
         SUM(ur.cached_input_tokens) AS cached_input_tokens,
         SUM(ur.reasoning_output_tokens) AS reasoning_output_tokens,
+        json_group_array(json(ur.accounting_json)) AS accounting_json,
         GROUP_CONCAT(DISTINCT ur.source) AS sources,
         GROUP_CONCAT(DISTINCT ur.model) AS models
       FROM usage_totals ur
@@ -218,7 +226,7 @@ async function handleGetDeviceSummary(
     .bind(req.userId, req.fromDate, req.toDate)
     .all<DeviceSummaryRow>();
 
-  return Response.json({ result: results.results });
+  return Response.json({ result: results.results.map((r) => withAccounting(r)) });
 }
 
 async function handleGetDeviceCostDetails(
@@ -241,7 +249,8 @@ async function handleGetDeviceCostDetails(
         SUM(ur.input_tokens) AS input_tokens,
         SUM(ur.output_tokens) AS output_tokens,
         SUM(ur.cached_input_tokens) AS cached_input_tokens,
-        SUM(ur.reasoning_output_tokens) AS reasoning_output_tokens
+        SUM(ur.reasoning_output_tokens) AS reasoning_output_tokens,
+        json_group_array(json(ur.accounting_json)) AS accounting_json
       FROM usage_totals ur
       WHERE ur.user_id = ?
         AND ur.hour_start >= ?
@@ -251,7 +260,7 @@ async function handleGetDeviceCostDetails(
     .bind(req.userId, req.fromDate, req.toDate)
     .all<CostDetailRow>();
 
-  return Response.json({ result: results.results });
+  return Response.json({ result: results.results.map((r) => withAccounting(r)) });
 }
 
 async function handleGetDeviceTimeline(
@@ -299,7 +308,8 @@ async function handleGetDeviceTimeline(
       SUM(ur.input_tokens) AS input_tokens,
       SUM(ur.output_tokens) AS output_tokens,
       SUM(ur.cached_input_tokens) AS cached_input_tokens,
-      SUM(ur.reasoning_output_tokens) AS reasoning_output_tokens
+      SUM(ur.reasoning_output_tokens) AS reasoning_output_tokens,
+      json_group_array(json(ur.accounting_json)) AS accounting_json
     FROM usage_totals ur
     WHERE ur.user_id = ?
       AND ur.hour_start >= ?
@@ -313,7 +323,7 @@ async function handleGetDeviceTimeline(
     .bind(...tzParams, req.userId, req.fromDate, req.toDate)
     .all<TimelineRow>();
 
-  return Response.json({ result: results.results });
+  return Response.json({ result: results.results.map((r) => withAccounting(r)) });
 }
 
 // ---------------------------------------------------------------------------

@@ -33,6 +33,7 @@ describe("evidence ingest and additive migration", () => {
         UNIQUE(user_id,device_id,source,model,hour_start));`);
     const migration = resolve("scripts/migrations/022-usage-evidence.sql");
     if (existsSync(migration)) db.exec(readFileSync(migration, "utf8"));
+    db.exec(readFileSync(resolve("scripts/migrations/026-usage-accounting.sql"), "utf8"));
     const prepare = (sql: string) => {
       const stmt = db.prepare(sql);
       return { bind: (...args: unknown[]) => ({
