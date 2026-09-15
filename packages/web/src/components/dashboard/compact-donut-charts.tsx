@@ -113,7 +113,7 @@ function CompactDonutChart({ title, data, className }: CompactDonutChartProps) {
 
         {/* Legend */}
         <div className="flex-1 min-w-0 space-y-1">
-          {data.slice(0, 5).map((item) => (
+          {data.map((item) => (
             <div key={item.name} className="flex items-center gap-1.5">
               <div
                 className="h-2 w-2 shrink-0 rounded-full"
@@ -199,7 +199,7 @@ interface ModelDonutChartProps {
 }
 
 export function ModelDonutChart({ modelEvolution, className }: ModelDonutChartProps) {
-  // Aggregate models from evolution data
+  // Preserve the timeline's recent model selection, including Other.
   const totals = new Map<string, number>();
   for (const pt of modelEvolution) {
     for (const [model, val] of Object.entries(pt.models)) {
@@ -207,13 +207,9 @@ export function ModelDonutChart({ modelEvolution, className }: ModelDonutChartPr
     }
   }
 
-  const sorted = Array.from(totals.entries())
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5);
+  const total = [...totals.values()].reduce((sum, val) => sum + val, 0);
 
-  const total = sorted.reduce((sum, [, val]) => sum + val, 0);
-
-  const data: DonutDataItem[] = sorted.map(([model, val]) => ({
+  const data: DonutDataItem[] = [...totals].map(([model, val]) => ({
     name: shortModel(model),
     value: val,
     color: modelColor(model).color,

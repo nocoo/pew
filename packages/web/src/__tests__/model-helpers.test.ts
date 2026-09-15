@@ -108,6 +108,20 @@ describe("toModelEvolutionPoints", () => {
     expect(result[0]!.models["model-d"]).toBeUndefined();
   });
 
+  it("keeps recent models visible across the whole timeline and older usage in Other", () => {
+    const rows = [
+      makeRow({ model: "retired", hour_start: "2026-03-01", total_tokens: 100_000 }),
+      makeRow({ model: "current", hour_start: "2026-03-01", total_tokens: 300 }),
+      makeRow({ model: "current", hour_start: "2026-03-20", total_tokens: 200 }),
+      makeRow({ model: "current", hour_start: "2026-03-21", total_tokens: 100 }),
+    ];
+    const result = toModelEvolutionPoints(rows, 1);
+    expect(result.map((point) => point.models)).toEqual([
+      { current: 300, Other: 100_000 }, { current: 200, Other: 0 }, { current: 100, Other: 0 },
+    ]);
+    expect(toModelEvolutionPoints([...rows].reverse(), 1)).toEqual(result);
+  });
+
   it("drops models beyond topN when includeOther is false", () => {
     const rows = [
       makeRow({ model: "model-a", hour_start: "2026-03-07", total_tokens: 5000 }),

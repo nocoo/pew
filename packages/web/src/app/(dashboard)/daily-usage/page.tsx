@@ -332,9 +332,9 @@ export default function DailyUsagePage() {
     [data, tzOffset]
   );
 
-  // Model evolution data (without "Other" category)
+  // Recent models plus Other, shared by the timeline and donut.
   const modelEvolution = useMemo(
-    () => (data ? toModelEvolutionPoints(data.records, 5, tzOffset, false) : []),
+    () => (data ? toModelEvolutionPoints(data.records, 5, tzOffset) : []),
     [data, tzOffset]
   );
 

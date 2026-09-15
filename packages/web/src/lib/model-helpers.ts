@@ -4,7 +4,7 @@
 
 import { accountedTotal } from "@/lib/accounting";
 import type { UsageRow } from "@/hooks/use-usage-data";
-import { toLocalDateStr } from "@/lib/usage-helpers";
+import { rankUsageByRecency, toLocalDateStr } from "@/lib/usage-helpers";
 
 /**
  * Truncate long model names for chart Y-axis labels.
@@ -36,7 +36,7 @@ export interface ModelEra {
 /**
  * Produce daily model evolution data points.
  *
- * Identifies the top N models by total tokens across the entire period
+ * Identifies the top N models by recent usage within the selected period
  * (default 10), optionally groups the rest as "Other", and returns one
  * entry per date with per-model token counts (zero-filled for missing
  * models on a given day).
@@ -49,16 +49,10 @@ export function toModelEvolutionPoints(
 ): ModelEra[] {
   if (rows.length === 0) return [];
 
-  // 1. Compute global totals per model to determine top N
-  const globalTotals = new Map<string, number>();
-  for (const r of rows) {
-    globalTotals.set(r.model, (globalTotals.get(r.model) ?? 0) + accountedTotal(r));
-  }
-
-  // Sort by total descending, pick top N
-  const ranked = Array.from(globalTotals.entries())
-    .sort((a, b) => b[1] - a[1]);
-  const topModels = new Set(ranked.slice(0, topN).map(([m]) => m));
+  const ranked = rankUsageByRecency(rows.map((r) => ({
+    id: r.model, date: toLocalDateStr(r.hour_start, tzOffset), value: accountedTotal(r),
+  })));
+  const topModels = new Set(ranked.slice(0, topN));
   const hasOther = includeOther && ranked.length > topN;
 
   // 2. Accumulate by (date, model), grouping non-top as "Other"

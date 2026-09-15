@@ -13,6 +13,8 @@ import type { UsageRow } from "@/hooks/use-usage-data";
 import { cn, formatTokens } from "@/lib/utils";
 import { chartAxis, modelColor } from "@/lib/palette";
 import { shortModel } from "@/lib/model-helpers";
+import { rankUsageByRecency, toLocalDateStr } from "@/lib/usage-helpers";
+import { accountedTotal } from "@/lib/accounting";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 import {
   ChartTooltip,
@@ -74,7 +76,7 @@ interface ModelSlotPoint {
   [model: string]: string | number;
 }
 
-function toModelTimeline(
+export function toModelTimeline(
   records: UsageRow[],
   tzOffset: number,
   fromISO: string,
@@ -82,22 +84,23 @@ function toModelTimeline(
   topN: number
 ): { data: ModelSlotPoint[]; modelKeys: string[] } {
   const SLOT_MS = 30 * 60_000;
+  const startMs = new Date(fromISO).getTime();
+  const endMs = new Date(toISO).getTime();
+  const selected = records.filter((r) => {
+    const time = new Date(r.hour_start).getTime();
+    return time >= startMs && time <= endMs;
+  });
 
-  // Sum tokens by model to find top N
-  const modelTotals = new Map<string, number>();
-  for (const r of records) {
-    modelTotals.set(r.model, (modelTotals.get(r.model) ?? 0) + r.total_tokens);
-  }
-  const sortedModels = Array.from(modelTotals.entries())
-    .sort((a, b) => b[1] - a[1]);
-
-  const topModels = sortedModels.slice(0, topN).map(([m]) => m);
-  const hasOther = sortedModels.length > topN;
+  const ranked = rankUsageByRecency(selected.map((r) => ({
+    id: r.model, date: toLocalDateStr(r.hour_start, tzOffset), value: accountedTotal(r),
+  })));
+  const topModels = ranked.slice(0, topN);
+  const hasOther = ranked.length > topN;
   const modelKeys = hasOther ? [...topModels, "Other"] : topModels;
 
   // Aggregate by slot
   const bySlot = new Map<number, Record<string, number>>();
-  for (const r of records) {
+  for (const r of selected) {
     const ms = new Date(r.hour_start).getTime();
     const key = ms - (ms % SLOT_MS);
 
@@ -109,12 +112,10 @@ function toModelTimeline(
     }
 
     const modelKey = topModels.includes(r.model) ? r.model : "Other";
-    bucket[modelKey] = (bucket[modelKey] ?? 0) + r.total_tokens;
+    bucket[modelKey] = (bucket[modelKey] ?? 0) + accountedTotal(r);
   }
 
   // Generate all slots in range
-  const startMs = new Date(fromISO).getTime();
-  const endMs = new Date(toISO).getTime();
   let cursor = startMs - (startMs % SLOT_MS);
   const result: ModelSlotPoint[] = [];
 

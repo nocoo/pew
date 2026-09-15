@@ -16,6 +16,25 @@ import type { PricingMap } from "@/lib/pricing";
 
 export { toLocalDateStr } from "@/lib/usage-transforms";
 
+/**
+ * Rank by tokens in each ID's most recent seven-day window, working backwards
+ * from the latest positive usage date in the selection. Dates are local calendar
+ * days, not timestamps. Historical totals never outrank usage in a newer window.
+ */
+export function rankUsageByRecency(samples: { id: string; date: string; value: number }[]): string[] {
+  const usage = samples.filter((s) => s.value > 0).map((s) => ({ ...s, time: new Date(s.date).getTime() }));
+  const latest = usage.reduce((time, s) => Math.max(time, s.time), -Infinity);
+  const ranks = new Map<string, { week: number; tokens: number }>();
+  for (const sample of usage) {
+    const week = Math.floor((latest - sample.time) / (7 * 86_400_000));
+    const rank = ranks.get(sample.id);
+    if (!rank || week < rank.week) ranks.set(sample.id, { week, tokens: sample.value });
+    else if (week === rank.week) rank.tokens += sample.value;
+  }
+  return [...ranks].sort(([a, av], [b, bv]) => av.week - bv.week || bv.tokens - av.tokens || a.localeCompare(b))
+    .map(([id]) => id);
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -954,7 +973,7 @@ export interface HourlyByModelPoint {
  * Compute average hourly token usage grouped by model.
  *
  * Groups half-hour records by local hour-of-day and model name,
- * keeps top N models by total tokens, buckets rest as "Other",
+ * keeps top N models by recent usage, buckets rest as "Other",
  * then divides by the number of days in the date range to get averages.
  *
  * @param rows       — raw UsageRow[] (must be half-hour granularity)
@@ -973,16 +992,10 @@ export function toHourlyByModel(
     return Array.from({ length: 24 }, (_, hour) => ({ hour, models: {} }));
   }
 
-  // 1. Compute global totals per model to determine top N
-  const globalTotals = new Map<string, number>();
-  for (const r of rows) {
-    globalTotals.set(r.model, (globalTotals.get(r.model) ?? 0) + accountedTotal(r));
-  }
-
-  // Sort by total descending, pick top N
-  const ranked = Array.from(globalTotals.entries())
-    .sort((a, b) => b[1] - a[1]);
-  const topModels = new Set(ranked.slice(0, topN).map(([m]) => m));
+  const ranked = rankUsageByRecency(rows.map((r) => ({
+    id: r.model, date: toLocalDateStr(r.hour_start, tzOffset), value: accountedTotal(r),
+  })));
+  const topModels = new Set(ranked.slice(0, topN));
   const hasOther = ranked.length > topN;
 
   // Accumulators: [hour] -> { [model]: tokens }

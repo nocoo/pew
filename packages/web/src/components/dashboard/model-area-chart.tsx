@@ -170,7 +170,7 @@ export function ModelAreaChart({
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs md:text-sm text-muted-foreground">By Model</p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          {modelKeys.slice(0, 5).map((model) => (
+          {modelKeys.map((model) => (
             <div key={model} className="flex items-center gap-1.5">
               <div
                 className="h-2 w-2 rounded-full"

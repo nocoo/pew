@@ -177,6 +177,15 @@ describe("toHourlyByModel", () => {
     expect(result[10]!.models.sonnet).toBe(3000);
   });
 
+  it("uses the same recent model selection for hourly averages without dropping older usage", () => {
+    const rows = [
+      makeRow({ model: "retired", hour_start: "2026-03-01T10:00:00Z", total_tokens: 30_000 }),
+      makeRow({ model: "current", hour_start: "2026-03-30T10:30:00Z", total_tokens: 300 }),
+    ];
+    const result = toHourlyByModel(rows, { from: "2026-03-01", to: "2026-03-30" }, 0, 1);
+    expect(result[10]?.models).toEqual({ current: 10, Other: 1000 });
+  });
+
   it("should shift hours with timezone offset (UTC+9 JST)", () => {
     // 2026-03-07T01:00Z → JST local = 2026-03-07T10:00 → hour 10
     const rows: UsageRow[] = [

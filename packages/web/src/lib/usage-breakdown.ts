@@ -1,6 +1,7 @@
 import type { DeviceTimelinePoint } from "@pew/core";
 import { accountedTotal } from "./accounting";
 import { fillDateRange } from "./date-helpers";
+import { rankUsageByRecency } from "./usage-helpers";
 import { toLocalDateStr, type UsageRow } from "./usage-transforms";
 
 export type UsageDimension = "model" | "harness" | "device";
@@ -37,7 +38,9 @@ export function toUsageBreakdown(
   });
   const totals = new Map<string, number>();
   for (const sample of selected) totals.set(sample.id, (totals.get(sample.id) ?? 0) + sample.value);
-  const ranked = [...totals].sort(([a, av], [b, bv]) => bv - av || a.localeCompare(b));
+  const ranked = dimension === "model"
+    ? rankUsageByRecency(selected).map((id) => [id, totals.get(id) ?? 0] as const)
+    : [...totals].sort(([a, av], [b, bv]) => bv - av || a.localeCompare(b));
   // Generated keys keep dots, brackets and reserved names out of Recharts data paths.
   const series: UsageBreakdownSeries[] = ranked.slice(0, 5).map(([id, total], i) => ({ key: `s${i}`, id, total }));
   if (ranked.length > 5) series.push({ key: "other", id: null, total: ranked.slice(5).reduce((n, [, value]) => n + value, 0) });

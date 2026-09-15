@@ -7,9 +7,34 @@ import {
   sourceLabel,
   type UsageRow,
 } from "@/hooks/use-usage-data";
-import { toLocalDailyBuckets, compareWeekdayWeekend, computeMoMGrowth, toSourceTrendPoints, toDominantSourceTimeline, computeWoWGrowth, toHourlyWeekdayWeekend } from "@/lib/usage-helpers";
+import { toLocalDailyBuckets, compareWeekdayWeekend, computeMoMGrowth, toSourceTrendPoints, toDominantSourceTimeline, computeWoWGrowth, toHourlyWeekdayWeekend, rankUsageByRecency } from "@/lib/usage-helpers";
 import { getDefaultPricingMap } from "@/lib/pricing";
 import type { PricingMap } from "@/lib/pricing";
+
+describe("rankUsageByRecency", () => {
+  it("ranks usage in the latest seven calendar days first, then walks backwards by week", () => {
+    const samples = [
+      { id: "retired", date: "2026-08-01", value: 1_000_000 },
+      { id: "current", date: "2026-08-01", value: 1_000_000 },
+      { id: "previous-week", date: "2026-09-08", value: 10_000 },
+      { id: "regular", date: "2026-09-09", value: 80 },
+      { id: "regular", date: "2026-09-11", value: 70 },
+      { id: "z-tie", date: "2026-09-12", value: 100 },
+      { id: "a-tie", date: "2026-09-13", value: 100 },
+      { id: "current", date: "2026-09-15", value: 120 },
+      { id: "one-off", date: "2026-09-15", value: 1 },
+      { id: "empty", date: "2026-10-01", value: 0 },
+    ];
+    const expected = ["regular", "current", "a-tie", "z-tie", "one-off", "previous-week", "retired"];
+    expect(rankUsageByRecency(samples)).toEqual(expected);
+    expect(rankUsageByRecency([...samples].reverse())).toEqual(expected);
+  });
+
+  it("has no candidates without positive usage", () => {
+    expect(rankUsageByRecency([])).toEqual([]);
+    expect(rankUsageByRecency([{ id: "empty", date: "2026-09-15", value: 0 }])).toEqual([]);
+  });
+});
 
 // ---------------------------------------------------------------------------
 // Test data factory
@@ -989,4 +1014,3 @@ describe("default `now` arguments", () => {
     expect(out[0]!.dominantShare).toBe(0);
   });
 });
-

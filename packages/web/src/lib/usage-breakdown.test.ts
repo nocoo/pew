@@ -46,6 +46,38 @@ describe("toUsageBreakdown", () => {
     expect(result.series.reduce((n, s) => n + Number(result.daily[1]?.[s.key]), 0)).toBe(2800);
   });
 
+  it("shows recent models in both charts while preserving every historical token and share", () => {
+    const records = [
+      ...Array.from({ length: 6 }, (_, i) => row({ model: `retired-${i}`, hour_start: "2026-01-04", total_tokens: 10_000 })),
+      row({ model: "current-0", hour_start: "2026-01-04", total_tokens: 2000 }),
+      ...Array.from({ length: 5 }, (_, i) => row({ model: `current-${i}`, hour_start: "2026-09-09", total_tokens: 100 - i })),
+      row({ model: "current-0", hour_start: "2026-09-15", total_tokens: 100 }),
+      row({ model: "outside-period", hour_start: "2026-09-16", total_tokens: 1_000_000 }),
+    ];
+    for (const input of [records, [...records].reverse()]) {
+      const result = toUsageBreakdown(input, [], "model", { start: "2026-01-04", end: "2026-09-15" }, -480);
+      expect(result.series.map((s) => s.id)).toEqual(["current-0", "current-1", "current-2", "current-3", "current-4", null]);
+      expect(result.series.map((s) => s.total)).toEqual([2200, 99, 98, 97, 96, 60_000]);
+      expect(result.total).toBe(62_590);
+      for (const series of result.series) {
+        expect(result.daily.reduce((n, point) => n + Number(point[series.key]), 0)).toBe(series.total);
+      }
+      expect(result.daily.at(-1)?.other).toBe(0);
+    }
+  });
+
+  it("ranks models using local calendar days and anchors historical ranges to their latest usage", () => {
+    const records = [
+      ...Array.from({ length: 5 }, (_, i) => row({ model: `previous-${i}`, hour_start: "2026-03-07T15:59:00Z", total_tokens: 1000 })),
+      row({ model: "current", hour_start: "2026-03-07T16:00:00Z", total_tokens: 200 }),
+      row({ model: "latest", hour_start: "2026-03-14T15:59:00Z", total_tokens: 100 }),
+      row({ model: "empty", hour_start: "2026-03-31", total_tokens: 0 }),
+    ];
+    const result = toUsageBreakdown(records, [], "model", { start: "2026-03-01", end: "2026-03-31" }, -480);
+    expect(result.series.map((s) => s.id)).toEqual(["current", "latest", "previous-0", "previous-1", "previous-2", null]);
+    expect(result.total).toBe(5300);
+  });
+
   it("respects local day bounds and leaves daily API buckets unshifted", () => {
     const records = [
       row({ hour_start: "2026-08-31T15:59:59Z" }),
