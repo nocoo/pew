@@ -251,8 +251,6 @@ export function ProfileContent({
               isRefreshing && "opacity-50",
             )}
           >
-            <UsageTimingNotice records={data.records} />
-            <AccountingNotice records={data.records} pricingMap={pricingMap} loading={pricingLoading} />
             {/* Stat cards — row 1: Total, Est. Cost, Cache Savings */}
             <StatGrid columns={3}>
               <StatCard
@@ -325,6 +323,18 @@ export function ProfileContent({
                 />
               )}
             </div>
+
+            {data.records.length > 0 && (
+              <details className="text-xs text-muted-foreground">
+                <summary className="cursor-pointer rounded-lg py-1 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                  Usage, cache &amp; cost details
+                </summary>
+                <div className="mt-3 space-y-3">
+                  <UsageTimingNotice records={data.records} />
+                  <AccountingNotice records={data.records} pricingMap={pricingMap} loading={pricingLoading} />
+                </div>
+              </details>
+            )}
           </div>
         ) : null)}
     </>
