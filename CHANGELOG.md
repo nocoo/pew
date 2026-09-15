@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v3.0.1
+
+### Fixed
+- Collapse profile usage notes below charts
+
 ## v3.0.0
 
 ### Added
