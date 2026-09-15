@@ -409,7 +409,8 @@ export default function ByDevicePage() {
                             <div className="flex items-center gap-2">
                               <div className="flex-1 h-2 rounded-full bg-background overflow-hidden">
                                 <div
-                                  className="h-full rounded-full transition-all"
+                                  key={pct}
+                                  className="chart-animate chart-grow-x h-full rounded-full"
                                   style={{
                                     width: `${pct}%`,
                                     backgroundColor:

@@ -1,5 +1,6 @@
 "use client";
 
+import { CHART_ANIMATION } from "@/lib/chart-animation";
 import { useState, useMemo, createContext, useContext } from "react";
 import {
   LineChart,
@@ -339,6 +340,7 @@ function SalaryTrendChart({ data, compact = false, className }: SalaryTrendChart
             />
             {/* Upper bound (dashed) */}
             <Line
+              {...CHART_ANIMATION}
               type="monotone"
               dataKey="upper"
               stroke={chartMuted}
@@ -346,19 +348,19 @@ function SalaryTrendChart({ data, compact = false, className }: SalaryTrendChart
               strokeDasharray="4 4"
               dot={false}
               strokeOpacity={0.6}
-              isAnimationActive={false}
             />
             {/* Actual (solid) */}
             <Line
+              {...CHART_ANIMATION}
               type="monotone"
               dataKey="actual"
               stroke={chart.violet}
               strokeWidth={2}
               dot={false}
-              isAnimationActive={false}
             />
             {/* Lower bound (dashed) */}
             <Line
+              {...CHART_ANIMATION}
               type="monotone"
               dataKey="lower"
               stroke={chartMuted}
@@ -366,7 +368,6 @@ function SalaryTrendChart({ data, compact = false, className }: SalaryTrendChart
               strokeDasharray="4 4"
               dot={false}
               strokeOpacity={0.6}
-              isAnimationActive={false}
             />
           </LineChart>
         </DashboardResponsiveContainer>

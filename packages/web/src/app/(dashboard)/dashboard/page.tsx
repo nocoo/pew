@@ -174,7 +174,7 @@ export default function DashboardPage() {
               {accounting.readCoverage > 0 && <div className="mt-4 mb-2 space-y-2">
                 <meter aria-label="Cache hit rate" min={0} max={100} value={accounting.cacheReadRate} className="sr-only" />
                 <div aria-hidden="true" className="h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div className="h-full rounded-full bg-chart-2" style={{ width: `${accounting.cacheReadRate}%` }} />
+                  <div key={accounting.cacheReadRate} className="chart-animate chart-grow-x h-full rounded-full bg-chart-2" style={{ width: `${accounting.cacheReadRate}%` }} />
                 </div>
                 <p className="text-xs text-muted-foreground">Share of known input served from cache</p>
               </div>}

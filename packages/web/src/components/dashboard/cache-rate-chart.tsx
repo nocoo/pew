@@ -1,5 +1,6 @@
 "use client";
 
+import { CHART_ANIMATION } from "@/lib/chart-animation";
 import {
   LineChart,
   Line,
@@ -161,6 +162,7 @@ export function CacheRateChart({ data, className }: CacheRateChartProps) {
             />}
             <Tooltip content={<CacheRateTooltip />} isAnimationActive={false} />
             <Line
+              {...CHART_ANIMATION}
               type="monotone"
               dataKey="cacheRate"
               stroke={chart.pink}

@@ -1,5 +1,6 @@
 "use client";
 
+import { CHART_ANIMATION } from "@/lib/chart-animation";
 import {
   BarChart,
   Bar,
@@ -178,24 +179,28 @@ export function DeviceBreakdownChart({
             />
             <Tooltip content={<DeviceBreakdownTooltip />} isAnimationActive={false} />
             <Bar
+              {...CHART_ANIMATION}
               dataKey="input_tokens"
               stackId="1"
               fill={chart.violet}
               radius={[0, 0, 0, 0]}
             />
             <Bar
+              {...CHART_ANIMATION}
               dataKey="output_tokens"
               stackId="1"
               fill={colorOutput}
               radius={[0, 0, 0, 0]}
             />
             <Bar
+              {...CHART_ANIMATION}
               dataKey="cached_input_tokens"
               stackId="1"
               fill={colorCached}
               radius={[0, 0, 0, 0]}
             />
             <Bar
+              {...CHART_ANIMATION}
               dataKey="reasoning_output_tokens"
               stackId="1"
               fill={colorReasoning}

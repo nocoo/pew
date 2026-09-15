@@ -1,5 +1,6 @@
 "use client";
 
+import { CHART_ANIMATION } from "@/lib/chart-animation";
 import {
   AreaChart,
   Area,
@@ -192,6 +193,7 @@ export function CostTrendChart({ data, className }: CostTrendChartProps) {
             />
             <Tooltip content={<CostTrendTooltip />} isAnimationActive={false} />
             <Area
+              {...CHART_ANIMATION}
               type="monotone"
               dataKey="inputCost"
               stackId="1"
@@ -200,6 +202,7 @@ export function CostTrendChart({ data, className }: CostTrendChartProps) {
               fill="url(#gradCostInput)"
             />
             <Area
+              {...CHART_ANIMATION}
               type="monotone"
               dataKey="outputCost"
               stackId="1"
@@ -208,6 +211,7 @@ export function CostTrendChart({ data, className }: CostTrendChartProps) {
               fill="url(#gradCostOutput)"
             />
             <Area
+              {...CHART_ANIMATION}
               type="monotone"
               dataKey="cachedCost"
               stackId="1"
@@ -215,7 +219,7 @@ export function CostTrendChart({ data, className }: CostTrendChartProps) {
               strokeWidth={2}
               fill="url(#gradCostCached)"
             />
-            <Area type="monotone" dataKey="cacheWriteCost" stackId="1" stroke={CHART_COLORS[3] as string}
+            <Area {...CHART_ANIMATION} type="monotone" dataKey="cacheWriteCost" stackId="1" stroke={CHART_COLORS[3] as string}
               fill={CHART_COLORS[3] as string} fillOpacity={0.18} strokeWidth={1.5} />
           </AreaChart>
         </DashboardResponsiveContainer>

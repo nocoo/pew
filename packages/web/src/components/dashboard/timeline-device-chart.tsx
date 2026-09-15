@@ -1,5 +1,6 @@
 "use client";
 
+import { CHART_ANIMATION } from "@/lib/chart-animation";
 import {
   BarChart,
   Bar,
@@ -240,6 +241,7 @@ export function TimelineDeviceChart({
             />
             {deviceIds.map((deviceId, i) => (
               <Bar
+                {...CHART_ANIMATION}
                 key={deviceId}
                 dataKey={deviceId}
                 stackId="1"

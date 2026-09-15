@@ -1,5 +1,6 @@
 "use client";
 
+import { CHART_ANIMATION } from "@/lib/chart-animation";
 import { useMemo } from "react";
 import {
   AreaChart,
@@ -237,6 +238,7 @@ export function ModelAreaChart({
             <Tooltip content={<ModelAreaTooltip />} isAnimationActive={false} />
             {modelKeys.map((model) => (
               <Area
+                {...CHART_ANIMATION}
                 key={model}
                 type="monotone"
                 dataKey={model}

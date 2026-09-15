@@ -1,5 +1,6 @@
 "use client";
 
+import { CHART_ANIMATION } from "@/lib/chart-animation";
 import { useMemo, useState } from "react";
 import {
   BarChart,
@@ -314,6 +315,7 @@ export function DailyActivityChart({
               />
               {view.series.map((s, i) => (
                 <Bar
+                  {...CHART_ANIMATION}
                   key={s.key}
                   dataKey={s.key}
                   stackId="1"

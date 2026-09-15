@@ -211,11 +211,11 @@ export function HeatmapCalendar({
 
                     return (
                       <div
-                        key={dateStr}
+                        key={`${dateStr}-${colorIndex}`}
                         role="img"
                         aria-label={`${dateStr}: ${metricLabel} ${valueFormatter(value, dateStr)}`}
                         className={cn(
-                          "rounded-full cursor-pointer transition-colors hover:ring-1 hover:ring-foreground",
+                          "chart-animate rounded-full cursor-pointer hover:ring-1 hover:ring-foreground",
                           colorIndex === 0 && "border border-border/60",
                         )}
                         style={{

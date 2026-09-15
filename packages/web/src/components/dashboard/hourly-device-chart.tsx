@@ -1,5 +1,6 @@
 "use client";
 
+import { CHART_ANIMATION } from "@/lib/chart-animation";
 import {
   BarChart,
   Bar,
@@ -183,12 +184,12 @@ export function HourlyDeviceChart({
             />
             {deviceKeys.map((deviceId, i) => (
               <Bar
+                {...CHART_ANIMATION}
                 key={deviceId}
                 dataKey={deviceId}
                 stackId="1"
                 fill={CHART_COLORS[i % CHART_COLORS.length] as string}
                 radius={i === deviceKeys.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0]}
-                isAnimationActive={false}
               />
             ))}
           </BarChart>

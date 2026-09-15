@@ -149,7 +149,8 @@ function SeasonProgress({ season }: { season: SeasonRow }) {
       </div>
       <div className="h-1 w-full rounded-full bg-border/60 overflow-hidden">
         <div
-          className="h-full rounded-full bg-success transition-all duration-500"
+          key={pct}
+          className="chart-animate chart-grow-x h-full rounded-full bg-success"
           style={{ width: `${pct}%` }}
         />
       </div>

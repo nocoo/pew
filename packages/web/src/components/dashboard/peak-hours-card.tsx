@@ -87,7 +87,8 @@ export function PeakHoursCard({ hourly, slots, className }: PeakHoursCardProps) 
                 <TooltipTrigger asChild>
                   <div className="flex-1 flex flex-col items-center justify-end h-full cursor-pointer group">
                     <div
-                      className="w-full rounded-sm transition-all group-hover:ring-1 group-hover:ring-foreground/40"
+                      key={heightPct}
+                      className="chart-animate chart-grow-y w-full rounded-sm group-hover:ring-1 group-hover:ring-foreground/40"
                       style={{
                         height: `${heightPct}%`,
                         minHeight: tokens > 0 ? 2 : 0,

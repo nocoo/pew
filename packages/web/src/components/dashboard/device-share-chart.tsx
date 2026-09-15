@@ -1,5 +1,6 @@
 "use client";
 
+import { CHART_ANIMATION } from "@/lib/chart-animation";
 import { useMemo } from "react";
 import {
   AreaChart,
@@ -201,6 +202,7 @@ export function DeviceShareChart({
             <Tooltip content={<DeviceShareTooltip labelMap={labelMap} />} isAnimationActive={false} />
             {deviceKeys.map((deviceId, i) => (
               <Area
+                {...CHART_ANIMATION}
                 key={deviceId}
                 type="monotone"
                 dataKey={deviceId}

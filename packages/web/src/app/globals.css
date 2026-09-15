@@ -178,6 +178,40 @@
   outline: none;
 }
 
+/* Data graphics use the same timing and sidebar playback state as Recharts. */
+@keyframes chart-fade {
+  from { opacity: 0; }
+}
+
+@keyframes chart-grow-x {
+  from { transform: scaleX(0); }
+}
+
+@keyframes chart-grow-y {
+  from { transform: scaleY(0); }
+}
+
+.chart-animate {
+  animation: chart-fade var(--chart-animation-duration) var(--chart-animation-easing) var(--chart-animation-delay) both;
+  animation-play-state: var(--chart-animation-play-state, running);
+}
+
+.chart-grow-x {
+  animation-name: chart-grow-x;
+  transform-origin: left;
+}
+
+.chart-grow-y {
+  animation-name: chart-grow-y;
+  transform-origin: bottom;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-animate {
+    animation: none;
+  }
+}
+
 /* Basalt Breadcrumbs / AppHeader separators: 12px, stroke 1.5, muted. */
 nav[aria-label="Breadcrumb"] svg,
 nav[aria-label="Breadcrumb"] + svg {

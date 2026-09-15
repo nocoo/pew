@@ -1,5 +1,6 @@
 "use client";
 
+import { CHART_ANIMATION } from "@/lib/chart-animation";
 import { PieChart, Pie, Tooltip, Cell } from "recharts";
 import { cn } from "@/lib/utils";
 import { formatTokens } from "@/lib/utils";
@@ -91,6 +92,7 @@ function CompactDonutChart({ title, data, className }: CompactDonutChartProps) {
           <DashboardResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
+                {...CHART_ANIMATION}
                 data={data}
                 cx="50%"
                 cy="50%"

@@ -1,5 +1,6 @@
 "use client";
 
+import { CHART_ANIMATION } from "@/lib/chart-animation";
 import {
   PieChart,
   Pie,
@@ -116,6 +117,7 @@ export function IoRatioChart({
           <DashboardResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
+                {...CHART_ANIMATION}
                 data={chartData}
                 cx="50%"
                 cy="50%"

@@ -219,7 +219,8 @@ export default function ModelsPage() {
                           <div className="flex items-center gap-2">
                             <div className="flex-1 h-2 rounded-full bg-background overflow-hidden">
                               <div
-                                className="h-full rounded-full transition-all"
+                                key={group.pctOfTotal}
+                                className="chart-animate chart-grow-x h-full rounded-full"
                                 style={{
                                   width: `${group.pctOfTotal}%`,
                                   backgroundColor: modelColor(group.model).color,

@@ -1,5 +1,6 @@
 "use client";
 
+import { CHART_ANIMATION } from "@/lib/chart-animation";
 import { useMemo } from "react";
 import {
   AreaChart,
@@ -216,6 +217,7 @@ export function DeviceModelTrendChart({
             />
             {modelKeys.map((model) => (
               <Area
+                {...CHART_ANIMATION}
                 key={model}
                 type="monotone"
                 dataKey={model}

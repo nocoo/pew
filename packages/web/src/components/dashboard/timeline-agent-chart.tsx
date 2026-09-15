@@ -1,5 +1,6 @@
 "use client";
 
+import { CHART_ANIMATION } from "@/lib/chart-animation";
 import {
   BarChart,
   Bar,
@@ -249,6 +250,7 @@ export function TimelineAgentChart({
             <Tooltip content={<AgentTooltip />} isAnimationActive={false} />
             {sourceKeys.map((source, i) => (
               <Bar
+                {...CHART_ANIMATION}
                 key={source}
                 dataKey={source}
                 stackId="1"

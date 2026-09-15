@@ -7,6 +7,7 @@ import { ThemeProvider } from "@nocoo/basalt/providers/theme";
 import NextLink from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 import { AuthProvider } from "@/components/auth-provider";
+import { ChartAnimationProvider } from "@/components/chart-animation-provider";
 
 /** Electric Violet — pew brand accent, locked as the default primary. */
 const PEW_ACCENT = {
@@ -43,7 +44,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
       <AccentProvider defaultAccent="primary" persist={false} paletteOverrides={PEW_ACCENT}>
         <LinkProvider render={AppLink}>
           <TooltipProvider delayDuration={0}>
-            <AuthProvider>{children}</AuthProvider>
+            <ChartAnimationProvider>
+              <AuthProvider>{children}</AuthProvider>
+            </ChartAnimationProvider>
           </TooltipProvider>
         </LinkProvider>
       </AccentProvider>

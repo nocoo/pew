@@ -6,7 +6,8 @@ import { Button, ContentIsland, Sheet, SheetContent, SheetTitle } from "@nocoo/b
 import { chromeIconClassName } from "@/components/ui/button";
 import { Menu, ShieldCheck } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { usePauseChartsForSidebar } from "@/components/chart-animation-provider";
 import { Github } from "@/components/icons/github";
 import { Sidebar } from "./sidebar";
 import { ThemeToggle } from "./theme-toggle";
@@ -24,13 +25,19 @@ export function AppShell({ children }: AppShellProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
   const prevPathname = useRef(pathname);
+  const pauseCharts = usePauseChartsForSidebar();
+  const changeMobileOpen = useCallback((open: boolean) => {
+    if (open === mobileOpen) return;
+    pauseCharts();
+    setMobileOpen(open);
+  }, [mobileOpen, pauseCharts]);
 
   useEffect(() => {
     if (prevPathname.current !== pathname) {
       prevPathname.current = pathname;
-      setMobileOpen(false);
+      changeMobileOpen(false);
     }
-  }, [pathname]);
+  }, [pathname, changeMobileOpen]);
 
   useEffect(() => {
     document.body.style.overflow = mobileOpen ? "hidden" : "";
@@ -46,16 +53,19 @@ export function AppShell({ children }: AppShellProps) {
     <BasaltAppShell>
       <AppSkipLink>Skip to main content</AppSkipLink>
       {!isMobile ? (
-        <Sidebar collapsed={collapsed} onToggle={() => setCollapsed((v) => !v)} />
+        <Sidebar collapsed={collapsed} onToggle={() => {
+          pauseCharts();
+          setCollapsed((v) => !v);
+        }} />
       ) : (
-        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <Sheet open={mobileOpen} onOpenChange={changeMobileOpen}>
           <SheetContent
             side="left"
             className="w-[260px] max-w-[260px] border-0 bg-basalt-background p-0"
             onCloseAutoFocus={restoreFocus}
           >
             <SheetTitle className="sr-only">Navigation</SheetTitle>
-            <Sidebar collapsed={false} onToggle={() => setMobileOpen(false)} />
+            <Sidebar collapsed={false} onToggle={() => changeMobileOpen(false)} />
           </SheetContent>
         </Sheet>
       )}
@@ -67,7 +77,7 @@ export function AppShell({ children }: AppShellProps) {
                 variant="ghost"
                 size="icon"
                 className={chromeIconClassName}
-                onClick={() => setMobileOpen(true)}
+                onClick={() => changeMobileOpen(true)}
                 aria-label="Open navigation"
               >
                 <Menu aria-hidden="true" strokeWidth={1.5} />

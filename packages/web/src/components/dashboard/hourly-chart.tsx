@@ -1,5 +1,6 @@
 "use client";
 
+import { CHART_ANIMATION } from "@/lib/chart-animation";
 import {
   BarChart,
   Bar,
@@ -172,12 +173,14 @@ export function HourlyChart({ data, className }: HourlyChartProps) {
             />
             <Tooltip content={<HourlyTooltip />} isAnimationActive={false} />
             <Bar
+              {...CHART_ANIMATION}
               dataKey="weekday"
               fill={chart.violet}
               radius={[2, 2, 0, 0]}
               maxBarSize={12}
             />
             <Bar
+              {...CHART_ANIMATION}
               dataKey="weekend"
               fill={chartMuted}
               fillOpacity={0.6}

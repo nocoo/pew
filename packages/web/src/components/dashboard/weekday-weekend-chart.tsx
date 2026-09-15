@@ -47,7 +47,8 @@ function ComparisonRow({
           </span>
           <div className="flex-1 h-5 rounded bg-muted/50 overflow-hidden">
             <div
-              className="h-full rounded transition-all duration-500"
+              key={weekdayPct}
+              className="chart-animate chart-grow-x h-full rounded"
               style={{ width: `${weekdayPct}%`, backgroundColor: color }}
             />
           </div>
@@ -61,7 +62,8 @@ function ComparisonRow({
           </span>
           <div className="flex-1 h-5 rounded bg-muted/50 overflow-hidden">
             <div
-              className="h-full rounded transition-all duration-500"
+              key={weekendPct}
+              className="chart-animate chart-grow-x h-full rounded"
               style={{
                 width: `${weekendPct}%`,
                 backgroundColor: color,

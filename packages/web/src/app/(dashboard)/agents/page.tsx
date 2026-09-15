@@ -61,19 +61,19 @@ function AgentCard({ group, color }: { group: AgentGroup; color: string }) {
 
       {/* Usage bar */}
       <div className="px-5 pb-2">
-        <div className="flex h-2 rounded-full overflow-hidden bg-background">
+        <div key={`${group.inputTokens}-${group.outputTokens}-${group.cachedTokens}`} className="chart-animate chart-grow-x flex h-2 rounded-full overflow-hidden bg-background">
           <div
-            className="h-full transition-all"
+            className="h-full"
             style={{ width: `${pct(group.inputTokens - group.cachedTokens)}%`, backgroundColor: color, opacity: 0.8 }}
             title={`Input: ${formatTokens(group.inputTokens - group.cachedTokens)}`}
           />
           <div
-            className="h-full transition-all"
+            className="h-full"
             style={{ width: `${pct(group.outputTokens)}%`, backgroundColor: color, opacity: 0.5 }}
             title={`Output: ${formatTokens(group.outputTokens)}`}
           />
           <div
-            className="h-full transition-all"
+            className="h-full"
             style={{ width: `${pct(group.cachedTokens)}%`, backgroundColor: color, opacity: 0.25 }}
             title={`Cached: ${formatTokens(group.cachedTokens)}`}
           />

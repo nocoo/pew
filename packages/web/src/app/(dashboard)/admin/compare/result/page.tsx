@@ -1,5 +1,6 @@
 "use client";
 
+import { CHART_ANIMATION } from "@/lib/chart-animation";
 import { useState, useEffect, useMemo, useId, Suspense } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
@@ -473,6 +474,7 @@ function CompareResultContent() {
                   />
                   {data.users.map((user, i) => (
                     <Line
+                      {...CHART_ANIMATION}
                       key={user.id}
                       type="monotone"
                       dataKey={user.id}

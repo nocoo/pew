@@ -1,5 +1,6 @@
 "use client";
 
+import { CHART_ANIMATION } from "@/lib/chart-animation";
 import {
   BarChart,
   Bar,
@@ -221,18 +222,21 @@ export function ModelBreakdownChart({
             />
             <Tooltip content={<ModelBreakdownTooltip />} isAnimationActive={false} />
             <Bar
+              {...CHART_ANIMATION}
               dataKey="input"
               stackId="1"
               fill={chart.violet}
               radius={[0, 0, 0, 0]}
             />
             <Bar
+              {...CHART_ANIMATION}
               dataKey="output"
               stackId="1"
               fill={colorOutput}
               radius={[0, 0, 0, 0]}
             />
             <Bar
+              {...CHART_ANIMATION}
               dataKey="cached"
               stackId="1"
               fill={colorCached}

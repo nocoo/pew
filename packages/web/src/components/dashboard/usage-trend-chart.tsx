@@ -1,5 +1,6 @@
 "use client";
 
+import { CHART_ANIMATION } from "@/lib/chart-animation";
 import {
   AreaChart,
   Area,
@@ -198,6 +199,7 @@ export function UsageTrendChart({ data, className }: UsageTrendChartProps) {
             />
             <Tooltip content={<UsageTrendTooltip />} isAnimationActive={false} />
             <Area
+              {...CHART_ANIMATION}
               type="monotone"
               dataKey="input"
               stackId="1"
@@ -206,6 +208,7 @@ export function UsageTrendChart({ data, className }: UsageTrendChartProps) {
               fill="url(#gradUsageInput)"
             />
             <Area
+              {...CHART_ANIMATION}
               type="monotone"
               dataKey="output"
               stackId="1"
@@ -214,6 +217,7 @@ export function UsageTrendChart({ data, className }: UsageTrendChartProps) {
               fill="url(#gradUsageOutput)"
             />
             <Area
+              {...CHART_ANIMATION}
               type="monotone"
               dataKey="cached"
               stackId="1"

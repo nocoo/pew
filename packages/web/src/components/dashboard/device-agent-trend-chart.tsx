@@ -1,5 +1,6 @@
 "use client";
 
+import { CHART_ANIMATION } from "@/lib/chart-animation";
 import { useState, useMemo } from "react";
 import {
   LineChart,
@@ -212,6 +213,7 @@ export function DeviceAgentTrendChart({
             />
             {sourceKeys.map((source) => (
               <Line
+                {...CHART_ANIMATION}
                 key={source}
                 type="monotone"
                 dataKey={source}

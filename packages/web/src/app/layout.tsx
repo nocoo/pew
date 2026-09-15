@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import type { CSSProperties } from "react";
 import { Inter, Space_Grotesk, Caveat } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/components/app-providers";
+import { CHART_ANIMATION } from "@/lib/chart-animation";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -90,7 +92,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning style={{
+      "--chart-animation-duration": `${CHART_ANIMATION.animationDuration}ms`,
+      "--chart-animation-easing": CHART_ANIMATION.animationEasing,
+      "--chart-animation-delay": `${CHART_ANIMATION.animationBegin}ms`,
+    } as CSSProperties}>
       <head>
         {/* Apply dark class before first paint to prevent FOUC */}
         <script

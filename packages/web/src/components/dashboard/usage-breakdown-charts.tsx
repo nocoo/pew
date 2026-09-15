@@ -1,5 +1,6 @@
 "use client";
 
+import { CHART_ANIMATION } from "@/lib/chart-animation";
 import { useMemo } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@nocoo/basalt/components/button";
@@ -90,7 +91,7 @@ export function UsageBreakdownCharts({ records, from, to, start, end, tzOffset, 
                 <XAxis dataKey="date" tickFormatter={dateLabel} tick={{ fill: chartAxis, fontSize: 11 }} axisLine={false} tickLine={false} minTickGap={32} />
                 <YAxis tickFormatter={formatTokens} tick={{ fill: chartAxis, fontSize: 11 }} axisLine={false} tickLine={false} width={48} />
                 <Tooltip content={<BreakdownTooltip />} isAnimationActive={false} />
-                {series.map((s) => <Bar key={s.key} dataKey={s.key} name={s.name} fill={s.color} stackId="tokens" isAnimationActive={false} />)}
+                {series.map((s) => <Bar {...CHART_ANIMATION} key={s.key} dataKey={s.key} name={s.name} fill={s.color} stackId="tokens" />)}
               </BarChart>
             </DashboardResponsiveContainer>
           </div>
@@ -105,7 +106,7 @@ export function UsageBreakdownCharts({ records, from, to, start, end, tzOffset, 
           <div className="mx-auto my-3 h-[160px] w-full max-w-[200px]">
             <DashboardResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie data={series} dataKey="total" nameKey="name" innerRadius="55%" outerRadius="90%" strokeWidth={0} paddingAngle={2} isAnimationActive={false}>
+                <Pie {...CHART_ANIMATION} data={series} dataKey="total" nameKey="name" innerRadius="55%" outerRadius="90%" strokeWidth={0} paddingAngle={2}>
                   {series.map((s) => <Cell key={s.key} fill={s.color} />)}
                 </Pie>
                 <Tooltip content={({ active, payload }) => {

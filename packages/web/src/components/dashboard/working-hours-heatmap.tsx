@@ -136,7 +136,8 @@ export function WorkingHoursHeatmap({
                     <Tooltip key={`${day.day}-h${hour}`}>
                       <TooltipTrigger asChild>
                         <div
-                          className="rounded-sm cursor-pointer transition-colors hover:ring-1 hover:ring-foreground"
+                          key={getHeatmapColor(count, maxValue)}
+                          className="chart-animate rounded-sm cursor-pointer hover:ring-1 hover:ring-foreground"
                           style={{
                             width: CELL_SIZE,
                             height: CELL_SIZE,

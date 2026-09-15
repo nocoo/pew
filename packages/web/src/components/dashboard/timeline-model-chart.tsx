@@ -1,5 +1,6 @@
 "use client";
 
+import { CHART_ANIMATION } from "@/lib/chart-animation";
 import {
   BarChart,
   Bar,
@@ -262,6 +263,7 @@ export function TimelineModelChart({
             <Tooltip content={<ModelTooltip />} isAnimationActive={false} />
             {modelKeys.map((model, i) => (
               <Bar
+                {...CHART_ANIMATION}
                 key={model}
                 dataKey={model}
                 stackId="1"
@@ -269,7 +271,6 @@ export function TimelineModelChart({
                 radius={
                   i === modelKeys.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0]
                 }
-                isAnimationActive={false}
               />
             ))}
           </BarChart>

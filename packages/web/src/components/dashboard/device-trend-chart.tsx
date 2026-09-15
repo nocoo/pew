@@ -1,5 +1,6 @@
 "use client";
 
+import { CHART_ANIMATION } from "@/lib/chart-animation";
 import { useState, useMemo } from "react";
 import {
   LineChart,
@@ -227,6 +228,7 @@ export function DeviceTrendChart({
             />
             {deviceKeys.map((deviceId, i) => (
               <Line
+                {...CHART_ANIMATION}
                 key={deviceId}
                 type="monotone"
                 dataKey={deviceId}

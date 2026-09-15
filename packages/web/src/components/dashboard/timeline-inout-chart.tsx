@@ -1,5 +1,6 @@
 "use client";
 
+import { CHART_ANIMATION } from "@/lib/chart-animation";
 import {
   BarChart,
   Bar,
@@ -193,12 +194,14 @@ export function TimelineInOutChart({
             />
             <Tooltip content={<InOutTooltip />} isAnimationActive={false} />
             <Bar
+              {...CHART_ANIMATION}
               dataKey="input"
               stackId="1"
               fill={colorInput}
               radius={[0, 0, 0, 0]}
             />
             <Bar
+              {...CHART_ANIMATION}
               dataKey="output"
               stackId="1"
               fill={colorOutput}
