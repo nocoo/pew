@@ -33,32 +33,32 @@ describe("toUsageBreakdown", () => {
   });
 
   it("keeps all long-tail usage in Other and avoids model names becoming chart paths", () => {
-    const ids = ["date", "__proto__", "gpt-5.6", "models/a[b]", "Other", "sixth", "seventh"];
-    const result = toUsageBreakdown(ids.map((model, i) => row({ model, input_tokens: 700 - i * 100,
-      cached_input_tokens: 0, output_tokens: 0, reasoning_output_tokens: 0, total_tokens: 700 - i * 100,
+    const ids = ["date", "__proto__", "gpt-5.6", "models/a[b]", "Other", ...Array.from({ length: 27 }, (_, i) => `model-${i}`)];
+    const result = toUsageBreakdown(ids.map((model, i) => row({ model, input_tokens: 3200 - i * 100,
+      cached_input_tokens: 0, output_tokens: 0, reasoning_output_tokens: 0, total_tokens: 3200 - i * 100,
     })), [], "model", range, 0);
-    expect(result.total).toBe(2800);
-    expect(result.series).toHaveLength(6);
+    expect(result.total).toBe(52_800);
+    expect(result.series).toHaveLength(31);
     expect(result.series.at(-1)).toMatchObject({ id: null, total: 300 });
-    expect(result.series.find((s) => s.id === "Other")?.total).toBe(300);
-    expect(new Set(result.series.map((s) => s.key)).size).toBe(6);
+    expect(result.series.find((s) => s.id === "Other")?.total).toBe(2800);
+    expect(new Set(result.series.map((s) => s.key)).size).toBe(31);
     expect(result.daily[1]?.date).toBe("2026-09-02");
-    expect(result.series.reduce((n, s) => n + Number(result.daily[1]?.[s.key]), 0)).toBe(2800);
+    expect(result.series.reduce((n, s) => n + Number(result.daily[1]?.[s.key]), 0)).toBe(52_800);
   });
 
   it("shows recent models in both charts while preserving every historical token and share", () => {
     const records = [
       ...Array.from({ length: 6 }, (_, i) => row({ model: `retired-${i}`, hour_start: "2026-01-04", total_tokens: 10_000 })),
       row({ model: "current-0", hour_start: "2026-01-04", total_tokens: 2000 }),
-      ...Array.from({ length: 5 }, (_, i) => row({ model: `current-${i}`, hour_start: "2026-09-09", total_tokens: 100 - i })),
+      ...Array.from({ length: 30 }, (_, i) => row({ model: `current-${i}`, hour_start: "2026-09-09", total_tokens: 100 - i })),
       row({ model: "current-0", hour_start: "2026-09-15", total_tokens: 100 }),
       row({ model: "outside-period", hour_start: "2026-09-16", total_tokens: 1_000_000 }),
     ];
     for (const input of [records, [...records].reverse()]) {
       const result = toUsageBreakdown(input, [], "model", { start: "2026-01-04", end: "2026-09-15" }, -480);
-      expect(result.series.map((s) => s.id)).toEqual(["current-0", "current-1", "current-2", "current-3", "current-4", null]);
-      expect(result.series.map((s) => s.total)).toEqual([2200, 99, 98, 97, 96, 60_000]);
-      expect(result.total).toBe(62_590);
+      expect(result.series.map((s) => s.id)).toEqual([...Array.from({ length: 30 }, (_, i) => `current-${i}`), null]);
+      expect(result.series.map((s) => s.total)).toEqual([2200, ...Array.from({ length: 29 }, (_, i) => 99 - i), 60_000]);
+      expect(result.total).toBe(64_665);
       for (const series of result.series) {
         expect(result.daily.reduce((n, point) => n + Number(point[series.key]), 0)).toBe(series.total);
       }
@@ -68,14 +68,28 @@ describe("toUsageBreakdown", () => {
 
   it("ranks models using local calendar days and anchors historical ranges to their latest usage", () => {
     const records = [
-      ...Array.from({ length: 5 }, (_, i) => row({ model: `previous-${i}`, hour_start: "2026-03-07T15:59:00Z", total_tokens: 1000 })),
+      ...Array.from({ length: 30 }, (_, i) => row({ model: `previous-${i}`, hour_start: "2026-03-07T15:59:00Z", total_tokens: 1000 })),
       row({ model: "current", hour_start: "2026-03-07T16:00:00Z", total_tokens: 200 }),
       row({ model: "latest", hour_start: "2026-03-14T15:59:00Z", total_tokens: 100 }),
       row({ model: "empty", hour_start: "2026-03-31", total_tokens: 0 }),
     ];
     const result = toUsageBreakdown(records, [], "model", { start: "2026-03-01", end: "2026-03-31" }, -480);
-    expect(result.series.map((s) => s.id)).toEqual(["current", "latest", "previous-0", "previous-1", "previous-2", null]);
-    expect(result.total).toBe(5300);
+    expect(result.series.slice(0, 2).map((s) => s.id)).toEqual(["current", "latest"]);
+    expect(result.series).toHaveLength(31);
+    expect(result.series.at(-1)).toMatchObject({ id: null, total: 2000 });
+    expect(result.total).toBe(30_300);
+  });
+
+  it("only groups models beyond thirty, independently of the smaller legend", () => {
+    for (const count of [6, 30]) {
+      const result = toUsageBreakdown(Array.from({ length: count }, (_, i) => row({ model: `model-${i}` })), [], "model", range, 0);
+      expect(result.series).toHaveLength(count);
+      expect(result.series.every((series) => series.id !== null)).toBe(true);
+      expect(result.total).toBe(count * 180);
+    }
+    const harnesses = toUsageBreakdown(Array.from({ length: 7 }, (_, i) => row({ source: `harness-${i}` })), [], "harness", range, 0);
+    expect(harnesses.series).toHaveLength(6);
+    expect(harnesses.series.at(-1)).toMatchObject({ id: null, total: 360 });
   });
 
   it("respects local day bounds and leaves daily API buckets unshifted", () => {

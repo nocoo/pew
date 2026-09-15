@@ -4,7 +4,9 @@
 
 import { accountedTotal } from "@/lib/accounting";
 import type { UsageRow } from "@/hooks/use-usage-data";
-import { rankUsageByRecency, toLocalDateStr } from "@/lib/usage-helpers";
+import { MODEL_SERIES_LIMIT, rankUsageByRecency, toLocalDateStr } from "@/lib/usage-helpers";
+
+export { MODEL_SERIES_LIMIT } from "@/lib/usage-helpers";
 
 /**
  * Truncate long model names for chart Y-axis labels.
@@ -37,13 +39,13 @@ export interface ModelEra {
  * Produce daily model evolution data points.
  *
  * Identifies the top N models by recent usage within the selected period
- * (default 10), optionally groups the rest as "Other", and returns one
+ * (default 30), optionally groups the rest as "Other", and returns one
  * entry per date with per-model token counts (zero-filled for missing
  * models on a given day).
  */
 export function toModelEvolutionPoints(
   rows: UsageRow[],
-  topN = 10,
+  topN = MODEL_SERIES_LIMIT,
   tzOffset = 0,
   includeOther = true,
 ): ModelEra[] {

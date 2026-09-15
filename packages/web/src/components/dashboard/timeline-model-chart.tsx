@@ -13,9 +13,10 @@ import type { UsageRow } from "@/hooks/use-usage-data";
 import { cn, formatTokens } from "@/lib/utils";
 import { chartAxis, modelColor } from "@/lib/palette";
 import { shortModel } from "@/lib/model-helpers";
-import { rankUsageByRecency, toLocalDateStr } from "@/lib/usage-helpers";
+import { MODEL_SERIES_LIMIT, rankUsageByRecency, toLocalDateStr } from "@/lib/usage-helpers";
 import { accountedTotal } from "@/lib/accounting";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
+import { ChartLegendMore } from "./chart-legend-more";
 import {
   ChartTooltip,
   ChartTooltipRow,
@@ -151,7 +152,7 @@ function ModelTooltip({
 }) {
   if (!active || !payload?.length) return null;
 
-  const sorted = [...payload].sort((a, b) => b.value - a.value);
+  const sorted = payload.filter((entry) => entry.value > 0).sort((a, b) => b.value - a.value);
   const total = sorted.reduce((sum, e) => sum + e.value, 0);
 
   return (
@@ -181,7 +182,7 @@ export function TimelineModelChart({
   tzOffset,
   fromISO,
   toISO,
-  topN = 5,
+  topN = MODEL_SERIES_LIMIT,
   className,
 }: TimelineModelChartProps) {
   const { data, modelKeys } = toModelTimeline(records, tzOffset, fromISO, toISO, topN);
@@ -201,7 +202,7 @@ export function TimelineModelChart({
 
   const tickInterval = Math.max(1, Math.floor(data.length / 12));
 
-  const legendItems = modelKeys.slice(0, 6).map((model) => ({
+  const legendItems = modelKeys.slice(0, 5).map((model) => ({
     key: model,
     label: shortModel(model),
     color: modelColor(model).color,
@@ -228,6 +229,7 @@ export function TimelineModelChart({
               </span>
             </div>
           ))}
+          <ChartLegendMore items={modelKeys.map((model) => ({ key: model, label: model, color: modelColor(model).color }))} />
         </div>
       </div>
 

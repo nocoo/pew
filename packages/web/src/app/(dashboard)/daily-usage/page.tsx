@@ -36,7 +36,7 @@ import {
   groupByDate,
   toSourceTrendPoints,
 } from "@/lib/usage-helpers";
-import { toModelEvolutionPoints } from "@/lib/model-helpers";
+import { MODEL_SERIES_LIMIT, toModelEvolutionPoints } from "@/lib/model-helpers";
 import type { DailyGroup } from "@/lib/usage-helpers";
 import { getMonthRange, formatMonth, formatDate } from "@/lib/date-helpers";
 
@@ -334,7 +334,7 @@ export default function DailyUsagePage() {
 
   // Recent models plus Other, shared by the timeline and donut.
   const modelEvolution = useMemo(
-    () => (data ? toModelEvolutionPoints(data.records, 5, tzOffset) : []),
+    () => (data ? toModelEvolutionPoints(data.records, MODEL_SERIES_LIMIT, tzOffset) : []),
     [data, tzOffset]
   );
 

@@ -9,9 +9,9 @@ import type { DeviceAggregate } from "@pew/core";
 import type { SourceTrendPoint } from "@/lib/usage-helpers";
 import type { ModelEra } from "@/lib/model-helpers";
 import { sourceLabel } from "@/hooks/use-usage-data";
-import { shortModel } from "@/lib/model-helpers";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 import { ChartTooltip, ChartTooltipRow } from "./chart-tooltip";
+import { ChartLegendMore } from "./chart-legend-more";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -100,7 +100,7 @@ function CompactDonutChart({ title, data, className }: CompactDonutChartProps) {
                 outerRadius="90%"
                 dataKey="value"
                 strokeWidth={0}
-                paddingAngle={2}
+                paddingAngle={data.length > 10 ? 0 : 2}
               >
                 {data.map((entry) => (
                   <Cell key={entry.name} fill={entry.color} />
@@ -113,7 +113,7 @@ function CompactDonutChart({ title, data, className }: CompactDonutChartProps) {
 
         {/* Legend */}
         <div className="flex-1 min-w-0 space-y-1">
-          {data.map((item) => (
+          {data.slice(0, 5).map((item) => (
             <div key={item.name} className="flex items-center gap-1.5">
               <div
                 className="h-2 w-2 shrink-0 rounded-full"
@@ -127,6 +127,8 @@ function CompactDonutChart({ title, data, className }: CompactDonutChartProps) {
               </span>
             </div>
           ))}
+          <ChartLegendMore items={data.map((item) => ({ key: item.name, label: item.name, color: item.color,
+            value: `${formatTokens(item.value)} (${(item.percent * 100).toFixed(1)}%)` }))} />
         </div>
       </div>
     </div>
@@ -210,7 +212,7 @@ export function ModelDonutChart({ modelEvolution, className }: ModelDonutChartPr
   const total = [...totals.values()].reduce((sum, val) => sum + val, 0);
 
   const data: DonutDataItem[] = [...totals].map(([model, val]) => ({
-    name: shortModel(model),
+    name: model,
     value: val,
     color: modelColor(model).color,
     percent: total > 0 ? val / total : 0,

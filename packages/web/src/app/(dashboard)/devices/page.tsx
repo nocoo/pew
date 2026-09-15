@@ -10,7 +10,7 @@ import { formatCost, usePricingMap } from "@/hooks/use-pricing";
 import { sourceLabel } from "@/hooks/use-usage-data";
 import { deviceLabel, shortDeviceId, toDeviceAgentBreakdown, toDeviceModelBreakdown } from "@/lib/device-helpers";
 import { toSourceTrendPoints } from "@/lib/usage-helpers";
-import { toModelEvolutionPoints } from "@/lib/model-helpers";
+import { MODEL_SERIES_LIMIT, toModelEvolutionPoints } from "@/lib/model-helpers";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChartCardSkeleton } from "@/components/dashboard/chart-card-skeleton";
 import { Empty } from "@nocoo/basalt/components/empty";
@@ -254,7 +254,7 @@ export default function ByDevicePage() {
   );
 
   const modelTrend = useMemo(
-    () => (deviceUsage ? toModelEvolutionPoints(deviceUsage.records, 5, tzOffset) : []),
+    () => (deviceUsage ? toModelEvolutionPoints(deviceUsage.records, MODEL_SERIES_LIMIT, tzOffset) : []),
     [deviceUsage, tzOffset],
   );
 

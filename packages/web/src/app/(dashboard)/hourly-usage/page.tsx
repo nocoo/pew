@@ -27,7 +27,7 @@ import { DashboardSegment } from "@/components/dashboard/dashboard-segment";
 import { ModelInfoTooltip } from "@/components/dashboard/model-info-tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatTokens } from "@/lib/utils";
-import { groupByDate, toHourlyByAgent, toHourlyByModel, toHourlyByDevice } from "@/lib/usage-helpers";
+import { MODEL_SERIES_LIMIT, groupByDate, toHourlyByAgent, toHourlyByModel, toHourlyByDevice } from "@/lib/usage-helpers";
 import type { DailyGroup } from "@/lib/usage-helpers";
 import { usePricingMap, formatCost } from "@/hooks/use-pricing";
 import type { PricingMap } from "@/hooks/use-pricing";
@@ -438,7 +438,7 @@ export default function RecentPage() {
   const hourlyByModel = useMemo(
     () =>
       patternData
-        ? toHourlyByModel(patternData.records, dateRange, tzOffset, 5)
+        ? toHourlyByModel(patternData.records, dateRange, tzOffset, MODEL_SERIES_LIMIT)
         : [],
     [patternData, dateRange, tzOffset],
   );

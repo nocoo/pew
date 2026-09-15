@@ -8,7 +8,7 @@ import { formatTokens } from "@/lib/utils";
 import { usePricingMap, formatCost } from "@/hooks/use-pricing";
 import { AccountingNotice } from "@/components/dashboard/accounting-notice";
 import { groupByModel, toSourceTrendPoints } from "@/lib/usage-helpers";
-import { toModelEvolutionPoints } from "@/lib/model-helpers";
+import { MODEL_SERIES_LIMIT, toModelEvolutionPoints } from "@/lib/model-helpers";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ChartCardSkeleton } from "@/components/dashboard/chart-card-skeleton";
 import { modelColor, agentColor, withAlpha } from "@/lib/palette";
@@ -116,7 +116,7 @@ export default function ModelsPage() {
 
   const modelEvolutionData = useMemo(() => {
     if (!data) return [];
-    const sparse = toModelEvolutionPoints(data.records, 10, tzOffset);
+    const sparse = toModelEvolutionPoints(data.records, MODEL_SERIES_LIMIT, tzOffset);
     if (sparse.length === 0) return sparse;
     const allModels = Object.keys((sparse[0] as (typeof sparse)[number]).models);
     const zeroModels: Record<string, number> = {};

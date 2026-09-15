@@ -16,6 +16,8 @@ import type { PricingMap } from "@/lib/pricing";
 
 export { toLocalDateStr } from "@/lib/usage-transforms";
 
+export const MODEL_SERIES_LIMIT = 30;
+
 /**
  * Rank by tokens in each ID's most recent seven-day window, working backwards
  * from the latest positive usage date in the selection. Dates are local calendar
@@ -979,13 +981,13 @@ export interface HourlyByModelPoint {
  * @param rows       — raw UsageRow[] (must be half-hour granularity)
  * @param dateRange  — period boundaries for day counting (local dates "YYYY-MM-DD")
  * @param tzOffset   — minutes from UTC (positive = west), default 0
- * @param topN       — number of top models to include (default 5)
+ * @param topN       — number of models to include (default 30)
  */
 export function toHourlyByModel(
   rows: UsageRow[],
   dateRange: { from: string; to: string },
   tzOffset = 0,
-  topN = 5,
+  topN = MODEL_SERIES_LIMIT,
 ): HourlyByModelPoint[] {
   if (rows.length === 0) {
     // Return empty 24-hour structure

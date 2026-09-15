@@ -7,16 +7,16 @@ import { toModelTimeline } from "./timeline-model-chart";
 import type { UsageRow } from "@/lib/usage-transforms";
 
 describe("model chart series", () => {
-  it("retains the five selected models and Other in both legends, with shares over all usage", () => {
+  it("limits visible legends without removing hidden models from share denominators", () => {
     const modelEvolution = [{ date: "2026-09-15", models: { newest: 1, a: 2, b: 3, c: 4, d: 5, Other: 85 } }];
     const donut = renderToStaticMarkup(createElement(ModelDonutChart, { modelEvolution }));
     expect(donut).toContain("newest");
-    expect(donut).toContain("Other");
-    expect(donut).toContain("85%");
+    expect(donut).not.toContain(">Other<");
+    expect(donut).toContain("Show all 6 series");
     expect(donut).toContain("1%");
-    expect(donut.indexOf("newest")).toBeLessThan(donut.indexOf("Other"));
     const area = renderToStaticMarkup(createElement(ModelAreaChart, { data: modelEvolution }));
-    expect(area).toContain("Other");
+    expect(area).not.toContain(">Other<");
+    expect(area).toContain("Show all 6 series");
     expect(area).toContain("newest");
   });
 

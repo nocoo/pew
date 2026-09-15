@@ -15,6 +15,7 @@ import { chartAxis, modelColor } from "@/lib/palette";
 import { shortModel } from "@/lib/model-helpers";
 import type { ModelEra } from "@/lib/model-helpers";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
+import { ChartLegendMore } from "./chart-legend-more";
 import { ChartTooltip, ChartTooltipRow } from "./chart-tooltip";
 
 // ---------------------------------------------------------------------------
@@ -69,7 +70,7 @@ function ModelTrendTooltip({
 }) {
   if (!active || !payload?.length) return null;
 
-  const items = [...payload].reverse();
+  const items = payload.filter((entry) => entry.value > 0).reverse();
 
   return (
     <ChartTooltip title={label ? fmtDate(label) : undefined}>
@@ -146,7 +147,7 @@ export function DeviceModelTrendChart({
           <p className="text-xs md:text-sm text-muted-foreground">Model Mix</p>
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          {modelKeys.map((model) => (
+          {modelKeys.slice(0, 5).map((model) => (
             <div key={model} className="flex items-center gap-1.5">
               <div
                 className="h-2 w-2 rounded-full"
@@ -157,6 +158,7 @@ export function DeviceModelTrendChart({
               </span>
             </div>
           ))}
+          <ChartLegendMore items={modelKeys.map((model) => ({ key: model, label: model, color: modelColor(model).color }))} />
         </div>
       </div>
 

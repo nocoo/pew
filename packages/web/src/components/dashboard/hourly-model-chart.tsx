@@ -15,6 +15,7 @@ import { chartAxis, modelColor } from "@/lib/palette";
 import { shortModel } from "@/lib/model-helpers";
 import type { HourlyByModelPoint } from "@/lib/usage-helpers";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
+import { ChartLegendMore } from "./chart-legend-more";
 import {
   ChartTooltip,
   ChartTooltipRow,
@@ -52,7 +53,7 @@ function ModelTooltip({
   if (!active || !payload?.length) return null;
 
   // Sort by value descending for display
-  const sorted = [...payload].sort((a, b) => b.value - a.value);
+  const sorted = payload.filter((entry) => entry.value > 0).sort((a, b) => b.value - a.value);
   const total = sorted.reduce((sum, p) => sum + p.value, 0);
 
   return (
@@ -77,7 +78,7 @@ function ModelTooltip({
 /**
  * Stacked bar chart showing average hourly token usage by model.
  * X-axis is hours 0-23, Y-axis is tokens, bars are stacked by model.
- * Shows top 5 models + "Other".
+ * Shows the selected models plus "Other", independently of the shorter legend.
  */
 export function HourlyModelChart({
   data,
@@ -107,7 +108,7 @@ export function HourlyModelChart({
   }));
 
   // Build legend entries (limit to first few to avoid overflow)
-  const legendItems = modelKeys.slice(0, 6).map((model) => ({
+  const legendItems = modelKeys.slice(0, 5).map((model) => ({
     key: model,
     label: shortModel(model),
     color: modelColor(model).color,
@@ -137,6 +138,7 @@ export function HourlyModelChart({
                 </span>
               </div>
             ))}
+            <ChartLegendMore items={modelKeys.map((model) => ({ key: model, label: model, color: modelColor(model).color }))} />
           </div>
         )}
       </div>

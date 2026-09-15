@@ -112,7 +112,7 @@ export default function DashboardPage() {
               className="w-80 max-w-[calc(100vw-2rem)] space-y-3 text-sm">
               <p>The selected period applies to Usage Summary, Salary Calculator, Trends and Insights. Month ranges roll back from today in your local time.</p>
               <p>Activity and Goal Tracker always show {currentYear}. Week / month comparisons use their own calendar periods; Monthly Forecast and Daily Average always use this month.</p>
-              <p>Model charts prioritize the most-used models in the seven days ending on this period’s latest usage date, then earlier weeks. Token counts and shares cover the full selected period, with remaining models grouped as Other.</p>
+              <p>Model charts show up to 30 models, prioritizing usage in the seven days ending on this period’s latest usage date, then earlier weeks. Token counts and shares cover the full selected period. Only additional models are grouped as Other; a shorter legend does not hide chart data.</p>
               <UsageTimingNotice records={records} />
             </PopoverContent>
           </Popover>

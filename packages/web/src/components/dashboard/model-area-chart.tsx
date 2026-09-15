@@ -16,6 +16,7 @@ import { modelColor } from "@/lib/palette";
 import { shortModel } from "@/lib/model-helpers";
 import type { ModelEra } from "@/lib/model-helpers";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
+import { ChartLegendMore } from "./chart-legend-more";
 import {
   ChartTooltip,
   ChartTooltipRow,
@@ -70,7 +71,7 @@ function ModelAreaTooltip({
   if (!active || !payload?.length) return null;
 
   // Sort by value descending
-  const sorted = [...payload].sort((a, b) => b.value - a.value);
+  const sorted = payload.filter((entry) => entry.value > 0).sort((a, b) => b.value - a.value);
   const total = sorted.reduce((sum, e) => sum + e.value, 0);
 
   return (
@@ -170,7 +171,7 @@ export function ModelAreaChart({
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <p className="text-xs md:text-sm text-muted-foreground">By Model</p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-          {modelKeys.map((model) => (
+          {modelKeys.slice(0, 5).map((model) => (
             <div key={model} className="flex items-center gap-1.5">
               <div
                 className="h-2 w-2 rounded-full"
@@ -183,6 +184,7 @@ export function ModelAreaChart({
               </span>
             </div>
           ))}
+          <ChartLegendMore items={modelKeys.map((model) => ({ key: model, label: model, color: modelColor(model).color }))} />
         </div>
       </div>
 
