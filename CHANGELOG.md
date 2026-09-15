@@ -2,6 +2,30 @@
 
 ## Unreleased
 
+## v3.0.0
+
+### Added
+- Show thirty models with compact legends
+- Add rolling month ranges to overview
+- Restore annual heatmaps and lift overview period controls
+- Compact overview summary and embed salary calculator
+- Compact overview summary and add daily usage breakdowns
+- Restore classic overview and highlight cache hit rate
+- Retain original overview widgets in legacy area
+- Rebuild overview around tokens, cost and cache
+- Unify overview metrics and calendar periods
+- Display cache write costs and accounting coverage
+- Reconcile cache details and preserve contextual pricing
+- Collect versioned cache details with safe historical enrichment
+
+### Changed
+- Document compatible cache enrichment and activation
+- Retire unused budget tracking
+
+### Fixed
+- Prioritize recent models in usage charts
+- Unify chart animation and sidebar playback
+
 ## v2.29.5
 
 ### Changed
