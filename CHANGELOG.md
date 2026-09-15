@@ -5,26 +5,32 @@
 ## v3.0.0
 
 ### Added
-- Show thirty models with compact legends
-- Add rolling month ranges to overview
-- Restore annual heatmaps and lift overview period controls
-- Compact overview summary and embed salary calculator
-- Compact overview summary and add daily usage breakdowns
-- Restore classic overview and highlight cache hit rate
-- Retain original overview widgets in legacy area
-- Rebuild overview around tokens, cost and cache
-- Unify overview metrics and calendar periods
-- Display cache write costs and accounting coverage
-- Reconcile cache details and preserve contextual pricing
-- Collect versioned cache details with safe historical enrichment
+
+- Collect versioned cache read/write details, preserving original token counters and unknown values
+- Add preview-first historical enrichment with exact basis matching and durable upload receipts
+- Include cache write prices, provider routing, context and TTL rates in cost estimates, with accounting coverage disclosures
+- Highlight cache hit rate in the classic Overview alongside token totals, cost, monthly comparisons and forecasts
+- Add daily stacked usage charts by model, harness and device, with a matching period-share chart
+- Integrate the salary calculator into the Activity / Goal Tracker row, with a settings dialog
 
 ### Changed
-- Document compatible cache enrichment and activation
+
+- Add All Time / Last 6 Months / Last 3 Months / Last 1 Month ranges to Overview
+- Display up to 30 models while keeping compact, expandable legends
+- Preserve the annual circular heatmaps, Usage Summary accents and icons
+- Upgrade Next.js, Wrangler, tailwind-merge and Node.js types
 - Retire unused budget tracking
 
 ### Fixed
+
 - Prioritize recent models in usage charts
 - Unify chart animation and sidebar playback
+
+### Compatibility
+
+- Apply migration `026-usage-accounting.sql` and deploy the ingest/read Workers and web before upgrading the CLI
+- Existing clients and token records remain compatible; cache enrichment does not require a global reset
+- Historical cache splits remain unknown until verified against retained source data; cache reads and writes are never added to total tokens again
 
 ## v2.29.5
 
