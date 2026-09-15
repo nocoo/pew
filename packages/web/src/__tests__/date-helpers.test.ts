@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   PERIOD_OPTIONS,
+  OVERVIEW_PERIOD_OPTIONS,
   periodToDateRange,
   periodToUtcRange,
   periodLabel,
@@ -54,6 +55,31 @@ describe("PERIOD_OPTIONS", () => {
 });
 
 describe("periodToUtcRange", () => {
+  it("provides rolling month options for Overview while keeping calendar options available elsewhere", () => {
+    expect(OVERVIEW_PERIOD_OPTIONS.map((option) => option.value)).toEqual(["all", "6m", "3m", "1m"]);
+    expect(PERIOD_OPTIONS.map((option) => option.value)).toEqual(["all", "month", "week"]);
+    for (const option of OVERVIEW_PERIOD_OPTIONS.slice(1)) expect(periodLabel(option.value)).toBe(option.label);
+  });
+
+  it("counts calendar months backwards from the local date and includes today", () => {
+    for (const [period, start] of [["6m", "2026-03-15"], ["3m", "2026-06-15"], ["1m", "2026-08-15"]] as const) {
+      const result = periodToUtcRange(period, "2026-09-15", -480);
+      expect(result).toEqual({ start, end: "2026-09-15",
+        from: new Date(new Date(`${start}T00:00:00Z`).getTime() - 480 * 60_000).toISOString(),
+        to: "2026-09-15T16:00:00.000Z" });
+    }
+    expect(periodToUtcRange("6m", "2026-01-15", 420)).toEqual({
+      start: "2025-07-15", end: "2026-01-15", from: "2025-07-15T07:00:00.000Z", to: "2026-01-16T07:00:00.000Z",
+    });
+  });
+
+  it("clamps month ends instead of overflowing February or shorter months", () => {
+    expect(periodToUtcRange("1m", "2026-03-31", 0).start).toBe("2026-02-28");
+    expect(periodToUtcRange("1m", "2028-03-31", 0).start).toBe("2028-02-29");
+    expect(periodToUtcRange("3m", "2026-05-31", 0).start).toBe("2026-02-28");
+    expect(periodToUtcRange("6m", "2026-12-31", 0).start).toBe("2026-06-30");
+  });
+
   it("preserves exact local calendar bounds, including year and leap-day transitions", () => {
     expect(periodToUtcRange("month", "2026-09-15", -480)).toEqual({
       start: "2026-09-01", end: "2026-09-15",
@@ -83,6 +109,15 @@ describe("periodToDateRange", () => {
   it('returns from="2020-01-01" for "all"', () => {
     const result = periodToDateRange("all");
     expect(result).toEqual({ from: "2020-01-01" });
+  });
+
+  it("uses exact UTC bounds when a rolling range is requested", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-15T12:00:00Z"));
+    for (const period of ["1m", "3m", "6m"] as const) {
+      const { from, to } = periodToUtcRange(period, "2026-09-15", -480);
+      expect(periodToDateRange(period, -480)).toEqual({ from, to });
+    }
   });
 
   it('returns first day of current month for "month"', () => {

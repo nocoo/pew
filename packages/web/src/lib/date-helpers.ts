@@ -11,12 +11,19 @@ import type { UsageRow } from "@/hooks/use-usage-data";
 // Types
 // ---------------------------------------------------------------------------
 
-export type Period = "all" | "month" | "week";
+export type Period = "all" | "month" | "week" | "6m" | "3m" | "1m";
 
 export const PERIOD_OPTIONS: { value: Period; label: string }[] = [
   { value: "all", label: "All Time" },
   { value: "month", label: "This Month" },
   { value: "week", label: "This Week" },
+];
+
+export const OVERVIEW_PERIOD_OPTIONS: { value: Period; label: string }[] = [
+  { value: "all", label: "All Time" },
+  { value: "6m", label: "Last 6 Months" },
+  { value: "3m", label: "Last 3 Months" },
+  { value: "1m", label: "Last 1 Month" },
 ];
 
 // ---------------------------------------------------------------------------
@@ -68,6 +75,12 @@ export function periodToDateRange(
   const now = new Date();
 
   switch (period) {
+    case "6m":
+    case "3m":
+    case "1m": {
+      const { from, to } = periodToUtcRange(period, getLocalToday(tzOffset), tzOffset);
+      return { from, to };
+    }
     case "all":
       return { from: "2020-01-01" };
     case "month": {
@@ -89,6 +102,13 @@ export function periodToDateRange(
 export function periodToUtcRange(period: Period, today: string, tzOffset: number) {
   const dayMs = (date: string) => new Date(`${date}T00:00:00Z`).getTime();
   const day = new Date(dayMs(today));
+  if (period === "6m" || period === "3m" || period === "1m") {
+    const date = day.getUTCDate();
+    day.setUTCDate(1);
+    day.setUTCMonth(day.getUTCMonth() - Number.parseInt(period, 10));
+    const lastDay = new Date(Date.UTC(day.getUTCFullYear(), day.getUTCMonth() + 1, 0)).getUTCDate();
+    day.setUTCDate(Math.min(date, lastDay));
+  }
   if (period === "month") day.setUTCDate(1);
   if (period === "week") day.setUTCDate(day.getUTCDate() - day.getUTCDay());
   const start = period === "all" ? null : day.toISOString().slice(0, 10);
@@ -103,6 +123,9 @@ export function periodToUtcRange(period: Period, today: string, tzOffset: number
 /** Human-readable label for a period. */
 export function periodLabel(period: Period): string {
   switch (period) {
+    case "6m": return "Last 6 Months";
+    case "3m": return "Last 3 Months";
+    case "1m": return "Last 1 Month";
     case "all":
       return "All time";
     case "month":

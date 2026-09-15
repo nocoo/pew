@@ -147,7 +147,7 @@ test.describe("Feature: Overview", () => {
       await expect(stat(page, "Total Tokens").getByText("1.8M", { exact: true })).toBeVisible();
       const header = page.getByRole("heading", { name: "Overview", exact: true }).locator("xpath=ancestor::header[1]");
       const summary = page.getByRole("heading", { name: "Usage summary", exact: true }).locator("xpath=ancestor::section[1]");
-      for (const name of ["All Time", "This Month", "This Week"]) {
+      for (const name of ["All Time", "Last 6 Months", "Last 3 Months", "Last 1 Month"]) {
         await expect(header.getByRole("button", { name, exact: true })).toBeVisible();
         await expect(summary.getByRole("button", { name, exact: true })).toHaveCount(0);
       }
@@ -171,7 +171,7 @@ test.describe("Feature: Overview", () => {
       await page.keyboard.press("Escape");
       await expect(disclosure).not.toBeVisible();
       await expect(info).toBeFocused();
-      await header.getByRole("button", { name: "This Month", exact: true }).click();
+      await header.getByRole("button", { name: "Last 1 Month", exact: true }).click();
       await expect(page.getByText("No usage in this period.", { exact: true })).toBeVisible();
       await info.click();
       await expect(disclosure).toBeVisible();
@@ -242,21 +242,24 @@ test.describe("Feature: Overview", () => {
     const breakdown = page.getByRole("region", { name: "Usage breakdown", exact: true });
     await breakdown.getByRole("button", { name: "Device", exact: true }).click();
     await expect(breakdown.getByText("1.8M tokens", { exact: true })).toBeVisible();
-    for (const [label, startDay] of [["This Month", 1], ["This Week", 13]] as const) {
+    for (const [label, startMonth, hasUsage] of [["Last 6 Months", 2, true], ["Last 3 Months", 5, false], ["Last 1 Month", 7, false]] as const) {
       requests.length = 0;
       await page.getByRole("button", { name: label, exact: true }).click();
-      await expect(page.getByText("No usage in this period.", { exact: true })).toBeVisible();
+      if (hasUsage) await expect(stat(page, "Total Tokens").getByText("1.8M", { exact: true })).toBeVisible();
+      else await expect(page.getByText("No usage in this period.", { exact: true })).toBeVisible();
       await expect(page.getByRole("button", { name: "All Time", exact: true })).toBeVisible();
       await expect(page.getByText("Ready to Track Your AI Usage")).not.toBeVisible();
-      await expect(stat(page, "Cache Hit Rate").getByText("—", { exact: true })).toBeVisible();
-      const from = await page.evaluate((day) => new Date(2026, 8, day).toISOString(), startDay);
+      await expect(stat(page, "Cache Hit Rate").getByText(hasUsage ? "25.0%" : "—", { exact: true })).toBeVisible();
+      const from = await page.evaluate((month) => new Date(2026, month, 15).toISOString(), startMonth);
+      await expect.poll(() => requests.filter((url) => url.searchParams.get("from") === from).length).toBeGreaterThanOrEqual(3);
       const day = requests.find((url) => url.searchParams.get("granularity") === "day" && url.searchParams.get("from") === from);
       const hourly = requests.find((url) => url.searchParams.get("granularity") === "half-hour" && url.searchParams.get("from") === from);
       expect(day).toBeDefined();
       expect(hourly).toBeDefined();
       expect(day?.searchParams.get("to")).toBe(hourly?.searchParams.get("to"));
       await expect(breakdown.getByRole("button", { name: "Device", exact: true })).toHaveAttribute("aria-pressed", "true");
-      await expect(breakdown.getByRole("figure", { name: "Daily token breakdown" }).getByText("No tokens to display.")).toBeVisible();
+      if (hasUsage) await expect(breakdown.getByText("1.8M tokens", { exact: true })).toBeVisible();
+      else await expect(breakdown.getByRole("figure", { name: "Daily token breakdown" }).getByText("No tokens to display.")).toBeVisible();
       const device = requests.find((url) => url.pathname === "/api/usage/by-device" && url.searchParams.get("from") === from);
       expect(device).toBeDefined();
       expect(device?.searchParams.get("to")).toBe(day?.searchParams.get("to"));

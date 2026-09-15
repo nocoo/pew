@@ -12,7 +12,7 @@ import { summarizeAccounting } from "@/lib/accounting";
 import type { UsageDimension } from "@/lib/usage-breakdown";
 import { computeTotalCost, toDailyCostPoints, computeCacheSavings, forecastMonthlyCost, toDailyCacheRates, type DailyCostPoint, type DailyCacheRate } from "@/lib/cost-helpers";
 import { compareWeekdayWeekend, computeMoMGrowth, computeWoWGrowth, toHourlyWeekdayWeekend } from "@/lib/usage-helpers";
-import { fillDateRange, getLocalToday, periodLabel, periodToUtcRange, type Period } from "@/lib/date-helpers";
+import { fillDateRange, getLocalToday, OVERVIEW_PERIOD_OPTIONS, periodLabel, periodToUtcRange, type Period } from "@/lib/date-helpers";
 import { formatTokens } from "@/lib/utils";
 import { StatCard, StatGrid } from "@/components/dashboard/stat-card";
 import { HeatmapHero } from "@/components/dashboard/heatmap-hero";
@@ -78,8 +78,7 @@ export default function DashboardPage() {
     return fillDateRange([zero(firstDay), ...toDailyCacheRates(records, tzOffset)], "date", zero, today);
   }, [records, tzOffset, firstDay, today]);
 
-  // Comparisons and the monthly forecast need complete calendar windows,
-  // including when the selected usage period is only the current week.
+  // Comparisons and the monthly forecast retain their own calendar windows.
   const wow = useMemo(() => wowData.data
     ? computeWoWGrowth(wowData.data.records, pricingMap, undefined, tzOffset) : null,
   [wowData.data, pricingMap, tzOffset]);
@@ -102,7 +101,7 @@ export default function DashboardPage() {
       <SnapshotAlert />
       <PageHeader title="Overview" description="Token usage and cache efficiency for your AI coding tools."
         actions={<>
-          <PeriodSelector value={period} onChange={setPeriod} />
+          <PeriodSelector value={period} onChange={setPeriod} options={OVERVIEW_PERIOD_OPTIONS} />
           <Popover>
             <PopoverTrigger asChild>
               <Button type="button" variant="ghost" size="icon" aria-label="Overview information">
@@ -111,7 +110,7 @@ export default function DashboardPage() {
             </PopoverTrigger>
             <PopoverContent aria-label="Overview information" align="end" collisionPadding={16}
               className="w-80 max-w-[calc(100vw-2rem)] space-y-3 text-sm">
-              <p>The selected period applies to Usage Summary, Salary Calculator, Trends and Insights. Calendar weeks start on Sunday.</p>
+              <p>The selected period applies to Usage Summary, Salary Calculator, Trends and Insights. Month ranges roll back from today in your local time.</p>
               <p>Activity and Goal Tracker always show {currentYear}. Week / month comparisons use their own calendar periods; Monthly Forecast and Daily Average always use this month.</p>
               <p>Model charts prioritize the most-used models in the seven days ending on this period’s latest usage date, then earlier weeks. Token counts and shares cover the full selected period, with remaining models grouped as Other.</p>
               <UsageTimingNotice records={records} />

@@ -37,7 +37,7 @@ test.describe("Feature: Shared chart animation", () => {
     for (const chart of series(page)) await expect(chart).toBeAttached();
     await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
     await page.clock.runFor(600);
-    await page.getByRole("button", { name: "This Month", exact: true }).click();
+    await page.getByRole("button", { name: "Last 1 Month", exact: true }).click();
     await expect(page.getByRole("figure", { name: "Token share" })).toContainText("3.6M tokens");
     await page.clock.runFor(96);
     const early = await frames(page);
