@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
 import { test, expect, DASHBOARD_USAGE_FIXTURE, DASHBOARD_PRICING_FIXTURE, mockDashboardApis } from "./fixtures";
 
+const animationTime = new Date("2026-09-15T12:00:00Z");
 const playback = (page: Page) => page.locator("html");
 const pausedStyle = /--chart-animation-play-state:\s*paused/;
 const series = (page: Page) => [
@@ -13,7 +14,8 @@ const frames = (page: Page) => Promise.all(series(page).map((chart) => chart.eva
 
 test.describe("Feature: Shared chart animation", () => {
   test.beforeEach(async ({ page }) => {
-    await page.clock.install({ time: new Date("2026-09-15T12:00:00Z") });
+    // Keep Date fixed while timers run, so pauseAt cannot race the CI clock.
+    await page.clock.setFixedTime(animationTime);
     const records = [...DASHBOARD_USAGE_FIXTURE.records, ...DASHBOARD_USAGE_FIXTURE.records.map((row, i) => ({
       ...row, model: i === 0 ? "gpt-5.4" : row.model, hour_start: row.hour_start.replace("2026-05", "2026-09"),
       input_tokens: row.input_tokens * (i + 2), total_tokens: row.total_tokens + row.input_tokens * (i + 1),
@@ -35,7 +37,7 @@ test.describe("Feature: Shared chart animation", () => {
   test("old and new series animate, pause together and finish after rapid sidebar toggles", async ({ page }) => {
     await page.goto("/dashboard");
     for (const chart of series(page)) await expect(chart).toBeAttached();
-    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+    await page.clock.pauseAt(animationTime);
     await page.clock.runFor(600);
     await page.getByRole("button", { name: "Last 1 Month", exact: true }).click();
     await expect(page.getByRole("figure", { name: "Token share" })).toContainText("3.6M tokens");
@@ -74,7 +76,7 @@ test.describe("Feature: Shared chart animation", () => {
     await page.setViewportSize({ width: 390, height: 1000 });
     await page.goto("/dashboard");
     await expect(page.getByRole("button", { name: "Open navigation" })).toBeVisible();
-    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+    await page.clock.pauseAt(animationTime);
     await page.getByRole("button", { name: "Open navigation" }).click();
     await expect(playback(page)).toHaveAttribute("style", pausedStyle);
     await page.clock.runFor(650);
@@ -98,7 +100,7 @@ test.describe("Feature: Shared chart animation", () => {
     await page.goto("/dashboard");
     for (const chart of series(page)) await expect(chart).toBeAttached();
     await expect(page.locator(".chart-animate").first()).toHaveCSS("animation-name", "none");
-    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+    await page.clock.pauseAt(animationTime);
     const before = await frames(page);
     await page.clock.runFor(250);
     expect(await frames(page)).toEqual(before);
@@ -110,7 +112,7 @@ test.describe("Feature: Shared chart animation", () => {
   test("salary charts mounted in a portal during a pause wait, then animate with the page", async ({ page }) => {
     await page.goto("/dashboard");
     await expect(page.getByRole("button", { name: "Salary settings", exact: true })).toBeEnabled();
-    await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000));
+    await page.clock.pauseAt(animationTime);
     await page.getByRole("button", { name: "Collapse sidebar", exact: true }).click();
     await page.getByRole("button", { name: "Salary settings", exact: true }).click();
     const dialog = page.getByRole("dialog", { name: "Salary settings", exact: true });

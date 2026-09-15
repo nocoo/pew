@@ -122,6 +122,9 @@ test.describe("Feature: Overview", () => {
   test("annual calendars retain leap day and tooltips after scrolling across the year", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 1000 });
     await page.clock.setFixedTime(new Date("2028-02-29T12:00:00Z"));
+    // Keep the calendar fixture near today instead of rendering two years of trend bars.
+    const records = DASHBOARD_USAGE_FIXTURE.records.map((row) => ({ ...row, hour_start: row.hour_start.replace("2026-05", "2028-02") }));
+    await mockDashboardApis(page, { usage: { ...DASHBOARD_USAGE_FIXTURE, records }, pricing: DASHBOARD_PRICING_FIXTURE });
     await page.goto("/dashboard");
     for (const name of ["Activity", "Goal Tracker"]) {
       const region = page.getByRole("region", { name, exact: true });
