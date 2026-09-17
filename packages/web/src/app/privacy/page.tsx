@@ -1,6 +1,7 @@
 import { Button } from "@nocoo/basalt/components/button";
 import { ArrowLeft } from "lucide-react";
 import { chromeIconClassName } from "@/lib/ghost-icon";
+import { HeaderTooltip, HexlyLink } from "@/components/layout/hexly-link";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 export const metadata = {
@@ -17,16 +18,21 @@ export default function PrivacyPage() {
         <div className="space-y-4 mb-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="icon" className={chromeIconClassName} asChild>
-                <a href="/" aria-label="Back to home">
-                  <ArrowLeft strokeWidth={1.5} aria-hidden="true" />
-                </a>
-              </Button>
+              <HeaderTooltip label="Back to Pew">
+                <Button variant="ghost" size="icon" className={chromeIconClassName} asChild>
+                  <a href="/" aria-label="Back to home">
+                    <ArrowLeft strokeWidth={1.5} aria-hidden="true" />
+                  </a>
+                </Button>
+              </HeaderTooltip>
               <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight text-foreground">
                 Privacy Policy
               </h1>
             </div>
-            <ThemeToggle />
+            <div className="flex items-center gap-1">
+              <HexlyLink />
+              <ThemeToggle />
+            </div>
           </div>
           <p className="text-sm text-muted-foreground">
             Last updated: March 12, 2026

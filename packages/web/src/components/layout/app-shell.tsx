@@ -9,6 +9,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePauseChartsForSidebar } from "@/components/chart-animation-provider";
 import { Github } from "@/components/icons/github";
+import { HeaderTooltip, HexlyLink } from "./hexly-link";
 import { Sidebar } from "./sidebar";
 import { ThemeToggle } from "./theme-toggle";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -73,45 +74,52 @@ export function AppShell({ children }: AppShellProps) {
         <AppHeader
           leading={
             isMobile ? (
-              <Button
-                variant="ghost"
-                size="icon"
-                className={chromeIconClassName}
-                onClick={() => changeMobileOpen(true)}
-                aria-label="Open navigation"
-              >
-                <Menu aria-hidden="true" strokeWidth={1.5} />
-              </Button>
+              <HeaderTooltip label="Open navigation">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={chromeIconClassName}
+                  onClick={() => changeMobileOpen(true)}
+                  aria-label="Open navigation"
+                >
+                  <Menu aria-hidden="true" strokeWidth={1.5} />
+                </Button>
+              </HeaderTooltip>
             ) : null
           }
           breadcrumbs={items}
           actions={
             <>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={chromeIconClassName}
-                asChild
-              >
-                <a href="/privacy" aria-label="Privacy policy">
-                  <ShieldCheck aria-hidden="true" strokeWidth={1.5} />
-                </a>
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={chromeIconClassName}
-                asChild
-              >
-                <a
-                  href="https://github.com/nocoo/pew"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="GitHub repository"
+              <HeaderTooltip label="Privacy policy">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={chromeIconClassName}
+                  asChild
                 >
-                  <Github aria-hidden="true" strokeWidth={1.5} />
-                </a>
-              </Button>
+                  <a href="/privacy" aria-label="Privacy policy">
+                    <ShieldCheck aria-hidden="true" strokeWidth={1.5} />
+                  </a>
+                </Button>
+              </HeaderTooltip>
+              <HeaderTooltip label="GitHub repository">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={chromeIconClassName}
+                  asChild
+                >
+                  <a
+                    href="https://github.com/nocoo/pew"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="GitHub repository"
+                  >
+                    <Github aria-hidden="true" strokeWidth={1.5} />
+                  </a>
+                </Button>
+              </HeaderTooltip>
+              <HexlyLink />
               <ThemeToggle />
             </>
           }

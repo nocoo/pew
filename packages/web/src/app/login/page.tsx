@@ -11,6 +11,7 @@ import Image from "next/image";
 import { Suspense, useState } from "react";
 import { BadgeAmbientGlow, BadgeCard } from "@/components/brand/badge-card";
 import { Github } from "@/components/icons/github";
+import { HeaderTooltip, HexlyLink } from "@/components/layout/hexly-link";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { SiteFooter } from "@/components/layout/site-footer";
 
@@ -80,21 +81,24 @@ function LoginContent() {
         <BadgeAmbientGlow />
 
         <div className="absolute top-4 right-4 z-10 flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className={chromeIconClassName}
-            asChild
-          >
-            <a
-              href="https://github.com/nocoo/pew"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="GitHub repository"
+          <HeaderTooltip label="GitHub repository">
+            <Button
+              variant="ghost"
+              size="icon"
+              className={chromeIconClassName}
+              asChild
             >
-              <Github aria-hidden="true" strokeWidth={1.5} />
-            </a>
-          </Button>
+              <a
+                href="https://github.com/nocoo/pew"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="GitHub repository"
+              >
+                <Github aria-hidden="true" strokeWidth={1.5} />
+              </a>
+            </Button>
+          </HeaderTooltip>
+          <HexlyLink />
           <ThemeToggle />
         </div>
 

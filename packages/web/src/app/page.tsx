@@ -4,6 +4,7 @@ import { ShieldCheck } from "lucide-react";
 import { BadgeAmbientGlow } from "@/components/brand/badge-card";
 import { Github } from "@/components/icons/github";
 import { LandingContent } from "@/components/landing/landing-content";
+import { HeaderTooltip, HexlyLink } from "@/components/layout/hexly-link";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 
@@ -13,31 +14,36 @@ export default function LandingPage() {
       <BadgeAmbientGlow />
 
       <div className="absolute top-4 right-4 z-50 flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="icon"
-          className={chromeIconClassName}
-          asChild
-        >
-          <a href="/privacy" aria-label="Privacy policy">
-            <ShieldCheck strokeWidth={1.5} aria-hidden="true" />
-          </a>
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={chromeIconClassName}
-          asChild
-        >
-          <a
-            href="https://github.com/nocoo/pew"
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label="View source on GitHub"
+        <HeaderTooltip label="Privacy policy">
+          <Button
+            variant="ghost"
+            size="icon"
+            className={chromeIconClassName}
+            asChild
           >
-            <Github strokeWidth={1.5} aria-hidden="true" />
-          </a>
-        </Button>
+            <a href="/privacy" aria-label="Privacy policy">
+              <ShieldCheck strokeWidth={1.5} aria-hidden="true" />
+            </a>
+          </Button>
+        </HeaderTooltip>
+        <HeaderTooltip label="GitHub repository">
+          <Button
+            variant="ghost"
+            size="icon"
+            className={chromeIconClassName}
+            asChild
+          >
+            <a
+              href="https://github.com/nocoo/pew"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="View source on GitHub"
+            >
+              <Github strokeWidth={1.5} aria-hidden="true" />
+            </a>
+          </Button>
+        </HeaderTooltip>
+        <HexlyLink />
         <ThemeToggle />
       </div>
 

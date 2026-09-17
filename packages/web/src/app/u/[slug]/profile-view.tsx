@@ -15,6 +15,7 @@ import { useUserProfile } from "@/hooks/use-user-profile";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PageHeader } from "@/components/leaderboard/page-header";
+import { HeaderTooltip, HexlyLink } from "@/components/layout/hexly-link";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { formatMemberSince } from "@/lib/date-helpers";
@@ -27,21 +28,26 @@ import { ProfileContent } from "@/components/profile/profile-content";
 function TopRightIcons() {
   return (
     <div className="absolute right-6 top-4 z-50 flex items-center gap-1">
-      <Button variant="ghost" size="icon" className={chromeIconClassName} asChild>
-        <a href="/privacy" aria-label="Privacy policy">
-          <ShieldCheck strokeWidth={1.5} aria-hidden="true" />
-        </a>
-      </Button>
-      <Button variant="ghost" size="icon" className={chromeIconClassName} asChild>
-        <a
-          href="https://github.com/nocoo/pew"
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="View source on GitHub"
-        >
-          <Github strokeWidth={1.5} aria-hidden="true" />
-        </a>
-      </Button>
+      <HeaderTooltip label="Privacy policy">
+        <Button variant="ghost" size="icon" className={chromeIconClassName} asChild>
+          <a href="/privacy" aria-label="Privacy policy">
+            <ShieldCheck strokeWidth={1.5} aria-hidden="true" />
+          </a>
+        </Button>
+      </HeaderTooltip>
+      <HeaderTooltip label="GitHub repository">
+        <Button variant="ghost" size="icon" className={chromeIconClassName} asChild>
+          <a
+            href="https://github.com/nocoo/pew"
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="View source on GitHub"
+          >
+            <Github strokeWidth={1.5} aria-hidden="true" />
+          </a>
+        </Button>
+      </HeaderTooltip>
+      <HexlyLink />
       <ThemeToggle />
     </div>
   );
