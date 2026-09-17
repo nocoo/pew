@@ -42,7 +42,7 @@ const TEST_USER_SLUG = `e2e-user-${RUN_SUFFIX}`;
 /** Headers for ingest requests — includes version gate header */
 const INGEST_HEADERS = {
   "Content-Type": "application/json",
-  "X-Pew-Client-Version": "1.8.0",
+  "X-Pew-Client-Version": "3.0.0",
 };
 
 // D1 client for direct DB access (seed/cleanup)
@@ -131,6 +131,21 @@ afterAll(async () => {
 // ===========================================================================
 
 describe("POST /api/ingest", () => {
+  it("blocks 2.x clients and explains the supported version and upgrade commands", async () => {
+    const res = await fetch(`${BASE_URL}/api/ingest`, {
+      method: "POST",
+      headers: { ...INGEST_HEADERS, "X-Pew-Client-Version": "2.29.2" },
+      body: JSON.stringify([makeRecord()]),
+    });
+    expect(res.status).toBe(400);
+    const { error } = await res.json();
+    expect(error).toContain("2.29.2");
+    expect(error).toContain("3.0.0");
+    expect(error).toContain("npm install -g @nocoo/pew@latest");
+    expect(error).toContain("bun add -g @nocoo/pew@latest");
+    expect(error).not.toContain("pew reset");
+  });
+
   it("should reject requests without client version header", async () => {
     const res = await fetch(`${BASE_URL}/api/ingest`, {
       method: "POST",

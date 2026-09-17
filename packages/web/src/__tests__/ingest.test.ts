@@ -43,7 +43,7 @@ const VALID_RECORD = {
 };
 
 /** Version that satisfies the server-side MIN_CLIENT_VERSION gate */
-const VALID_VERSION = "1.6.0";
+const VALID_VERSION = "3.0.0";
 
 /** Stub a successful Worker response */
 function stubWorkerOk(ingested = 1) {
@@ -289,23 +289,29 @@ describe("POST /api/ingest", () => {
       expect(res.status).toBe(400);
       const body = await res.json();
       expect(body.error).toContain("Client version too old");
-      expect(body.error).toContain("pew reset");
+      expect(body.error).toContain("3.0.0");
+      expect(body.error).toContain("npm install -g @nocoo/pew@latest");
+      expect(body.error).toContain("bun add -g @nocoo/pew@latest");
+      expect(body.error).toContain("pew sync");
+      expect(body.error).not.toContain("pew reset");
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it("should reject requests with version below MIN_CLIENT_VERSION", async () => {
-      const res = await POST(makeRequest([VALID_RECORD], undefined, "1.5.1"));
+    it.each(["1.5.1", "1.6.0", "2.28.1", "2.29.2", "2.29.5"])("rejects CLI %s before forwarding any data", async (version) => {
+      const res = await POST(makeRequest([VALID_RECORD], undefined, version));
 
       expect(res.status).toBe(400);
       const body = await res.json();
       expect(body.error).toContain("Client version too old");
+      expect(body.error).toContain(version);
+      expect(body.error).toContain("3.0.0");
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
     it("should accept requests with version equal to MIN_CLIENT_VERSION", async () => {
       stubWorkerOk();
 
-      const res = await POST(makeRequest([VALID_RECORD], undefined, "1.6.0"));
+      const res = await POST(makeRequest([VALID_RECORD], undefined, "3.0.0"));
 
       expect(res.status).toBe(200);
     });
@@ -313,7 +319,7 @@ describe("POST /api/ingest", () => {
     it("should accept requests with version above MIN_CLIENT_VERSION", async () => {
       stubWorkerOk();
 
-      const res = await POST(makeRequest([VALID_RECORD], undefined, "2.0.0"));
+      const res = await POST(makeRequest([VALID_RECORD], undefined, "3.0.1"));
 
       expect(res.status).toBe(200);
     });

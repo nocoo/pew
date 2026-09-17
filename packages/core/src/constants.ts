@@ -59,8 +59,7 @@ export const MAX_STRING_LENGTH = 1024;
 /**
  * Minimum CLI version allowed to upload data.
  *
- * Older clients have token inflation bugs (SUM-on-restart, device ID
- * duplication) — the server rejects uploads from versions below this
- * threshold with an actionable error message.
+ * The server rejects uploads from versions below this threshold with
+ * an actionable upgrade message.
  */
-export const MIN_CLIENT_VERSION = "1.6.0";
+export const MIN_CLIENT_VERSION = "3.0.0";

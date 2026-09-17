@@ -6,7 +6,7 @@ import { accountingFixture } from "../../../core/src/__test-helpers__/accounting
 
 vi.mock("@/lib/auth-helpers", () => ({ resolveUser: vi.fn() }));
 const r = accountingFixture();
-const request = () => new Request("https://synthetic.invalid/api/ingest/details", { method: "POST", headers: { "X-Pew-Client-Version": "2.29.5" }, body: JSON.stringify([r]) });
+const request = () => new Request("https://synthetic.invalid/api/ingest/details", { method: "POST", headers: { "X-Pew-Client-Version": "3.0.0" }, body: JSON.stringify([r]) });
 beforeEach(() => { inMemoryRateLimiter.reset(); vi.mocked(resolveUser).mockResolvedValue({ userId: "synthetic-user" }); });
 afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 describe("accounting proxy receipts", () => {

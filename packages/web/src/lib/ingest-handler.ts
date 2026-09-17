@@ -83,13 +83,12 @@ export function createIngestHandler<T>(
       );
     }
 
-    // 3. Version gate — reject old clients with token inflation bugs
+    // 3. Version gate — require a supported CLI before forwarding any data
     const clientVersion = request.headers.get("X-Pew-Client-Version");
     if (!clientVersion || compareSemver(clientVersion, MIN_CLIENT_VERSION) < 0) {
       return NextResponse.json(
         {
-          error:
-            "Client version too old. Run: npx @nocoo/pew@latest && pew reset",
+          error: `Client version too old (received ${clientVersion || "unknown"}; minimum ${MIN_CLIENT_VERSION}). Upgrade: npm install -g @nocoo/pew@latest OR bun add -g @nocoo/pew@latest. Then run: pew sync.`,
         },
         { status: 400 },
       );

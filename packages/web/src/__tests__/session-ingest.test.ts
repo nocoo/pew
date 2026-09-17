@@ -45,7 +45,7 @@ const VALID_SESSION = {
 };
 
 /** Version that satisfies the server-side MIN_CLIENT_VERSION gate */
-const VALID_VERSION = "1.6.0";
+const VALID_VERSION = "3.0.0";
 
 function stubWorkerOk(ingested = 1) {
   mockFetch.mockResolvedValueOnce(
