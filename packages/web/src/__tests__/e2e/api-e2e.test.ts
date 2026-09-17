@@ -374,6 +374,21 @@ describe("POST /api/ingest", () => {
   });
 });
 
+describe("CLI upgrade notice persistence", () => {
+  it("shows once per account and preserves that decision in D1", async () => {
+    const first = await fetch(`${BASE_URL}/api/cli-upgrade-notice`, { method: "POST" });
+    expect(first.status).toBe(200);
+    expect(await first.json()).toEqual({ show: true });
+    const second = await fetch(`${BASE_URL}/api/cli-upgrade-notice`, { method: "POST" });
+    expect(second.status).toBe(200);
+    expect(await second.json()).toEqual({ show: false });
+    const row = await d1.firstOrNull<{ cli_upgrade_notice_seen_at: string }>(
+      "SELECT cli_upgrade_notice_seen_at FROM users WHERE id = ?", [TEST_USER_ID],
+    );
+    expect(row?.cli_upgrade_notice_seen_at).toBeTruthy();
+  });
+});
+
 // ===========================================================================
 // GET /api/usage
 // ===========================================================================
