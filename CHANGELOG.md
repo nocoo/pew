@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+## v3.0.2
+
+### Added
+- Show a one-time CLI 3.0 upgrade notice per account
+- Add Hexly project link and header tooltips
+
+### Changed
+- Upgrade basalt to 2.1.8
+- Update wrangler
+- Update workers-types
+- Update biome
+- Update client-s3
+- Align vitest 5.0.1
+- Bump wrangler to 4.131.2
+- Bump @aws-sdk/client-s3 to 3.1132.0
+- Bump cloudflare workers types
+- Bump oxc-parser to 0.150.0
+- Bump lucide-react to 1.46.0
+
+### Fixed
+- Require Pew CLI 3.0.0 for uploads
+
 ## v3.0.1
 
 ### Fixed
