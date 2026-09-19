@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v3.0.3
+
+### Fixed
+- Reduce aggregate scans and cache leaderboard statistics for ten minutes
+
 ## v3.0.2
 
 ### Added
