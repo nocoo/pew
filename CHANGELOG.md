@@ -6,6 +6,7 @@
 
 ### Fixed
 - Reduce aggregate scans and cache leaderboard statistics for ten minutes
+- Allow browser assertions and repository audits to complete under shared CPU load
 
 ## v3.0.2
 
