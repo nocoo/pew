@@ -91,8 +91,8 @@ async function handleListDevices(
           SUM(total_tokens) AS total_tokens,
           GROUP_CONCAT(DISTINCT source) AS sources,
           COUNT(DISTINCT model) AS model_count
-        FROM usage_totals
-        WHERE user_id = ?
+        FROM usage_bases
+        WHERE (event_id = '' OR total_tokens > 0) AND user_id = ?
         GROUP BY device_id
         UNION ALL
         SELECT
@@ -105,7 +105,7 @@ async function handleListDevices(
         FROM device_aliases da2
         WHERE da2.user_id = ?
           AND da2.device_id NOT IN (
-            SELECT DISTINCT device_id FROM usage_totals WHERE user_id = ?
+            SELECT DISTINCT device_id FROM usage_bases WHERE (event_id = '' OR total_tokens > 0) AND user_id = ?
           )
       ) d
       LEFT JOIN device_aliases da
@@ -132,9 +132,9 @@ async function handleCheckDeviceExists(
   const result = await db
     .prepare(
       `SELECT device_id FROM (
-        SELECT DISTINCT device_id FROM usage_totals
-        WHERE user_id = ? AND device_id = ?
-        UNION
+        SELECT device_id FROM usage_bases
+        WHERE (event_id = '' OR total_tokens > 0) AND user_id = ? AND device_id = ?
+        UNION ALL
         SELECT device_id FROM device_aliases
         WHERE user_id = ? AND device_id = ?
       ) LIMIT 1`
@@ -181,8 +181,9 @@ async function handleCheckDeviceHasRecords(
 
   const result = await db
     .prepare(
-      `SELECT COUNT(*) AS cnt FROM usage_totals
-       WHERE user_id = ? AND device_id = ?`
+      `SELECT 1 AS cnt FROM usage_bases
+       WHERE user_id = ? AND device_id = ? AND (event_id = '' OR total_tokens > 0)
+       LIMIT 1`
     )
     .bind(req.userId, req.deviceId)
     .first<{ cnt: number }>();

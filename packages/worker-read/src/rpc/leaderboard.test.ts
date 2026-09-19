@@ -269,7 +269,7 @@ describe("leaderboard RPC handlers", () => {
       expect(kv.put).toHaveBeenCalledWith(
         "lb:global::::20:0",
         JSON.stringify(mockRows),
-        { expirationTtl: 300 }
+        { expirationTtl: 600 }
       );
     });
 
@@ -496,6 +496,28 @@ describe("leaderboard RPC handlers", () => {
   // -------------------------------------------------------------------------
 
   describe("leaderboard.getUserSessionStats", () => {
+    it("reuses session counts for reordered IDs and isolates every filter within KV key limits", async () => {
+      const entries = new Map<string, unknown>();
+      kv.get.mockImplementation(async (key: string) => entries.get(key) ?? null);
+      kv.put.mockImplementation(async (key: string, value: string) => { entries.set(key, JSON.parse(value)); });
+      db.all.mockResolvedValue({ results: [{ user_id: "u1", session_count: 2, total_duration_seconds: 60 }] });
+      const userIds = Array.from({ length: 100 }, (_, i) => `user-${i.toString().padStart(36, "0")}`);
+      const request: GetUserSessionStatsRequest = { method: "leaderboard.getUserSessionStats", userIds };
+      const first = await (await handleLeaderboardRpc(request, db, kv)).json();
+      const second = await (await handleLeaderboardRpc({ ...request, userIds: [...userIds].reverse().concat(userIds[0]) }, db, kv)).json();
+      expect(second).toEqual(first);
+      expect(db.all).toHaveBeenCalledTimes(1);
+      for (const variant of [{ userIds: ["another-user"] }, { fromDate: "2026-09-01T00:00:00.000Z" }, { source: "codex" }]) {
+        await handleLeaderboardRpc({ ...request, ...variant }, db, kv);
+      }
+      expect(db.all).toHaveBeenCalledTimes(4);
+      expect(entries.size).toBe(4);
+      for (const [key, , options] of kv.put.mock.calls) {
+        expect(new TextEncoder().encode(key).length).toBeLessThanOrEqual(512);
+        expect(options).toEqual({ expirationTtl: 600 });
+      }
+    });
+
     it("should return session stats for user IDs", async () => {
       const mockStats = [
         { user_id: "u1", session_count: 42, total_duration_seconds: 3600 },

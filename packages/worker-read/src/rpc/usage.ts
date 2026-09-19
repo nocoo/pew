@@ -5,7 +5,7 @@
  */
 
 import type { D1Database } from "@cloudflare/workers-types";
-import { withAccounting } from "./accounting";
+import { ACCOUNTED_USAGE_SQL, withAccounting } from "./accounting";
 
 // ---------------------------------------------------------------------------
 // Response Types
@@ -148,7 +148,7 @@ async function handleGetUsage(
     groupBy = "hour_start, source, model";
   }
 
-  const conditions = ["user_id = ?", "hour_start >= ?", "hour_start < ?"];
+  const conditions: string[] = [];
   const params: unknown[] = [req.userId, req.fromDate, req.toDate];
 
   if (req.source) {
@@ -174,8 +174,8 @@ async function handleGetUsage(
       SUM(evidence_tokens) AS evidence_tokens,
       SUM(approximate_tokens) AS approximate_tokens,
       json_group_array(json(accounting_json)) AS accounting_json
-    FROM usage_totals
-    WHERE ${conditions.join(" AND ")}
+    FROM (${ACCOUNTED_USAGE_SQL})
+    ${conditions.length ? `WHERE ${conditions.join(" AND ")}` : ""}
     GROUP BY ${groupBy}
     ORDER BY hour_start ASC, source, model
   `;
@@ -214,12 +214,9 @@ async function handleGetDeviceSummary(
         json_group_array(json(ur.accounting_json)) AS accounting_json,
         GROUP_CONCAT(DISTINCT ur.source) AS sources,
         GROUP_CONCAT(DISTINCT ur.model) AS models
-      FROM usage_totals ur
+      FROM (${ACCOUNTED_USAGE_SQL}) ur
       LEFT JOIN device_aliases da
         ON da.user_id = ur.user_id AND da.device_id = ur.device_id
-      WHERE ur.user_id = ?
-        AND ur.hour_start >= ?
-        AND ur.hour_start < ?
       GROUP BY ur.device_id
       ORDER BY total_tokens DESC`
     )
@@ -251,10 +248,7 @@ async function handleGetDeviceCostDetails(
         SUM(ur.cached_input_tokens) AS cached_input_tokens,
         SUM(ur.reasoning_output_tokens) AS reasoning_output_tokens,
         json_group_array(json(ur.accounting_json)) AS accounting_json
-      FROM usage_totals ur
-      WHERE ur.user_id = ?
-        AND ur.hour_start >= ?
-        AND ur.hour_start < ?
+      FROM (${ACCOUNTED_USAGE_SQL}) ur
       GROUP BY ur.device_id, ur.source, ur.model`
     )
     .bind(req.userId, req.fromDate, req.toDate)
@@ -310,10 +304,7 @@ async function handleGetDeviceTimeline(
       SUM(ur.cached_input_tokens) AS cached_input_tokens,
       SUM(ur.reasoning_output_tokens) AS reasoning_output_tokens,
       json_group_array(json(ur.accounting_json)) AS accounting_json
-    FROM usage_totals ur
-    WHERE ur.user_id = ?
-      AND ur.hour_start >= ?
-      AND ur.hour_start < ?
+    FROM (${ACCOUNTED_USAGE_SQL}) ur
     GROUP BY ${groupBy}
     ORDER BY date ASC
   `;

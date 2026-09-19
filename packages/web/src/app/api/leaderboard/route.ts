@@ -54,14 +54,11 @@ const DEFAULT_LIMIT = 20;
 function periodStartDate(period: string): string | undefined {
   if (period === "all") return undefined;
 
-  const now = new Date();
-  if (period === "week") {
-    now.setDate(now.getDate() - 7);
-  } else {
-    // month
-    now.setDate(now.getDate() - 30);
-  }
-  return now.toISOString();
+  // Keep both token and session queries on the same reusable UTC window.
+  const windowMs = 10 * 60 * 1000;
+  const now = Math.floor(Date.now() / windowMs) * windowMs;
+  const days = period === "week" ? 7 : 30;
+  return new Date(now - days * 24 * 60 * 60 * 1000).toISOString();
 }
 
 // ---------------------------------------------------------------------------

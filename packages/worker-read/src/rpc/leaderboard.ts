@@ -5,7 +5,7 @@
  */
 
 import type { D1Database, KVNamespace } from "@cloudflare/workers-types";
-import { withCache, TTL_5M } from "../cache";
+import { withCache, TTL_10M } from "../cache";
 import type {
   GetGlobalLeaderboardRequest, GetTeamLeaderboardRequest, GetTeamRankRequest,
   GetUserLeaderboardRequest, GetUserRankRequest, GetUserSessionStatsRequest,
@@ -189,7 +189,7 @@ async function handleGetGlobalLeaderboard(
   // These are membership-dependent and must NOT be cached
   const hasPrivateScope = !!(req.teamId || req.orgId);
 
-  const conditions: string[] = ["u.is_public = 1"];
+  const conditions: string[] = ["(ur.event_id = '' OR ur.total_tokens > 0)"];
   const params: unknown[] = [];
 
   if (req.fromDate) {
@@ -227,22 +227,24 @@ async function handleGetGlobalLeaderboard(
 
   // Try with nickname column first
   const buildSql = (withNickname: boolean) => `
-    SELECT
-      ur.user_id,
-      u.name,
+    WITH totals AS (
+      SELECT ur.user_id,
+        SUM(ur.total_tokens) AS total_tokens,
+        SUM(ur.input_tokens) AS input_tokens,
+        SUM(ur.output_tokens) AS output_tokens,
+        SUM(ur.cached_input_tokens) AS cached_input_tokens
+      FROM usage_bases ur
+      WHERE ${conditions.join(" AND ")}
+      GROUP BY ur.user_id
+    )
+    SELECT ur.user_id, u.name,
       ${withNickname ? "u.nickname," : "NULL AS nickname,"}
-      u.image,
-      u.slug,
-      SUM(ur.total_tokens) AS total_tokens,
-      SUM(ur.input_tokens) AS input_tokens,
-      SUM(ur.output_tokens) AS output_tokens,
-      SUM(ur.cached_input_tokens) AS cached_input_tokens
-    FROM usage_totals ur
+      u.image, u.slug,
+      ur.total_tokens, ur.input_tokens, ur.output_tokens, ur.cached_input_tokens
+    FROM totals ur
     JOIN users u ON u.id = ur.user_id
-    WHERE ${conditions.join(" AND ")}
-    GROUP BY ur.user_id
-    HAVING total_tokens > 0
-    ORDER BY total_tokens DESC
+    WHERE u.is_public = 1 AND ur.total_tokens > 0
+    ORDER BY ur.total_tokens DESC
     LIMIT ? OFFSET ?
   `;
 
@@ -281,7 +283,7 @@ async function handleGetGlobalLeaderboard(
       kv,
       cacheKey,
       fetchLeaderboard,
-      { ttlSeconds: TTL_5M }
+      { ttlSeconds: TTL_10M }
     );
     return Response.json({ result: data, _cached: cached });
   }
@@ -321,15 +323,22 @@ async function handleGetUserTeams(
 
 async function handleGetUserSessionStats(
   req: GetUserSessionStatsRequest,
-  db: D1Database
+  db: D1Database,
+  kv: KVNamespace
 ): Promise<Response> {
   if (!req.userIds || req.userIds.length === 0) {
     return Response.json({ result: [] });
   }
 
-  const placeholders = req.userIds.map(() => "?").join(",");
+  const userIds = [...new Set(req.userIds)].sort();
+  // Hash the full filter tuple: 100 UUIDs exceed KV's 512-byte key limit.
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(
+    JSON.stringify([userIds, req.fromDate ?? "", req.source ?? ""])
+  ));
+  const cacheKey = `lb:sessions:${Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("")}`;
+  const placeholders = userIds.map(() => "?").join(",");
   const conditions = [`sr.user_id IN (${placeholders})`];
-  const params: unknown[] = [...req.userIds];
+  const params: unknown[] = [...userIds];
 
   if (req.fromDate) {
     conditions.push("sr.started_at >= ?");
@@ -351,11 +360,11 @@ async function handleGetUserSessionStats(
   `;
 
   try {
-    const results = await db
-      .prepare(sql)
-      .bind(...params)
-      .all<UserSessionStatsRow>();
-    return Response.json({ result: results.results });
+    const { data } = await withCache(kv, cacheKey, async () => {
+      const results = await db.prepare(sql).bind(...params).all<UserSessionStatsRow>();
+      return results.results;
+    }, { ttlSeconds: TTL_10M });
+    return Response.json({ result: data });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("no such table")) {
@@ -388,7 +397,7 @@ export async function handleLeaderboardRpc(
     case "leaderboard.getUserTeams":
       return handleGetUserTeams(request, db);
     case "leaderboard.getUserSessionStats":
-      return handleGetUserSessionStats(request, db);
+      return handleGetUserSessionStats(request, db, kv);
     default:
       return Response.json(
         { error: `Unknown leaderboard method: ${(request as { method: string }).method}` },

@@ -15,8 +15,8 @@ import type { KVNamespace } from "@cloudflare/workers-types";
 export const TTL_24H = 86400;
 
 
-/** 5 minutes — for moderately-changing data (seasons list, public leaderboard) */
-export const TTL_5M = 300;
+/** 10 minutes — for moderately-changing data (seasons list, public leaderboard) */
+export const TTL_10M = 600;
 
 // ---------------------------------------------------------------------------
 // Types

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { GET } from "@/app/api/leaderboard/route";
 import * as dbModule from "@/lib/db";
 import { createMockDbRead, loadMockedAuthHelpers, makeGetRequest } from "./test-utils";
@@ -30,6 +30,23 @@ describe("GET /api/leaderboard", () => {
     vi.mocked(dbModule.getDbRead).mockResolvedValue(mockDb as any);
     // Default to authenticated user for scope tests
     resolveUser.mockResolvedValue({ userId: "test-user" });
+  });
+
+  afterEach(() => vi.useRealTimers());
+
+  it.each(["week", "month"])("reuses a UTC ten-minute window for %s tokens and sessions", async (period) => {
+    vi.useFakeTimers();
+    mockDb.getGlobalLeaderboard.mockResolvedValue([{ user_id: "u1", total_tokens: 1 }]);
+    mockDb.getLeaderboardUserTeams.mockResolvedValue([]);
+    mockDb.getLeaderboardSessionStats.mockResolvedValue([]);
+    for (const now of ["2026-09-19T10:01:02.345Z", "2026-09-19T10:09:59.999Z", "2026-09-19T10:10:00.000Z"]) {
+      vi.setSystemTime(new Date(now));
+      await GET(makeGetRequest("/api/leaderboard", { period }));
+    }
+    const day = period === "week" ? "2026-09-12" : "2026-08-20";
+    const windows = mockDb.getGlobalLeaderboard.mock.calls.map(([req]) => req.fromDate);
+    expect(windows).toEqual([`${day}T10:00:00.000Z`, `${day}T10:00:00.000Z`, `${day}T10:10:00.000Z`]);
+    expect(mockDb.getLeaderboardSessionStats.mock.calls.map((args) => args[1])).toEqual(windows);
   });
 
   describe("query params validation", () => {

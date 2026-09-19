@@ -5,7 +5,7 @@ import {
   clearAllCache,
   invalidateKey,
   TTL_24H,
-  TTL_5M,
+  TTL_10M,
 } from "./cache";
 
 // ---------------------------------------------------------------------------
@@ -38,8 +38,8 @@ describe("TTL constants", () => {
     expect(TTL_24H).toBe(86400);
   });
 
-  it("TTL_5M should be 300 seconds", () => {
-    expect(TTL_5M).toBe(300);
+  it("TTL_10M should be 600 seconds", () => {
+    expect(TTL_10M).toBe(600);
   });
 });
 

@@ -94,7 +94,7 @@ describe("seasons RPC handlers", () => {
       expect(kv.put).toHaveBeenCalledWith(
         "seasons:list",
         JSON.stringify(mockSeasons),
-        { expirationTtl: 300 }
+        { expirationTtl: 600 }
       );
     });
 

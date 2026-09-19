@@ -5,7 +5,7 @@
  */
 
 import type { D1Database, KVNamespace } from "@cloudflare/workers-types";
-import { withCache, TTL_24H, TTL_5M } from "../cache";
+import { withCache, TTL_24H, TTL_10M } from "../cache";
 
 // ---------------------------------------------------------------------------
 // Cache Keys
@@ -275,7 +275,7 @@ async function handleListSeasons(
         .all<SeasonRow>();
       return results.results;
     },
-    { ttlSeconds: TTL_5M }
+    { ttlSeconds: TTL_10M }
   );
 
   return Response.json({ result: data, _cached: cached });
