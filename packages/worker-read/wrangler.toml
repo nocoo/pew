@@ -1,4 +1,6 @@
 name = "pew"
+workers_dev = false
+preview_urls = false
 main = "src/index.ts"
 compatibility_date = "2026-03-01"
 
