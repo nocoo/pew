@@ -1,145 +1,99 @@
 #!/usr/bin/env sh
-
-# pre-commit: L1 Unit/Component + G1 Static Analysis (quality system)
-# Optimized for speed: runs tests, typecheck, and lint-staged in parallel
-
-# G0: Verify lockfile is in sync with package.json (catches missing workspace deps)
-# Skip if no package.json or bun.lock changes are staged
-STAGED_FILES=$(git diff --cached --name-only)
-PKG_CHANGES=$(echo "$STAGED_FILES" | grep -E "package\.json|bun\.lock" || true)
-
-if [ -n "$PKG_CHANGES" ]; then
-  bun install --frozen-lockfile 2>&1
-  LOCK_EXIT=$?
-
-  if [ $LOCK_EXIT -ne 0 ]; then
-    echo "❌ pre-commit FAILED: Lockfile out of sync. Run 'bun install' and commit bun.lock."
-    exit 1
-  fi
-fi
-
-# Detect whether code (TS/TSX/JSX or config affecting build) is being touched.
-# Docs-only / autoresearch-only commits skip the heavy gates entirely.
-# Keep this superset in sync with the BIOME_STAGED / TS_STAGED matchers below
-# and with the lint-staged glob in package.json — Biome, the custom gates
-# and lint-staged all lint the same file-type set.
-CODE_CHANGES=$(echo "$STAGED_FILES" | grep -E '\.(ts|tsx|mts|cts|js|jsx|mjs|cjs|json)$' || true)
-TSC_AFFECTING=$(echo "$STAGED_FILES" | grep -E '\.(ts|tsx|mts|cts)$|tsconfig.*\.json$' || true)
-
-if [ -z "$CODE_CHANGES" ]; then
-  echo "⏭️  pre-commit: no code changes staged — skipping L1/G1a/G1b gates"
-  exit 0
-fi
-
-# Create temp files for exit codes
-TMP_DIR=$(mktemp -d)
-TEST_EXIT_FILE="$TMP_DIR/test_exit"
-TSC_EXIT_FILE="$TMP_DIR/tsc_exit"
-LINT_EXIT_FILE="$TMP_DIR/lint_exit"
-
-# Run L1 tests, G1a typecheck, and G1b lint-staged in parallel
-(
-  # L1 Unit/Component: coverage ≥90% enforced by vitest.config.ts
-  bun run test:coverage:cached 2>&1
-  echo $? > "$TEST_EXIT_FILE"
-) &
-TEST_PID=$!
-
-TS_STAGED=$(echo "$STAGED_FILES" | grep -E '\.(ts|tsx|mts|cts)$' || true)
-# Biome runs on the full set of extensions its lint-staged matcher covers,
-# so gate the lint-staged invocation on that same set — not just TS/TSX.
-# Otherwise a staged .js / .jsx / .json edit would bypass Biome silently.
-BIOME_STAGED=$(echo "$STAGED_FILES" | grep -E '\.(ts|tsx|mts|cts|js|jsx|mjs|cjs|json)$' || true)
-
-if [ -n "$TSC_AFFECTING" ]; then
-  (
-    # G1a Static Analysis: TypeScript strict (full project — tsc needs complete context)
-    bun run lint:typecheck:cached 2>&1
-    echo $? > "$TSC_EXIT_FILE"
-  ) &
-  TSC_PID=$!
-else
-  echo 0 > "$TSC_EXIT_FILE"
-  TSC_PID=""
-fi
-
-if [ -n "$BIOME_STAGED" ]; then
-  (
-    # G1b Static Analysis: Biome strict (staged files only, via lint-staged)
-    bunx lint-staged 2>&1
-    echo $? > "$LINT_EXIT_FILE"
-  ) &
-  LINT_PID=$!
-else
-  echo 0 > "$LINT_EXIT_FILE"
-  LINT_PID=""
-fi
-
-# Wait for all to complete
-wait $TEST_PID
-[ -n "$TSC_PID" ] && wait $TSC_PID
-[ -n "$LINT_PID" ] && wait $LINT_PID
-
-# Check exit codes
-TEST_EXIT=$(cat "$TEST_EXIT_FILE")
-TSC_EXIT=$(cat "$TSC_EXIT_FILE")
-LINT_EXIT=$(cat "$LINT_EXIT_FILE")
-rm -rf "$TMP_DIR"
-
-if [ "$TEST_EXIT" -ne 0 ]; then
-  echo "❌ pre-commit FAILED: Unit tests or coverage threshold (90%) not met."
-  exit 1
-fi
-
-if [ "$TSC_EXIT" -ne 0 ]; then
-  echo "❌ pre-commit FAILED: TypeScript type check errors."
-  exit 1
-fi
-
-if [ "$LINT_EXIT" -ne 0 ]; then
-  echo "❌ pre-commit FAILED: Biome errors in staged files."
-  exit 1
-fi
-
-# G1c Static Analysis: custom gates (dynamic-delete + @ts-expect-error).
-# The gates scan a tree of files, so run them against the INDEX snapshot,
-# not the working tree — otherwise a violation in staged content that has
-# been fixed in the working copy would slip through.
+# pre-commit: L1 + G1 quality gate against the Git index snapshot.
 #
-# `git checkout-index --prefix=... -a` materialises every tracked file at
-# its INDEX version under a temp dir; the gates are then pointed at that
-# dir via PEW_GATE_ROOT. Untracked files are intentionally excluded — they
-# are not part of the commit under review. Temp dir is removed on any exit.
-if [ -n "$TS_STAGED" ]; then
-  GATE_ROOT=$(mktemp -d -t pew-precommit-gate.XXXXXXXX)
-  MKTEMP_EXIT=$?
-  if [ "$MKTEMP_EXIT" -ne 0 ] || [ -z "$GATE_ROOT" ] || [ ! -d "$GATE_ROOT" ]; then
-    echo "❌ pre-commit FAILED: could not create temp dir for gate index snapshot (mktemp exit=$MKTEMP_EXIT)."
-    exit 1
-  fi
-  trap 'rm -rf "$GATE_ROOT"' EXIT INT TERM
-  # `checkout-index` needs a trailing slash on --prefix and expects the
-  # directory to exist. Fail-closed if the snapshot didn't materialise —
-  # a partial checkout would let the gate scan a subset and false-pass.
-  git checkout-index --prefix="$GATE_ROOT/" -a
-  CHECKOUT_EXIT=$?
-  if [ "$CHECKOUT_EXIT" -ne 0 ]; then
-    echo "❌ pre-commit FAILED: git checkout-index for gate snapshot (exit=$CHECKOUT_EXIT)."
-    exit 1
-  fi
+# Materialises the staged tree into a temp snapshot (checkout-index),
+# regenerates staged prerequisites inside it, reuses worktree
+# dependencies read-only, and runs the sequential gate there:
+#   L1  vitest run --coverage (95% x4 floors, exit-enforced)
+#   G1a scripts/parallel-typecheck.sh (5 packages, strict tsc)
+#   G1b biome check --error-on-warnings
+#   G1c AST gates: dynamic-delete + @ts-expect-error
+# No result caches, no extension fast paths: every commit runs the full
+# gate, so a staged bug fails even when the worktree holds an unstaged
+# fix. The worktree and index are never mutated; all generated output
+# stays inside the snapshot and is removed on every exit path.
 
-  PEW_GATE_ROOT="$GATE_ROOT" bun run gate:dynamic-delete
-  GATE_DD_EXIT=$?
-  if [ "$GATE_DD_EXIT" -ne 0 ]; then
-    echo "❌ pre-commit FAILED: dynamic delete gate (scanned index snapshot)."
+set -e
+
+command -v git >/dev/null 2>&1 || { echo "pre-commit: git is required" >&2; exit 1; }
+command -v bun >/dev/null 2>&1 || { echo "pre-commit: bun is required" >&2; exit 1; }
+
+snapshot=
+cleanup() {
+  status=$?
+  trap - EXIT INT TERM HUP
+  if [ -n "$snapshot" ]; then
+    rm -rf "$snapshot" || :
+    snapshot=
+  fi
+  exit "$status"
+}
+trap cleanup EXIT
+trap "exit 130" INT
+trap "exit 143" TERM
+trap "exit 129" HUP
+
+repo=$(git rev-parse --show-toplevel)
+snapshot=$(mktemp -d "${TMPDIR:-/tmp}/pew-index-XXXXXX")
+git checkout-index --all --prefix="$snapshot/"
+
+# Staged manifests must match the installed worktree copies: node_modules
+# is reused read-only below, so a staged manifest that diverges from the
+# worktree would check a dependency set that was never installed.
+for f in package.json bun.lock; do
+  if [ ! -f "$snapshot/$f" ]; then
+    echo "pre-commit: staged $f is required" >&2
     exit 1
   fi
-  PEW_GATE_ROOT="$GATE_ROOT" bun run gate:ts-expect-error
-  GATE_TS_EXIT=$?
-  if [ "$GATE_TS_EXIT" -ne 0 ]; then
-    echo "❌ pre-commit FAILED: @ts-expect-error gate (scanned index snapshot)."
+  if ! cmp -s "$snapshot/$f" "$repo/$f"; then
+    echo "pre-commit: staged $f differs from the worktree copy — run the install you need, then 'git add $f' before committing" >&2
     exit 1
   fi
+done
+for m in "$snapshot"/packages/*/package.json; do
+  [ -f "$m" ] || continue
+  if ! cmp -s "$m" "$repo/packages/${m##*/packages/}"; then
+    echo "pre-commit: staged packages/${m##*/packages/} differs from the worktree copy — stage the installed state before committing" >&2
+    exit 1
+  fi
+done
+
+# Lockfile consistency, check-only and bounded: verifies the staged
+# manifests against the staged bun.lock. --ignore-scripts keeps dry-run
+# free of lifecycle execution; --frozen-lockfile fails fast on drift.
+if ! (cd "$snapshot" && bun install --frozen-lockfile --dry-run --ignore-scripts >/dev/null 2>&1); then
+  echo "pre-commit: staged package.json/bun.lock are out of sync — run 'bun install' and commit the updated bun.lock" >&2
+  exit 1
 fi
+rm -rf "$snapshot/node_modules"
 
-echo "✅ pre-commit passed: G0 Lockfile + L1 Unit ≥90% + G1 Static Analysis"
+sh "$snapshot/scripts/snapshot-node-modules.sh" "$repo" "$snapshot"
+mkdir -p "$snapshot/node_modules/.cache"
+
+# Checks read staged configs via `bun run` with cwd=snapshot. Strip Git's
+# hook environment so nested git usage cannot touch the real index/worktree.
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX
+unset GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES
+export XDG_CACHE_HOME="$snapshot/node_modules/.cache/xdg"
+export XDG_STATE_HOME="$snapshot/node_modules/.cache/xdg"
+PATH="$snapshot/node_modules/.bin:$PATH"
+cd "$snapshot"
+
+# Staged prerequisites, generated inside the snapshot before any reader:
+# tsc of dependents resolves @pew/core via the workspace link to
+# packages/core/dist, and packages/web/next-env.d.ts imports .next/types
+# route declarations. Both derive from staged sources, never the worktree.
+bun run --cwd packages/core build
+if [ ! -d node_modules/next ] && [ ! -d packages/web/node_modules/next ]; then
+  echo "pre-commit: next is not installed — run 'bun install' and commit the result" >&2
+  exit 1
+fi
+(cd packages/web && bunx next typegen)
+
+bun run test:coverage
+bash scripts/parallel-typecheck.sh
+biome check --no-errors-on-unmatched --error-on-warnings --max-diagnostics=500 .
+bun run gate:dynamic-delete
+bun run gate:ts-expect-error
+
+echo "✅ pre-commit passed: L1 coverage ≥95% (statements/branches/functions/lines) + G1 strict statics on the index snapshot"

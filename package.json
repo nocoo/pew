@@ -9,13 +9,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:coverage:cached": "bun run scripts/run-l1.ts",
     "dev": "bun run --cwd packages/web dev",
     "build": "rm -f packages/*/tsconfig.tsbuildinfo && bun run --filter @pew/core build && bun run --filter @pew/web build",
     "typecheck": "bun run --filter '*' typecheck",
     "lint": "bun run typecheck && biome check --no-errors-on-unmatched --error-on-warnings --max-diagnostics=500 . && bun run gate:dynamic-delete && bun run gate:ts-expect-error",
     "lint:typecheck": "bash scripts/parallel-typecheck.sh",
-    "lint:typecheck:cached": "bun run scripts/run-g1a.ts",
     "gate:dynamic-delete": "bun run scripts/check-dynamic-delete.ts",
     "gate:ts-expect-error": "bun run scripts/check-ts-expect-error.ts",
     "test:e2e": "bun run scripts/run-e2e.ts",
@@ -28,11 +26,6 @@
     "release": "bun run scripts/release.ts",
     "sync-prices": "bun scripts/sync-prices.ts",
     "prepare": "husky"
-  },
-  "lint-staged": {
-    "*.{ts,tsx,mts,cts,js,jsx,mjs,cjs,json}": [
-      "biome check --no-errors-on-unmatched --error-on-warnings --max-diagnostics=500 --staged"
-    ]
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.14",
