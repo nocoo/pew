@@ -68,6 +68,23 @@ CI / manual:
   └── L3: bun run test:e2e:ui    (scripts/run-e2e-ui.ts → Playwright on :27020)
 ```
 
+### Pre-commit gate (current state)
+
+`.husky/pre-commit` evaluates the whole L1/G1 chain against a
+`git checkout-index` snapshot of the staged tree — a staged bug fails even
+when the worktree holds an unstaged fix, and unstaged dirt (e.g. a dev-server
+rewrite of `packages/web/next-env.d.ts`) is neither checked nor committed.
+There are no result caches and no extension fast paths: every commit runs
+`vitest run --coverage` (95%×4 floors), the five-package typecheck, biome
+`--error-on-warnings` and both AST gates inside the snapshot. Staged
+prerequisites are regenerated from staged sources in the snapshot
+(`packages/core/dist` via `tsc`, `.next/types` via `next typegen`); worktree
+`node_modules` is reused read-only through `scripts/snapshot-node-modules.sh`
+(scope containers recreated, relative workspace symlinks rebound, runner
+caches snapshot-local). Staged `package.json`/`bun.lock`/workspace manifests
+must match the worktree copies and pass a check-only
+`bun install --frozen-lockfile --dry-run --ignore-scripts`.
+
 ---
 
 ## Implementation — 8 Atomic Commits
