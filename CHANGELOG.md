@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+## v3.0.4
+
+### Fixed
+- Run pre-commit quality checks against the staged Git snapshot, including data and script changes
+- Remove stale result caches and isolate generated types, workspace links and runner caches
+
+### Changed
+- Add regression coverage for workspace dependency isolation and document the pre-commit gate
+
 ## v3.0.3
 
 ### Fixed

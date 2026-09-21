@@ -18,7 +18,7 @@
     },
     "packages/cli": {
       "name": "@nocoo/pew",
-      "version": "3.0.1",
+      "version": "3.0.4",
       "bin": {
         "pew": "dist/bin.js",
       },
@@ -32,14 +32,14 @@
     },
     "packages/core": {
       "name": "@pew/core",
-      "version": "3.0.1",
+      "version": "3.0.4",
       "devDependencies": {
         "@types/node": "26.5.1",
       },
     },
     "packages/web": {
       "name": "@pew/web",
-      "version": "3.0.1",
+      "version": "3.0.4",
       "dependencies": {
         "@aws-sdk/client-s3": "3.1134.0",
         "@nocoo/basalt": "2.1.8",
@@ -68,7 +68,7 @@
     },
     "packages/worker": {
       "name": "@pew/worker",
-      "version": "3.0.1",
+      "version": "3.0.4",
       "devDependencies": {
         "@cloudflare/workers-types": "5.20260916.1",
         "@pew/core": "workspace:*",
@@ -77,7 +77,7 @@
     },
     "packages/worker-read": {
       "name": "@pew/worker-read",
-      "version": "3.0.1",
+      "version": "3.0.4",
       "devDependencies": {
         "@cloudflare/workers-types": "5.20260916.1",
         "@pew/core": "workspace:*",
