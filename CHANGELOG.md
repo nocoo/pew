@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## v3.0.5
+
+### Changed
+- Upgrade Next.js to 16.3.6, AWS S3 SDK to 3.1139.0, and lucide-react to 1.48.0
+- Upgrade Wrangler to 4.138.0 and Workers types to 5.20260924.1 in both Workers
+- Upgrade oxc-parser to 0.151.0 and Node.js types to 26.6.2 across workspaces
+- Consolidate agent handbooks, operations guidance, and retrospective records
+
 ## v3.0.4
 
 ### Fixed
