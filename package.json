@@ -34,7 +34,7 @@
     "@vitest/coverage-v8": "5.0.1",
     "husky": "^9.1.7",
     "lint-staged": "17.5.1",
-    "oxc-parser": "0.150.0",
+    "oxc-parser": "0.151.0",
     "typescript": "^7.0.2",
     "vitest": "5.0.1"
   },
