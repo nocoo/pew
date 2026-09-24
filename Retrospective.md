@@ -56,3 +56,7 @@ The entries below were migrated verbatim from the former root `CLAUDE.md` during
 ### Process
 
 - **After release, monitor CI**: After `git push`, set a 2-3 min timer and check `gh run list --limit 5`. Local pre-push doesn't catch every failure mode (workspace link resolution, deploy pipeline differences).
+
+### 2026-09-24 — Explicit Herdr pane targets
+
+During dependency maintenance, `herdr pane resize --current` resolved to a neighboring project's focused pane despite the intended project context. The returned workspace ID exposed the mismatch; the resize was reversed immediately, then applied to pew using its explicit pane ID. For layout mutations, resolve the target from agent discovery and verify the returned pane/workspace IDs instead of relying on `--current`.
