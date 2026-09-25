@@ -443,7 +443,7 @@ describe("GET /api/leaderboard", () => {
   });
 
   describe("cache headers", () => {
-    it("should set cache headers for public leaderboard", async () => {
+    it("prevents HTTP caches from retaining revoked public identities", async () => {
       mockDb.getGlobalLeaderboard.mockResolvedValueOnce([]);
       mockDb.getLeaderboardSessionStats.mockResolvedValueOnce([]);
 
@@ -451,7 +451,7 @@ describe("GET /api/leaderboard", () => {
 
       expect(res.status).toBe(200);
       expect(res.headers.get("Cache-Control")).toBe(
-        "public, s-maxage=60, stale-while-revalidate=120",
+        "private, no-store",
       );
     });
 
@@ -641,7 +641,7 @@ describe("GET /api/leaderboard", () => {
       expect(mockDb.getLeaderboardSessionStats).not.toHaveBeenCalled();
     });
 
-    it("should use public cache for source-filtered requests", async () => {
+    it("should disable HTTP cache for source-filtered requests", async () => {
       mockDb.getGlobalLeaderboard.mockResolvedValueOnce([]);
       mockDb.getLeaderboardSessionStats.mockResolvedValueOnce([]);
 
@@ -649,18 +649,18 @@ describe("GET /api/leaderboard", () => {
 
       expect(res.status).toBe(200);
       expect(res.headers.get("Cache-Control")).toBe(
-        "public, s-maxage=60, stale-while-revalidate=120",
+        "private, no-store",
       );
     });
 
-    it("should use public cache for model-filtered requests", async () => {
+    it("should disable HTTP cache for model-filtered requests", async () => {
       mockDb.getGlobalLeaderboard.mockResolvedValueOnce([]);
 
       const res = await GET(makeGetRequest("/api/leaderboard", { model: "gpt-4.1" }));
 
       expect(res.status).toBe(200);
       expect(res.headers.get("Cache-Control")).toBe(
-        "public, s-maxage=60, stale-while-revalidate=120",
+        "private, no-store",
       );
     });
 

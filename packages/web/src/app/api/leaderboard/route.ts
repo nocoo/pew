@@ -13,8 +13,7 @@
  * Returns { period, scope, scopeId?, entries[], hasMore } where each entry has user info + total tokens.
  * Only users with is_public = 1 are included.
  *
- * Scoped requests (team/org) use Cache-Control: private, no-store.
- * source/model filters are identity-independent → public cache.
+ * Responses cannot be cached by HTTP intermediaries because public visibility is revocable.
  * Anonymous requests with scope params are silently downgraded to global.
  */
 
@@ -244,17 +243,9 @@ export async function GET(request: Request) {
     const scope = orgId ? "org" : teamId ? "team" : "global";
     const scopeId = orgId ?? teamId ?? undefined;
 
-    // Cache policy: team/org scoped requests must use private, no-store to prevent
-    // cache pollution (depends on user membership). Source/model filters are
-    // identity-independent (public data), so they use public cache like global.
-    const hasAnyScopeParam = !!(teamIdParam || orgIdParam);
-    const headers: HeadersInit = hasAnyScopeParam
-      ? { "Cache-Control": "private, no-store" }
-      : { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120" };
-
     return NextResponse.json(
       { period, scope, ...(scopeId && { scopeId }), entries, hasMore },
-      { headers },
+      { headers: { "Cache-Control": "private, no-store" } },
     );
   } catch (err) {
     console.error("Failed to query leaderboard:", err);

@@ -273,8 +273,9 @@ describe("leaderboard RPC handlers", () => {
       );
     });
 
-    it("should return cached data on cache hit", async () => {
+    it("checks current public profiles before returning a cache hit", async () => {
       kv.get.mockResolvedValue(mockRows);
+      db.all.mockResolvedValue({ results: mockRows });
 
       const request: GetGlobalLeaderboardRequest = {
         method: "leaderboard.getGlobal",
@@ -285,7 +286,37 @@ describe("leaderboard RPC handlers", () => {
 
       expect(response.status).toBe(200);
       expect(body).toEqual({ result: mockRows, _cached: true });
-      expect(db.all).not.toHaveBeenCalled();
+      expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining("is_public = 1"));
+      expect(db.bind).toHaveBeenCalledWith("u1");
+    });
+
+    it.each(["private", "deleted"])("removes a %s user from a still-valid leaderboard cache", async () => {
+      kv.get.mockResolvedValue(mockRows);
+      db.all.mockResolvedValue({ results: [] });
+      const response = await handleLeaderboardRpc({ method: "leaderboard.getGlobal", limit: 20 }, db, kv);
+      expect(await response.json()).toEqual({ result: [], _cached: true });
+    });
+
+    it("replaces cached identity fields with the current public profile", async () => {
+      kv.get.mockResolvedValue(mockRows);
+      db.all.mockResolvedValue({ results: [{ user_id: "u1", name: "updated", nickname: "new", image: null, slug: "new" }] });
+      const response = await handleLeaderboardRpc({ method: "leaderboard.getGlobal", limit: 20 }, db, kv);
+      expect(await response.json()).toEqual({
+        result: [{ ...mockRows[0], name: "updated", nickname: "new", slug: "new" }], _cached: true,
+      });
+    });
+
+    it("does not return cached identities if visibility lookup fails", async () => {
+      kv.get.mockResolvedValue(mockRows);
+      db.all.mockRejectedValue(new Error("visibility unavailable"));
+      await expect(handleLeaderboardRpc({ method: "leaderboard.getGlobal", limit: 20 }, db, kv)).rejects.toThrow("visibility unavailable");
+    });
+
+    it("returns an empty cache hit without a visibility query", async () => {
+      kv.get.mockResolvedValue([]);
+      const response = await handleLeaderboardRpc({ method: "leaderboard.getGlobal", limit: 20 }, db, kv);
+      expect(await response.json()).toEqual({ result: [], _cached: true });
+      expect(db.prepare).not.toHaveBeenCalled();
     });
 
     it("should NOT cache requests with teamId (private scope)", async () => {

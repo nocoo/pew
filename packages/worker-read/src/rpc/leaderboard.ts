@@ -285,6 +285,18 @@ async function handleGetGlobalLeaderboard(
       fetchLeaderboard,
       { ttlSeconds: TTL_10M }
     );
+    if (cached && data.length > 0) {
+      const ids = data.map((row) => row.user_id);
+      const profiles = await db.prepare(
+        `SELECT id AS user_id, name, nickname, image, slug FROM users
+         WHERE is_public = 1 AND id IN (${ids.map(() => "?").join(",")})`
+      ).bind(...ids).all<Pick<GlobalLeaderboardRow, "user_id" | "name" | "nickname" | "image" | "slug">>();
+      const publicUsers = new Map(profiles.results.map((user) => [user.user_id, user]));
+      return Response.json({ result: data.flatMap((row) => {
+        const user = publicUsers.get(row.user_id);
+        return user ? [{ ...row, ...user }] : [];
+      }), _cached: true });
+    }
     return Response.json({ result: data, _cached: cached });
   }
 
