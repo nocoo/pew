@@ -7,6 +7,7 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { SessionSnapshot, Source } from "@pew/core";
+import { hashProjectRef } from "../utils/hash-project-ref.js";
 
 async function readJson(path: string): Promise<Record<string, unknown> | null> {
   try {
@@ -83,7 +84,7 @@ export async function parseGrokSession(
     userMessages,
     assistantMessages,
     totalMessages,
-    projectRef,
+    projectRef: hashProjectRef(projectRef),
     model,
     snapshotAt: new Date().toISOString(),
   };

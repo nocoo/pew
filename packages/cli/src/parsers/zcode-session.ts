@@ -7,6 +7,7 @@
 
 import type { SessionSnapshot } from "@pew/core";
 import type { ZcodeSessionDb, ZcodeSessionRow } from "./zcode-types.js";
+import { hashProjectRef } from "../utils/hash-project-ref.js";
 
 /** Result of one parseZcodeSessions() run. */
 export interface ZcodeSessionParseResult {
@@ -47,7 +48,7 @@ function toSnapshot(
     Math.floor((row.timeUpdated - row.timeCreated) / 1000),
   );
   const trimmedDirectory = row.directory?.trim() ?? "";
-  const projectRef = trimmedDirectory.length > 0 ? trimmedDirectory : null;
+  const projectRef = hashProjectRef(trimmedDirectory);
   return {
     sessionKey: `zcode:${row.id}`,
     source: "zcode",

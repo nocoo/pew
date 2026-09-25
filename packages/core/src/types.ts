@@ -405,7 +405,7 @@ export interface SessionSnapshot {
   assistantMessages: number;
   /** Total messages (user + assistant + system + tool + other) */
   totalMessages: number;
-  /** Raw project reference (hash or path-derived) */
+  /** SHA-256 prefix (16 lowercase hex characters), hashed by the parser. */
   projectRef: string | null;
   /** Primary model used (most frequent or last seen) */
   model: string | null;

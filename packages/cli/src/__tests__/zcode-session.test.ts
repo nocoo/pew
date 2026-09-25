@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import { toQueueRecord } from "../commands/session-sync-helpers.js";
+import { hashProjectRef } from "../utils/hash-project-ref.js";
 import { describe, it, expect } from "vitest";
 import { parseZcodeSessions } from "../parsers/zcode-session.js";
 import type {
@@ -49,6 +52,15 @@ const FIXED_NOW = new Date("2026-07-12T00:00:00.000Z");
 const now = () => FIXED_NOW;
 
 describe("parseZcodeSessions", () => {
+  it("hashes a raw hash-shaped directory before upload", () => {
+    const raw = "0123456789abcdef";
+    const db = mockDb([{ ...LOCAL_SESSION, directory: raw }]);
+    const snapshot = parseZcodeSessions({ db, lastTimeUpdated: null, now }).snapshots[0]!;
+    const expected = createHash("sha256").update(raw).digest("hex").slice(0, 16);
+    expect(snapshot.projectRef).toBe(expected);
+    expect(toQueueRecord(snapshot).project_ref).toBe(expected);
+  });
+
   it("Case 1 — full session + 5 messages produces a valid snapshot", () => {
     const db = mockDb(
       [LOCAL_SESSION],
@@ -75,7 +87,7 @@ describe("parseZcodeSessions", () => {
       userMessages: 1,
       assistantMessages: 4,
       totalMessages: 5,
-      projectRef: "/Users/nocoo/workspace/personal/zhe",
+      projectRef: hashProjectRef("/Users/nocoo/workspace/personal/zhe"),
       model: "GLM-5.2",
     });
     // 36051 ms → 36 seconds (floor)
@@ -119,7 +131,7 @@ describe("parseZcodeSessions", () => {
     };
     const db = mockDb([row]);
     const result = parseZcodeSessions({ db, lastTimeUpdated: null, now });
-    expect(result.snapshots[0].projectRef).toBe("/Users/x/proj");
+    expect(result.snapshots[0].projectRef).toBe(hashProjectRef("/Users/x/proj"));
   });
 
   it("Case 4d — directory is undefined (missing column) → projectRef null (covers ?? '' branch)", () => {

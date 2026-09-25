@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto";
+import { toQueueRecord } from "../commands/session-sync-helpers.js";
+import { hashProjectRef } from "../utils/hash-project-ref.js";
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, writeFile, rm, mkdir } from "node:fs/promises";
 import { join } from "node:path";
@@ -16,6 +19,19 @@ describe("parseGrokSession", () => {
 
   afterEach(async () => {
     await rm(dir, { recursive: true, force: true });
+  });
+
+  it.each(["git_root_dir", "cwd"])("hashes a raw hash-shaped identifier from %s before upload", async (field) => {
+    const raw = "0123456789abcdef";
+    await writeFile(join(sessionDir, "summary.json"), JSON.stringify({
+      info: { id: "hex-project", ...(field === "cwd" ? { cwd: raw } : {}) },
+      ...(field === "git_root_dir" ? { git_root_dir: raw } : {}),
+      created_at: "2026-09-25T00:00:00Z",
+    }));
+    const snapshot = await parseGrokSession(sessionDir);
+    const expected = createHash("sha256").update(raw).digest("hex").slice(0, 16);
+    expect(snapshot?.projectRef).toBe(expected);
+    expect(toQueueRecord(snapshot!).project_ref).toBe(expected);
   });
 
   it("parses complete summary.json + signals.json", async () => {
@@ -52,7 +68,7 @@ describe("parseGrokSession", () => {
     expect(snap!.userMessages).toBe(1);
     expect(snap!.assistantMessages).toBe(3);
     expect(snap!.totalMessages).toBe(22); // NOT num_messages (61)
-    expect(snap!.projectRef).toBe("/tmp/proj/");
+    expect(snap!.projectRef).toBe(hashProjectRef("/tmp/proj/"));
     expect(snap!.model).toBe("grok-4.5");
   });
 
@@ -104,7 +120,7 @@ describe("parseGrokSession", () => {
       sessionKey: "legacy-session",
       source: "grok",
       lastMessageAt: "2026-07-10T00:10:00Z",
-      projectRef: "/tmp/legacy-project",
+      projectRef: hashProjectRef("/tmp/legacy-project"),
       totalMessages: 0,
       userMessages: 0,
       assistantMessages: 0,

@@ -3,12 +3,11 @@
  *
  * These cover defensive branches that are not naturally exercised through
  * end-to-end executeSessionSync flows:
- *   - toQueueRecord: re-hash branch when a parser supplies an unhashed projectRef
+ *   - toQueueRecord: rejection when a parser supplies a malformed project hash
  *   - sourceKey: every Source enum value (mapped + null + exhaustiveness throw)
  */
 import { describe, it, expect } from "vitest";
 import { toQueueRecord, sourceKey } from "../commands/session-sync.js";
-import { hashProjectRef } from "../utils/hash-project-ref.js";
 import type { SessionSnapshot, Source } from "@pew/core";
 
 function makeSnap(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot {
@@ -43,27 +42,8 @@ describe("toQueueRecord", () => {
     expect(r.project_ref).toBe(valid);
   });
 
-  it("re-hashes a non-hex projectRef as defense-in-depth", () => {
-    const raw = "/Users/alice/myproject";
-    const expected = hashProjectRef(raw);
-    const r = toQueueRecord(makeSnap({ projectRef: raw }));
-    expect(r.project_ref).toBe(expected);
-    expect(r.project_ref).not.toBe(raw);
-    expect(r.project_ref).toMatch(/^[a-f0-9]{16}$/);
-  });
-
-  it("re-hashes a wrong-length hex string (e.g. full sha256)", () => {
-    // 64-char hex still doesn't match the 16-char requirement
-    const wrongLen = "a".repeat(64);
-    const r = toQueueRecord(makeSnap({ projectRef: wrongLen }));
-    expect(r.project_ref).toBe(hashProjectRef(wrongLen));
-    expect(r.project_ref).not.toBe(wrongLen);
-  });
-
-  it("re-hashes a string with non-hex chars", () => {
-    const notHex = "ZZZZZZZZZZZZZZZZ"; // 16 chars but not hex
-    const r = toQueueRecord(makeSnap({ projectRef: notHex }));
-    expect(r.project_ref).toBe(hashProjectRef(notHex));
+  it.each(["/Users/alice/myproject", "a".repeat(64), "ZZZZZZZZZZZZZZZZ"])("rejects a malformed parser project hash (%s)", (projectRef) => {
+    expect(() => toQueueRecord(makeSnap({ projectRef }))).toThrow("Project reference must be hashed by the parser");
   });
 
   it("maps all snake_case fields correctly", () => {

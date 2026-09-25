@@ -7,7 +7,6 @@ import type {
   SessionSnapshot,
   Source,
 } from "@pew/core";
-import { hashProjectRef } from "../utils/hash-project-ref.js";
 
 /** Result key map for executeSessionSync (kept in sync with SessionSyncResult.sources). */
 export type SessionSyncSourceKey =
@@ -27,13 +26,12 @@ export type SessionSyncSourceKey =
 /**
  * Convert a SessionSnapshot to a SessionQueueRecord for upload.
  *
- * Project refs MUST be hashed before leaving the device. If a parser forgot
- * to hash, this function applies hashProjectRef as a safety net.
+ * Parsers hash project references before creating snapshots.
  */
 export function toQueueRecord(snap: SessionSnapshot): SessionQueueRecord {
-  let projectRef = snap.projectRef;
+  const projectRef = snap.projectRef;
   if (projectRef !== null && !/^[a-f0-9]{16}$/.test(projectRef)) {
-    projectRef = hashProjectRef(projectRef);
+    throw new Error("Project reference must be hashed by the parser");
   }
 
   return {

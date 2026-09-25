@@ -7,8 +7,7 @@
  * (64 bits) — enough for uniqueness, short enough for display.
  *
  * This module is the single source of truth for project_ref hashing.
- * Parsers should use it directly, and toQueueRecord() applies it as
- * a defense-in-depth gateway before any data leaves the device.
+ * Parsers use it exactly once when constructing session snapshots.
  */
 
 import { createHash } from "node:crypto";
@@ -20,8 +19,6 @@ const PROJECT_REF_HASH_LENGTH = 16;
  * Hash a project reference string.
  *
  * Returns a 16-char hex prefix of SHA-256(input), or null if input is null/empty.
- * Idempotent in practice: re-hashing a hash produces a different but equally
- * opaque value. The defense-in-depth layer in toQueueRecord() relies on this.
  */
 export function hashProjectRef(raw: string | null): string | null {
   if (!raw) return null;
