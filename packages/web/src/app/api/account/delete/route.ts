@@ -106,7 +106,7 @@ export async function DELETE(request: Request) {
       { sql: "DELETE FROM sessions WHERE user_id = ?", params: [userId] },
       { sql: "DELETE FROM accounts WHERE user_id = ?", params: [userId] },
       { sql: "DELETE FROM invite_codes WHERE created_by = ?", params: [userId] },
-      { sql: "UPDATE invite_codes SET used_by = NULL WHERE used_by = ?", params: [userId] },
+      { sql: "UPDATE invite_codes SET used_by = 'deleted-user' WHERE used_by = ?", params: [userId] },
       { sql: "DELETE FROM users WHERE id = ?", params: [userId] },
     ]);
 

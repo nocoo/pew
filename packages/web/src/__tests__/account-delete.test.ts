@@ -172,7 +172,8 @@ describe("DELETE /api/account/delete", () => {
         });
         expect(db.prepare("SELECT rank, total_tokens FROM season_snapshots WHERE team_id = 't2'").get()).toEqual({ rank: fail ? 2 : 1, total_tokens: 40 });
         for (const table of tables) expect(db.prepare(`SELECT user_id FROM ${table} ORDER BY user_id`).all()).toEqual(fail ? [{ user_id: "u1" }, { user_id: "u2" }] : [{ user_id: "u2" }]);
-        expect(db.prepare("SELECT * FROM invite_codes WHERE created_by = 'u2'").get()).toEqual({ created_by: "u2", used_by: fail ? "u1" : null });
+        expect(db.prepare("SELECT * FROM invite_codes WHERE created_by = 'u2'").get()).toEqual({ created_by: "u2", used_by: fail ? "u1" : "deleted-user" });
+        expect(db.prepare("SELECT COUNT(*) AS n FROM invite_codes WHERE used_by IS NULL").get()!.n).toBe(fail ? 1 : 0);
         expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
       } finally { db.close(); }
     });

@@ -60,3 +60,20 @@ The entries below were migrated verbatim from the former root `CLAUDE.md` during
 ### 2026-09-24 — Explicit Herdr pane targets
 
 During dependency maintenance, `herdr pane resize --current` resolved to a neighboring project's focused pane despite the intended project context. The returned workspace ID exposed the mismatch; the resize was reversed immediately, then applied to pew using its explicit pane ID. For layout mutations, resolve the target from agent discovery and verify the returned pane/workspace IDs instead of relying on `--current`.
+
+### 2026-09-25 — Preserve invitation consumption during account deletion
+
+The first account-deletion revision cleared `invite_codes.used_by` while removing
+identifiers. Review of the consumer showed that `used_by IS NULL` authorizes
+redemption, so clearing it would reopen a consumed code. Before release, replace
+the identity with an anonymous consumed marker and verify in SQLite that deleting
+the user never makes the code redeemable. Check authorization predicates before
+anonymizing fields that also encode state.
+
+### 2026-09-25 — Verify delegated work starts
+
+Two Codex panes became idle after the provider rejected an unsupported service
+tier on their first request. Reading the actual pane output revealed that no work
+had started; the sessions were resumed with a supported model. A ready pane or an
+idle status is not execution evidence. Verify the first request before relying on
+parallel progress.
