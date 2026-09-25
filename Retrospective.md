@@ -114,3 +114,7 @@ The initial numeric fix rejected unsafe native and cached Worker outputs, but in
 ## 2026-09-25 — Freeze team and member totals from one observation
 
 Independent review reproduced account deletion between the snapshot route's separate team and member aggregate reads. Deletion returned success and reduced a team's frozen total from 140 to 40, then snapshot generation restored the stale 140 while storing only 40 in member contributions. Snapshot generation now reads registered IDs and one member aggregate, derives team totals and ranks from those exact members, and retains zero-member teams. Checked addition rejects unsafe aggregates before any write. Real route/SQLite tests cover deletion before member reads, between reads and writes (foreign-key rollback), and after the atomic snapshot write. An atomic write cannot repair inconsistent observations assembled before its transaction.
+
+## 2026-09-25 — Review lockfile transport changes before staging a release
+
+A version-only `bun install` against the permitted temporary mirror expanded 445 tarball locations in the lockfile. The release commit was started before separating this transport churn from the version diff. Normalized only those mirror URLs after asserting every package resolution and integrity was otherwise unchanged, then reran the normal commit gate for the corrected staged release. Inspect the lockfile diff before staging; a successful no-dependency-change install can still persist machine-specific registry locations.

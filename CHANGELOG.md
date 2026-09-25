@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+## v3.0.6
+
+### Fixed
+- Reject deleted-account sessions and missing Worker secrets; retire short team invitation codes.
+- Remove notifier package auto-installation and hash raw project identifiers at parser boundaries.
+- Apply current privacy settings before leaderboard pagination and remove deleted contributions from frozen season snapshots.
+- Make D1 write batches atomic, enforce season withdrawal and registration boundaries, and keep snapshot team/member totals consistent during deletion.
+- Limit JSON/multipart request bodies and image decoding; strip unknown ingest fields.
+- Bound submitted counts and reject unsafe database, cached and Web aggregates instead of returning rounded integers.
+- Keep large leaderboard and season identifier lists within D1 query parameter limits.
+
+### Removed
+- Replace the internal arbitrary SQL read endpoint with typed RPC methods.
+- Remove global leaderboard result caching so privacy changes and pagination use the same database observation.
+
+### Operations
+- Update Web and both Workers together. No schema migration is required.
+- Rotate remaining legacy team invitation codes with the reviewed rotation tool.
+- Historical unsafe counts remain untouched; reads outside the supported exact integer range fail closed.
+
 ## v3.0.5
 
 ### Changed
