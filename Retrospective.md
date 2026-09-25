@@ -105,8 +105,12 @@ The first privacy fix filtered cached leaderboard pages after pagination. Indepe
 
 ## 2026-09-25 — Keep native SQLite regressions outside Worker types
 
-A roster-boundary regression imported `node:sqlite` into the read Worker's test directory. Vitest passed, but the normal commit gate correctly rejected the import because the Worker type environment contains no Node globals. Moved the native SQLite regression into `scripts/__tests__`, preserving the Worker runtime boundary and all strict checks. Choose the runtime-specific test lane before adding native imports.
+A roster-boundary regression imported `node:sqlite` into the read Worker's test directory. Vitest passed, but the normal commit gate correctly rejected the import because the Worker type environment contains no Node globals. Moved the native SQLite regression into `scripts/__tests__`, preserving the Worker runtime boundary and all strict checks. Choose the runtime-specific test lane before adding native imports. The later cross-runtime snapshot race regression also belongs in this scripts lane: placing it under Web tests pulls Worker source into the Web compiler settings. It was relocated after the unchanged strict typecheck rejected that placement.
 
 ## 2026-09-25 — Validate counts after every aggregation boundary
 
 The initial numeric fix rejected unsafe native and cached Worker outputs, but independent review combined two individually safe historical values in the Web API and reproduced a rounded total with HTTP 200. Added shared checked integer addition to all six server-side count aggregation paths: usage, public profiles, sessions, device details, admin storage and user comparisons. Regression tests prove exact success at MAX_SAFE_INTEGER and failure above it for every path. A safe upstream row does not guarantee a safe downstream sum; trace the last aggregation before claiming output precision.
+
+## 2026-09-25 — Freeze team and member totals from one observation
+
+Independent review reproduced account deletion between the snapshot route's separate team and member aggregate reads. Deletion returned success and reduced a team's frozen total from 140 to 40, then snapshot generation restored the stale 140 while storing only 40 in member contributions. Snapshot generation now reads registered IDs and one member aggregate, derives team totals and ranks from those exact members, and retains zero-member teams. Checked addition rejects unsafe aggregates before any write. Real route/SQLite tests cover deletion before member reads, between reads and writes (foreign-key rollback), and after the atomic snapshot write. An atomic write cannot repair inconsistent observations assembled before its transaction.

@@ -17,6 +17,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { sumCounts } from "@pew/core";
 import { resolveAdmin } from "@/lib/admin";
 import { getDbRead, getDbWrite } from "@/lib/db";
 import { deriveSeasonStatus } from "@/lib/seasons";
@@ -81,15 +82,21 @@ export async function POST(
     const fromDate = startDateInclusive(season.start_date);
     const toDate = endDateExclusive(season.end_date);
 
-    // 3. Aggregate team-level tokens
-    const teamRows = await dbRead.aggregateSeasonTeamTokens(seasonId, fromDate, toDate);
-
-    // 4. Aggregate member-level tokens
-    let memberRows: MemberAggRow[] = [];
-    if (teamRows.length > 0) {
-      const teamIds = teamRows.map((r) => r.team_id);
-      memberRows = await dbRead.aggregateSeasonMemberTokens(seasonId, fromDate, toDate, teamIds);
+    const teamIds = await dbRead.getRegisteredTeamIds(seasonId);
+    const memberRows: MemberAggRow[] = teamIds.length > 0
+      ? await dbRead.aggregateSeasonMemberTokens(seasonId, fromDate, toDate, teamIds)
+      : [];
+    const totals = new Map(teamIds.map((team_id) => [team_id, {
+      team_id, total_tokens: 0, input_tokens: 0, output_tokens: 0, cached_input_tokens: 0,
+    }]));
+    for (const member of memberRows) {
+      const team = totals.get(member.team_id);
+      if (!team) throw new Error("Unexpected snapshot team");
+      for (const field of ["total_tokens", "input_tokens", "output_tokens", "cached_input_tokens"] as const) {
+        team[field] = sumCounts(team[field], member[field]);
+      }
     }
+    const teamRows = [...totals.values()].sort((a, b) => b.total_tokens - a.total_tokens || a.team_id.localeCompare(b.team_id));
 
     // 5. Mark snapshot as not-ready before writing data.
     //    Readers (leaderboard route) will serve live data while snapshot_ready=0.
