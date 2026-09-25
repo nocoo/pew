@@ -315,6 +315,9 @@ export default {
     }
 
     // 3. Shared secret auth (constant-time comparison)
+    if (typeof env.WORKER_SECRET !== "string" || !env.WORKER_SECRET.trim()) {
+      return Response.json({ error: "Service unavailable" }, { status: 503 });
+    }
     const auth = request.headers.get("Authorization");
     if (!auth || !(await secureCompare(auth, `Bearer ${env.WORKER_SECRET}`))) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });

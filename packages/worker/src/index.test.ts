@@ -93,6 +93,17 @@ describe("Worker ingest endpoint", () => {
   // -----------------------------------------------------------------------
 
   describe("authentication", () => {
+    it.each([undefined, null, "", "   "])("rejects an unconfigured secret (%s) before touching D1", async (secret) => {
+      Object.assign(env, { WORKER_SECRET: secret });
+      const res = await worker.fetch(makeRequest(
+        { userId: "u1", records: [VALID_RECORD] },
+        { secret: String(secret) },
+      ), env);
+      expect(res.status).toBe(503);
+      expect(env.DB.prepare).not.toHaveBeenCalled();
+      expect(env.DB.batch).not.toHaveBeenCalled();
+    });
+
     it("should reject missing Authorization header with 401", async () => {
       const req = makeRequest({ userId: "u1", records: [VALID_RECORD] }, { secret: null });
 

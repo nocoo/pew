@@ -409,6 +409,9 @@ const worker: ExportedHandler<Env> = {
     }
 
     // Auth: all other routes require Bearer token (constant-time comparison)
+    if (typeof env.WORKER_READ_SECRET !== "string" || !env.WORKER_READ_SECRET.trim()) {
+      return Response.json({ error: "Service unavailable" }, { status: 503 });
+    }
     const authHeader = request.headers.get("Authorization");
     const expected = `Bearer ${env.WORKER_READ_SECRET}`;
     if (!authHeader || !(await secureCompare(authHeader, expected))) {

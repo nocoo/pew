@@ -86,6 +86,16 @@ describe("pew read Worker", () => {
     env = createEnv();
   });
 
+  it.each([undefined, null, "", "   "])("rejects an unconfigured secret (%s) before touching bindings", async (secret) => {
+    Object.assign(env, { WORKER_READ_SECRET: secret });
+    const res = await callWorker(makeRequest("POST", "/api/rpc", {
+      method: "users.getById", id: "dummy-private-user",
+    }, String(secret)), env);
+    expect(res.status).toBe(503);
+    expect(env.DB.prepare).not.toHaveBeenCalled();
+    expect(env.CACHE.get).not.toHaveBeenCalled();
+  });
+
   // -----------------------------------------------------------------------
   // GET /api/live
   // -----------------------------------------------------------------------
