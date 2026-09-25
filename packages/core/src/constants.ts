@@ -48,6 +48,9 @@ export const VALID_SESSION_KINDS: ReadonlySet<string> = new Set<string>(SESSION_
 
 /** Maximum records per ingest API request */
 export const MAX_INGEST_BATCH_SIZE = 50;
+export const MAX_ACCOUNTING_BATCH_SIZE = 25;
+export const MAX_INGEST_BODY_BYTES = 1024 * 1024;
+export const MAX_ACCOUNTING_BODY_BYTES = 24 * 1024 * 1024;
 
 /** Maximum string field length (model names, session keys, etc.) */
 export const MAX_STRING_LENGTH = 1024;

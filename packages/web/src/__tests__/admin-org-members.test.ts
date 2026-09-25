@@ -345,6 +345,30 @@ describe("admin organization member management", () => {
       });
     }
 
+    it("rejects unknown-length multipart overflow and cancels before R2", async () => {
+      vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
+      const cancel = vi.fn();
+      const body = new ReadableStream({ start(c) { c.enqueue(new Uint8Array(2 * 1024 * 1024 + 65537)); }, cancel });
+      const response = await UPLOAD_LOGO(new Request("https://test.invalid", { method: "POST", body, duplex: "half",
+        headers: { "Content-Type": "multipart/form-data; boundary=x" } } as RequestInit), makeParams("org-1"));
+      expect(response.status).toBe(413);
+      expect(await response.json()).toEqual({ error: "Request body too large" });
+      expect(cancel).toHaveBeenCalledOnce();
+      expect(putOrgLogo).not.toHaveBeenCalled();
+    });
+
+    it.each(["file", "extra"])("rejects additional multipart %s entries", async (field) => {
+      vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
+      const form = new FormData();
+      form.append("file", new File(["png"], "logo.png", { type: "image/png" }));
+      form.append(field, field === "file" ? new File(["png"], "other.png", { type: "image/png" }) : "value");
+      const response = await UPLOAD_LOGO(new Request("https://test.invalid", { method: "POST", body: form }), makeParams("org-1"));
+      expect(response.status).toBe(400);
+      expect(putOrgLogo).not.toHaveBeenCalled();
+    });
+
     it("should return 403 for non-admin users", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(null);
 
@@ -398,15 +422,14 @@ describe("admin organization member management", () => {
       expect(json.error).toBe("Only PNG and JPEG images are accepted");
     });
 
-    it("should return 400 if file too large", async () => {
+    it("should return 413 if file too large", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
       mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
 
-      // Create a 3MB file
-      const bigData = new Uint8Array(3 * 1024 * 1024);
+      const bigData = new Uint8Array(2 * 1024 * 1024 + 1);
       const file = new File([bigData], "logo.png", { type: "image/png" });
       const res = await UPLOAD_LOGO(makeFormRequest(file), makeParams("org-1"));
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(413);
       const json = await res.json();
       expect(json.error).toBe("File too large (max 2 MB)");
     });
@@ -423,6 +446,7 @@ describe("admin organization member management", () => {
       expect(res.status).toBe(200);
       const json = await res.json();
       expect(json.logoUrl).toBe("https://cdn.example.com/logo.jpg");
+      expect((await import("sharp")).default).toHaveBeenCalledWith(expect.any(Buffer), { limitInputPixels: 16_777_216 });
     });
 
     it("should delete old logo when uploading new one", async () => {

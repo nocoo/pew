@@ -94,3 +94,7 @@ launchers, so the first commit did not invoke pre-commit. The launchers were
 materialized locally and the commit amended through the full staged-snapshot
 gate. Verify the executable hook entrypoint exists before committing in a new
 worktree; dependency links alone do not install Git hooks.
+
+### 2026-09-25 — Verify hook launchers in isolated worktrees
+
+The security ingest checkout had materialized dependencies and `core.hooksPath=.husky/_`, but lacked the ignored Husky launchers. The first local body-limit commit therefore completed without running pre-commit. The missing launcher was detected immediately from the absent gate output, Husky was initialized using the existing installed package, and the commit was amended through the normal full staged-tree gate. Before committing in a fresh worktree, verify both the configured hook path and its executable launcher; the configuration value alone does not prove activation.

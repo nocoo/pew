@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import sharp from "sharp";
 import * as dbModule from "@/lib/db";
 import { POST, DELETE } from "./route";
 import { createMockDbRead, createMockDbWrite, loadMockedAuthHelpers } from "@/__tests__/test-utils";
@@ -66,6 +67,33 @@ describe("POST /api/teams/[teamId]/logo route edge cases", () => {
       "https://cdn.example.com/teams/t1/new-logo.jpg",
     );
     vi.mocked(deleteTeamLogoByUrl).mockResolvedValue(undefined);
+  });
+
+  it("rejects a streamed oversized multipart body before image processing", async () => {
+    const cancel = vi.fn();
+    const body = new ReadableStream({ start(c) { c.enqueue(new Uint8Array(2 * 1024 * 1024 + 65537)); }, cancel });
+    const response = await POST(new Request("https://test.invalid", { method: "POST", body, duplex: "half",
+      headers: { "Content-Type": "multipart/form-data; boundary=x", "Content-Length": "1" } } as RequestInit), makeParams());
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual({ error: "Request body too large" });
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(sharp).not.toHaveBeenCalled();
+    expect(putTeamLogo).not.toHaveBeenCalled();
+  });
+
+  it.each(["file", "extra"])("rejects extra multipart %s entries", async (field) => {
+    const form = new FormData();
+    form.append("file", new File(["png"], "logo.png", { type: "image/png" }));
+    form.append(field, field === "file" ? new File(["png"], "other.png", { type: "image/png" }) : "value");
+    const response = await POST(new Request("https://test.invalid", { method: "POST", body: form }), makeParams());
+    expect(response.status).toBe(400);
+    expect(sharp).not.toHaveBeenCalled();
+  });
+
+  it("limits decoded image pixels", async () => {
+    const response = await POST(makeUploadRequest("t1"), makeParams());
+    expect(response.status).toBe(200);
+    expect(sharp).toHaveBeenCalledWith(expect.any(Buffer), { limitInputPixels: 16_777_216 });
   });
 
   it("returns 401 when POST is unauthenticated", async () => {

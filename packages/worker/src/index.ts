@@ -20,6 +20,11 @@
 
 import {
   MAX_INGEST_BATCH_SIZE,
+  MAX_INGEST_BODY_BYTES,
+  MAX_ACCOUNTING_BODY_BYTES,
+  MAX_ACCOUNTING_BATCH_SIZE,
+  BodyTooLargeError,
+  readBoundedJson,
   validateIngestRecord,
   validateSessionIngestRecord,
   validateEvidenceRecord,
@@ -326,8 +331,9 @@ export default {
     // 4. Parse JSON body
     let body: unknown;
     try {
-      body = await request.json();
-    } catch {
+      body = await readBoundedJson(request, path === "/ingest/details" ? MAX_ACCOUNTING_BODY_BYTES : MAX_INGEST_BODY_BYTES);
+    } catch (error) {
+      if (error instanceof BodyTooLargeError) return Response.json({ error: error.message }, { status: 413 });
       return Response.json({ error: "Invalid JSON body" }, { status: 400 });
     }
 
@@ -341,7 +347,7 @@ export default {
     if (path === "/ingest/details") {
       const validation = validateRequest(body, validateAccountingRecord);
       if (!validation.ok) return Response.json({ error: validation.error }, { status: 400 });
-      if (validation.records.length > 25) return Response.json({ error: "Accounting batch too large: max 25 records" }, { status: 400 });
+      if (validation.records.length > MAX_ACCOUNTING_BATCH_SIZE) return Response.json({ error: "Accounting batch too large: max 25 records" }, { status: 400 });
       try {
         const acknowledgments = await ingestAccounting(env.DB, validation.userId, validation.records);
         return Response.json({ details_version: 1, acknowledgments });

@@ -144,11 +144,11 @@ describe("POST /api/teams/[teamId]/logo", () => {
     mockDbRead.getTeamMembership.mockResolvedValueOnce("owner");
 
     const res = await POST(
-      makeUploadRequest("t1", { size: 3 * 1024 * 1024 }),
+      makeUploadRequest("t1", { size: 2 * 1024 * 1024 + 1 }),
       makeParams(),
     );
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(413);
     expect((await res.json()).error).toContain("too large");
   });
 

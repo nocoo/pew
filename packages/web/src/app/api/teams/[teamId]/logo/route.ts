@@ -8,6 +8,7 @@
  * The full CDN URL is persisted in teams.logo_url.
  */
 
+import { BodyTooLargeError, readBoundedBody } from "@pew/core";
 import { NextResponse } from "next/server";
 import sharp from "sharp";
 import { resolveUser } from "@/lib/auth-helpers";
@@ -58,8 +59,10 @@ export async function POST(
   // Parse multipart form data
   let formData: FormData;
   try {
-    formData = await request.formData();
-  } catch {
+    const body = await readBoundedBody(request, MAX_FILE_SIZE + 64 * 1024);
+    formData = await new Response(body, { headers: { "Content-Type": request.headers.get("Content-Type") ?? "" } }).formData();
+  } catch (error) {
+    if (error instanceof BodyTooLargeError) return NextResponse.json({ error: error.message }, { status: 413 });
     return NextResponse.json(
       { error: "Expected multipart/form-data" },
       { status: 400 },
@@ -74,6 +77,12 @@ export async function POST(
     );
   }
 
+  let fieldCount = 0;
+  formData.forEach(() => { fieldCount++; });
+  if (fieldCount !== 1) {
+    return NextResponse.json({ error: "Expected a single file field" }, { status: 400 });
+  }
+
   // Validate MIME type
   if (!ACCEPTED_TYPES.has(file.type)) {
     return NextResponse.json(
@@ -86,7 +95,7 @@ export async function POST(
   if (file.size > MAX_FILE_SIZE) {
     return NextResponse.json(
       { error: "File too large (max 2 MB)" },
-      { status: 400 },
+      { status: 413 },
     );
   }
 
@@ -97,7 +106,7 @@ export async function POST(
   // Convert to JPEG, resize to 256x256 (center-crop), quality 80
   let jpegBuffer: Buffer;
   try {
-    jpegBuffer = await sharp(inputBuffer)
+    jpegBuffer = await sharp(inputBuffer, { limitInputPixels: 16_777_216 })
       .resize(OUTPUT_SIZE, OUTPUT_SIZE, { fit: "cover" })
       .jpeg({ quality: JPEG_QUALITY })
       .toBuffer();

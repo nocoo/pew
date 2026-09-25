@@ -430,3 +430,17 @@ describe("validateSessionIngestRecord", () => {
     expect(validateSessionIngestRecord(rec, 0).valid).toBe(false);
   });
 });
+
+
+describe("ingest privacy projection", () => {
+  it("forwards only token schema fields", () => {
+    const record = validTokenRecord();
+    expect(validateIngestRecord({ ...record, prompt: "PRIVATE", arbitrary: { large: "value" } }, 0))
+      .toEqual({ valid: true, record });
+  });
+  it("forwards only session schema fields", () => {
+    const record = validSessionRecord();
+    expect(validateSessionIngestRecord({ ...record, transcript: "PRIVATE" }, 0))
+      .toEqual({ valid: true, record });
+  });
+});

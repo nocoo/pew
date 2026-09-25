@@ -13,7 +13,7 @@
 
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
-import { MAX_INGEST_BATCH_SIZE, MIN_CLIENT_VERSION } from "@pew/core";
+import { MAX_INGEST_BATCH_SIZE, MAX_INGEST_BODY_BYTES, MIN_CLIENT_VERSION, BodyTooLargeError, readBoundedJson } from "@pew/core";
 import type { ValidationResult } from "@pew/core";
 import {
   INGEST_RATE_LIMIT,
@@ -41,6 +41,8 @@ export interface IngestHandlerConfig<T> {
 
   /** Human-readable entity name used in error messages, e.g. "records" or "session records" */
   entityName: string;
+  maxBodyBytes?: number;
+  maxBatchSize?: number;
   /** A versioned route can project an explicit receipt instead of legacy {ingested}. */
   acknowledgment?: (body: unknown, records: T[]) => object | null;
 }
@@ -97,7 +99,7 @@ export function createIngestHandler<T>(
     // 4. Parse body
     let records: unknown[];
     try {
-      const body = await request.json();
+      const body = await readBoundedJson(request, config.maxBodyBytes ?? MAX_INGEST_BODY_BYTES);
       if (!Array.isArray(body)) {
         return NextResponse.json(
           { error: "Request body must be an array" },
@@ -105,7 +107,8 @@ export function createIngestHandler<T>(
         );
       }
       records = body;
-    } catch {
+    } catch (error) {
+      if (error instanceof BodyTooLargeError) return NextResponse.json({ error: error.message }, { status: 413 });
       return NextResponse.json(
         { error: "Invalid JSON body" },
         { status: 400 },
@@ -120,10 +123,11 @@ export function createIngestHandler<T>(
       );
     }
 
-    if (records.length > MAX_INGEST_BATCH_SIZE) {
+    const maxBatchSize = config.maxBatchSize ?? MAX_INGEST_BATCH_SIZE;
+    if (records.length > maxBatchSize) {
       return NextResponse.json(
         {
-          error: `Batch too large: max ${MAX_INGEST_BATCH_SIZE} records per request`,
+          error: `Batch too large: max ${maxBatchSize} records per request`,
         },
         { status: 400 },
       );

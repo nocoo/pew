@@ -184,7 +184,14 @@ export function validateIngestRecord(
     }
   }
 
-  return { valid: true, record: rec as unknown as IngestRecord };
+  const record = rec as unknown as IngestRecord;
+  return { valid: true, record: {
+    source: record.source, model: record.model, hour_start: record.hour_start,
+    ...(record.device_id !== undefined ? { device_id: record.device_id } : {}),
+    input_tokens: record.input_tokens, cached_input_tokens: record.cached_input_tokens,
+    output_tokens: record.output_tokens, reasoning_output_tokens: record.reasoning_output_tokens,
+    total_tokens: record.total_tokens,
+  } };
 }
 
 /**
@@ -253,5 +260,12 @@ export function validateSessionIngestRecord(
     return { valid: false, error: `record[${index}]: model must be a string or null` };
   }
 
-  return { valid: true, record: rec as unknown as SessionIngestRecord };
+  const record = rec as unknown as SessionIngestRecord;
+  return { valid: true, record: {
+    session_key: record.session_key, source: record.source, kind: record.kind,
+    started_at: record.started_at, last_message_at: record.last_message_at,
+    duration_seconds: record.duration_seconds, user_messages: record.user_messages,
+    assistant_messages: record.assistant_messages, total_messages: record.total_messages,
+    project_ref: record.project_ref, model: record.model, snapshot_at: record.snapshot_at,
+  } };
 }
