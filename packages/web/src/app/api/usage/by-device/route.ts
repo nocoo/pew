@@ -13,6 +13,7 @@
 
 import { estimateUsageCost } from "@/lib/accounting";
 import { NextResponse } from "next/server";
+import { sumCounts } from "@pew/core";
 import { resolveUser } from "@/lib/auth-helpers";
 import { unauthorizedResponse } from "@/lib/api-responses";
 import { parseBoundedInt } from "@/lib/query-params";
@@ -163,10 +164,7 @@ export async function GET(request: Request) {
         source: row.source,
         model: row.model,
         total_tokens:
-          row.input_tokens +
-          row.output_tokens +
-          row.cached_input_tokens +
-          reasoning,
+          sumCounts(row.input_tokens, row.output_tokens, row.cached_input_tokens, reasoning),
         input_tokens: row.input_tokens,
         output_tokens: row.output_tokens,
         cached_input_tokens: row.cached_input_tokens,

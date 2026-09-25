@@ -106,3 +106,7 @@ The first privacy fix filtered cached leaderboard pages after pagination. Indepe
 ## 2026-09-25 — Keep native SQLite regressions outside Worker types
 
 A roster-boundary regression imported `node:sqlite` into the read Worker's test directory. Vitest passed, but the normal commit gate correctly rejected the import because the Worker type environment contains no Node globals. Moved the native SQLite regression into `scripts/__tests__`, preserving the Worker runtime boundary and all strict checks. Choose the runtime-specific test lane before adding native imports.
+
+## 2026-09-25 — Validate counts after every aggregation boundary
+
+The initial numeric fix rejected unsafe native and cached Worker outputs, but independent review combined two individually safe historical values in the Web API and reproduced a rounded total with HTTP 200. Added shared checked integer addition to all six server-side count aggregation paths: usage, public profiles, sessions, device details, admin storage and user comparisons. Regression tests prove exact success at MAX_SAFE_INTEGER and failure above it for every path. A safe upstream row does not guarantee a safe downstream sum; trace the last aggregation before claiming output precision.

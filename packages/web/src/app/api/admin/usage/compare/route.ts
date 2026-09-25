@@ -11,6 +11,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { sumCounts } from "@pew/core";
 import { resolveAdmin } from "@/lib/admin";
 import { getDbRead } from "@/lib/db";
 
@@ -156,7 +157,7 @@ export async function GET(request: Request) {
         dayUsers = {};
         dailyMap.set(row.date, dayUsers);
       }
-      dayUsers[row.user_id] = (dayUsers[row.user_id] ?? 0) + row.total_tokens;
+      dayUsers[row.user_id] = sumCounts(dayUsers[row.user_id] ?? 0, row.total_tokens);
     }
 
     // Convert to sorted array

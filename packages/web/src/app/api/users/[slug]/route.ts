@@ -17,6 +17,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { sumCounts } from "@pew/core";
 import { getDbRead, type DbRead } from "@/lib/db";
 import { resolveUser } from "@/lib/auth-helpers";
 import { isAdmin } from "@/lib/admin";
@@ -185,12 +186,12 @@ export async function GET(
     // Compute summary
     const summary = records.reduce(
       (acc, r) => ({
-        input_tokens: acc.input_tokens + r.input_tokens,
-        cached_input_tokens: acc.cached_input_tokens + r.cached_input_tokens,
-        output_tokens: acc.output_tokens + r.output_tokens,
+        input_tokens: sumCounts(acc.input_tokens, r.input_tokens),
+        cached_input_tokens: sumCounts(acc.cached_input_tokens, r.cached_input_tokens),
+        output_tokens: sumCounts(acc.output_tokens, r.output_tokens),
         reasoning_output_tokens:
-          acc.reasoning_output_tokens + r.reasoning_output_tokens,
-        total_tokens: acc.total_tokens + r.total_tokens,
+          sumCounts(acc.reasoning_output_tokens, r.reasoning_output_tokens),
+        total_tokens: sumCounts(acc.total_tokens, r.total_tokens),
       }),
       {
         input_tokens: 0,

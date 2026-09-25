@@ -12,6 +12,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { sumCounts } from "@pew/core";
 import { resolveUser } from "@/lib/auth-helpers";
 import { unauthorizedResponse } from "@/lib/api-responses";
 import { parseBoundedInt } from "@/lib/query-params";
@@ -143,13 +144,13 @@ export async function GET(request: Request) {
     // Compute summary
     const summary = records.reduce(
       (acc, r) => ({
-        input_tokens: acc.input_tokens + r.input_tokens,
+        input_tokens: sumCounts(acc.input_tokens, r.input_tokens),
         cached_input_tokens:
-          acc.cached_input_tokens + r.cached_input_tokens,
-        output_tokens: acc.output_tokens + r.output_tokens,
+          sumCounts(acc.cached_input_tokens, r.cached_input_tokens),
+        output_tokens: sumCounts(acc.output_tokens, r.output_tokens),
         reasoning_output_tokens:
-          acc.reasoning_output_tokens + r.reasoning_output_tokens,
-        total_tokens: acc.total_tokens + r.total_tokens,
+          sumCounts(acc.reasoning_output_tokens, r.reasoning_output_tokens),
+        total_tokens: sumCounts(acc.total_tokens, r.total_tokens),
       }),
       {
         input_tokens: 0,
@@ -160,8 +161,8 @@ export async function GET(request: Request) {
       }
     );
 
-    const evidenceTokens = records.reduce((n, r) => n + (r.evidence_tokens ?? 0), 0);
-    const approximateTokens = records.reduce((n, r) => n + (r.approximate_tokens ?? 0), 0);
+    const evidenceTokens = records.reduce((n, r) => sumCounts(n, r.evidence_tokens ?? 0), 0);
+    const approximateTokens = records.reduce((n, r) => sumCounts(n, r.approximate_tokens ?? 0), 0);
     return NextResponse.json({ records, summary: evidenceTokens > 0
       ? { ...summary, evidence_tokens: evidenceTokens, approximate_tokens: approximateTokens }
       : summary });

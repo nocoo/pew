@@ -11,6 +11,7 @@
  */
 
 import { NextResponse } from "next/server";
+import { sumCounts } from "@pew/core";
 import { resolveUser } from "@/lib/auth-helpers";
 import { getDbRead } from "@/lib/db";
 
@@ -123,12 +124,12 @@ export async function GET(request: Request) {
     // Compute summary
     const summary = records.reduce(
       (acc, r) => ({
-        total_sessions: acc.total_sessions + 1,
-        total_duration_seconds: acc.total_duration_seconds + r.duration_seconds,
-        total_user_messages: acc.total_user_messages + r.user_messages,
+        total_sessions: sumCounts(acc.total_sessions, 1),
+        total_duration_seconds: sumCounts(acc.total_duration_seconds, r.duration_seconds),
+        total_user_messages: sumCounts(acc.total_user_messages, r.user_messages),
         total_assistant_messages:
-          acc.total_assistant_messages + r.assistant_messages,
-        total_messages: acc.total_messages + r.total_messages,
+          sumCounts(acc.total_assistant_messages, r.assistant_messages),
+        total_messages: sumCounts(acc.total_messages, r.total_messages),
       }),
       {
         total_sessions: 0,

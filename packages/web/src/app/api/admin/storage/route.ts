@@ -6,9 +6,9 @@
  */
 
 import { NextResponse } from "next/server";
+import { sumCounts } from "@pew/core";
 import { resolveAdmin } from "@/lib/admin";
 import { getDbRead } from "@/lib/db";
-import { sumBy } from "@/lib/array-helpers";
 
 // ---------------------------------------------------------------------------
 // Types (re-export for backwards compatibility)
@@ -44,11 +44,11 @@ export async function GET(request: Request) {
     // Summary row
     const summary: StorageSummary = {
       total_users: users.length,
-      total_tokens: sumBy(users, "total_tokens"),
-      total_sessions: sumBy(users, "session_count"),
-      total_usage_rows: sumBy(users, "usage_row_count"),
-      total_messages: sumBy(users, "total_messages"),
-      total_duration_seconds: sumBy(users, "total_duration_seconds"),
+      total_tokens: users.reduce((total, user) => sumCounts(total, user.total_tokens), 0),
+      total_sessions: users.reduce((total, user) => sumCounts(total, user.session_count), 0),
+      total_usage_rows: users.reduce((total, user) => sumCounts(total, user.usage_row_count), 0),
+      total_messages: users.reduce((total, user) => sumCounts(total, user.total_messages), 0),
+      total_duration_seconds: users.reduce((total, user) => sumCounts(total, user.total_duration_seconds), 0),
     };
 
     return NextResponse.json({ users, summary });
