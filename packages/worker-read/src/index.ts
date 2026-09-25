@@ -15,6 +15,7 @@
  * SQL is owned by the Worker; RPC clients supply method parameters only.
  */
 
+import { checkedCountDatabase, checkedCountResponse } from "./count-response";
 import { handleUsersRpc, type UsersRpcRequest } from "./rpc/users";
 import { handleTeamsRpc, type TeamsRpcRequest } from "./rpc/teams";
 import { handleSeasonsRpc, type SeasonsRpcRequest } from "./rpc/seasons";
@@ -244,7 +245,7 @@ const worker: ExportedHandler<Env> = {
         );
       }
 
-      return handleRpc(body, env);
+      return checkedCountResponse(handleRpc(body, { ...env, DB: checkedCountDatabase(env.DB) }));
     }
 
     // Unknown route

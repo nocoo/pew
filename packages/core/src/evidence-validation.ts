@@ -1,3 +1,4 @@
+import { MAX_RECORD_MESSAGES } from "./constants.js";
 import type { EvidenceRecord } from "./types.js";
 import { isValidISODate, validateIngestRecord, type ValidationResult } from "./validation.js";
 
@@ -34,7 +35,7 @@ export function validateEvidenceRecord(value: unknown, index: number): Validatio
   if (!hash(e.eventId) || !hash(e.groupId) || !label(e.provider) ||
     !CALL_TYPES.has(e.callType as string) || !ORIGINS.has(e.origin as string) ||
     !PRECISIONS.has(e.timePrecision as string) || !["call", "operation", "session"].includes(e.granularity as string) ||
-    !count(e.snapshotSeq) || e.snapshotSeq === 0 || (e.callCount !== null && !count(e.callCount))) return invalid();
+    !count(e.snapshotSeq) || e.snapshotSeq === 0 || (e.callCount !== null && (!count(e.callCount) || Number(e.callCount) > MAX_RECORD_MESSAGES))) return invalid();
   if ((r.source === "pi") !== (e.callType === "compaction" && e.origin === "pi-session")) return invalid();
   if (r.source === "hermes" && (e.callType === "compaction" || e.origin === "pi-session")) return invalid();
   for (const field of ["intervalStart", "intervalEnd"]) {

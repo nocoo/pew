@@ -55,6 +55,14 @@ export const MAX_ACCOUNTING_BODY_BYTES = 24 * 1024 * 1024;
 /** Maximum string field length (model names, session keys, etc.) */
 export const MAX_STRING_LENGTH = 1024;
 
+// D1's 10 GiB ceiling and >16-byte collected rows bound nonduplicating scans:
+// (10 GiB / 16) * (4 * 1e9) < 2^63. This is an int64 storage argument only,
+// for newly validated rows, not a guarantee for historical data or arbitrary joins.
+// Read responses separately reject counts outside JS's safe integer range.
+export const MAX_RECORD_TOKENS = 1_000_000_000;
+export const MAX_RECORD_MESSAGES = 100_000_000;
+export const MAX_SESSION_DURATION_SECONDS = 315_576_000;
+
 // ---------------------------------------------------------------------------
 // Version gate
 // ---------------------------------------------------------------------------

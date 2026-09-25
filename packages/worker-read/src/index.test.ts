@@ -346,3 +346,22 @@ describe("pew read Worker", () => {
     });
   });
 });
+
+
+describe("RPC count precision boundary", () => {
+  it("rejects rounded aggregate results from domain handlers", async () => {
+    const env = createEnv();
+    vi.mocked(env.DB.prepare).mockReturnValue({ first: vi.fn().mockResolvedValue({ total_tokens: Number.MAX_SAFE_INTEGER + 1 }) } as unknown as D1PreparedStatement);
+    const response = await callWorker(makeRequest("POST", "/api/rpc", { method: "admin.getSystemStats" }, SECRET), env);
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: "Count exceeds supported integer range" });
+  });
+
+  it("catches asynchronous SQLite overflow without exposing queries or partial results", async () => {
+    const env = createEnv();
+    vi.mocked(env.DB.prepare).mockReturnValue({ first: vi.fn().mockRejectedValue(new Error("integer overflow PRIVATE")) } as unknown as D1PreparedStatement);
+    const response = await callWorker(makeRequest("POST", "/api/rpc", { method: "admin.getSystemStats" }, SECRET), env);
+    expect(response.status).toBe(500);
+    expect(await response.json()).toEqual({ error: "Internal server error" });
+  });
+});

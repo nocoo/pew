@@ -8,6 +8,9 @@
 import type { SessionKind, Source } from "./types.js";
 import {
   MAX_STRING_LENGTH,
+  MAX_RECORD_TOKENS,
+  MAX_RECORD_MESSAGES,
+  MAX_SESSION_DURATION_SECONDS,
   VALID_SESSION_KINDS,
   VALID_SOURCES,
 } from "./constants.js";
@@ -51,7 +54,7 @@ export function isValidISODate(s: unknown): boolean {
 
 /** Check if value is a non-negative integer */
 export function isNonNegativeInteger(n: unknown): n is number {
-  return typeof n === "number" && Number.isInteger(n) && n >= 0;
+  return typeof n === "number" && Number.isSafeInteger(n) && n >= 0;
 }
 
 /**
@@ -176,10 +179,10 @@ export function validateIngestRecord(
   ] as const;
 
   for (const field of tokenFields) {
-    if (!isNonNegativeInteger(rec[field])) {
+    if (!isNonNegativeInteger(rec[field]) || rec[field] > MAX_RECORD_TOKENS) {
       return {
         valid: false,
-        error: `record[${index}]: ${field} must be a non-negative integer`,
+        error: `record[${index}]: ${field} must be a non-negative integer at most ${MAX_RECORD_TOKENS}`,
       };
     }
   }
@@ -244,10 +247,11 @@ export function validateSessionIngestRecord(
   ] as const;
 
   for (const field of intFields) {
-    if (!isNonNegativeInteger(rec[field])) {
+    const max = field === "duration_seconds" ? MAX_SESSION_DURATION_SECONDS : MAX_RECORD_MESSAGES;
+    if (!isNonNegativeInteger(rec[field]) || rec[field] > max) {
       return {
         valid: false,
-        error: `record[${index}]: ${field} must be a non-negative integer`,
+        error: `record[${index}]: ${field} must be a non-negative integer at most ${max}`,
       };
     }
   }

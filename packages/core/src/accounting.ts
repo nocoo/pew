@@ -1,9 +1,11 @@
+import { MAX_RECORD_TOKENS, MAX_RECORD_MESSAGES } from "./constants.js";
 import type { AccountingAck, AccountingCounts, AccountingGroup, AccountingRecord, LegacyTokenCounts } from "./accounting-types.js";
 import { isValidSource, type ValidationResult } from "./validation.js";
 
 const object = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === "object" && !Array.isArray(v);
 const count = (v: unknown): v is number => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
-const optionalCount = (v: unknown) => v === null || count(v);
+const tokenCount = (v: unknown): v is number => count(v) && v <= MAX_RECORD_TOKENS;
+const optionalCount = (v: unknown) => v === null || tokenCount(v);
 const label = (v: unknown) => typeof v === "string" && /^[a-zA-Z0-9][a-zA-Z0-9._/+:-]{0,127}$/.test(v) &&
   !/^(?:sk-|sk_|pk_|Bearer|eyJ)/i.test(v) && !v.includes("://");
 const keys = (v: Record<string, unknown>, names: string) => {
@@ -13,13 +15,13 @@ const keys = (v: Record<string, unknown>, names: string) => {
 const BASIS_KEYS = "input_tokens cached_input_tokens output_tokens reasoning_output_tokens total_tokens";
 
 function validBasis(v: unknown): v is LegacyTokenCounts {
-  return object(v) && keys(v, BASIS_KEYS) && Object.values(v).every(count) &&
+  return object(v) && keys(v, BASIS_KEYS) && Object.values(v).every(tokenCount) &&
     v.total_tokens === Number(v.input_tokens) + Number(v.cached_input_tokens) + Number(v.output_tokens) + Number(v.reasoning_output_tokens);
 }
 
 function validCounts(v: unknown): v is AccountingCounts {
   if (!object(v) || !keys(v, "input_total_tokens cache_read_input_tokens cache_write_input_tokens cache_write_5m_input_tokens cache_write_1h_input_tokens output_total_tokens reasoning_output_tokens")) return false;
-  if (!count(v.input_total_tokens) || !count(v.output_total_tokens) || !count(v.input_total_tokens + v.output_total_tokens)) return false;
+  if (!tokenCount(v.input_total_tokens) || !tokenCount(v.output_total_tokens) || !tokenCount(v.input_total_tokens + v.output_total_tokens)) return false;
   if (![v.cache_read_input_tokens, v.cache_write_input_tokens, v.cache_write_5m_input_tokens, v.cache_write_1h_input_tokens, v.reasoning_output_tokens].every(optionalCount)) return false;
   if (Number(v.cache_read_input_tokens ?? 0) + Number(v.cache_write_input_tokens ?? 0) > v.input_total_tokens) return false;
   if ((v.cache_write_5m_input_tokens !== null || v.cache_write_1h_input_tokens !== null) && v.cache_write_input_tokens === null) return false;
@@ -37,7 +39,8 @@ function validGroup(g: unknown, source: string): g is AccountingGroup {
     const output = source === "hermes" ? g.basis.output_tokens : g.basis.output_tokens + g.basis.reasoning_output_tokens;
     if (g.counts.output_total_tokens !== output || g.quality === "legacy" || g.quality === "invalid") return false;
   } else if (g.quality !== "legacy" && g.quality !== "invalid") return false;
-  if (![g.context_tokens_min, g.context_tokens_max, g.request_count].every(optionalCount)) return false;
+  if (![g.context_tokens_min, g.context_tokens_max].every(optionalCount) ||
+    (g.request_count !== null && (!count(g.request_count) || g.request_count > MAX_RECORD_MESSAGES))) return false;
   if ((g.context_tokens_min === null) !== (g.context_tokens_max === null) ||
     (g.context_tokens_min !== null && (Number(g.context_tokens_min) > Number(g.context_tokens_max) || !count(g.request_count) || g.request_count === 0))) return false;
   if (!Array.isArray(g.reported_costs) || g.reported_costs.length > 4 || !g.reported_costs.every((v: unknown) =>
