@@ -48,7 +48,7 @@ function makeRequest(token?: string): Request {
 
 describe("resolveUser", () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
     vi.unstubAllEnvs();
     // Default: not in E2E mode
     delete process.env.E2E_SKIP_AUTH;
@@ -120,10 +120,13 @@ describe("resolveUser", () => {
   // ---------- Session auth ----------
 
   describe("session auth", () => {
-    it("should return user from Auth.js session", async () => {
+    it("uses the current database identity instead of saved session claims", async () => {
       auth.mockResolvedValueOnce({
-        user: { id: "u-session-1", email: "user@example.com" },
+        user: { id: "u-session-1", email: "old-admin@example.com" },
       } as Session);
+      const db = createMockClient();
+      db.getUserById.mockResolvedValueOnce({ id: "u-session-1", email: "user@example.com" });
+      getDbRead.mockResolvedValueOnce(db);
 
       const result = await resolveUser(makeRequest());
 
@@ -131,20 +134,56 @@ describe("resolveUser", () => {
         userId: "u-session-1",
         email: "user@example.com",
       });
-      expect(getDbRead).not.toHaveBeenCalled();
+      expect(db.getUserById).toHaveBeenCalledWith("u-session-1");
     });
 
     it("should handle session user with no email", async () => {
       auth.mockResolvedValueOnce({
         user: { id: "u-no-email" },
       } as Session);
+      const db = createMockClient();
+      db.getUserById.mockResolvedValueOnce({ id: "u-no-email", email: "current@example.com" });
+      getDbRead.mockResolvedValueOnce(db);
 
       const result = await resolveUser(makeRequest());
 
       expect(result).toEqual({
         userId: "u-no-email",
-        email: undefined,
+        email: "current@example.com",
       });
+    });
+
+    it("rejects a saved session after account deletion without using another bearer identity", async () => {
+      auth.mockResolvedValueOnce({ user: { id: "deleted", email: "admin@example.com" } } as Session);
+      const db = createMockClient();
+      db.getUserById.mockResolvedValueOnce(null);
+      getDbRead.mockResolvedValueOnce(db);
+      expect(await resolveUser(makeRequest("pk_other_user"))).toBeNull();
+      expect(db.getUserByApiKey).not.toHaveBeenCalled();
+    });
+
+    it("does not authorize stale session claims when the identity lookup fails", async () => {
+      auth.mockResolvedValueOnce({ user: { id: "u1", email: "admin@example.com" } } as Session);
+      const db = createMockClient();
+      db.getUserById.mockRejectedValueOnce(new Error("Database unavailable"));
+      getDbRead.mockResolvedValueOnce(db);
+      await expect(resolveUser(makeRequest())).rejects.toThrow("Database unavailable");
+    });
+
+    it("blocks an admin settings write when the saved session's user no longer exists", async () => {
+      vi.stubEnv("ADMIN_EMAILS", "admin@example.com");
+      auth.mockResolvedValueOnce({ user: { id: "deleted", email: "admin@example.com" } } as Session);
+      const db = createMockClient();
+      db.getUserById.mockResolvedValueOnce(null);
+      getDbRead.mockResolvedValueOnce(db);
+      const { PUT } = await import("@/app/api/admin/settings/route");
+      const { getDbWrite } = await import("@/lib/db");
+      const response = await PUT(new Request("http://localhost/api/admin/settings", {
+        method: "PUT",
+        body: JSON.stringify({ key: "audit_fixture", value: "changed" }),
+      }));
+      expect(response.status).toBe(403);
+      expect(getDbWrite).not.toHaveBeenCalled();
     });
 
     it("should fall through to Bearer auth when session has no user id", async () => {
@@ -237,6 +276,9 @@ describe("resolveUser", () => {
       auth.mockResolvedValueOnce({
         user: { id: "u-session", email: "session@example.com" },
       } as Session);
+      const db = createMockClient();
+      db.getUserById.mockResolvedValueOnce({ id: "u-session", email: "session@example.com" });
+      getDbRead.mockResolvedValueOnce(db);
 
       const result = await resolveUser(makeRequest("pk_ignored_key"));
 
@@ -245,7 +287,7 @@ describe("resolveUser", () => {
         email: "session@example.com",
       });
       // Should NOT even check D1 for the API key
-      expect(getDbRead).not.toHaveBeenCalled();
+      expect(db.getUserByApiKey).not.toHaveBeenCalled();
     });
   });
 });

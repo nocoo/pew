@@ -43,7 +43,9 @@ export async function resolveUser(
   // Session auth
   const session = await auth();
   if (session?.user?.id) {
-    return { userId: session.user.id, email: session.user.email ?? undefined };
+    const db = await getDbRead();
+    const user = await db.getUserById(session.user.id);
+    return user ? { userId: user.id, email: user.email } : null;
   }
 
   // Bearer api_key auth
