@@ -102,3 +102,7 @@ The security ingest checkout had materialized dependencies and `core.hooksPath=.
 ## 2026-09-25 — Visibility checks after cached pagination lose public rows
 
 The first privacy fix filtered cached leaderboard pages after pagination. Independent review reproduced an early end to a page even though more public users existed, and the coordinator found that the 100-row page plus lookahead exceeded D1's 100-parameter limit. Revalidating one page also cannot repair offsets changed by a private user on an earlier page. Removed the global result cache so visibility, ordering and pagination execute together in SQL. A real SQLite regression covers privacy changes, deletion, successive pages and 101-row lookahead. Test authorization filtering together with pagination, not just the removal of a private row.
+
+## 2026-09-25 — Keep native SQLite regressions outside Worker types
+
+A roster-boundary regression imported `node:sqlite` into the read Worker's test directory. Vitest passed, but the normal commit gate correctly rejected the import because the Worker type environment contains no Node globals. Moved the native SQLite regression into `scripts/__tests__`, preserving the Worker runtime boundary and all strict checks. Choose the runtime-specific test lane before adding native imports.

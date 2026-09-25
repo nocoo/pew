@@ -718,7 +718,7 @@ export async function handleSeasonsRpc(
          JOIN seasons s ON s.id = st.season_id
          WHERE st.team_id = ? AND s.allow_roster_changes = 1
            AND datetime(s.start_date) <= datetime('now')
-           AND datetime(s.end_date) >= datetime('now')`
+           AND datetime(s.end_date, '+1 minute') > datetime('now')`
       ).bind(request.teamId).all<{ season_id: string }>();
       return Response.json({ result: rows.results.map((row) => row.season_id) });
     }

@@ -13,7 +13,7 @@ function mockDb(rows: unknown[] = []) {
 describe("remaining read RPCs", () => {
   it.each([
     ["seasons.listAutoRegisterTeams", { seasonId: "s1" }, [{ id: "t1", created_by: "u1" }], [{ id: "t1", created_by: "u1" }], ["s1"], "auto_register_season = 1"],
-    ["seasons.listRosterSyncSeasons", { teamId: "t1" }, [{ season_id: "s1" }], ["s1"], ["t1"], "datetime(s.end_date) >= datetime('now')"],
+    ["seasons.listRosterSyncSeasons", { teamId: "t1" }, [{ season_id: "s1" }], ["s1"], ["t1"], "datetime(s.end_date, '+1 minute') > datetime('now')"],
     ["seasons.getRegisteredTeamIds", { seasonId: "s1" }, [{ team_id: "t1" }], ["t1"], ["s1"], "season_teams"],
     ["seasons.getRosterUserIds", { seasonId: "s1", teamId: "t1" }, [{ user_id: "u1" }], ["u1"], ["s1", "t1"], "season_team_members"],
   ])("%s binds identifiers and returns the roster data", async (method, params, rows, result, bindings, sql) => {
