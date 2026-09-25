@@ -27,35 +27,14 @@ export async function GET(
 
   try {
     // Verify org exists
-    const org = await dbRead.firstOrNull<{ id: string }>(
-      "SELECT id FROM organizations WHERE id = ?",
-      [orgId]
-    );
+    const org = await dbRead.getOrganizationById(orgId);
 
     if (!org) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 });
     }
 
     // Get members with user details
-    const { results } = await dbRead.query<{
-      id: string;
-      org_id: string;
-      user_id: string;
-      joined_at: string;
-      user_name: string | null;
-      user_email: string;
-      user_image: string | null;
-      user_slug: string | null;
-    }>(
-      `SELECT
-         om.id, om.org_id, om.user_id, om.joined_at,
-         u.name AS user_name, u.email AS user_email, u.image AS user_image, u.slug AS user_slug
-       FROM organization_members om
-       JOIN users u ON u.id = om.user_id
-       WHERE om.org_id = ?
-       ORDER BY om.joined_at DESC`,
-      [orgId]
-    );
+    const results = await dbRead.listOrgMembersAdmin(orgId);
 
     const members = results.map((r) => ({
       id: r.id,
@@ -64,10 +43,10 @@ export async function GET(
       joinedAt: r.joined_at,
       user: {
         id: r.user_id,
-        name: r.user_name,
-        email: r.user_email,
-        image: r.user_image,
-        slug: r.user_slug,
+        name: r.name,
+        email: r.email,
+        image: r.image,
+        slug: r.slug,
       },
     }));
 
@@ -124,30 +103,21 @@ export async function POST(
 
   try {
     // Verify org exists
-    const org = await dbRead.firstOrNull<{ id: string }>(
-      "SELECT id FROM organizations WHERE id = ?",
-      [orgId]
-    );
+    const org = await dbRead.getOrganizationById(orgId);
 
     if (!org) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 });
     }
 
     // Verify user exists
-    const user = await dbRead.firstOrNull<{ id: string; name: string | null; email: string; image: string | null; slug: string | null }>(
-      "SELECT id, name, email, image, slug FROM users WHERE id = ?",
-      [userId]
-    );
+    const [user] = await dbRead.getAdminUsersByIds([userId]);
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     // Check if already a member
-    const existing = await dbRead.firstOrNull<{ id: string }>(
-      "SELECT id FROM organization_members WHERE org_id = ? AND user_id = ?",
-      [orgId, userId]
-    );
+    const existing = await dbRead.checkOrgMembership(orgId, userId);
 
     if (existing) {
       return NextResponse.json(

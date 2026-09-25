@@ -103,19 +103,14 @@ describe("GET /api/admin/usage/compare", () => {
   // ---- Success paths ----
 
   it("returns compare data for valid users", async () => {
-    mockDbRead.query
-      .mockResolvedValueOnce({
-        results: [
-          { id: "u1", name: "Alice", email: "a@a.com", image: null, slug: "alice" },
-          { id: "u2", name: "Bob", email: "b@b.com", image: null, slug: "bob" },
-        ],
-      })
-      .mockResolvedValueOnce({
-        results: [
-          { date: "2026-04-01", user_id: "u1", total_tokens: 100, source: "claude-code", model: "opus" },
-          { date: "2026-04-01", user_id: "u2", total_tokens: 200, source: "claude-code", model: "opus" },
-        ],
-      });
+    mockDbRead.getAdminUsersByIds.mockResolvedValueOnce([
+      { id: "u1", name: "Alice", email: "a@a.com", image: null, slug: "alice" },
+      { id: "u2", name: "Bob", email: "b@b.com", image: null, slug: "bob" },
+    ]);
+    mockDbRead.getAdminUsageComparison.mockResolvedValueOnce([
+      { date: "2026-04-01", user_id: "u1", total_tokens: 100, source: "claude-code", model: "opus" },
+      { date: "2026-04-01", user_id: "u2", total_tokens: 200, source: "claude-code", model: "opus" },
+    ]);
 
     const res = await GET(makeGetRequest(BASE_PATH, { userIds: "u1,u2" }));
     expect(res.status).toBe(200);
@@ -129,14 +124,11 @@ describe("GET /api/admin/usage/compare", () => {
   });
 
   it("deduplicates user IDs while preserving order", async () => {
-    mockDbRead.query
-      .mockResolvedValueOnce({
-        results: [
-          { id: "u1", name: "A", email: "a@a.com", image: null, slug: null },
-          { id: "u2", name: "B", email: "b@b.com", image: null, slug: null },
-        ],
-      })
-      .mockResolvedValueOnce({ results: [] });
+    mockDbRead.getAdminUsersByIds.mockResolvedValueOnce([
+      { id: "u1", name: "A", email: "a@a.com", image: null, slug: null },
+      { id: "u2", name: "B", email: "b@b.com", image: null, slug: null },
+    ]);
+    mockDbRead.getAdminUsageComparison.mockResolvedValueOnce([]);
 
     const res = await GET(
       makeGetRequest(BASE_PATH, { userIds: "u1,u2,u1" }),
@@ -147,11 +139,9 @@ describe("GET /api/admin/usage/compare", () => {
   });
 
   it("returns 400 when fewer than 2 valid users exist in DB", async () => {
-    mockDbRead.query.mockResolvedValueOnce({
-      results: [
-        { id: "u1", name: "A", email: "a@a.com", image: null, slug: null },
-      ],
-    });
+    mockDbRead.getAdminUsersByIds.mockResolvedValueOnce([
+      { id: "u1", name: "A", email: "a@a.com", image: null, slug: null },
+    ]);
 
     const res = await GET(makeGetRequest(BASE_PATH, { userIds: "u1,u2" }));
     expect(res.status).toBe(400);
@@ -159,14 +149,11 @@ describe("GET /api/admin/usage/compare", () => {
   });
 
   it("applies source and model filters", async () => {
-    mockDbRead.query
-      .mockResolvedValueOnce({
-        results: [
-          { id: "u1", name: "A", email: "a@a.com", image: null, slug: null },
-          { id: "u2", name: "B", email: "b@b.com", image: null, slug: null },
-        ],
-      })
-      .mockResolvedValueOnce({ results: [] });
+    mockDbRead.getAdminUsersByIds.mockResolvedValueOnce([
+      { id: "u1", name: "A", email: "a@a.com", image: null, slug: null },
+      { id: "u2", name: "B", email: "b@b.com", image: null, slug: null },
+    ]);
+    mockDbRead.getAdminUsageComparison.mockResolvedValueOnce([]);
 
     const res = await GET(
       makeGetRequest(BASE_PATH, {
@@ -177,46 +164,38 @@ describe("GET /api/admin/usage/compare", () => {
     );
     expect(res.status).toBe(200);
     // Verify source/model were passed as query params
-    const usageCall = mockDbRead.query.mock.calls[1];
+    const usageCall = mockDbRead.getAdminUsageComparison.mock.calls[0];
     expect(usageCall).toBeDefined();
-    expect(usageCall![1]).toContain("claude-code");
-    expect(usageCall![1]).toContain("opus");
+    expect(usageCall![3]).toMatchObject({ source: "claude-code" });
+    expect(usageCall![3]).toMatchObject({ model: "opus" });
   });
 
   it("applies tzOffset to date expression", async () => {
-    mockDbRead.query
-      .mockResolvedValueOnce({
-        results: [
-          { id: "u1", name: "A", email: "a@a.com", image: null, slug: null },
-          { id: "u2", name: "B", email: "b@b.com", image: null, slug: null },
-        ],
-      })
-      .mockResolvedValueOnce({ results: [] });
+    mockDbRead.getAdminUsersByIds.mockResolvedValueOnce([
+      { id: "u1", name: "A", email: "a@a.com", image: null, slug: null },
+      { id: "u2", name: "B", email: "b@b.com", image: null, slug: null },
+    ]);
+    mockDbRead.getAdminUsageComparison.mockResolvedValueOnce([]);
 
     const res = await GET(
       makeGetRequest(BASE_PATH, { userIds: "u1,u2", tzOffset: "480" }),
     );
     expect(res.status).toBe(200);
     // Check that the usage query includes the offset param
-    const usageCall = mockDbRead.query.mock.calls[1];
+    const usageCall = mockDbRead.getAdminUsageComparison.mock.calls[0];
     expect(usageCall).toBeDefined();
-    expect(usageCall![1]).toContain("-480");
+    expect(usageCall![3]).toMatchObject({ tzOffset: 480 });
   });
 
   it("aggregates multiple rows for same user/date", async () => {
-    mockDbRead.query
-      .mockResolvedValueOnce({
-        results: [
-          { id: "u1", name: "A", email: "a@a.com", image: null, slug: null },
-          { id: "u2", name: "B", email: "b@b.com", image: null, slug: null },
-        ],
-      })
-      .mockResolvedValueOnce({
-        results: [
-          { date: "2026-04-01", user_id: "u1", total_tokens: 50, source: "a", model: "m1" },
-          { date: "2026-04-01", user_id: "u1", total_tokens: 30, source: "b", model: "m2" },
-        ],
-      });
+    mockDbRead.getAdminUsersByIds.mockResolvedValueOnce([
+      { id: "u1", name: "A", email: "a@a.com", image: null, slug: null },
+      { id: "u2", name: "B", email: "b@b.com", image: null, slug: null },
+    ]);
+    mockDbRead.getAdminUsageComparison.mockResolvedValueOnce([
+      { date: "2026-04-01", user_id: "u1", total_tokens: 50, source: "a", model: "m1" },
+      { date: "2026-04-01", user_id: "u1", total_tokens: 30, source: "b", model: "m2" },
+    ]);
 
     const res = await GET(makeGetRequest(BASE_PATH, { userIds: "u1,u2" }));
     const body = await res.json();
@@ -228,7 +207,7 @@ describe("GET /api/admin/usage/compare", () => {
   // ---- DB errors ----
 
   it("returns 500 on DB error", async () => {
-    mockDbRead.query.mockRejectedValueOnce(new Error("DB down"));
+    mockDbRead.getAdminUsersByIds.mockRejectedValueOnce(new Error("DB down"));
 
     const res = await GET(makeGetRequest(BASE_PATH, { userIds: "u1,u2" }));
     expect(res.status).toBe(500);

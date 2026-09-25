@@ -25,110 +25,48 @@ describe("createWorkerDbRead", () => {
     expect(() => createWorkerDbRead()).toThrow("WORKER_READ_SECRET");
   });
 
-  describe("query()", () => {
-    it("sends POST to /api/query with auth header", async () => {
-      const mockResponse = {
-        results: [{ id: 1 }],
-        meta: { changes: 0, duration: 1.2 },
-      };
-      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-        new Response(JSON.stringify(mockResponse), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      );
+  it("exposes typed methods without a SQL escape hatch", () => {
+    const db = createWorkerDbRead();
+    expect(db).not.toHaveProperty("query");
+    expect(db).not.toHaveProperty("firstOrNull");
+  });
 
-      const db = createWorkerDbRead();
-      const result = await db.query("SELECT * FROM users WHERE id = ?", ["u1"]);
-
-      expect(fetchSpy).toHaveBeenCalledOnce();
-      const [url, init] = fetchSpy.mock.calls[0]!;
-      expect(url).toBe("https://pew.test.workers.dev/api/query");
-      expect(init!.method).toBe("POST");
-      expect(init!.headers).toEqual(
-        expect.objectContaining({
-          Authorization: "Bearer test-secret",
-          "Content-Type": "application/json",
-        }),
-      );
-
-      const body = JSON.parse(init!.body as string);
-      expect(body.sql).toBe("SELECT * FROM users WHERE id = ?");
-      expect(body.params).toEqual(["u1"]);
-
-      expect(result).toEqual(mockResponse);
-    });
-
-    it("passes empty array when params omitted", async () => {
-      const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-        new Response(JSON.stringify({ results: [], meta: { changes: 0, duration: 0 } }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      );
-
-      const db = createWorkerDbRead();
-      await db.query("SELECT 1");
-
-      const body = JSON.parse(fetchSpy.mock.calls[0]![1]!.body as string);
-      expect(body.params).toEqual([]);
-    });
-
-    it("throws on non-OK response with error message", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue(
-        new Response(JSON.stringify({ error: "Write queries not allowed" }), {
-          status: 403,
-          headers: { "Content-Type": "application/json" },
-        }),
-      );
-
-      const db = createWorkerDbRead();
-      await expect(db.query("INSERT INTO foo VALUES (?)")).rejects.toThrow(
-        "Write queries not allowed",
-      );
-    });
-
-    it("throws with status code when error body is unparseable", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue(
-        new Response("Internal Server Error", { status: 500 }),
-      );
-
-      const db = createWorkerDbRead();
-      await expect(db.query("SELECT 1")).rejects.toThrow("Worker returned 500");
+  it("sends only method parameters to the RPC endpoint", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      Response.json({ result: [] }),
+    );
+    const db = createWorkerDbRead();
+    await db.getAdminUsageComparison(["u1", "u2"], "2026-01-01", "2026-02-01", { tzOffset: -480, source: "s", model: "m" });
+    expect(fetchSpy).toHaveBeenCalledWith("https://pew.test.workers.dev/api/rpc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer test-secret" },
+      body: JSON.stringify({ method: "admin.getUsageComparison", userIds: ["u1", "u2"], fromDate: "2026-01-01", toDate: "2026-02-01", tzOffset: -480, source: "s", model: "m" }),
     });
   });
 
-  describe("firstOrNull()", () => {
-    it("returns the first row", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            results: [{ id: "u1", name: "Alice" }],
-            meta: { changes: 0, duration: 0.5 },
-          }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
-      );
+  it.each([
+    ["listOrgMembersAdmin", ["o1"], { method: "organizations.listMembersAdmin", orgId: "o1" }],
+    ["countOrgMembers", ["o1"], { method: "organizations.countMembers", orgId: "o1" }],
+    ["getTeamMemberUserIds", ["t1"], { method: "teams.getMemberUserIds", teamId: "t1" }],
+    ["getTeamOwner", ["t1"], { method: "teams.getOwner", teamId: "t1" }],
+    ["listAutoRegisterTeams", ["s1"], { method: "seasons.listAutoRegisterTeams", seasonId: "s1" }],
+    ["listRosterSyncSeasons", ["t1"], { method: "seasons.listRosterSyncSeasons", teamId: "t1" }],
+    ["getRegisteredTeamIds", ["s1"], { method: "seasons.getRegisteredTeamIds", seasonId: "s1" }],
+    ["getRosterUserIds", ["s1", "t1"], { method: "seasons.getRosterUserIds", seasonId: "s1", teamId: "t1" }],
+    ["getAdminUsersByIds", [["u1"]], { method: "admin.getUsersByIds", userIds: ["u1"] }],
+  ] as const)("%s forwards typed identifiers", async (method, args, request) => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ result: [] }));
+    const db = createWorkerDbRead();
+    const call = db[method] as (...args: unknown[]) => Promise<unknown>;
+    expect(await call(...args)).toEqual([]);
+    expect(JSON.parse(fetchSpy.mock.calls[0]![1]!.body as string)).toEqual(request);
+  });
 
-      const db = createWorkerDbRead();
-      const row = await db.firstOrNull<{ id: string; name: string }>(
-        "SELECT * FROM users WHERE id = ?",
-        ["u1"],
-      );
-      expect(row).toEqual({ id: "u1", name: "Alice" });
-    });
-
-    it("returns null when no rows", async () => {
-      vi.spyOn(globalThis, "fetch").mockResolvedValue(
-        new Response(
-          JSON.stringify({ results: [], meta: { changes: 0, duration: 0.3 } }),
-          { status: 200, headers: { "Content-Type": "application/json" } },
-        ),
-      );
-
-      const db = createWorkerDbRead();
-      const row = await db.firstOrNull("SELECT * FROM users WHERE id = ?", ["missing"]);
-      expect(row).toBeNull();
-    });
+  it.each([
+    [Response.json({ error: "RPC failed" }, { status: 500 }), "RPC failed"],
+    [new Response("error", { status: 500 }), "Worker returned 500"],
+  ])("preserves RPC errors", async (response, message) => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(response);
+    await expect(createWorkerDbRead().getUserById("u1")).rejects.toThrow(message);
   });
 });

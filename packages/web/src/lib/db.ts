@@ -6,6 +6,10 @@
  */
 
 import type {
+  OrgMemberAdminRow,
+  AutoRegisterTeamRow,
+  AdminCompareUserRow,
+  AdminUsageComparisonRow,
   UserProfile,
   UserAuth,
   UserApiKeyAuth,
@@ -50,32 +54,29 @@ import type {
   LeaderboardUserTeamRow,
   LeaderboardSessionStatsRow,
 } from "./rpc-types";
+import type { D1QueryResult } from "./d1";
 import type { DynamicPricingEntry } from "./pricing";
-
-// ---------------------------------------------------------------------------
-// Result types
-// ---------------------------------------------------------------------------
-
-export interface DbQueryResult<T = Record<string, unknown>> {
-  results: T[];
-  meta: { changes: number; duration: number };
-}
 
 // ---------------------------------------------------------------------------
 // Read interface — Worker adapter (pew read Worker)
 // ---------------------------------------------------------------------------
 
 export interface DbRead {
-  // Legacy SQL proxy (being migrated to typed RPC)
-  query<T = Record<string, unknown>>(
-    sql: string,
-    params?: unknown[],
-  ): Promise<DbQueryResult<T>>;
-
-  firstOrNull<T = Record<string, unknown>>(
-    sql: string,
-    params?: unknown[],
-  ): Promise<T | null>;
+  listOrgMembersAdmin(orgId: string): Promise<OrgMemberAdminRow[]>;
+  countOrgMembers(orgId: string): Promise<number>;
+  getTeamMemberUserIds(teamId: string): Promise<string[]>;
+  getTeamOwner(teamId: string): Promise<string | null>;
+  listAutoRegisterTeams(seasonId: string): Promise<AutoRegisterTeamRow[]>;
+  listRosterSyncSeasons(teamId: string): Promise<string[]>;
+  getRegisteredTeamIds(seasonId: string): Promise<string[]>;
+  getRosterUserIds(seasonId: string, teamId: string): Promise<string[]>;
+  getAdminUsersByIds(userIds: string[]): Promise<AdminCompareUserRow[]>;
+  getAdminUsageComparison(
+    userIds: string[],
+    fromDate: string,
+    toDate: string,
+    options?: { tzOffset?: number; source?: string; model?: string },
+  ): Promise<AdminUsageComparisonRow[]>;
 
   // ---------------------------------------------------------------------------
   // Users domain RPC methods
@@ -476,7 +477,7 @@ export interface DbWrite {
 
   batch(
     statements: Array<{ sql: string; params?: unknown[] }>,
-  ): Promise<DbQueryResult[]>;
+  ): Promise<D1QueryResult[]>;
 }
 
 // ---------------------------------------------------------------------------

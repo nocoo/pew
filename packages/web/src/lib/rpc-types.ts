@@ -90,6 +90,8 @@ export interface OrgWithCountRow {
 
 /** Organization member record */
 export interface OrgMemberRow {
+  id: string;
+  org_id: string;
   user_id: string;
   name: string | null;
   image: string | null;
@@ -536,4 +538,29 @@ export interface AppSettingRow {
 export interface UserSettingRow {
   key: string;
   value: string;
+}
+
+export interface OrgMemberAdminRow extends OrgMemberRow {
+  email: string;
+}
+
+export interface AutoRegisterTeamRow {
+  id: string;
+  created_by: string;
+}
+
+export interface AdminCompareUserRow {
+  id: string;
+  name: string | null;
+  email: string;
+  image: string | null;
+  slug: string | null;
+}
+
+export interface AdminUsageComparisonRow {
+  date: string;
+  user_id: string;
+  total_tokens: number;
+  source: string;
+  model: string;
 }

@@ -116,21 +116,13 @@ export async function handleInviteGate(
   const dbWrite = dbWriteOverride ?? (await getDbWrite());
 
   // Check if user already exists (existing users bypass invite check)
-  const existingUser = await dbRead.firstOrNull<{ id: string }>(
-    `SELECT u.id
-     FROM users u
-     JOIN accounts a ON u.id = a.user_id
-     WHERE a.provider = ? AND a.provider_account_id = ?`,
-    [account.provider, account.providerAccountId]
-  );
+  const existingUser = await dbRead.getUserByOAuthAccount(account.provider, account.providerAccountId);
 
   if (existingUser) return true;
 
   // Check if invite code is required (default: true)
-  const requireInviteSetting = await dbRead.firstOrNull<{ value: string }>(
-    "SELECT value FROM app_settings WHERE key = 'require_invite_code'"
-  );
-  const requireInviteCode = requireInviteSetting?.value !== "false";
+  const requireInviteSetting = await dbRead.getAppSetting("require_invite_code");
+  const requireInviteCode = requireInviteSetting !== "false";
 
   // If invite code is not required, allow all new registrations
   if (!requireInviteCode) return true;

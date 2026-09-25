@@ -227,7 +227,32 @@ interface MemberAggRow {
   cached_input_tokens: number;
 }
 
+export interface ListAutoRegisterTeamsRequest {
+  method: "seasons.listAutoRegisterTeams";
+  seasonId: string;
+}
+
+export interface ListRosterSyncSeasonsRequest {
+  method: "seasons.listRosterSyncSeasons";
+  teamId: string;
+}
+
+export interface GetRegisteredTeamIdsRequest {
+  method: "seasons.getRegisteredTeamIds";
+  seasonId: string;
+}
+
+export interface GetRosterUserIdsRequest {
+  method: "seasons.getRosterUserIds";
+  seasonId: string;
+  teamId: string;
+}
+
 export type SeasonsRpcRequest =
+  | ListAutoRegisterTeamsRequest
+  | ListRosterSyncSeasonsRequest
+  | GetRegisteredTeamIdsRequest
+  | GetRosterUserIdsRequest
   | ListSeasonsRequest
   | GetSeasonByIdRequest
   | GetSeasonBySlugRequest
@@ -673,6 +698,49 @@ export async function handleSeasonsRpc(
   kv: KVNamespace
 ): Promise<Response> {
   switch (request.method) {
+    case "seasons.listAutoRegisterTeams": {
+      if (typeof request.seasonId !== "string" || !request.seasonId) {
+        return Response.json({ error: "seasonId is required" }, { status: 400 });
+      }
+      const rows = await db.prepare(
+        `SELECT t.id, t.created_by FROM teams t
+         WHERE t.auto_register_season = 1
+           AND t.id NOT IN (SELECT team_id FROM season_teams WHERE season_id = ?)`
+      ).bind(request.seasonId).all<{ id: string; created_by: string }>();
+      return Response.json({ result: rows.results });
+    }
+    case "seasons.listRosterSyncSeasons": {
+      if (typeof request.teamId !== "string" || !request.teamId) {
+        return Response.json({ error: "teamId is required" }, { status: 400 });
+      }
+      const rows = await db.prepare(
+        `SELECT st.season_id FROM season_teams st
+         JOIN seasons s ON s.id = st.season_id
+         WHERE st.team_id = ? AND s.allow_roster_changes = 1
+           AND datetime(s.start_date) <= datetime('now')
+           AND datetime(s.end_date) >= datetime('now')`
+      ).bind(request.teamId).all<{ season_id: string }>();
+      return Response.json({ result: rows.results.map((row) => row.season_id) });
+    }
+    case "seasons.getRegisteredTeamIds": {
+      if (typeof request.seasonId !== "string" || !request.seasonId) {
+        return Response.json({ error: "seasonId is required" }, { status: 400 });
+      }
+      const rows = await db.prepare("SELECT team_id FROM season_teams WHERE season_id = ?")
+        .bind(request.seasonId).all<{ team_id: string }>();
+      return Response.json({ result: rows.results.map((row) => row.team_id) });
+    }
+    case "seasons.getRosterUserIds": {
+      if (
+        typeof request.seasonId !== "string" || !request.seasonId ||
+        typeof request.teamId !== "string" || !request.teamId
+      ) {
+        return Response.json({ error: "seasonId and teamId are required" }, { status: 400 });
+      }
+      const rows = await db.prepare("SELECT user_id FROM season_team_members WHERE season_id = ? AND team_id = ?")
+        .bind(request.seasonId, request.teamId).all<{ user_id: string }>();
+      return Response.json({ result: rows.results.map((row) => row.user_id) });
+    }
     case "seasons.list":
       return handleListSeasons(db, kv);
     case "seasons.getById":

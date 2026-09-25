@@ -33,28 +33,14 @@ export async function GET(
   const dbRead = await getDbRead();
 
   try {
-    const org = await dbRead.firstOrNull<{
-      id: string;
-      name: string;
-      slug: string;
-      logo_url: string | null;
-      created_by: string;
-      created_at: string;
-      updated_at: string;
-    }>(
-      "SELECT id, name, slug, logo_url, created_by, created_at, updated_at FROM organizations WHERE id = ?",
-      [orgId]
-    );
+    const org = await dbRead.getOrganizationById(orgId);
 
     if (!org) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 });
     }
 
     // Get member count
-    const countResult = await dbRead.firstOrNull<{ count: number }>(
-      "SELECT COUNT(*) as count FROM organization_members WHERE org_id = ?",
-      [orgId]
-    );
+    const countResult = await dbRead.countOrgMembers(orgId);
 
     return NextResponse.json({
       id: org.id,
@@ -64,7 +50,7 @@ export async function GET(
       createdBy: org.created_by,
       createdAt: org.created_at,
       updatedAt: org.updated_at,
-      memberCount: countResult?.count ?? 0,
+      memberCount: countResult,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
@@ -109,10 +95,7 @@ export async function PATCH(
 
   try {
     // Check org exists
-    const existing = await dbRead.firstOrNull<{ id: string; slug: string }>(
-      "SELECT id, slug FROM organizations WHERE id = ?",
-      [orgId]
-    );
+    const existing = await dbRead.getOrganizationById(orgId);
 
     if (!existing) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 });
@@ -146,11 +129,8 @@ export async function PATCH(
       }
       // Check uniqueness if slug changed
       if (slug !== existing.slug) {
-        const slugConflict = await dbRead.firstOrNull<{ id: string }>(
-          "SELECT id FROM organizations WHERE slug = ? AND id != ?",
-          [slug, orgId]
-        );
-        if (slugConflict) {
+        const slugConflict = await dbRead.getOrganizationBySlug(slug);
+        if (slugConflict && slugConflict.id !== orgId) {
           return NextResponse.json(
             { error: "An organization with this slug already exists" },
             { status: 409 }
@@ -177,18 +157,7 @@ export async function PATCH(
     );
 
     // Return updated organization
-    const updated = await dbRead.firstOrNull<{
-      id: string;
-      name: string;
-      slug: string;
-      logo_url: string | null;
-      created_by: string;
-      created_at: string;
-      updated_at: string;
-    }>(
-      "SELECT id, name, slug, logo_url, created_by, created_at, updated_at FROM organizations WHERE id = ?",
-      [orgId]
-    );
+    const updated = await dbRead.getOrganizationById(orgId);
 
     if (!updated) {
       return NextResponse.json(
@@ -198,10 +167,7 @@ export async function PATCH(
     }
 
     // Get member count
-    const countResult = await dbRead.firstOrNull<{ count: number }>(
-      "SELECT COUNT(*) as count FROM organization_members WHERE org_id = ?",
-      [orgId]
-    );
+    const countResult = await dbRead.countOrgMembers(orgId);
 
     return NextResponse.json({
       id: updated.id,
@@ -211,7 +177,7 @@ export async function PATCH(
       createdBy: updated.created_by,
       createdAt: updated.created_at,
       updatedAt: updated.updated_at,
-      memberCount: countResult?.count ?? 0,
+      memberCount: countResult,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
@@ -248,10 +214,7 @@ export async function DELETE(
 
   try {
     // Check org exists
-    const existing = await dbRead.firstOrNull<{ id: string }>(
-      "SELECT id FROM organizations WHERE id = ?",
-      [orgId]
-    );
+    const existing = await dbRead.getOrganizationById(orgId);
 
     if (!existing) {
       return NextResponse.json({ error: "Organization not found" }, { status: 404 });

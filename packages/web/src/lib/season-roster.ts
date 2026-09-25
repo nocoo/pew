@@ -25,38 +25,20 @@ export async function syncSeasonRosters(
   teamId: string,
 ): Promise<void> {
   // Find active seasons this team is registered for with roster changes enabled
-  const { results: seasons } = await dbRead.query<{
-    season_id: string;
-  }>(
-    `SELECT st.season_id
-     FROM season_teams st
-     JOIN seasons s ON s.id = st.season_id
-     WHERE st.team_id = ?
-       AND s.allow_roster_changes = 1
-       AND datetime(s.start_date) <= datetime('now')
-       AND datetime(s.end_date) >= datetime('now')`,
-    [teamId],
-  );
+  const seasons = await dbRead.listRosterSyncSeasons(teamId);
 
   if (seasons.length === 0) return;
 
   // Get current team members
-  const { results: currentMembers } = await dbRead.query<{
-    user_id: string;
-  }>("SELECT user_id FROM team_members WHERE team_id = ?", [teamId]);
+  const currentMembers = await dbRead.getTeamMemberUserIds(teamId);
 
-  const currentUserIds = new Set(currentMembers.map((m) => m.user_id));
+  const currentUserIds = new Set(currentMembers);
 
-  for (const { season_id } of seasons) {
+  for (const season_id of seasons) {
     // Get existing season roster for this team
-    const { results: seasonMembers } = await dbRead.query<{
-      user_id: string;
-    }>(
-      "SELECT user_id FROM season_team_members WHERE season_id = ? AND team_id = ?",
-      [season_id, teamId],
-    );
+    const seasonMembers = await dbRead.getRosterUserIds(season_id, teamId);
 
-    const seasonUserIds = new Set(seasonMembers.map((m) => m.user_id));
+    const seasonUserIds = new Set(seasonMembers);
 
     // Add new members (INSERT OR IGNORE handles UNIQUE(season_id, user_id) conflicts
     // where a user is already registered on another team)
@@ -100,29 +82,20 @@ export async function syncAllRostersForSeason(
   seasonId: string,
 ): Promise<number> {
   // Get all teams registered for this season
-  const { results: teams } = await dbRead.query<{
-    team_id: string;
-  }>("SELECT team_id FROM season_teams WHERE season_id = ?", [seasonId]);
+  const teams = await dbRead.getRegisteredTeamIds(seasonId);
 
   if (teams.length === 0) return 0;
 
-  for (const { team_id } of teams) {
+  for (const team_id of teams) {
     // Get current team members
-    const { results: currentMembers } = await dbRead.query<{
-      user_id: string;
-    }>("SELECT user_id FROM team_members WHERE team_id = ?", [team_id]);
+    const currentMembers = await dbRead.getTeamMemberUserIds(team_id);
 
-    const currentUserIds = new Set(currentMembers.map((m) => m.user_id));
+    const currentUserIds = new Set(currentMembers);
 
     // Get existing season roster for this team
-    const { results: seasonMembers } = await dbRead.query<{
-      user_id: string;
-    }>(
-      "SELECT user_id FROM season_team_members WHERE season_id = ? AND team_id = ?",
-      [seasonId, team_id],
-    );
+    const seasonMembers = await dbRead.getRosterUserIds(seasonId, team_id);
 
-    const seasonUserIds = new Set(seasonMembers.map((m) => m.user_id));
+    const seasonUserIds = new Set(seasonMembers);
 
     // Add missing members
     for (const userId of currentUserIds) {

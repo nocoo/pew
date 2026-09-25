@@ -67,8 +67,8 @@ const ADMIN = { userId: "admin-1", email: "admin@example.com" };
 
 describe("admin organization member management", () => {
   const mockDbRead = {
-    firstOrNull: vi.fn(),
-    query: vi.fn(),
+    listOrgMembersAdmin: vi.fn(),
+    getAdminUsersByIds: vi.fn(),
     // Typed RPC methods for organizations domain
     getOrganizationById: vi.fn(),
     checkOrgMembership: vi.fn(),
@@ -97,7 +97,7 @@ describe("admin organization member management", () => {
 
     it("should return 404 if org not found", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull.mockResolvedValueOnce(null);
+      mockDbRead.getOrganizationById.mockResolvedValueOnce(null);
 
       const res = await GET(makeJsonRequest("GET"), makeParams("org-1"));
       expect(res.status).toBe(404);
@@ -105,21 +105,19 @@ describe("admin organization member management", () => {
 
     it("should return members list", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull.mockResolvedValueOnce({ id: "org-1" });
-      mockDbRead.query.mockResolvedValueOnce({
-        results: [
-          {
-            id: "mem-1",
-            org_id: "org-1",
-            user_id: "u1",
-            joined_at: "2026-01-01T00:00:00Z",
-            user_name: "Alice",
-            user_email: "alice@example.com",
-            user_image: null,
-            user_slug: "alice",
-          },
-        ],
-      });
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
+      mockDbRead.listOrgMembersAdmin.mockResolvedValueOnce([
+        {
+          id: "mem-1",
+          org_id: "org-1",
+          user_id: "u1",
+          joined_at: "2026-01-01T00:00:00Z",
+          name: "Alice",
+          email: "alice@example.com",
+          image: null,
+          slug: "alice",
+        },
+      ]);
 
       const res = await GET(makeJsonRequest("GET"), makeParams("org-1"));
       expect(res.status).toBe(200);
@@ -130,7 +128,7 @@ describe("admin organization member management", () => {
 
     it("should return 503 if table not migrated", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull.mockRejectedValueOnce(new Error("no such table"));
+      mockDbRead.getOrganizationById.mockRejectedValueOnce(new Error("no such table"));
 
       const res = await GET(makeJsonRequest("GET"), makeParams("org-1"));
       expect(res.status).toBe(503);
@@ -138,7 +136,7 @@ describe("admin organization member management", () => {
 
     it("should return 500 on unexpected error", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull.mockRejectedValueOnce(new Error("DB failed"));
+      mockDbRead.getOrganizationById.mockRejectedValueOnce(new Error("DB failed"));
 
       const res = await GET(makeJsonRequest("GET"), makeParams("org-1"));
       expect(res.status).toBe(500);
@@ -185,7 +183,7 @@ describe("admin organization member management", () => {
 
     it("should return 404 if org not found", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull.mockResolvedValueOnce(null);
+      mockDbRead.getOrganizationById.mockResolvedValueOnce(null);
 
       const res = await POST(
         makeJsonRequest("POST", { userId: "u1" }),
@@ -198,9 +196,8 @@ describe("admin organization member management", () => {
 
     it("should return 404 if user not found", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull
-        .mockResolvedValueOnce({ id: "org-1" }) // org exists
-        .mockResolvedValueOnce(null); // user not found
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
+      mockDbRead.getAdminUsersByIds.mockResolvedValueOnce([]); // user not found
 
       const res = await POST(
         makeJsonRequest("POST", { userId: "u1" }),
@@ -213,10 +210,9 @@ describe("admin organization member management", () => {
 
     it("should return 409 if user already member", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull
-        .mockResolvedValueOnce({ id: "org-1" }) // org exists
-        .mockResolvedValueOnce({ id: "u1", name: "Alice", email: "a@e.com", image: null, slug: "a" }) // user exists
-        .mockResolvedValueOnce({ id: "mem-1" }); // already member
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
+      mockDbRead.getAdminUsersByIds.mockResolvedValueOnce([{ id: "u1", name: "Alice", email: "a@e.com", image: null, slug: "a" }]);
+      mockDbRead.checkOrgMembership.mockResolvedValueOnce(true); // already member
 
       const res = await POST(
         makeJsonRequest("POST", { userId: "u1" }),
@@ -227,10 +223,9 @@ describe("admin organization member management", () => {
 
     it("should add member successfully", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull
-        .mockResolvedValueOnce({ id: "org-1" })
-        .mockResolvedValueOnce({ id: "u1", name: "Alice", email: "a@e.com", image: null, slug: "a" })
-        .mockResolvedValueOnce(null); // not a member
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
+      mockDbRead.getAdminUsersByIds.mockResolvedValueOnce([{ id: "u1", name: "Alice", email: "a@e.com", image: null, slug: "a" }]);
+      mockDbRead.checkOrgMembership.mockResolvedValueOnce(false); // not a member
       mockDbWrite.execute.mockResolvedValueOnce({});
 
       const res = await POST(
@@ -244,7 +239,7 @@ describe("admin organization member management", () => {
 
     it("should return 503 if table not migrated", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull.mockRejectedValueOnce(new Error("no such table"));
+      mockDbRead.getOrganizationById.mockRejectedValueOnce(new Error("no such table"));
 
       const res = await POST(
         makeJsonRequest("POST", { userId: "u1" }),
@@ -360,7 +355,7 @@ describe("admin organization member management", () => {
 
     it("should return 404 if org not found", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull.mockResolvedValueOnce(null);
+      mockDbRead.getOrganizationById.mockResolvedValueOnce(null);
 
       const file = new File([new Uint8Array([1, 2, 3])], "logo.png", { type: "image/png" });
       const res = await UPLOAD_LOGO(makeFormRequest(file), makeParams("org-1"));
@@ -369,7 +364,7 @@ describe("admin organization member management", () => {
 
     it("should return 400 for non-multipart request", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull.mockResolvedValueOnce({ id: "org-1" });
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
 
       const req = new Request("http://localhost/api/admin/organizations/org-1/logo", {
         method: "POST",
@@ -384,7 +379,7 @@ describe("admin organization member management", () => {
 
     it("should return 400 if file field missing", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull.mockResolvedValueOnce({ id: "org-1" });
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
 
       const res = await UPLOAD_LOGO(makeFormRequest(null), makeParams("org-1"));
       expect(res.status).toBe(400);
@@ -394,7 +389,7 @@ describe("admin organization member management", () => {
 
     it("should return 400 for invalid MIME type", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull.mockResolvedValueOnce({ id: "org-1" });
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
 
       const file = new File([new Uint8Array([1, 2, 3])], "logo.gif", { type: "image/gif" });
       const res = await UPLOAD_LOGO(makeFormRequest(file), makeParams("org-1"));
@@ -405,7 +400,7 @@ describe("admin organization member management", () => {
 
     it("should return 400 if file too large", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull.mockResolvedValueOnce({ id: "org-1" });
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
 
       // Create a 3MB file
       const bigData = new Uint8Array(3 * 1024 * 1024);
@@ -418,9 +413,8 @@ describe("admin organization member management", () => {
 
     it("should upload logo successfully", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull
-        .mockResolvedValueOnce({ id: "org-1" }) // org exists
-        .mockResolvedValueOnce({ logo_url: null }); // no existing logo
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({ logo_url: null }); // no existing logo
       vi.mocked(putOrgLogo).mockResolvedValueOnce("https://cdn.example.com/logo.jpg");
       mockDbWrite.execute.mockResolvedValueOnce({});
 
@@ -433,9 +427,8 @@ describe("admin organization member management", () => {
 
     it("should delete old logo when uploading new one", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull
-        .mockResolvedValueOnce({ id: "org-1" })
-        .mockResolvedValueOnce({ logo_url: "https://cdn.example.com/old.jpg" });
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({ logo_url: "https://cdn.example.com/old.jpg" });
       vi.mocked(putOrgLogo).mockResolvedValueOnce("https://cdn.example.com/new.jpg");
       mockDbWrite.execute.mockResolvedValueOnce({});
 
@@ -447,7 +440,7 @@ describe("admin organization member management", () => {
 
     it("should return 500 if R2 upload fails", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull.mockResolvedValueOnce({ id: "org-1" });
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
       vi.mocked(putOrgLogo).mockRejectedValueOnce(new Error("R2 unavailable"));
 
       const file = new File([new Uint8Array([1, 2, 3])], "logo.png", { type: "image/png" });
@@ -459,9 +452,8 @@ describe("admin organization member management", () => {
 
     it("should compensate R2 on DB failure", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull
-        .mockResolvedValueOnce({ id: "org-1" })
-        .mockRejectedValueOnce(new Error("DB failed")); // fail on reading old logo
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
+      mockDbRead.getOrganizationById.mockRejectedValueOnce(new Error("DB failed")); // fail on reading old logo
       vi.mocked(putOrgLogo).mockResolvedValueOnce("https://cdn.example.com/new.jpg");
 
       const file = new File([new Uint8Array([1, 2, 3])], "logo.png", { type: "image/png" });
@@ -472,7 +464,7 @@ describe("admin organization member management", () => {
 
     it("should return 400 when sharp fails to process the image", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull.mockResolvedValueOnce({ id: "org-1" });
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
 
       // Make sharp throw an error
       const sharp = (await import("sharp")) as unknown as { default: ReturnType<typeof vi.fn> };
@@ -491,9 +483,8 @@ describe("admin organization member management", () => {
 
     it("should handle compensating R2 delete also failing (double-fault)", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull
-        .mockResolvedValueOnce({ id: "org-1" })
-        .mockRejectedValueOnce(new Error("DB failed"));
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
+      mockDbRead.getOrganizationById.mockRejectedValueOnce(new Error("DB failed"));
       vi.mocked(putOrgLogo).mockResolvedValueOnce("https://cdn.example.com/new.jpg");
       vi.mocked(deleteOrgLogoByUrl).mockRejectedValueOnce(new Error("R2 also down"));
 
@@ -504,9 +495,8 @@ describe("admin organization member management", () => {
 
     it("should handle old logo deletion failure gracefully", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull
-        .mockResolvedValueOnce({ id: "org-1" })
-        .mockResolvedValueOnce({ logo_url: "https://cdn.example.com/old.jpg" });
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({ logo_url: "https://cdn.example.com/old.jpg" });
       vi.mocked(putOrgLogo).mockResolvedValueOnce("https://cdn.example.com/new.jpg");
       mockDbWrite.execute.mockResolvedValueOnce({});
       // Old logo deletion fails — should not affect response
@@ -537,7 +527,7 @@ describe("admin organization member management", () => {
 
     it("should return 404 if org not found", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull.mockResolvedValueOnce(null);
+      mockDbRead.getOrganizationById.mockResolvedValueOnce(null);
 
       const req = new Request("http://localhost/api/admin/organizations/org-1/logo", {
         method: "DELETE",
@@ -548,7 +538,7 @@ describe("admin organization member management", () => {
 
     it("should delete logo successfully", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull.mockResolvedValueOnce({
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({
         id: "org-1",
         logo_url: "https://cdn.example.com/logo.jpg",
       });
@@ -566,7 +556,7 @@ describe("admin organization member management", () => {
 
     it("should handle org without logo gracefully", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull.mockResolvedValueOnce({
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({
         id: "org-1",
         logo_url: null,
       });
@@ -582,7 +572,7 @@ describe("admin organization member management", () => {
 
     it("should return 500 on DB failure", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull.mockResolvedValueOnce({ id: "org-1", logo_url: null });
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1", logo_url: null });
       mockDbWrite.execute.mockRejectedValueOnce(new Error("DB failed"));
 
       const req = new Request("http://localhost/api/admin/organizations/org-1/logo", {
@@ -594,7 +584,7 @@ describe("admin organization member management", () => {
 
     it("should succeed even when R2 delete fails after DB update", async () => {
       vi.mocked(resolveAdmin).mockResolvedValue(ADMIN);
-      mockDbRead.firstOrNull.mockResolvedValueOnce({
+      mockDbRead.getOrganizationById.mockResolvedValueOnce({
         id: "org-1",
         logo_url: "https://cdn.example.com/logo.jpg",
       });

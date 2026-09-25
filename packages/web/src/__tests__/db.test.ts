@@ -20,8 +20,6 @@ const mockExecute = vi.fn();
 const mockBatch = vi.fn();
 
 const mockClient = {
-  query: vi.fn(),
-  firstOrNull: vi.fn(),
   execute: mockExecute,
   batch: mockBatch,
 };
@@ -92,8 +90,8 @@ describe("getDbRead", () => {
   it("returns a DbRead instance from Worker adapter", async () => {
     const db = await getDbRead();
     expect(createWorkerDbRead).toHaveBeenCalledOnce();
-    expect(db).toHaveProperty("query");
-    expect(db).toHaveProperty("firstOrNull");
+    expect(db).not.toHaveProperty("query");
+    expect(db).not.toHaveProperty("firstOrNull");
   });
 
   it("returns the same instance on repeated calls (singleton)", async () => {

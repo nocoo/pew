@@ -32,6 +32,8 @@ interface OrgWithCountRow {
 }
 
 interface OrgMemberRow {
+  id: string;
+  org_id: string;
   user_id: string;
   name: string | null;
   image: string | null;
@@ -40,6 +42,8 @@ interface OrgMemberRow {
 }
 
 interface OrgMemberAdminRow {
+  id: string;
+  org_id: string;
   user_id: string;
   name: string | null;
   email: string;
@@ -231,7 +235,7 @@ async function handleListOrgMembers(
 
   const results = await db
     .prepare(
-      `SELECT u.id AS user_id, u.name, u.image, u.slug, om.joined_at
+      `SELECT om.id, om.org_id, u.id AS user_id, u.name, u.image, u.slug, om.joined_at
        FROM organization_members om
        JOIN users u ON u.id = om.user_id
        WHERE om.org_id = ?
@@ -253,7 +257,7 @@ async function handleListOrgMembersAdmin(
 
   const results = await db
     .prepare(
-      `SELECT u.id AS user_id, u.name, u.email, u.image, u.slug, om.joined_at
+      `SELECT om.id, om.org_id, u.id AS user_id, u.name, u.email, u.image, u.slug, om.joined_at
        FROM organization_members om
        JOIN users u ON u.id = om.user_id
        WHERE om.org_id = ?

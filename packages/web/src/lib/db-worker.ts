@@ -1,12 +1,16 @@
 /**
  * Worker adapter for DbRead.
  *
- * Sends SQL queries to the pew read Worker (Cloudflare) via HTTP,
+ * Sends typed RPC method parameters to the pew read Worker (Cloudflare) via HTTP,
  * replacing the D1 REST API with native D1 binding for lower latency.
  */
 
-import type { DbRead, DbQueryResult } from "./db";
+import type { DbRead } from "./db";
 import type {
+  OrgMemberAdminRow,
+  AutoRegisterTeamRow,
+  AdminCompareUserRow,
+  AdminUsageComparisonRow,
   UserProfile,
   UserAuth,
   UserApiKeyAuth,
@@ -86,33 +90,40 @@ export function createWorkerDbRead(): DbRead {
   }
 
   const reader: DbRead = {
-    // -------------------------------------------------------------------------
-    // Legacy SQL proxy (being migrated to RPC)
-    // -------------------------------------------------------------------------
-
-    async query<T>(sql: string, params?: unknown[]): Promise<DbQueryResult<T>> {
-      const res = await fetch(`${url}/api/query`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${secret}`,
-        },
-        body: JSON.stringify({ sql, params: params ?? [] }),
-      });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(
-          (body as { error?: string }).error ?? `Worker returned ${res.status}`,
-        );
-      }
-
-      return res.json() as Promise<DbQueryResult<T>>;
+    async listOrgMembersAdmin(orgId: string): Promise<OrgMemberAdminRow[]> {
+      return rpc<OrgMemberAdminRow[]>({ method: "organizations.listMembersAdmin", orgId });
     },
-
-    async firstOrNull<T>(sql: string, params?: unknown[]): Promise<T | null> {
-      const result = await reader.query<T>(sql, params);
-      return result.results[0] ?? null;
+    async countOrgMembers(orgId: string): Promise<number> {
+      return rpc<number>({ method: "organizations.countMembers", orgId });
+    },
+    async getTeamMemberUserIds(teamId: string): Promise<string[]> {
+      return rpc<string[]>({ method: "teams.getMemberUserIds", teamId });
+    },
+    async getTeamOwner(teamId: string): Promise<string | null> {
+      return rpc<string | null>({ method: "teams.getOwner", teamId });
+    },
+    async listAutoRegisterTeams(seasonId: string): Promise<AutoRegisterTeamRow[]> {
+      return rpc<AutoRegisterTeamRow[]>({ method: "seasons.listAutoRegisterTeams", seasonId });
+    },
+    async listRosterSyncSeasons(teamId: string): Promise<string[]> {
+      return rpc<string[]>({ method: "seasons.listRosterSyncSeasons", teamId });
+    },
+    async getRegisteredTeamIds(seasonId: string): Promise<string[]> {
+      return rpc<string[]>({ method: "seasons.getRegisteredTeamIds", seasonId });
+    },
+    async getRosterUserIds(seasonId: string, teamId: string): Promise<string[]> {
+      return rpc<string[]>({ method: "seasons.getRosterUserIds", seasonId, teamId });
+    },
+    async getAdminUsersByIds(userIds: string[]): Promise<AdminCompareUserRow[]> {
+      return rpc<AdminCompareUserRow[]>({ method: "admin.getUsersByIds", userIds });
+    },
+    async getAdminUsageComparison(
+      userIds: string[],
+      fromDate: string,
+      toDate: string,
+      options?: { tzOffset?: number; source?: string; model?: string },
+    ): Promise<AdminUsageComparisonRow[]> {
+      return rpc<AdminUsageComparisonRow[]>({ method: "admin.getUsageComparison", userIds, fromDate, toDate, ...options });
     },
 
     // -------------------------------------------------------------------------

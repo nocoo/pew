@@ -38,13 +38,7 @@ export async function autoRegisterTeamsForSeason(
   dbWrite: DbWrite,
   seasonId: string,
 ): Promise<AutoRegisterResult> {
-  const season = await dbRead.firstOrNull<{
-    start_date: string;
-    end_date: string;
-  }>(
-    "SELECT start_date, end_date FROM seasons WHERE id = ?",
-    [seasonId],
-  );
+  const season = await dbRead.getSeasonById(seasonId);
 
   if (!season) {
     return { registered: 0, skipped: 0, seasonEligible: false };
@@ -56,18 +50,7 @@ export async function autoRegisterTeamsForSeason(
   }
 
   // Find teams with auto-registration enabled
-  const { results: teams } = await dbRead.query<{
-    id: string;
-    created_by: string;
-  }>(
-    `SELECT t.id, t.created_by
-     FROM teams t
-     WHERE t.auto_register_season = 1
-       AND t.id NOT IN (
-         SELECT team_id FROM season_teams WHERE season_id = ?
-       )`,
-    [seasonId],
-  );
+  const teams = await dbRead.listAutoRegisterTeams(seasonId);
 
   if (teams.length === 0) {
     return { registered: 0, skipped: 0, seasonEligible: true };
@@ -79,21 +62,11 @@ export async function autoRegisterTeamsForSeason(
   for (const team of teams) {
     try {
       // Get current team members
-      const { results: members } = await dbRead.query<{ user_id: string }>(
-        "SELECT user_id FROM team_members WHERE team_id = ?",
-        [team.id],
-      );
+      const members = await dbRead.getTeamMemberUserIds(team.id);
 
       // Check for member conflicts — any member already registered for this season
       if (members.length > 0) {
-        const placeholders = members.map(() => "?").join(",");
-        const userIds = members.map((m) => m.user_id);
-        const conflict = await dbRead.firstOrNull<{ user_id: string }>(
-          `SELECT user_id FROM season_team_members
-           WHERE season_id = ? AND user_id IN (${placeholders})
-           LIMIT 1`,
-          [seasonId, ...userIds],
-        );
+        const conflict = await dbRead.checkSeasonMemberConflict(seasonId, members);
         if (conflict) {
           // Skip this team — a member is already on another team
           skipped++;
@@ -102,11 +75,8 @@ export async function autoRegisterTeamsForSeason(
       }
 
       // Find the owner to record as registered_by
-      const owner = await dbRead.firstOrNull<{ user_id: string }>(
-        "SELECT user_id FROM team_members WHERE team_id = ? AND role = 'owner' LIMIT 1",
-        [team.id],
-      );
-      const registeredBy = owner?.user_id ?? team.created_by;
+      const owner = await dbRead.getTeamOwner(team.id);
+      const registeredBy = owner ?? team.created_by;
 
       // Register the team + freeze roster
       const regId = crypto.randomUUID();
@@ -120,7 +90,7 @@ export async function autoRegisterTeamsForSeason(
         ...members.map((m, i) => ({
           sql: `INSERT INTO season_team_members (id, season_id, team_id, user_id)
                 VALUES (?, ?, ?, ?)`,
-          params: [memberIds[i] as string, seasonId, team.id, m.user_id],
+          params: [memberIds[i] as string, seasonId, team.id, m],
         })),
       ];
 

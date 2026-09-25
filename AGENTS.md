@@ -53,7 +53,7 @@ Three inviolable rules govern how pew interacts with source data:
 - TDD: write tests first, then implement. Conventional Commits, atomic, one logical change per commit.
 - `@pew/core` is not published: pure types, `import type` only, `devDependencies`.
 - Preserve incremental rewind/cursor-loss recovery and source-specific token accounting; raw conversation bodies are not uploaded. Keep raw logs and real CLI state out of fixtures.
-- Preserve Google login, invitation/device flows, bearer handling and authorized data/query access. Keep secrets server-side, routes thin and MVVM boundaries intact.
+- Preserve Google login, invitation/device flows, bearer handling and authorized data/query access. Keep secrets server-side, routes thin and MVVM boundaries intact. All web reads use typed `DbRead` RPC methods; the read Worker owns SQL and accepts parameters only through `/api/rpc`. Do not restore a generic SQL endpoint.
 - Preserve standalone assets/SWC helper packaging and pin Bun across local/CI/container versions.
 - Tests must not use `.skip`/`.only`; Biome elevates `noSkippedTests`/`noFocusedTests` to errors in the test-file override.
 

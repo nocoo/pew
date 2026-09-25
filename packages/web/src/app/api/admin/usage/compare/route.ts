@@ -119,11 +119,7 @@ export async function GET(request: Request) {
 
   try {
     // Fetch user info
-    const userPlaceholders = userIds.map(() => "?").join(", ");
-    const { results: usersUnordered } = await db.query<CompareUser>(
-      `SELECT id, name, email, image, slug FROM users WHERE id IN (${userPlaceholders})`,
-      userIds
-    );
+    const usersUnordered = await db.getAdminUsersByIds(userIds);
 
     // Re-order users to match request order and filter out non-existent IDs
     const userMap = new Map(usersUnordered.map((u) => [u.id, u]));
@@ -141,62 +137,10 @@ export async function GET(request: Request) {
       );
     }
 
-    // Build date expression for grouping (apply tzOffset for local date)
-    let dateExpr: string;
-    let groupByExpr: string;
-    const tzParams: unknown[] = [];
-
-    if (tzOffset !== 0) {
-      const offsetStr = String(-tzOffset);
-      // Note: GROUP BY doesn't support parameterized ?, so we inline the offset
-      // The offset is validated (integer, abs <= 840) so this is safe
-      dateExpr = "date(datetime(hour_start, ? || ' minutes'))";
-      groupByExpr = `date(datetime(hour_start, '${offsetStr} minutes')), user_id, source, model`;
-      tzParams.push(offsetStr);
-    } else {
-      dateExpr = "date(hour_start)";
-      groupByExpr = "date(hour_start), user_id, source, model";
-    }
-
-    // Build usage query with optional filters
-    let usageQuery = `
-      SELECT
-        ${dateExpr} as date,
-        user_id,
-        SUM(total_tokens) as total_tokens,
-        source,
-        model
-      FROM usage_totals
-      WHERE user_id IN (${userPlaceholders})
-        AND hour_start >= ?
-        AND hour_start < ?
-    `;
-    const usageParams: unknown[] = [
-      ...tzParams,
-      ...userIds,
-      fromDate.toISOString(),
-      toDate.toISOString(),
-    ];
-
-    if (source) {
-      usageQuery += " AND source = ?";
-      usageParams.push(source);
-    }
-
-    if (model) {
-      usageQuery += " AND model = ?";
-      usageParams.push(model);
-    }
-
-    usageQuery += ` GROUP BY ${groupByExpr}`;
-
-    const { results: usageRows } = await db.query<{
-      date: string;
-      user_id: string;
-      total_tokens: number;
-      source: string;
-      model: string;
-    }>(usageQuery, usageParams);
+    const usageRows = await db.getAdminUsageComparison(
+      userIds, fromDate.toISOString(), toDate.toISOString(),
+      { tzOffset, ...(source ? { source } : {}), ...(model ? { model } : {}) },
+    );
 
     // Aggregate daily totals per user
     const dailyMap = new Map<string, Record<string, number>>();

@@ -63,40 +63,39 @@ describe("autoRegisterTeamsForSeason", () => {
   // -------------------------------------------------------------------------
 
   it("should return seasonEligible=false for ended seasons", async () => {
-    mockDbRead.firstOrNull.mockResolvedValueOnce(mockEndedSeason());
+    mockDbRead.getSeasonById.mockResolvedValueOnce(mockEndedSeason());
 
     const result = await autoRegisterTeamsForSeason(mockDbRead, mockDbWrite, "season-1");
 
     expect(result.seasonEligible).toBe(false);
     expect(result.registered).toBe(0);
-    expect(mockDbRead.query).not.toHaveBeenCalled(); // should not query teams
+    expect(mockDbRead.listAutoRegisterTeams).not.toHaveBeenCalled(); // should not query teams
     expect(mockDbWrite.batch).not.toHaveBeenCalled();
   });
 
   it("should return seasonEligible=false for active seasons without late registration", async () => {
-    mockDbRead.firstOrNull.mockResolvedValueOnce(mockActiveSeason(false));
+    mockDbRead.getSeasonById.mockResolvedValueOnce(mockActiveSeason(false));
 
     const result = await autoRegisterTeamsForSeason(mockDbRead, mockDbWrite, "season-1");
 
     expect(result.seasonEligible).toBe(false);
     expect(result.registered).toBe(0);
-    expect(mockDbRead.query).not.toHaveBeenCalled();
+    expect(mockDbRead.listAutoRegisterTeams).not.toHaveBeenCalled();
   });
 
   it("does not auto-register an active season even when late registration is allowed", async () => {
-    mockDbRead.firstOrNull.mockResolvedValueOnce(mockActiveSeason(true));
-    mockDbRead.query.mockResolvedValueOnce({ results: [] }); // no teams
+    mockDbRead.getSeasonById.mockResolvedValueOnce(mockActiveSeason(true));
 
     const result = await autoRegisterTeamsForSeason(mockDbRead, mockDbWrite, "season-1");
 
     expect(result.seasonEligible).toBe(false);
     expect(result.registered).toBe(0);
-    expect(mockDbRead.query).not.toHaveBeenCalled();
+    expect(mockDbRead.listAutoRegisterTeams).not.toHaveBeenCalled();
     expect(mockDbWrite.batch).not.toHaveBeenCalled();
   });
 
   it("should return seasonEligible=false when season not found", async () => {
-    mockDbRead.firstOrNull.mockResolvedValueOnce(null);
+    mockDbRead.getSeasonById.mockResolvedValueOnce(null);
 
     const result = await autoRegisterTeamsForSeason(mockDbRead, mockDbWrite, "season-1");
 
@@ -109,8 +108,8 @@ describe("autoRegisterTeamsForSeason", () => {
   // -------------------------------------------------------------------------
 
   it("should return registered=0 when no teams have auto-registration enabled", async () => {
-    mockDbRead.firstOrNull.mockResolvedValueOnce(mockUpcomingSeason());
-    mockDbRead.query.mockResolvedValueOnce({ results: [] }); // no eligible teams
+    mockDbRead.getSeasonById.mockResolvedValueOnce(mockUpcomingSeason());
+    mockDbRead.listAutoRegisterTeams.mockResolvedValueOnce([]); // no eligible teams
 
     const result = await autoRegisterTeamsForSeason(mockDbRead, mockDbWrite, "season-1");
 
@@ -121,19 +120,11 @@ describe("autoRegisterTeamsForSeason", () => {
   });
 
   it("should auto-register a team with no member conflicts", async () => {
-    mockDbRead.firstOrNull
-      .mockResolvedValueOnce(mockUpcomingSeason())
-      .mockResolvedValueOnce(null) // no conflict
-      .mockResolvedValueOnce({ user_id: "owner-1" }); // owner lookup
-    mockDbRead.query
-      .mockResolvedValueOnce({
-        // eligible teams
-        results: [{ id: "team-1", created_by: "owner-1" }],
-      })
-      .mockResolvedValueOnce({
-        // team members
-        results: [{ user_id: "u1" }, { user_id: "u2" }],
-      });
+    mockDbRead.getSeasonById.mockResolvedValueOnce(mockUpcomingSeason());
+    mockDbRead.checkSeasonMemberConflict.mockResolvedValueOnce(null);
+    mockDbRead.getTeamOwner.mockResolvedValueOnce("owner-1"); // owner lookup
+    mockDbRead.listAutoRegisterTeams.mockResolvedValueOnce([{ id: "team-1", created_by: "owner-1" }]);
+    mockDbRead.getTeamMemberUserIds.mockResolvedValueOnce(["u1", "u2"]);
     mockDbWrite.batch.mockResolvedValueOnce([]);
 
     const result = await autoRegisterTeamsForSeason(mockDbRead, mockDbWrite, "season-1");
@@ -150,16 +141,10 @@ describe("autoRegisterTeamsForSeason", () => {
   });
 
   it("should skip team when a member has a conflict", async () => {
-    mockDbRead.firstOrNull
-      .mockResolvedValueOnce(mockUpcomingSeason())
-      .mockResolvedValueOnce({ user_id: "u1" }); // conflict found
-    mockDbRead.query
-      .mockResolvedValueOnce({
-        results: [{ id: "team-1", created_by: "owner-1" }],
-      })
-      .mockResolvedValueOnce({
-        results: [{ user_id: "u1" }],
-      });
+    mockDbRead.getSeasonById.mockResolvedValueOnce(mockUpcomingSeason());
+    mockDbRead.checkSeasonMemberConflict.mockResolvedValueOnce({ user_id: "u1" }); // conflict found
+    mockDbRead.listAutoRegisterTeams.mockResolvedValueOnce([{ id: "team-1", created_by: "owner-1" }]);
+    mockDbRead.getTeamMemberUserIds.mockResolvedValueOnce(["u1"]);
 
     const result = await autoRegisterTeamsForSeason(mockDbRead, mockDbWrite, "season-1");
 
@@ -169,26 +154,16 @@ describe("autoRegisterTeamsForSeason", () => {
   });
 
   it("should register multiple teams and skip conflicting ones", async () => {
-    mockDbRead.firstOrNull
-      .mockResolvedValueOnce(mockUpcomingSeason())
-      // team-1: conflict found — skip
-      .mockResolvedValueOnce({ user_id: "u1" })
-      // team-2: no conflict
-      .mockResolvedValueOnce(null)
-      // team-2 owner lookup
-      .mockResolvedValueOnce({ user_id: "owner-2" });
-    mockDbRead.query
-      .mockResolvedValueOnce({
-        // 2 eligible teams
-        results: [
-          { id: "team-1", created_by: "owner-1" },
-          { id: "team-2", created_by: "owner-2" },
-        ],
-      })
-      // team-1 members
-      .mockResolvedValueOnce({ results: [{ user_id: "u1" }] })
-      // team-2 members
-      .mockResolvedValueOnce({ results: [{ user_id: "u2" }] });
+    mockDbRead.getSeasonById.mockResolvedValueOnce(mockUpcomingSeason());
+    mockDbRead.checkSeasonMemberConflict.mockResolvedValueOnce({ user_id: "u1" });
+    mockDbRead.checkSeasonMemberConflict.mockResolvedValueOnce(null);
+    mockDbRead.getTeamOwner.mockResolvedValueOnce("owner-2");
+    mockDbRead.listAutoRegisterTeams.mockResolvedValueOnce([
+      { id: "team-1", created_by: "owner-1" },
+      { id: "team-2", created_by: "owner-2" },
+    ]);
+    mockDbRead.getTeamMemberUserIds.mockResolvedValueOnce(["u1"]);
+    mockDbRead.getTeamMemberUserIds.mockResolvedValueOnce(["u2"]);
 
     mockDbWrite.batch.mockResolvedValueOnce([]);
 
@@ -200,14 +175,10 @@ describe("autoRegisterTeamsForSeason", () => {
   });
 
   it("should handle team with no members gracefully", async () => {
-    mockDbRead.firstOrNull
-      .mockResolvedValueOnce(mockUpcomingSeason())
-      .mockResolvedValueOnce({ user_id: "owner-1" }); // owner lookup
-    mockDbRead.query
-      .mockResolvedValueOnce({
-        results: [{ id: "team-empty", created_by: "owner-1" }],
-      })
-      .mockResolvedValueOnce({ results: [] }); // no members
+    mockDbRead.getSeasonById.mockResolvedValueOnce(mockUpcomingSeason());
+    mockDbRead.getTeamOwner.mockResolvedValueOnce("owner-1"); // owner lookup
+    mockDbRead.listAutoRegisterTeams.mockResolvedValueOnce([{ id: "team-empty", created_by: "owner-1" }]);
+    mockDbRead.getTeamMemberUserIds.mockResolvedValueOnce([]); // no members
 
     mockDbWrite.batch.mockResolvedValueOnce([]);
 
@@ -224,24 +195,15 @@ describe("autoRegisterTeamsForSeason", () => {
     // Team-1: member query fails
     // Team-2: succeeds
     // Result should show registered=1, skipped=1 (not throw)
-    mockDbRead.firstOrNull
-      .mockResolvedValueOnce(mockUpcomingSeason())
-      // team-2: no conflict
-      .mockResolvedValueOnce(null)
-      // team-2 owner lookup
-      .mockResolvedValueOnce({ user_id: "owner-2" });
-    mockDbRead.query
-      .mockResolvedValueOnce({
-        // 2 eligible teams
-        results: [
-          { id: "team-1", created_by: "owner-1" },
-          { id: "team-2", created_by: "owner-2" },
-        ],
-      })
-      // team-1 member query fails
-      .mockRejectedValueOnce(new Error("D1 read timeout"))
-      // team-2 members
-      .mockResolvedValueOnce({ results: [{ user_id: "u2" }] });
+    mockDbRead.getSeasonById.mockResolvedValueOnce(mockUpcomingSeason());
+    mockDbRead.checkSeasonMemberConflict.mockResolvedValueOnce(null);
+    mockDbRead.getTeamOwner.mockResolvedValueOnce("owner-2");
+    mockDbRead.listAutoRegisterTeams.mockResolvedValueOnce([
+      { id: "team-1", created_by: "owner-1" },
+      { id: "team-2", created_by: "owner-2" },
+    ]);
+    mockDbRead.getTeamMemberUserIds.mockRejectedValueOnce(new Error("D1 read timeout"));
+    mockDbRead.getTeamMemberUserIds.mockResolvedValueOnce(["u2"]);
 
     mockDbWrite.batch.mockResolvedValueOnce([]);
 
@@ -253,25 +215,16 @@ describe("autoRegisterTeamsForSeason", () => {
   });
 
   it("should skip team on conflict check read error but continue", async () => {
-    mockDbRead.firstOrNull
-      .mockResolvedValueOnce(mockUpcomingSeason())
-      // team-1: conflict check fails
-      .mockRejectedValueOnce(new Error("D1 read error"))
-      // team-2: no conflict
-      .mockResolvedValueOnce(null)
-      // team-2 owner lookup
-      .mockResolvedValueOnce({ user_id: "owner-2" });
-    mockDbRead.query
-      .mockResolvedValueOnce({
-        results: [
-          { id: "team-1", created_by: "owner-1" },
-          { id: "team-2", created_by: "owner-2" },
-        ],
-      })
-      // team-1 members (query succeeds, then conflict check fails)
-      .mockResolvedValueOnce({ results: [{ user_id: "u1" }] })
-      // team-2 members
-      .mockResolvedValueOnce({ results: [{ user_id: "u2" }] });
+    mockDbRead.getSeasonById.mockResolvedValueOnce(mockUpcomingSeason());
+    mockDbRead.checkSeasonMemberConflict.mockRejectedValueOnce(new Error("D1 read error"));
+    mockDbRead.checkSeasonMemberConflict.mockResolvedValueOnce(null);
+    mockDbRead.getTeamOwner.mockResolvedValueOnce("owner-2");
+    mockDbRead.listAutoRegisterTeams.mockResolvedValueOnce([
+      { id: "team-1", created_by: "owner-1" },
+      { id: "team-2", created_by: "owner-2" },
+    ]);
+    mockDbRead.getTeamMemberUserIds.mockResolvedValueOnce(["u1"]);
+    mockDbRead.getTeamMemberUserIds.mockResolvedValueOnce(["u2"]);
 
     mockDbWrite.batch.mockResolvedValueOnce([]);
 
@@ -282,15 +235,11 @@ describe("autoRegisterTeamsForSeason", () => {
   });
 
   it("should compensate on batch failure and count as skipped", async () => {
-    mockDbRead.firstOrNull
-      .mockResolvedValueOnce(mockUpcomingSeason())
-      .mockResolvedValueOnce(null) // no conflict
-      .mockResolvedValueOnce({ user_id: "owner-1" }); // owner
-    mockDbRead.query
-      .mockResolvedValueOnce({
-        results: [{ id: "team-1", created_by: "owner-1" }],
-      })
-      .mockResolvedValueOnce({ results: [{ user_id: "u1" }] });
+    mockDbRead.getSeasonById.mockResolvedValueOnce(mockUpcomingSeason());
+    mockDbRead.checkSeasonMemberConflict.mockResolvedValueOnce(null);
+    mockDbRead.getTeamOwner.mockResolvedValueOnce("owner-1"); // owner
+    mockDbRead.listAutoRegisterTeams.mockResolvedValueOnce([{ id: "team-1", created_by: "owner-1" }]);
+    mockDbRead.getTeamMemberUserIds.mockResolvedValueOnce(["u1"]);
 
     mockDbWrite.batch.mockRejectedValueOnce(new Error("D1 batch failed"));
     mockDbWrite.execute.mockResolvedValue({ changes: 1, duration: 0.01 });
@@ -306,15 +255,11 @@ describe("autoRegisterTeamsForSeason", () => {
   });
 
   it("falls back to team.created_by when owner lookup returns null", async () => {
-    mockDbRead.firstOrNull
-      .mockResolvedValueOnce(mockUpcomingSeason())
-      .mockResolvedValueOnce(null) // no conflict
-      .mockResolvedValueOnce(null); // owner lookup empty → fallback path
-    mockDbRead.query
-      .mockResolvedValueOnce({
-        results: [{ id: "team-1", created_by: "fallback-creator" }],
-      })
-      .mockResolvedValueOnce({ results: [{ user_id: "u1" }] });
+    mockDbRead.getSeasonById.mockResolvedValueOnce(mockUpcomingSeason());
+    mockDbRead.checkSeasonMemberConflict.mockResolvedValueOnce(null);
+    mockDbRead.getTeamOwner.mockResolvedValueOnce(null); // owner lookup empty → fallback path
+    mockDbRead.listAutoRegisterTeams.mockResolvedValueOnce([{ id: "team-1", created_by: "fallback-creator" }]);
+    mockDbRead.getTeamMemberUserIds.mockResolvedValueOnce(["u1"]);
     mockDbWrite.batch.mockResolvedValueOnce([]);
 
     const result = await autoRegisterTeamsForSeason(mockDbRead, mockDbWrite, "season-1");
@@ -328,14 +273,10 @@ describe("autoRegisterTeamsForSeason", () => {
   });
 
   it("skips season_team_members DELETE when team has zero members and batch fails", async () => {
-    mockDbRead.firstOrNull
-      .mockResolvedValueOnce(mockUpcomingSeason())
-      .mockResolvedValueOnce({ user_id: "owner-1" });
-    mockDbRead.query
-      .mockResolvedValueOnce({
-        results: [{ id: "team-empty", created_by: "owner-1" }],
-      })
-      .mockResolvedValueOnce({ results: [] });
+    mockDbRead.getSeasonById.mockResolvedValueOnce(mockUpcomingSeason());
+    mockDbRead.getTeamOwner.mockResolvedValueOnce("owner-1");
+    mockDbRead.listAutoRegisterTeams.mockResolvedValueOnce([{ id: "team-empty", created_by: "owner-1" }]);
+    mockDbRead.getTeamMemberUserIds.mockResolvedValueOnce([]);
     mockDbWrite.batch.mockRejectedValueOnce(new Error("D1 batch failed"));
     mockDbWrite.execute.mockResolvedValue({ changes: 1, duration: 0.01 });
 
@@ -348,15 +289,11 @@ describe("autoRegisterTeamsForSeason", () => {
   });
 
   it("swallows cleanup errors after a batch failure", async () => {
-    mockDbRead.firstOrNull
-      .mockResolvedValueOnce(mockUpcomingSeason())
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ user_id: "owner-1" });
-    mockDbRead.query
-      .mockResolvedValueOnce({
-        results: [{ id: "team-1", created_by: "owner-1" }],
-      })
-      .mockResolvedValueOnce({ results: [{ user_id: "u1" }] });
+    mockDbRead.getSeasonById.mockResolvedValueOnce(mockUpcomingSeason());
+    mockDbRead.checkSeasonMemberConflict.mockResolvedValueOnce(null);
+    mockDbRead.getTeamOwner.mockResolvedValueOnce("owner-1");
+    mockDbRead.listAutoRegisterTeams.mockResolvedValueOnce([{ id: "team-1", created_by: "owner-1" }]);
+    mockDbRead.getTeamMemberUserIds.mockResolvedValueOnce(["u1"]);
     mockDbWrite.batch.mockRejectedValueOnce(new Error("D1 batch failed"));
     // First execute (member DELETE) throws; outer try/catch swallows it.
     mockDbWrite.execute.mockRejectedValueOnce(new Error("cleanup failed"));

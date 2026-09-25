@@ -77,3 +77,20 @@ tier on their first request. Reading the actual pane output revealed that no wor
 had started; the sessions were resumed with a supported model. A ready pane or an
 idle status is not execution evidence. Verify the first request before relying on
 parallel progress.
+
+
+## 2026-09-25 — Bound automated RPC migration edits to syntax
+
+During the final read-RPC migration, a broad multiline replacement matched across
+separate organization route functions. Diff inspection caught the deletion before
+commit. The affected files were regenerated from the checkout baseline using
+bounded call matches, and route behavior was rechecked with the existing tests.
+For repetitive migrations, inspect the first transformed diff before expanding
+it, and use the installed AST parser for chained test rewrites. TypeScript 7 in
+this repository does not expose the old compiler parsing API; use oxc-parser.
+
+The isolated worktree had dependencies and `core.hooksPath` but no local Husky
+launchers, so the first commit did not invoke pre-commit. The launchers were
+materialized locally and the commit amended through the full staged-snapshot
+gate. Verify the executable hook entrypoint exists before committing in a new
+worktree; dependency links alone do not install Git hooks.

@@ -211,29 +211,27 @@ describe("GET /api/organizations/[orgId]/members", () => {
 
   it("should return organization members", async () => {
     resolveUser.mockResolvedValueOnce(USER);
-    mockDbRead.firstOrNull.mockResolvedValueOnce({ id: "org-1" });
-    mockDbRead.query.mockResolvedValueOnce({
-      results: [
-        {
-          id: "member-1",
-          org_id: "org-1",
-          user_id: "user-1",
-          joined_at: "2026-01-01T00:00:00Z",
-          user_name: "Alice",
-          user_image: "https://example.com/alice.png",
-          user_slug: "alice",
-        },
-        {
-          id: "member-2",
-          org_id: "org-1",
-          user_id: "user-2",
-          joined_at: "2026-01-02T00:00:00Z",
-          user_name: "Bob",
-          user_image: null,
-          user_slug: "bob",
-        },
-      ],
-    });
+    mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
+    mockDbRead.listOrgMembers.mockResolvedValueOnce([
+      {
+        id: "member-1",
+        org_id: "org-1",
+        user_id: "user-1",
+        joined_at: "2026-01-01T00:00:00Z",
+        name: "Alice",
+        image: "https://example.com/alice.png",
+        slug: "alice",
+      },
+      {
+        id: "member-2",
+        org_id: "org-1",
+        user_id: "user-2",
+        joined_at: "2026-01-02T00:00:00Z",
+        name: "Bob",
+        image: null,
+        slug: "bob",
+      },
+    ]);
 
     const res = await LIST_MEMBERS(makeOrgRequest("GET", "org-1/members"), {
       params: Promise.resolve({ orgId: "org-1" }),
@@ -259,7 +257,7 @@ describe("GET /api/organizations/[orgId]/members", () => {
 
   it("should return 404 for non-existent org", async () => {
     resolveUser.mockResolvedValueOnce(USER);
-    mockDbRead.firstOrNull.mockResolvedValueOnce(null);
+    mockDbRead.getOrganizationById.mockResolvedValueOnce(null);
 
     const res = await LIST_MEMBERS(makeOrgRequest("GET", "not-found/members"), {
       params: Promise.resolve({ orgId: "not-found" }),
@@ -279,7 +277,7 @@ describe("GET /api/organizations/[orgId]/members", () => {
 
   it("should return 503 if table not migrated", async () => {
     resolveUser.mockResolvedValueOnce(USER);
-    mockDbRead.firstOrNull.mockRejectedValueOnce(new Error("no such table"));
+    mockDbRead.getOrganizationById.mockRejectedValueOnce(new Error("no such table"));
 
     const res = await LIST_MEMBERS(makeOrgRequest("GET", "org-1/members"), {
       params: Promise.resolve({ orgId: "org-1" }),

@@ -92,7 +92,24 @@ export interface GetStorageStatsRequest {
   method: "admin.getStorageStats";
 }
 
+export interface GetUsersByIdsRequest {
+  method: "admin.getUsersByIds";
+  userIds: string[];
+}
+
+export interface GetUsageComparisonRequest {
+  method: "admin.getUsageComparison";
+  userIds: string[];
+  fromDate: string;
+  toDate: string;
+  tzOffset?: number;
+  source?: string;
+  model?: string;
+}
+
 export type AdminRpcRequest =
+  | GetUsersByIdsRequest
+  | GetUsageComparisonRequest
   | ListAuditLogsRequest
   | GetAuditLogRequest
   | GetSystemStatsRequest
@@ -282,6 +299,49 @@ export async function handleAdminRpc(
   db: D1Database
 ): Promise<Response> {
   switch (request.method) {
+    case "admin.getUsersByIds":
+    case "admin.getUsageComparison": {
+      if (
+        !Array.isArray(request.userIds) || request.userIds.length === 0 ||
+        request.userIds.length > 10 ||
+        request.userIds.some((id) => typeof id !== "string" || !id)
+      ) {
+        return Response.json({ error: "1-10 userIds are required" }, { status: 400 });
+      }
+      const placeholders = request.userIds.map(() => "?").join(", ");
+      if (request.method === "admin.getUsersByIds") {
+        const rows = await db.prepare(`SELECT id, name, email, image, slug FROM users WHERE id IN (${placeholders})`)
+          .bind(...request.userIds).all<{ id: string; name: string | null; email: string; image: string | null; slug: string | null }>();
+        return Response.json({ result: rows.results });
+      }
+      const tzOffset = request.tzOffset ?? 0;
+      if (
+        typeof request.fromDate !== "string" || !Number.isFinite(Date.parse(request.fromDate)) ||
+        typeof request.toDate !== "string" || !Number.isFinite(Date.parse(request.toDate)) ||
+        !Number.isInteger(tzOffset) || Math.abs(tzOffset) > 840 ||
+        (request.source !== undefined && typeof request.source !== "string") ||
+        (request.model !== undefined && typeof request.model !== "string")
+      ) {
+        return Response.json({ error: "Invalid comparison parameters" }, { status: 400 });
+      }
+      let sql = `SELECT date(datetime(hour_start, ? || ' minutes')) AS date,
+                        user_id, SUM(total_tokens) AS total_tokens, source, model
+                 FROM usage_totals
+                 WHERE user_id IN (${placeholders}) AND hour_start >= ? AND hour_start < ?`;
+      const params: unknown[] = [String(-tzOffset), ...request.userIds, request.fromDate, request.toDate];
+      if (request.source) {
+        sql += " AND source = ?";
+        params.push(request.source);
+      }
+      if (request.model) {
+        sql += " AND model = ?";
+        params.push(request.model);
+      }
+      sql += " GROUP BY date, user_id, source, model";
+      const rows = await db.prepare(sql).bind(...params)
+        .all<{ date: string; user_id: string; total_tokens: number; source: string; model: string }>();
+      return Response.json({ result: rows.results });
+    }
     case "admin.listAuditLogs":
       return handleListAuditLogs(request, db);
     case "admin.getAuditLog":

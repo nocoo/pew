@@ -42,12 +42,19 @@ export async function loadMockedAuthHelpers(): Promise<{
 // Mock DB factories
 // ---------------------------------------------------------------------------
 
-/** Mock DbRead with all methods (legacy SQL proxy + users RPC). */
+/** Mock DbRead with typed RPC methods. */
 export function createMockDbRead() {
   return {
-    // Legacy SQL proxy
-    query: vi.fn(),
-    firstOrNull: vi.fn(),
+    listOrgMembersAdmin: vi.fn(),
+    countOrgMembers: vi.fn(),
+    getTeamMemberUserIds: vi.fn(),
+    getTeamOwner: vi.fn(),
+    listAutoRegisterTeams: vi.fn(),
+    listRosterSyncSeasons: vi.fn(),
+    getRegisteredTeamIds: vi.fn(),
+    getRosterUserIds: vi.fn(),
+    getAdminUsersByIds: vi.fn(),
+    getAdminUsageComparison: vi.fn(),
     // Users RPC methods
     getUserById: vi.fn(),
     getUserBySlug: vi.fn(),
@@ -147,8 +154,17 @@ export function createMockDbRead() {
     // Live RPC methods
     ping: vi.fn(),
   } as unknown as DbRead & {
-    query: ReturnType<typeof vi.fn>;
-    firstOrNull: ReturnType<typeof vi.fn>;
+    listOrgMembersAdmin: ReturnType<typeof vi.fn>;
+    countOrgMembers: ReturnType<typeof vi.fn>;
+    getTeamMemberUserIds: ReturnType<typeof vi.fn>;
+    getTeamOwner: ReturnType<typeof vi.fn>;
+    listAutoRegisterTeams: ReturnType<typeof vi.fn>;
+    listRosterSyncSeasons: ReturnType<typeof vi.fn>;
+    getRegisteredTeamIds: ReturnType<typeof vi.fn>;
+    getRosterUserIds: ReturnType<typeof vi.fn>;
+    getAdminUsersByIds: ReturnType<typeof vi.fn>;
+    getAdminUsageComparison: ReturnType<typeof vi.fn>;
+
     getUserById: ReturnType<typeof vi.fn>;
     getUserBySlug: ReturnType<typeof vi.fn>;
     getUserByEmail: ReturnType<typeof vi.fn>;
@@ -241,11 +257,9 @@ export function createMockDbWrite() {
  */
 export function createMockClient() {
   return {
-    // Legacy SQL proxy
-    query: vi.fn(),
+
     execute: vi.fn(),
     batch: vi.fn(),
-    firstOrNull: vi.fn(),
     // Users RPC methods
     getUserById: vi.fn(),
     getUserBySlug: vi.fn(),

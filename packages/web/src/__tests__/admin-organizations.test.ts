@@ -279,17 +279,16 @@ describe("GET /api/admin/organizations/[orgId]", () => {
 
   it("should return organization details", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.firstOrNull
-      .mockResolvedValueOnce({
-        id: "org-1",
-        name: "Anthropic",
-        slug: "anthropic",
-        logo_url: "https://example.com/logo.png",
-        created_by: "admin-1",
-        created_at: "2026-01-01T00:00:00Z",
-        updated_at: "2026-01-01T00:00:00Z",
-      })
-      .mockResolvedValueOnce({ count: 10 });
+    mockDbRead.getOrganizationById.mockResolvedValueOnce({
+      id: "org-1",
+      name: "Anthropic",
+      slug: "anthropic",
+      logo_url: "https://example.com/logo.png",
+      created_by: "admin-1",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-01T00:00:00Z",
+    });
+    mockDbRead.countOrgMembers.mockResolvedValueOnce(10);
 
     const res = await GET_ONE(makeOrgRequest("GET", "org-1"), {
       params: Promise.resolve({ orgId: "org-1" }),
@@ -302,7 +301,7 @@ describe("GET /api/admin/organizations/[orgId]", () => {
 
   it("should return 404 for non-existent org", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.firstOrNull.mockResolvedValueOnce(null);
+    mockDbRead.getOrganizationById.mockResolvedValueOnce(null);
 
     const res = await GET_ONE(makeOrgRequest("GET", "not-found"), {
       params: Promise.resolve({ orgId: "not-found" }),
@@ -320,7 +319,7 @@ describe("GET /api/admin/organizations/[orgId]", () => {
 
   it("should return 503 on no-such-table error", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.firstOrNull.mockRejectedValueOnce(new Error("no such table: organizations"));
+    mockDbRead.getOrganizationById.mockRejectedValueOnce(new Error("no such table: organizations"));
 
     const res = await GET_ONE(makeOrgRequest("GET", "org-1"), {
       params: Promise.resolve({ orgId: "org-1" }),
@@ -332,7 +331,7 @@ describe("GET /api/admin/organizations/[orgId]", () => {
 
   it("should return 500 on unexpected error", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.firstOrNull.mockRejectedValueOnce(new Error("connection lost"));
+    mockDbRead.getOrganizationById.mockRejectedValueOnce(new Error("connection lost"));
 
     const res = await GET_ONE(makeOrgRequest("GET", "org-1"), {
       params: Promise.resolve({ orgId: "org-1" }),
@@ -361,18 +360,17 @@ describe("PATCH /api/admin/organizations/[orgId]", () => {
 
   it("should update organization name", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.firstOrNull
-      .mockResolvedValueOnce({ id: "org-1", slug: "anthropic" }) // existing
-      .mockResolvedValueOnce({
-        id: "org-1",
-        name: "Anthropic Inc",
-        slug: "anthropic",
-        logo_url: null,
-        created_by: "admin-1",
-        created_at: "2026-01-01T00:00:00Z",
-        updated_at: "2026-01-02T00:00:00Z",
-      }) // updated
-      .mockResolvedValueOnce({ count: 5 }); // member count
+    mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1", slug: "anthropic" });
+    mockDbRead.getOrganizationById.mockResolvedValueOnce({
+      id: "org-1",
+      name: "Anthropic Inc",
+      slug: "anthropic",
+      logo_url: null,
+      created_by: "admin-1",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-02T00:00:00Z",
+    });
+    mockDbRead.countOrgMembers.mockResolvedValueOnce(5); // member count
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
 
     const res = await PATCH(makeOrgRequest("PATCH", "org-1", { name: "Anthropic Inc" }), {
@@ -386,19 +384,18 @@ describe("PATCH /api/admin/organizations/[orgId]", () => {
 
   it("should update organization slug", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.firstOrNull
-      .mockResolvedValueOnce({ id: "org-1", slug: "old-slug" }) // existing
-      .mockResolvedValueOnce(null) // no slug conflict
-      .mockResolvedValueOnce({
-        id: "org-1",
-        name: "Test",
-        slug: "new-slug",
-        logo_url: null,
-        created_by: "admin-1",
-        created_at: "2026-01-01T00:00:00Z",
-        updated_at: "2026-01-02T00:00:00Z",
-      })
-      .mockResolvedValueOnce({ count: 0 });
+    mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1", slug: "old-slug" });
+    mockDbRead.getOrganizationBySlug.mockResolvedValueOnce(null);
+    mockDbRead.getOrganizationById.mockResolvedValueOnce({
+      id: "org-1",
+      name: "Test",
+      slug: "new-slug",
+      logo_url: null,
+      created_by: "admin-1",
+      created_at: "2026-01-01T00:00:00Z",
+      updated_at: "2026-01-02T00:00:00Z",
+    });
+    mockDbRead.countOrgMembers.mockResolvedValueOnce(0);
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
 
     const res = await PATCH(makeOrgRequest("PATCH", "org-1", { slug: "new-slug" }), {
@@ -411,9 +408,8 @@ describe("PATCH /api/admin/organizations/[orgId]", () => {
 
   it("should reject duplicate slug on update", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.firstOrNull
-      .mockResolvedValueOnce({ id: "org-1", slug: "old-slug" })
-      .mockResolvedValueOnce({ id: "org-2" }); // slug conflict
+    mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1", slug: "old-slug" });
+    mockDbRead.getOrganizationBySlug.mockResolvedValueOnce({ id: "org-2" }); // slug conflict
 
     const res = await PATCH(makeOrgRequest("PATCH", "org-1", { slug: "taken" }), {
       params: Promise.resolve({ orgId: "org-1" }),
@@ -425,7 +421,7 @@ describe("PATCH /api/admin/organizations/[orgId]", () => {
 
   it("should return 404 for non-existent org", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.firstOrNull.mockResolvedValueOnce(null);
+    mockDbRead.getOrganizationById.mockResolvedValueOnce(null);
 
     const res = await PATCH(makeOrgRequest("PATCH", "not-found", { name: "New" }), {
       params: Promise.resolve({ orgId: "not-found" }),
@@ -435,7 +431,7 @@ describe("PATCH /api/admin/organizations/[orgId]", () => {
 
   it("should reject empty update", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.firstOrNull.mockResolvedValueOnce({ id: "org-1", slug: "test" });
+    mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1", slug: "test" });
 
     const res = await PATCH(makeOrgRequest("PATCH", "org-1", {}), {
       params: Promise.resolve({ orgId: "org-1" }),
@@ -470,7 +466,7 @@ describe("PATCH /api/admin/organizations/[orgId]", () => {
 
   it("should reject name with length 0", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.firstOrNull.mockResolvedValueOnce({ id: "org-1", slug: "test" });
+    mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1", slug: "test" });
 
     const res = await PATCH(makeOrgRequest("PATCH", "org-1", { name: "" }), {
       params: Promise.resolve({ orgId: "org-1" }),
@@ -482,7 +478,7 @@ describe("PATCH /api/admin/organizations/[orgId]", () => {
 
   it("should reject name longer than 64 characters", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.firstOrNull.mockResolvedValueOnce({ id: "org-1", slug: "test" });
+    mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1", slug: "test" });
 
     const res = await PATCH(makeOrgRequest("PATCH", "org-1", { name: "a".repeat(65) }), {
       params: Promise.resolve({ orgId: "org-1" }),
@@ -494,7 +490,7 @@ describe("PATCH /api/admin/organizations/[orgId]", () => {
 
   it("should reject invalid slug format", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.firstOrNull.mockResolvedValueOnce({ id: "org-1", slug: "test" });
+    mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1", slug: "test" });
 
     const res = await PATCH(makeOrgRequest("PATCH", "org-1", { slug: "INVALID!" }), {
       params: Promise.resolve({ orgId: "org-1" }),
@@ -506,9 +502,8 @@ describe("PATCH /api/admin/organizations/[orgId]", () => {
 
   it("should return 404 when org not found after update", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.firstOrNull
-      .mockResolvedValueOnce({ id: "org-1", slug: "test" }) // existing
-      .mockResolvedValueOnce(null); // post-update read returns null
+    mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1", slug: "test" });
+    mockDbRead.getOrganizationById.mockResolvedValueOnce(null); // post-update read returns null
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
 
     const res = await PATCH(makeOrgRequest("PATCH", "org-1", { name: "Updated" }), {
@@ -521,7 +516,7 @@ describe("PATCH /api/admin/organizations/[orgId]", () => {
 
   it("should return 503 on no-such-table error", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.firstOrNull.mockRejectedValueOnce(new Error("no such table: organizations"));
+    mockDbRead.getOrganizationById.mockRejectedValueOnce(new Error("no such table: organizations"));
 
     const res = await PATCH(makeOrgRequest("PATCH", "org-1", { name: "New" }), {
       params: Promise.resolve({ orgId: "org-1" }),
@@ -533,7 +528,7 @@ describe("PATCH /api/admin/organizations/[orgId]", () => {
 
   it("should return 500 on unexpected error", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.firstOrNull.mockRejectedValueOnce(new Error("connection lost"));
+    mockDbRead.getOrganizationById.mockRejectedValueOnce(new Error("connection lost"));
 
     const res = await PATCH(makeOrgRequest("PATCH", "org-1", { name: "New" }), {
       params: Promise.resolve({ orgId: "org-1" }),
@@ -562,7 +557,7 @@ describe("DELETE /api/admin/organizations/[orgId]", () => {
 
   it("should delete organization", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.firstOrNull.mockResolvedValueOnce({ id: "org-1" });
+    mockDbRead.getOrganizationById.mockResolvedValueOnce({ id: "org-1" });
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
 
     const res = await DELETE(makeOrgRequest("DELETE", "org-1"), {
@@ -575,7 +570,7 @@ describe("DELETE /api/admin/organizations/[orgId]", () => {
 
   it("should return 404 for non-existent org", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.firstOrNull.mockResolvedValueOnce(null);
+    mockDbRead.getOrganizationById.mockResolvedValueOnce(null);
 
     const res = await DELETE(makeOrgRequest("DELETE", "not-found"), {
       params: Promise.resolve({ orgId: "not-found" }),
@@ -593,7 +588,7 @@ describe("DELETE /api/admin/organizations/[orgId]", () => {
 
   it("should handle no-such-table on delete", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.firstOrNull.mockRejectedValueOnce(new Error("no such table: organizations"));
+    mockDbRead.getOrganizationById.mockRejectedValueOnce(new Error("no such table: organizations"));
 
     const res = await DELETE(makeOrgRequest("DELETE", "org-1"), {
       params: Promise.resolve({ orgId: "org-1" }),
@@ -603,7 +598,7 @@ describe("DELETE /api/admin/organizations/[orgId]", () => {
 
   it("should return 500 on unexpected delete error", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
-    mockDbRead.firstOrNull.mockRejectedValueOnce(new Error("connection lost"));
+    mockDbRead.getOrganizationById.mockRejectedValueOnce(new Error("connection lost"));
 
     const res = await DELETE(makeOrgRequest("DELETE", "org-1"), {
       params: Promise.resolve({ orgId: "org-1" }),

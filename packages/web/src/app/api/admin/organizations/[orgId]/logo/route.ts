@@ -42,10 +42,7 @@ export async function POST(
   const dbWrite = await getDbWrite();
 
   // Verify org exists
-  const org = await dbRead.firstOrNull<{ id: string }>(
-    "SELECT id FROM organizations WHERE id = ?",
-    [orgId],
-  );
+  const org = await dbRead.getOrganizationById(orgId);
 
   if (!org) {
     return NextResponse.json({ error: "Organization not found" }, { status: 404 });
@@ -119,10 +116,7 @@ export async function POST(
   // Persist new URL to DB — compensate by deleting the new R2 object on failure
   let oldLogoUrl: string | null;
   try {
-    const oldOrg = await dbRead.firstOrNull<{ logo_url: string | null }>(
-      "SELECT logo_url FROM organizations WHERE id = ?",
-      [orgId],
-    );
+    const oldOrg = await dbRead.getOrganizationById(orgId);
     oldLogoUrl = oldOrg?.logo_url ?? null;
 
     await dbWrite.execute(
@@ -175,10 +169,7 @@ export async function DELETE(
   const dbWrite = await getDbWrite();
 
   // Verify org exists
-  const org = await dbRead.firstOrNull<{ id: string; logo_url: string | null }>(
-    "SELECT id, logo_url FROM organizations WHERE id = ?",
-    [orgId],
-  );
+  const org = await dbRead.getOrganizationById(orgId);
 
   if (!org) {
     return NextResponse.json({ error: "Organization not found" }, { status: 404 });

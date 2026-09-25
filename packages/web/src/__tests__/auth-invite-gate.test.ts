@@ -63,7 +63,7 @@ describe("handleInviteGate", () => {
 
   it("should allow existing user (no invite check)", async () => {
     // getUserByAccount returns a user → existing
-    vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce({ id: "user-1" });
+    vi.mocked(mockDbRead.getUserByOAuthAccount).mockResolvedValueOnce({ id: "user-1" });
 
     const result = await handleInviteGate(
       makeReq(),
@@ -77,9 +77,19 @@ describe("handleInviteGate", () => {
     expect(vi.mocked(mockDbWrite.execute)).not.toHaveBeenCalled();
   });
 
+  it("allows new registrations when the typed setting disables invitations", async () => {
+    mockDbRead.getUserByOAuthAccount.mockResolvedValueOnce(null);
+    mockDbRead.getAppSetting.mockResolvedValueOnce("false");
+
+    expect(await handleInviteGate(makeReq(), GOOGLE_ACCOUNT, mockDbRead, mockDbWrite)).toBe(true);
+    expect(mockDbRead.getUserByOAuthAccount).toHaveBeenCalledWith("google", "google-123");
+    expect(mockDbRead.getAppSetting).toHaveBeenCalledWith("require_invite_code");
+    expect(mockDbWrite.execute).not.toHaveBeenCalled();
+  });
+
   it("should reject new user without invite cookie", async () => {
     // getUserByAccount returns null → new user
-    vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce(null);
+    vi.mocked(mockDbRead.getUserByOAuthAccount).mockResolvedValueOnce(null);
 
     const result = await handleInviteGate(
       makeReq(), // no cookies
@@ -92,7 +102,7 @@ describe("handleInviteGate", () => {
   });
 
   it("should reject new user with invalid format cookie", async () => {
-    vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce(null);
+    vi.mocked(mockDbRead.getUserByOAuthAccount).mockResolvedValueOnce(null);
 
     const result = await handleInviteGate(
       makeReq({ "pew-invite-code": "bad" }), // invalid format
@@ -106,7 +116,7 @@ describe("handleInviteGate", () => {
 
   it("should allow new user with valid invite cookie", async () => {
     // getUserByAccount → null (new user)
-    vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce(null);
+    vi.mocked(mockDbRead.getUserByOAuthAccount).mockResolvedValueOnce(null);
     // Atomic UPDATE succeeds
     vi.mocked(mockDbWrite.execute).mockResolvedValueOnce({
       changes: 1,
@@ -131,7 +141,7 @@ describe("handleInviteGate", () => {
   });
 
   it("should reject new user with already-used invite code (changes=0)", async () => {
-    vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce(null);
+    vi.mocked(mockDbRead.getUserByOAuthAccount).mockResolvedValueOnce(null);
     // Atomic UPDATE fails (code already used)
     vi.mocked(mockDbWrite.execute).mockResolvedValueOnce({
       changes: 0,
@@ -154,7 +164,7 @@ describe("handleInviteGate", () => {
       providerAccountId: "google-456",
       email: null,
     };
-    vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce(null);
+    vi.mocked(mockDbRead.getUserByOAuthAccount).mockResolvedValueOnce(null);
     vi.mocked(mockDbWrite.execute).mockResolvedValueOnce({
       changes: 1,
       duration: 0.01,
@@ -173,7 +183,7 @@ describe("handleInviteGate", () => {
   });
 
   it("should preserve callbackUrl in redirect URL", async () => {
-    vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce(null);
+    vi.mocked(mockDbRead.getUserByOAuthAccount).mockResolvedValueOnce(null);
 
     const result = await handleInviteGate(
       makeReq({ "authjs.callback-url": "/dashboard/settings" }),
@@ -192,7 +202,7 @@ describe("handleInviteGate", () => {
     const { shouldUseSecureCookies } = await import("@/auth");
     vi.mocked(shouldUseSecureCookies).mockReturnValue(true);
 
-    vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce(null);
+    vi.mocked(mockDbRead.getUserByOAuthAccount).mockResolvedValueOnce(null);
 
     const result = await handleInviteGate(
       makeReq({ "__Secure-authjs.callback-url": "/secure-dashboard" }),
@@ -222,7 +232,7 @@ describe("handleInviteGate", () => {
     expect(result).toBe(true);
 
     // Should NOT have queried the database at all
-    expect(vi.mocked(mockDbRead.firstOrNull)).not.toHaveBeenCalled();
+    expect(vi.mocked(mockDbRead.getUserByOAuthAccount)).not.toHaveBeenCalled();
   });
 
   it("should NOT skip check when RAILWAY_ENVIRONMENT is set (production guard)", async () => {
@@ -231,7 +241,7 @@ describe("handleInviteGate", () => {
     process.env.RAILWAY_ENVIRONMENT = "production";
 
     // New user (no existing account)
-    vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce(null);
+    vi.mocked(mockDbRead.getUserByOAuthAccount).mockResolvedValueOnce(null);
 
     try {
       const result = await handleInviteGate(
@@ -243,7 +253,7 @@ describe("handleInviteGate", () => {
       // Bypass should NOT trigger; full invite-gate logic runs and rejects
       expect(typeof result).toBe("string");
       expect(result).toContain("/login?error=InviteRequired");
-      expect(vi.mocked(mockDbRead.firstOrNull)).toHaveBeenCalled();
+      expect(vi.mocked(mockDbRead.getUserByOAuthAccount)).toHaveBeenCalled();
     } finally {
       delete process.env.RAILWAY_ENVIRONMENT;
     }
@@ -254,7 +264,7 @@ describe("handleInviteGate", () => {
     expect(result).toBe(true);
 
     // Should NOT have queried the database
-    expect(vi.mocked(mockDbRead.firstOrNull)).not.toHaveBeenCalled();
+    expect(vi.mocked(mockDbRead.getUserByOAuthAccount)).not.toHaveBeenCalled();
   });
 
   it("should handle null account gracefully", async () => {
@@ -271,7 +281,7 @@ describe("handleInviteGate", () => {
     vi.mocked(getDbWrite).mockResolvedValue(mockDbWrite as never);
 
     // getUserByAccount returns a user → existing
-    vi.mocked(mockDbRead.firstOrNull).mockResolvedValueOnce({ id: "user-1" });
+    vi.mocked(mockDbRead.getUserByOAuthAccount).mockResolvedValueOnce({ id: "user-1" });
 
     // Call without overrides — this exercises the fallback to getDbRead/getDbWrite
     const result = await handleInviteGate(

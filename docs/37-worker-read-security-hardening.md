@@ -1,6 +1,32 @@
 # 37. Worker-Read Security Hardening
 
-## Problem Statement
+## Current boundary (2026-09-25)
+
+The read Worker accepts domain methods and parameters through authenticated
+`POST /api/rpc`. SQL is defined inside the Worker and values are bound with D1
+prepared statements. `POST /api/query`, its SQL validator, and the web
+`DbRead.query` / `firstOrNull` adapter methods have been removed. An authenticated
+request to the old path returns 404 without touching D1. `GET /api/live` remains
+the public health endpoint.
+
+All web reads use typed `DbRead` methods, including automatic season registration,
+roster synchronization, the invite gate, organization management, and admin usage
+comparison. Existing user, team, organization and settings RPCs are reused. The
+remaining fixed queries live in the seasons and admin domains; comparison binds
+user IDs, UTC date boundaries, optional filters and the timezone modifier. Public
+organization member responses continue to omit email; admin responses retain it.
+
+Web routes remain responsible for user/admin authorization. This boundary limits
+which queries the read Worker can execute; the shared Worker secret does not
+represent an end user's identity. Writes still use `DbWrite` and the D1 REST
+adapter. Changes to authentication, cache authorization, season eligibility,
+request limits, lifecycle writes and numeric result guards are separate work.
+
+This records the source contract and local validation. Deployment and external
+verification are handled separately by the coordinator. The migration plan and
+counts below are historical and are superseded by this section.
+
+## Original Problem Statement
 
 `worker-read` is a generic SQL proxy that accepts arbitrary SELECT queries from the Next.js dashboard. The current write-statement guard uses a simple regex that only checks the SQL first word:
 
@@ -489,7 +515,7 @@ This reduces commits from 139 to ~20-25 domain-based batches.
 **packages/web/src/app/api/account/delete/route.ts** (1 call)
 - [ ] M140: `dbRead.firstOrNull<UserRow>` → `users.getById`
 
-## Progress Summary
+## Historical Progress Summary
 
 | Phase | Status | Details |
 |-------|--------|---------|
@@ -503,7 +529,7 @@ This reduces commits from 139 to ~20-25 domain-based batches.
 - M138-M140: organizations CRUD (join, leave, account/delete)
 - M023, M027, M029-M031: teams partial (getMembership, getLogoUrl, countMembers)
 
-## Execution Notes
+## Historical Execution Notes
 
 - Each migration item (M001-M139) is one atomic commit
 - Commit message format: `refactor(web): migrate {file} {call} to RPC`
