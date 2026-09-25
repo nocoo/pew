@@ -59,7 +59,7 @@ describe("POST /api/teams/join", () => {
   it("should reject unauthenticated with 401", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce(null);
 
-    const res = await POST(makeJson({ invite_code: "abc" }));
+    const res = await POST(makeJson({ invite_code: "abcdefabcdefabcdefabcdefabcdefab" }));
 
     expect(res.status).toBe(401);
   });
@@ -87,6 +87,13 @@ describe("POST /api/teams/join", () => {
     expect((await res.json()).error).toContain("invite_code is required");
   });
 
+  it.each(["01234567", "g".repeat(32), "0".repeat(33)])("rejects invalid invite format %s before lookup", async (code) => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    const res = await POST(makeJson({ invite_code: code }));
+    expect(res.status).toBe(400);
+    expect(mockDbRead.findTeamByInviteCode).not.toHaveBeenCalled();
+  });
+
   it("should reject empty invite_code", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
 
@@ -107,7 +114,7 @@ describe("POST /api/teams/join", () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
     mockDbRead.findTeamByInviteCode.mockResolvedValueOnce(null); // no team found
 
-    const res = await POST(makeJson({ invite_code: "bad-code" }));
+    const res = await POST(makeJson({ invite_code: "ffffffffffffffffffffffffffffffff" }));
 
     expect(res.status).toBe(404);
     expect((await res.json()).error).toContain("Invalid invite code");
@@ -118,7 +125,7 @@ describe("POST /api/teams/join", () => {
     mockDbRead.findTeamByInviteCode.mockResolvedValueOnce({ id: "t1", name: "Team", slug: "team" }); // team found
     mockDbRead.checkTeamMembershipExists.mockResolvedValueOnce(true); // already a member
 
-    const res = await POST(makeJson({ invite_code: "valid-code" }));
+    const res = await POST(makeJson({ invite_code: "0123456789abcdef0123456789abcdef" }));
 
     expect(res.status).toBe(409);
     expect((await res.json()).error).toContain("Already a member");
@@ -132,7 +139,7 @@ describe("POST /api/teams/join", () => {
     // Atomic INSERT ... SELECT succeeds (1 row inserted)
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
 
-    const res = await POST(makeJson({ invite_code: "valid-code" }));
+    const res = await POST(makeJson({ invite_code: "0123456789abcdef0123456789abcdef" }));
     const body = await res.json();
 
     expect(res.status).toBe(200);
@@ -152,7 +159,7 @@ describe("POST /api/teams/join", () => {
     // Atomic INSERT ... SELECT inserts 0 rows (team already at limit)
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 0 });
 
-    const res = await POST(makeJson({ invite_code: "valid-code" }));
+    const res = await POST(makeJson({ invite_code: "0123456789abcdef0123456789abcdef" }));
     const body = await res.json();
 
     expect(res.status).toBe(403);
@@ -168,7 +175,7 @@ describe("POST /api/teams/join", () => {
     // Atomic INSERT uses default limit of 5, succeeds
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
 
-    const res = await POST(makeJson({ invite_code: "valid-code" }));
+    const res = await POST(makeJson({ invite_code: "0123456789abcdef0123456789abcdef" }));
     expect(res.status).toBe(200);
   });
 
@@ -180,7 +187,7 @@ describe("POST /api/teams/join", () => {
     // Atomic INSERT uses default limit of 5, inserts 0 rows (at limit)
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 0 });
 
-    const res = await POST(makeJson({ invite_code: "valid-code" }));
+    const res = await POST(makeJson({ invite_code: "0123456789abcdef0123456789abcdef" }));
     expect(res.status).toBe(403);
     expect((await res.json()).error).toContain("5");
   });
@@ -193,7 +200,7 @@ describe("POST /api/teams/join", () => {
     // Atomic INSERT uses custom limit of 10, succeeds
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
 
-    const res = await POST(makeJson({ invite_code: "valid-code" }));
+    const res = await POST(makeJson({ invite_code: "0123456789abcdef0123456789abcdef" }));
     expect(res.status).toBe(200);
   });
 
@@ -201,7 +208,7 @@ describe("POST /api/teams/join", () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
     mockDbRead.findTeamByInviteCode.mockRejectedValueOnce(new Error("no such table: teams"));
 
-    const res = await POST(makeJson({ invite_code: "abc" }));
+    const res = await POST(makeJson({ invite_code: "abcdefabcdefabcdefabcdefabcdefab" }));
 
     expect(res.status).toBe(503);
   });
@@ -210,7 +217,7 @@ describe("POST /api/teams/join", () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
     mockDbRead.findTeamByInviteCode.mockRejectedValueOnce(new Error("D1 down"));
 
-    const res = await POST(makeJson({ invite_code: "abc" }));
+    const res = await POST(makeJson({ invite_code: "abcdefabcdefabcdefabcdefabcdefab" }));
 
     expect(res.status).toBe(500);
   });
@@ -223,7 +230,7 @@ describe("POST /api/teams/join", () => {
     // Atomic INSERT ... SELECT succeeds with 1 change
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 1 });
 
-    const res = await POST(makeJson({ invite_code: "valid-code" }));
+    const res = await POST(makeJson({ invite_code: "0123456789abcdef0123456789abcdef" }));
     expect(res.status).toBe(200);
 
     // Verify the INSERT uses a SELECT subquery (atomic pattern)
@@ -241,7 +248,7 @@ describe("POST /api/teams/join", () => {
     // Atomic INSERT ... SELECT inserts 0 rows (team became full concurrently)
     mockDbWrite.execute.mockResolvedValueOnce({ changes: 0 });
 
-    const res = await POST(makeJson({ invite_code: "valid-code" }));
+    const res = await POST(makeJson({ invite_code: "0123456789abcdef0123456789abcdef" }));
     expect(res.status).toBe(403);
     expect((await res.json()).error).toContain("Team is full");
   });
@@ -252,10 +259,10 @@ describe("POST /api/teams/join", () => {
     // Exhaust rate limit (5 requests per minute)
     for (let i = 0; i < 5; i++) {
       mockDbRead.findTeamByInviteCode.mockResolvedValueOnce(null);
-      await POST(makeJson({ invite_code: "code" }));
+      await POST(makeJson({ invite_code: "abcdefabcdefabcdefabcdefabcdefab" }));
     }
 
-    const res = await POST(makeJson({ invite_code: "code" }));
+    const res = await POST(makeJson({ invite_code: "abcdefabcdefabcdefabcdefabcdefab" }));
     expect(res.status).toBe(429);
     expect((await res.json()).error).toContain("Too many join attempts");
   });
@@ -272,7 +279,7 @@ describe("POST /api/teams/join", () => {
     };
     syncSeasonRosters.mockRejectedValueOnce(new Error("roster sync failed"));
 
-    const res = await POST(makeJson({ invite_code: "valid-code" }));
+    const res = await POST(makeJson({ invite_code: "0123456789abcdef0123456789abcdef" }));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.team_id).toBe("t1");

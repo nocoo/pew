@@ -41,6 +41,10 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!/^[a-f0-9]{32}$/.test(inviteCode)) {
+    return NextResponse.json({ error: "Invalid invite code format" }, { status: 400 });
+  }
+
   try {
     const dbRead = await getDbRead();
     const dbWrite = await getDbWrite();
