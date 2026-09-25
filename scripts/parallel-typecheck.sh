@@ -14,7 +14,7 @@ PIDS+=($!)
 tsc --noEmit -p packages/cli/tsconfig.json &
 PIDS+=($!)
 
-tsc --noEmit -p packages/web/tsconfig.json &
+bun run --cwd packages/web typecheck &
 PIDS+=($!)
 
 tsc --noEmit -p packages/worker/tsconfig.json &

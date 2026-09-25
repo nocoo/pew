@@ -6,6 +6,7 @@ coverage-tmp/
 .DS_Store
 
 # Next.js
+/packages/web/next-env.d.ts
 .next/
 .next-e2e/
 .next-e2e-ui/
