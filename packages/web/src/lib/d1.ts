@@ -95,21 +95,20 @@ export class D1Client {
     return result.meta;
   }
 
-  /**
-   * Execute multiple queries in a batch.
-   *
-   * The D1 REST API only accepts a single { sql, params } object per request,
-   * so we send each statement individually and collect results.
-   */
   async batch(
     statements: D1BatchStatement[]
   ): Promise<D1QueryResult[]> {
-    const results: D1QueryResult[] = [];
-    for (const s of statements) {
-      const result = await this.query(s.sql, s.params ?? []);
-      results.push(result);
+    if (statements.length === 0) return [];
+    const data = await this.request(`${this.baseUrl}/query`, JSON.stringify({
+      batch: statements.map(({ sql, params = [] }) => ({ sql, params })),
+    }));
+    if (data.result?.length !== statements.length || data.result.some((result) => result.success === false)) {
+      throw new D1Error("Invalid D1 batch result");
     }
-    return results;
+    return data.result.map((result) => ({
+      results: (result.results ?? []) as Record<string, unknown>[],
+      meta: result.meta ?? { changes: 0, duration: 0 },
+    }));
   }
 
   /**
@@ -129,7 +128,7 @@ export class D1Client {
 
   private async request(url: string, body: string): Promise<{
     success: boolean;
-    result?: Array<{ results?: unknown[]; meta?: D1Meta }>;
+    result?: Array<{ success?: boolean; results?: unknown[]; meta?: D1Meta }>;
     errors?: Array<{ message: string }>;
   }> {
     let response: Response;

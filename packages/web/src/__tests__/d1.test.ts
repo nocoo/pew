@@ -214,44 +214,35 @@ describe("D1Client", () => {
   });
 
   describe("batch()", () => {
-    it("should send individual queries for each statement", async () => {
-      mockFetch
-        .mockResolvedValueOnce(
-          mockD1Response([{ id: 1 }])
-        )
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              success: true,
-              result: [{ results: [], meta: { changes: 1, duration: 0.02 } }],
-            }),
-        });
-
-      const results = await client.batch([
+    it("submits every statement in one native D1 batch", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ success: true, result: [
+          { results: [{ id: 1 }], meta: { changes: 0, duration: 0.1 } },
+          { results: [], meta: { changes: 1, duration: 0.02 } },
+        ] }),
+      });
+      const statements = [
         { sql: "SELECT * FROM users WHERE id = ?", params: [1] },
-        {
-          sql: "INSERT INTO logs (msg) VALUES (?)",
-          params: ["hello"],
-        },
-      ]);
-
+        { sql: "INSERT INTO logs (msg) VALUES (?)", params: ["hello"] },
+      ];
+      const results = await client.batch(statements);
       expect(results).toHaveLength(2);
       expect(results[0]!.results).toEqual([{ id: 1 }]);
       expect(results[1]!.meta.changes).toBe(1);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(JSON.parse(mockFetch.mock.calls[0]![1].body)).toEqual({ batch: statements });
+    });
 
-      // Each statement is sent as a separate request
-      expect(mockFetch).toHaveBeenCalledTimes(2);
-      const body0 = JSON.parse(mockFetch.mock.calls[0]![1].body);
-      expect(body0).toEqual({
-        sql: "SELECT * FROM users WHERE id = ?",
-        params: [1],
-      });
-      const body1 = JSON.parse(mockFetch.mock.calls[1]![1].body);
-      expect(body1).toEqual({
-        sql: "INSERT INTO logs (msg) VALUES (?)",
-        params: ["hello"],
-      });
+    it("propagates a batch failure without retrying statements separately", async () => {
+      mockFetch.mockResolvedValueOnce(mockD1Response([], false));
+      await expect(client.batch([{ sql: "DELETE FROM team_members" }, { sql: "DELETE FROM teams" }])).rejects.toThrow("D1 error");
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([undefined, [], [{ success: false }]])("rejects incomplete or failed batch results (%j)", async (result) => {
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, result }) });
+      await expect(client.batch([{ sql: "SELECT 1" }])).rejects.toThrow("Invalid D1 batch result");
     });
 
     it("should return empty array for empty batch", async () => {
@@ -267,7 +258,7 @@ describe("D1Client", () => {
       await client.batch([{ sql: "SELECT 1" }]);
 
       const body = JSON.parse(mockFetch.mock.calls[0]![1].body);
-      expect(body.params).toEqual([]);
+      expect(body.batch[0].params).toEqual([]);
     });
   });
 
