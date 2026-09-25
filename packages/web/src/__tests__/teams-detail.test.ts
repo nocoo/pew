@@ -464,7 +464,7 @@ describe("DELETE /api/teams/[teamId]", () => {
   });
   it.each([
     ["active", 0, 409], ["active", 1, 200], ["upcoming", 0, 200], ["ended", 1, 409],
-    ["concurrent-member", 1, 409], ["late-failure", 1, 500],
+    ["concurrent-member", 1, 409], ["late-failure", 1, 500], ["closing-minute", 1, 200],
   ] as const)("enforces %s withdrawal=%s atomically", async (status, withdrawal, expected) => {
     const sqlite = new DatabaseSync(":memory:");
     sqlite.exec(`
@@ -478,7 +478,7 @@ describe("DELETE /api/teams/[teamId]", () => {
       INSERT INTO team_members VALUES ('t1', 'u1', 'owner');
     `);
     const start = status === "upcoming" ? "2999-01-01T00:00:00Z" : "2000-01-01T00:00:00Z";
-    const end = status === "ended" ? "2001-01-01T00:00:00Z" : "2999-12-31T00:00:00Z";
+    const end = status === "closing-minute" ? new Date(Date.now() - 30_000).toISOString() : status === "ended" ? "2001-01-01T00:00:00Z" : "2999-12-31T00:00:00Z";
     sqlite.prepare("INSERT INTO seasons VALUES ('s1', ?, ?, ?, 0)").run(start, end, withdrawal);
     sqlite.exec("INSERT INTO season_teams VALUES ('t1', 's1'); INSERT INTO season_team_members VALUES ('t1', 's1', 'u1');");
     if (status === "concurrent-member") sqlite.exec("INSERT INTO team_members VALUES ('t1', 'u2', 'member')");

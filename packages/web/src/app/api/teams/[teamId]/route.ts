@@ -244,7 +244,7 @@ export async function DELETE(
     }
 
     const lockedSeason = `SELECT 1 FROM season_teams st JOIN seasons s ON s.id = st.season_id
-      WHERE st.team_id = ? AND (julianday(s.end_date) < julianday('now') OR
+      WHERE st.team_id = ? AND (julianday(s.end_date, '+1 minute') <= julianday('now') OR
         (julianday(s.start_date) <= julianday('now') AND COALESCE(s.allow_late_withdrawal, 0) = 0))`;
     const emptyTeam = "NOT EXISTS (SELECT 1 FROM team_members WHERE team_id = ?)";
     const results = await dbWrite.batch([
@@ -261,7 +261,7 @@ export async function DELETE(
           (${emptyTeam} AND NOT EXISTS (${lockedSeason})) OR
           (user_id = ? AND NOT EXISTS (SELECT 1 FROM team_members WHERE team_id = ? AND user_id = ?)
             AND season_id IN (SELECT id FROM seasons WHERE allow_roster_changes = 1
-              AND julianday(start_date) <= julianday('now') AND julianday(end_date) >= julianday('now'))))`,
+              AND julianday(start_date) <= julianday('now') AND julianday(end_date, '+1 minute') > julianday('now'))))`,
         params: [teamId, teamId, teamId, authResult.userId, teamId, authResult.userId],
       },
       {
