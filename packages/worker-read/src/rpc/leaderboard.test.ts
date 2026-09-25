@@ -433,7 +433,7 @@ describe("leaderboard RPC handlers", () => {
       expect(response.status).toBe(200);
       const body = (await response.json()) as { result: typeof rows };
       expect(body.result).toEqual(rows);
-      expect(db.bind).toHaveBeenCalledWith("u1", "u2");
+      expect(db.bind).toHaveBeenCalledWith(JSON.stringify(["u1", "u2"]));
     });
 
     it("should return empty array when userIds is empty", async () => {
@@ -512,7 +512,7 @@ describe("leaderboard RPC handlers", () => {
 
       expect(response.status).toBe(200);
       expect(body).toEqual({ result: mockStats });
-      expect(db.bind).toHaveBeenCalledWith("u1");
+      expect(db.bind).toHaveBeenCalledWith(JSON.stringify(["u1"]));
     });
 
     it("should return empty array for empty userIds", async () => {
@@ -539,7 +539,7 @@ describe("leaderboard RPC handlers", () => {
       };
       await handleLeaderboardRpc(request, db, kv);
 
-      expect(db.bind).toHaveBeenCalledWith("u1", "u2", "2026-03-01T00:00:00.000Z");
+      expect(db.bind).toHaveBeenCalledWith(JSON.stringify(["u1", "u2"]), "2026-03-01T00:00:00.000Z");
       const sql = db.prepare.mock.calls[0][0] as string;
       expect(sql).toContain("sr.started_at >= ?");
     });
@@ -554,7 +554,7 @@ describe("leaderboard RPC handlers", () => {
       };
       await handleLeaderboardRpc(request, db, kv);
 
-      expect(db.bind).toHaveBeenCalledWith("u1", "claude-code");
+      expect(db.bind).toHaveBeenCalledWith(JSON.stringify(["u1"]), "claude-code");
       const sql = db.prepare.mock.calls[0][0] as string;
       expect(sql).toContain("sr.source = ?");
     });
@@ -571,7 +571,7 @@ describe("leaderboard RPC handlers", () => {
       await handleLeaderboardRpc(request, db, kv);
 
       // Params order: userIds, fromDate, source
-      expect(db.bind).toHaveBeenCalledWith("u1", "2026-01-01T00:00:00.000Z", "gemini-cli");
+      expect(db.bind).toHaveBeenCalledWith(JSON.stringify(["u1"]), "2026-01-01T00:00:00.000Z", "gemini-cli");
       const sql = db.prepare.mock.calls[0][0] as string;
       expect(sql).toContain("sr.started_at >= ?");
       expect(sql).toContain("sr.source = ?");

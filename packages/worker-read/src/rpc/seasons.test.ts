@@ -821,10 +821,10 @@ describe("seasons RPC handlers", () => {
       const res = await handleSeasonsRpc(req, db, kv);
       expect(res.status).toBe(200);
       expect(await res.json()).toEqual({ result: rows });
-      // Verify placeholders count & bind order: fromDate, toDate, seasonId, ...teamIds
+      // Identifier lists use one JSON parameter regardless of cardinality.
       const sql = (db.prepare as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
-      expect(sql).toContain("IN (?,?)");
-      expect(db.bind).toHaveBeenCalledWith("a", "b", "s1", "t1", "t2");
+      expect(sql).toContain("IN (SELECT value FROM json_each(?))");
+      expect(db.bind).toHaveBeenCalledWith("a", "b", "s1", JSON.stringify(["t1", "t2"]));
     });
 
     it("should return 400 when teamIds is empty array", async () => {

@@ -154,15 +154,14 @@ export async function POST(
     //    a re-run will clean them up (idempotent convergence).
     const activeTeamIds = teamRows.map((r) => r.team_id);
     if (activeTeamIds.length > 0) {
-      const ph = activeTeamIds.map(() => "?").join(",");
       await dbWrite.batch([
         {
-          sql: `DELETE FROM season_member_snapshots WHERE season_id = ? AND team_id NOT IN (${ph})`,
-          params: [seasonId, ...activeTeamIds],
+          sql: `DELETE FROM season_member_snapshots WHERE season_id = ? AND team_id NOT IN (SELECT value FROM json_each(?))`,
+          params: [seasonId, JSON.stringify(activeTeamIds)],
         },
         {
-          sql: `DELETE FROM season_snapshots WHERE season_id = ? AND team_id NOT IN (${ph})`,
-          params: [seasonId, ...activeTeamIds],
+          sql: `DELETE FROM season_snapshots WHERE season_id = ? AND team_id NOT IN (SELECT value FROM json_each(?))`,
+          params: [seasonId, JSON.stringify(activeTeamIds)],
         },
       ]);
     } else {
@@ -190,10 +189,9 @@ export async function POST(
       }
       const cleanupStatements = [];
       for (const [teamId, userIds] of membersByTeam) {
-        const ph = userIds.map(() => "?").join(",");
         cleanupStatements.push({
-          sql: `DELETE FROM season_member_snapshots WHERE season_id = ? AND team_id = ? AND user_id NOT IN (${ph})`,
-          params: [seasonId, teamId, ...userIds],
+          sql: `DELETE FROM season_member_snapshots WHERE season_id = ? AND team_id = ? AND user_id NOT IN (SELECT value FROM json_each(?))`,
+          params: [seasonId, teamId, JSON.stringify(userIds)],
         });
       }
       if (cleanupStatements.length > 0) {

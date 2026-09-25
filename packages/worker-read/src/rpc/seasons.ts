@@ -377,14 +377,13 @@ async function handleCheckSeasonMemberConflict(
     );
   }
 
-  const placeholders = req.userIds.map(() => "?").join(",");
   const result = await db
     .prepare(
       `SELECT user_id FROM season_team_members
-       WHERE season_id = ? AND user_id IN (${placeholders})
+       WHERE season_id = ? AND user_id IN (SELECT value FROM json_each(?))
        LIMIT 1`
     )
-    .bind(req.seasonId, ...req.userIds)
+    .bind(req.seasonId, JSON.stringify(req.userIds))
     .first<{ user_id: string }>();
 
   return Response.json({ result: result });
@@ -504,7 +503,6 @@ async function handleGetSeasonMemberTokens(
     );
   }
 
-  const placeholders = req.teamIds.map(() => "?").join(",");
   let sql = `SELECT
       tm.team_id,
       tm.user_id,
@@ -523,7 +521,7 @@ async function handleGetSeasonMemberTokens(
       AND ur.hour_start >= ?
       AND ur.hour_start < ?
     WHERE tm.season_id = ?
-      AND tm.team_id IN (${placeholders})`;
+      AND tm.team_id IN (SELECT value FROM json_each(?))`;
 
   if (req.publicOnly) {
     sql += ` AND u.is_public = 1`;
@@ -533,7 +531,7 @@ async function handleGetSeasonMemberTokens(
 
   const results = await db
     .prepare(sql)
-    .bind(req.fromDate, req.toDate, req.seasonId, ...req.teamIds)
+    .bind(req.fromDate, req.toDate, req.seasonId, JSON.stringify(req.teamIds))
     .all<MemberTokenRow>();
 
   return Response.json({ result: results.results });
@@ -550,7 +548,6 @@ async function handleGetSeasonTeamSessionStats(
     );
   }
 
-  const placeholders = req.teamIds.map(() => "?").join(",");
   const results = await db
     .prepare(
       `SELECT stm.team_id,
@@ -561,10 +558,10 @@ async function handleGetSeasonTeamSessionStats(
          AND sr.started_at >= ?
          AND sr.started_at < ?
        WHERE stm.season_id = ?
-         AND stm.team_id IN (${placeholders})
+         AND stm.team_id IN (SELECT value FROM json_each(?))
        GROUP BY stm.team_id`
     )
-    .bind(req.fromDate, req.toDate, req.seasonId, ...req.teamIds)
+    .bind(req.fromDate, req.toDate, req.seasonId, JSON.stringify(req.teamIds))
     .all<TeamSessionStatsRow>();
 
   return Response.json({ result: results.results });
@@ -581,7 +578,6 @@ async function handleGetSeasonMemberSessionStats(
     );
   }
 
-  const placeholders = req.teamIds.map(() => "?").join(",");
   const results = await db
     .prepare(
       `SELECT stm.team_id,
@@ -593,10 +589,10 @@ async function handleGetSeasonMemberSessionStats(
          AND sr.started_at >= ?
          AND sr.started_at < ?
        WHERE stm.season_id = ?
-         AND stm.team_id IN (${placeholders})
+         AND stm.team_id IN (SELECT value FROM json_each(?))
        GROUP BY stm.team_id, stm.user_id`
     )
-    .bind(req.fromDate, req.toDate, req.seasonId, ...req.teamIds)
+    .bind(req.fromDate, req.toDate, req.seasonId, JSON.stringify(req.teamIds))
     .all<MemberSessionStatsRow>();
 
   return Response.json({ result: results.results });
@@ -663,7 +659,6 @@ async function handleAggregateMemberTokens(
     );
   }
 
-  const placeholders = req.teamIds.map(() => "?").join(",");
   const results = await db
     .prepare(
       `SELECT
@@ -678,11 +673,11 @@ async function handleAggregateMemberTokens(
         AND ur.hour_start >= ?
         AND ur.hour_start < ?
       WHERE tm.season_id = ?
-        AND tm.team_id IN (${placeholders})
+        AND tm.team_id IN (SELECT value FROM json_each(?))
       GROUP BY tm.team_id, tm.user_id
       ORDER BY total_tokens DESC`
     )
-    .bind(req.fromDate, req.toDate, req.seasonId, ...req.teamIds)
+    .bind(req.fromDate, req.toDate, req.seasonId, JSON.stringify(req.teamIds))
     .all<MemberAggRow>();
 
   return Response.json({ result: results.results });

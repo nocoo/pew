@@ -255,18 +255,17 @@ async function handleGetUserTeams(
     return Response.json({ result: [] });
   }
 
-  const placeholders = req.userIds.map(() => "?").join(",");
   const sql = `
     SELECT tm.user_id, t.id AS team_id, t.name AS team_name, t.logo_url
     FROM team_members tm
     JOIN teams t ON t.id = tm.team_id
-    WHERE tm.user_id IN (${placeholders})
+    WHERE tm.user_id IN (SELECT value FROM json_each(?))
   `;
 
   try {
     const results = await db
       .prepare(sql)
-      .bind(...req.userIds)
+      .bind(JSON.stringify(req.userIds))
       .all<UserTeamMembershipRow>();
     return Response.json({ result: results.results });
   } catch {
@@ -290,9 +289,8 @@ async function handleGetUserSessionStats(
     JSON.stringify([userIds, req.fromDate ?? "", req.source ?? ""])
   ));
   const cacheKey = `lb:sessions:${Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("")}`;
-  const placeholders = userIds.map(() => "?").join(",");
-  const conditions = [`sr.user_id IN (${placeholders})`];
-  const params: unknown[] = [...userIds];
+  const conditions = [`sr.user_id IN (SELECT value FROM json_each(?))`];
+  const params: unknown[] = [JSON.stringify(userIds)];
 
   if (req.fromDate) {
     conditions.push("sr.started_at >= ?");
