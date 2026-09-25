@@ -290,6 +290,19 @@ describe("handler runtime — chain guard", () => {
 });
 
 describe("handler runtime — sync gate + forward gate (Codex)", () => {
+  it("records a missing installation without launching a replacement package", () => {
+    const fs = emptyState();
+    const spawns: SpawnRecord[] = [];
+    callHandler(compileHandler(STATE_DIR, PEW_BIN), {
+      stateDir: STATE_DIR, pewBin: PEW_BIN, source: "claude-code", now: T,
+      fsState: fs, spawnRecords: spawns,
+    });
+    expect(spawns).toEqual([]);
+    expect(JSON.parse(fs.files.get(`${STATE_DIR}/last-notify-guard.json`)!.data)).toMatchObject({
+      reason: "pew_binary_missing",
+    });
+  });
+
   it("100 same-bucket calls: signal append 100, Pew spawn 1, Codex saved-original spawn 1", () => {
     const ctx = compileHandler(STATE_DIR, PEW_BIN);
     const fs = emptyState();

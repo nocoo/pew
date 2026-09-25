@@ -201,13 +201,14 @@ function tryAcquire(gatePath) {
 }
 
 function spawnPewWorker() {
-  const bin = existsSync(PEW_BIN) ? PEW_BIN : "npx";
-  const args = bin === PEW_BIN
-    ? ["notify", "--source=" + source, "--not-before=" + notBefore, ...payloadArgs]
-    : ["@nocoo/pew", "notify", "--source=" + source, "--not-before=" + notBefore, ...payloadArgs];
+  if (!existsSync(PEW_BIN)) {
+    writeDiagnostic({ reason: "pew_binary_missing", message: "Repair the Pew installation and run pew init." });
+    return;
+  }
+  const args = ["notify", "--source=" + source, "--not-before=" + notBefore, ...payloadArgs];
   const nextChain = chainIds.concat(INSTANCE_ID).join(",");
   try {
-    const child = spawn(bin, args, {
+    const child = spawn(PEW_BIN, args, {
       detached: true,
       stdio: "ignore",
       env: Object.assign({}, process.env, { PEW_NOTIFY_CHAIN: nextChain }),

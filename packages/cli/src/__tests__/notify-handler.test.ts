@@ -55,14 +55,14 @@ describe("buildNotifyHandler", () => {
     expect(source).toContain("codex_notify_original.json");
   });
 
-  it("falls back to npx when the baked binary is missing", () => {
+  it("never resolves the worker through a package manager", () => {
     const source = buildNotifyHandler({
       stateDir: "/tmp/pew",
       pewBin: "/tmp/bin/pew",
     });
 
-    expect(source).toContain('const bin = existsSync(PEW_BIN) ? PEW_BIN : "npx";');
-    expect(source).toContain('"@nocoo/pew"');
+    expect(source).not.toContain('"npx"');
+    expect(source).not.toContain('"@nocoo/pew"');
   });
 });
 
