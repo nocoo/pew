@@ -6,9 +6,7 @@
  * Skips teams that would cause a member conflict (user already
  * registered on another team for the same season).
  *
- * IMPORTANT: This function enforces the same rules as manual registration:
- * - Cannot register for ended seasons
- * - Cannot register for active seasons without allow_late_registration
+ * Automatic registration is limited to upcoming seasons, so owners can withdraw before they start.
  */
 
 import type { DbRead, DbWrite } from "@/lib/db";
@@ -31,9 +29,7 @@ export interface AutoRegisterResult {
  *   - Not already registered for this season
  *   - No member conflicts (each user can only be on one team per season)
  *
- * The season must also be eligible:
- *   - Not ended
- *   - If active, must have allow_late_registration enabled
+ * The season must not have started.
  *
  * Returns details about the registration result.
  */
@@ -42,14 +38,11 @@ export async function autoRegisterTeamsForSeason(
   dbWrite: DbWrite,
   seasonId: string,
 ): Promise<AutoRegisterResult> {
-  // First, check if the season is eligible for registration
-  // (same rules as manual registration in register/route.ts)
   const season = await dbRead.firstOrNull<{
     start_date: string;
     end_date: string;
-    allow_late_registration: number;
   }>(
-    "SELECT start_date, end_date, allow_late_registration FROM seasons WHERE id = ?",
+    "SELECT start_date, end_date FROM seasons WHERE id = ?",
     [seasonId],
   );
 
@@ -58,12 +51,7 @@ export async function autoRegisterTeamsForSeason(
   }
 
   const status = deriveSeasonStatus(season.start_date, season.end_date);
-  if (status === "ended") {
-    // Cannot auto-register for ended seasons
-    return { registered: 0, skipped: 0, seasonEligible: false };
-  }
-  if (status === "active" && !season.allow_late_registration) {
-    // Cannot auto-register for active seasons without late registration
+  if (status !== "upcoming") {
     return { registered: 0, skipped: 0, seasonEligible: false };
   }
 

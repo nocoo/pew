@@ -156,8 +156,7 @@ export async function POST(request: Request) {
     );
 
     // Auto-register teams that have opted in (best-effort, don't fail the request)
-    // Note: autoRegisterTeamsForSeason enforces the same rules as manual registration
-    // (no ended seasons, no active seasons without late_registration)
+    // Auto-registration only applies before the season starts.
     let autoRegistered = 0;
     try {
       const result = await autoRegisterTeamsForSeason(dbRead, dbWrite, id);

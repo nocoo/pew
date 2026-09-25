@@ -83,14 +83,16 @@ describe("autoRegisterTeamsForSeason", () => {
     expect(mockDbRead.query).not.toHaveBeenCalled();
   });
 
-  it("should allow registration for active seasons with late registration enabled", async () => {
+  it("does not auto-register an active season even when late registration is allowed", async () => {
     mockDbRead.firstOrNull.mockResolvedValueOnce(mockActiveSeason(true));
     mockDbRead.query.mockResolvedValueOnce({ results: [] }); // no teams
 
     const result = await autoRegisterTeamsForSeason(mockDbRead, mockDbWrite, "season-1");
 
-    expect(result.seasonEligible).toBe(true);
+    expect(result.seasonEligible).toBe(false);
     expect(result.registered).toBe(0);
+    expect(mockDbRead.query).not.toHaveBeenCalled();
+    expect(mockDbWrite.batch).not.toHaveBeenCalled();
   });
 
   it("should return seasonEligible=false when season not found", async () => {

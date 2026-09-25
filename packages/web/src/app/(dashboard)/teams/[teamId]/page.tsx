@@ -198,8 +198,8 @@ function AutoRegisterToggle({
           )}
         </div>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          When enabled, your team will be automatically registered for every new
-          season. You can still manually withdraw from individual seasons.
+          When enabled, your team will be automatically registered for new upcoming
+          seasons. You can withdraw before a season starts; later withdrawal follows its rules.
         </p>
       </div>
     </div>
