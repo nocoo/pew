@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { DatabaseSync } from "node:sqlite";
 import { createMockDbRead, createMockDbWrite, loadMockedAuthHelpers } from "./test-utils";
 
 // ---------------------------------------------------------------------------
@@ -374,7 +375,7 @@ describe("DELETE /api/teams/[teamId]", () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u2" });
     mockDbRead.getTeamMembership.mockResolvedValueOnce("member"); // not owner
     mockDbRead.countTeamMembers.mockResolvedValueOnce(3); // 3 members
-    mockDbWrite.execute.mockResolvedValue({ changes: 1 });
+    mockDbWrite.batch.mockResolvedValue([{ results: [{ user_id: "u2" }], meta: { changes: 1, duration: 0 } }]);
 
     const res = await DELETE(makeRequest("DELETE"), makeParams());
     const body = await res.json();
@@ -382,8 +383,8 @@ describe("DELETE /api/teams/[teamId]", () => {
     expect(res.status).toBe(200);
     expect(body.ok).toBe(true);
     // Should only delete membership, NOT the team
-    expect(mockDbWrite.execute).toHaveBeenCalledTimes(1);
-    expect(mockDbWrite.execute.mock.calls[0]![0]).toContain("DELETE FROM team_members");
+    expect(mockDbWrite.execute).not.toHaveBeenCalled();
+    expect(mockDbWrite.batch.mock.calls[0]![0][0]!.sql).toContain("DELETE FROM team_members");
   });
 
   it("should delete team when last member leaves", async () => {
@@ -392,15 +393,13 @@ describe("DELETE /api/teams/[teamId]", () => {
     mockDbRead.countTeamMembers.mockResolvedValueOnce(1); // last member
     mockDbRead.getTeamLogoUrl.mockResolvedValueOnce(null);
     mockDbWrite.execute.mockResolvedValue({ changes: 1 });
-    mockDbWrite.batch.mockResolvedValue([]);
+    mockDbWrite.batch.mockResolvedValue([{ results: [{ user_id: "u1" }], meta: { changes: 1, duration: 0 } }, { results: [], meta: { changes: 0, duration: 0 } }, { results: [], meta: { changes: 0, duration: 0 } }, { results: [{ logo_url: "https://r2.example.com/logo.png" }], meta: { changes: 1, duration: 0 } }]);
 
     const res = await DELETE(makeRequest("DELETE"), makeParams());
 
     expect(res.status).toBe(200);
-    // Should delete membership first
-    expect(mockDbWrite.execute).toHaveBeenCalledTimes(1);
-    expect(mockDbWrite.execute.mock.calls[0]![0]).toContain("DELETE FROM team_members");
-    // Then batch delete season_teams + team (preserving season_roster_snapshots for history)
+    expect(mockDbWrite.execute).not.toHaveBeenCalled();
+    expect(mockDbWrite.batch.mock.calls[0]![0][0]!.sql).toContain("DELETE FROM team_members");
     expect(mockDbWrite.batch).toHaveBeenCalledTimes(1);
     const batchCalls = mockDbWrite.batch.mock.calls[0]![0] as Array<{ sql: string }>;
     expect(batchCalls.some((s) => s.sql.includes("DELETE FROM season_teams"))).toBe(true);
@@ -418,7 +417,7 @@ describe("DELETE /api/teams/[teamId]", () => {
     mockDbRead.countTeamMembers.mockResolvedValueOnce(1);
     mockDbRead.getTeamLogoUrl.mockResolvedValueOnce("https://r2.example.com/logo.png");
     mockDbWrite.execute.mockResolvedValue({ changes: 1 });
-    mockDbWrite.batch.mockResolvedValue([]);
+    mockDbWrite.batch.mockResolvedValue([{ results: [{ user_id: "u1" }], meta: { changes: 1, duration: 0 } }, { results: [], meta: { changes: 0, duration: 0 } }, { results: [], meta: { changes: 0, duration: 0 } }, { results: [{ logo_url: "https://r2.example.com/logo.png" }], meta: { changes: 1, duration: 0 } }]);
     deleteTeamLogoByUrl.mockResolvedValueOnce(undefined);
 
     const res = await DELETE(makeRequest("DELETE"), makeParams());
@@ -436,7 +435,7 @@ describe("DELETE /api/teams/[teamId]", () => {
     mockDbRead.countTeamMembers.mockResolvedValueOnce(1);
     mockDbRead.getTeamLogoUrl.mockResolvedValueOnce("https://r2.example.com/logo.png");
     mockDbWrite.execute.mockResolvedValue({ changes: 1 });
-    mockDbWrite.batch.mockResolvedValue([]);
+    mockDbWrite.batch.mockResolvedValue([{ results: [{ user_id: "u1" }], meta: { changes: 1, duration: 0 } }, { results: [], meta: { changes: 0, duration: 0 } }, { results: [], meta: { changes: 0, duration: 0 } }, { results: [{ logo_url: "https://r2.example.com/logo.png" }], meta: { changes: 1, duration: 0 } }]);
     deleteTeamLogoByUrl.mockRejectedValueOnce(new Error("R2 unavailable"));
 
     const res = await DELETE(makeRequest("DELETE"), makeParams());
@@ -463,6 +462,53 @@ describe("DELETE /api/teams/[teamId]", () => {
 
     expect(res.status).toBe(500);
   });
+  it.each([
+    ["active", 0, 409], ["active", 1, 200], ["upcoming", 0, 200], ["ended", 1, 409],
+    ["concurrent-member", 1, 409], ["late-failure", 1, 500],
+  ] as const)("enforces %s withdrawal=%s atomically", async (status, withdrawal, expected) => {
+    const sqlite = new DatabaseSync(":memory:");
+    sqlite.exec(`
+      PRAGMA foreign_keys = ON;
+      CREATE TABLE teams (id TEXT PRIMARY KEY, logo_url TEXT);
+      CREATE TABLE team_members (team_id TEXT REFERENCES teams(id), user_id TEXT, role TEXT);
+      CREATE TABLE seasons (id TEXT PRIMARY KEY, start_date TEXT, end_date TEXT, allow_late_withdrawal INTEGER, allow_roster_changes INTEGER);
+      CREATE TABLE season_teams (team_id TEXT REFERENCES teams(id), season_id TEXT REFERENCES seasons(id));
+      CREATE TABLE season_team_members (team_id TEXT REFERENCES teams(id), season_id TEXT REFERENCES seasons(id), user_id TEXT);
+      INSERT INTO teams VALUES ('t1', NULL);
+      INSERT INTO team_members VALUES ('t1', 'u1', 'owner');
+    `);
+    const start = status === "upcoming" ? "2999-01-01T00:00:00Z" : "2000-01-01T00:00:00Z";
+    const end = status === "ended" ? "2001-01-01T00:00:00Z" : "2999-12-31T00:00:00Z";
+    sqlite.prepare("INSERT INTO seasons VALUES ('s1', ?, ?, ?, 0)").run(start, end, withdrawal);
+    sqlite.exec("INSERT INTO season_teams VALUES ('t1', 's1'); INSERT INTO season_team_members VALUES ('t1', 's1', 'u1');");
+    if (status === "concurrent-member") sqlite.exec("INSERT INTO team_members VALUES ('t1', 'u2', 'member')");
+    if (status === "late-failure") sqlite.exec("CREATE TABLE retained (team_id TEXT REFERENCES teams(id)); INSERT INTO retained VALUES ('t1')");
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1" });
+    mockDbRead.getTeamMembership.mockResolvedValueOnce("owner");
+    mockDbRead.countTeamMembers.mockResolvedValueOnce(1);
+    mockDbWrite.batch.mockImplementation(async (statements: Array<{ sql: string; params?: unknown[] }>) => {
+      sqlite.exec("BEGIN");
+      try {
+        const results = statements.map(({ sql, params }) => ({
+          results: sqlite.prepare(sql).all(...(params ?? []) as Array<string | number | null>),
+          meta: { changes: 0, duration: 0 },
+        }));
+        sqlite.exec("COMMIT");
+        return results;
+      } catch (error) {
+        sqlite.exec("ROLLBACK");
+        throw error;
+      }
+    });
+    try {
+      const res = await DELETE(makeRequest("DELETE"), makeParams());
+      expect(res.status).toBe(expected);
+      for (const table of ["teams", "team_members", "season_teams", "season_team_members"]) {
+        expect(sqlite.prepare(`SELECT COUNT(*) AS n FROM ${table}`).get()!.n).toBe(expected === 200 ? 0 : table === "team_members" && status === "concurrent-member" ? 2 : 1);
+      }
+    } finally { sqlite.close(); }
+  });
+
 });
 
 // ---------------------------------------------------------------------------

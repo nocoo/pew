@@ -11,7 +11,6 @@ import { resolveUser } from "@/lib/auth-helpers";
 
 import { getDbRead, getDbWrite } from "@/lib/db";
 import { deleteTeamLogoByUrl } from "@/lib/r2";
-import { syncSeasonRosters } from "@/lib/season-roster";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -244,38 +243,48 @@ export async function DELETE(
       );
     }
 
-    // Remove membership
-    await dbWrite.execute(
-      "DELETE FROM team_members WHERE team_id = ? AND user_id = ?",
-      [teamId, authResult.userId],
-    );
-
-    // Sync season rosters if any active season allows roster changes
-    try {
-      await syncSeasonRosters(dbRead, dbWrite, teamId);
-    } catch (err) {
-      console.error("Failed to sync season rosters after leave:", err);
+    const lockedSeason = `SELECT 1 FROM season_teams st JOIN seasons s ON s.id = st.season_id
+      WHERE st.team_id = ? AND (julianday(s.end_date) < julianday('now') OR
+        (julianday(s.start_date) <= julianday('now') AND COALESCE(s.allow_late_withdrawal, 0) = 0))`;
+    const emptyTeam = "NOT EXISTS (SELECT 1 FROM team_members WHERE team_id = ?)";
+    const results = await dbWrite.batch([
+      {
+        sql: `DELETE FROM team_members WHERE team_id = ? AND user_id = ?
+          AND (role != 'owner' OR NOT EXISTS (
+            SELECT 1 FROM team_members WHERE team_id = ? AND user_id != ?))
+          AND (EXISTS (SELECT 1 FROM team_members WHERE team_id = ? AND user_id != ?)
+            OR NOT EXISTS (${lockedSeason})) RETURNING user_id`,
+        params: [teamId, authResult.userId, teamId, authResult.userId, teamId, authResult.userId, teamId],
+      },
+      {
+        sql: `DELETE FROM season_team_members WHERE team_id = ? AND (
+          (${emptyTeam} AND NOT EXISTS (${lockedSeason})) OR
+          (user_id = ? AND NOT EXISTS (SELECT 1 FROM team_members WHERE team_id = ? AND user_id = ?)
+            AND season_id IN (SELECT id FROM seasons WHERE allow_roster_changes = 1
+              AND julianday(start_date) <= julianday('now') AND julianday(end_date) >= julianday('now'))))`,
+        params: [teamId, teamId, teamId, authResult.userId, teamId, authResult.userId],
+      },
+      {
+        sql: `DELETE FROM season_teams WHERE team_id = ? AND ${emptyTeam} AND NOT EXISTS (${lockedSeason})`,
+        params: [teamId, teamId, teamId],
+      },
+      {
+        sql: `DELETE FROM teams WHERE id = ? AND ${emptyTeam} AND NOT EXISTS (${lockedSeason}) RETURNING logo_url`,
+        params: [teamId, teamId, teamId],
+      },
+    ]);
+    if (!results[0]?.results.length) {
+      return NextResponse.json(
+        { error: "Team membership changed or season rules prevent deleting this team" },
+        { status: 409 },
+      );
     }
-
-    // If last member, delete the team and its logo
-    if (memberCount <= 1) {
-      // Read logo URL before deleting
-      const logoUrl = await dbRead.getTeamLogoUrl(teamId);
-
-      // Clean up season_teams before deleting team
-      // NOTE: season_roster_snapshots are preserved for historical leaderboard data
-      await dbWrite.batch([
-        { sql: "DELETE FROM season_teams WHERE team_id = ?", params: [teamId] },
-        { sql: "DELETE FROM teams WHERE id = ?", params: [teamId] },
-      ]);
-
-      // Best-effort logo cleanup — don't fail the request if R2 is unavailable
-      if (logoUrl) {
-        try {
-          await deleteTeamLogoByUrl(logoUrl);
-        } catch {
-          // Silently ignore — orphaned R2 object is harmless
-        }
+    const logoUrl = results[3]?.results[0]?.logo_url;
+    if (typeof logoUrl === "string" && logoUrl) {
+      try {
+        await deleteTeamLogoByUrl(logoUrl);
+      } catch {
+        // Database deletion has committed; logo cleanup is best effort.
       }
     }
 
