@@ -98,3 +98,7 @@ worktree; dependency links alone do not install Git hooks.
 ### 2026-09-25 — Verify hook launchers in isolated worktrees
 
 The security ingest checkout had materialized dependencies and `core.hooksPath=.husky/_`, but lacked the ignored Husky launchers. The first local body-limit commit therefore completed without running pre-commit. The missing launcher was detected immediately from the absent gate output, Husky was initialized using the existing installed package, and the commit was amended through the normal full staged-tree gate. Before committing in a fresh worktree, verify both the configured hook path and its executable launcher; the configuration value alone does not prove activation.
+
+## 2026-09-25 — Visibility checks after cached pagination lose public rows
+
+The first privacy fix filtered cached leaderboard pages after pagination. Independent review reproduced an early end to a page even though more public users existed, and the coordinator found that the 100-row page plus lookahead exceeded D1's 100-parameter limit. Revalidating one page also cannot repair offsets changed by a private user on an earlier page. Removed the global result cache so visibility, ordering and pagination execute together in SQL. A real SQLite regression covers privacy changes, deletion, successive pages and 101-row lookahead. Test authorization filtering together with pagination, not just the removal of a private row.

@@ -253,70 +253,21 @@ describe("leaderboard RPC handlers", () => {
       { user_id: "u1", name: "alice", nickname: null, image: null, slug: "alice", total_tokens: 1000000, input_tokens: 600000, output_tokens: 400000, cached_input_tokens: 50000 },
     ];
 
-    it("should cache public (non-scoped) leaderboard requests", async () => {
-      db.all.mockResolvedValue({ results: mockRows });
-
-      const request: GetGlobalLeaderboardRequest = {
-        method: "leaderboard.getGlobal",
-        limit: 20,
-      };
-      const response = await handleLeaderboardRpc(request, db, kv);
-      const body = await response.json();
-
-      expect(response.status).toBe(200);
-      expect(body).toEqual({ result: mockRows, _cached: false });
-      expect(kv.get).toHaveBeenCalledWith("lb:global::::20:0", "json");
-      expect(kv.put).toHaveBeenCalledWith(
-        "lb:global::::20:0",
-        JSON.stringify(mockRows),
-        { expirationTtl: 600 }
-      );
-    });
-
-    it("checks current public profiles before returning a cache hit", async () => {
+    it("ignores cached public pages and queries current visibility before pagination", async () => {
       kv.get.mockResolvedValue(mockRows);
-      db.all.mockResolvedValue({ results: mockRows });
-
-      const request: GetGlobalLeaderboardRequest = {
-        method: "leaderboard.getGlobal",
-        limit: 20,
-      };
-      const response = await handleLeaderboardRpc(request, db, kv);
-      const body = await response.json();
-
-      expect(response.status).toBe(200);
-      expect(body).toEqual({ result: mockRows, _cached: true });
-      expect(db.prepare).toHaveBeenCalledWith(expect.stringContaining("is_public = 1"));
-      expect(db.bind).toHaveBeenCalledWith("u1");
+      const currentRows = [{ ...mockRows[0], name: "Current" }];
+      db.all.mockResolvedValue({ results: currentRows });
+      const response = await handleLeaderboardRpc({ method: "leaderboard.getGlobal", limit: 101 }, db, kv);
+      expect(await response.json()).toEqual({ result: currentRows, _cached: false });
+      expect(kv.get).not.toHaveBeenCalled();
+      expect(kv.put).not.toHaveBeenCalled();
+      expect(db.bind).toHaveBeenCalledWith(101, 0);
     });
 
-    it.each(["private", "deleted"])("removes a %s user from a still-valid leaderboard cache", async () => {
-      kv.get.mockResolvedValue(mockRows);
-      db.all.mockResolvedValue({ results: [] });
-      const response = await handleLeaderboardRpc({ method: "leaderboard.getGlobal", limit: 20 }, db, kv);
-      expect(await response.json()).toEqual({ result: [], _cached: true });
-    });
-
-    it("replaces cached identity fields with the current public profile", async () => {
-      kv.get.mockResolvedValue(mockRows);
-      db.all.mockResolvedValue({ results: [{ user_id: "u1", name: "updated", nickname: "new", image: null, slug: "new" }] });
-      const response = await handleLeaderboardRpc({ method: "leaderboard.getGlobal", limit: 20 }, db, kv);
-      expect(await response.json()).toEqual({
-        result: [{ ...mockRows[0], name: "updated", nickname: "new", slug: "new" }], _cached: true,
-      });
-    });
-
-    it("does not return cached identities if visibility lookup fails", async () => {
+    it("does not return cached identities if the current query fails", async () => {
       kv.get.mockResolvedValue(mockRows);
       db.all.mockRejectedValue(new Error("visibility unavailable"));
       await expect(handleLeaderboardRpc({ method: "leaderboard.getGlobal", limit: 20 }, db, kv)).rejects.toThrow("visibility unavailable");
-    });
-
-    it("returns an empty cache hit without a visibility query", async () => {
-      kv.get.mockResolvedValue([]);
-      const response = await handleLeaderboardRpc({ method: "leaderboard.getGlobal", limit: 20 }, db, kv);
-      expect(await response.json()).toEqual({ result: [], _cached: true });
-      expect(db.prepare).not.toHaveBeenCalled();
     });
 
     it("should NOT cache requests with teamId (private scope)", async () => {
@@ -353,7 +304,7 @@ describe("leaderboard RPC handlers", () => {
       expect(kv.put).not.toHaveBeenCalled();
     });
 
-    it("should include source filter in cache key", async () => {
+    it("should bind the source filter", async () => {
       db.all.mockResolvedValue({ results: mockRows });
 
       const request: GetGlobalLeaderboardRequest = {
@@ -363,7 +314,7 @@ describe("leaderboard RPC handlers", () => {
       };
       await handleLeaderboardRpc(request, db, kv);
 
-      expect(kv.get).toHaveBeenCalledWith("lb:global::claude-code::20:0", "json");
+      expect(kv.get).not.toHaveBeenCalled();
       // source param should be bound before limit and offset
       expect(db.bind).toHaveBeenCalledWith("claude-code", 20, 0);
       // SQL should contain source filter
@@ -371,7 +322,7 @@ describe("leaderboard RPC handlers", () => {
       expect(sql).toContain("ur.source = ?");
     });
 
-    it("should include model filter in cache key", async () => {
+    it("should bind the model filter", async () => {
       db.all.mockResolvedValue({ results: mockRows });
 
       const request: GetGlobalLeaderboardRequest = {
@@ -381,10 +332,10 @@ describe("leaderboard RPC handlers", () => {
       };
       await handleLeaderboardRpc(request, db, kv);
 
-      expect(kv.get).toHaveBeenCalledWith("lb:global:::claude-sonnet-4-20250514:20:0", "json");
+      expect(db.bind).toHaveBeenCalledWith("claude-sonnet-4-20250514", 20, 0);
     });
 
-    it("should combine fromDate, source, model in cache key", async () => {
+    it("should bind all filters before pagination", async () => {
       db.all.mockResolvedValue({ results: [] });
 
       const request: GetGlobalLeaderboardRequest = {
@@ -397,10 +348,7 @@ describe("leaderboard RPC handlers", () => {
       };
       await handleLeaderboardRpc(request, db, kv);
 
-      expect(kv.get).toHaveBeenCalledWith(
-        "lb:global:2026-01-01T00:00:00.000Z:codex:o3:10:5",
-        "json"
-      );
+      expect(db.bind).toHaveBeenCalledWith("2026-01-01T00:00:00.000Z", "codex", "o3", 10, 5);
     });
 
     it("should fall back to query without nickname on column error", async () => {

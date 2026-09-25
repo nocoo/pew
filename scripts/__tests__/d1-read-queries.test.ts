@@ -16,6 +16,8 @@ describe("D1 read queries against real SQLite", () => {
   const toDate = "2026-09-02T00:00:00.000Z";
 
   beforeEach(() => {
+    vi.mocked(kv.get).mockReset();
+    vi.mocked(kv.get).mockResolvedValue(null);
     sqlite = new DatabaseSync(":memory:");
     for (const name of ["001-init", "009-device-aliases", "019-organizations", "022-usage-evidence", "026-usage-accounting"]) {
       sqlite.exec(readFileSync(`scripts/migrations/${name}.sql`, "utf8"));
@@ -52,6 +54,30 @@ describe("D1 read queries against real SQLite", () => {
     expect(JSON.stringify(plan)).not.toMatch(/usage_details|SEARCH d /);
     const filtered = await (await handleLeaderboardRpc({ method: "leaderboard.getGlobal", source: "codex", model: "m1", fromDate, limit: 1, offset: 1 }, db, kv)).json();
     expect(filtered.result).toMatchObject([{ user_id: "u2", total_tokens: 200 }]);
+  });
+
+  it("paginates current public users after a cached-page user becomes private or is deleted", async () => {
+    const insert = sqlite.prepare("INSERT INTO users(id,email,name,is_public) VALUES (?,?,?,1)");
+    const usage = sqlite.prepare("INSERT INTO usage_records(user_id,device_id,source,model,hour_start,input_tokens,cached_input_tokens,output_tokens,reasoning_output_tokens,total_tokens) VALUES (?,'d','codex','m',?, ?,0,0,0,?)");
+    for (let i = 0; i < 101; i++) {
+      insert.run(`page${i}`, `page${i}@test.invalid`, `Page ${i}`);
+      usage.run(`page${i}`, fromDate, 10000 - i, 10000 - i);
+    }
+    const request = { method: "leaderboard.getGlobal", limit: 21 } as const;
+    const original = await (await handleLeaderboardRpc(request, db, kv)).json();
+    vi.mocked(kv.get).mockResolvedValue(original.result);
+    sqlite.exec("UPDATE users SET is_public=0 WHERE id='page0'");
+    const first = await (await handleLeaderboardRpc(request, db, kv)).json();
+    const next = await (await handleLeaderboardRpc({ ...request, offset: 20 }, db, kv)).json();
+    expect(first.result).toHaveLength(21);
+    expect(first.result[0].user_id).toBe("page1");
+    expect(next.result[0].user_id).toBe("page21");
+    sqlite.exec("DELETE FROM usage_records WHERE user_id='page1'; DELETE FROM users WHERE id='page1'");
+    const full = await (await handleLeaderboardRpc({ ...request, limit: 101 }, db, kv)).json();
+    expect(full.result).toHaveLength(101);
+    expect(full.result[0].user_id).toBe("page2");
+    expect(full.result.some((row: { user_id: string }) => ["page0", "page1"].includes(row.user_id))).toBe(false);
+    expect(queries.every(({ params }) => params.length <= 100)).toBe(true);
   });
 
   it("applies team and organization membership before pagination without exposing private users", async () => {

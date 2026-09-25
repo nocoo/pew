@@ -15,28 +15,6 @@ import type {
 export type * from "./leaderboard-types";
 
 // ---------------------------------------------------------------------------
-// Cache Keys
-// ---------------------------------------------------------------------------
-
-/**
- * Generate cache key for public global leaderboard.
- * Key includes all filter parameters to ensure correct cache isolation.
- */
-function cacheKeyGlobalLeaderboard(
-  fromDate: string | undefined,
-  source: string | undefined,
-  model: string | undefined,
-  limit: number,
-  offset: number
-): string {
-  // Use empty string for undefined values to create stable keys
-  const from = fromDate ?? "";
-  const src = source ?? "";
-  const mdl = model ?? "";
-  return `lb:global:${from}:${src}:${mdl}:${limit}:${offset}`;
-}
-
-// ---------------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------------
 
@@ -182,13 +160,8 @@ async function handleGetTeamRank(
 
 async function handleGetGlobalLeaderboard(
   req: GetGlobalLeaderboardRequest,
-  db: D1Database,
-  kv: KVNamespace
+  db: D1Database
 ): Promise<Response> {
-  // Check if request has private scope (team or org filter)
-  // These are membership-dependent and must NOT be cached
-  const hasPrivateScope = !!(req.teamId || req.orgId);
-
   const conditions: string[] = ["(ur.event_id = '' OR ur.total_tokens > 0)"];
   const params: unknown[] = [];
 
@@ -270,37 +243,6 @@ async function handleGetGlobalLeaderboard(
     }
   };
 
-  // Only cache public (non-scoped) requests
-  if (!hasPrivateScope) {
-    const cacheKey = cacheKeyGlobalLeaderboard(
-      req.fromDate,
-      req.source,
-      req.model,
-      req.limit,
-      offset
-    );
-    const { data, cached } = await withCache(
-      kv,
-      cacheKey,
-      fetchLeaderboard,
-      { ttlSeconds: TTL_10M }
-    );
-    if (cached && data.length > 0) {
-      const ids = data.map((row) => row.user_id);
-      const profiles = await db.prepare(
-        `SELECT id AS user_id, name, nickname, image, slug FROM users
-         WHERE is_public = 1 AND id IN (${ids.map(() => "?").join(",")})`
-      ).bind(...ids).all<Pick<GlobalLeaderboardRow, "user_id" | "name" | "nickname" | "image" | "slug">>();
-      const publicUsers = new Map(profiles.results.map((user) => [user.user_id, user]));
-      return Response.json({ result: data.flatMap((row) => {
-        const user = publicUsers.get(row.user_id);
-        return user ? [{ ...row, ...user }] : [];
-      }), _cached: true });
-    }
-    return Response.json({ result: data, _cached: cached });
-  }
-
-  // Private scope — skip cache
   const data = await fetchLeaderboard();
   return Response.json({ result: data, _cached: false });
 }
@@ -405,7 +347,7 @@ export async function handleLeaderboardRpc(
     case "leaderboard.getTeamRank":
       return handleGetTeamRank(request, db);
     case "leaderboard.getGlobal":
-      return handleGetGlobalLeaderboard(request, db, kv);
+      return handleGetGlobalLeaderboard(request, db);
     case "leaderboard.getUserTeams":
       return handleGetUserTeams(request, db);
     case "leaderboard.getUserSessionStats":
