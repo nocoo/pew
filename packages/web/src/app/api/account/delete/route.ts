@@ -71,92 +71,53 @@ export async function DELETE(request: Request) {
   }
 
   try {
-    // Delete in dependency order (children first, then parent)
-    // Many tables have ON DELETE CASCADE from users, but we explicitly delete
-    // to ensure all data is removed even if foreign keys are missing.
-
     const userId = authResult.userId;
-
-    // 1. Usage and session data
-    await dbWrite.execute(
-      "DELETE FROM usage_details WHERE user_id = ?",
-      [userId],
-    );
-    await dbWrite.execute(
-      "DELETE FROM usage_evidence WHERE user_id = ?",
-      [userId],
-    );
-    await dbWrite.execute(
-      "DELETE FROM usage_records WHERE user_id = ?",
-      [userId],
-    );
-    await dbWrite.execute(
-      "DELETE FROM session_records WHERE user_id = ?",
-      [userId],
-    );
-
-    // 2. Team memberships (not the teams themselves)
-    await dbWrite.execute(
-      "DELETE FROM team_members WHERE user_id = ?",
-      [userId],
-    );
-
-    // 3. Season member snapshots
-    try {
-      await dbWrite.execute(
-        "DELETE FROM season_member_snapshots WHERE user_id = ?",
-        [userId],
-      );
-    } catch {
-      // Table may not exist
-    }
-
-    // 4. Season team members (season-specific roster)
-    try {
-      await dbWrite.execute(
-        "DELETE FROM season_team_members WHERE user_id = ?",
-        [userId],
-      );
-    } catch {
-      // Table may not exist
-    }
-
-    // 5. Invite codes created by user (mark as orphaned, don't delete)
-    await dbWrite.execute(
-      "UPDATE invite_codes SET created_by = 'deleted-user' WHERE created_by = ?",
-      [userId],
-    );
-
-    // 6. Device aliases
-    try {
-      await dbWrite.execute(
-        "DELETE FROM device_aliases WHERE user_id = ?",
-        [userId],
-      );
-    } catch {
-      // Table may not exist
-    }
-
-    // 7. Auth sessions and accounts (should cascade from users, but be explicit)
-    await dbWrite.execute(
-      "DELETE FROM sessions WHERE user_id = ?",
-      [userId],
-    );
-    await dbWrite.execute(
-      "DELETE FROM accounts WHERE user_id = ?",
-      [userId],
-    );
-
-    // 8. Finally, delete the user record
-    await dbWrite.execute(
-      "DELETE FROM users WHERE id = ?",
-      [userId],
-    );
-
-    console.log(`Account deleted: ${user.email} (${userId})`);
+    await dbWrite.batch([
+      {
+        sql: `UPDATE season_snapshots AS ss SET
+          total_tokens = MAX(0, ss.total_tokens - ms.total_tokens),
+          input_tokens = MAX(0, ss.input_tokens - ms.input_tokens),
+          output_tokens = MAX(0, ss.output_tokens - ms.output_tokens),
+          cached_input_tokens = MAX(0, ss.cached_input_tokens - ms.cached_input_tokens)
+          FROM season_member_snapshots ms
+          WHERE ms.season_id = ss.season_id AND ms.team_id = ss.team_id AND ms.user_id = ?`,
+        params: [userId],
+      },
+      {
+        sql: `WITH ranked AS (
+          SELECT season_id, team_id, ROW_NUMBER() OVER (
+            PARTITION BY season_id ORDER BY total_tokens DESC, team_id) AS new_rank
+          FROM season_snapshots WHERE season_id IN (
+            SELECT season_id FROM season_member_snapshots WHERE user_id = ?))
+          UPDATE season_snapshots AS ss SET rank = ranked.new_rank FROM ranked
+          WHERE ss.season_id = ranked.season_id AND ss.team_id = ranked.team_id`,
+        params: [userId],
+      },
+      { sql: "DELETE FROM usage_details WHERE user_id = ?", params: [userId] },
+      { sql: "DELETE FROM usage_evidence WHERE user_id = ?", params: [userId] },
+      { sql: "DELETE FROM usage_records WHERE user_id = ?", params: [userId] },
+      { sql: "DELETE FROM session_records WHERE user_id = ?", params: [userId] },
+      { sql: "DELETE FROM team_members WHERE user_id = ?", params: [userId] },
+      { sql: "DELETE FROM season_member_snapshots WHERE user_id = ?", params: [userId] },
+      { sql: "DELETE FROM season_team_members WHERE user_id = ?", params: [userId] },
+      { sql: "DELETE FROM device_aliases WHERE user_id = ?", params: [userId] },
+      { sql: "DELETE FROM organization_members WHERE user_id = ?", params: [userId] },
+      { sql: "DELETE FROM auth_codes WHERE user_id = ?", params: [userId] },
+      { sql: "DELETE FROM sessions WHERE user_id = ?", params: [userId] },
+      { sql: "DELETE FROM accounts WHERE user_id = ?", params: [userId] },
+      { sql: "DELETE FROM invite_codes WHERE created_by = ?", params: [userId] },
+      { sql: "UPDATE invite_codes SET used_by = NULL WHERE used_by = ?", params: [userId] },
+      { sql: "DELETE FROM users WHERE id = ?", params: [userId] },
+    ]);
 
     return NextResponse.json({ success: true });
   } catch (err) {
+    if (err instanceof Error && /FOREIGN KEY constraint failed/i.test(err.message)) {
+      return NextResponse.json(
+        { error: "Account still owns shared resources. Transfer or remove them before deleting your account." },
+        { status: 409 },
+      );
+    }
     console.error("Failed to delete account:", err);
     return NextResponse.json(
       { error: "Failed to delete account" },

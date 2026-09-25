@@ -134,141 +134,56 @@ describe("DELETE /api/account/delete", () => {
     });
   });
 
-  describe("successful deletion", () => {
-    it.each([0, 1])("deletes an account without retired tables, preserving other users with foreign_keys=%i", async (foreignKeys) => {
+  describe("atomic deletion", () => {
+    it.each([false, true])("removes frozen contributions and rolls back on late failure=%s", async (fail) => {
       const db = new DatabaseSync(":memory:");
       try {
-        db.exec(`PRAGMA foreign_keys = ${foreignKeys};
+        db.exec(`PRAGMA foreign_keys = ON;
           CREATE TABLE users (id TEXT PRIMARY KEY);
-          CREATE TABLE usage_evidence (
-            user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
-            device_id TEXT, event_id TEXT);
           INSERT INTO users VALUES ('u1'), ('u2');
-          INSERT INTO usage_evidence VALUES ('u1', 'd1', 'a'), ('u1', 'd2', 'b'), ('u2', 'd1', 'c');`);
-        const userTables = ["usage_details", "usage_records", "session_records", "team_members", "season_member_snapshots",
-          "season_team_members", "device_aliases", "sessions", "accounts"];
-        for (const table of userTables) {
-          db.exec(`CREATE TABLE ${table} (user_id TEXT REFERENCES users(id));
-            INSERT INTO ${table} VALUES ('u1'), ('u2');`);
-        }
-        db.exec("CREATE TABLE invite_codes (created_by TEXT); INSERT INTO invite_codes VALUES ('u1'), ('u2');");
+          CREATE TABLE season_snapshots (season_id TEXT, team_id TEXT, rank INTEGER, total_tokens INTEGER,
+            input_tokens INTEGER, output_tokens INTEGER, cached_input_tokens INTEGER);
+          CREATE TABLE season_member_snapshots (season_id TEXT, team_id TEXT, user_id TEXT REFERENCES users(id),
+            total_tokens INTEGER, input_tokens INTEGER, output_tokens INTEGER, cached_input_tokens INTEGER);
+          INSERT INTO season_snapshots VALUES ('s1', 't1', 1, 100, 60, 30, 10), ('s1', 't2', 2, 40, 20, 15, 5);
+          INSERT INTO season_member_snapshots VALUES ('s1', 't1', 'u1', 100, 60, 30, 10), ('s1', 't2', 'u2', 40, 20, 15, 5);
+          CREATE TABLE invite_codes (created_by TEXT REFERENCES users(id), used_by TEXT);
+          INSERT INTO invite_codes VALUES ('u1', NULL), ('u2', 'u1');`);
+        const tables = ["usage_details", "usage_evidence", "usage_records", "session_records", "team_members",
+          "season_team_members", "device_aliases", "sessions", "accounts", "organization_members", "auth_codes"];
+        for (const table of tables) db.exec(`CREATE TABLE ${table} (user_id TEXT REFERENCES users(id)); INSERT INTO ${table} VALUES ('u1'), ('u2')`);
+        if (fail) db.exec("CREATE TABLE owned_resource (created_by TEXT REFERENCES users(id)); INSERT INTO owned_resource VALUES ('u1')");
         vi.mocked(authModule.resolveUser).mockResolvedValueOnce({ userId: "u1" });
         mockReadClient.getUserById.mockResolvedValueOnce({ id: "u1", email: "user@example.com" });
-        // Execute every statement; any lingering reference to a retired table fails.
-        mockWriteClient.execute.mockImplementation(async (sql: string, params: string[]) => {
-          db.prepare(sql).run(...params);
-          return { results: [] };
+        mockWriteClient.batch.mockImplementation(async (statements: Array<{ sql: string; params?: string[] }>) => {
+          db.exec("BEGIN");
+          try {
+            const results = statements.map(({ sql, params }) => ({ results: db.prepare(sql).all(...(params ?? [])), meta: { changes: 0, duration: 0 } }));
+            db.exec("COMMIT");
+            return results;
+          } catch (error) { db.exec("ROLLBACK"); throw error; }
         });
-
         const res = await DELETE(makeDeleteRequest({ confirm_email: "user@example.com" }));
-
-        expect(res.status).toBe(200);
-        expect(db.prepare("SELECT * FROM usage_evidence").all()).toEqual([
-          { user_id: "u2", device_id: "d1", event_id: "c" },
-        ]);
-        expect(db.prepare("SELECT id FROM users").all()).toEqual([{ id: "u2" }]);
-        for (const table of userTables) {
-          expect(db.prepare(`SELECT * FROM ${table}`).all()).toEqual([{ user_id: "u2" }]);
-        }
-        expect(db.prepare("SELECT * FROM invite_codes").all()).toEqual([
-          { created_by: "deleted-user" }, { created_by: "u2" },
-        ]);
+        expect(res.status).toBe(fail ? 409 : 200);
+        expect(db.prepare("SELECT * FROM users ORDER BY id").all()).toEqual(fail ? [{ id: "u1" }, { id: "u2" }] : [{ id: "u2" }]);
+        expect(db.prepare("SELECT * FROM season_snapshots WHERE team_id = 't1'").get()).toEqual({
+          season_id: "s1", team_id: "t1", rank: fail ? 1 : 2, total_tokens: fail ? 100 : 0,
+          input_tokens: fail ? 60 : 0, output_tokens: fail ? 30 : 0, cached_input_tokens: fail ? 10 : 0,
+        });
+        expect(db.prepare("SELECT rank, total_tokens FROM season_snapshots WHERE team_id = 't2'").get()).toEqual({ rank: fail ? 2 : 1, total_tokens: 40 });
+        for (const table of tables) expect(db.prepare(`SELECT user_id FROM ${table} ORDER BY user_id`).all()).toEqual(fail ? [{ user_id: "u1" }, { user_id: "u2" }] : [{ user_id: "u2" }]);
+        expect(db.prepare("SELECT * FROM invite_codes WHERE created_by = 'u2'").get()).toEqual({ created_by: "u2", used_by: fail ? "u1" : null });
         expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
       } finally { db.close(); }
     });
 
-    it("should delete all user data and return success", async () => {
-      vi.mocked(authModule.resolveUser).mockResolvedValueOnce({ userId: "u1" });
-      mockReadClient.getUserById.mockResolvedValueOnce({
-        id: "u1",
-        email: "user@example.com",
-        name: null,
-        image: null,
-        email_verified: null,
-      });
-      mockWriteClient.execute.mockResolvedValue({ results: [] });
-
-      const res = await DELETE(makeDeleteRequest({ confirm_email: "user@example.com" }));
-
-      expect(res.status).toBe(200);
-      const body = await res.json();
-      expect(body.success).toBe(true);
-
-      // Verify deletion order (children first)
-      const executeCalls = mockWriteClient.execute.mock.calls;
-      expect(executeCalls.length).toBeGreaterThanOrEqual(10);
-
-      // Check some key deletions happened
-      const sqls = executeCalls.map((call) => call[0]);
-      expect(sqls.some((sql: string) => sql.includes("DELETE FROM usage_records"))).toBe(true);
-      expect(sqls.some((sql: string) => sql.includes("DELETE FROM session_records"))).toBe(true);
-      expect(sqls.some((sql: string) => sql.includes("DELETE FROM team_members"))).toBe(true);
-      expect(sqls.some((sql: string) => sql.includes("DELETE FROM sessions"))).toBe(true);
-      expect(sqls.some((sql: string) => sql.includes("DELETE FROM accounts"))).toBe(true);
-      expect(sqls.some((sql: string) => sql.includes("DELETE FROM users"))).toBe(true);
-
-      // Verify invite_codes are updated, not deleted
-      expect(sqls.some((sql: string) => sql.includes("UPDATE invite_codes"))).toBe(true);
-    });
-  });
-
-  describe("error handling", () => {
-    it("does not delete the user or report success when evidence deletion fails", async () => {
+    it("fails closed when a required table or write fails", async () => {
       vi.mocked(authModule.resolveUser).mockResolvedValueOnce({ userId: "u1" });
       mockReadClient.getUserById.mockResolvedValueOnce({ id: "u1", email: "user@example.com" });
-      mockWriteClient.execute.mockImplementation(async (sql: string) => {
-        if (sql.includes("usage_evidence")) throw new Error("Synthetic deletion failure");
-        return { results: [] };
-      });
-
+      mockWriteClient.batch.mockRejectedValueOnce(new Error("no such table"));
       const res = await DELETE(makeDeleteRequest({ confirm_email: "user@example.com" }));
-
       expect(res.status).toBe(500);
-      expect(mockWriteClient.execute.mock.calls.some(([sql]) => /^DELETE FROM users\b/.test(sql))).toBe(false);
-    });
-
-    it("should return 500 on database error", async () => {
-      vi.mocked(authModule.resolveUser).mockResolvedValueOnce({ userId: "u1" });
-      mockReadClient.getUserById.mockResolvedValueOnce({
-        id: "u1",
-        email: "user@example.com",
-        name: null,
-        image: null,
-        email_verified: null,
-      });
-      mockWriteClient.execute.mockRejectedValueOnce(new Error("DB error"));
-
-      const res = await DELETE(makeDeleteRequest({ confirm_email: "user@example.com" }));
-
-      expect(res.status).toBe(500);
-      const body = await res.json();
-      expect(body.error).toBe("Failed to delete account");
-    });
-
-    it("should handle missing optional tables gracefully", async () => {
-      vi.mocked(authModule.resolveUser).mockResolvedValueOnce({ userId: "u1" });
-      mockReadClient.getUserById.mockResolvedValueOnce({
-        id: "u1",
-        email: "user@example.com",
-        name: null,
-        image: null,
-        email_verified: null,
-      });
-
-      // First few succeed, then season tables fail (they may not exist)
-      mockWriteClient.execute.mockImplementation(async (sql: string) => {
-        if (sql.includes("season_member_snapshots") || sql.includes("season_team_members") || sql.includes("device_aliases")) {
-          throw new Error("no such table");
-        }
-        return { results: [] };
-      });
-
-      const res = await DELETE(makeDeleteRequest({ confirm_email: "user@example.com" }));
-
-      // Should still succeed despite some tables missing
-      expect(res.status).toBe(200);
-      const body = await res.json();
-      expect(body.success).toBe(true);
+      expect(mockWriteClient.execute).not.toHaveBeenCalled();
     });
   });
 });

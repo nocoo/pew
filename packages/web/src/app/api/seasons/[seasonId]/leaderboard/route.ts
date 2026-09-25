@@ -341,7 +341,7 @@ export async function GET(
         is_snapshot: hasSnapshot,
       },
       entries,
-    });
+    }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     if (msg.includes("no such table")) {

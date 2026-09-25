@@ -5,18 +5,13 @@
  */
 
 import type { D1Database, KVNamespace } from "@cloudflare/workers-types";
-import { withCache, TTL_24H, TTL_10M } from "../cache";
+import { withCache, TTL_10M } from "../cache";
 
 // ---------------------------------------------------------------------------
 // Cache Keys
 // ---------------------------------------------------------------------------
 
 const CACHE_KEY_SEASONS_LIST = "seasons:list";
-
-/** Generate cache key for frozen season snapshots */
-function cacheKeySeasonSnapshots(seasonId: string): string {
-  return `season:${seasonId}:snapshots`;
-}
 
 // ---------------------------------------------------------------------------
 // Response Types
@@ -372,23 +367,12 @@ async function handleCheckSeasonMemberConflict(
 
 async function handleGetSeasonSnapshots(
   req: GetSeasonSnapshotsRequest,
-  db: D1Database,
-  kv: KVNamespace
+  db: D1Database
 ): Promise<Response> {
   if (!req.seasonId) {
     return Response.json({ error: "seasonId is required" }, { status: 400 });
   }
 
-  // Check if season is frozen (snapshot_ready = 1)
-  const season = await db
-    .prepare("SELECT snapshot_ready FROM seasons WHERE id = ?")
-    .bind(req.seasonId)
-    .first<{ snapshot_ready: number }>();
-
-  const isFrozen = season?.snapshot_ready === 1;
-
-  // Helper to fetch snapshots from D1
-  const fetchSnapshots = async () => {
     const results = await db
       .prepare(
         `SELECT
@@ -408,23 +392,7 @@ async function handleGetSeasonSnapshots(
       )
       .bind(req.seasonId)
       .all<SeasonSnapshotRow>();
-    return results.results;
-  };
-
-  // Only cache if frozen
-  if (isFrozen) {
-    const { data, cached } = await withCache(
-      kv,
-      cacheKeySeasonSnapshots(req.seasonId),
-      fetchSnapshots,
-      { ttlSeconds: TTL_24H }
-    );
-    return Response.json({ result: data, _cached: cached });
-  }
-
-  // Not frozen — skip cache
-  const data = await fetchSnapshots();
-  return Response.json({ result: data, _cached: false });
+  return Response.json({ result: results.results, _cached: false });
 }
 
 async function handleGetSeasonMemberSnapshots(
@@ -716,7 +684,7 @@ export async function handleSeasonsRpc(
     case "seasons.checkMemberConflict":
       return handleCheckSeasonMemberConflict(request, db);
     case "seasons.getSnapshots":
-      return handleGetSeasonSnapshots(request, db, kv);
+      return handleGetSeasonSnapshots(request, db);
     case "seasons.getMemberSnapshots":
       return handleGetSeasonMemberSnapshots(request, db);
     case "seasons.getTeamTokens":

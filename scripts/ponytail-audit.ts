@@ -213,17 +213,24 @@ export function auditPew(files: ReadonlyMap<string, string>, db: AuditDatabase) 
       !(p === "packages/web/src/app/api/account/delete/route.ts" && /^DELETE FROM usage_records WHERE user_id = \?$/.test(s))));
   check("api.combined-read", "api", badRead.length === 0, badRead[0] ?? required.api[0], "A usage read bypasses the combined evidence view.");
   const accountDelete = required.api[2];
-  const deletePositions = (table: string, column: string) => nodes(accountDelete).filter((n) => {
-    if (n.type !== "AwaitExpression" || member((n.argument as Node)?.callee) !== "dbWrite.execute") return false;
-    const args = (n.argument as Node).arguments as Node[];
-    const params = args[1]?.elements as Node[] | undefined;
-    return literal(args[0]) === `DELETE FROM ${table} WHERE ${column} = ?` &&
-      args[1]?.type === "ArrayExpression" && params?.length === 1 && member(params[0]) === "userId";
+  const batches = nodes(accountDelete).filter((n) => n.type === "AwaitExpression" && member((n.argument as Node)?.callee) === "dbWrite.batch");
+  const statements = batches.flatMap((n) => {
+    const argument = ((n.argument as Node).arguments as Node[])[0];
+    return argument?.type === "ArrayExpression" ? argument.elements as Node[] : [];
+  });
+  const deletePositions = (table: string, column: string) => statements.filter((n) => {
+    if (n?.type !== "ObjectExpression") return false;
+    const properties = n.properties as Node[];
+    const sql = properties.find((p) => member(p.key) === "sql")?.value as Node | undefined;
+    const params = properties.find((p) => member(p.key) === "params")?.value as Node | undefined;
+    const values = params?.elements as Node[] | undefined;
+    return literal(sql) === `DELETE FROM ${table} WHERE ${column} = ?` &&
+      params?.type === "ArrayExpression" && values?.length === 1 && member(values[0]) === "userId";
   }).map((n) => n.start ?? 0);
   const evidenceDeletes = deletePositions("usage_evidence", "user_id");
   const userDeletes = deletePositions("users", "id");
   check("api.account-deletion", "api", evidenceDeletes.length === 1 && userDeletes.length === 1 && evidenceDeletes[0] < userDeletes[0],
-    accountDelete, "Account deletion must await user-scoped evidence deletion before deleting the user, even without foreign-key cascades.");
+    accountDelete, "Account deletion must await a batch that deletes user-scoped evidence before the user, even without foreign-key cascades.");
   check("ui.timing-disclosure", "ui", required.ui.slice(1).every((p) => nodes(p).some((n) => n.type === "JSXOpeningElement" && (n.name as Node)?.name === "UsageTimingNotice")), required.ui[0], "Time charts must disclose approximate supplementary timing.");
   const validRecord = { source: "hermes", model: "audit-model", device_id: "audit-device", timestamp: "2026-09-06T16:00:00.000Z",
     hour_start: "2026-09-06T16:00:00.000Z", input_tokens: 10, cached_input_tokens: 0, output_tokens: 0, reasoning_output_tokens: 0, total_tokens: 10,

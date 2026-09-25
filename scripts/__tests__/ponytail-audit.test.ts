@@ -79,10 +79,10 @@ describe("Pew ponytail readonly audit", { timeout: 60_000 }, () => {
 
   it("requires awaited, user-scoped evidence deletion before account deletion", () => {
     const path = "packages/web/src/app/api/account/delete/route.ts";
-    const call = /await dbWrite\.execute\(\s*"DELETE FROM usage_evidence WHERE user_id = \?",\s*\[userId\],?\s*\);/;
+    const call = /\{ sql: "DELETE FROM usage_evidence WHERE user_id = \?", params: \[userId\] \},/;
     for (const change of [
       (s: string) => s.replace(call, "// DELETE FROM usage_evidence WHERE user_id = ?"),
-      (s: string) => s.replace(call, (match) => match.replace("await ", "")),
+      (s: string) => s.replace("await dbWrite.batch", "dbWrite.batch"),
       (s: string) => s.replace(call, (match) => match.replace("[userId]", "[]")),
       (s: string) => s.replace(/DELETE FROM (?:usage_evidence WHERE user_id|users WHERE id) = \?/g,
         (sql) => sql.includes("usage_evidence") ? "DELETE FROM users WHERE id = ?" : "DELETE FROM usage_evidence WHERE user_id = ?"),

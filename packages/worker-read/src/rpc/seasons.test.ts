@@ -355,7 +355,7 @@ describe("seasons RPC handlers", () => {
       expect(kv.put).not.toHaveBeenCalled();
     });
 
-    it("should cache snapshots when frozen (snapshot_ready = 1)", async () => {
+    it("reads frozen snapshots from D1 without caching", async () => {
       const mockSnapshots = [
         {
           team_id: "t1",
@@ -382,15 +382,11 @@ describe("seasons RPC handlers", () => {
 
       expect(response.status).toBe(200);
       expect(body).toEqual({ result: mockSnapshots, _cached: false });
-      expect(kv.get).toHaveBeenCalledWith("season:s1:snapshots", "json");
-      expect(kv.put).toHaveBeenCalledWith(
-        "season:s1:snapshots",
-        JSON.stringify(mockSnapshots),
-        { expirationTtl: 86400 }
-      );
+      expect(kv.get).not.toHaveBeenCalled();
+      expect(kv.put).not.toHaveBeenCalled();
     });
 
-    it("should return cached snapshots when frozen and cache hit", async () => {
+    it("ignores stale snapshot cache after account deletion", async () => {
       const cachedSnapshots = [
         {
           team_id: "t1",
@@ -408,6 +404,7 @@ describe("seasons RPC handlers", () => {
       db.first.mockResolvedValue({ snapshot_ready: 1 });
       // Cache HIT
       kv.get.mockResolvedValue(cachedSnapshots);
+      db.all.mockResolvedValue({ results: [{ ...cachedSnapshots[0], total_tokens: 0 }] });
 
       const request: GetSeasonSnapshotsRequest = {
         method: "seasons.getSnapshots",
@@ -417,9 +414,9 @@ describe("seasons RPC handlers", () => {
       const body = await response.json();
 
       expect(response.status).toBe(200);
-      expect(body).toEqual({ result: cachedSnapshots, _cached: true });
-      // Should NOT call D1 for snapshots (only for frozen check)
-      expect(db.all).not.toHaveBeenCalled();
+      expect(body).toEqual({ result: [{ ...cachedSnapshots[0], total_tokens: 0 }], _cached: false });
+      expect(kv.get).not.toHaveBeenCalled();
+      expect(db.all).toHaveBeenCalled();
     });
 
     it("should return 400 when seasonId missing", async () => {

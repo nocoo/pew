@@ -102,6 +102,7 @@ describe("GET /api/seasons/[seasonId]/leaderboard", () => {
     const data = await res.json();
 
     expect(res.status).toBe(200);
+    expect(res.headers.get("cache-control")).toBe("private, no-store");
     expect(data.entries).toHaveLength(2);
     expect(data.entries[0].rank).toBe(1);
     expect(data.entries[0].team.name).toBe("Team Alpha");
