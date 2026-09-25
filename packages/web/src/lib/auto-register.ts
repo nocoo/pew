@@ -84,40 +84,25 @@ export async function autoRegisterTeamsForSeason(
       const statements: Array<{ sql: string; params: unknown[] }> = [
         {
           sql: `INSERT INTO season_teams (id, season_id, team_id, registered_by)
-                VALUES (?, ?, ?, ?)`,
-          params: [regId, seasonId, team.id, registeredBy],
+                SELECT ?, ?, ?, ? WHERE EXISTS (
+                  SELECT 1 FROM seasons WHERE id = ? AND datetime(start_date) > datetime('now')
+                )`,
+          params: [regId, seasonId, team.id, registeredBy, seasonId],
         },
         ...members.map((m, i) => ({
           sql: `INSERT INTO season_team_members (id, season_id, team_id, user_id)
-                VALUES (?, ?, ?, ?)`,
-          params: [memberIds[i] as string, seasonId, team.id, m],
+                SELECT ?, ?, ?, ? WHERE EXISTS (SELECT 1 FROM season_teams WHERE id = ?)`,
+          params: [memberIds[i] as string, seasonId, team.id, m, regId],
         })),
       ];
 
       try {
-        await dbWrite.batch(statements);
-        registered++;
+        const result = await dbWrite.batch(statements);
+        if (result[0]?.meta.changes === 1) registered++;
+        else skipped++;
       } catch (err) {
-        // Compensate on failure — only delete rows created by THIS request (by UUID)
-        // Using (season_id, team_id) would be wrong: a concurrent request may have
-        // successfully registered the same team, and we'd delete their data.
         console.error(`Auto-registration failed for team ${team.id}:`, err);
         skipped++;
-        try {
-          if (memberIds.length > 0) {
-            const ph = memberIds.map(() => "?").join(",");
-            await dbWrite.execute(
-              `DELETE FROM season_team_members WHERE id IN (${ph})`,
-              memberIds,
-            );
-          }
-          await dbWrite.execute(
-            "DELETE FROM season_teams WHERE id = ?",
-            [regId],
-          );
-        } catch {
-          // Swallow cleanup errors
-        }
       }
     } catch (err) {
       // Read errors (member query, conflict check, owner lookup) — skip this team
