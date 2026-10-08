@@ -286,6 +286,14 @@ describe("parseWorkbuddyFile", () => {
     expect(group?.request_count).toBe(1);
   });
 
+  it("skips a line that is not valid JSON", async () => {
+    const file = join(dir, "session.jsonl");
+    await writeFile(file, `{"type":"message","usage":\n${wbRecord()}\n`);
+
+    const result = await parseWorkbuddyFile({ filePath: file, startOffset: 0 });
+    expect(result.deltas).toHaveLength(1);
+  });
+
   it("returns no deltas for a missing file", async () => {
     const result = await parseWorkbuddyFile({
       filePath: join(dir, "nope.jsonl"),
