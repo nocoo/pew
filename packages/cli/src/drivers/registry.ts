@@ -28,6 +28,7 @@ import { copilotCliTokenDriver } from "./token/copilot-cli-token-driver.js";
 import { piTokenDriver } from "./token/pi-token-driver.js";
 
 import { grokTokenDriver } from "./token/grok-token-driver.js";
+import { workbuddyTokenDriver } from "./token/workbuddy-token-driver.js";
 import {
   createOpenCodeSqliteTokenDriver,
   type OpenCodeSqliteTokenDriverOpts,
@@ -47,6 +48,7 @@ import { openClawSessionDriver } from "./session/openclaw-session-driver.js";
 import { piSessionDriver } from "./session/pi-session-driver.js";
 
 import { grokSessionDriver } from "./session/grok-session-driver.js";
+import { workbuddySessionDriver } from "./session/workbuddy-session-driver.js";
 import {
   createOpenCodeSqliteSessionDriver,
   type OpenCodeSqliteSessionDriverOpts,
@@ -74,6 +76,8 @@ export interface TokenDriverRegistryOpts {
   copilotCliOtelPaths?: string[];
   /** Grok CLI unified log path (~/.grok/logs/unified.jsonl) */
   grokLogsPath?: string;
+  /** WorkBuddy home (~/.workbuddy) */
+  workbuddyDir?: string;
   openCodeDbPath?: string;
   openMessageDb?: OpenCodeSqliteTokenDriverOpts["openMessageDb"];
   /** Default Hermes DB path (~/.hermes/state.db) */
@@ -122,6 +126,9 @@ export function createTokenDrivers(opts: TokenDriverRegistryOpts): TokenDriverSe
   }
   if (opts.piSessionsDir) {
     fileDrivers.push(piTokenDriver);
+  }
+  if (opts.workbuddyDir) {
+    fileDrivers.push(workbuddyTokenDriver);
   }
 
   // DB drivers (alphabetical by source)
@@ -179,6 +186,8 @@ export interface SessionDriverRegistryOpts {
   piSessionsDir?: string;
   /** Grok CLI sessions root (~/.grok/sessions) */
   grokSessionsDir?: string;
+  /** WorkBuddy home (~/.workbuddy) */
+  workbuddyDir?: string;
   openCodeDbPath?: string;
   openSessionDb?: OpenCodeSqliteSessionDriverOpts["openSessionDb"];
     }
@@ -220,7 +229,9 @@ export function createSessionDrivers(opts: SessionDriverRegistryOpts): SessionDr
   if (opts.piSessionsDir) {
     fileDrivers.push(piSessionDriver);
   }
-
+  if (opts.workbuddyDir) {
+    fileDrivers.push(workbuddySessionDriver);
+  }
   if (opts.openCodeDbPath && opts.openSessionDb) {
     dbDrivers.push(
       createOpenCodeSqliteSessionDriver({

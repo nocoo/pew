@@ -11,6 +11,7 @@ import {
   discoverCopilotCliFiles,
   discoverCodexFiles,
   discoverPiFiles,
+  discoverWorkbuddyFiles,
 } from "../discovery/sources.js";
 
 describe("discoverClaudeFiles", () => {
@@ -339,6 +340,47 @@ describe("discoverPiFiles", () => {
 
   it("should return empty array if directory does not exist", async () => {
     const files = await discoverPiFiles(join(tempDir, "nonexistent"));
+    expect(files).toEqual([]);
+  });
+});
+
+describe("discoverWorkbuddyFiles", () => {
+  let tempDir: string;
+
+  beforeEach(async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "pew-discover-"));
+  });
+
+  afterEach(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it("should find depth-2 session JSONL files under projects/<slug>/", async () => {
+    const slugDir = join(tempDir, "projects", "Users-me-WorkBuddy-2026-09-10");
+    await mkdir(slugDir, { recursive: true });
+    await writeFile(join(slugDir, "session-a.jsonl"), "{}");
+    await writeFile(join(slugDir, "session-b.jsonl"), "{}");
+    await writeFile(join(slugDir, "session-a.meta.json"), "{}");
+
+    const files = await discoverWorkbuddyFiles(tempDir);
+    expect(files).toHaveLength(2);
+    expect(files.every((f) => f.endsWith(".jsonl"))).toBe(true);
+  });
+
+  it("should exclude subagent transcripts and tool outputs nested deeper", async () => {
+    const slugDir = join(tempDir, "projects", "Users-me-WorkBuddy-2026-09-10");
+    await mkdir(join(slugDir, "subagents"), { recursive: true });
+    await mkdir(join(slugDir, "session-a", "tool-results"), { recursive: true });
+    await writeFile(join(slugDir, "session-a.jsonl"), "{}");
+    await writeFile(join(slugDir, "subagents", "agent-1.jsonl"), "{}");
+    await writeFile(join(slugDir, "session-a", "tool-results", "call-1.txt"), "x");
+
+    const files = await discoverWorkbuddyFiles(tempDir);
+    expect(files).toEqual([join(slugDir, "session-a.jsonl")]);
+  });
+
+  it("should return empty array if directory does not exist", async () => {
+    const files = await discoverWorkbuddyFiles(join(tempDir, "nonexistent"));
     expect(files).toEqual([]);
   });
 });

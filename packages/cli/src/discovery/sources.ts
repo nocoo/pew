@@ -287,6 +287,45 @@ export async function discoverGrokSessionDirs(
   return collectFiles(sessionsDir, (name) => name === "summary.json");
 }
 
+/**
+ * Discover WorkBuddy session files.
+ * Path pattern: ~/.workbuddy/projects/<slug>/<sessionId>.jsonl
+ *
+ * Only depth-2 files are sessions. Deeper entries — subagent transcripts at
+ * <slug>/subagents/agent-*.jsonl and tool outputs under <sessionId>/ — are
+ * auxiliary and deliberately excluded.
+ */
+export async function discoverWorkbuddyFiles(
+  workbuddyDir: string,
+): Promise<string[]> {
+  const projectsDir = join(workbuddyDir, "projects");
+  let slugs: import("node:fs").Dirent[];
+  try {
+    slugs = await readdir(projectsDir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+
+  const results: string[] = [];
+  for (const slug of slugs) {
+    if (!slug.isDirectory()) continue;
+    const slugDir = join(projectsDir, slug.name);
+    let entries: import("node:fs").Dirent[];
+    try {
+      entries = await readdir(slugDir, { withFileTypes: true });
+    } catch {
+      // An unreadable project directory never fails the whole scan.
+      continue;
+    }
+    for (const entry of entries) {
+      if (entry.isFile() && entry.name.endsWith(".jsonl")) {
+        results.push(join(slugDir, entry.name));
+      }
+    }
+  }
+  return results.sort();
+}
+
 /** Accounting reads turn updates, including sessions without a summary file. */
 export async function discoverGrokUsageFiles(sessionsDir: string): Promise<string[]> {
   return collectFiles(sessionsDir, (name) => name === "updates.jsonl");
