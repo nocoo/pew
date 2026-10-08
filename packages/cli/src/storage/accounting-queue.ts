@@ -54,7 +54,7 @@ function checkedRecord(value: AccountingRecord): AccountingRecord {
     ![value.source_revision, value.parser_revision, value.detail_revision].every((n) => optionalToken(n) !== null && n > 0)) throw new Error("Invalid accounting ledger");
   if (!hasKeys(value, "details_version source model device_id hour_start event_id evidence_snapshot_seq source_revision parser_revision detail_revision basis groups") ||
     !validBasis(value.basis) || typeof value.model !== "string" ||
-    !["antigravity", "claude-code", "codex", "copilot-cli", "gemini-cli", "grok", "hermes", "kosmos", "omp", "opencode", "openclaw", "pi", "pmstudio", "vscode-copilot", "zcode"].includes(value.source) ||
+    !["antigravity", "claude-code", "codex", "copilot-cli", "gemini-cli", "grok", "hermes", "kosmos", "omp", "opencode", "openclaw", "pi", "pmstudio", "vscode-copilot", "workbuddy", "zcode"].includes(value.source) ||
     !Number.isFinite(Date.parse(value.hour_start)) || new Date(value.hour_start).toISOString() !== value.hour_start ||
     (value.event_id === null ? value.evidence_snapshot_seq !== null : value.evidence_snapshot_seq === null || value.evidence_snapshot_seq < 1)) invalid();
   const sums = { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0, reasoning_output_tokens: 0, total_tokens: 0 };

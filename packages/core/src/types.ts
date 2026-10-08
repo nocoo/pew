@@ -26,6 +26,7 @@ export type Source =
   | "pi"
   | "pmstudio"
   | "vscode-copilot"
+  | "workbuddy"
   | "zcode";
 
 // ---------------------------------------------------------------------------

@@ -24,7 +24,9 @@ export interface NotifyOptions extends SyncOptions {
   multicaCodexDirs?: string[];
   /** Factory for opening the OpenCode SQLite DB for sessions (DI for testability) */
   openSessionDb?: SessionSyncOptions["openSessionDb"];
-    /** CLI version string for run log */
+  /** Override: WorkBuddy home directory (~/.workbuddy) */
+  workbuddyDir?: string;
+  /** CLI version string for run log */
   version?: string;
   /**
    * Handler-supplied bucket-end timestamp (epoch ms). Worker sleeps until
@@ -81,7 +83,7 @@ export async function executeNotify(
           copilotCliOtelPaths: opts.copilotCliOtelPaths,
           grokLogsPath: opts.grokLogsPath,
           grokSessionsDir: opts.grokSessionsDir,
-
+          workbuddyDir: opts.workbuddyDir,
         });
         cycle.tokenSync = {
           totalDeltas: tokenResult.totalDeltas,
@@ -111,7 +113,7 @@ export async function executeNotify(
           piSessionsDir: opts.piSessionsDir,
           grokLogsPath: opts.grokLogsPath,
           grokSessionsDir: opts.grokSessionsDir,
-
+          workbuddyDir: opts.workbuddyDir,
         });
         cycle.sessionSync = {
           totalSnapshots: sessionResult.totalSnapshots,

@@ -161,7 +161,8 @@ export function resolveDefaultPaths(home = homedir()) {
     grokLogsPath: join(home, ".grok", "logs", "unified.jsonl"),
     /** Grok CLI sessions root: ~/.grok/sessions */
     grokSessionsDir: join(home, ".grok", "sessions"),
-
+    /** WorkBuddy home: ~/.workbuddy (sessions under projects/<slug>/<sessionId>.jsonl) */
+    workbuddyDir: join(home, ".workbuddy"),
     /** Pi session data: ~/.pi/agent/sessions */
     piSessionsDir: join(home, ".pi", "agent", "sessions"),
 

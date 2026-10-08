@@ -71,6 +71,7 @@ function isSource(value: string): value is Source {
     "vscode-copilot",
     "copilot-cli",
     "hermes",
+    "workbuddy",
     "zcode",
   ].includes(value);
 }
@@ -185,7 +186,7 @@ const SOURCE_LABELS: Record<string, string> = {
 
   copilotCli: "Copilot CLI",
   hermes: "Hermes",
-
+  workbuddy: "WorkBuddy",
 };
 
 /**
@@ -291,6 +292,7 @@ export const syncCommand = defineCommand({
 
       antigravityDir: paths.antigravityDir,
 
+      workbuddyDir: paths.workbuddyDir,
       onCorruptLine: handleCorruptLine,
       onProgress(event) {
         logSyncProgress(event);
@@ -320,6 +322,7 @@ export const syncCommand = defineCommand({
       if (result.sources.hermes > 0) deltaParts.push(`Hermes: ${result.sources.hermes}`);
 
       if (result.sources.antigravity > 0) deltaParts.push(`Antigravity CLI: ${result.sources.antigravity}`);
+      if (result.sources.workbuddy > 0) deltaParts.push(`WorkBuddy: ${result.sources.workbuddy}`);
       if (deltaParts.length > 0) {
         log.text(pc.dim(deltaParts.join("  ")));
       }
@@ -351,6 +354,7 @@ export const syncCommand = defineCommand({
 
       antigravityDir: paths.antigravityDir,
 
+      workbuddyDir: paths.workbuddyDir,
       onCorruptLine: handleCorruptLine,
       onProgress(event) {
         logSessionSyncProgress(event);
@@ -375,6 +379,7 @@ export const syncCommand = defineCommand({
       if (sessionResult.sources.pi > 0) sessParts.push(`Pi: ${sessionResult.sources.pi}`);
 
       if (sessionResult.sources.antigravity > 0) sessParts.push(`Antigravity CLI: ${sessionResult.sources.antigravity}`);
+      if (sessionResult.sources.workbuddy > 0) sessParts.push(`WorkBuddy: ${sessionResult.sources.workbuddy}`);
       if (sessParts.length > 0) {
         log.text(pc.dim(sessParts.join("  ")));
       }
@@ -416,6 +421,7 @@ const statusCommand = defineCommand({
         copilotCliOtelPaths: paths.copilotCliOtelPaths,
         multicaCodexDirs: paths.multicaCodexDirs,
         grokHome: paths.grokHome,
+        workbuddyDir: paths.workbuddyDir,
       },
       notifierStatuses,
       onCorruptLine: handleCorruptLine,
@@ -724,6 +730,7 @@ const notifyCommand = defineCommand({
 
       antigravityDir: paths.antigravityDir,
 
+      workbuddyDir: paths.workbuddyDir,
       version: CLI_VERSION,
     });
 

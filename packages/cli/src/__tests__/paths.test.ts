@@ -136,7 +136,7 @@ describe("resolveDefaultPaths", () => {
     expect(paths.hermesProfileDbPaths[0].dbKey).toBe("profiles/tomato");
   });
 
-  it("should return exactly 18 path properties", () => {
+  it("should return exactly 19 path properties", () => {
     const keys = [
       "antigravityDir",
       "stateDir",
@@ -156,6 +156,7 @@ describe("resolveDefaultPaths", () => {
       "openCodeMessageDir",
       "openclawDir",
       "piSessionsDir",
+      "workbuddyDir",
     ];
     const paths = resolveDefaultPaths("/fakehome");
     expect(Object.keys(paths)).toHaveLength(keys.length);

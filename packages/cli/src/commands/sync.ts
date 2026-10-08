@@ -90,7 +90,9 @@ export interface SyncOptions {
   grokLogsPath?: string;
   /** Override: Grok CLI sessions directory (~/.grok/sessions) */
   grokSessionsDir?: string;
-      /** Progress callback */
+  /** Override: WorkBuddy home directory (~/.workbuddy) */
+  workbuddyDir?: string;
+  /** Progress callback */
   onProgress?: (event: ProgressEvent) => void;
   /** Callback invoked when a corrupted JSONL line is found in the queue */
   onCorruptLine?: OnCorruptLine;
@@ -138,7 +140,7 @@ export interface SyncResult {
 
     copilotCli: number;
     hermes: number;
-
+    workbuddy: number;
   };
   /** Total files scanned per source */
   filesScanned: {
@@ -154,7 +156,7 @@ export interface SyncResult {
 
     copilotCli: number;
     hermes: number;
-
+    workbuddy: number;
   };
   /** Total SQLite databases scanned per source */
   dbsScanned: {
@@ -185,6 +187,7 @@ function sourceKey(source: Source): keyof SyncResult["sources"] {
     case "codex": return "codex";
     case "copilot-cli": return "copilotCli";
     case "hermes": return "hermes";
+    case "workbuddy": return "workbuddy";
     default: {
       // Exhaustiveness check — if Source adds a new value, this will fail to compile
       throw new Error(`Inactive source: ${source}`);
@@ -393,8 +396,8 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   let replayDetected = false;
 
   const allDeltas: ParsedDelta[] = [];
-  const sourceCounts = { antigravity: opts.antigravitySnapshot?.deltas.length ?? 0, claude: 0, codex: 0, copilotCli: 0,  grok: 0, hermes: 0,   opencode: 0, openclaw: 0, pi: 0,  };
-  const filesScanned = { antigravity: opts.antigravitySnapshot?.dbCount ?? 0, claude: 0, codex: 0, copilotCli: 0,  grok: 0, hermes: 0,   opencode: 0, openclaw: 0, pi: 0,  };
+  const sourceCounts = { antigravity: opts.antigravitySnapshot?.deltas.length ?? 0, claude: 0, codex: 0, copilotCli: 0,  grok: 0, hermes: 0,   opencode: 0, openclaw: 0, pi: 0, workbuddy: 0,  };
+  const filesScanned = { antigravity: opts.antigravitySnapshot?.dbCount ?? 0, claude: 0, codex: 0, copilotCli: 0,  grok: 0, hermes: 0,   opencode: 0, openclaw: 0, pi: 0, workbuddy: 0,  };
   const dbsScanned = { antigravity: opts.antigravitySnapshot?.dbCount ?? 0, opencode: 0, hermes: 0 };
 
   // Collect all discovered file paths (across all drivers) for knownFilePaths
@@ -461,6 +464,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
     copilotCliOtelPaths: opts.copilotCliOtelPaths,
     grokLogsPath: opts.grokLogsPath,
     grokSessionsDir: opts.grokSessionsDir,
+    workbuddyDir: opts.workbuddyDir,
   };
 
   // ---------- Phase 1: File-based drivers (generic loop) ----------

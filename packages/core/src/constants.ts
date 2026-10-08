@@ -23,6 +23,7 @@ export const SOURCES: readonly Source[] = Object.freeze([
   "opencode",
   "openclaw",
   "pi",
+  "workbuddy",
 ] as const);
 
 export const RETIRED_SOURCES: readonly Source[] = Object.freeze([

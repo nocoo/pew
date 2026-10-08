@@ -70,7 +70,9 @@ export interface SessionSyncOptions {
   grokLogsPath?: string;
   /** Override: Grok CLI sessions directory (~/.grok/sessions) */
   grokSessionsDir?: string;
-      /** Progress callback */
+  /** Override: WorkBuddy home directory (~/.workbuddy) */
+  workbuddyDir?: string;
+  /** Progress callback */
   onProgress?: (event: SessionProgressEvent) => void;
   /** Callback invoked when a corrupted JSONL line is found in the queue */
   onCorruptLine?: OnCorruptLine;
@@ -100,7 +102,7 @@ export interface SessionSyncResult {
     opencode: number;
     openclaw: number;
     pi: number;
-
+    workbuddy: number;
   };
   /** Total files/directories scanned per source */
   filesScanned: {
@@ -114,7 +116,7 @@ export interface SessionSyncResult {
     opencode: number;
     openclaw: number;
     pi: number;
-
+    workbuddy: number;
   };
   /** Total SQLite databases scanned per source */
   dbsScanned: {
@@ -162,8 +164,8 @@ async function sessionSyncLocked(
   cursors.files = Object.fromEntries(Object.entries(cursors.files).filter(([path]) => !isRetiredCursorPath(path, activePaths)));
 
   const allSnapshots: SessionSnapshot[] = [];
-  const sourceCounts = { antigravity: 0, claude: 0, codex: 0, copilotCli: 0,  grok: 0,   opencode: 0, openclaw: 0, pi: 0, };
-  const filesScanned = { antigravity: 0, claude: 0, codex: 0, copilotCli: 0,  grok: 0,   opencode: 0, openclaw: 0, pi: 0, };
+  const sourceCounts = { antigravity: 0, claude: 0, codex: 0, copilotCli: 0,  grok: 0,   opencode: 0, openclaw: 0, pi: 0, workbuddy: 0, };
+  const filesScanned = { antigravity: 0, claude: 0, codex: 0, copilotCli: 0,  grok: 0,   opencode: 0, openclaw: 0, pi: 0, workbuddy: 0, };
   const dbsScanned = { antigravity: 0, opencode: 0 };
 
   if (opts.antigravityDir) {
@@ -201,6 +203,7 @@ async function sessionSyncLocked(
     piSessionsDir: opts.piSessionsDir,
     grokLogsPath: opts.grokLogsPath,
     grokSessionsDir: opts.grokSessionsDir,
+    workbuddyDir: opts.workbuddyDir,
   };
 
   // ---------- Phase 1: File-based drivers (generic loop) ----------

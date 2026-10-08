@@ -24,7 +24,7 @@ const sourceOptions: Partial<Record<Source, Array<keyof SyncOptions>>> = {
   "copilot-cli": ["copilotCliLogsDir", "copilotCliOtelPaths"], grok: ["grokLogsPath", "grokSessionsDir"],
   hermes: ["hermesDbPath", "hermesProfileDbPaths", "openHermesDb"],
   opencode: ["openCodeMessageDir", "openCodeDbPath", "openMessageDb"], openclaw: ["openclawDir"], pi: ["piSessionsDir"],
-
+  workbuddy: ["workbuddyDir"],
 };
 
 async function requireSettledState(stateDir: string): Promise<void> {

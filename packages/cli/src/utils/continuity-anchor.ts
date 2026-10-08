@@ -32,7 +32,8 @@ export function usesJsonlOffsetResume(source: Source, _filePath: string): boolea
     source === "copilot-cli" ||
     source === "grok" ||
     source === "openclaw" ||
-    source === "pi"
+    source === "pi" ||
+    source === "workbuddy"
   );
 }
 

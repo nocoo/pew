@@ -418,7 +418,7 @@ describe("executeSessionSync", () => {
     expect(result.totalRecords).toBe(0);
     expect(result.filesScanned).toEqual({
       antigravity: 0,
-      claude: 0, codex: 0, copilotCli: 0, pi: 0, grok: 0, opencode: 0, openclaw: 0,
+      claude: 0, codex: 0, copilotCli: 0, pi: 0, grok: 0, opencode: 0, openclaw: 0, workbuddy: 0,
     });
   });
 
