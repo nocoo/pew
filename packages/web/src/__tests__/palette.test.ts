@@ -15,18 +15,19 @@ import {
 } from "../lib/palette";
 
 describe("palette", () => {
-  it("should have 15 chart colors", () => {
-    expect(CHART_COLORS).toHaveLength(15);
+  it("should have 16 chart colors", () => {
+    expect(CHART_COLORS).toHaveLength(16);
   });
 
-  it("should have 15 chart tokens matching chart-1 through chart-15", () => {
-    expect(CHART_TOKENS).toHaveLength(15);
+  it("should have 16 chart tokens matching chart-1 through chart-16", () => {
+    expect(CHART_TOKENS).toHaveLength(16);
     expect(CHART_TOKENS[0]).toBe("chart-1");
     expect(CHART_TOKENS[10]).toBe("chart-11");
     expect(CHART_TOKENS[11]).toBe("chart-12");
     expect(CHART_TOKENS[12]).toBe("chart-13");
     expect(CHART_TOKENS[13]).toBe("chart-14");
     expect(CHART_TOKENS[14]).toBe("chart-15");
+    expect(CHART_TOKENS[15]).toBe("chart-16");
   });
 
   it("should produce hsl(var(--...)) format for chart colors", () => {
@@ -40,6 +41,7 @@ describe("palette", () => {
     expect(chart.cyan).toBe("hsl(var(--chart-13))");
     expect(chart.blue).toBe("hsl(var(--chart-15))");
     expect(chart.emerald).toBe("hsl(var(--chart-14))");
+    expect(chart.leaf).toBe("hsl(var(--chart-16))");
   });
 
   it("should export semantic aliases", () => {
@@ -65,7 +67,7 @@ describe("palette", () => {
   });
 
   describe("agentColor()", () => {
-    it("should return correct color for all 15 known agents (alphabetical)", () => {
+    it("should return correct color for all 16 known agents (alphabetical)", () => {
       expect(agentColor("antigravity")).toEqual({ color: chart.blue, token: "chart-15" });
       expect(agentColor("claude-code")).toEqual({ color: chart.violet, token: "chart-1" });
       expect(agentColor("codex")).toEqual({ color: chart.magenta, token: "chart-2" });
@@ -80,6 +82,7 @@ describe("palette", () => {
       expect(agentColor("pi")).toEqual({ color: chart.teal, token: "chart-9" });
       expect(agentColor("pmstudio")).toEqual({ color: chart.sky, token: "chart-10" });
       expect(agentColor("vscode-copilot")).toEqual({ color: chart.indigo, token: "chart-11" });
+      expect(agentColor("workbuddy")).toEqual({ color: chart.leaf, token: "chart-16" });
       expect(agentColor("zcode")).toEqual({ color: chart.cyan, token: "chart-13" });
     });
 

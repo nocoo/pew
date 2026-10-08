@@ -419,6 +419,48 @@ describe("POST /api/ingest", () => {
     const summary = body.summary;
     expect(summary.cached_input_tokens / (summary.input_tokens + summary.cached_input_tokens)).toBe(0.9);
   });
+
+  it("accepts and reads back workbuddy source records — every whitelist entry point", async () => {
+    // 1. POST /api/ingest — bare-array body with workbuddy source
+    const ingest = await fetch(`${BASE_URL}/api/ingest`, {
+      method: "POST",
+      headers: INGEST_HEADERS,
+      body: JSON.stringify([
+        makeRecord({
+          source: "workbuddy",
+          model: "hy4-preview",
+          hour_start: "2026-07-10T01:00:00.000Z",
+          // Local-machine aggregate: prompt 1000 (400 cached) + completion 200.
+          input_tokens: 600,
+          cached_input_tokens: 400,
+          output_tokens: 150,
+          reasoning_output_tokens: 50,
+          total_tokens: 1200,
+          device_id: "e2e-workbuddy-device",
+        }),
+      ]),
+    });
+    expect(ingest.status).toBe(200);
+
+    // 2. Every ?source= query allowlist route
+    for (const path of [
+      "/api/usage?source=workbuddy&from=2026-07-01&to=2026-07-31",
+      "/api/sessions?source=workbuddy",
+      "/api/leaderboard?source=workbuddy&from=2026-07-01&to=2026-07-31",
+      `/api/users/${TEST_USER_SLUG}?source=workbuddy&from=2026-07-01&to=2026-07-31`,
+    ]) {
+      const r = await fetch(`${BASE_URL}${path}`);
+      expect(r.status, path).toBe(200);
+    }
+
+    // Token retention on user route
+    const userRes = await fetch(
+      `${BASE_URL}/api/users/${TEST_USER_SLUG}?source=workbuddy&from=2026-07-01&to=2026-07-31`,
+    );
+    expect(userRes.status).toBe(200);
+    const userBody = await userRes.json();
+    expect(userBody.summary.cached_input_tokens).toBe(400);
+  });
 });
 
 describe("CLI upgrade notice persistence", () => {

@@ -30,7 +30,6 @@ import { getCachedLeaderboard } from "@/lib/leaderboard-cache";
 // ---------------------------------------------------------------------------
 
 const VALID_PERIODS = new Set(["week", "month", "all"]);
-
 const MAX_LIMIT = 100;
 const DEFAULT_LIMIT = 20;
 

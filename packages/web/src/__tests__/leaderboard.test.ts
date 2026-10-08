@@ -253,7 +253,7 @@ describe("GET /api/leaderboard", () => {
     expect(mockDb.checkOrgMembership).not.toHaveBeenCalled();
   });
 
-  it.each(["claude-code", "codex", "copilot-cli", "gemini-cli", "grok", "hermes", "kosmos", "omp", "opencode", "openclaw", "pi", "pmstudio", "vscode-copilot", "zcode"])("preserves source filtering for %s", async (source) => {
+  it.each(["claude-code", "codex", "copilot-cli", "gemini-cli", "grok", "hermes", "kosmos", "omp", "opencode", "openclaw", "pi", "pmstudio", "vscode-copilot", "workbuddy", "zcode"])("preserves source filtering for %s", async (source) => {
     mockDb.getLeaderboardSnapshot.mockResolvedValue(snapshot([row({ session_count: 2, total_duration_seconds: 10 })]));
     const res = await GET(makeGetRequest("/api/leaderboard", { source }));
     expect(res.status).toBe(200);
