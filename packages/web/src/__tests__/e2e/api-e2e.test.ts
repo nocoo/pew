@@ -421,7 +421,9 @@ describe("POST /api/ingest", () => {
   });
 
   it("accepts and reads back workbuddy source records — every whitelist entry point", async () => {
-    // 1. POST /api/ingest — bare-array body with workbuddy source
+    // 1. POST /api/ingest — bare-array body with workbuddy source.
+    //    device_id is deliberately absent: the by-device breakdown test
+    //    asserts an exact device count, so this case must not add one.
     const ingest = await fetch(`${BASE_URL}/api/ingest`, {
       method: "POST",
       headers: INGEST_HEADERS,
@@ -947,10 +949,12 @@ describe("GET /api/usage/by-device", () => {
         output_tokens: 1329, reasoning_output_tokens: 0, total_tokens: 65563 },
       { device_id: "e2e-antigravity-device", date: "2026-10-01", input_tokens: 100, cached_input_tokens: 900,
         output_tokens: 40, reasoning_output_tokens: 60, total_tokens: 1100 },
+      { device_id: "e2e-workbuddy-device", date: "2026-07-10", input_tokens: 600, cached_input_tokens: 400,
+        output_tokens: 150, reasoning_output_tokens: 50, total_tokens: 1200 },
     ];
-    expect(body.devices).toHaveLength(4);
-    expect(body.timeline).toHaveLength(4);
-    expect(body.deviceDetails).toHaveLength(6);
+    expect(body.devices).toHaveLength(5);
+    expect(body.timeline).toHaveLength(5);
+    expect(body.deviceDetails).toHaveLength(7);
     for (const { date, ...device } of expected) {
       expect(body.devices.find((row) => row.device_id === device.device_id)).toMatchObject(device);
       expect(body.timeline.find((row) => row.device_id === device.device_id)).toMatchObject({ ...device, date });
