@@ -117,6 +117,23 @@ describe("collectWorkbuddySessions", () => {
     expect(snap.durationSeconds).toBe(1);
   });
 
+  it("ignores an out-of-range timestamp instead of throwing", async () => {
+    const file = join(dir, "session-1.jsonl");
+    await writeFile(
+      file,
+      `${[
+        record({ type: "message", role: "user", timestamp: 1e20 }),
+        record({ type: "message", role: "assistant", timestamp: T0 + 2_000 }),
+      ].join("\n")}\n`,
+    );
+
+    const snapshots = await collectWorkbuddySessions(file);
+    expect(snapshots).toHaveLength(1);
+    // The unusable stamp neither throws nor becomes a bound.
+    expect(snapshots[0]!.startedAt).toBe("2025-09-10T08:00:02.000Z");
+    expect(snapshots[0]!.totalMessages).toBe(2);
+  });
+
   it("groups records by sessionId when a file carries more than one", async () => {
     const file = join(dir, "mixed.jsonl");
     await writeFile(

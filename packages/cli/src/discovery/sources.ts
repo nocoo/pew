@@ -300,13 +300,16 @@ export async function discoverGrokSessionDirs(
  *
  * The domestic build installs at `~/.workbuddy`; the international build at
  * `~/.workbuddy-ai` (product name `workbuddy-ai`). Both keep the same layout
- * under `projects/<slug>/<sessionId>.jsonl`. Roots are deduplicated by path,
- * the merged list is globally sorted, and a missing root contributes nothing.
+ * under `projects/<slug>/<sessionId>.jsonl`. Roots are deduplicated by real
+ * path — a root reached twice through a symlink alias yields each file once,
+ * so the token driver cannot parse and count it twice. The merged list is
+ * globally sorted, and a missing root contributes nothing.
  */
 export async function discoverWorkbuddyFilesFromRoots(
   roots: string[],
 ): Promise<string[]> {
-  const results = new Set<string>();
+  const results: string[] = [];
+  const seenInodes = new Set<string>();
   for (const root of roots) {
     const projectsDir = join(root, "projects");
     let slugs: import("node:fs").Dirent[];
@@ -327,13 +330,23 @@ export async function discoverWorkbuddyFilesFromRoots(
         continue;
       }
       for (const entry of entries) {
-        if (entry.isFile() && entry.name.endsWith(".jsonl")) {
-          results.add(join(slugDir, entry.name));
+        if (!entry.isFile() || !entry.name.endsWith(".jsonl")) continue;
+        const filePath = join(slugDir, entry.name);
+        // Dedupe by inode: two configured roots (or a symlinked root) can
+        // resolve to the same file under different path strings.
+        try {
+          const st = await stat(filePath);
+          const key = `${st.dev}:${st.ino}`;
+          if (seenInodes.has(key)) continue;
+          seenInodes.add(key);
+        } catch {
+          // stat failure: keep the file and let downstream handle it
         }
+        results.push(filePath);
       }
     }
   }
-  return [...results].sort();
+  return results.sort();
 }
 
 /** Discover WorkBuddy session JSONL files under a single data root. */

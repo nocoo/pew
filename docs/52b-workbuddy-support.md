@@ -11,12 +11,14 @@ append-only JSONL file per session, with per-request usage on the
 
 Verified against both editions on 5.7.6 (domestic `~/.workbuddy` /
 `www.workbuddy.cn`, international `~/.workbuddy-ai` / `www.workbuddy.ai`,
-same build): identical on-disk layout and usage shapes; the 5.7.6 builds add a
-`session-meta` row and a top-level `_meta` tracing block that earlier sessions
-(5.5.x) do not have. Observed models differ by edition — `hy4-preview` /
-`space-bunny` domestically, `deepseek-v4.1-flash` internationally — and none
-of these ids are in the OpenRouter/models.dev price baseline, so pricing uses
-the `workbuddy` source fallback.
+same build): identical on-disk layout and usage shapes. Newly created sessions
+on the 5.7.6 installs carry a `session-meta` row and a top-level `_meta`
+tracing block; sessions carried over from the earlier (5.5.x) installs do not,
+so their presence tracks session creation rather than the build alone. Observed
+models differ by edition — `hy4-preview` / `space-bunny` domestically,
+`deepseek-v4.1-flash` internationally — and none of these ids are in the
+OpenRouter/models.dev price baseline, so pricing uses the `workbuddy` source
+fallback.
 
 ## 1. Data model (verified against a live install)
 
@@ -24,7 +26,7 @@ the `workbuddy` source fallback.
 ~/.workbuddy/projects/<slug>/<sessionId>.jsonl              ← the session transcript
 ~/.workbuddy/projects/<slug>/<sessionId>.meta.json          ← ACP connection metadata, no usage
 ~/.workbuddy/projects/<slug>/<sessionId>.file-rollback.ndjson
-~/.workbuddy/projects/<slug>/subagents/agent-*.jsonl        ← subagent transcripts (excluded)
+~/.workbuddy/projects/<slug>/subagents/agent-*.jsonl        ← subagent transcripts (excluded; community-reported, absent on the verified install)
 ~/.workbuddy/projects/<slug>/<sessionId>/tool-results/*.txt ← tool output (excluded)
 ~/.workbuddy/workbuddy.db                                   ← sessions/session_usage sidecar (not read)
 ```
@@ -34,7 +36,7 @@ file stem and also the `sessionId` field on nearly every record.
 
 | `type` | carries usage | notes |
 | --- | --- | --- |
-| `function_call` | **yes** | one per model request |
+| `function_call` | **yes** | usually one usage row per request; a request may repeat its `messageId` across sibling rows, only one of which carries usage |
 | `message` | **yes** (assistant rows only) | user rows carry no usage |
 | `reasoning` | no | |
 | `function_call_result` | no | links to its call via `callId` |
@@ -88,10 +90,14 @@ reasoningOutputTokens  =  reasoning_tokens
 ```
 
 Cache-creation tokens fold into the input bucket, matching the Claude
-normalizer; they are 0 on the observed install. When `includeAccounting` is
-set, the delta carries an `inclusiveAccounting` group with
-`origin: "workbuddy:usage"`, `write`/`read` diagnostics, the raw
-`total_tokens` as `rawTotal`, and `request_count: 1`.
+normalizer; they are 0 on the observed install. `prompt_cache_write_tokens` is
+accepted as a `cache_creation_input_tokens` alias, and a missing
+`prompt_cache_miss_tokens` falls back to `prompt_tokens − cache read`. When
+`includeAccounting` is set, the delta carries an `inclusiveAccounting` group
+with `origin: "workbuddy:usage"` and `request_count: 1`, plus a `counts` group
+carrying `cache_read_input_tokens` / `cache_write_input_tokens`; the raw
+`total_tokens` is passed in as the `rawTotal` diagnostic input, and is emitted
+only as `diagnostics[].raw_total_tokens` when the counts do not reconcile.
 
 **Golden verification** (live install, 2 sessions): 29 requests;
 prompt total 1 688 562 = cache read 1 417 984 + uncached 270 578;
@@ -137,7 +143,7 @@ a file carries more than one).
 | --- | --- |
 | Core | `packages/core/src/types.ts`, `constants.ts` |
 | Parser | `packages/cli/src/parsers/workbuddy.ts`, `workbuddy-session.ts` |
-| Discovery | `packages/cli/src/discovery/sources.ts` (`discoverWorkbuddyFiles`) |
+| Discovery | `packages/cli/src/discovery/sources.ts` (`discoverWorkbuddyFilesFromRoots`) |
 | Drivers | `drivers/token/workbuddy-token-driver.ts`, `drivers/session/workbuddy-session-driver.ts`, `registry.ts` |
 | CLI wiring | `commands/sync.ts`, `session-sync.ts`, `session-sync-helpers.ts`, `status.ts`, `notify.ts`, `enrich.ts`, `cli.ts`, `drivers/types.ts`, `utils/paths.ts`, `utils/continuity-anchor.ts`, `storage/accounting-queue.ts` |
 | Web | `lib/palette.ts` (+ `chart-15`), `app/globals.css`, `lib/usage-transforms.ts`, `lib/pricing.ts`, four `?source=` allowlists, landing + harness agent lists |
@@ -154,8 +160,10 @@ a file carries more than one).
 - `__tests__/drivers/{token,session}/workbuddy-*-driver.test.ts` — discover,
   fast-skip, incremental append, cursor build, inode reset.
 - `drivers/registry.test.ts` — registration counts (12 token / 11 session file drivers).
-- CLI wiring: `status.test.ts` (cursor classification), `session-sync-helpers.test.ts`
-  (`sourceKey` mapping), `continuity-anchor.test.ts` (`usesJsonlOffsetResume`).
+- CLI wiring: `status.test.ts` (cursor classification, domestic + international
+  roots), `session-sync-helpers.test.ts` (`sourceKey` mapping),
+  `continuity-anchor.test.ts` (`usesJsonlOffsetResume`), `paths.test.ts`
+  (dual data roots), `discovery.test.ts` (multi-root merge + inode dedup).
 - Core: `constants.test.ts` (15 sources, sorted), `types.test.ts`,
   `validation.test.ts` (both source validators accept the new slug).
 - Web: `palette.test.ts`, `source-label.test.ts`, `leaderboard.test.ts`,

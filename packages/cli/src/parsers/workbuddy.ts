@@ -30,6 +30,7 @@ import type { TokenDelta } from "@pew/core";
 import { inclusiveAccounting } from "../utils/accounting.js";
 import { jsonlCompleteBound } from "../utils/jsonl-offset.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
+import { isRepresentableEpochMs } from "../utils/time.js";
 import type { ParsedDelta } from "./claude.js";
 
 /** Result of parsing a single WorkBuddy JSONL file */
@@ -58,6 +59,13 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
+}
+
+/** Like `asRecord`, but an empty object counts as absent so the caller falls
+ * through to the next usage shape instead of normalizing `{}` to all zeros. */
+function asNonEmptyRecord(value: unknown): Record<string, unknown> | null {
+  const record = asRecord(value);
+  return record && Object.keys(record).length > 0 ? record : null;
 }
 
 /**
@@ -157,7 +165,10 @@ export async function parseWorkbuddyFile(opts: {
 
   try {
     for await (const line of rl) {
-      if (!line?.includes('"usage"')) continue;
+      // Cheap pre-filter: a usage row carries `rawUsage`, `providerData.usage`
+      // or `message.usage` — match all three shapes so a line whose only usage
+      // is `rawUsage` is not silently skipped.
+      if (!line?.includes('"usage"') && !line?.includes('"rawUsage"')) continue;
 
       let obj: Record<string, unknown>;
       try {
@@ -171,9 +182,9 @@ export async function parseWorkbuddyFile(opts: {
 
       const message = asRecord(obj.message);
       const raw =
-        asRecord(providerData.rawUsage) ??
-        asRecord(message?.usage) ??
-        asRecord(providerData.usage);
+        asNonEmptyRecord(providerData.rawUsage) ??
+        asNonEmptyRecord(message?.usage) ??
+        asNonEmptyRecord(providerData.usage);
       if (!raw) continue;
 
       const model =
@@ -181,10 +192,12 @@ export async function parseWorkbuddyFile(opts: {
       if (!model) continue;
 
       // WorkBuddy timestamps are integer epoch milliseconds. A non-numeric
-      // value means the row is not a usage event we can place in time.
-      const tsMs = typeof obj.timestamp === "number" && Number.isFinite(obj.timestamp)
-        ? obj.timestamp
-        : null;
+      // value, or one outside the representable Date range, means the row is
+      // not a usage event we can place in time.
+      const tsMs =
+        typeof obj.timestamp === "number" && isRepresentableEpochMs(obj.timestamp)
+          ? obj.timestamp
+          : null;
       if (tsMs === null) continue;
 
       const messageId =

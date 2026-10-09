@@ -20,6 +20,7 @@ import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
 import type { SessionSnapshot, Source } from "@pew/core";
 import { hashProjectRef } from "../utils/hash-project-ref.js";
+import { isRepresentableEpochMs } from "../utils/time.js";
 
 interface SessionAccum {
   sessionId: string;
@@ -94,10 +95,13 @@ export async function collectWorkbuddySessions(
       }
 
       // WorkBuddy writes integer epoch milliseconds; ISO strings are tolerated
-      // so a future format change degrades to "fewer bounds" rather than a crash.
+      // so a future format change degrades to "fewer bounds" rather than a
+      // crash. Out-of-range numbers are dropped for the same reason.
       const ms =
-        typeof obj.timestamp === "number" && Number.isFinite(obj.timestamp)
-          ? obj.timestamp
+        typeof obj.timestamp === "number"
+          ? isRepresentableEpochMs(obj.timestamp)
+            ? obj.timestamp
+            : Number.NaN
           : typeof obj.timestamp === "string"
             ? Date.parse(obj.timestamp)
             : Number.NaN;

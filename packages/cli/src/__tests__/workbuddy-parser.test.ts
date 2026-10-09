@@ -227,6 +227,80 @@ describe("parseWorkbuddyFile", () => {
     expect(result.deltas).toHaveLength(1);
   });
 
+  it("skips a row whose timestamp is outside the Date range instead of throwing", async () => {
+    const file = join(dir, "session.jsonl");
+    await writeFile(
+      file,
+      `${wbRecord({ messageId: "bad", timestamp: 1e20 })}\n${wbRecord({ messageId: "good" })}\n`,
+    );
+
+    // An out-of-range finite number must not abort the whole file: the bad row
+    // is dropped and the good row still yields its delta.
+    const result = await parseWorkbuddyFile({ filePath: file, startOffset: 0 });
+    expect(result.deltas).toHaveLength(1);
+    expect(result.deltas[0]!.timestamp).toBe(TS_ISO);
+  });
+
+  it("does not skip a row whose only usage shape is rawUsage", async () => {
+    const file = join(dir, "session.jsonl");
+    // No camelCase providerData.usage and no message.usage — the fast filter
+    // must still admit the row, since rawUsage is the documented primary shape.
+    const onlyRaw = JSON.stringify({
+      type: "function_call",
+      sessionId: "s",
+      cwd: "/x",
+      timestamp: TS_MS,
+      providerData: {
+        agent: "cli",
+        messageId: "raw-only",
+        model: "hy4-preview",
+        rawUsage: {
+          prompt_tokens: 100,
+          completion_tokens: 20,
+          total_tokens: 120,
+          prompt_cache_hit_tokens: 40,
+          prompt_cache_miss_tokens: 60,
+          completion_thinking_tokens: 5,
+        },
+      },
+    });
+    await writeFile(file, `${onlyRaw}\n`);
+
+    const result = await parseWorkbuddyFile({ filePath: file, startOffset: 0 });
+    expect(result.deltas).toHaveLength(1);
+    expect(result.deltas[0]!.tokens).toEqual({
+      inputTokens: 60,
+      cachedInputTokens: 40,
+      outputTokens: 15,
+      reasoningOutputTokens: 5,
+    });
+  });
+
+  it("falls through an empty rawUsage to a populated message.usage", async () => {
+    const file = join(dir, "session.jsonl");
+    const line = JSON.stringify({
+      type: "message",
+      sessionId: "s",
+      cwd: "/x",
+      timestamp: TS_MS,
+      message: {
+        role: "assistant",
+        usage: { input_tokens: 100, output_tokens: 20, total_tokens: 120, cache_read_input_tokens: 40 },
+      },
+      providerData: { agent: "cli", messageId: "m-empty", model: "hy4-preview", rawUsage: {} },
+    });
+    await writeFile(file, `${line}\n`);
+
+    const result = await parseWorkbuddyFile({ filePath: file, startOffset: 0 });
+    expect(result.deltas).toHaveLength(1);
+    expect(result.deltas[0]!.tokens).toEqual({
+      inputTokens: 60,
+      cachedInputTokens: 40,
+      outputTokens: 20,
+      reasoningOutputTokens: 0,
+    });
+  });
+
   it("accepts epoch-millisecond numeric timestamps only", async () => {
     const file = join(dir, "session.jsonl");
     await writeFile(

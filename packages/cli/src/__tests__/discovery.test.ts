@@ -409,4 +409,20 @@ describe("discoverWorkbuddyFiles", () => {
     const repeated = await discoverWorkbuddyFilesFromRoots([domestic, domestic]);
     expect(repeated).toEqual([join(domSlug, "s1.jsonl")]);
   });
+
+  it("does not double-count a root reached through a symlink alias", async () => {
+    const domSlug = join(tempDir, ".workbuddy", "projects", "Users-a");
+    await mkdir(domSlug, { recursive: true });
+    await writeFile(join(domSlug, "s1.jsonl"), "{}");
+    const alias = join(tempDir, "alias");
+    await symlink(join(tempDir, ".workbuddy"), alias);
+
+    // Same directory via two path strings — dedupe by dev:ino so the token
+    // driver cannot parse (and count) the file twice.
+    const files = await discoverWorkbuddyFilesFromRoots([
+      join(tempDir, ".workbuddy"),
+      alias,
+    ]);
+    expect(files).toHaveLength(1);
+  });
 });
