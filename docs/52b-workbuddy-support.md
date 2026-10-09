@@ -37,7 +37,7 @@ file stem and also the `sessionId` field on nearly every record.
 | `type` | carries usage | notes |
 | --- | --- | --- |
 | `function_call` | **yes** | usually one usage row per request; a request may repeat its `messageId` across sibling rows, only one of which carries usage |
-| `message` | **yes** (assistant rows only) | user rows carry no usage |
+| `message` | **yes** (assistant rows only) | user rows carry no usage; 5.7.6 tags the user-prompt row with `providerData.startsNewUserRequest: true` |
 | `reasoning` | no | |
 | `function_call_result` | no | links to its call via `callId` |
 | `file-history-snapshot` | no | no `sessionId` — must not be counted as a message |
@@ -70,6 +70,16 @@ and ids do not repeat across files. `conversationRequestId` and `traceId` are
 **turn-scoped** (29 requests shared 3 of them) and must never be counted as
 requests. Records repeating a `messageId` are dropped per parse, which is a
 no-op on today's builds but guards reported repeats in other versions.
+
+The same key dedups **across files and across syncs**. Within one sync every
+id counts once across both roots (the set lives on the `SyncContext`, keyed
+`seenWorkbuddyMessageIds`), and the last 2000 emitted ids per file are
+persisted on the cursor (`WorkbuddyCursor.seenMessageIds`) so a session
+copied between `~/.workbuddy` and `~/.workbuddy-ai` — or duplicated into a
+sibling file — is not counted a second time. A cursor written before the ring
+existed has no `seenMessageIds` field; `needsReplay()` flags it so the
+orchestrator restarts that sync as a full scan (an incremental re-parse would
+double the file's historical buckets in the append queue).
 
 ### Model and time
 
@@ -117,7 +127,9 @@ a file carries more than one).
   rows are excluded by type — the title and session-meta rows carry a
   `sessionId` on live installs, so filtering on session id alone would count
   them. `userMessages` / `assistantMessages` count `type: "message"` rows by
-  role.
+  role; on 5.7.6 the user prompt is a `role: "user"` row tagged
+  `providerData.startsNewUserRequest: true` and carrying no usage, so it
+  counts as a user message like any other.
 - Bounds from min/max epoch-ms timestamps; `projectRef` = `hashProjectRef(cwd)`;
   `model` = last seen `providerData.model`.
 
@@ -127,16 +139,6 @@ a file carries more than one).
   are not read; discovery stops at depth 2 by design. Community trackers
   disagree on attribution (some roll them into the parent session) and no
   subagent sample was available to verify against.
-- **No cross-file dedup.** A forked/copied session that replays a parent's
-  history into a new file would be counted once per copy. `messageId` is
-  per-file; a fingerprint-based cross-file dedup is the fix if this is ever
-  observed.
-- **No cross-run dedup.** The `messageId` set lives inside a single parse. If
-  WorkBuddy ever appends a repeat of an already-synced row (in place, same
-  inode, past the cursor offset), the next sync counts it again. The Claude
-  driver guards this with a persistent id ring in its cursor; WorkBuddy has
-  none — judged acceptable while sessions stay append-only and never re-emit
-  a row once written, which every live build inspected so far satisfies.
 - **No cost from logs** (see `credit` above); pricing uses model-id matching
   plus the `workbuddy` source fallback in the web pricing table.
 - **No notifier hook** — like Grok and ZCode, WorkBuddy syncs on `pew sync`.

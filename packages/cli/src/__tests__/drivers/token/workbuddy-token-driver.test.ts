@@ -3,7 +3,8 @@ import { mkdtemp, writeFile, rm, mkdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { workbuddyTokenDriver } from "../../../drivers/token/workbuddy-token-driver.js";
-import type { ByteOffsetCursor, FileFingerprint } from "../../../drivers/types.js";
+import type { WorkbuddyCursor, FileCursorBase } from "@pew/core";
+import type { SyncContext, FileFingerprint } from "../../../drivers/types.js";
 
 const TS_MS = 1757491200000; // 2025-09-10T08:00:00.000Z
 
@@ -123,7 +124,7 @@ describe("workbuddyTokenDriver", () => {
       {},
     );
     expect(r1.deltas).toHaveLength(1);
-    const cursor = workbuddyTokenDriver.buildCursor(fp1, r1) as ByteOffsetCursor;
+    const cursor = workbuddyTokenDriver.buildCursor(fp1, r1) as WorkbuddyCursor;
     expect(cursor.offset).toBe(Buffer.byteLength(line1, "utf8"));
 
     const line2 = `${wbLine("m2", TS_MS + 60_000)}\n`;
@@ -142,6 +143,122 @@ describe("workbuddyTokenDriver", () => {
     const fp = { inode: 1, mtimeMs: 0, size: 100 };
     const stale = { inode: 2, mtimeMs: 0, size: 100, offset: 90, updatedAt: "" };
     const resume = workbuddyTokenDriver.resumeState(stale, fp);
-    expect(resume).toMatchObject({ kind: "byte-offset", startOffset: 0 });
+    expect(resume).toMatchObject({ kind: "workbuddy", startOffset: 0 });
+  });
+
+  it("dedups a messageId shared across two files in one sync (cross-file)", async () => {
+    const copy = join(slugDir, "session-2.jsonl");
+    await writeFile(file, `${wbLine("shared")}\n`);
+    await writeFile(copy, `${wbLine("shared")}\n`);
+
+    const ctx = {};
+    const fpA = await fingerprint(file);
+    const fpB = await fingerprint(copy);
+    const rA = await workbuddyTokenDriver.parse(
+      file,
+      workbuddyTokenDriver.resumeState(undefined, fpA),
+      ctx,
+    );
+    const rB = await workbuddyTokenDriver.parse(
+      copy,
+      workbuddyTokenDriver.resumeState(undefined, fpB),
+      ctx,
+    );
+
+    expect(rA.deltas).toHaveLength(1);
+    expect(rB.deltas).toHaveLength(0);
+  });
+
+  it("persists emitted messageIds on the cursor and suppresses a cross-run replay", async () => {
+    const line = `${wbLine("m1")}\n`;
+    await writeFile(file, line);
+    const fp1 = await fingerprint(file);
+    const r1 = await workbuddyTokenDriver.parse(
+      file,
+      workbuddyTokenDriver.resumeState(undefined, fp1),
+      {},
+    );
+    const cursor = workbuddyTokenDriver.buildCursor(fp1, r1);
+    expect(cursor.seenMessageIds).toEqual(["m1"]);
+
+    // A sibling copy appears in a LATER sync and replays the same request.
+    const copy = join(slugDir, "session-copy.jsonl");
+    await writeFile(copy, line);
+    const ctx = {};
+    workbuddyTokenDriver.preload?.({ [file]: cursor }, ctx);
+    const fp2 = await fingerprint(copy);
+    const r2 = await workbuddyTokenDriver.parse(
+      copy,
+      workbuddyTokenDriver.resumeState(undefined, fp2),
+      ctx,
+    );
+    expect(r2.deltas).toHaveLength(0);
+  });
+
+  it("drops the persisted ring when the file inode changes", async () => {
+    const fp = { inode: 2, mtimeMs: 0, size: 100 };
+    const stale = {
+      inode: 1,
+      mtimeMs: 0,
+      size: 100,
+      offset: 90,
+      seenMessageIds: ["old"],
+      updatedAt: "",
+    };
+    const resume = workbuddyTokenDriver.resumeState(stale, fp);
+    expect(resume).toMatchObject({ priorSeenMessageIds: [] });
+  });
+
+  it("preload lifts only WorkBuddy rings, never a sibling source's seenIds", () => {
+    const ctx: SyncContext = {};
+    // A Claude cursor exposes `seenIds`; the WorkBuddy driver must key on its
+    // own `seenMessageIds` so preload() — which walks EVERY cursor — never
+    // pulls another source's ids into the WorkBuddy dedup set.
+    const claudeCursor = {
+      inode: 1,
+      mtimeMs: 0,
+      size: 0,
+      offset: 0,
+      seenIds: ["claude-1"],
+      updatedAt: "",
+    } as unknown as FileCursorBase;
+    workbuddyTokenDriver.preload?.({ "/x/claude.jsonl": claudeCursor }, ctx);
+    expect(ctx.seenWorkbuddyMessageIds?.size ?? 0).toBe(0);
+  });
+
+  it("declares needsReplay=true for a legacy cursor (no seenMessageIds field)", () => {
+    // Upgrade path: an existing install has ByteOffsetCursor-shaped entries
+    // in cursors.json with no `seenMessageIds` field. Rescanning that file
+    // inside incremental mode would double-count into the SUM'd queue. The
+    // driver flags this via needsReplay(); the orchestrator then wipes
+    // cursors and restarts as a full scan (overwrite branch).
+    const legacyCursor = {
+      inode: 42,
+      mtimeMs: 1709827200000,
+      size: 200,
+      offset: 200,
+      updatedAt: "2026-06-01T00:00:00Z",
+      // no seenMessageIds — legacy shape
+    } as unknown as WorkbuddyCursor;
+    expect(workbuddyTokenDriver.needsReplay).toBeDefined();
+    expect(workbuddyTokenDriver.needsReplay!(legacyCursor)).toBe(true);
+
+    // shouldSkip / resumeState treat a legacy cursor like any other cursor;
+    // the replay decision is the orchestrator's, not theirs.
+    const fp: FileFingerprint = { inode: 42, mtimeMs: 1709827200000, size: 200 };
+    expect(workbuddyTokenDriver.shouldSkip(legacyCursor, fp)).toBe(true);
+  });
+
+  it("does not flag modern or missing cursors as needsReplay", () => {
+    expect(workbuddyTokenDriver.needsReplay!(undefined)).toBe(false);
+    const modern: WorkbuddyCursor = {
+      inode: 1,
+      mtimeMs: 1,
+      size: 1,
+      offset: 1,
+      seenMessageIds: [],
+      updatedAt: "2026-06-01T00:00:00Z",
+    };
+    expect(workbuddyTokenDriver.needsReplay!(modern)).toBe(false);
   });
 });

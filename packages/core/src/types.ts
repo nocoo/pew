@@ -138,6 +138,25 @@ export interface ByteOffsetCursor extends FileCursorBase {
 }
 
 /**
+ * Cursor for WorkBuddy JSONL files.
+ *
+ * Byte-offset resume plus a bounded ring of the most recently emitted
+ * `providerData.messageId` values. WorkBuddy never rewrites a row in place,
+ * but the same session can be copied between the domestic (`~/.workbuddy`)
+ * and international (`~/.workbuddy-ai`) roots, and a duplicated session file
+ * replays the parent's `messageId`s into a second file — the ring, lifted into
+ * the per-run dedup Set by the driver's `preload()`, keeps such a replay from
+ * being counted twice. Bounded because a long session must not grow the cursor
+ * without limit; duplicates cluster in the tail.
+ */
+export interface WorkbuddyCursor extends FileCursorBase {
+  /** Byte offset where we last stopped reading */
+  offset: number;
+  /** Recently-emitted `providerData.messageId` values, most-recent last, bounded */
+  seenMessageIds: string[];
+}
+
+/**
  * Cursor for Claude Code JSONL files.
  *
  * Byte-offset resume + a bounded, JSON-serialized ring of the most recently
@@ -231,6 +250,7 @@ export interface HermesSqliteCursor {
 export type FileCursor =
   | ByteOffsetCursor
   | ClaudeCursor
+  | WorkbuddyCursor
   | CodexCursor
   | OpenCodeCursor;
 

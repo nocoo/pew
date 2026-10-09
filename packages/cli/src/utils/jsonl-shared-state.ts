@@ -11,6 +11,7 @@ export type CodexSharedSnapshot = {
 export type JsonlSharedSnapshot = {
   codex: CodexSharedSnapshot;
   claudeIds: string[] | null;
+  workbuddyIds: string[] | null;
 };
 
 export function snapshotCodexSharedState(
@@ -58,6 +59,9 @@ export function snapshotJsonlSharedState(
   return {
     codex: snapshotCodexSharedState(ctx, filePath),
     claudeIds: ctx.seenClaudeMessageIds ? [...ctx.seenClaudeMessageIds] : null,
+    workbuddyIds: ctx.seenWorkbuddyMessageIds
+      ? [...ctx.seenWorkbuddyMessageIds]
+      : null,
   };
 }
 
@@ -66,6 +70,14 @@ export function restoreJsonlSharedState(
   snapshot: JsonlSharedSnapshot,
 ): void {
   restoreCodexSharedState(ctx, snapshot.codex);
+  if (snapshot.workbuddyIds === null) {
+    ctx.seenWorkbuddyMessageIds?.clear();
+  } else {
+    const wbSeen = ctx.seenWorkbuddyMessageIds ?? new Set<string>();
+    wbSeen.clear();
+    for (const id of snapshot.workbuddyIds) wbSeen.add(id);
+    ctx.seenWorkbuddyMessageIds = wbSeen;
+  }
   if (snapshot.claudeIds === null) {
     ctx.seenClaudeMessageIds?.clear();
     return;

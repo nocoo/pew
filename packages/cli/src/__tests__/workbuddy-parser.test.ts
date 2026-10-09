@@ -195,6 +195,60 @@ describe("parseWorkbuddyFile", () => {
     expect(result.deltas).toHaveLength(2);
   });
 
+  it("accepts an external seen-id set and reports only the ids it emitted", async () => {
+    const file = join(dir, "session.jsonl");
+    await writeFile(
+      file,
+      `${wbRecord({ messageId: "msg-1" })}\n${wbRecord({ messageId: "msg-2" })}\n`,
+    );
+
+    const seen = new Set<string>(["msg-1"]);
+    const result = await parseWorkbuddyFile({
+      filePath: file,
+      startOffset: 0,
+      seenMessageIds: seen,
+    });
+
+    // msg-1 was already known to the caller, so only msg-2 is emitted — and
+    // the caller's set now carries it for the next file.
+    expect(result.deltas).toHaveLength(1);
+    expect(result.emittedMessageIds).toEqual(["msg-2"]);
+    expect(seen.has("msg-2")).toBe(true);
+  });
+
+  it("suppresses a messageId a sibling file already emitted (cross-file dedup)", async () => {
+    const first = join(dir, "first.jsonl");
+    const second = join(dir, "second.jsonl");
+    await writeFile(first, `${wbRecord({ messageId: "shared" })}\n`);
+    await writeFile(second, `${wbRecord({ messageId: "shared" })}\n`);
+
+    const seen = new Set<string>();
+    const r1 = await parseWorkbuddyFile({
+      filePath: first,
+      startOffset: 0,
+      seenMessageIds: seen,
+    });
+    const r2 = await parseWorkbuddyFile({
+      filePath: second,
+      startOffset: 0,
+      seenMessageIds: seen,
+    });
+
+    expect(r1.deltas).toHaveLength(1);
+    expect(r2.deltas).toHaveLength(0);
+  });
+
+  it("reports emitted ids even without an external set (local dedup only)", async () => {
+    const file = join(dir, "session.jsonl");
+    await writeFile(
+      file,
+      `${wbRecord({ messageId: "msg-1" })}\n${wbRecord({ messageId: "msg-1" })}\n`,
+    );
+
+    const result = await parseWorkbuddyFile({ filePath: file, startOffset: 0 });
+    expect(result.emittedMessageIds).toEqual(["msg-1"]);
+  });
+
   it("skips records without usage and non-usage record types", async () => {
     const file = join(dir, "session.jsonl");
     const lines = [

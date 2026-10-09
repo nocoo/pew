@@ -37,6 +37,12 @@ import type { ParsedDelta } from "./claude.js";
 export interface WorkbuddyFileResult {
   deltas: ParsedDelta[];
   endOffset: number;
+  /**
+   * `providerData.messageId` values this parse actually emitted, in emission
+   * order (no duplicates). Recorded whether or not the caller passed an
+   * external `seenMessageIds` set, so the driver can fold them onto the cursor.
+   */
+  emittedMessageIds: string[];
 }
 
 /** Raw counter fields extracted from one usage object. */
@@ -135,17 +141,28 @@ export function normalizeWorkbuddyUsage(raw: Record<string, unknown>): TokenDelt
  * repeating a `messageId` already emitted in this parse are skipped — the
  * observed layout emits usage once per request, but newer builds are reported
  * to repeat it across sibling rows.
+ *
+ * `seenMessageIds` extends that dedup across files and syncs: an id already
+ * in the set is suppressed, and every newly-emitted id is added to it. Pass
+ * the set you get from `SyncContext` (lifted from the cursor rings by the
+ * driver's `preload`) to stop a request replayed into a sibling file — a
+ * session copy across the domestic and international roots, or an in-place
+ * re-emission past the cursor — from being counted again. The ids this call
+ * emitted are returned in `emittedMessageIds` so the driver can fold them
+ * back onto the cursor.
  */
 export async function parseWorkbuddyFile(opts: {
   filePath: string;
   startOffset: number;
   endBound?: number;
   includeAccounting?: boolean;
+  seenMessageIds?: Set<string>;
 }): Promise<WorkbuddyFileResult> {
   const deltas: ParsedDelta[] = [];
+  const emittedMessageIds: string[] = [];
 
   const st = await stat(opts.filePath).catch(() => null);
-  if (!st?.isFile()) return { deltas, endOffset: opts.startOffset };
+  if (!st?.isFile()) return { deltas, endOffset: opts.startOffset, emittedMessageIds };
 
   const endOffset = await jsonlCompleteBound(
     opts.filePath,
@@ -153,9 +170,11 @@ export async function parseWorkbuddyFile(opts: {
     st.size,
     opts.endBound,
   );
-  if (opts.startOffset >= endOffset) return { deltas, endOffset };
+  if (opts.startOffset >= endOffset) return { deltas, endOffset, emittedMessageIds };
 
-  const seenMessageIds = new Set<string>();
+  // The caller's cross-file/cross-sync set when provided; otherwise a
+  // local-only set so within-file dedup still holds.
+  const seenMessageIds = opts.seenMessageIds ?? new Set<string>();
   const stream = createReadStream(opts.filePath, {
     encoding: "utf8",
     start: opts.startOffset,
@@ -210,7 +229,10 @@ export async function parseWorkbuddyFile(opts: {
       // Zero-usage stubs must not occupy the messageId slot and suppress a
       // later real row carrying the same id.
       if (isAllZero(tokens)) continue;
-      if (messageId) seenMessageIds.add(messageId);
+      if (messageId) {
+        seenMessageIds.add(messageId);
+        emittedMessageIds.push(messageId);
+      }
 
       const counters = readWorkbuddyCounters(raw);
       deltas.push({
@@ -243,5 +265,5 @@ export async function parseWorkbuddyFile(opts: {
     stream.destroy();
   }
 
-  return { deltas, endOffset };
+  return { deltas, endOffset, emittedMessageIds };
 }

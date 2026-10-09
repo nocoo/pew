@@ -61,6 +61,15 @@ export interface SyncContext {
   seenClaudeMessageIds?: Set<string>;
 
   /**
+   * Per-sync dedup Set for the WorkBuddy driver — each
+   * `providerData.messageId` counts once across every configured root
+   * (domestic + international). Initialized by the WorkBuddy driver's
+   * discover() and consumed by its parse(); lifted from the per-file cursor
+   * rings by preload() so a file that fast-skips still contributes its ids.
+   */
+  seenWorkbuddyMessageIds?: Set<string>;
+
+  /**
    * Codex rollout path → scope id already recorded by a previous sync. Lets
    * discovery skip re-reading session_meta for files it has seen before.
    */
@@ -190,6 +199,19 @@ export interface ClaudeResumeState {
 }
 
 /**
+ * Resume state for the WorkBuddy driver. Extends byte-offset with the bounded
+ * ring of `providerData.messageId` values previously emitted for this file, so
+ * parse() can seed its dedup set even when the id's earlier occurrence sits
+ * before `startOffset` (in the same file, or in a sibling copy).
+ */
+export interface WorkbuddyResumeState {
+  readonly kind: "workbuddy";
+  startOffset: number;
+  endBound?: number;
+  priorSeenMessageIds: string[];
+}
+
+/**
  * Resume state for OpenCode JSON per-file parser.
  */
 export interface OpenCodeJsonResumeState {
@@ -217,6 +239,7 @@ export interface CodexResumeState {
 export type ResumeState =
   | ByteOffsetResumeState
   | ClaudeResumeState
+  | WorkbuddyResumeState
   | OpenCodeJsonResumeState
   | CodexResumeState;
 
