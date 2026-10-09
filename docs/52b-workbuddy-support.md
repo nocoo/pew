@@ -141,6 +141,8 @@ a file carries more than one).
 - `__tests__/drivers/{token,session}/workbuddy-*-driver.test.ts` — discover,
   fast-skip, incremental append, cursor build, inode reset.
 - `drivers/registry.test.ts` — registration counts (12 token / 11 session file drivers).
+- CLI wiring: `status.test.ts` (cursor classification), `session-sync-helpers.test.ts`
+  (`sourceKey` mapping), `continuity-anchor.test.ts` (`usesJsonlOffsetResume`).
 - Core: `constants.test.ts` (15 sources, sorted), `types.test.ts`,
   `validation.test.ts` (both source validators accept the new slug).
 - Web: `palette.test.ts`, `source-label.test.ts`, `leaderboard.test.ts`,

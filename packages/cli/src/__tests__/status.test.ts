@@ -21,6 +21,7 @@ const defaultDirs: SourceDirs = {
   copilotCliOtelPaths: ["/home/runs"],
   multicaCodexDirs: [],
   grokHome: "/home/.grok",
+  workbuddyDir: "/home/.workbuddy",
 };
 
 describe("executeStatus", () => {
@@ -293,6 +294,30 @@ describe("executeStatus", () => {
     });
     expect(result.trackedFiles).toBe(0);
     expect(result.sources["vscode-copilot"]).toBeUndefined();
+    expect(result.sources.unknown).toBeUndefined();
+  });
+
+  it("should classify workbuddy files correctly", async () => {
+    const cursorStore = new CursorStore(stateDir);
+    await cursorStore.save({
+      files: {
+        "/home/.workbuddy/projects/Users-me-app/s1.jsonl": {
+          type: "byte-offset",
+          offset: 100,
+          inode: 40,
+          size: 100,
+          mtimeMs: 8500,
+        },
+      },
+      updatedAt: "2026-03-09T11:00:00.000Z",
+    });
+
+    const result = await executeStatus({
+      stateDir,
+      sourceDirs: defaultDirs,
+    });
+    expect(result.trackedFiles).toBe(1);
+    expect(result.sources.workbuddy).toBe(1);
     expect(result.sources.unknown).toBeUndefined();
   });
 
