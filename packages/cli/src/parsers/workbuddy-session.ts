@@ -8,9 +8,10 @@
  *
  * Counts follow the harness-source convention: `userMessages` /
  * `assistantMessages` count `type: "message"` rows by role, and
- * `totalMessages` counts every row that carries a session id (tool calls,
- * reasoning and results included). Auxiliary rows without a session id —
- * `file-history-snapshot`, `ai-title` — are excluded.
+ * `totalMessages` counts every message-bearing row (tool calls, reasoning and
+ * results included). Auxiliary metadata rows — `ai-title` and
+ * `file-history-snapshot` — are excluded by type: on live installs the title
+ * row carries a `sessionId`, so a session-id filter alone would count it.
  */
 
 import { createReadStream } from "node:fs";
@@ -57,6 +58,11 @@ export async function collectWorkbuddySessions(
 
       const sessionId = typeof obj.sessionId === "string" ? obj.sessionId : null;
       if (!sessionId) continue;
+
+      // Auxiliary metadata rows: excluded by type, not by session id.
+      if (obj.type === "ai-title" || obj.type === "file-history-snapshot") {
+        continue;
+      }
 
       let accum = sessions.get(sessionId);
       if (!accum) {

@@ -29,7 +29,7 @@ file stem and also the `sessionId` field on nearly every record.
 | `reasoning` | no | |
 | `function_call_result` | no | links to its call via `callId` |
 | `file-history-snapshot` | no | no `sessionId` — must not be counted as a message |
-| `ai-title` | no | session title, may appear mid-file |
+| `ai-title` | no | session title, may appear mid-file; carries a `sessionId`, excluded from session counts by type |
 
 ### The three usage shapes are the same numbers
 
@@ -95,9 +95,11 @@ a file carries more than one).
 - `sessionKey`: `workbuddy:<sessionId>` (prefixed, unlike Grok's bare id, to
   keep the global `session_key` dedup collision-free).
 - `kind`: `human`.
-- `totalMessages`: every record carrying a `sessionId` (tool calls, reasoning
-  and results included); `userMessages` / `assistantMessages` count
-  `type: "message"` rows by role.
+- `totalMessages`: every message-bearing row (tool calls, reasoning and
+  results included); `ai-title` and `file-history-snapshot` rows are excluded
+  by type — the title row carries a `sessionId` on live installs, so filtering
+  on session id alone would count it. `userMessages` / `assistantMessages`
+  count `type: "message"` rows by role.
 - Bounds from min/max epoch-ms timestamps; `projectRef` = `hashProjectRef(cwd)`;
   `model` = last seen `providerData.model`.
 
