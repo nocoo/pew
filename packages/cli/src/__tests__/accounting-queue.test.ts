@@ -79,6 +79,15 @@ describe("durable independent accounting revisions", () => {
     }
     expect((await q.readFromOffset(0)).records).toEqual([]);
   });
+  it("accepts a workbuddy-sourced accounting record", async () => {
+    const q = new AccountingQueue(await temp());
+    const r: AccountingRecord = { ...fixture(), source: "workbuddy" };
+    await q.merge([r]);
+    const { records } = await q.readFromOffset(0);
+    expect(records).toHaveLength(1);
+    expect(records[0]!.source).toBe("workbuddy");
+  });
+
   it("allows reclassification without changing legacy totals and rejects same-revision conflicts", async () => {
     const q = new AccountingQueue(await temp()); const r = fixture();
     await q.merge([r]);

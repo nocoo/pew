@@ -91,6 +91,18 @@ describe("GET /api/sessions", () => {
       expect(options.source).toBe("claude-code");
     });
 
+    it.each([
+      "claude-code", "codex", "copilot-cli", "gemini-cli", "grok", "kosmos",
+      "omp", "opencode", "openclaw", "pi", "pmstudio", "workbuddy", "zcode",
+    ])("should accept source filter %s", async (source) => {
+      mockDbRead.getSessionRecords.mockResolvedValueOnce([]);
+
+      const res = await GET(makeGetRequest("/api/sessions", { source }));
+
+      expect(res.status).toBe(200);
+      expect(mockDbRead.getSessionRecords.mock.calls[0]![3].source).toBe(source);
+    });
+
     it("keeps an explicit timestamp as the exclusive end bound in UTC", async () => {
       mockDbRead.getSessionRecords.mockResolvedValueOnce([]);
 

@@ -421,9 +421,8 @@ describe("POST /api/ingest", () => {
   });
 
   it("accepts and reads back workbuddy source records — every whitelist entry point", async () => {
-    // 1. POST /api/ingest — bare-array body with workbuddy source.
-    //    device_id is deliberately absent: the by-device breakdown test
-    //    asserts an exact device count, so this case must not add one.
+    // 1. POST /api/ingest — bare-array body with workbuddy source. It carries a
+    //    device_id, so the by-device breakdown test includes it as a 4th device.
     const ingest = await fetch(`${BASE_URL}/api/ingest`, {
       method: "POST",
       headers: INGEST_HEADERS,
@@ -936,7 +935,7 @@ describe("GET /api/seasons", () => {
 // ===========================================================================
 
 describe("GET /api/usage/by-device", () => {
-  it("returns all ingested devices with consistent named counts across every breakdown", async () => {
+  it("returns all five ingested devices with consistent named counts across every breakdown", async () => {
     const res = await fetch(`${BASE_URL}/api/usage/by-device?from=2020-01-01`);
     expect(res.status).toBe(200);
     const body: ByDeviceResponse = await res.json();

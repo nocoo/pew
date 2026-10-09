@@ -99,6 +99,19 @@ describe("GET /api/usage", () => {
       expect(body.error).toContain("source");
     });
 
+    it.each([
+      "claude-code", "codex", "copilot-cli", "gemini-cli", "grok", "hermes",
+      "kosmos", "omp", "opencode", "openclaw", "pi", "pmstudio", "vscode-copilot",
+      "workbuddy", "zcode",
+    ])("should accept source filter %s", async (source) => {
+      mockDbRead.getUsageRecords.mockResolvedValueOnce([]);
+
+      const res = await GET(makeGetRequest("/api/usage", { source }));
+
+      expect(res.status).toBe(200);
+      expect(mockDbRead.getUsageRecords.mock.calls[0]![3].source).toBe(source);
+    });
+
     it("should reject invalid date format for from", async () => {
       const res = await GET(makeGetRequest("/api/usage", { from: "not-a-date" }));
 

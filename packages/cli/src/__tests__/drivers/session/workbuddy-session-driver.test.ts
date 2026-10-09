@@ -52,6 +52,24 @@ describe("workbuddySessionDriver", () => {
     expect(await workbuddySessionDriver.discover({ workbuddyDirs: [] })).toEqual([]);
   });
 
+  it("discovers sessions from every configured root (domestic + international)", async () => {
+    const intlRoot = await mkdtemp(join(tmpdir(), "pew-workbuddy-intl-sess-"));
+    const intlSlug = join(intlRoot, "projects", "Users-me-b");
+    await mkdir(intlSlug, { recursive: true });
+    const intlFile = join(intlSlug, "s2.jsonl");
+    await writeFile(file, `${record({ type: "message", role: "user" })}\n`);
+    await writeFile(intlFile, `${record({ type: "message", role: "user" })}\n`);
+
+    try {
+      const files = await workbuddySessionDriver.discover({
+        workbuddyDirs: [root, intlRoot],
+      });
+      expect(files).toEqual([file, intlFile].sort());
+    } finally {
+      await rm(intlRoot, { recursive: true, force: true });
+    }
+  });
+
   it("skips unchanged files via the mtime+size dual check", async () => {
     await writeFile(file, `${record({ type: "message", role: "user" })}\n`);
     const fp = await fingerprint(file);

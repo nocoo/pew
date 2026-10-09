@@ -134,6 +134,36 @@ describe("collectWorkbuddySessions", () => {
     expect(snapshots[0]!.totalMessages).toBe(2);
   });
 
+  it("excludes a file-history-snapshot row even when it carries a sessionId", async () => {
+    const file = join(dir, "session-1.jsonl");
+    await writeFile(
+      file,
+      `${[
+        record({ type: "file-history-snapshot", timestamp: T0 }),
+        record({ type: "message", role: "user", timestamp: T0 + 1_000 }),
+      ].join("\n")}\n`,
+    );
+
+    const snapshots = await collectWorkbuddySessions(file);
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0]!.totalMessages).toBe(1);
+    expect(snapshots[0]!.startedAt).toBe("2025-09-10T08:00:01.000Z");
+  });
+
+  it("accepts an ISO string timestamp as a bound", async () => {
+    const file = join(dir, "session-1.jsonl");
+    await writeFile(
+      file,
+      `${[
+        record({ type: "message", role: "user", timestamp: "2025-09-10T08:00:00.000Z" }),
+        record({ type: "message", role: "assistant", timestamp: T0 + 2_000 }),
+      ].join("\n")}\n`,
+    );
+
+    const snapshots = await collectWorkbuddySessions(file);
+    expect(snapshots[0]!.startedAt).toBe("2025-09-10T08:00:00.000Z");
+  });
+
   it("groups records by sessionId when a file carries more than one", async () => {
     const file = join(dir, "mixed.jsonl");
     await writeFile(

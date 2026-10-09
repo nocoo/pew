@@ -227,6 +227,86 @@ describe("parseWorkbuddyFile", () => {
     expect(result.deltas).toHaveLength(1);
   });
 
+  it("does not let a zero-token stub occupy a messageId and suppress the real row", async () => {
+    const file = join(dir, "session.jsonl");
+    const stub = wbRecord({
+      messageId: "dup",
+      rawUsage: { prompt_tokens: 0, completion_tokens: 0 },
+    });
+    const real = wbRecord({ messageId: "dup" });
+    await writeFile(file, `${stub}\n${real}\n`);
+
+    const result = await parseWorkbuddyFile({ filePath: file, startOffset: 0 });
+    expect(result.deltas).toHaveLength(1);
+    expect(result.deltas[0]!.tokens).toEqual({
+      inputTokens: 600,
+      cachedInputTokens: 400,
+      outputTokens: 150,
+      reasoningOutputTokens: 50,
+    });
+  });
+
+  it("falls back to the camelCase providerData.usage shape", async () => {
+    const file = join(dir, "session.jsonl");
+    // No rawUsage, no message.usage — the camelCase summary is the only shape,
+    // and the array details carry the cache/reasoning split.
+    const line = JSON.stringify({
+      type: "function_call",
+      sessionId: "s",
+      cwd: "/x",
+      timestamp: TS_MS,
+      providerData: {
+        agent: "cli",
+        messageId: "camel",
+        model: "hy4-preview",
+        usage: {
+          requests: 1,
+          inputTokens: 1000,
+          outputTokens: 200,
+          totalTokens: 1200,
+          inputTokensDetails: [{ cached_tokens: 400 }],
+          outputTokensDetails: [{ reasoning_tokens: 50 }],
+        },
+      },
+    });
+    await writeFile(file, `${line}\n`);
+
+    const result = await parseWorkbuddyFile({ filePath: file, startOffset: 0 });
+    expect(result.deltas).toHaveLength(1);
+    expect(result.deltas[0]!.tokens).toEqual({
+      inputTokens: 600,
+      cachedInputTokens: 400,
+      outputTokens: 150,
+      reasoningOutputTokens: 50,
+    });
+  });
+
+  it("accepts prompt_cache_write_tokens as the cache-write alias", async () => {
+    const file = join(dir, "session.jsonl");
+    await writeFile(
+      file,
+      `${wbRecord({
+        messageId: "w",
+        rawUsage: {
+          prompt_tokens: 1000,
+          completion_tokens: 200,
+          total_tokens: 1200,
+          prompt_cache_hit_tokens: 400,
+          prompt_cache_miss_tokens: 600,
+          prompt_cache_write_tokens: 30,
+        },
+      })}\n`,
+    );
+
+    const result = await parseWorkbuddyFile({ filePath: file, startOffset: 0 });
+    expect(result.deltas[0]!.tokens).toEqual({
+      inputTokens: 630,
+      cachedInputTokens: 400,
+      outputTokens: 200,
+      reasoningOutputTokens: 0,
+    });
+  });
+
   it("skips a row whose timestamp is outside the Date range instead of throwing", async () => {
     const file = join(dir, "session.jsonl");
     await writeFile(

@@ -131,6 +131,12 @@ a file carries more than one).
   history into a new file would be counted once per copy. `messageId` is
   per-file; a fingerprint-based cross-file dedup is the fix if this is ever
   observed.
+- **No cross-run dedup.** The `messageId` set lives inside a single parse. If
+  WorkBuddy ever appends a repeat of an already-synced row (in place, same
+  inode, past the cursor offset), the next sync counts it again. The Claude
+  driver guards this with a persistent id ring in its cursor; WorkBuddy has
+  none — judged acceptable while sessions stay append-only and never re-emit
+  a row once written, which every live build inspected so far satisfies.
 - **No cost from logs** (see `credit` above); pricing uses model-id matching
   plus the `workbuddy` source fallback in the web pricing table.
 - **No notifier hook** — like Grok and ZCode, WorkBuddy syncs on `pew sync`.

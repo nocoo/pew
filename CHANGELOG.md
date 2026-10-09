@@ -2,6 +2,27 @@
 
 ## Unreleased
 
+### Added
+
+- WorkBuddy (domestic `~/.workbuddy` and international `~/.workbuddy-ai`)
+  token and session sync: byte-offset JSONL driver, continuity anchors,
+  dashboard palette/labels/pricing and `?source=` allowlists
+- Dedup WorkBuddy requests across files and syncs by `providerData.messageId`,
+  so a session copied between the two roots is not counted twice
+
+### Fixed
+
+- Count WorkBuddy's `ai-title` and `session-meta` rows as metadata, not messages
+- Skip WorkBuddy rows with unrepresentable timestamps instead of losing the file
+- Fall through empty `rawUsage` and admit `rawUsage`-only rows
+- Stop a persistently-empty WorkBuddy file from oscillating between a normal
+  cursor and a full-rescan every other sync
+- Cover every `?source=` route with a parity test that drives all of core's
+  `VALID_SOURCES` through each handler and asserts 200, so a route that drops
+  back to a hardcoded source list fails here instead of in production; the
+  source-filter test matrices likewise iterate core's `SOURCES`
+- Show Grok in the session sync progress line, matching the token line
+
 ## v3.5.1
 
 ### Changed
