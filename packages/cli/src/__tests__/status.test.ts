@@ -21,7 +21,7 @@ const defaultDirs: SourceDirs = {
   copilotCliOtelPaths: ["/home/runs"],
   multicaCodexDirs: [],
   grokHome: "/home/.grok",
-  workbuddyDir: "/home/.workbuddy",
+  workbuddyDirs: ["/home/.workbuddy", "/opt/workbuddy-ai"],
 };
 
 describe("executeStatus", () => {
@@ -307,6 +307,33 @@ describe("executeStatus", () => {
           inode: 40,
           size: 100,
           mtimeMs: 8500,
+        },
+      },
+      updatedAt: "2026-03-09T11:00:00.000Z",
+    });
+
+    const result = await executeStatus({
+      stateDir,
+      sourceDirs: defaultDirs,
+    });
+    expect(result.trackedFiles).toBe(1);
+    expect(result.sources.workbuddy).toBe(1);
+    expect(result.sources.unknown).toBeUndefined();
+  });
+
+  it("should classify the international workbuddy root as workbuddy", async () => {
+    const cursorStore = new CursorStore(stateDir);
+    await cursorStore.save({
+      files: {
+        // Deliberately NOT a string extension of the domestic root above: the
+        // real-world `.workbuddy` / `.workbuddy-ai` pair shares a prefix, which
+        // would let a classify-only-the-first-root bug pass this test.
+        "/opt/workbuddy-ai/projects/Users-me-app/s2.jsonl": {
+          type: "byte-offset",
+          offset: 50,
+          inode: 41,
+          size: 50,
+          mtimeMs: 8600,
         },
       },
       updatedAt: "2026-03-09T11:00:00.000Z",

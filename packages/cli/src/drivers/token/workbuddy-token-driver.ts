@@ -12,7 +12,7 @@
  */
 
 import type { ByteOffsetCursor } from "@pew/core";
-import { discoverWorkbuddyFiles } from "../../discovery/sources.js";
+import { discoverWorkbuddyFilesFromRoots } from "../../discovery/sources.js";
 import { parseWorkbuddyFile } from "../../parsers/workbuddy.js";
 import { fileUnchanged } from "../../utils/file-changed.js";
 import type {
@@ -35,8 +35,8 @@ export const workbuddyTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
   source: "workbuddy",
 
   async discover(opts: DiscoverOpts, _ctx: SyncContext): Promise<string[]> {
-    if (!opts.workbuddyDir) return [];
-    return discoverWorkbuddyFiles(opts.workbuddyDir);
+    if (!opts.workbuddyDirs?.length) return [];
+    return discoverWorkbuddyFilesFromRoots(opts.workbuddyDirs);
   },
 
   shouldSkip(

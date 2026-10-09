@@ -12,6 +12,7 @@ import {
   discoverCodexFiles,
   discoverPiFiles,
   discoverWorkbuddyFiles,
+  discoverWorkbuddyFilesFromRoots,
 } from "../discovery/sources.js";
 
 describe("discoverClaudeFiles", () => {
@@ -382,5 +383,30 @@ describe("discoverWorkbuddyFiles", () => {
   it("should return empty array if directory does not exist", async () => {
     const files = await discoverWorkbuddyFiles(join(tempDir, "nonexistent"));
     expect(files).toEqual([]);
+  });
+
+  it("merges multiple roots, sorted, tolerating missing roots", async () => {
+    const domestic = join(tempDir, ".workbuddy");
+    const intl = join(tempDir, ".workbuddy-ai");
+    const domSlug = join(domestic, "projects", "Users-a");
+    const intlSlug = join(intl, "projects", "Users-b");
+    await mkdir(domSlug, { recursive: true });
+    await mkdir(intlSlug, { recursive: true });
+    await writeFile(join(domSlug, "s1.jsonl"), "{}");
+    await writeFile(join(intlSlug, "s2.jsonl"), "{}");
+
+    const files = await discoverWorkbuddyFilesFromRoots([domestic, intl]);
+    expect(files).toEqual([join(domSlug, "s1.jsonl"), join(intlSlug, "s2.jsonl")].sort());
+
+    // A missing root contributes nothing and never fails the scan.
+    const withMissing = await discoverWorkbuddyFilesFromRoots([
+      domestic,
+      join(tempDir, "absent-root"),
+    ]);
+    expect(withMissing).toEqual([join(domSlug, "s1.jsonl")]);
+
+    // Repeating a root does not duplicate its files.
+    const repeated = await discoverWorkbuddyFilesFromRoots([domestic, domestic]);
+    expect(repeated).toEqual([join(domSlug, "s1.jsonl")]);
   });
 });

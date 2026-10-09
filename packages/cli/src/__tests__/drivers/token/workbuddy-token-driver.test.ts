@@ -57,14 +57,35 @@ describe("workbuddyTokenDriver", () => {
 
   it("discovers session files under projects/<slug>/", async () => {
     await writeFile(file, `${wbLine("m1")}\n`);
-    const files = await workbuddyTokenDriver.discover({ workbuddyDir: root }, {});
+    const files = await workbuddyTokenDriver.discover({ workbuddyDirs: [root] }, {});
     expect(files).toEqual([file]);
+  });
+
+  it("discovers sessions from every configured root (domestic + international)", async () => {
+    const domRoot = root;
+    const intlRoot = await mkdtemp(join(tmpdir(), "pew-workbuddy-intl-"));
+    const domFile = join(domRoot, "projects", "Users-me-a", "s1.jsonl");
+    const intlFile = join(intlRoot, "projects", "Users-me-b", "s2.jsonl");
+    await mkdir(join(domRoot, "projects", "Users-me-a"), { recursive: true });
+    await mkdir(join(intlRoot, "projects", "Users-me-b"), { recursive: true });
+    await writeFile(domFile, `${wbLine("m1")}\n`);
+    await writeFile(intlFile, `${wbLine("m2")}\n`);
+
+    try {
+      const files = await workbuddyTokenDriver.discover(
+        { workbuddyDirs: [domRoot, intlRoot] },
+        {},
+      );
+      expect(files).toEqual([domFile, intlFile].sort());
+    } finally {
+      await rm(intlRoot, { recursive: true, force: true });
+    }
   });
 
   it("returns empty when the directory option is absent or missing", async () => {
     expect(await workbuddyTokenDriver.discover({}, {})).toEqual([]);
     expect(
-      await workbuddyTokenDriver.discover({ workbuddyDir: join(root, "nope") }, {}),
+      await workbuddyTokenDriver.discover({ workbuddyDirs: [join(root, "nope")] }, {}),
     ).toEqual([]);
   });
 

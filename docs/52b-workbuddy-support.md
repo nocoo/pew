@@ -2,7 +2,8 @@
 
 **Status:** done — token + session sync shipped together.
 **Source slug:** `workbuddy` · **Display name:** WorkBuddy
-**Data root:** `~/.workbuddy` (sessions at `projects/<slug>/<sessionId>.jsonl`)
+**Data root:** `~/.workbuddy` (domestic) and `~/.workbuddy-ai` (international) —
+sessions at `projects/<slug>/<sessionId>.jsonl` under either root
 
 WorkBuddy is Tencent's desktop AI agent (CodeBuddy engine). It writes one
 append-only JSONL file per session, with per-request usage on the
@@ -113,7 +114,6 @@ a file carries more than one).
   history into a new file would be counted once per copy. `messageId` is
   per-file; a fingerprint-based cross-file dedup is the fix if this is ever
   observed.
-- **International build not wired.** `~/.workbuddy-ai` is a separate root.
 - **No cost from logs** (see `credit` above); pricing uses model-id matching
   plus the `workbuddy` source fallback in the web pricing table.
 - **No notifier hook** — like Grok and ZCode, WorkBuddy syncs on `pew sync`.

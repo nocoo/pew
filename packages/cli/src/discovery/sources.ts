@@ -295,35 +295,52 @@ export async function discoverGrokSessionDirs(
  * <slug>/subagents/agent-*.jsonl and tool outputs under <sessionId>/ — are
  * auxiliary and deliberately excluded.
  */
-export async function discoverWorkbuddyFiles(
-  workbuddyDir: string,
+/**
+ * Discover WorkBuddy session JSONL files across one or more data roots.
+ *
+ * The domestic build installs at `~/.workbuddy`; the international build at
+ * `~/.workbuddy-ai` (product name `workbuddy-ai`). Both keep the same layout
+ * under `projects/<slug>/<sessionId>.jsonl`. Roots are deduplicated by path,
+ * the merged list is globally sorted, and a missing root contributes nothing.
+ */
+export async function discoverWorkbuddyFilesFromRoots(
+  roots: string[],
 ): Promise<string[]> {
-  const projectsDir = join(workbuddyDir, "projects");
-  let slugs: import("node:fs").Dirent[];
-  try {
-    slugs = await readdir(projectsDir, { withFileTypes: true });
-  } catch {
-    return [];
-  }
-
-  const results: string[] = [];
-  for (const slug of slugs) {
-    if (!slug.isDirectory()) continue;
-    const slugDir = join(projectsDir, slug.name);
-    let entries: import("node:fs").Dirent[];
+  const results = new Set<string>();
+  for (const root of roots) {
+    const projectsDir = join(root, "projects");
+    let slugs: import("node:fs").Dirent[];
     try {
-      entries = await readdir(slugDir, { withFileTypes: true });
+      slugs = await readdir(projectsDir, { withFileTypes: true });
     } catch {
-      // An unreadable project directory never fails the whole scan.
       continue;
     }
-    for (const entry of entries) {
-      if (entry.isFile() && entry.name.endsWith(".jsonl")) {
-        results.push(join(slugDir, entry.name));
+
+    for (const slug of slugs) {
+      if (!slug.isDirectory()) continue;
+      const slugDir = join(projectsDir, slug.name);
+      let entries: import("node:fs").Dirent[];
+      try {
+        entries = await readdir(slugDir, { withFileTypes: true });
+      } catch {
+        // An unreadable project directory never fails the whole scan.
+        continue;
+      }
+      for (const entry of entries) {
+        if (entry.isFile() && entry.name.endsWith(".jsonl")) {
+          results.add(join(slugDir, entry.name));
+        }
       }
     }
   }
-  return results.sort();
+  return [...results].sort();
+}
+
+/** Discover WorkBuddy session JSONL files under a single data root. */
+export async function discoverWorkbuddyFiles(
+  workbuddyDir: string,
+): Promise<string[]> {
+  return discoverWorkbuddyFilesFromRoots([workbuddyDir]);
 }
 
 /** Accounting reads turn updates, including sessions without a summary file. */

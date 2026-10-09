@@ -292,7 +292,7 @@ export const syncCommand = defineCommand({
 
       antigravityDir: paths.antigravityDir,
 
-      workbuddyDir: paths.workbuddyDir,
+      workbuddyDirs: paths.workbuddyDirs,
       onCorruptLine: handleCorruptLine,
       onProgress(event) {
         logSyncProgress(event);
@@ -354,7 +354,7 @@ export const syncCommand = defineCommand({
 
       antigravityDir: paths.antigravityDir,
 
-      workbuddyDir: paths.workbuddyDir,
+      workbuddyDirs: paths.workbuddyDirs,
       onCorruptLine: handleCorruptLine,
       onProgress(event) {
         logSessionSyncProgress(event);
@@ -421,7 +421,7 @@ const statusCommand = defineCommand({
         copilotCliOtelPaths: paths.copilotCliOtelPaths,
         multicaCodexDirs: paths.multicaCodexDirs,
         grokHome: paths.grokHome,
-        workbuddyDir: paths.workbuddyDir,
+        workbuddyDirs: paths.workbuddyDirs,
       },
       notifierStatuses,
       onCorruptLine: handleCorruptLine,
@@ -730,7 +730,7 @@ const notifyCommand = defineCommand({
 
       antigravityDir: paths.antigravityDir,
 
-      workbuddyDir: paths.workbuddyDir,
+      workbuddyDirs: paths.workbuddyDirs,
       version: CLI_VERSION,
     });
 

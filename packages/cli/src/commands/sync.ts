@@ -90,8 +90,8 @@ export interface SyncOptions {
   grokLogsPath?: string;
   /** Override: Grok CLI sessions directory (~/.grok/sessions) */
   grokSessionsDir?: string;
-  /** Override: WorkBuddy home directory (~/.workbuddy) */
-  workbuddyDir?: string;
+  /** Override: WorkBuddy data roots (domestic + international) */
+  workbuddyDirs?: string[];
   /** Progress callback */
   onProgress?: (event: ProgressEvent) => void;
   /** Callback invoked when a corrupted JSONL line is found in the queue */
@@ -464,7 +464,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
     copilotCliOtelPaths: opts.copilotCliOtelPaths,
     grokLogsPath: opts.grokLogsPath,
     grokSessionsDir: opts.grokSessionsDir,
-    workbuddyDir: opts.workbuddyDir,
+    workbuddyDirs: opts.workbuddyDirs,
   };
 
   // ---------- Phase 1: File-based drivers (generic loop) ----------

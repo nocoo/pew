@@ -6,7 +6,7 @@
  */
 
 import type { SessionFileCursor } from "@pew/core";
-import { discoverWorkbuddyFiles } from "../../discovery/sources.js";
+import { discoverWorkbuddyFilesFromRoots } from "../../discovery/sources.js";
 import { collectWorkbuddySessions } from "../../parsers/workbuddy-session.js";
 import type { FileSessionDriver, DiscoverOpts, FileFingerprint } from "../types.js";
 
@@ -15,8 +15,8 @@ export const workbuddySessionDriver: FileSessionDriver<SessionFileCursor> = {
   source: "workbuddy",
 
   async discover(opts: DiscoverOpts): Promise<string[]> {
-    if (!opts.workbuddyDir) return [];
-    return discoverWorkbuddyFiles(opts.workbuddyDir);
+    if (!opts.workbuddyDirs?.length) return [];
+    return discoverWorkbuddyFilesFromRoots(opts.workbuddyDirs);
   },
 
   shouldSkip(

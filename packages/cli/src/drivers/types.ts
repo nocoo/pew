@@ -144,8 +144,8 @@ export interface DiscoverOpts {
   grokLogsPath?: string;
   /** Grok CLI sessions root (~/.grok/sessions) */
   grokSessionsDir?: string;
-  /** WorkBuddy home (~/.workbuddy; sessions under projects/<slug>/<sessionId>.jsonl) */
-  workbuddyDir?: string;
+  /** WorkBuddy data roots (domestic `~/.workbuddy` + international `~/.workbuddy-ai`; sessions under each `projects/<slug>/`) */
+  workbuddyDirs?: string[];
 }
 
 // ---------------------------------------------------------------------------

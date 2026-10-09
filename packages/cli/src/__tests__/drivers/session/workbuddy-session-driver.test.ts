@@ -39,7 +39,7 @@ describe("workbuddySessionDriver", () => {
   it("discovers session files and returns snapshots", async () => {
     await writeFile(file, `${record({ type: "message", role: "user" })}\n`);
 
-    const files = await workbuddySessionDriver.discover({ workbuddyDir: root });
+    const files = await workbuddySessionDriver.discover({ workbuddyDirs: [root] });
     expect(files).toEqual([file]);
 
     const snapshots = await workbuddySessionDriver.parse(file);
@@ -49,6 +49,7 @@ describe("workbuddySessionDriver", () => {
 
   it("returns empty discovery without a directory option", async () => {
     expect(await workbuddySessionDriver.discover({})).toEqual([]);
+    expect(await workbuddySessionDriver.discover({ workbuddyDirs: [] })).toEqual([]);
   });
 
   it("skips unchanged files via the mtime+size dual check", async () => {
