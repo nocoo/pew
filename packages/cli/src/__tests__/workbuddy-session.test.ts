@@ -84,6 +84,39 @@ describe("collectWorkbuddySessions", () => {
     expect(snapshots[0]!.startedAt).toBe("2025-09-10T08:00:01.000Z");
   });
 
+  it("excludes the session-meta row: no message count, no timestamp claim", async () => {
+    const file = join(dir, "session-1.jsonl");
+    await writeFile(
+      file,
+      `${[
+        // WorkBuddy 5.7.6 writes a session-meta row carrying both a sessionId
+        // and its own epoch-ms stamp. Excluding it by type keeps totalMessages
+        // message-only and keeps startedAt/lastMessageAt derived from real
+        // messages alone.
+        JSON.stringify({
+          type: "session-meta",
+          id: "meta-1",
+          sessionId: "session-1",
+          timestamp: T0 + 3_000,
+          meta: { "codebuddy.ai/hostKind": "unopted" },
+        }),
+        record({ type: "message", role: "user", timestamp: T0 + 4_500 }),
+        record({ type: "message", role: "assistant", timestamp: T0 + 6_000 }),
+      ].join("\n")}\n`,
+    );
+
+    const snapshots = await collectWorkbuddySessions(file);
+    expect(snapshots).toHaveLength(1);
+    const snap = snapshots[0]!;
+    expect(snap.totalMessages).toBe(2);
+    expect(snap.userMessages).toBe(1);
+    expect(snap.assistantMessages).toBe(1);
+    // startedAt must come from the first message, not the session-meta stamp.
+    expect(snap.startedAt).toBe("2025-09-10T08:00:04.500Z");
+    expect(snap.lastMessageAt).toBe("2025-09-10T08:00:06.000Z");
+    expect(snap.durationSeconds).toBe(1);
+  });
+
   it("groups records by sessionId when a file carries more than one", async () => {
     const file = join(dir, "mixed.jsonl");
     await writeFile(

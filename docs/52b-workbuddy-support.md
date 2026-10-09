@@ -9,6 +9,15 @@ WorkBuddy is Tencent's desktop AI agent (CodeBuddy engine). It writes one
 append-only JSONL file per session, with per-request usage on the
 `providerData` of `function_call` and `message` records.
 
+Verified against both editions on 5.7.6 (domestic `~/.workbuddy` /
+`www.workbuddy.cn`, international `~/.workbuddy-ai` / `www.workbuddy.ai`,
+same build): identical on-disk layout and usage shapes; the 5.7.6 builds add a
+`session-meta` row and a top-level `_meta` tracing block that earlier sessions
+(5.5.x) do not have. Observed models differ by edition — `hy4-preview` /
+`space-bunny` domestically, `deepseek-v4.1-flash` internationally — and none
+of these ids are in the OpenRouter/models.dev price baseline, so pricing uses
+the `workbuddy` source fallback.
+
 ## 1. Data model (verified against a live install)
 
 ```
@@ -31,6 +40,7 @@ file stem and also the `sessionId` field on nearly every record.
 | `function_call_result` | no | links to its call via `callId` |
 | `file-history-snapshot` | no | no `sessionId` — must not be counted as a message |
 | `ai-title` | no | session title, may appear mid-file; carries a `sessionId`, excluded from session counts by type |
+| `session-meta` | no | 5.7.6+ status row (e.g. `codebuddy.ai/hostKind`); carries a `sessionId` and its own timestamp, excluded from session counts and bounds by type |
 
 ### The three usage shapes are the same numbers
 
@@ -97,10 +107,11 @@ a file carries more than one).
   keep the global `session_key` dedup collision-free).
 - `kind`: `human`.
 - `totalMessages`: every message-bearing row (tool calls, reasoning and
-  results included); `ai-title` and `file-history-snapshot` rows are excluded
-  by type — the title row carries a `sessionId` on live installs, so filtering
-  on session id alone would count it. `userMessages` / `assistantMessages`
-  count `type: "message"` rows by role.
+  results included); `ai-title`, `file-history-snapshot` and `session-meta`
+  rows are excluded by type — the title and session-meta rows carry a
+  `sessionId` on live installs, so filtering on session id alone would count
+  them. `userMessages` / `assistantMessages` count `type: "message"` rows by
+  role.
 - Bounds from min/max epoch-ms timestamps; `projectRef` = `hashProjectRef(cwd)`;
   `model` = last seen `providerData.model`.
 
