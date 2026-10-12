@@ -19,7 +19,7 @@ export interface SourceDirs {
   multicaCodexDirs: string[];
   /** Grok CLI home (~/.grok) — used to classify log + session cursors */
   grokHome: string;
-  /** WorkBuddy data roots (domestic + international) — classify session cursors */
+  /** WorkBuddy data roots (domestic + international) — classify token cursors */
   workbuddyDirs: string[];
 }
 

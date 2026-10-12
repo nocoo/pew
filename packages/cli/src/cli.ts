@@ -373,7 +373,7 @@ export const syncCommand = defineCommand({
       if (sessionResult.sources.claude > 0) sessParts.push(`Claude: ${sessionResult.sources.claude}`);
       if (sessionResult.sources.codex > 0) sessParts.push(`Codex: ${sessionResult.sources.codex}`);
       if (sessionResult.sources.copilotCli > 0) sessParts.push(`Copilot CLI: ${sessionResult.sources.copilotCli}`);
-
+      if (sessionResult.sources.grok > 0) sessParts.push(`Grok: ${sessionResult.sources.grok}`);
       if (sessionResult.sources.opencode > 0) sessParts.push(`OpenCode: ${sessionResult.sources.opencode}`);
       if (sessionResult.sources.openclaw > 0) sessParts.push(`OpenClaw: ${sessionResult.sources.openclaw}`);
       if (sessionResult.sources.pi > 0) sessParts.push(`Pi: ${sessionResult.sources.pi}`);

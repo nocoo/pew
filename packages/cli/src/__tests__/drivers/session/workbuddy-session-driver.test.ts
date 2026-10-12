@@ -14,7 +14,7 @@ function record(over: Record<string, unknown>): string {
 async function fingerprint(path: string): Promise<FileFingerprint> {
   const st = await stat(path);
   return {
-    inode: (st as unknown as { ino: number }).inode,
+    inode: (st as unknown as { ino: number }).ino,
     mtimeMs: st.mtimeMs,
     size: st.size,
   };
@@ -78,6 +78,13 @@ describe("workbuddySessionDriver", () => {
 
     const newer = { ...fp, mtimeMs: fp.mtimeMs + 1_000 };
     expect(workbuddySessionDriver.shouldSkip(cursor, newer)).toBe(false);
+
+    // The size dimension must gate on its own: a file rewritten to the same
+    // mtime but a different length is NOT unchanged. Varying only mtimeMs
+    // would let a size-only guard rot undetected.
+    const resized = { ...fp, size: fp.size + 10 };
+    expect(workbuddySessionDriver.shouldSkip(cursor, resized)).toBe(false);
+
     expect(workbuddySessionDriver.shouldSkip(undefined, fp)).toBe(false);
   });
 });

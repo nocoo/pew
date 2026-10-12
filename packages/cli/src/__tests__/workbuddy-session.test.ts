@@ -63,6 +63,29 @@ describe("collectWorkbuddySessions", () => {
     expect(snap.model).toBe("hy4-preview");
   });
 
+  it("reports the last model seen, not the first", async () => {
+    const file = join(dir, "session-1.jsonl");
+    await writeFile(
+      file,
+      `${[
+        record({
+          type: "function_call",
+          timestamp: T0,
+          providerData: { agent: "cli", model: "first-model" },
+        }),
+        record({ type: "message", role: "assistant", timestamp: T0 + 1_000 }),
+        record({
+          type: "function_call",
+          timestamp: T0 + 2_000,
+          providerData: { agent: "cli", model: "last-model" },
+        }),
+      ].join("\n")}\n`,
+    );
+
+    const snapshots = await collectWorkbuddySessions(file);
+    expect(snapshots[0]!.model).toBe("last-model");
+  });
+
   it("excludes ai-title rows even though they carry a sessionId", async () => {
     const file = join(dir, "session-1.jsonl");
     await writeFile(

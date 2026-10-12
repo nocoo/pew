@@ -24,7 +24,7 @@ import {
   normalizeForMatch,
   stripVariantSuffix,
 } from "@/lib/model-info-helpers";
-import type { CachePriceDetails, PublicContextTier } from "@pew/core";
+import type { CachePriceDetails, PublicContextTier, Source } from "@pew/core";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -102,7 +102,8 @@ export const DEFAULT_PREFIX_PRICES: Array<{ prefix: string; pricing: ModelPricin
 ];
 
 /** Fallback pricing per source (conservative estimates, alphabetical order) */
-export const DEFAULT_SOURCE_DEFAULTS: Record<string, ModelPricing> = {
+export const DEFAULT_SOURCE_DEFAULTS: Record<Source, ModelPricing> = {
+  antigravity: { input: 3, output: 15, cached: 0.3 },
   "claude-code": { input: 3, output: 15, cached: 0.3 },
   codex: { input: 2, output: 8, cached: 0.5 },
   "copilot-cli": { input: 3, output: 15, cached: 0.3 },

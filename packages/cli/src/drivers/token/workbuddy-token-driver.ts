@@ -43,10 +43,12 @@ import type {
 } from "../types.js";
 
 /**
- * Bound on `WorkbuddyCursor.seenMessageIds`. A duplicated session replays the whole
- * parent history, so the ring must cover a full session's requests, not just a
- * few dozen tail lines; 2000 keeps a long session bounded without letting the
- * cursor file grow without limit.
+ * Bound on `WorkbuddyCursor.seenMessageIds`. A duplicated session replays its
+ * parent history, so the ring should cover a whole session's requests, not just
+ * a few dozen tail lines; 2000 keeps a long session bounded without letting the
+ * cursor file grow without limit. Cross-sync dedup is therefore exact only
+ * while a session stays within the last 2000 ids — an older id reappearing in a
+ * later sync (a copy of a >2000-request session) is counted again.
  */
 const SEEN_ID_CAP = 2000;
 

@@ -288,22 +288,19 @@ export async function discoverGrokSessionDirs(
 }
 
 /**
- * Discover WorkBuddy session files.
- * Path pattern: ~/.workbuddy/projects/<slug>/<sessionId>.jsonl
- *
- * Only depth-2 files are sessions. Deeper entries — subagent transcripts at
- * <slug>/subagents/agent-*.jsonl and tool outputs under <sessionId>/ — are
- * auxiliary and deliberately excluded.
- */
-/**
  * Discover WorkBuddy session JSONL files across one or more data roots.
  *
- * The domestic build installs at `~/.workbuddy`; the international build at
- * `~/.workbuddy-ai` (product name `workbuddy-ai`). Both keep the same layout
- * under `projects/<slug>/<sessionId>.jsonl`. Roots are deduplicated by real
- * path — a root reached twice through a symlink alias yields each file once,
- * so the token driver cannot parse and count it twice. The merged list is
- * globally sorted, and a missing root contributes nothing.
+ * Path pattern: `<root>/projects/<slug>/<sessionId>.jsonl`. The domestic build
+ * installs at `~/.workbuddy`; the international build at `~/.workbuddy-ai`
+ * (product name `workbuddy-ai`). Both keep the same layout. Only depth-2 files
+ * are sessions — deeper entries (subagent transcripts at
+ * `<slug>/subagents/agent-*.jsonl` and tool outputs under `<sessionId>/`) are
+ * auxiliary and deliberately excluded.
+ *
+ * Files are deduplicated by inode (`dev:ino`), so a root reached twice through
+ * a symlink alias yields each file once and the token driver cannot parse and
+ * count it twice. The merged list is globally sorted, and a missing root
+ * contributes nothing.
  */
 export async function discoverWorkbuddyFilesFromRoots(
   roots: string[],

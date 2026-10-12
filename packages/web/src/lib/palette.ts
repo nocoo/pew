@@ -113,7 +113,7 @@ function hashString(s: string): number {
 
 /**
  * Get a stable color for a model name.
- * Uses a hash to deterministically pick from the 9 chart colors.
+ * Uses a hash to deterministically pick from the chart palette.
  */
 export function modelColor(model: string): ChartColor {
   const idx = hashString(model) % CHART_COLORS.length;

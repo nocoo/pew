@@ -369,6 +369,13 @@ describe("validateSessionIngestRecord", () => {
     expect(validateSessionIngestRecord(rec, 0).valid).toBe(true);
   });
 
+  it("should accept all 16 sources", () => {
+    for (const source of ["antigravity", "claude-code", "codex", "copilot-cli", "gemini-cli", "grok", "hermes", "kosmos", "omp", "opencode", "openclaw", "pi", "pmstudio", "vscode-copilot", "workbuddy", "zcode"]) {
+      const rec = { ...validSessionRecord(), source };
+      expect(validateSessionIngestRecord(rec, 0).valid, source).toBe(true);
+    }
+  });
+
   it("should reject non-object inputs", () => {
     expect(validateSessionIngestRecord(null, 0).valid).toBe(false);
     expect(validateSessionIngestRecord("string", 0).valid).toBe(false);

@@ -1,3 +1,4 @@
+import { SOURCES } from "@pew/core";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import * as dbModule from "@/lib/db";
 import { createMockDbRead, loadMockedAuthHelpers, makeGetRequest } from "./test-utils";
@@ -91,10 +92,7 @@ describe("GET /api/sessions", () => {
       expect(options.source).toBe("claude-code");
     });
 
-    it.each([
-      "claude-code", "codex", "copilot-cli", "gemini-cli", "grok", "kosmos",
-      "omp", "opencode", "openclaw", "pi", "pmstudio", "workbuddy", "zcode",
-    ])("should accept source filter %s", async (source) => {
+    it.each([...SOURCES])("should accept source filter %s", async (source) => {
       mockDbRead.getSessionRecords.mockResolvedValueOnce([]);
 
       const res = await GET(makeGetRequest("/api/sessions", { source }));

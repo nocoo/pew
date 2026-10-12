@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { SOURCES } from "@pew/core";
 import { GET } from "@/app/api/usage/route";
 import * as dbModule from "@/lib/db";
 import { createMockDbRead, loadMockedAuthHelpers, makeGetRequest } from "./test-utils";
@@ -99,11 +100,7 @@ describe("GET /api/usage", () => {
       expect(body.error).toContain("source");
     });
 
-    it.each([
-      "claude-code", "codex", "copilot-cli", "gemini-cli", "grok", "hermes",
-      "kosmos", "omp", "opencode", "openclaw", "pi", "pmstudio", "vscode-copilot",
-      "workbuddy", "zcode",
-    ])("should accept source filter %s", async (source) => {
+    it.each([...SOURCES])("should accept source filter %s", async (source) => {
       mockDbRead.getUsageRecords.mockResolvedValueOnce([]);
 
       const res = await GET(makeGetRequest("/api/usage", { source }));

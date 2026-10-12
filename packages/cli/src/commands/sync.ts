@@ -215,6 +215,23 @@ function emptyEpochCursor(
 }
 
 /**
+ * True for a WorkBuddy cursor that is already at the empty epoch: it points at
+ * byte 0 and its dedup ring is empty (or the `seenMessageIds` field is absent).
+ * Such a cursor must NOT be rewritten by the fast-skip empty branch — rewriting
+ * would drop the `seenMessageIds` field, whose absence is exactly what
+ * `needsReplay()` keys on, so an always-empty file would alternate between
+ * flagged and unflagged cursors and rescan on every other sync.
+ *
+ * Only WorkBuddy needs this guard: every other source's needsReplay field
+ * (claude `seenIds`, codex `scopeId`) is WRITTEN by `emptyEpochCursor`, so
+ * rewriting those stays unconditional and idempotent.
+ */
+function isWorkbuddyEmptyEpochCursor(cursor: FileCursorBase & { offset: number }): boolean {
+  const c = cursor as { offset?: number; seenMessageIds?: unknown[] };
+  return (c.offset ?? 0) === 0 && (c.seenMessageIds?.length ?? 0) === 0;
+}
+
+/**
  * Execute the sync operation: discover files, parse incrementally,
  * aggregate into half-hour buckets, and write to local queue.
  *
@@ -563,7 +580,17 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
           usesJsonlOffsetResume(driver.source, filePath) &&
           fingerprint.size === 0
         ) {
-          cursors.files[filePath] = emptyEpochCursor(offsetCursor, fingerprint);
+          // shouldSkip() matched, so the cursor's size already equals this 0-byte
+          // file's size — the cursor is already at the empty-epoch state. For
+          // WorkBuddy specifically, leave an already-empty cursor alone: its
+          // `seenMessageIds` field is deliberately absent at the empty epoch, and
+          // rewriting it every sync would alternately strip and restore that
+          // field, making `needsReplay()` clear every cursor and rescan on every
+          // other sync (a full-rescan oscillation for a file that stays empty).
+          // Other sources rewrite unconditionally, as before.
+          if (driver.source !== "workbuddy" || !isWorkbuddyEmptyEpochCursor(offsetCursor)) {
+            cursors.files[filePath] = emptyEpochCursor(offsetCursor, fingerprint);
+          }
           onProgress?.({
             source: driver.source,
             phase: "parse",
@@ -640,7 +667,15 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
       // instead of SUM-replaying a retained tail or wiping every source.
       const jsonlSource = usesJsonlOffsetResume(driver.source, filePath);
       if (offsetCursor && jsonlSource && fingerprint.size === 0) {
-        cursors.files[filePath] = emptyEpochCursor(offsetCursor, fingerprint);
+        // Same guard as the fast-skip empty branch: a WorkBuddy cursor that is
+        // already at the empty epoch must not be rewritten, or a file that
+        // stays 0 bytes while its mtime changes would alternate its
+        // `seenMessageIds` field and rescan every other sync. A real truncation
+        // (cursor.size > 0 -> 0) still has a non-empty ring/offset, so it is
+        // rewritten as before.
+        if (driver.source !== "workbuddy" || !isWorkbuddyEmptyEpochCursor(offsetCursor)) {
+          cursors.files[filePath] = emptyEpochCursor(offsetCursor, fingerprint);
+        }
         continue;
       }
 

@@ -1,5 +1,5 @@
 /**
- * WorkBuddy session JSONL parser.
+ * WorkBuddy token JSONL parser.
  *
  * WorkBuddy (Tencent) writes one JSONL file per session at
  * `~/.workbuddy/projects/<slug>/<sessionId>.jsonl`. Token usage rides on the

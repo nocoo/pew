@@ -31,8 +31,9 @@ fallback.
 ~/.workbuddy/workbuddy.db                                   ← sessions/session_usage sidecar (not read)
 ```
 
-`<slug>` is the workspace `cwd` with `/` replaced by `-`; the session id is the
-file stem and also the `sessionId` field on nearly every record.
+`<slug>` is the workspace `cwd` with the leading `/` dropped and the remaining
+`/` replaced by `-` (spaces are kept); the session id is the file stem and also
+the `sessionId` field on nearly every record.
 
 | `type` | carries usage | notes |
 | --- | --- | --- |
@@ -67,26 +68,33 @@ first and falls back to the others.
 
 `providerData.messageId` — exactly one usage row per request on a live install,
 and ids do not repeat across files. `conversationRequestId` and `traceId` are
-**turn-scoped** (29 requests shared 3 of them) and must never be counted as
-requests. Records repeating a `messageId` are dropped per parse, which is a
-no-op on today's builds but guards reported repeats in other versions.
+**turn-scoped** (each takes only 6 distinct values across the 68 requests, and
+they differ on 29 of the rows) and must never be counted as requests. Records
+repeating a `messageId` are dropped per parse, which is a no-op on today's
+builds but guards reported repeats in other versions.
 
 The same key dedups **across files and across syncs**. Within one sync every
-id counts once across both roots (the set lives on the `SyncContext`, keyed
-`seenWorkbuddyMessageIds`), and the last 2000 emitted ids per file are
-persisted on the cursor (`WorkbuddyCursor.seenMessageIds`) so a session
-copied between `~/.workbuddy` and `~/.workbuddy-ai` — or duplicated into a
-sibling file — is not counted a second time. A cursor written before the ring
-existed has no `seenMessageIds` field; `needsReplay()` flags it so the
-orchestrator restarts that sync as a full scan (an incremental re-parse would
-double the file's historical buckets in the append queue).
+id counts once across both roots: `preload()` lifts each cursor's persisted
+ring into a shared set on the `SyncContext` (`seenWorkbuddyMessageIds`) before
+any file is parsed, and the last 2000 emitted ids per file are written back
+onto the cursor (`WorkbuddyCursor.seenMessageIds`) so a session copied between
+`~/.workbuddy` and `~/.workbuddy-ai` — or duplicated into a sibling file — is
+not counted a second time. The ring is bounded at 2000 ids, so cross-sync dedup
+is exact only while a session stays within that window: an id older than the
+last 2000 that reappears in a *later* sync (a copy of a >2000-request session
+appearing after the original was synced) is counted again. A cursor written
+before the ring existed has no `seenMessageIds` field; `needsReplay()` flags it
+so the orchestrator restarts that sync as a full scan (an incremental re-parse
+would double the file's historical buckets in the append queue).
 
 ### Model and time
 
 - Pricing key: `providerData.model` (e.g. `hy4-preview`); `requestModelName`
   is the human label and `requestModelId` mirrors `model`.
 - `timestamp` is an **integer epoch in milliseconds**; a non-numeric timestamp
-  means the row is not placeable and is skipped.
+  means the row is not placeable and is skipped. The session parser is looser:
+  it accepts an ISO string too (`Date.parse`), and drops a session entirely
+  when no record yields a usable timestamp.
 - `rawUsage.credit` is an account-level resource, **0 for free/preview models**
   and not proportional to tokens — it is deliberately not mapped to cost.
 
@@ -109,10 +117,11 @@ carrying `cache_read_input_tokens` / `cache_write_input_tokens`; the raw
 `total_tokens` is passed in as the `rawTotal` diagnostic input, and is emitted
 only as `diagnostics[].raw_total_tokens` when the counts do not reconcile.
 
-**Golden verification** (live install, 2 sessions): 29 requests;
-prompt total 1 688 562 = cache read 1 417 984 + uncached 270 578;
-completion 50 934 = visible output 19 098 + reasoning 31 836. The parser
-reproduces all of these exactly.
+**Golden verification** (live install, both roots, 5 files): 68 requests;
+prompt total 4 267 488 = cache read 3 814 535 + uncached 452 953;
+completion 122 069 = visible output 53 211 + reasoning 68 858. The parser
+reproduces all of these exactly, and the per-bucket sum reconciles with the
+raw `total_tokens` (4 389 557).
 
 ## 3. Session plan
 
@@ -144,6 +153,15 @@ a file carries more than one).
 - **No notifier hook** — like Grok and ZCode, WorkBuddy syncs on `pew sync`.
 - **No usage-evidence records** — the per-request objects are complete, and
   the evidence ledger is currently gated to `pi`/`hermes`.
+- **Dedup needs a `messageId`.** Cross-file/cross-sync dedup keys on
+  `providerData.messageId`; a usage row that lacks a usable id is counted
+  unconditionally, so a session duplicated into another file or root would
+  double-count those rows. On the verified installs every usage row carries an
+  id, so this is a guard for other builds, not an observed gap.
+- **Continuity handling is the shared JSONL one.** WorkBuddy opts into the
+  common same-inode continuity path (`usesJsonlOffsetResume`); a tail-trim or
+  in-place rewrite is rebased through the shared anchors, not WorkBuddy-specific
+  logic. Whatever that path does for Claude/Codex applies here unchanged.
 
 ## 5. Changes in this support
 
@@ -153,9 +171,9 @@ a file carries more than one).
 | Parser | `packages/cli/src/parsers/workbuddy.ts`, `workbuddy-session.ts` |
 | Discovery | `packages/cli/src/discovery/sources.ts` (`discoverWorkbuddyFilesFromRoots`) |
 | Drivers | `drivers/token/workbuddy-token-driver.ts`, `drivers/session/workbuddy-session-driver.ts`, `registry.ts` |
-| CLI wiring | `commands/sync.ts`, `session-sync.ts`, `session-sync-helpers.ts`, `status.ts`, `notify.ts`, `enrich.ts`, `cli.ts`, `drivers/types.ts`, `utils/paths.ts`, `utils/continuity-anchor.ts`, `storage/accounting-queue.ts` |
-| Web | `lib/palette.ts` (+ `chart-15`), `app/globals.css`, `lib/usage-transforms.ts`, `lib/pricing.ts`, four `?source=` allowlists, landing + harness agent lists |
-| Docs | `README.md`, `docs/README.en.md`, `AGENTS.md`, `PRIVACY.md`, this doc |
+| CLI wiring | `commands/sync.ts`, `session-sync.ts`, `session-sync-helpers.ts`, `status.ts`, `notify.ts`, `enrich.ts`, `cli.ts`, `drivers/types.ts`, `utils/paths.ts`, `utils/continuity-anchor.ts`, `utils/jsonl-shared-state.ts`, `utils/time.ts`, `storage/accounting-queue.ts` |
+| Web | `lib/palette.ts` (+ `chart-16`), `app/globals.css`, `lib/usage-transforms.ts`, `lib/pricing.ts`, the four `?source=` routes (`api/{usage,sessions,leaderboard,users/[slug]}`) all validate against core's `VALID_SOURCES`, whose member set the web label/pricing maps and the landing/harness agent lists also derive from; `api/admin/usage/compare` also reads `?source=` but passes it straight into SQL with no allowlist, landing + harness agent lists |
+| Docs | `README.md`, `docs/README.en.md`, `docs/README.md`, `AGENTS.md`, `PRIVACY.md`, `CHANGELOG.md`, this doc |
 
 ## 6. Test coverage
 
@@ -165,17 +183,31 @@ a file carries more than one).
 - `__tests__/workbuddy-session.test.ts` — counts, bounds, hashed project ref,
   multi-session grouping.
 - `__tests__/discovery.test.ts` — depth-2 discovery, subagent/tool-output exclusion.
-- `__tests__/drivers/{token,session}/workbuddy-*-driver.test.ts` — discover,
-  fast-skip, incremental append, cursor build, inode reset.
-- `drivers/registry.test.ts` — registration counts (12 token / 11 session file drivers).
+- `__tests__/drivers/{token,session}/workbuddy-*-driver.test.ts` — discover and
+  fast-skip in both; the token driver additionally covers incremental append,
+  cursor build, the dedup ring and inode reset (the session driver is a
+  full-scan driver with no `resumeState`).
+- `drivers/registry.test.ts` — registration counts (8 token / 8 session file drivers).
 - CLI wiring: `status.test.ts` (cursor classification, domestic + international
   roots), `session-sync-helpers.test.ts` (`sourceKey` mapping),
   `continuity-anchor.test.ts` (`usesJsonlOffsetResume`), `paths.test.ts`
-  (dual data roots), `discovery.test.ts` (multi-root merge + inode dedup).
-- Core: `constants.test.ts` (15 sources, sorted), `types.test.ts`,
-  `validation.test.ts` (both source validators accept the new slug).
-- Web: `palette.test.ts`, `source-label.test.ts`, `leaderboard.test.ts`,
-  `e2e/api-e2e.test.ts` (every `?source=` entry point).
+  (dual data roots), `discovery.test.ts` (multi-root merge + inode dedup),
+  `sync.test.ts` (the empty-epoch cursor is not double-counted on truncate +
+  refill; a persistently-empty or mtime-touched empty file keeps a stable
+  cursor instead of oscillating into a full rescan; `preload()` runs before
+  the per-file loop so a fast-skipped file still suppresses cross-file
+  duplicates), `codex-shared-state.test.ts` (`seenWorkbuddyMessageIds` rollback),
+  `cli.test.ts`/`cli-entry.test.ts`/`session-sync.test.ts` (source lists),
+  `accounting-queue.test.ts` (a workbuddy-sourced record is accepted).
+- Core: `constants.test.ts` (10 active sources, sorted; 16 with retired
+  identities in `VALID_SOURCES`), `types.test.ts`,
+  `validation.test.ts` (both `validateIngestRecord` and
+  `validateSessionIngestRecord` accept all 16 sources, workbuddy included).
+- Web: `palette.test.ts`, `source-label.test.ts`, `source-filter-parity.test.ts`
+  (every `?source=` route accepts all of core's sources and rejects others),
+  `leaderboard.test.ts`,
+  `pricing.test.ts`, `usage.test.ts`, `sessions.test.ts` (source filters incl.
+  `workbuddy`), `e2e/api-e2e.test.ts` (every `?source=` entry point).
 
 ## 7. References
 

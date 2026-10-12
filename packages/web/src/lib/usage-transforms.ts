@@ -10,7 +10,7 @@
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-import type { AccountingAnnotation } from "@pew/core";
+import { isValidSource, type AccountingAnnotation, type Source } from "@pew/core";
 import { accountedTotal, displayCounters } from "./accounting";
 
 export interface UsageRow {
@@ -186,7 +186,7 @@ export function toModelAggregates(records: UsageRow[]): ModelAggregate[] {
 // Pretty source names
 // ---------------------------------------------------------------------------
 
-const SOURCE_LABELS: Record<string, string> = {
+const SOURCE_LABELS: Record<Source, string> = {
   antigravity: "Antigravity CLI",
   "claude-code": "Claude Code",
   codex: "Codex",
@@ -206,5 +206,7 @@ const SOURCE_LABELS: Record<string, string> = {
 };
 
 export function sourceLabel(source: string): string {
-  return SOURCE_LABELS[source] ?? source;
+  // isValidSource narrows string -> Source so the Record<Source, ...> index
+  // typechecks; unknown slugs fall back to themselves, as before.
+  return isValidSource(source) ? SOURCE_LABELS[source] : source;
 }

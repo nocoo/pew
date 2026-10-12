@@ -253,6 +253,8 @@ describe("sourceLabel", () => {
     expect(sourceLabel("vscode-copilot")).toBe("VS Code Copilot");
     expect(sourceLabel("copilot-cli")).toBe("GitHub Copilot CLI");
     expect(sourceLabel("hermes")).toBe("Hermes Agent");
+    expect(sourceLabel("workbuddy")).toBe("WorkBuddy");
+    expect(sourceLabel("zcode")).toBe("ZCode");
   });
 
   it("should return raw string for unknown sources", () => {
