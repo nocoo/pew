@@ -68,7 +68,7 @@ export interface ChartColor {
 }
 
 /**
- * Fixed color assignment for known agent slugs (alphabetical order).
+ * Fixed color assignment for known agent slugs, ordered by chart color.
  * Every agent always renders the same color across all charts.
  */
 const AGENT_COLOR_MAP: Record<Source, ChartColor> = {

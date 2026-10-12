@@ -27,7 +27,7 @@ describe("SOURCES", () => {
     expect(SOURCES).toContain("workbuddy");
   });
 
-  it("should be readonly and sorted alphabetically", () => {
+  it("should be readonly and contain every source", () => {
     // `as const` is a compile-time-only constraint;
     // we verify the array has the correct contents instead.
     expect(SOURCES).toEqual([

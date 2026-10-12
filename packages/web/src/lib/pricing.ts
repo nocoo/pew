@@ -101,7 +101,7 @@ export const DEFAULT_PREFIX_PRICES: Array<{ prefix: string; pricing: ModelPricin
   { prefix: "gpt-4o", pricing: { input: 2.5, output: 10, cached: 1.25 } },
 ];
 
-/** Fallback pricing per source (conservative estimates, alphabetical order) */
+/** Fallback pricing per source (conservative estimates, ordered by chart color) */
 export const DEFAULT_SOURCE_DEFAULTS: Record<Source, ModelPricing> = {
   antigravity: { input: 3, output: 15, cached: 0.3 },
   "claude-code": { input: 3, output: 15, cached: 0.3 },
