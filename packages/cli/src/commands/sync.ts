@@ -280,7 +280,8 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   const cursors = Object.fromEntries(Object.entries(await cursorStore.load()).filter(([key]) => key !== "zcodeSqlite")) as CursorState;
   const activePaths = [opts.claudeDir, opts.codexSessionsDir, ...(opts.multicaCodexDirs ?? []),
     opts.openCodeMessageDir, opts.openclawDir, opts.piSessionsDir, opts.copilotCliLogsDir,
-    ...(opts.copilotCliOtelPaths ?? []), opts.grokLogsPath, opts.grokSessionsDir];
+    ...(opts.copilotCliOtelPaths ?? []), opts.grokLogsPath, opts.grokSessionsDir,
+    ...(opts.workbuddyDirs ?? [])];
   cursors.files = Object.fromEntries(Object.entries(cursors.files).filter(([path]) => !isRetiredCursorPath(path, activePaths)));
   if (cursors.knownFilePaths) cursors.knownFilePaths = Object.fromEntries(Object.entries(cursors.knownFilePaths).filter(([path]) => !isRetiredCursorPath(path, activePaths)));
   if (cursors.knownDbSources) cursors.knownDbSources = Object.fromEntries(Object.entries(cursors.knownDbSources).filter(([key]) => key !== "zcodeSqlite"));

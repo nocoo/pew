@@ -55,7 +55,7 @@ function classifySource(filePath: string, dirs: SourceDirs): string {
   if (filePath.startsWith(dirs.openclawDir)) return "openclaw";
   if (filePath.startsWith(dirs.piSessionsDir)) return "pi";
   if (filePath.startsWith(dirs.grokHome)) return "grok";
-  for (const dir of dirs.workbuddyDirs) {
+  for (const dir of dirs.workbuddyDirs ?? []) {
     if (filePath.startsWith(dir)) return "workbuddy";
   }
   if (filePath.startsWith(dirs.copilotCliLogsDir)) return "copilot-cli";

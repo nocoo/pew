@@ -1,5 +1,5 @@
 import type { LeaderboardSnapshot, LeaderboardSnapshotRow } from "@pew/core";
-import { SOURCES } from "@pew/core";
+import { VALID_SOURCES } from "@pew/core";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { GET } from "@/app/api/leaderboard/route";
 import * as dbModule from "@/lib/db";
@@ -254,7 +254,7 @@ describe("GET /api/leaderboard", () => {
     expect(mockDb.checkOrgMembership).not.toHaveBeenCalled();
   });
 
-  it.each([...SOURCES])("preserves source filtering for %s", async (source) => {
+  it.each([...VALID_SOURCES])("preserves source filtering for %s", async (source) => {
     mockDb.getLeaderboardSnapshot.mockResolvedValue(snapshot([row({ session_count: 2, total_duration_seconds: 10 })]));
     const res = await GET(makeGetRequest("/api/leaderboard", { source }));
     expect(res.status).toBe(200);

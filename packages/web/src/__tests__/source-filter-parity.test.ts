@@ -14,10 +14,10 @@ vi.mock("@/lib/auth-helpers", () => ({ resolveUser: vi.fn() }));
 vi.mock("@/lib/admin", () => ({ isAdmin: vi.fn(), isAdminUser: vi.fn() }));
 
 /**
- * Every `?source=` route must validate against the SAME core set. Each route
- * previously carried its own 15-source literal copy, so a source added to core
- * could silently miss a route. These tests fail if a route's accepted set
- * diverges from core's `VALID_SOURCES`.
+ * Every `?source=` route must validate against the SAME core set. All four
+ * already gate on core's `VALID_SOURCES`; these tests pin that, so a route
+ * that hardcodes its own source list (and thus silently drops a source added
+ * to core) fails here instead of in production.
  */
 
 const routes: Array<{ name: string; get: (req: Request) => Promise<Response> }> = [
@@ -41,6 +41,21 @@ describe("?source= routes share core VALID_SOURCES", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     const db = createMockDbRead();
+    // Each route reads through the mocked D1 client before returning 200, so
+    // give the reads an empty-but-typed result. Without this the route throws
+    // on `records.reduce` and every source reports 500, which would let a
+    // `not.toBe(400)` assertion pass without proving the gate accepted it.
+    db.getUsageRecords.mockResolvedValue([] as never);
+    db.getSessionRecords.mockResolvedValue([] as never);
+    db.getLeaderboardRevision.mockResolvedValue("rev-1" as never);
+    db.getLeaderboardSnapshot.mockResolvedValue({
+      key: "opaque",
+      id: "snap-1",
+      revision: "rev-1",
+      generatedAt: Date.now(),
+      expiresAt: Date.now() + 60_000,
+      rows: [],
+    } as never);
     // The users route resolves the profile BEFORE the source gate, so it needs
     // a public user to reach the allowlist check at all.
     db.getPublicUserBySlugOrId.mockResolvedValue({
@@ -63,9 +78,7 @@ describe("?source= routes share core VALID_SOURCES", () => {
     it(`${name} accepts every core source and rejects a non-core one`, async () => {
       for (const source of VALID_SOURCES) {
         const res = await get(requestFor(source));
-        // A valid source must clear the 400 allowlist gate. Downstream status
-        // (200/500 from the mocked DB) is irrelevant — only the gate is pinned.
-        expect(res.status, `${name} rejected ${source}`).not.toBe(400);
+        expect(res.status, `${name} rejected ${source}`).toBe(200);
       }
       const bogus = await get(requestFor("not-a-real-source"));
       expect(bogus.status, `${name} accepted a non-core source`).toBe(400);

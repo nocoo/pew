@@ -2,6 +2,8 @@
 // All values reference CSS custom properties defined in globals.css.
 // Use these constants everywhere instead of hardcoded color strings.
 
+import { isValidSource, type Source } from "@pew/core";
+
 /** Helper — wraps a CSS custom property name for inline style usage. */
 const v = (token: string) => `hsl(var(--${token}))`;
 
@@ -69,7 +71,7 @@ export interface ChartColor {
  * Fixed color assignment for known agent slugs (alphabetical order).
  * Every agent always renders the same color across all charts.
  */
-const AGENT_COLOR_MAP: Record<string, ChartColor> = {
+const AGENT_COLOR_MAP: Record<Source, ChartColor> = {
   "antigravity":   { color: chart.blue,    token: "chart-15" },
   "claude-code":   { color: chart.violet,  token: "chart-1" },
   "codex":         { color: chart.magenta, token: "chart-2" },
@@ -96,7 +98,7 @@ const AGENT_FALLBACK: ChartColor = { color: chart.violet, token: "chart-1" };
  * Known agents always get the same color; unknown agents get the fallback.
  */
 export function agentColor(source: string): ChartColor {
-  return AGENT_COLOR_MAP[source] ?? AGENT_FALLBACK;
+  return (isValidSource(source) ? AGENT_COLOR_MAP[source] : undefined) ?? AGENT_FALLBACK;
 }
 
 /**
