@@ -67,7 +67,7 @@ describe("palette", () => {
   });
 
   describe("agentColor()", () => {
-    it("should return correct color for all 16 known agents (alphabetical)", () => {
+    it("should return correct color for all 16 known sources", () => {
       expect(agentColor("antigravity")).toEqual({ color: chart.blue, token: "chart-15" });
       expect(agentColor("claude-code")).toEqual({ color: chart.violet, token: "chart-1" });
       expect(agentColor("codex")).toEqual({ color: chart.magenta, token: "chart-2" });
