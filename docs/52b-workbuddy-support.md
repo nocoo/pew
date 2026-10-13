@@ -230,7 +230,12 @@ a file carries more than one).
   `MAX_STRING_LENGTH` are dropped locally instead of queueing a record the
   server would 400 (the upload engine does not retry or skip a 4xx), and
   timestamps outside the server's 4-digit-year ISO window are dropped the
-  same way.
+  same way. `__tests__/workbuddy-timestamp-gate.test.ts` pins the two gaps
+  that window left open: the session parser's ISO-string timestamps are
+  gated on the same 4-digit-year rule (Date.parse accepts extended years
+  like `+275760-…`), and a row dropped by the gate does not claim its
+  `messageId` slot, so a corrected rewrite of the same request — appended
+  in the same parse or in a later sync — still counts.
 - L3 (browser): `packages/web/e2e/bdd/leaderboard.spec.ts` — the harness
   source dropdown count is derived from `VALID_SOURCES.size` (not a
   hardcoded number), and the landing page must not surface retired

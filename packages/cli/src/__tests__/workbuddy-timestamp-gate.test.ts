@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, writeFileSync, appendFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { collectWorkbuddySessions } from "../parsers/workbuddy-session.ts";
@@ -60,5 +60,24 @@ describe("workbuddy timestamp server-window gate", () => {
     expect(r.deltas).toHaveLength(1);
     expect(r.deltas[0]!.timestamp).toBe("2025-09-10T08:00:00.000Z");
     expect(r.emittedMessageIds).toEqual(["M1"]);
+  });
+  it("picks up a corrected rewrite appended in a later sync", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "wb-gate-"));
+    const file = join(dir, "s.jsonl");
+    // Sync 1: only the out-of-window row — dropped, offset still advances.
+    writeFileSync(file, usageRow(5e15, "M1"));
+    const first = await parseWorkbuddyFile({ filePath: file, startOffset: 0 });
+    expect(first.deltas).toEqual([]);
+    expect(first.emittedMessageIds).toEqual([]);
+
+    // Sync 2: the same request corrected and appended; the incremental read
+    // from the previous endOffset must pick it up (the bad row neither
+    // claimed the id nor blocked the resume).
+    appendFileSync(file, usageRow(1757491200000, "M1"));
+    const second = await parseWorkbuddyFile({ filePath: file, startOffset: first.endOffset });
+    rmSync(dir, { recursive: true, force: true });
+    expect(second.deltas).toHaveLength(1);
+    expect(second.deltas[0]!.timestamp).toBe("2025-09-10T08:00:00.000Z");
+    expect(second.emittedMessageIds).toEqual(["M1"]);
   });
 });
