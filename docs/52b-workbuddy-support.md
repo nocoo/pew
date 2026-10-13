@@ -82,7 +82,11 @@ onto the cursor (`WorkbuddyCursor.seenMessageIds`) so a session copied between
 not counted a second time. The ring is bounded at 2000 ids, so cross-sync dedup
 is exact only while a session stays within that window: an id older than the
 last 2000 that reappears in a *later* sync (a copy of a >2000-request session
-appearing after the original was synced) is counted again. A cursor written
+appearing after the original was synced) is counted again. When the two roots
+carry the *same* id with *different* values (e.g. one copy was edited), the
+first file in discovery order wins and the other is deduped; discovery sorts
+all paths lexicographically, and `~/.workbuddy-ai` (hyphen) sorts before
+`~/.workbuddy` (slash), so the international copy wins. A cursor written
 before the ring existed has no `seenMessageIds` field; `needsReplay()` flags it
 so the orchestrator restarts that sync as a full scan (an incremental re-parse
 would double the file's historical buckets in the append queue).
@@ -179,7 +183,8 @@ a file carries more than one).
 
 - `__tests__/workbuddy-parser.test.ts` — normalization (both traps, cache-write
   folding, reasoning saturation, invalid input), dedup, record filtering,
-  epoch-ms timestamps, incremental offset, partial-line round-trip, accounting.
+  epoch-ms timestamps, incremental offset, trailing partial-line round-trip,
+  accounting.
 - `__tests__/workbuddy-session.test.ts` — counts, bounds, hashed project ref,
   multi-session grouping.
 - `__tests__/discovery.test.ts` — depth-2 discovery, subagent/tool-output exclusion.
