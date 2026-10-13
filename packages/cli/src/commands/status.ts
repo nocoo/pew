@@ -56,7 +56,11 @@ function classifySource(filePath: string, dirs: SourceDirs): string {
   if (filePath.startsWith(dirs.piSessionsDir)) return "pi";
   if (filePath.startsWith(dirs.grokHome)) return "grok";
   for (const dir of dirs.workbuddyDirs ?? []) {
-    if (filePath.startsWith(dir)) return "workbuddy";
+    // Path-boundary check: `.workbuddy` is a string prefix of `.workbuddy-ai`,
+    // so a bare startsWith would also match an unrelated sibling like a future
+    // `.workbuddy-backup`. Requiring the separator (or an exact match) keeps
+    // the classification honest if the root list ever grows.
+    if (filePath === dir || filePath.startsWith(`${dir}/`)) return "workbuddy";
   }
   if (filePath.startsWith(dirs.copilotCliLogsDir)) return "copilot-cli";
   for (const path of dirs.copilotCliOtelPaths) {

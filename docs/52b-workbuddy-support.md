@@ -86,7 +86,10 @@ appearing after the original was synced) is counted again. When the two roots
 carry the *same* id with *different* values (e.g. one copy was edited), the
 first file in discovery order wins and the other is deduped; discovery sorts
 all paths lexicographically, and `~/.workbuddy-ai` (hyphen) sorts before
-`~/.workbuddy` (slash), so the international copy wins. A cursor written
+`~/.workbuddy` (slash), so the international copy wins — but only when both
+copies are new in the *same* sync. If the domestic copy was already counted in
+an earlier sync, its persisted ring suppresses the international copy instead,
+and the domestic value is the one that stays. A cursor written
 before the ring existed has no `seenMessageIds` field; `needsReplay()` flags it
 so the orchestrator restarts that sync as a full scan (an incremental re-parse
 would double the file's historical buckets in the append queue).
@@ -165,6 +168,12 @@ a file carries more than one).
   unconditionally, so a session duplicated into another file or root would
   double-count those rows. On the verified installs every usage row carries an
   id, so this is a guard for other builds, not an observed gap.
+- **Prune drops the ring with the cursor.** If a session file (and every
+  copy of it across both roots) is deleted for long enough for the alias
+  pruner to drop its cursor, the ring dies with it: any copy reappearing
+  later is summed from scratch. This is the upstream pruner's documented
+  one-cycle trade-off; WorkBuddy only widens the surface, because copies
+  moving between the two roots are expected.
 - **Continuity handling is the shared JSONL one.** WorkBuddy opts into the
   common same-inode continuity path (`usesJsonlOffsetResume`); a tail-trim or
   in-place rewrite is rebased through the shared anchors, not WorkBuddy-specific
