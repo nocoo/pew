@@ -213,6 +213,14 @@ a file carries more than one).
   `leaderboard.test.ts`,
   `pricing.test.ts`, `usage.test.ts`, `sessions.test.ts` (source filters incl.
   `workbuddy`), `e2e/api-e2e.test.ts` (every `?source=` entry point).
+- Parser hardening: `__tests__/workbuddy-length-caps.test.ts` — over-long
+  `model` rows and sessions whose `workbuddy:<id>` key exceeds
+  `MAX_STRING_LENGTH` are dropped locally instead of queueing a record the
+  server would 400 (the upload engine does not retry or skip a 4xx).
+- L3 (browser): `packages/web/e2e/bdd/leaderboard.spec.ts` — the harness
+  source dropdown count is derived from `VALID_SOURCES.size` (not a
+  hardcoded number), and the landing page must not surface retired
+  sources.
 
 ## 7. References
 

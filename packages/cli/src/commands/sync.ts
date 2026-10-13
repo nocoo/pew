@@ -189,7 +189,11 @@ function sourceKey(source: Source): keyof SyncResult["sources"] {
     case "hermes": return "hermes";
     case "workbuddy": return "workbuddy";
     default: {
-      // Exhaustiveness check — if Source adds a new value, this will fail to compile
+      // Inactive sources (retired slugs, and any slug added to Source before
+      // it gets a driver) reach here. This is runtime-only: unlike the
+      // session-side switch, retired sources flow through the default case,
+      // so `source` is not `never` and no compile-time exhaustiveness
+      // assertion is possible here.
       throw new Error(`Inactive source: ${source}`);
     }
   }
