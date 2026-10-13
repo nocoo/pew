@@ -98,7 +98,10 @@ would double the file's historical buckets in the append queue).
 - `timestamp` is an **integer epoch in milliseconds**; a non-numeric timestamp
   means the row is not placeable and is skipped. The session parser is looser:
   it accepts an ISO string too (`Date.parse`), and drops a session entirely
-  when no record yields a usable timestamp.
+  when no record yields a usable timestamp. Both parsers additionally require
+  the resulting ISO string to satisfy the server's date rule (4-digit year),
+  so a representable-but-far-future epoch cannot produce a record the server
+  rejects with a 400.
 - `rawUsage.credit` is an account-level resource, **0 for free/preview models**
   and not proportional to tokens — it is deliberately not mapped to cost.
 
@@ -216,7 +219,9 @@ a file carries more than one).
 - Parser hardening: `__tests__/workbuddy-length-caps.test.ts` — over-long
   `model` rows and sessions whose `workbuddy:<id>` key exceeds
   `MAX_STRING_LENGTH` are dropped locally instead of queueing a record the
-  server would 400 (the upload engine does not retry or skip a 4xx).
+  server would 400 (the upload engine does not retry or skip a 4xx), and
+  timestamps outside the server's 4-digit-year ISO window are dropped the
+  same way.
 - L3 (browser): `packages/web/e2e/bdd/leaderboard.spec.ts` — the harness
   source dropdown count is derived from `VALID_SOURCES.size` (not a
   hardcoded number), and the landing page must not surface retired
