@@ -509,4 +509,35 @@ describe("parseWorkbuddyFile", () => {
     });
     expect(result.deltas).toEqual([]);
   });
+  it("prefers rawUsage wholesale when all three usage shapes are present and disagree", async () => {
+    const file = join(dir, "conflict.jsonl");
+    await writeFile(file, `${JSON.stringify({
+      type: "message",
+      timestamp: TS_MS,
+      message: { usage: { input_tokens: 999, output_tokens: 999, cacheRead: 0, cacheWrite: 0 } },
+      providerData: {
+        model: "m",
+        messageId: "X",
+        usage: { inputTokens: 888, outputTokens: 888, cachedTokens: 0 },
+        rawUsage: {
+          prompt_tokens: 100,
+          prompt_cache_hit_tokens: 20,
+          prompt_cache_miss_tokens: 80,
+          completion_tokens: 30,
+          completion_thinking_tokens: 15,
+          total_tokens: 130,
+        },
+      },
+    })}\n`);
+
+    const result = await parseWorkbuddyFile({ filePath: file, startOffset: 0 });
+    expect(result.deltas).toHaveLength(1);
+    // rawUsage wins wholesale: miss 80 + write 0, cache read 20, 30-15, 15.
+    expect(result.deltas[0]!.tokens).toEqual({
+      inputTokens: 80,
+      cachedInputTokens: 20,
+      outputTokens: 15,
+      reasoningOutputTokens: 15,
+    });
+  });
 });

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { collectWorkbuddySessions } from "../parsers/workbuddy-session";
 import { parseWorkbuddyFile } from "../parsers/workbuddy";
+import { MAX_STRING_LENGTH } from "@pew/core";
 
 // The server rejects `model` and `session_key` over MAX_STRING_LENGTH with a
 // 400, and the upload engine does not retry or skip a 4xx — one over-long row
@@ -110,5 +111,38 @@ describe("workbuddy timestamp server-compatibility window", () => {
     expect(res.deltas).toHaveLength(1);
     // The kept row must round-trip through the server's own validator.
     expect(/^\d{4}-/.test(res.deltas[0]!.timestamp)).toBe(true);
+  });
+  it("keeps a session whose key sits exactly at MAX_STRING_LENGTH", async () => {
+    const path = join(tempDir, "key-boundary.jsonl");
+    // "workbuddy:" is 10 chars, so a 1014-char id puts the key at exactly 1024.
+    const id = "i".repeat(1014);
+    await writeFile(path, `${JSON.stringify({
+      timestamp: Date.now(),
+      sessionId: id,
+      type: "message",
+      role: "assistant",
+      message: { model: "m" },
+    })}\n`);
+
+    const snaps = await collectWorkbuddySessions(path);
+    expect(snaps).toHaveLength(1);
+    expect(snaps[0]!.sessionKey).toHaveLength(MAX_STRING_LENGTH);
+  });
+
+  it("session bounds reject a representable-but-far-future epoch", async () => {
+    const path = join(tempDir, "session-window.jsonl");
+    await writeFile(path, [
+      JSON.stringify({ sessionId: "ses-1", type: "message", role: "assistant", timestamp: 5e15, message: { model: "m" } }),
+      JSON.stringify({ sessionId: "ses-1", type: "message", role: "assistant", timestamp: Date.now(), message: { model: "m" } }),
+      "",
+    ].join("\n"));
+
+    const snaps = await collectWorkbuddySessions(path);
+    expect(snaps).toHaveLength(1);
+    // Only the contemporary row contributes bounds; 5e15 never appears.
+    for (const snap of snaps) {
+      expect(/^\d{4}-/.test(snap.startedAt)).toBe(true);
+      expect(/^\d{4}-/.test(snap.lastMessageAt)).toBe(true);
+    }
   });
 });

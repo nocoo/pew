@@ -31,6 +31,29 @@ function wbLine(messageId: string, tsMs = TS_MS): string {
   });
 }
 
+function wbLineWithTotal(messageId: string, total: number, tsMs = TS_MS): string {
+  return JSON.stringify({
+    type: "function_call",
+    sessionId: "session-1",
+    cwd: "/Users/someone/WorkBuddy/2026-09-10-14-51-14",
+    timestamp: tsMs,
+    providerData: {
+      agent: "cli",
+      messageId,
+      model: "hy4-preview",
+      rawUsage: {
+        prompt_tokens: total,
+        completion_tokens: 0,
+        total_tokens: total,
+        prompt_cache_hit_tokens: 0,
+        prompt_cache_miss_tokens: total,
+        completion_thinking_tokens: 0,
+      },
+      usage: { requests: 1, inputTokens: total, outputTokens: 0, totalTokens: total },
+    },
+  });
+}
+
 async function fingerprint(path: string): Promise<FileFingerprint> {
   const st = await stat(path);
   return {
@@ -447,5 +470,43 @@ describe("workbuddyTokenDriver", () => {
       updatedAt: "2026-06-01T00:00:00Z",
     };
     expect(workbuddyTokenDriver.needsReplay!(modern)).toBe(false);
+  });
+  it("a session present in both roots counts once, with the first-parsed root's value", async () => {
+    // Discovery sorts all paths lexicographically and '-' (0x2D) sorts before
+    // '/', so the international root's copy is parsed first and wins the
+    // shared dedup ring; the domestic root's conflicting-value copy is
+    // suppressed instead of being counted twice.
+    const rootIntl = join(root, "workbuddy-ai"); // "-" (0x2D) sorts before "/"
+    const rootDom = join(root, "workbuddy");
+    for (const r of [rootIntl, rootDom]) {
+      await mkdir(join(r, "projects", "p"), { recursive: true });
+    }
+    const intlFile = join(rootIntl, "projects", "p", "s1.jsonl");
+    const domFile = join(rootDom, "projects", "p", "s1.jsonl");
+    await writeFile(intlFile, `${wbLineWithTotal("m1", 100)}\n`);
+    await writeFile(domFile, `${wbLineWithTotal("m1", 200)}\n`);
+
+    const files = await workbuddyTokenDriver.discover(
+      { workbuddyDirs: [rootIntl, rootDom] },
+      {},
+    );
+    expect(files).toHaveLength(2);
+    expect(files[0]).toBe(intlFile);
+
+    const seen = new Set<string>();
+    const ctx = { seenWorkbuddyMessageIds: seen } as never as SyncContext;
+    const totals: number[] = [];
+    for (const file of files) {
+      const fp = await fingerprint(file);
+      const r = await workbuddyTokenDriver.parse(
+        file,
+        workbuddyTokenDriver.resumeState(undefined, fp),
+        ctx,
+      );
+      for (const d of r.deltas) {
+        totals.push(d.tokens.inputTokens + d.tokens.cachedInputTokens);
+      }
+    }
+    expect(totals).toEqual([100]);
   });
 });
