@@ -18,7 +18,7 @@
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
-import { MAX_STRING_LENGTH, type SessionSnapshot, type Source } from "@pew/core";
+import { isValidISODate, MAX_STRING_LENGTH, type SessionSnapshot, type Source } from "@pew/core";
 import { hashProjectRef } from "../utils/hash-project-ref.js";
 import { isRepresentableEpochMs } from "../utils/time.js";
 
@@ -96,10 +96,14 @@ export async function collectWorkbuddySessions(
 
       // WorkBuddy writes integer epoch milliseconds; ISO strings are tolerated
       // so a future format change degrades to "fewer bounds" rather than a
-      // crash. Out-of-range numbers are dropped for the same reason.
+      // crash. Out-of-range numbers are dropped for the same reason — the
+      // bound must also satisfy the server's ISO date rule, whose regex only
+      // accepts a 4-digit year, so gate on isValidISODate rather than the
+      // wider isRepresentableEpochMs window.
       const ms =
         typeof obj.timestamp === "number"
-          ? isRepresentableEpochMs(obj.timestamp)
+          ? isRepresentableEpochMs(obj.timestamp) &&
+            isValidISODate(new Date(obj.timestamp).toISOString())
             ? obj.timestamp
             : Number.NaN
           : typeof obj.timestamp === "string"

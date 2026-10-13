@@ -83,3 +83,32 @@ describe("workbuddy string length caps", () => {
     expect(snaps[0].model).toBeNull();
   });
 });
+
+describe("workbuddy timestamp server-compatibility window", () => {
+  let tempDir: string;
+
+  beforeEach(async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "wb-ts-"));
+  });
+
+  afterEach(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it("drops a row whose timestamp is representable but outside the server's 4-digit-year window", async () => {
+    // 5e15 ms passes isRepresentableEpochMs (|ms| <= 8.64e15) and formats as
+    // `+160413-09-10T…Z`, but the server's ISO regex only accepts a 4-digit
+    // year, so such a row would 400 the batch and wedge every later upload.
+    const path = join(tempDir, "far-future.jsonl");
+    await writeFile(path, [
+      JSON.stringify({ timestamp: 5e15, providerData: { model: "m", rawUsage: { prompt_tokens: 100 } } }),
+      JSON.stringify({ timestamp: Date.now(), providerData: { model: "m", rawUsage: { prompt_tokens: 100 } } }),
+      "",
+    ].join("\n"));
+
+    const res = await parseWorkbuddyFile({ filePath: path, startOffset: 0 });
+    expect(res.deltas).toHaveLength(1);
+    // The kept row must round-trip through the server's own validator.
+    expect(/^\d{4}-/.test(res.deltas[0]!.timestamp)).toBe(true);
+  });
+});

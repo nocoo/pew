@@ -26,7 +26,7 @@
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
-import { MAX_STRING_LENGTH, type TokenDelta } from "@pew/core";
+import { isValidISODate, MAX_STRING_LENGTH, type TokenDelta } from "@pew/core";
 import { inclusiveAccounting } from "../utils/accounting.js";
 import { jsonlCompleteBound } from "../utils/jsonl-offset.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
@@ -239,10 +239,16 @@ export async function parseWorkbuddyFile(opts: {
       }
 
       const counters = readWorkbuddyCounters(raw);
+      const iso = new Date(tsMs).toISOString();
+      // The server's ISO regex only accepts a 4-digit year, while
+      // isRepresentableEpochMs allows ±275,760 years. A representable-but-
+      // far-future timestamp would format as `+160413-…Z`, 400 the batch, and
+      // wedge every later upload, so gate on the server's own rule.
+      if (!isValidISODate(iso)) continue;
       deltas.push({
         source: "workbuddy",
         model,
-        timestamp: new Date(tsMs).toISOString(),
+        timestamp: iso,
         tokens,
         ...(opts.includeAccounting
           ? {
