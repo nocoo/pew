@@ -229,6 +229,17 @@ export async function parseWorkbuddyFile(opts: {
           : null;
       if (messageId && seenMessageIds.has(messageId)) continue;
 
+      const counters = readWorkbuddyCounters(raw);
+      const iso = new Date(tsMs).toISOString();
+      // The server's ISO regex only accepts a 4-digit year, while
+      // isRepresentableEpochMs allows ±275,760 years. A representable-but-
+      // far-future timestamp would format as `+160413-…Z`, 400 the batch, and
+      // wedge every later upload, so gate on the server's own rule. Checked
+      // before the id is claimed: like zero-usage stubs, a row dropped here
+      // must not occupy the messageId slot and permanently suppress a later
+      // corrected rewrite of the same request.
+      if (!isValidISODate(iso)) continue;
+
       const tokens = normalizeWorkbuddyUsage(raw);
       // Zero-usage stubs must not occupy the messageId slot and suppress a
       // later real row carrying the same id.
@@ -238,13 +249,6 @@ export async function parseWorkbuddyFile(opts: {
         emittedMessageIds.push(messageId);
       }
 
-      const counters = readWorkbuddyCounters(raw);
-      const iso = new Date(tsMs).toISOString();
-      // The server's ISO regex only accepts a 4-digit year, while
-      // isRepresentableEpochMs allows ±275,760 years. A representable-but-
-      // far-future timestamp would format as `+160413-…Z`, 400 the batch, and
-      // wedge every later upload, so gate on the server's own rule.
-      if (!isValidISODate(iso)) continue;
       deltas.push({
         source: "workbuddy",
         model,

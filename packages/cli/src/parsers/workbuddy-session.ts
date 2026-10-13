@@ -96,19 +96,24 @@ export async function collectWorkbuddySessions(
 
       // WorkBuddy writes integer epoch milliseconds; ISO strings are tolerated
       // so a future format change degrades to "fewer bounds" rather than a
-      // crash. Out-of-range numbers are dropped for the same reason — the
-      // bound must also satisfy the server's ISO date rule, whose regex only
-      // accepts a 4-digit year, so gate on isValidISODate rather than the
-      // wider isRepresentableEpochMs window.
-      const ms =
+      // crash. Both paths must satisfy the server's ISO date rule, whose
+      // regex only accepts a 4-digit year — the number path because
+      // isRepresentableEpochMs is wider than that window, and the string
+      // path because Date.parse also accepts extended years like
+      // "+275760-…", whose toISOString renders a 6-digit year and would
+      // 400 the whole upload batch. Gate once on the resulting ms.
+      const rawMs =
         typeof obj.timestamp === "number"
-          ? isRepresentableEpochMs(obj.timestamp) &&
-            isValidISODate(new Date(obj.timestamp).toISOString())
+          ? isRepresentableEpochMs(obj.timestamp)
             ? obj.timestamp
             : Number.NaN
           : typeof obj.timestamp === "string"
             ? Date.parse(obj.timestamp)
             : Number.NaN;
+      const ms =
+        Number.isFinite(rawMs) && isValidISODate(new Date(rawMs).toISOString())
+          ? rawMs
+          : Number.NaN;
       if (Number.isFinite(ms)) {
         if (accum.minMs === null || ms < accum.minMs) accum.minMs = ms;
         if (accum.maxMs === null || ms > accum.maxMs) accum.maxMs = ms;
