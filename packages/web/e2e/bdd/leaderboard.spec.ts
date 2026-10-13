@@ -1,3 +1,5 @@
+import { VALID_SOURCES } from "@pew/core";
+
 import { test, expect, watchPageReadiness } from "./fixtures";
 
 test("period and harness navigation refetch populated rankings", async ({ page }) => {
@@ -24,7 +26,9 @@ test("Antigravity is selectable with its own source filter on desktop and mobile
     await health.ready(["/api/leaderboard?source=antigravity"]);
     await expect(page.getByRole("button", { name: "Antigravity CLI" })).toBeVisible();
     await page.getByRole("button", { name: "Antigravity CLI" }).click();
-    await expect(page.getByRole("menuitem")).toHaveCount(15);
+    // The dropdown lists every readable source (active + retired); derive the
+    // count from core so adding a source doesn't silently stale this gate.
+    await expect(page.getByRole("menuitem")).toHaveCount(VALID_SOURCES.size);
     for (const name of ["Gemini CLI", "Kosmos", "Oh My Pi", "ZCode", "PM Studio", "VS Code Copilot"]) {
       await expect(page.getByRole("menuitem", { name, exact: true })).toBeVisible();
     }
@@ -37,7 +41,9 @@ test("Antigravity is selectable with its own source filter on desktop and mobile
   }
 });
 
-test("landing page advertises only the nine active collectors", async ({ page }) => {
+// The landing page advertises the active collector list only; retired
+// sources must never surface there.
+test("landing page advertises only the active collectors", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByText("Antigravity CLI", { exact: true })).toBeVisible();
   for (const name of ["Gemini CLI", "Kosmos", "Oh My Pi", "ZCode", "PM Studio", "VS Code Copilot"]) {

@@ -18,7 +18,7 @@
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
-import type { SessionSnapshot, Source } from "@pew/core";
+import { MAX_STRING_LENGTH, type SessionSnapshot, type Source } from "@pew/core";
 import { hashProjectRef } from "../utils/hash-project-ref.js";
 import { isRepresentableEpochMs } from "../utils/time.js";
 
@@ -120,7 +120,7 @@ export async function collectWorkbuddySessions(
           : null;
       const model =
         typeof providerData?.model === "string" ? providerData.model.trim() : "";
-      if (model) accum.lastModel = model;
+      if (model && model.length <= MAX_STRING_LENGTH) accum.lastModel = model;
     }
   } finally {
     rl.close();
@@ -133,11 +133,17 @@ export async function collectWorkbuddySessions(
   for (const accum of sessions.values()) {
     if (accum.minMs === null) continue; // no usable timestamps → skip
 
+    // The server rejects a session_key over MAX_STRING_LENGTH with a 400 and
+    // the upload engine does not retry or skip a 4xx — one over-long id would
+    // wedge every later upload. Drop that session instead of queueing it.
+    const sessionKey = `workbuddy:${accum.sessionId}`;
+    if (sessionKey.length > MAX_STRING_LENGTH) continue;
+
     const startedAt = new Date(accum.minMs).toISOString();
     const lastMessageAt = new Date(accum.maxMs ?? accum.minMs).toISOString();
 
     results.push({
-      sessionKey: `workbuddy:${accum.sessionId}`,
+      sessionKey,
       source: "workbuddy" as Source,
       kind: "human",
       startedAt,

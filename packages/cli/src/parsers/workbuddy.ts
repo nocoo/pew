@@ -26,7 +26,7 @@
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
-import type { TokenDelta } from "@pew/core";
+import { MAX_STRING_LENGTH, type TokenDelta } from "@pew/core";
 import { inclusiveAccounting } from "../utils/accounting.js";
 import { jsonlCompleteBound } from "../utils/jsonl-offset.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
@@ -209,6 +209,10 @@ export async function parseWorkbuddyFile(opts: {
       const model =
         typeof providerData.model === "string" ? providerData.model.trim() : "";
       if (!model) continue;
+      // The server rejects a `model` over MAX_STRING_LENGTH with a 400, and the
+      // upload engine does not retry or skip a 4xx — one over-long row would
+      // wedge every later upload. Drop the row here instead.
+      if (model.length > MAX_STRING_LENGTH) continue;
 
       // WorkBuddy timestamps are integer epoch milliseconds. A non-numeric
       // value, or one outside the representable Date range, means the row is
