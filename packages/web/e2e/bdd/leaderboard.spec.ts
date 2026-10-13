@@ -29,7 +29,9 @@ test("Antigravity is selectable with its own source filter on desktop and mobile
     // The dropdown lists every readable source (active + retired); derive the
     // count from core so adding a source doesn't silently stale this gate.
     await expect(page.getByRole("menuitem")).toHaveCount(VALID_SOURCES.size);
-    for (const name of ["Gemini CLI", "Kosmos", "Oh My Pi", "ZCode", "PM Studio", "VS Code Copilot"]) {
+    // Count alone can't tell the new source from a duplicate label, so pin
+    // WorkBuddy's own entry explicitly alongside the retired sources.
+    for (const name of ["WorkBuddy", "Gemini CLI", "Kosmos", "Oh My Pi", "ZCode", "PM Studio", "VS Code Copilot"]) {
       await expect(page.getByRole("menuitem", { name, exact: true })).toBeVisible();
     }
     await page.keyboard.press("Escape");
