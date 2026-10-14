@@ -191,6 +191,19 @@ a file carries more than one).
   common same-inode continuity path (`usesJsonlOffsetResume`); a tail-trim or
   in-place rewrite is rebased through the shared anchors, not WorkBuddy-specific
   logic. Whatever that path does for Claude/Codex applies here unchanged.
+- **Retiring WorkBuddy takes two coordinated changes.** The slug-based
+  mechanisms (server-side `isRetiredSourceRecord` exemption, reset's
+  session-queue retention, notify's early return) all activate from
+  `RETIRED_SOURCES` alone, but cursor cleanup does not: cursor retirement
+  also needs a `\.workbuddy` branch in the `isRetiredCursorPath` regex
+  (`utils/retired-sources.ts`), and that branch only ever matches once
+  `workbuddyDirs` is removed from `utils/paths.ts` — while `paths.ts` still
+  exposes the roots, they count as active paths and the regex is exempted.
+  The six retired v3.3.0 sources went through exactly this pairing; a future
+  WorkBuddy retirement must repeat it, and any future cursor migration must
+  not "normalize" an empty-epoch cursor by filling in `seenMessageIds: []` —
+  the absence of the field is load-bearing (see the sync driver's
+  `isLegacyCursor` and the empty-epoch note in `commands/sync.ts`).
 
 ## 5. Changes in this support
 
