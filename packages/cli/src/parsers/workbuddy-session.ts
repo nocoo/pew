@@ -18,7 +18,7 @@
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
-import { isValidISODate, MAX_STRING_LENGTH, type SessionSnapshot, type Source } from "@pew/core";
+import { isValidISODate, MAX_SESSION_DURATION_SECONDS, MAX_STRING_LENGTH, type SessionSnapshot, type Source } from "@pew/core";
 import { hashProjectRef } from "../utils/hash-project-ref.js";
 import { isRepresentableEpochMs } from "../utils/time.js";
 
@@ -148,6 +148,16 @@ export async function collectWorkbuddySessions(
     const sessionKey = `workbuddy:${accum.sessionId}`;
     if (sessionKey.length > MAX_STRING_LENGTH) continue;
 
+    // Same wedge logic for the duration: the server caps duration_seconds at
+    // MAX_SESSION_DURATION_SECONDS (~10 years) and rejects the batch with a
+    // 400. Two individually-valid bounds on a clock-skewed machine can span
+    // millennia, so drop the snapshot rather than queue it.
+    const durationSeconds = Math.max(
+      0,
+      Math.floor(((accum.maxMs ?? accum.minMs) - accum.minMs) / 1000),
+    );
+    if (durationSeconds > MAX_SESSION_DURATION_SECONDS) continue;
+
     const startedAt = new Date(accum.minMs).toISOString();
     const lastMessageAt = new Date(accum.maxMs ?? accum.minMs).toISOString();
 
@@ -157,10 +167,7 @@ export async function collectWorkbuddySessions(
       kind: "human",
       startedAt,
       lastMessageAt,
-      durationSeconds: Math.max(
-        0,
-        Math.floor(((accum.maxMs ?? accum.minMs) - accum.minMs) / 1000),
-      ),
+      durationSeconds,
       userMessages: accum.userMessages,
       assistantMessages: accum.assistantMessages,
       totalMessages: accum.totalMessages,

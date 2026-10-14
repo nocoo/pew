@@ -26,7 +26,7 @@
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { createInterface } from "node:readline";
-import { isValidISODate, MAX_STRING_LENGTH, type TokenDelta } from "@pew/core";
+import { isValidISODate, MAX_RECORD_TOKENS, MAX_STRING_LENGTH, type TokenDelta } from "@pew/core";
 import { inclusiveAccounting } from "../utils/accounting.js";
 import { jsonlCompleteBound } from "../utils/jsonl-offset.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
@@ -241,6 +241,15 @@ export async function parseWorkbuddyFile(opts: {
       if (!isValidISODate(iso)) continue;
 
       const tokens = normalizeWorkbuddyUsage(raw);
+      // The server rejects any token field over MAX_RECORD_TOKENS with a 400,
+      // and the upload engine does not retry a 4xx — queueing an over-cap
+      // row would wedge every later upload for the account. Aliased inclusive
+      // counters can cross the cap even when each raw field stays under it,
+      // so the check runs on the composed buckets.
+      if (tokens.inputTokens > MAX_RECORD_TOKENS ||
+        tokens.cachedInputTokens > MAX_RECORD_TOKENS ||
+        tokens.outputTokens > MAX_RECORD_TOKENS ||
+        tokens.reasoningOutputTokens > MAX_RECORD_TOKENS) continue;
       // Zero-usage stubs must not occupy the messageId slot and suppress a
       // later real row carrying the same id.
       if (isAllZero(tokens)) continue;
