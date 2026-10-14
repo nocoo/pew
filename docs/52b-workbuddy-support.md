@@ -89,7 +89,12 @@ all paths lexicographically, and `~/.workbuddy-ai` (hyphen) sorts before
 `~/.workbuddy` (slash), so the international copy wins — but only when both
 copies are new in the *same* sync. If the domestic copy was already counted in
 an earlier sync, its persisted ring suppresses the international copy instead,
-and the domestic value is the one that stays. A cursor written
+and the domestic value is the one that stays. Moving or renaming a project
+slug directory gives the file a new cursor path, so ids outside the 2000-id
+ring are summed once more; a root that temporarily disappears (unmounted
+volume, paused sync tool) loses its cursors to the alias pruner and is
+re-summed from scratch when it returns — the accounting layer's idempotent
+bucket merge keeps the queue values stable in that case. A cursor written
 before the ring existed has no `seenMessageIds` field; `needsReplay()` flags it
 so the orchestrator restarts that sync as a full scan (an incremental re-parse
 would double the file's historical buckets in the append queue).
@@ -239,7 +244,10 @@ a file carries more than one).
   `__tests__/workbuddy-record-caps.test.ts` — over-cap token buckets and
   over-cap session durations are dropped locally (with the exact-at-cap
   boundaries kept), matching the server's ingest limits and antigravity's
-  parser-level precedent.
+  parser-level precedent. Should a WorkBuddy record ever be rejected
+  server-side anyway (a server older than this support, or a future
+  stricter check), the 4xx stalls that upload batch — moving `~/.workbuddy*`
+  aside restores uploads for every other source on the next sync.
 - L3 (browser): `packages/web/e2e/bdd/leaderboard.spec.ts` — the harness
   source dropdown count is derived from `VALID_SOURCES.size` (not a
   hardcoded number), and the landing page must not surface retired
