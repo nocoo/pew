@@ -58,11 +58,19 @@ first and falls back to the others.
    `rawUsage.cached_tokens` are stale zeros. The live value is
    `prompt_cache_hit_tokens` (equivalently `prompt_tokens_details.cached_tokens`
    / `usage.inputTokensDetails[0].cached_tokens`). Reading the decoy reports a
-   0 % cache-hit rate.
+   0 % cache-hit rate. The two decoy fields stay at the end of the read chain
+   as a last resort for a build that fills no live alias; they are only
+   consulted when every live alias reads 0, and a future build populating a
+   decoy with a stale **nonzero** value while also filling a live alias cannot
+   mislead — `firstPositive` takes the first alias in chain order.
 2. **Inclusive counters.** `prompt_tokens == prompt_cache_hit_tokens +
    prompt_cache_miss_tokens`, and `completion_tokens` includes
    `completion_thinking_tokens` / `completion_tokens_details.reasoning_tokens`.
-   Both must be split before they reach the disjoint buckets.
+   Both must be split before they reach the disjoint buckets. When
+   `prompt_cache_miss_tokens` is absent, the miss is derived as
+   `prompt − read`; this assumes the cache-write counter (when present) is
+   already part of the miss total and not an add-on, matching how the golden
+   install reports `write = 0`.
 
 ### Dedup key
 
