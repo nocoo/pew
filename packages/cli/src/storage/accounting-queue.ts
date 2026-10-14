@@ -145,9 +145,17 @@ export function planAccountingUpdates(opts: {
   const incoming = new Map<string, { ref: Omit<AccountingRecord, "groups" | "basis" | "source_revision" | "parser_revision" | "detail_revision">; groups: AccountingGroup[]; hasDetails: boolean }>();
   for (const d of opts.deltas) {
     const hour = toUtcHalfHourStart(d.timestamp); if (!hour) continue;
-    const ref = { details_version: 1 as const, source: d.source, model: d.evidence ? usageLabel(d.model) : d.model, device_id: opts.deviceId,
+    // The accounting endpoint validates `model` with the strict label rule
+    // (ASCII, ≤128) even though the token endpoint accepts any non-empty
+    // string up to 1024. A model that passes the token upload but not the
+    // accounting one would make the details upload 400 forever (no retry on
+    // 4xx, dirty keys never clear), so every record — evidence or not — is
+    // normalized through usageLabel; a plain ASCII model is unchanged.
+    const ref = { details_version: 1 as const, source: d.source, model: usageLabel(d.model), device_id: opts.deviceId,
       hour_start: hour, event_id: d.evidence?.eventId ?? null, evidence_snapshot_seq: d.evidence?.snapshotSeq ?? null };
-    const key = accountingKey(ref); const old = incoming.get(key);
+    // The token bucket keeps its own key (the token record uploads with the
+    // raw model), so the basis lookup uses the un-normalized model.
+    const key = accountingKey({ ...ref, model: d.model }); const old = incoming.get(key);
     const g = d.accounting ?? unknownAccounting(legacyCounts(d.tokens), d.model);
     if (d.evidence) {
       // Absolute evidence can be seen in several fork files. Never SUM it.
