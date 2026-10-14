@@ -189,6 +189,24 @@ a file carries more than one).
   later is summed from scratch. This is the upstream pruner's documented
   one-cycle trade-off; WorkBuddy only widens the surface, because copies
   moving between the two roots are expected.
+- **The 2000-id ring is a measured cost, not just a cap.** With typical
+  36-64 character ids a full ring adds ~78-134KB per file's cursor; at the
+  measured extremes (~10k files with saturated rings) the cursor state
+  reaches hundreds of megabytes and each sync pays seconds of
+  JSON.stringify/parse. The cap is ten times Claude's 200 because dedup must
+  cover a whole session copy replayed into the other root, not just a
+  within-stream tail; real installs sit far below the extreme. The
+  `MAX_STRING_LENGTH` gate on ids bounds the pathological case. If a real
+  install ever approaches the extreme, hashing or truncating ring ids is the
+  pre-planned fallback.
+- **Downgrading past this version stalls the CLI on the accounting ledger.**
+  The 3.3.2 CLI's queue reader whitelists 15 sources and throws
+  "Invalid accounting ledger" on a WorkBuddy record — and old `pew sync`
+  calls it unguarded, so every later sync dies there until the queue file is
+  moved aside (`~/.config/pew/accounting-queue.jsonl`; this loses pending
+  accounting details, tokens stay uploaded) or the state directory is moved.
+  Re-upgrading past this PR restores the ledger as-is; retired sources never
+  hit this because their slugs sit in both versions' whitelists.
 - **Continuity handling is the shared JSONL one.** WorkBuddy opts into the
   common same-inode continuity path (`usesJsonlOffsetResume`); a tail-trim or
   in-place rewrite is rebased through the shared anchors, not WorkBuddy-specific
