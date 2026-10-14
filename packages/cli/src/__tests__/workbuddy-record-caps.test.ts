@@ -3,8 +3,8 @@ import { mkdtempSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parseWorkbuddyFile } from "../parsers/workbuddy.ts";
-import { collectWorkbuddySessions } from "../parsers/workbuddy-session.ts";
-import { MAX_RECORD_TOKENS, MAX_SESSION_DURATION_SECONDS } from "@pew/core";
+import { buildWorkbuddySessionSnapshots, collectWorkbuddySessions } from "../parsers/workbuddy-session.ts";
+import { MAX_RECORD_MESSAGES, MAX_RECORD_TOKENS, MAX_SESSION_DURATION_SECONDS } from "@pew/core";
 
 const YEAR_0001 = Date.parse("0001-01-01T00:00:00Z");
 const YEAR_9999 = Date.parse("9999-12-31T23:59:59Z");
@@ -99,5 +99,27 @@ describe("workbuddy parser enforces the server's record limits locally", () => {
     rmSync(dir, { recursive: true, force: true });
     expect(snaps).toHaveLength(1);
     expect(snaps[0]!.durationSeconds).toBe(MAX_SESSION_DURATION_SECONDS);
+  });
+
+  it("drops a session whose message count exceeds MAX_RECORD_MESSAGES", () => {
+    // The server rejects message counts over MAX_RECORD_MESSAGES with a 400
+    // and the upload engine does not retry a 4xx — a corrupted file with an
+    // absurd count would wedge every later session upload. 1e8 lines is not
+    // writable in a test, so the gate runs on accumulators directly via the
+    // exported snapshot builder.
+    const snaps = buildWorkbuddySessionSnapshots([
+      { sessionId: "ses-1", userMessages: 0, assistantMessages: MAX_RECORD_MESSAGES + 1,
+        totalMessages: MAX_RECORD_MESSAGES + 1, minMs: 0, maxMs: 1000, cwd: null, lastModel: null },
+    ]);
+    expect(snaps).toEqual([]);
+  });
+
+  it("keeps a session whose message counts sit exactly at MAX_RECORD_MESSAGES", () => {
+    const snaps = buildWorkbuddySessionSnapshots([
+      { sessionId: "ses-1", userMessages: MAX_RECORD_MESSAGES, assistantMessages: 0,
+        totalMessages: MAX_RECORD_MESSAGES, minMs: 0, maxMs: 1000, cwd: null, lastModel: null },
+    ]);
+    expect(snaps).toHaveLength(1);
+    expect(snaps[0]!.totalMessages).toBe(MAX_RECORD_MESSAGES);
   });
 });

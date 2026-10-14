@@ -236,6 +236,12 @@ export async function parseWorkbuddyFile(opts: {
         typeof providerData.messageId === "string" && providerData.messageId.length > 0
           ? providerData.messageId
           : null;
+      // The id persists into the cursor's dedup ring (SEEN_ID_CAP entries);
+      // an absurd id from a corrupted file would bloat every later sync's
+      // cursor read/write. Treat an over-long id like a missing one. Checked
+      // before the row is counted, so the id never enters the ring — and a
+      // later rewrite of the same request with a sane id still counts.
+      if (messageId && messageId.length > MAX_STRING_LENGTH) continue;
       if (messageId && seenMessageIds.has(messageId)) continue;
 
       const counters = readWorkbuddyCounters(raw);
