@@ -236,6 +236,10 @@ a file carries more than one).
   like `+275760-…`), and a row dropped by the gate does not claim its
   `messageId` slot, so a corrected rewrite of the same request — appended
   in the same parse or in a later sync — still counts.
+  `__tests__/workbuddy-record-caps.test.ts` — over-cap token buckets and
+  over-cap session durations are dropped locally (with the exact-at-cap
+  boundaries kept), matching the server's ingest limits and antigravity's
+  parser-level precedent.
 - L3 (browser): `packages/web/e2e/bdd/leaderboard.spec.ts` — the harness
   source dropdown count is derived from `VALID_SOURCES.size` (not a
   hardcoded number), and the landing page must not surface retired

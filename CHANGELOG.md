@@ -8,7 +8,8 @@
   token and session sync: byte-offset JSONL driver, continuity anchors,
   dashboard palette/labels/pricing and `?source=` allowlists
 - Dedup WorkBuddy requests across files and syncs by `providerData.messageId`,
-  so a session copied between the two roots is not counted twice
+  so a session copied between the two roots is not counted twice (exact
+  while a session stays within the 2000-id dedup window)
 
 ### Fixed
 
