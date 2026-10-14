@@ -13,6 +13,12 @@
 
 ### Fixed
 
+- Normalize accounting record models through `usageLabel`, so a model that
+  passes the token endpoint but not the accounting endpoint's strict label
+  rule (ASCII, ≤128) can no longer leave accounting details pending forever
+- Gate WorkBuddy parser inputs the server would 400 and the upload engine
+  never retries: over-cap message counts on session snapshots, oversized
+  `providerData.messageId` values that would bloat the cursor's dedup ring
 - Count WorkBuddy's `ai-title` and `session-meta` rows as metadata, not messages
 - Skip WorkBuddy rows with unrepresentable timestamps instead of losing the file
 - Fall through empty `rawUsage` and admit `rawUsage`-only rows

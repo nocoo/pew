@@ -131,14 +131,16 @@ reasoningOutputTokens  =  reasoning_tokens
 ```
 
 Cache-creation tokens fold into the input bucket, matching the Claude
-normalizer; they are 0 on the observed install. `prompt_cache_write_tokens` is
-accepted as a `cache_creation_input_tokens` alias, and a missing
-`prompt_cache_miss_tokens` falls back to `prompt_tokens − cache read`. When
-`includeAccounting` is set, the delta carries an `inclusiveAccounting` group
+normalizer; they are 0 on the observed install. `prompt_cache_write_tokens`
+is accepted as a `cache_creation_input_tokens` alias, as are the nested
+`prompt_tokens_details.cached_creation_tokens` / `cache_write_tokens`, and a
+missing `prompt_cache_miss_tokens` falls back to `prompt_tokens − cache read`.
+When `includeAccounting` is set, the delta carries an `inclusiveAccounting` group
 with `origin: "workbuddy:usage"` and `request_count: 1`, plus a `counts` group
 carrying `cache_read_input_tokens` / `cache_write_input_tokens`; the raw
 `total_tokens` is passed in as the `rawTotal` diagnostic input, and is emitted
-only as `diagnostics[].raw_total_tokens` when the counts do not reconcile.
+only as `diagnostics[].raw_total_tokens` when the counts group is invalid or
+its tokens do not reconcile with the basis sum.
 
 **Golden verification** (live install, both roots, 5 files): 68 requests;
 prompt total 4 267 488 = cache read 3 814 535 + uncached 452 953;
@@ -265,7 +267,16 @@ a file carries more than one).
   `__tests__/workbuddy-record-caps.test.ts` — over-cap token buckets and
   over-cap session durations are dropped locally (with the exact-at-cap
   boundaries kept), matching the server's ingest limits and antigravity's
-  parser-level precedent. Should a WorkBuddy record ever be rejected
+  parser-level precedent; it also pins the message-count gate
+  (`MAX_RECORD_MESSAGES`, tested through the exported snapshot builder
+  because 1e8 lines is not writable in a test) and the oversized-
+  `messageId` gate, whose rows are dropped before the id can enter the
+  cursor's dedup ring (`__tests__/workbuddy-messageid-cap.test.ts`).
+  `__tests__/accounting-model-label.test.ts` — a `model` that passes the
+  token endpoint (any non-empty string ≤1024) but not the accounting
+  endpoint's strict label rule (ASCII, ≤128) is normalized through
+  `usageLabel`, so the details upload cannot 400 forever. Should a
+  WorkBuddy record ever be rejected
   server-side anyway (a server older than this support, or a future
   stricter check), the 4xx stalls that upload batch — moving `~/.workbuddy*`
   aside restores uploads for every other source on the next sync.
