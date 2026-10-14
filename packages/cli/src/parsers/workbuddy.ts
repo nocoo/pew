@@ -105,7 +105,16 @@ export function readWorkbuddyCounters(raw: Record<string, unknown>): WorkbuddyCo
     raw.cached_tokens,
   ]);
   const miss = toNonNegInt(raw.prompt_cache_miss_tokens) || Math.max(0, promptTokens - read);
-  const write = firstPositive([raw.cache_creation_input_tokens, raw.prompt_cache_write_tokens]);
+  // Community parsers also read cache-write from the nested details objects
+  // (fuyi/Jimmy6188: `prompt_tokens_details.cached_creation_tokens` /
+  // `cache_write_tokens`); the top-level aliases stay first so the verified
+  // shapes win, and the nested ones cover builds that only fill the details.
+  const write = firstPositive([
+    raw.cache_creation_input_tokens,
+    raw.prompt_cache_write_tokens,
+    promptDetails?.cached_creation_tokens,
+    promptDetails?.cache_write_tokens,
+  ]);
   const completion = toNonNegInt(raw.completion_tokens) || toNonNegInt(raw.outputTokens) || toNonNegInt(raw.output_tokens);
   const reasoning = firstPositive([
     completionDetails?.reasoning_tokens,
