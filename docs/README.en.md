@@ -26,7 +26,7 @@ Source logs remain read-only. Token uploads are aggregated into half-hour bucket
 - Estimate usage costs with dynamic model prices and fallback tables, including price sources and update times.
 - Configure automatic synchronization after sessions for supported tools, and use `pew sync` for other sources.
 
-The 9 supported token sources are Antigravity CLI, Claude Code, Codex, GitHub Copilot CLI, Grok, Hermes, OpenClaw, OpenCode, and Pi. Session statistics currently exclude Hermes.
+The 10 supported token sources are Antigravity CLI, Claude Code, Codex, GitHub Copilot CLI, Grok, Hermes, OpenClaw, OpenCode, Pi, and WorkBuddy. Session statistics currently exclude Hermes.
 
 ## Usage
 

@@ -17,6 +17,7 @@ describe("sourceLabel", () => {
     expect(sourceLabel("pi")).toBe("Pi");
     expect(sourceLabel("pmstudio")).toBe("PM Studio");
     expect(sourceLabel("vscode-copilot")).toBe("VS Code Copilot");
+    expect(sourceLabel("workbuddy")).toBe("WorkBuddy");
     expect(sourceLabel("zcode")).toBe("ZCode");
   });
 

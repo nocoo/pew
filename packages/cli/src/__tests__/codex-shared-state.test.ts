@@ -91,4 +91,22 @@ describe("snapshotJsonlSharedState / restoreJsonlSharedState", () => {
     restoreJsonlSharedState(ctx, snapshot);
     expect([...(ctx.seenClaudeMessageIds ?? [])]).toEqual([]);
   });
+
+  it("rolls back WorkBuddy message ids mutated during a discarded parse", () => {
+    const ctx: SyncContext = {
+      seenWorkbuddyMessageIds: new Set(["keep"]),
+    };
+    const snapshot = snapshotJsonlSharedState(ctx, "/unused.jsonl");
+    ctx.seenWorkbuddyMessageIds!.add("from-discarded-file");
+    restoreJsonlSharedState(ctx, snapshot);
+    expect([...ctx.seenWorkbuddyMessageIds!]).toEqual(["keep"]);
+  });
+
+  it("clears a WorkBuddy set that did not exist before parse", () => {
+    const ctx: SyncContext = {};
+    const snapshot = snapshotJsonlSharedState(ctx, "/unused.jsonl");
+    ctx.seenWorkbuddyMessageIds = new Set(["new"]);
+    restoreJsonlSharedState(ctx, snapshot);
+    expect([...(ctx.seenWorkbuddyMessageIds ?? [])]).toEqual([]);
+  });
 });

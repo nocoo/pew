@@ -100,7 +100,8 @@ describe("retired sources", () => {
     expect((await store.load()).files[path]).toBeDefined();
     const status = await executeStatus({ stateDir, sourceDirs: { claudeDir: "/absent/claude", codexSessionsDir: "/absent/codex",
       openCodeMessageDir: "/absent/opencode", openclawDir: "/absent/openclaw", piSessionsDir: "/absent/pi",
-      copilotCliLogsDir: "/absent/copilot", copilotCliOtelPaths: options.copilotCliOtelPaths, multicaCodexDirs: [], grokHome: "/absent/grok" } });
+      copilotCliLogsDir: "/absent/copilot", copilotCliOtelPaths: options.copilotCliOtelPaths, multicaCodexDirs: [], grokHome: "/absent/grok",
+      workbuddyDirs: [] } });
     expect(status.sources["copilot-cli"]).toBe(1);
   });
 

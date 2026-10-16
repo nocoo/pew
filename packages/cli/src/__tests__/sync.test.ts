@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtemp, rm, writeFile, mkdir, readFile, symlink, chmod } from "node:fs/promises";
+import { mkdtemp, rm, writeFile, mkdir, readFile, symlink, chmod, utimes } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { executeSync } from "../commands/sync.js";
@@ -108,6 +108,162 @@ describe("executeSync", () => {
 
   afterEach(async () => {
     await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it("does not double-count a workbuddy file truncated to 0 then refilled", async () => {
+    // Truncating a JSONL file to 0 bytes (same inode) makes sync.ts replace its
+    // cursor with emptyEpochCursor(), which deliberately omits `seenMessageIds`.
+    // That omission is load-bearing: needsReplay() then flags the cursor and the
+    // next sync runs as a full rescan that OVERWRITES the queue. Giving the
+    // empty cursor a `seenMessageIds: []` field would make it look modern, send
+    // the refill down the incremental SUM path, and silently double the file's
+    // usage (3600 -> 7200). This test pins the queue total so that regression
+    // cannot land again.
+    const wbDir = join(dataDir, ".workbuddy");
+    const slug = join(wbDir, "projects", "Users-me-proj");
+    await mkdir(slug, { recursive: true });
+    const file = join(slug, "s1.jsonl");
+    const line = (id: string): string =>
+      `${JSON.stringify({
+        type: "function_call",
+        sessionId: "s1",
+        timestamp: 1757491200000,
+        providerData: {
+          messageId: id,
+          model: "hy4-preview",
+          rawUsage: { prompt_tokens: 1000, completion_tokens: 200, prompt_cache_miss_tokens: 1000 },
+        },
+      })}\n`;
+    const content = line("m1") + line("m2") + line("m3");
+    await writeFile(file, content);
+    const opts = { stateDir, deviceId: "dev-1", workbuddyDirs: [wbDir] };
+
+    const queueTotal = async (): Promise<number> => {
+      const raw = await readFile(join(stateDir, "queue.jsonl"), "utf-8").catch(() => "");
+      let total = 0;
+      for (const l of raw.trim().split("\n").filter(Boolean)) {
+        total += (JSON.parse(l) as QueueRecord).total_tokens;
+      }
+      return total;
+    };
+
+    await executeSync(opts);
+    expect(await queueTotal()).toBe(3600); // 3 requests × 1200
+
+    await writeFile(file, ""); // truncate in place (same inode)
+    await executeSync(opts);
+    // The truncated sync must leave the queue at 3600 too — the empty epoch
+    // writes an empty cursor, it does not re-read the (now empty) file into a
+    // second batch.
+    expect(await queueTotal()).toBe(3600);
+
+    await writeFile(file, content); // refill the identical content
+    await executeSync(opts);
+    expect(await queueTotal()).toBe(3600); // not 7200
+  });
+
+  it("keeps a persistently-empty workbuddy file's cursor stable across syncs", async () => {
+    // A workbuddy file that stays 0 bytes must not flip its cursor's
+    // `seenMessageIds` field in and out of existence. The field's ABSENCE is
+    // what marks a legacy cursor for needsReplay(); if the fast-skip empty
+    // branch rewrote the cursor on every sync, the field would alternate and
+    // every other sync would clear ALL cursors and rescan from scratch. This
+    // test runs several syncs and pins the field as present-and-stable.
+    const wbDir = join(dataDir, ".workbuddy");
+    const slug = join(wbDir, "projects", "Users-me-proj");
+    await mkdir(slug, { recursive: true });
+    const file = join(slug, "empty.jsonl");
+    await writeFile(file, "");
+    const opts = { stateDir, deviceId: "dev-1", workbuddyDirs: [wbDir] };
+
+    const hasSeenField = async (): Promise<boolean> => {
+      const raw = await readFile(join(stateDir, "cursors.json"), "utf-8").catch(() => "{}");
+      const files = (JSON.parse(raw) as { files?: Record<string, object> }).files ?? {};
+      const cursor = files[file];
+      return cursor ? Object.hasOwn(cursor, "seenMessageIds") : false;
+    };
+
+    for (let i = 0; i < 5; i++) {
+      await executeSync(opts);
+      expect(await hasSeenField(), `sync ${i + 1}`).toBe(true);
+    }
+  });
+
+  it("keeps an mtime-touched empty workbuddy file's cursor stable across syncs", async () => {
+    // Companion to the test above, covering the OTHER empty-epoch write site
+    // (the same-inode trim branch, reached when the file is 0 bytes but its
+    // mtime changed so the fast-skip gate does not match). It must apply the
+    // same "already empty-epoch -> do not rewrite" guard, or a 0-byte file
+    // whose mtime keeps changing would flip `seenMessageIds` in and out and
+    // trigger a full rescan every other sync.
+    const wbDir = join(dataDir, ".workbuddy");
+    const slug = join(wbDir, "projects", "Users-me-proj");
+    await mkdir(slug, { recursive: true });
+    const file = join(slug, "touched.jsonl");
+    await writeFile(file, "");
+    const opts = { stateDir, deviceId: "dev-1", workbuddyDirs: [wbDir] };
+
+    const hasSeenField = async (): Promise<boolean> => {
+      const raw = await readFile(join(stateDir, "cursors.json"), "utf-8").catch(() => "{}");
+      const files = (JSON.parse(raw) as { files?: Record<string, object> }).files ?? {};
+      const cursor = files[file];
+      return cursor ? Object.hasOwn(cursor, "seenMessageIds") : false;
+    };
+
+    await executeSync(opts);
+    expect(await hasSeenField()).toBe(true);
+
+    for (let i = 0; i < 4; i++) {
+      // Bump mtime (size stays 0) so the next sync cannot fast-skip.
+      const t = new Date(Date.now() + (i + 1) * 60_000);
+      await utimes(file, t, t);
+      await executeSync(opts);
+      expect(await hasSeenField(), `touched sync ${i + 1}`).toBe(true);
+    }
+  });
+
+  it("suppresses a cross-file duplicate when the source file fast-skips (preload before the loop)", async () => {
+    // preload() must lift every persisted ring into the sync context BEFORE the
+    // per-file skip/parse loop. Otherwise a file that fast-skips never reaches
+    // parse(), its ring never enters the context, and a sibling file carrying
+    // the same messageId is double-counted. This pins the orchestration order,
+    // not just the driver: deleting the preload call makes the second sync
+    // below emit the duplicate (1200 -> 2400).
+    const wbDir = join(dataDir, ".workbuddy");
+    const slug = join(wbDir, "projects", "Users-me-proj");
+    await mkdir(slug, { recursive: true });
+    const line = (id: string): string =>
+      `${JSON.stringify({
+        type: "function_call",
+        sessionId: "s1",
+        timestamp: 1757491200000,
+        providerData: {
+          messageId: id,
+          model: "hy4-preview",
+          rawUsage: { prompt_tokens: 1000, completion_tokens: 200, prompt_cache_miss_tokens: 1000 },
+        },
+      })}\n`;
+    const fileA = join(slug, "a.jsonl");
+    const fileB = join(slug, "b.jsonl");
+    await writeFile(fileA, line("shared"));
+    const opts = { stateDir, deviceId: "dev-1", workbuddyDirs: [wbDir] };
+
+    const queueTotal = async (): Promise<number> => {
+      const raw = await readFile(join(stateDir, "queue.jsonl"), "utf-8").catch(() => "");
+      let total = 0;
+      for (const l of raw.trim().split("\n").filter(Boolean)) {
+        total += (JSON.parse(l) as QueueRecord).total_tokens;
+      }
+      return total;
+    };
+
+    await executeSync(opts);
+    expect(await queueTotal()).toBe(1200);
+
+    // Second sync: A is unchanged and fast-skips; B is new and replays the id.
+    await writeFile(fileB, line("shared"));
+    await executeSync(opts);
+    expect(await queueTotal()).toBe(1200); // not 2400
   });
 
   it("should sync Claude data files to queue", async () => {

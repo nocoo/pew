@@ -1,0 +1,90 @@
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { mkdtemp, writeFile, rm, mkdir, stat } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { workbuddySessionDriver } from "../../../drivers/session/workbuddy-session-driver.js";
+import type { FileFingerprint } from "../../../drivers/types.js";
+
+const T0 = 1757491200000;
+
+function record(over: Record<string, unknown>): string {
+  return JSON.stringify({ sessionId: "s1", cwd: "/tmp/wb", timestamp: T0, ...over });
+}
+
+async function fingerprint(path: string): Promise<FileFingerprint> {
+  const st = await stat(path);
+  return {
+    inode: (st as unknown as { ino: number }).ino,
+    mtimeMs: st.mtimeMs,
+    size: st.size,
+  };
+}
+
+describe("workbuddySessionDriver", () => {
+  let root: string;
+  let slugDir: string;
+  let file: string;
+
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), "pew-workbuddy-session-drv-"));
+    slugDir = join(root, "projects", "Users-someone-WorkBuddy-2026-09-10");
+    await mkdir(slugDir, { recursive: true });
+    file = join(slugDir, "s1.jsonl");
+  });
+
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true });
+  });
+
+  it("discovers session files and returns snapshots", async () => {
+    await writeFile(file, `${record({ type: "message", role: "user" })}\n`);
+
+    const files = await workbuddySessionDriver.discover({ workbuddyDirs: [root] });
+    expect(files).toEqual([file]);
+
+    const snapshots = await workbuddySessionDriver.parse(file);
+    expect(snapshots).toHaveLength(1);
+    expect(snapshots[0]!.sessionKey).toBe("workbuddy:s1");
+  });
+
+  it("returns empty discovery without a directory option", async () => {
+    expect(await workbuddySessionDriver.discover({})).toEqual([]);
+    expect(await workbuddySessionDriver.discover({ workbuddyDirs: [] })).toEqual([]);
+  });
+
+  it("discovers sessions from every configured root (domestic + international)", async () => {
+    const intlRoot = await mkdtemp(join(tmpdir(), "pew-workbuddy-intl-sess-"));
+    const intlSlug = join(intlRoot, "projects", "Users-me-b");
+    await mkdir(intlSlug, { recursive: true });
+    const intlFile = join(intlSlug, "s2.jsonl");
+    await writeFile(file, `${record({ type: "message", role: "user" })}\n`);
+    await writeFile(intlFile, `${record({ type: "message", role: "user" })}\n`);
+
+    try {
+      const files = await workbuddySessionDriver.discover({
+        workbuddyDirs: [root, intlRoot],
+      });
+      expect(files).toEqual([file, intlFile].sort());
+    } finally {
+      await rm(intlRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("skips unchanged files via the mtime+size dual check", async () => {
+    await writeFile(file, `${record({ type: "message", role: "user" })}\n`);
+    const fp = await fingerprint(file);
+    const cursor = workbuddySessionDriver.buildCursor(fp);
+    expect(workbuddySessionDriver.shouldSkip(cursor, fp)).toBe(true);
+
+    const newer = { ...fp, mtimeMs: fp.mtimeMs + 1_000 };
+    expect(workbuddySessionDriver.shouldSkip(cursor, newer)).toBe(false);
+
+    // The size dimension must gate on its own: a file rewritten to the same
+    // mtime but a different length is NOT unchanged. Varying only mtimeMs
+    // would let a size-only guard rot undetected.
+    const resized = { ...fp, size: fp.size + 10 };
+    expect(workbuddySessionDriver.shouldSkip(cursor, resized)).toBe(false);
+
+    expect(workbuddySessionDriver.shouldSkip(undefined, fp)).toBe(false);
+  });
+});

@@ -11,6 +11,8 @@ import {
   discoverCopilotCliFiles,
   discoverCodexFiles,
   discoverPiFiles,
+  discoverWorkbuddyFiles,
+  discoverWorkbuddyFilesFromRoots,
 } from "../discovery/sources.js";
 
 describe("discoverClaudeFiles", () => {
@@ -340,5 +342,87 @@ describe("discoverPiFiles", () => {
   it("should return empty array if directory does not exist", async () => {
     const files = await discoverPiFiles(join(tempDir, "nonexistent"));
     expect(files).toEqual([]);
+  });
+});
+
+describe("discoverWorkbuddyFiles", () => {
+  let tempDir: string;
+
+  beforeEach(async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "pew-discover-"));
+  });
+
+  afterEach(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it("should find depth-2 session JSONL files under projects/<slug>/", async () => {
+    const slugDir = join(tempDir, "projects", "Users-me-WorkBuddy-2026-09-10");
+    await mkdir(slugDir, { recursive: true });
+    await writeFile(join(slugDir, "session-a.jsonl"), "{}");
+    await writeFile(join(slugDir, "session-b.jsonl"), "{}");
+    await writeFile(join(slugDir, "session-a.meta.json"), "{}");
+
+    const files = await discoverWorkbuddyFiles(tempDir);
+    expect(files).toHaveLength(2);
+    expect(files.every((f) => f.endsWith(".jsonl"))).toBe(true);
+  });
+
+  it("should exclude subagent transcripts and tool outputs nested deeper", async () => {
+    const slugDir = join(tempDir, "projects", "Users-me-WorkBuddy-2026-09-10");
+    await mkdir(join(slugDir, "subagents"), { recursive: true });
+    await mkdir(join(slugDir, "session-a", "tool-results"), { recursive: true });
+    await writeFile(join(slugDir, "session-a.jsonl"), "{}");
+    await writeFile(join(slugDir, "subagents", "agent-1.jsonl"), "{}");
+    await writeFile(join(slugDir, "session-a", "tool-results", "call-1.txt"), "x");
+
+    const files = await discoverWorkbuddyFiles(tempDir);
+    expect(files).toEqual([join(slugDir, "session-a.jsonl")]);
+  });
+
+  it("should return empty array if directory does not exist", async () => {
+    const files = await discoverWorkbuddyFiles(join(tempDir, "nonexistent"));
+    expect(files).toEqual([]);
+  });
+
+  it("merges multiple roots, sorted, tolerating missing roots", async () => {
+    const domestic = join(tempDir, ".workbuddy");
+    const intl = join(tempDir, ".workbuddy-ai");
+    const domSlug = join(domestic, "projects", "Users-a");
+    const intlSlug = join(intl, "projects", "Users-b");
+    await mkdir(domSlug, { recursive: true });
+    await mkdir(intlSlug, { recursive: true });
+    await writeFile(join(domSlug, "s1.jsonl"), "{}");
+    await writeFile(join(intlSlug, "s2.jsonl"), "{}");
+
+    const files = await discoverWorkbuddyFilesFromRoots([domestic, intl]);
+    expect(files).toEqual([join(domSlug, "s1.jsonl"), join(intlSlug, "s2.jsonl")].sort());
+
+    // A missing root contributes nothing and never fails the scan.
+    const withMissing = await discoverWorkbuddyFilesFromRoots([
+      domestic,
+      join(tempDir, "absent-root"),
+    ]);
+    expect(withMissing).toEqual([join(domSlug, "s1.jsonl")]);
+
+    // Repeating a root does not duplicate its files.
+    const repeated = await discoverWorkbuddyFilesFromRoots([domestic, domestic]);
+    expect(repeated).toEqual([join(domSlug, "s1.jsonl")]);
+  });
+
+  it("does not double-count a root reached through a symlink alias", async () => {
+    const domSlug = join(tempDir, ".workbuddy", "projects", "Users-a");
+    await mkdir(domSlug, { recursive: true });
+    await writeFile(join(domSlug, "s1.jsonl"), "{}");
+    const alias = join(tempDir, "alias");
+    await symlink(join(tempDir, ".workbuddy"), alias);
+
+    // Same directory via two path strings — dedupe by dev:ino so the token
+    // driver cannot parse (and count) the file twice.
+    const files = await discoverWorkbuddyFilesFromRoots([
+      join(tempDir, ".workbuddy"),
+      alias,
+    ]);
+    expect(files).toHaveLength(1);
   });
 });

@@ -417,6 +417,49 @@ describe("POST /api/ingest", () => {
     const summary = body.summary;
     expect(summary.cached_input_tokens / (summary.input_tokens + summary.cached_input_tokens)).toBe(0.9);
   });
+
+  it("accepts and reads back workbuddy source records — every whitelist entry point", async () => {
+    // 1. POST /api/ingest — bare-array body with workbuddy source. It carries a
+    //    device_id, so the by-device breakdown test includes it as a 4th device.
+    const ingest = await fetch(`${BASE_URL}/api/ingest`, {
+      method: "POST",
+      headers: INGEST_HEADERS,
+      body: JSON.stringify([
+        makeRecord({
+          source: "workbuddy",
+          model: "hy4-preview",
+          hour_start: "2026-07-10T01:00:00.000Z",
+          // Local-machine aggregate: prompt 1000 (400 cached) + completion 200.
+          input_tokens: 600,
+          cached_input_tokens: 400,
+          output_tokens: 150,
+          reasoning_output_tokens: 50,
+          total_tokens: 1200,
+          device_id: "e2e-workbuddy-device",
+        }),
+      ]),
+    });
+    expect(ingest.status).toBe(200);
+
+    // 2. Every ?source= query allowlist route
+    for (const path of [
+      "/api/usage?source=workbuddy&from=2026-07-01&to=2026-07-31",
+      "/api/sessions?source=workbuddy",
+      "/api/leaderboard?source=workbuddy&from=2026-07-01&to=2026-07-31",
+      `/api/users/${TEST_USER_SLUG}?source=workbuddy&from=2026-07-01&to=2026-07-31`,
+    ]) {
+      const r = await fetch(`${BASE_URL}${path}`);
+      expect(r.status, path).toBe(200);
+    }
+
+    // Token retention on user route
+    const userRes = await fetch(
+      `${BASE_URL}/api/users/${TEST_USER_SLUG}?source=workbuddy&from=2026-07-01&to=2026-07-31`,
+    );
+    expect(userRes.status).toBe(200);
+    const userBody = await userRes.json();
+    expect(userBody.summary.cached_input_tokens).toBe(400);
+  });
 });
 
 describe("CLI upgrade notice persistence", () => {
@@ -790,7 +833,7 @@ describe("GET /api/seasons", () => {
 // ===========================================================================
 
 describe("GET /api/usage/by-device", () => {
-  it("returns all ingested devices with consistent named counts across every breakdown", async () => {
+  it("returns all five ingested devices with consistent named counts across every breakdown", async () => {
     const res = await fetch(`${BASE_URL}/api/usage/by-device?from=2020-01-01`);
     expect(res.status).toBe(200);
     const body: ByDeviceResponse = await res.json();
@@ -803,10 +846,12 @@ describe("GET /api/usage/by-device", () => {
         output_tokens: 1329, reasoning_output_tokens: 0, total_tokens: 65563 },
       { device_id: "e2e-antigravity-device", date: "2026-10-01", input_tokens: 100, cached_input_tokens: 900,
         output_tokens: 40, reasoning_output_tokens: 60, total_tokens: 1100 },
+      { device_id: "e2e-workbuddy-device", date: "2026-07-10", input_tokens: 600, cached_input_tokens: 400,
+        output_tokens: 150, reasoning_output_tokens: 50, total_tokens: 1200 },
     ];
-    expect(body.devices).toHaveLength(4);
-    expect(body.timeline).toHaveLength(4);
-    expect(body.deviceDetails).toHaveLength(6);
+    expect(body.devices).toHaveLength(5);
+    expect(body.timeline).toHaveLength(5);
+    expect(body.deviceDetails).toHaveLength(7);
     for (const { date, ...device } of expected) {
       expect(body.devices.find((row) => row.device_id === device.device_id)).toMatchObject(device);
       expect(body.timeline.find((row) => row.device_id === device.device_id)).toMatchObject({ ...device, date });

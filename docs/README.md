@@ -55,6 +55,11 @@
 | 44 | [44-biome-migration-ts7.md](44-biome-migration-ts7.md) | Biome migration + TypeScript 7 stable upgrade | done |
 | 45 | [45-codex-notifier-cycle-containment.md](45-codex-notifier-cycle-containment.md) | Codex notifier forwarding-cycle containment | proposed |
 | 46 | [46-omp-support.md](46-omp-support.md) | Historical Oh My Pi collector design | archived; collector retired |
+| 47 | [47-usage-evidence.md](47-usage-evidence.md) | Supplementary usage accounting — Pi compaction + Hermes auxiliary usage ledger | done |
+| 48 | [48-cache-accounting.md](48-cache-accounting.md) | Cache accounting contract — read/write price effects, versioned annotations | done |
+| 49 | [49-agent-operations.md](49-agent-operations.md) | Time, CLI state and release contracts | reference |
+| 50 | [50-leaderboard-read-cache.md](50-leaderboard-read-cache.md) | Leaderboard read cache — v3.1.0 released, v3.1.1 range-scan fix | done |
 | 51 | [51-antigravity-support.md](51-antigravity-support.md) | Antigravity CLI SQLite/Protobuf accounting and source safety | implemented |
+| 52 | [52-workbuddy-support.md](52-workbuddy-support.md) | WorkBuddy token + session support — session JSONL under `~/.workbuddy/projects` and `~/.workbuddy-ai/projects` | done |
 
 > **Note:** Number 14 is intentionally vacant (original doc 14 was renumbered to 12 to fill a gap). Numbers 19, 36, and 40 have multiple entries (`Nb`, `Nc`) as history-preserving disambiguators.

@@ -26,7 +26,7 @@ pew 由本地 CLI 和 Web 仪表盘组成。CLI 读取 AI 编程工具的日志�
 - 从动态模型价格与回退价格表估算用量成本，查看价格来源和更新时间。
 - 为部分工具配置会话后的自动同步，其余来源可通过 `pew sync` 手动汇总。
 
-当前支持 9 种 token 来源：Antigravity CLI、Claude Code、Codex、GitHub Copilot CLI、Grok、Hermes、OpenClaw、OpenCode 和 Pi。会话统计目前不含 Hermes。
+当前支持 10 种 token 来源：Antigravity CLI、Claude Code、Codex、GitHub Copilot CLI、Grok、Hermes、OpenClaw、OpenCode、Pi 和 WorkBuddy。会话统计目前不含 Hermes。
 
 ## 使用
 

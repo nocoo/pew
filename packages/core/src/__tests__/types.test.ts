@@ -29,7 +29,7 @@ import type {
 } from "../types.js";
 
 describe("Source type", () => {
-  it("should retain all 15 active and historical identities", () => {
+  it("should retain all 16 active and historical identities", () => {
     const sources: Source[] = [
       "antigravity",
       "claude-code",
@@ -45,9 +45,10 @@ describe("Source type", () => {
       "pi",
       "pmstudio",
       "vscode-copilot",
+      "workbuddy",
       "zcode",
     ];
-    expect(sources).toHaveLength(15);
+    expect(sources).toHaveLength(16);
   });
 
   it("should reject unsupported tools at type level", () => {

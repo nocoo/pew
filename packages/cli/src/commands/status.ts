@@ -19,6 +19,8 @@ export interface SourceDirs {
   multicaCodexDirs: string[];
   /** Grok CLI home (~/.grok) — used to classify log + session cursors */
   grokHome: string;
+  /** WorkBuddy data roots (domestic + international) — classify token cursors */
+  workbuddyDirs: string[];
 }
 
 /** Status summary for display */
@@ -53,7 +55,16 @@ function classifySource(filePath: string, dirs: SourceDirs): string {
   if (filePath.startsWith(dirs.openclawDir)) return "openclaw";
   if (filePath.startsWith(dirs.piSessionsDir)) return "pi";
   if (filePath.startsWith(dirs.grokHome)) return "grok";
-
+  for (const dir of dirs.workbuddyDirs ?? []) {
+    // Path-boundary check: `.workbuddy` is a string prefix of `.workbuddy-ai`,
+    // so a bare startsWith would also match an unrelated sibling like a future
+    // `.workbuddy-backup`. Requiring the separator (or an exact match) keeps
+    // the classification honest if the root list ever grows. Accept both
+    // separators so cursor keys join()ed on Windows still classify.
+    const boundary = filePath.charAt(dir.length);
+    if (filePath === dir || filePath.startsWith(dir) &&
+      (boundary === "/" || boundary === "\\")) return "workbuddy";
+  }
   if (filePath.startsWith(dirs.copilotCliLogsDir)) return "copilot-cli";
   for (const path of dirs.copilotCliOtelPaths) {
     const child = relative(path, filePath);
