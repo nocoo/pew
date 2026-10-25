@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v3.4.2
+
+### Changed
+- Bump minor/patch dependencies (@aws-sdk/client-s3, @biomejs/biome, @cloudflare/workers-types, lucide-react, wrangler, @types/bun, next) and override undici to 7.30.1 for security advisories.
+
 ## v3.4.1
 
 ### Changed
