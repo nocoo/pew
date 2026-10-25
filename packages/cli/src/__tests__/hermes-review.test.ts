@@ -30,14 +30,14 @@ describe("Hermes numeric review log parser", () => {
 
   it("bounds ambiguous counter matching and leaves it to the cumulative ledger", () => {
     const repeated = Array.from({ length: 20 }, (_, i) => [0, 1].map((j) =>
-      call.replace("#1", `#${i + 1}`).replace("in=100 out=10 total=110", "in=1 out=1 total=2") + ` id=synthetic-${i}-${j}`)).flat();
+      `${call.replace("#1", `#${i + 1}`).replace("in=100 out=10 total=110", "in=1 out=1 total=2")} id=synthetic-${i}-${j}`)).flat();
     const completion = done.replace("calls=1 in=100 out=10", "calls=20 in=21 out=20");
     expect(parseHermesReviewLines([...repeated, completion], "default", 480)).toEqual([]);
   });
 
   it("bounds candidate inspections as well as recursive states before declaring a unique match", () => {
-    const sequence = Array.from({ length: 30 }, (_, i) => call.replace("#1", `#${i + 1}`) + ` id=sequence-${i}`);
-    const unrelated = Array.from({ length: 970 }, (_, i) => call.replace("#1", "#999") + ` id=unrelated-${i}`);
+    const sequence = Array.from({ length: 30 }, (_, i) => `${call.replace("#1", `#${i + 1}`)} id=sequence-${i}`);
+    const unrelated = Array.from({ length: 970 }, (_, i) => `${call.replace("#1", "#999")} id=unrelated-${i}`);
     const completion = done.replace("calls=1 in=100 out=10", "calls=30 in=3000 out=300");
     // There is one numeric match, but proving uniqueness scans the unrelated
     // tail at every depth. Once the work budget is spent, retain coarse DB usage.

@@ -39,7 +39,7 @@ interface PeakHoursCardProps {
  *   (day-of-week + time range + token count).
  */
 export function PeakHoursCard({ hourly, slots, className }: PeakHoursCardProps) {
-  const max = hourly.reduce((m, v) => (v > m ? v : m), 0);
+  const max = hourly.reduce((m, v) => (Math.max(v , m)), 0);
   const peakHourIndex = max > 0 ? hourly.indexOf(max) : -1;
   const isEmpty = max === 0 && slots.length === 0;
 

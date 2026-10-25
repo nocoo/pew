@@ -1035,7 +1035,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
       dbsScanned[key] += 1;
     }
 
-    const dedupSkipped = result.rowCount - (result.deltas.length > 0 ? result.deltas.length : 0);
+    const dedupSkipped = result.rowCount - (Math.max(result.deltas.length , 0));
     onProgress?.({
       source: driver.source,
       phase: "parse",

@@ -98,7 +98,7 @@ describe("directed accounting enrichment", () => {
       await writeFile(join(session, "usage.json"), JSON.stringify({ totals: { inputTokens: 99999999 } }));
       const record = { source: "grok", model: "grok-4.6", device_id: "test", hour_start: "2026-09-01T00:00:00.000Z",
         input_tokens: 60, cached_input_tokens: 40, output_tokens: 15, reasoning_output_tokens: 5, total_tokens: 120 };
-      const original = [record, { ...record, device_id: "other" }, { ...record, hour_start: "2026-08-01T00:00:00.000Z" }].map((r) => JSON.stringify(r)).join("\n") + "\n";
+      const original = `${[record, { ...record, device_id: "other" }, { ...record, hour_start: "2026-08-01T00:00:00.000Z" }].map((r) => JSON.stringify(r)).join("\n")}\n`;
       await writeFile(join(stateDir, "queue.jsonl"), original);
       const opts = { stateDir, grokSessionsDir, deviceId: "test", source: "grok" as const, from: "2026-09-01", to: "2026-09-02" };
       const preview = await executeEnrich(opts);

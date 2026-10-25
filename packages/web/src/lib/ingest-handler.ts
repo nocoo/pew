@@ -63,7 +63,7 @@ export function createIngestHandler<T>(
 ): (request: Request) => Promise<Response> {
   const { validateRecord, getWorkerUrl, entityName } = config;
 
-  return async function POST(request: Request): Promise<Response> {
+  return async (request: Request): Promise<Response> => {
     // 1. Authenticate
     const authResult = await resolveUser(request);
     if (!authResult) {

@@ -383,7 +383,7 @@ async function checkCooldown(
 
   const elapsed = now() - completedAtMs;
   const remaining = cooldownMs - elapsed;
-  return remaining > 0 ? remaining : 0;
+  return Math.max(remaining , 0);
 }
 
 /**
