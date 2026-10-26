@@ -9,7 +9,7 @@ on:
 
 jobs:
   quality:
-    uses: nocoo/base-ci/.github/workflows/quality.yml@ac635753a869cb85fad1f52aae4ccbd6119f3cae  # main 2026-10-22
+    uses: nocoo/base-ci/.github/workflows/quality.yml@af9a2b3f82c367d6eb6def5c3583ac717e0868ad  # main 2026-10-26
     with:
       runtime-version: "1.4.0"
       install-policy: "blocked"
@@ -24,7 +24,7 @@ jobs:
   api-e2e:
     name: "L2 API E2E"
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    uses: nocoo/base-ci/.github/workflows/test-job.yml@ac635753a869cb85fad1f52aae4ccbd6119f3cae  # main 2026-10-22
+    uses: nocoo/base-ci/.github/workflows/test-job.yml@af9a2b3f82c367d6eb6def5c3583ac717e0868ad  # main 2026-10-26
     with:
       runtime-version: "1.4.0"
       install-policy: "blocked"
@@ -35,7 +35,7 @@ jobs:
   browser-e2e:
     name: "L3 Browser E2E"
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    uses: nocoo/base-ci/.github/workflows/test-job.yml@ac635753a869cb85fad1f52aae4ccbd6119f3cae  # main 2026-10-22
+    uses: nocoo/base-ci/.github/workflows/test-job.yml@af9a2b3f82c367d6eb6def5c3583ac717e0868ad  # main 2026-10-26
     with:
       runtime-version: "1.4.0"
       install-policy: "blocked"
@@ -46,7 +46,7 @@ jobs:
 
   container-smoke:
     name: "Linux Image Native and Startup Smoke"
-    uses: nocoo/base-ci/.github/workflows/test-job.yml@ac635753a869cb85fad1f52aae4ccbd6119f3cae  # main 2026-10-22
+    uses: nocoo/base-ci/.github/workflows/test-job.yml@af9a2b3f82c367d6eb6def5c3583ac717e0868ad  # main 2026-10-26
     with:
       runtime: "none"
       node-version: "22.23.4"
@@ -57,7 +57,7 @@ jobs:
 
   release-smoke:
     name: "Release Workflow Smoke"
-    uses: nocoo/base-ci/.github/workflows/workflow-lint.yml@ac635753a869cb85fad1f52aae4ccbd6119f3cae  # main 2026-10-22
+    uses: nocoo/base-ci/.github/workflows/workflow-lint.yml@af9a2b3f82c367d6eb6def5c3583ac717e0868ad  # main 2026-10-26
     with:
       files: ".github/workflows/ci.yml .github/workflows/release.yml"
       required-reusable-workflow: "nocoo/base-ci/.github/workflows/deploy-docker.yml"

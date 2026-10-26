@@ -18,8 +18,9 @@ jobs:
     if: |
       github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.head_branch == 'main')
-    uses: nocoo/base-ci/.github/workflows/deploy-docker.yml@ac635753a869cb85fad1f52aae4ccbd6119f3cae  # main 2026-10-22
+    uses: nocoo/base-ci/.github/workflows/deploy-docker.yml@af9a2b3f82c367d6eb6def5c3583ac717e0868ad  # main 2026-10-26
     with:
+      tailscale: true
       environment: pew / production
       source-run-id: ${{ github.event_name == 'workflow_run' && format('{0}', github.event.workflow_run.id) || inputs.ci-run-id }}
       images: '[{"image":"ghcr.io/nocoo/pew","service":"web"}]'
@@ -138,7 +139,10 @@ jobs:
       VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
       GHCR_PULL_USER: ${{ secrets.GHCR_PULL_USER }}
       GHCR_PULL_TOKEN: ${{ secrets.GHCR_PULL_TOKEN }}
+      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+      TS_AUDIENCE: ${{ secrets.TS_AUDIENCE }}
 permissions:
   contents: read
   actions: read
   packages: write
+  id-token: write

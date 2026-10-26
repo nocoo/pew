@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v3.4.3
+
+### Changed
+- Join Tailscale via workload identity federation before SSH during jp2 release deploy; pin shared base-ci to the Tailscale-enabled deploy workflow.
+
 ## v3.4.2
 
 ### Changed

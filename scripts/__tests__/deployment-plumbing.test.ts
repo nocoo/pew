@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const source = (file: string) => readFileSync(new URL(`../../${file}`, import.meta.url), "utf8");
-const revision = "ac635753a869cb85fad1f52aae4ccbd6119f3cae";
+const revision = "af9a2b3f82c367d6eb6def5c3583ac717e0868ad";
 const ci = source(".github/workflows/ci.yml");
 const release = source(".github/workflows/release.yml");
 const compose = source("deploy/compose.yaml");
@@ -29,7 +29,11 @@ describe("Docker CD contract", () => {
     expect(release).toContain("github.event.workflow_run.conclusion == 'success'");
     expect(release).toContain("github.event.workflow_run.head_branch == 'main'");
     expect(release).toContain(`source-run-id: \${{ github.event_name == 'workflow_run' && format('{0}', github.event.workflow_run.id) || inputs.ci-run-id }}`);
+    expect(release).toContain("tailscale: true");
     expect(release).toContain("environment: pew / production");
+    expect(release).toMatch(/TS_OAUTH_CLIENT_ID: \$\{\{ secrets\.TS_OAUTH_CLIENT_ID \}\}/);
+    expect(release).toMatch(/TS_AUDIENCE: \$\{\{ secrets\.TS_AUDIENCE \}\}/);
+    expect(release).toContain("id-token: write");
     expect(release).toContain("deploy-directory: /opt/pew");
     expect(release).toContain("images: '[{\"image\":\"ghcr.io/nocoo/pew\",\"service\":\"web\"}]'");
     expect(release).not.toMatch(/build-args|BUILD_ARGS|secrets: inherit|railway|lizheng|firefly/i);
