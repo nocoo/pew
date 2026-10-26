@@ -31,8 +31,8 @@ describe("Docker CD contract", () => {
     expect(release).toContain(`source-run-id: \${{ github.event_name == 'workflow_run' && format('{0}', github.event.workflow_run.id) || inputs.ci-run-id }}`);
     expect(release).toContain("tailscale: true");
     expect(release).toContain("environment: pew / production");
-    expect(release).toContain("TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}");
-    expect(release).toContain("TS_AUDIENCE: ${{ secrets.TS_AUDIENCE }}");
+    expect(release).toMatch(/TS_OAUTH_CLIENT_ID: \$\{\{ secrets\.TS_OAUTH_CLIENT_ID \}\}/);
+    expect(release).toMatch(/TS_AUDIENCE: \$\{\{ secrets\.TS_AUDIENCE \}\}/);
     expect(release).toContain("id-token: write");
     expect(release).toContain("deploy-directory: /opt/pew");
     expect(release).toContain("images: '[{\"image\":\"ghcr.io/nocoo/pew\",\"service\":\"web\"}]'");
