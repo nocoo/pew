@@ -164,6 +164,7 @@ test.describe("Manage devices", () => {
     await expect(page.getByRole("alertdialog")).toHaveCount(0);
     await expect(page.getByText("Device delete failed", { exact: true })).toBeVisible();
     await expect(page.getByText("Work Mac", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Delete Work Mac", exact: true })).toBeFocused();
   });
 
   test("delete is keyboard-safe and moves focus for the surviving and last devices", async ({ page }) => {
@@ -181,6 +182,10 @@ test.describe("Manage devices", () => {
     await page.keyboard.press("Enter");
 
     const workDeleteDialog = page.getByRole("alertdialog", { name: "Delete Work Mac", exact: true });
+    await expect(workDeleteDialog).toBeVisible();
+    await workDeleteDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Delete Work Mac", exact: true })).toBeFocused();
+    await page.keyboard.press("Enter");
     await expect(workDeleteDialog).toBeVisible();
     await workDeleteDialog.getByRole("button", { name: "Delete", exact: true }).focus();
     await page.keyboard.press("Enter");

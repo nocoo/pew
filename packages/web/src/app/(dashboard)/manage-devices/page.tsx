@@ -644,11 +644,6 @@ export default function ManageDevicesPage() {
             survivingDetail.focus();
             return;
           }
-          const emptyState = document.querySelector<HTMLElement>("[data-device-empty-state]");
-          if (emptyState) {
-            emptyState.focus();
-            return;
-          }
           document.querySelector<HTMLElement>('button[aria-label="CLI Login Code"]')?.focus();
         });
       });
@@ -682,9 +677,7 @@ export default function ManageDevicesPage() {
 
       {/* Empty state */}
       {devices.length === 0 && (
-        <div data-device-empty-state tabIndex={-1}>
-          <DevicesEmptyState />
-        </div>
+        <DevicesEmptyState />
       )}
 
       {/* Device list */}
