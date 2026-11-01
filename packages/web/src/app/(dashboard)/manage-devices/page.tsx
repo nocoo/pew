@@ -82,6 +82,7 @@ function DeviceCard({
   const restoreDetailFocus = useRestoreDialogFocus(detailOpen);
   const restoreDeleteFocus = useRestoreDialogFocus(confirmDelete);
   const restoreRevokeFocus = useRestoreDialogFocus(confirmRevoke);
+  const deleteSucceededRef = useRef(false);
   const { data: recentUsage, loading: recentLoading, error: recentError } = useUsageData({
     days: 30,
     deviceId: device.device_id,
@@ -96,12 +97,15 @@ function DeviceCard({
   const revoked = device.revoked === true;
 
   const handleDelete = async () => {
+    deleteSucceededRef.current = false;
     setDeleting(true);
     setActionError(null);
     const result = await onDelete();
     setDeleting(false);
     if (!result.success) {
       setActionError(result.error ?? "Failed to delete device");
+    } else {
+      deleteSucceededRef.current = true;
     }
     setConfirmDelete(false);
   };
@@ -167,7 +171,7 @@ function DeviceCard({
   }
 
   return (
-    <div className="rounded-xl bg-secondary p-4 space-y-3">
+    <div data-device-card className="rounded-xl bg-secondary p-4 space-y-3">
       {/* Header row */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
@@ -247,6 +251,7 @@ function DeviceCard({
                 variant="ghost"
                 size="icon"
                 className={`${chromeIconClassName} min-h-11 min-w-11`}
+                data-device-detail
                 aria-label={`View details for ${label}`}
                 onClick={() => setDetailOpen(true)}
               >
@@ -365,7 +370,10 @@ function DeviceCard({
       <ConfirmDialog
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
-        onCloseAutoFocus={restoreDeleteFocus}
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          if (!deleteSucceededRef.current) restoreDeleteFocus(event);
+        }}
         onConfirm={handleDelete}
         title={`Delete ${label}`}
         description="Remove this device record only. Historical usage, sessions and rankings remain unchanged."
@@ -622,13 +630,39 @@ export default function ManageDevicesPage() {
 
   const devices = data?.devices ?? [];
 
+  const deleteDeviceWithFocus = async (deviceId: string, index: number) => {
+    const result = await deleteDevice(deviceId);
+    if (result.success) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const cards = Array.from(document.querySelectorAll<HTMLElement>("[data-device-card]"));
+          const targetIndex = Math.min(index, cards.length - 1);
+          const survivingDetail = targetIndex >= 0
+            ? cards[targetIndex]?.querySelector<HTMLElement>("[data-device-detail]")
+            : null;
+          if (survivingDetail) {
+            survivingDetail.focus();
+            return;
+          }
+          const emptyState = document.querySelector<HTMLElement>("[data-device-empty-state]");
+          if (emptyState) {
+            emptyState.focus();
+            return;
+          }
+          document.querySelector<HTMLElement>('button[aria-label="CLI Login Code"]')?.focus();
+        });
+      });
+    }
+    return result;
+  };
+
   return (
     <div className="space-y-8">
       <PageHeader
         title="Devices"
         description="Manage your synced devices and set aliases."
         actions={
-          <Button variant="outline" size="sm" onClick={() => setShowAuthCodeModal(true)}>
+          <Button variant="outline" size="sm" aria-label="CLI Login Code" onClick={() => setShowAuthCodeModal(true)}>
             <Terminal className="h-3.5 w-3.5" strokeWidth={1.5} />
             CLI Login Code
           </Button>
@@ -648,7 +682,9 @@ export default function ManageDevicesPage() {
 
       {/* Empty state */}
       {devices.length === 0 && (
-        <DevicesEmptyState />
+        <div data-device-empty-state tabIndex={-1}>
+          <DevicesEmptyState />
+        </div>
       )}
 
       {/* Device list */}
@@ -665,14 +701,14 @@ export default function ManageDevicesPage() {
           </div>
 
           <div className="space-y-2">
-            {devices.map((device) => (
+            {devices.map((device, index) => (
               <DeviceCard
                 key={device.device_id}
                 device={device}
                 onUpdateAlias={(alias) =>
                   updateAlias(device.device_id, alias)
                 }
-                onDelete={() => deleteDevice(device.device_id)}
+                onDelete={() => deleteDeviceWithFocus(device.device_id, index)}
                 onSetRevoked={(revoked) => setRevoked(device.device_id, revoked)}
               />
             ))}

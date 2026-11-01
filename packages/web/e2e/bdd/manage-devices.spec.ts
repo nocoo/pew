@@ -166,7 +166,7 @@ test.describe("Manage devices", () => {
     await expect(page.getByText("Work Mac", { exact: true })).toBeVisible();
   });
 
-  test("delete asks for confirmation and removes only the device record", async ({ page }) => {
+  test("delete is keyboard-safe and moves focus for the surviving and last devices", async ({ page }) => {
     const devices = mockDeviceApis(page);
     await devices.register();
 
@@ -177,12 +177,27 @@ test.describe("Manage devices", () => {
     await page.keyboard.press("Escape");
     await expect(page.getByRole("tooltip")).toHaveCount(0);
 
-    await page.getByRole("button", { name: "Delete Work Mac", exact: true }).click();
+    await page.getByRole("button", { name: "Delete Work Mac", exact: true }).focus();
+    await page.keyboard.press("Enter");
 
-    await expect(page.getByRole("alertdialog", { name: "Delete Work Mac", exact: true })).toBeVisible();
-    await page.getByRole("alertdialog", { name: "Delete Work Mac", exact: true }).getByRole("button", { name: "Delete", exact: true }).click();
+    const workDeleteDialog = page.getByRole("alertdialog", { name: "Delete Work Mac", exact: true });
+    await expect(workDeleteDialog).toBeVisible();
+    await workDeleteDialog.getByRole("button", { name: "Delete", exact: true }).focus();
+    await page.keyboard.press("Enter");
 
     await expect(page.getByText("Work Mac", { exact: true })).toHaveCount(0);
     await expect(page.getByText("Home Mac", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "View details for Home Mac", exact: true })).toBeFocused();
+
+    await page.getByRole("button", { name: "Delete Home Mac", exact: true }).focus();
+    await page.keyboard.press("Enter");
+
+    const homeDeleteDialog = page.getByRole("alertdialog", { name: "Delete Home Mac", exact: true });
+    await expect(homeDeleteDialog).toBeVisible();
+    await homeDeleteDialog.getByRole("button", { name: "Delete", exact: true }).focus();
+    await page.keyboard.press("Enter");
+
+    await expect(page.getByText("Home Mac", { exact: true })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "CLI Login Code", exact: true })).toBeFocused();
   });
 });
