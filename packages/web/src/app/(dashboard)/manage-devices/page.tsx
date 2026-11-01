@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 import { cn, formatTokens } from "@/lib/utils";
 import { sourceLabel } from "@/hooks/use-usage-data";
-import { deviceLabel, shortDeviceId } from "@/lib/device-helpers";
+import { deviceLabel, shortDeviceId, sortRecentActivityRecords, formatRecentActivityRelativeTime } from "@/lib/device-helpers";
 import { agentColor } from "@/lib/palette";
 import { useDevices } from "@/hooks/use-devices";
 import { useUsageData } from "@/hooks/use-usage-data";
@@ -85,6 +85,7 @@ function DeviceCard({
   const { data: recentUsage, loading: recentLoading, error: recentError } = useUsageData({
     days: 30,
     deviceId: device.device_id,
+    granularity: "half-hour",
     enabled: detailOpen,
   });
 
@@ -154,17 +155,7 @@ function DeviceCard({
   };
 
   function relativeTime(iso: string): string {
-    // NOTE: react-hooks/purity had no biome equivalent, monitored via review.
-    // Date.now() for relative time display is intentionally impure.
-    const diff = Date.now() - new Date(iso).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return "just now";
-    if (mins < 60) return `${mins}m ago`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    if (days < 30) return `${days}d ago`;
-    return new Date(iso).toLocaleDateString();
+    return formatRecentActivityRelativeTime(iso);
   }
 
   function fmtDate(iso: string): string {
@@ -415,8 +406,7 @@ function DeviceCard({
             <Banner variant="error" size="sm" description="Failed to load recent device activity" />
           ) : recentUsage?.records.length ? (
             <div className="space-y-2">
-              {[...recentUsage.records]
-                .sort((a, b) => new Date(b.hour_start).getTime() - new Date(a.hour_start).getTime())
+              {sortRecentActivityRecords(recentUsage.records)
                 .slice(0, 10)
                 .map((record) => (
                   <div

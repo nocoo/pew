@@ -10,7 +10,35 @@ import {
   toDeviceAgentBreakdown,
   toDeviceModelBreakdown,
   toDeviceDisplayData,
+  parseRecentActivityTimestamp,
+  sortRecentActivityRecords,
+  formatRecentActivityRelativeTime,
 } from "@/lib/device-helpers";
+
+describe("recent device activity", () => {
+  it("uses epoch milliseconds for ISO timestamps with offsets and sorts newest first", () => {
+    const records = [
+      { model: "older", hour_start: "2026-09-15T12:30:00+08:00", total_tokens: 100 },
+      { model: "newer", hour_start: "2026-09-15T13:30:00.000Z", total_tokens: 200 },
+      { model: "middle", hour_start: "2026-09-15T05:00:00Z", total_tokens: 150 },
+    ];
+
+    expect(sortRecentActivityRecords(records).map((record) => record.model)).toEqual(["newer", "middle", "older"]);
+  });
+
+  it("formats relative time from an exact ISO timestamp instead of a UTC midnight bucket", () => {
+    const now = Date.parse("2026-09-15T12:30:00Z");
+
+    expect(formatRecentActivityRelativeTime("2026-09-15T20:15:00+08:00", now)).toBe("15m ago");
+    expect(formatRecentActivityRelativeTime("2026-09-15T11:30:00Z", now)).toBe("1h ago");
+  });
+
+  it("does not interpret a bare day value as an exact UTC timestamp", () => {
+    const bareDay = parseRecentActivityTimestamp("2026-09-15");
+
+    expect(bareDay).toBe(new Date(2026, 8, 15, 12).getTime());
+  });
+});
 
 describe("device accounting display", () => {
   it.each([null, 70])("counts Hermes reasoning once and preserves the cache partition (read=%s)", (read) => {

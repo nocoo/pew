@@ -53,9 +53,37 @@ export function deviceLabel(device: {
   return shortDeviceId(device.device_id);
 }
 
-/**
- * Build a Map<device_id, display_label> for chart legend/tooltip lookup.
- */
+export function parseRecentActivityTimestamp(value: string): number {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [yearText, monthText, dayText] = value.split("-");
+    const year = Number(yearText);
+    const month = Number(monthText);
+    const day = Number(dayText);
+    return new Date(year, month - 1, day, 12).getTime();
+  }
+  return new Date(value).getTime();
+}
+
+export function sortRecentActivityRecords<T extends { hour_start: string }>(records: readonly T[]): T[] {
+  return [...records].sort((a, b) =>
+    parseRecentActivityTimestamp(b.hour_start) - parseRecentActivityTimestamp(a.hour_start));
+}
+
+export function formatRecentActivityRelativeTime(value: string, now = Date.now()): string {
+  const timestamp = parseRecentActivityTimestamp(value);
+  if (!Number.isFinite(timestamp)) return "Recent";
+  const diff = now - timestamp;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d ago`;
+  return new Date(timestamp).toLocaleDateString();
+}
+
+/** Build a Map<device_id, display_label> for chart legend/tooltip lookup. */
 export function buildDeviceLabelMap(
   devices: Array<{ device_id: string; alias: string | null }>
 ): Map<string, string> {

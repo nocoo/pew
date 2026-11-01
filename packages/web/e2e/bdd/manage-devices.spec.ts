@@ -58,13 +58,14 @@ function mockDeviceApis(page: Parameters<typeof mockDashboardApis>[0]) {
       });
 
       await page.route("**/api/usage?*", (route) => {
-        const deviceId = new URL(route.request().url()).searchParams.get("deviceId");
+        const requestUrl = new URL(route.request().url());
+        const deviceId = requestUrl.searchParams.get("deviceId");
         const records = DASHBOARD_USAGE_FIXTURE.records.map((row, index) => ({
           ...row,
           device_id: deviceId ?? "work",
           source: index === 0 ? "claude-code" : "codex",
           model: index === 0 ? "claude-opus-4.6" : "gpt-5.4",
-          hour_start: index === 0 ? "2026-09-15T12:00:00Z" : index === 1 ? "2026-09-14T12:00:00Z" : "2026-09-13T12:00:00Z",
+          hour_start: index === 0 ? "2026-09-15T20:15:00+08:00" : index === 1 ? "2026-09-14T12:30:00.000Z" : "2026-09-13T12:00:00Z",
         }));
         return route.fulfill({ json: { records, summary: DASHBOARD_USAGE_FIXTURE.summary } });
       });
@@ -104,7 +105,13 @@ test.describe("Manage devices", () => {
     await expect(page.getByRole("tooltip", { name: "View details" })).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(page.getByRole("tooltip")).toHaveCount(0);
+    const usageRequest = page.waitForRequest((request) =>
+      new URL(request.url()).pathname === "/api/usage" &&
+      new URL(request.url()).searchParams.get("deviceId") === "work");
     await detailButton.click();
+
+    const request = await usageRequest;
+    expect(new URL(request.url()).searchParams.get("granularity")).toBe("half-hour");
 
     const detailDialog = page.getByRole("dialog", { name: "Work Mac", exact: true });
     await expect(detailDialog).toBeVisible();
@@ -169,6 +176,7 @@ test.describe("Manage devices", () => {
     await expect(page.getByRole("tooltip", { name: "Delete device" })).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(page.getByRole("tooltip")).toHaveCount(0);
+
     await page.getByRole("button", { name: "Delete Work Mac", exact: true }).click();
 
     await expect(page.getByRole("alertdialog", { name: "Delete Work Mac", exact: true })).toBeVisible();
