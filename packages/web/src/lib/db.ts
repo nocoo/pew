@@ -378,9 +378,6 @@ export interface DbRead {
     excludeDeviceId: string,
   ): Promise<boolean>;
 
-  /** Check if device has usage records */
-  checkDeviceHasRecords(userId: string, deviceId: string): Promise<boolean>;
-
   // ---------------------------------------------------------------------------
   // Auth domain RPC methods
   // ---------------------------------------------------------------------------

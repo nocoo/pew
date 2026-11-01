@@ -101,6 +101,8 @@ export async function DELETE(request: Request) {
       { sql: "DELETE FROM season_member_snapshots WHERE user_id = ?", params: [userId] },
       { sql: "DELETE FROM season_team_members WHERE user_id = ?", params: [userId] },
       { sql: "DELETE FROM device_aliases WHERE user_id = ?", params: [userId] },
+      { sql: "DELETE FROM device_revocations WHERE user_id = ?", params: [userId] },
+      { sql: "DELETE FROM device_records WHERE user_id = ?", params: [userId] },
       { sql: "DELETE FROM organization_members WHERE user_id = ?", params: [userId] },
       { sql: "DELETE FROM auth_codes WHERE user_id = ?", params: [userId] },
       { sql: "DELETE FROM sessions WHERE user_id = ?", params: [userId] },

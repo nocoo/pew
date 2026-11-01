@@ -19,7 +19,7 @@ describe("D1 read queries against real SQLite", () => {
     vi.mocked(kv.get).mockReset();
     vi.mocked(kv.get).mockResolvedValue(null);
     sqlite = new DatabaseSync(":memory:");
-    for (const name of ["001-init", "009-device-aliases", "019-organizations", "022-usage-evidence", "026-usage-accounting", "029-leaderboard-revision"]) {
+    for (const name of ["001-init", "009-device-aliases", "019-organizations", "022-usage-evidence", "026-usage-accounting", "029-leaderboard-revision", "030-device-revocations"]) {
       sqlite.exec(readFileSync(`scripts/migrations/${name}.sql`, "utf8"));
     }
     sqlite.exec(`INSERT INTO users(id,email,name,is_public) VALUES ('u1','a@test.invalid','A',1), ('u2','b@test.invalid','B',1), ('private','c@test.invalid','C',0);
@@ -28,6 +28,7 @@ describe("D1 read queries against real SQLite", () => {
         ('u1','d1','codex','m1','${toDate}',999,0,0,0,999), ('u2','d1','codex','m1','${fromDate}',200,0,0,0,200),
         ('private','d1','codex','m1','${fromDate}',9999,0,0,0,9999), ('u1','zero','codex','m1','${fromDate}',0,0,0,0,0);
       INSERT INTO device_aliases(user_id,device_id,alias) VALUES ('u1','alias-only','Spare');
+      INSERT INTO device_records(user_id,device_id) VALUES ('u1','alias-only');
       INSERT INTO usage_evidence(user_id,device_id,event_id,group_id,source,model,hour_start,timestamp,call_type,origin,provider,granularity,time_precision,snapshot_seq,input_tokens,cached_input_tokens,output_tokens,reasoning_output_tokens,total_tokens)
       VALUES ('u1','d1','e1','g','codex','m1','${fromDate}','${fromDate}','request','test','test','operation','exact',1,3,4,5,6,18),
         ('u1','checkpoint','e0','g','codex','m1','${fromDate}','${fromDate}','request','test','test','operation','exact',1,0,0,0,0,0);

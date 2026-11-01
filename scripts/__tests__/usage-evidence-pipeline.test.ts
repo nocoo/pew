@@ -31,9 +31,11 @@ describe("evidence ingest and additive migration", () => {
         input_tokens INTEGER, cached_input_tokens INTEGER, output_tokens INTEGER, reasoning_output_tokens INTEGER,
         total_tokens INTEGER, created_at TEXT DEFAULT (datetime('now')),
         UNIQUE(user_id,device_id,source,model,hour_start));`);
+    db.exec(readFileSync(resolve("scripts/migrations/009-device-aliases.sql"), "utf8"));
     const migration = resolve("scripts/migrations/022-usage-evidence.sql");
     if (existsSync(migration)) db.exec(readFileSync(migration, "utf8"));
     db.exec(readFileSync(resolve("scripts/migrations/026-usage-accounting.sql"), "utf8"));
+    db.exec(readFileSync(resolve("scripts/migrations/030-device-revocations.sql"), "utf8"));
     const prepare = (sql: string) => {
       const stmt = db.prepare(sql);
       return { bind: (...args: unknown[]) => ({

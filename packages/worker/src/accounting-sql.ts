@@ -25,7 +25,8 @@ RETURNING source_revision`;
 
 // Read every no-op inside the same native batch transaction. SQL success alone
 // cannot acknowledge a conflicting, stale or mismatched annotation.
-const STATE = `SELECT d.*, EXISTS(SELECT 1 FROM usage_bases WHERE ${BASE_MATCH}) AS base_matches
+const STATE = `SELECT d.*, EXISTS(SELECT 1 FROM usage_bases WHERE ${BASE_MATCH}) AS base_matches,
+  EXISTS(SELECT 1 FROM device_revocations WHERE user_id = ? AND device_id = ?) AS device_revoked
 FROM (SELECT 1) LEFT JOIN usage_details d ON ${ID_MATCH.split(" AND ").map((s) => `d.${s}`).join(" AND ")}`;
 
 function canonical(value: unknown): string {
@@ -44,13 +45,14 @@ export async function ingestAccounting(db: D1Database, userId: string, records: 
   const results = await db.batch(records.flatMap((r, i) => {
     const p = payloads[i];
     return [db.prepare(UPSERT).bind(...p.base, r.details_version, r.source_revision, r.parser_revision, r.detail_revision, p.groups, ...p.base),
-      db.prepare(STATE).bind(...p.base, ...p.ids)];
+      db.prepare(STATE).bind(...p.base, userId, r.device_id, ...p.ids)];
   }));
   return records.map((r, i) => {
     const state = results[i * 2 + 1].results[0] as Record<string, unknown>;
     let status: AccountingAck["status"];
     const storedMatches = Object.entries(r.basis).every(([k, v]) => state[k] === v) && state.evidence_snapshot_seq === r.evidence_snapshot_seq;
-    if (!state.base_matches) status = "base_mismatch";
+    if (state.device_revoked) status = "superseded";
+    else if (!state.base_matches) status = "base_mismatch";
     else if (results[i * 2].results.length > 0) status = "applied";
     else if (storedMatches && state.source_revision === r.source_revision && state.parser_revision === r.parser_revision &&
       state.detail_revision === r.detail_revision && state.groups_json === payloads[i].groups) status = "duplicate";

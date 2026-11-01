@@ -29,7 +29,7 @@ describe("account deletion concurrent with snapshot generation", () => {
         CREATE VIEW usage_totals AS SELECT * FROM usage_records;
         INSERT INTO season_snapshots(id,season_id,team_id,rank,total_tokens,input_tokens) VALUES ('ss','s1','t1',1,140,140);
         INSERT INTO season_member_snapshots(id,season_id,team_id,user_id,total_tokens,input_tokens) VALUES ('ms1','s1','t1','owner',40,40),('ms2','s1','t1','deleted',100,100);`);
-      for (const name of ["usage_details", "usage_evidence", "session_records", "device_aliases", "organization_members", "auth_codes"]) {
+      for (const name of ["usage_details", "usage_evidence", "session_records", "device_aliases", "device_records", "device_revocations", "organization_members", "auth_codes"]) {
         sqlite.exec(`CREATE TABLE IF NOT EXISTS ${name}(user_id TEXT REFERENCES users(id))`);
       }
       const native = { prepare: (sql: string) => ({ bind: (...params: unknown[]) => ({

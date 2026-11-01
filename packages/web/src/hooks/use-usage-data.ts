@@ -41,6 +41,8 @@ interface UseUsageDataOptions {
   deviceId?: string;
   /** Granularity for the API query (default "day"). Use "half-hour" for time-of-day analysis. */
   granularity?: "day" | "half-hour";
+  /** When false, skip fetching entirely. Defaults to true. */
+  enabled?: boolean;
 }
 
 interface UseUsageDataResult {
@@ -56,12 +58,13 @@ interface UseUsageDataResult {
 export function useUsageData(
   options: UseUsageDataOptions = {}
 ): UseUsageDataResult {
-  const { days = 30, from: fromDate, to: toDate, source, deviceId, granularity = "day" } = options;
+  const { days = 30, from: fromDate, to: toDate, source, deviceId, granularity = "day", enabled = true } = options;
 
   // Frozen per mount — acceptable; page refresh handles DST changes
   const tzOffset = useTzOffset();
 
   const url = useMemo(() => {
+    if (!enabled) return null;
     // When explicit `from` is provided, use it directly; otherwise compute from `days`
     let fromStr: string;
     if (fromDate) {
@@ -84,9 +87,12 @@ export function useUsageData(
     }
 
     return `/api/usage?${params.toString()}`;
-  }, [days, fromDate, toDate, source, deviceId, granularity, tzOffset]);
+  }, [days, fromDate, toDate, source, deviceId, granularity, tzOffset, enabled]);
 
-  const { data, loading, error, refetch } = useFetchData<UsageData>(url);
+  const { data, loading, error, refetch } = useFetchData<UsageData>(url, {
+    enabled,
+    initialLoading: enabled,
+  });
 
   // Memoize derived data to avoid recalculation on every render
   const { daily, sources, models } = useDerivedUsageData(data?.records ?? null, tzOffset);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { Badge } from "@nocoo/basalt/components/badge";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
 import { ClipboardText } from "@nocoo/basalt/components/clipboard-text";
@@ -15,14 +16,43 @@ import {
 import { chromeIconClassName } from "@/lib/ghost-icon";
 import { Input } from "@nocoo/basalt/components/input";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
-import { Monitor, Info, Trash2, Terminal, X } from "lucide-react";
+import {
+  Ban,
+  Eye,
+  Info,
+  Monitor,
+  RotateCcw,
+  Terminal,
+  Trash2,
+  X,
+} from "lucide-react";
 import { cn, formatTokens } from "@/lib/utils";
 import { sourceLabel } from "@/hooks/use-usage-data";
 import { deviceLabel, shortDeviceId } from "@/lib/device-helpers";
+import { agentColor } from "@/lib/palette";
 import { useDevices } from "@/hooks/use-devices";
+import { useUsageData } from "@/hooks/use-usage-data";
 import { useRestoreDialogFocus } from "@/lib/restore-dialog-focus";
 import { DevicesEmptyState } from "@/components/dashboard/empty-state";
 import type { DeviceSummary } from "@pew/core";
+import { ConfirmDialog } from "@nocoo/basalt/components/confirm-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@nocoo/basalt/components/tooltip";
+
+function SourceBadge({ source }: { source: string }) {
+  const color = agentColor(source);
+  return (
+    <Badge
+      className="rounded-full border-0 px-2 py-0.5 text-[11px] font-medium text-white"
+      style={{ backgroundColor: color.color }}
+    >
+      {sourceLabel(source)}
+    </Badge>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Device Card
@@ -32,32 +62,58 @@ function DeviceCard({
   device,
   onUpdateAlias,
   onDelete,
+  onSetRevoked,
 }: {
   device: DeviceSummary;
   onUpdateAlias: (alias: string) => Promise<{ success: boolean; error?: string }>;
-  onDelete?: (() => Promise<{ success: boolean; error?: string }>) | undefined;
+  onDelete: () => Promise<{ success: boolean; error?: string }>;
+  onSetRevoked: (revoked: boolean) => Promise<{ success: boolean; error?: string }>;
 }) {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [aliasError, setAliasError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmRevoke, setConfirmRevoke] = useState(false);
+  const [revoking, setRevoking] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
+  const restoreDetailFocus = useRestoreDialogFocus(detailOpen);
+  const restoreDeleteFocus = useRestoreDialogFocus(confirmDelete);
+  const restoreRevokeFocus = useRestoreDialogFocus(confirmRevoke);
+  const { data: recentUsage, loading: recentLoading, error: recentError } = useUsageData({
+    days: 30,
+    deviceId: device.device_id,
+    enabled: detailOpen,
+  });
 
   const label = deviceLabel(device);
   const isDefault = device.device_id === "default";
   const hasAlias = device.alias !== null;
   const isEmpty = device.total_tokens === 0 && device.first_seen === null;
+  const revoked = device.revoked === true;
 
   const handleDelete = async () => {
-    if (!onDelete) return;
     setDeleting(true);
+    setActionError(null);
     const result = await onDelete();
     setDeleting(false);
     if (!result.success) {
-      setAliasError(result.error ?? "Failed to delete");
+      setActionError(result.error ?? "Failed to delete device");
     }
     setConfirmDelete(false);
+  };
+
+  const handleSetRevoked = async (nextRevoked: boolean) => {
+    setRevoking(true);
+    setActionError(null);
+    const result = await onSetRevoked(nextRevoked);
+    setRevoking(false);
+    if (!result.success) {
+      setActionError(result.error ?? "Failed to update device status");
+    }
+    setConfirmRevoke(false);
   };
 
   const handleStartEdit = () => {
@@ -183,7 +239,84 @@ function DeviceCard({
                 <span className="italic">No usage data</span>
               </>
             )}
+            {revoked && (
+              <>
+                <span>·</span>
+                <Badge variant="destructive" className="rounded-full">Revoked</Badge>
+              </>
+            )}
           </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1">
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className={`${chromeIconClassName} min-h-11 min-w-11`}
+                aria-label={`View details for ${label}`}
+                onClick={() => setDetailOpen(true)}
+              >
+                <Eye aria-hidden="true" strokeWidth={1.5} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">View details</TooltipContent>
+          </Tooltip>
+
+          {revoked ? (
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className={`${chromeIconClassName} min-h-11 min-w-11`}
+                  aria-label={`Restore ${label}`}
+                  disabled={revoking}
+                  onClick={() => void handleSetRevoked(false)}
+                >
+                  <RotateCcw aria-hidden="true" strokeWidth={1.5} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Restore device</TooltipContent>
+            </Tooltip>
+          ) : (
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className={`${chromeIconClassName} min-h-11 min-w-11`}
+                  aria-label={`Revoke ${label}`}
+                  disabled={revoking}
+                  onClick={() => setConfirmRevoke(true)}
+                >
+                  <Ban aria-hidden="true" strokeWidth={1.5} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">Revoke device</TooltipContent>
+            </Tooltip>
+          )}
+
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className={`${chromeIconClassName} min-h-11 min-w-11`}
+                aria-label={`Delete ${label}`}
+                disabled={deleting}
+                onClick={() => setConfirmDelete(true)}
+              >
+                <Trash2 aria-hidden="true" strokeWidth={1.5} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom">Delete device</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -205,12 +338,7 @@ function DeviceCard({
               <span className="text-xs text-muted-foreground">Tools:</span>
               <div className="flex gap-1">
                 {device.sources.map((s) => (
-                  <span
-                    key={s}
-                    className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
-                  >
-                    {sourceLabel(s)}
-                  </span>
+                  <SourceBadge key={s} source={s} />
                 ))}
               </div>
             </div>
@@ -226,45 +354,95 @@ function DeviceCard({
         </div>
       )}
 
-      {/* Delete button for empty devices */}
-      {isEmpty && onDelete && (
-        <div className="flex items-center gap-2">
-          {confirmDelete ? (
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Delete this device?</span>
-              <Button
-                type="button"
-                size="sm"
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={deleting}
-                loading={deleting}
-              >
-                {deleting ? "Deleting..." : "Confirm"}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                onClick={() => setConfirmDelete(false)}
-                disabled={deleting}
-              >
-                Cancel
-              </Button>
+      {actionError && (
+        <Banner variant="error" size="sm" description={actionError} />
+      )}
+
+      <ConfirmDialog
+        open={confirmRevoke}
+        onOpenChange={setConfirmRevoke}
+        onCloseAutoFocus={restoreRevokeFocus}
+        onConfirm={() => handleSetRevoked(true)}
+        title={`Revoke ${label}`}
+        description="New token-usage, accounting, and evidence records tagged with this device will be ignored. Session uploads without a device ID continue to sync and count at the account level. Existing historical data remains visible."
+        confirmLabel="Revoke"
+        cancelLabel="Cancel"
+        variant="destructive"
+        loading={revoking}
+      />
+
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        onCloseAutoFocus={restoreDeleteFocus}
+        onConfirm={handleDelete}
+        title={`Delete ${label}`}
+        description="Remove this device record only. Historical usage, sessions and rankings remain unchanged."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="destructive"
+        loading={deleting}
+      />
+
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent size="base" onCloseAutoFocus={restoreDetailFocus}>
+          <DialogClose asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`absolute top-4 right-4 ${chromeIconClassName}`}
+              aria-label="Close details"
+            >
+              <X aria-hidden="true" strokeWidth={1.5} />
+            </Button>
+          </DialogClose>
+          <DialogHeader>
+            <DialogTitle>{label}</DialogTitle>
+            <DialogDescription>
+              Recent usage from this device over the last 30 days.
+            </DialogDescription>
+          </DialogHeader>
+
+          {revoked && (
+            <Badge variant="destructive" className="w-fit rounded-full">Revoked</Badge>
+          )}
+
+          <h3 className="text-sm font-medium text-basalt-foreground">Recent activity</h3>
+
+          {recentLoading ? (
+            <p className="text-sm text-basalt-muted-foreground">Loading recent activity...</p>
+          ) : recentError ? (
+            <Banner variant="error" size="sm" description="Failed to load recent device activity" />
+          ) : recentUsage?.records.length ? (
+            <div className="space-y-2">
+              {[...recentUsage.records]
+                .sort((a, b) => new Date(b.hour_start).getTime() - new Date(a.hour_start).getTime())
+                .slice(0, 10)
+                .map((record) => (
+                  <div
+                    key={`${record.source}:${record.model}:${record.hour_start}`}
+                    className="flex items-start justify-between gap-3 rounded-lg bg-basalt-secondary px-3 py-2.5"
+                  >
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <SourceBadge source={record.source} />
+                        <span className="truncate text-xs font-mono text-basalt-foreground">{record.model}</span>
+                      </div>
+                      <p className="text-xs text-basalt-muted-foreground">
+                        {record.hour_start ? relativeTime(record.hour_start) : "Recent"}
+                      </p>
+                    </div>
+                    <span className="shrink-0 text-sm font-medium tabular-nums text-basalt-foreground">
+                      {formatTokens(record.total_tokens)}
+                    </span>
+                  </div>
+                ))}
             </div>
           ) : (
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              onClick={() => setConfirmDelete(true)}
-            >
-              <Trash2 className="h-3 w-3" strokeWidth={1.5} />
-              Delete
-            </Button>
+            <p className="text-sm text-basalt-muted-foreground">No recent activity</p>
           )}
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -429,7 +607,7 @@ function AuthCodeModal({
 // ---------------------------------------------------------------------------
 
 export default function ManageDevicesPage() {
-  const { data, loading, error, updateAlias, deleteDevice } = useDevices();
+  const { data, loading, error, updateAlias, deleteDevice, setRevoked } = useDevices();
   const [showAuthCodeModal, setShowAuthCodeModal] = useState(false);
 
   // ---------------------------------------------------------------------------
@@ -504,11 +682,8 @@ export default function ManageDevicesPage() {
                 onUpdateAlias={(alias) =>
                   updateAlias(device.device_id, alias)
                 }
-                onDelete={
-                  device.total_tokens === 0 && device.first_seen === null
-                    ? () => deleteDevice(device.device_id)
-                    : undefined
-                }
+                onDelete={() => deleteDevice(device.device_id)}
+                onSetRevoked={(revoked) => setRevoked(device.device_id, revoked)}
               />
             ))}
           </div>

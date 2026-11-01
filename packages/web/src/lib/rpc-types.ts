@@ -445,6 +445,7 @@ export interface DeviceRow {
   total_tokens: number;
   sources: string | null;
   model_count: number;
+  revoked: number;
 }
 
 // DeviceExistsResult and DeviceRecordCount removed 2026-07-08 (G1 cleanup):

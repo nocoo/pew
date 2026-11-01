@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { GET, PUT, DELETE } from "@/app/api/devices/route";
+import { GET, PUT, PATCH, DELETE } from "@/app/api/devices/route";
 import {
   createMockDbRead,
   createMockDbWrite,
@@ -31,6 +31,14 @@ function makeGetRequest(): Request {
 function makePutRequest(body: unknown): Request {
   return new Request("http://localhost:7020/api/devices", {
     method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+function makePatchRequest(body: unknown): Request {
+  return new Request("http://localhost:7020/api/devices", {
+    method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
@@ -80,6 +88,7 @@ describe("GET /api/devices", () => {
         total_tokens: 50000,
         sources: "claude-code,opencode",
         model_count: 3,
+        revoked: 0,
       },
       {
         device_id: "bbbb-2222",
@@ -89,6 +98,7 @@ describe("GET /api/devices", () => {
         total_tokens: 20000,
         sources: "opencode",
         model_count: 1,
+        revoked: 1,
       },
     ]);
 
@@ -104,6 +114,8 @@ describe("GET /api/devices", () => {
     expect(body.devices[0].sources).toEqual(["claude-code", "opencode"]);
     expect(body.devices[0].model_count).toBe(3);
     expect(body.devices[1].alias).toBeNull();
+    expect(body.devices[0].revoked).toBe(false);
+    expect(body.devices[1].revoked).toBe(true);
   });
 
   it("defaults nullable columns when row fields are null", async () => {
@@ -376,6 +388,68 @@ describe("PUT /api/devices", () => {
   });
 });
 
+describe("PATCH /api/devices", () => {
+  let mockDbWrite: ReturnType<typeof createMockDbWrite>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockDbWrite = createMockDbWrite();
+    vi.mocked(dbModule.getDbWrite).mockResolvedValue(mockDbWrite as unknown as dbModule.DbWrite);
+  });
+
+  it("should revoke a device with an atomic upsert", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1", email: "test@example.com" });
+    mockDbWrite.execute.mockResolvedValueOnce({ meta: {} });
+
+    const res = await PATCH(makePatchRequest({ device_id: "revoked-device", revoked: true }));
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ success: true, revoked: true });
+    expect(mockDbWrite.execute).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO device_revocations"),
+      ["u1", "revoked-device"],
+    );
+  });
+
+  it("accepts every token-ingest-valid device identifier", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1", email: "test@example.com" });
+    mockDbWrite.execute.mockResolvedValueOnce({ meta: {} });
+    const deviceId = `legacy id /?#${"x".repeat(150)}`;
+
+    const res = await PATCH(makePatchRequest({ device_id: deviceId, revoked: true }));
+
+    expect(res.status).toBe(200);
+    expect(mockDbWrite.execute).toHaveBeenCalledWith(expect.stringContaining("INSERT INTO device_revocations"), ["u1", deviceId]);
+  });
+
+  it("rejects identifiers longer than the token ingest limit", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1", email: "test@example.com" });
+    const res = await PATCH(makePatchRequest({ device_id: "x".repeat(1025), revoked: true }));
+    expect(res.status).toBe(400);
+    expect(mockDbWrite.execute).not.toHaveBeenCalled();
+  });
+
+  it("should restore a device by deleting its revocation row", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1", email: "test@example.com" });
+    mockDbWrite.execute.mockResolvedValueOnce({ meta: {} });
+
+    const res = await PATCH(makePatchRequest({ device_id: "revoked-device", revoked: false }));
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ success: true, revoked: false });
+    expect(mockDbWrite.execute).toHaveBeenCalledWith(
+      expect.stringContaining("DELETE FROM device_revocations"),
+      ["u1", "revoked-device"],
+    );
+  });
+
+  it("should reject missing or non-boolean fields", async () => {
+    vi.mocked(resolveUser).mockResolvedValue({ userId: "u1", email: "test@example.com" });
+    expect((await PATCH(makePatchRequest({ device_id: "d", revoked: "yes" }))).status).toBe(400);
+    expect((await PATCH(makePatchRequest({ revoked: true }))).status).toBe(400);
+  });
+});
+
 describe("DELETE /api/devices", () => {
   let mockDbRead: ReturnType<typeof createMockDbRead>;
   let mockDbWrite: ReturnType<typeof createMockDbWrite>;
@@ -400,35 +474,22 @@ describe("DELETE /api/devices", () => {
     expect(res.status).toBe(401);
   });
 
-  it("should delete device alias with zero records", async () => {
+  it("should delete alias while preserving usage records", async () => {
     vi.mocked(resolveUser).mockResolvedValueOnce({
       userId: "u1",
       email: "test@example.com",
     });
 
-    mockDbRead.checkDeviceHasRecords.mockResolvedValueOnce(false);
-    mockDbWrite.execute.mockResolvedValueOnce({ meta: {} });
+    mockDbWrite.batch.mockResolvedValueOnce([]);
 
     const res = await DELETE(makeDeleteRequest({ device_id: "aaaa-1111" }));
 
     expect(res.status).toBe(200);
-    const body = await res.json();
-    expect(body.success).toBe(true);
-  });
-
-  it("should reject deleting device with usage records", async () => {
-    vi.mocked(resolveUser).mockResolvedValueOnce({
-      userId: "u1",
-      email: "test@example.com",
-    });
-
-    mockDbRead.checkDeviceHasRecords.mockResolvedValueOnce(true);
-
-    const res = await DELETE(makeDeleteRequest({ device_id: "aaaa-1111" }));
-
-    expect(res.status).toBe(409);
-    const body = await res.json();
-    expect(body.error).toMatch(/usage records/i);
+    expect(await res.json()).toEqual({ success: true });
+    expect(mockDbRead.checkDeviceHasRecords).not.toHaveBeenCalled();
+    expect(mockDbWrite.batch).toHaveBeenCalledWith([
+      { sql: expect.stringContaining("DELETE FROM device_records"), params: ["u1", "aaaa-1111"] },
+    ]);
   });
 
   it("should reject missing device_id", async () => {
@@ -448,7 +509,7 @@ describe("DELETE /api/devices", () => {
       email: "test@example.com",
     });
 
-    mockDbRead.checkDeviceHasRecords.mockRejectedValueOnce(new Error("D1 down"));
+    mockDbWrite.batch.mockRejectedValueOnce(new Error("D1 down"));
 
     const res = await DELETE(makeDeleteRequest({ device_id: "aaaa-1111" }));
 

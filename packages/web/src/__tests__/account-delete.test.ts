@@ -150,7 +150,7 @@ describe("DELETE /api/account/delete", () => {
           CREATE TABLE invite_codes (created_by TEXT REFERENCES users(id), used_by TEXT);
           INSERT INTO invite_codes VALUES ('u1', NULL), ('u2', 'u1');`);
         const tables = ["usage_details", "usage_evidence", "usage_records", "session_records", "team_members",
-          "season_team_members", "device_aliases", "sessions", "accounts", "organization_members", "auth_codes"];
+          "season_team_members", "device_aliases", "device_records", "device_revocations", "sessions", "accounts", "organization_members", "auth_codes"];
         for (const table of tables) db.exec(`CREATE TABLE ${table} (user_id TEXT REFERENCES users(id)); INSERT INTO ${table} VALUES ('u1'), ('u2')`);
         if (fail) db.exec("CREATE TABLE owned_resource (created_by TEXT REFERENCES users(id)); INSERT INTO owned_resource VALUES ('u1')");
         vi.mocked(authModule.resolveUser).mockResolvedValueOnce({ userId: "u1" });
