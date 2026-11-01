@@ -1,5 +1,14 @@
 # Retrospective
 
+### 2026-11-01: Verify delegated browser and commit results
+
+A delegated device-focus fix was committed without running its browser regression
+because the task-local Chromium path was not supplied; the controller's run then
+found that the last-device focus target disagreed with the test. Pass the isolated
+browser path to delegated runs and verify the actual focus target before claiming
+success. A separate delegated commit also omitted the Conventional Commit colon;
+check every resulting subject before considering the branch ready to push.
+
 ### 2026-11-01: A temporary registry changed lockfile provenance
 
 Updating workspace versions with Bun's per-command registry override rewrote
