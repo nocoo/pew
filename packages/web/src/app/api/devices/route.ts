@@ -144,18 +144,18 @@ export async function PATCH(request: Request) {
   }
   const userId = authResult.userId;
 
-  let body: { device_id?: string; revoked?: boolean };
+  let body: { device_id?: string; revoked?: boolean } | null;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const deviceId = body.device_id;
+  const deviceId = body?.device_id;
   if (!isNonEmptyString(deviceId, MAX_STRING_LENGTH)) {
     return NextResponse.json({ error: `device_id must be a non-empty string of at most ${MAX_STRING_LENGTH} characters` }, { status: 400 });
   }
-  if (typeof body.revoked !== "boolean") {
+  if (typeof body?.revoked !== "boolean") {
     return NextResponse.json({ error: "revoked must be a boolean" }, { status: 400 });
   }
 
@@ -193,14 +193,14 @@ export async function DELETE(request: Request) {
   }
   const userId = authResult.userId;
 
-  let body: { device_id?: string };
+  let body: { device_id?: string } | null;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const deviceId = body.device_id;
+  const deviceId = body?.device_id;
   if (!isNonEmptyString(deviceId, MAX_STRING_LENGTH)) {
     return NextResponse.json(
       { error: `device_id must be a non-empty string of at most ${MAX_STRING_LENGTH} characters` },

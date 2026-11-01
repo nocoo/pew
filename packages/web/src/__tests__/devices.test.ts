@@ -448,6 +448,12 @@ describe("PATCH /api/devices", () => {
     expect((await PATCH(makePatchRequest({ device_id: "d", revoked: "yes" }))).status).toBe(400);
     expect((await PATCH(makePatchRequest({ revoked: true }))).status).toBe(400);
   });
+
+  it("rejects a null JSON body", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1", email: "test@example.com" });
+    expect((await PATCH(makePatchRequest(null))).status).toBe(400);
+    expect(mockDbWrite.execute).not.toHaveBeenCalled();
+  });
 });
 
 describe("DELETE /api/devices", () => {
@@ -501,6 +507,12 @@ describe("DELETE /api/devices", () => {
     const res = await DELETE(makeDeleteRequest({}));
 
     expect(res.status).toBe(400);
+  });
+
+  it("rejects a null JSON body", async () => {
+    vi.mocked(resolveUser).mockResolvedValueOnce({ userId: "u1", email: "test@example.com" });
+    expect((await DELETE(makeDeleteRequest(null))).status).toBe(400);
+    expect(mockDbWrite.batch).not.toHaveBeenCalled();
   });
 
   it("should return 500 on D1 error", async () => {
