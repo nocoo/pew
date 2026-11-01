@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## v3.5.0
+
+### Added
+- Revoke or restore devices, inspect recent activity, and delete device metadata without deleting historical usage.
+- Ignore new device-tagged usage, accounting, and evidence uploads for revoked devices while preserving historical totals.
+
+### Limitations
+- Session uploads have no device ID and continue to be recorded at the account level after a device is revoked. Untagged token uploads also remain unaffected.
+
+### Operations
+- Apply `scripts/migrations/030-device-revocations.sql`, deploy the ingest and read Workers, then deploy Web. Coordinate the automatic Web deployment to preserve this order.
+- Web is 3.5.0; core and both Workers are 3.3.4. The CLI remains unchanged.
+
 ## v3.4.3
 
 ### Changed

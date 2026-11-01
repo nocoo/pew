@@ -19,6 +19,10 @@ interface UseDevicesResult {
   deleteDevice: (
     deviceId: string
   ) => Promise<{ success: boolean; error?: string }>;
+  setRevoked: (
+    deviceId: string,
+    revoked: boolean
+  ) => Promise<{ success: boolean; error?: string }>;
 }
 
 export function useDevices(): UseDevicesResult {
@@ -78,6 +82,32 @@ export function useDevices(): UseDevicesResult {
     [mutate]
   );
 
+  const setRevoked = useCallback(
+    async (
+      deviceId: string,
+      revoked: boolean
+    ): Promise<{ success: boolean; error?: string }> => {
+      try {
+        const res = await fetch("/api/devices", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ device_id: deviceId, revoked }),
+        });
+
+        if (!res.ok) {
+          await throwApiError(res);
+        }
+
+        await mutate();
+        return { success: true };
+      } catch (err) {
+        const errorMsg = toErrorMessage(err);
+        return { success: false, error: errorMsg };
+      }
+    },
+    [mutate]
+  );
+
   return {
     data: data ?? null,
     loading: isLoading,
@@ -87,5 +117,6 @@ export function useDevices(): UseDevicesResult {
     },
     updateAlias,
     deleteDevice,
+    setRevoked,
   };
 }

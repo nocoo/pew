@@ -489,6 +489,7 @@ export interface DeviceSummary {
   total_tokens: number;
   sources: string[];
   model_count: number;
+  revoked: boolean;
 }
 
 /** Response from GET /api/devices */
@@ -500,6 +501,11 @@ export interface DevicesResponse {
 export interface UpdateDeviceRequest {
   device_id: string;
   alias: string;
+}
+
+export interface UpdateDeviceRevocationRequest {
+  device_id: string;
+  revoked: boolean;
 }
 
 // ---------------------------------------------------------------------------

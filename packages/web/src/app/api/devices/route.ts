@@ -1,10 +1,12 @@
 /**
  * GET /api/devices — list all devices for the authenticated user.
  * PUT /api/devices — upsert a device alias.
- * DELETE /api/devices — delete a device alias (only if it has zero usage records).
+ * PATCH /api/devices — revoke or restore a device.
+ * DELETE /api/devices — delete device metadata while preserving usage.
  */
 
 import { NextResponse } from "next/server";
+import { MAX_STRING_LENGTH, isNonEmptyString } from "@pew/core";
 import { resolveUser } from "@/lib/auth-helpers";
 import { unauthorizedResponse } from "@/lib/api-responses";
 import { getDbRead, getDbWrite } from "@/lib/db";
@@ -33,6 +35,7 @@ export async function GET(request: Request) {
       total_tokens: row.total_tokens ?? 0,
       sources: row.sources ? row.sources.split(",") : [],
       model_count: row.model_count ?? 0,
+      revoked: row.revoked === 1,
     }));
 
     return NextResponse.json({ devices });
@@ -131,6 +134,55 @@ export async function PUT(request: Request) {
 }
 
 // ---------------------------------------------------------------------------
+// PATCH /api/devices
+// ---------------------------------------------------------------------------
+
+export async function PATCH(request: Request) {
+  const authResult = await resolveUser(request);
+  if (!authResult) {
+    return unauthorizedResponse();
+  }
+  const userId = authResult.userId;
+
+  let body: { device_id?: string; revoked?: boolean } | null;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const deviceId = body?.device_id;
+  if (!isNonEmptyString(deviceId, MAX_STRING_LENGTH)) {
+    return NextResponse.json({ error: `device_id must be a non-empty string of at most ${MAX_STRING_LENGTH} characters` }, { status: 400 });
+  }
+  if (typeof body?.revoked !== "boolean") {
+    return NextResponse.json({ error: "revoked must be a boolean" }, { status: 400 });
+  }
+
+  const dbWrite = await getDbWrite();
+  try {
+    if (body.revoked) {
+      await dbWrite.execute(
+        `INSERT INTO device_revocations (user_id, device_id, revoked_at)
+         VALUES (?, ?, datetime('now'))
+         ON CONFLICT (user_id, device_id) DO UPDATE
+           SET revoked_at = excluded.revoked_at`,
+        [userId, deviceId],
+      );
+    } else {
+      await dbWrite.execute(
+        `DELETE FROM device_revocations WHERE user_id = ? AND device_id = ?`,
+        [userId, deviceId],
+      );
+    }
+    return NextResponse.json({ success: true, revoked: body.revoked });
+  } catch (err) {
+    console.error("Failed to update device revocation:", err);
+    return NextResponse.json({ error: "Failed to update device revocation" }, { status: 500 });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // DELETE /api/devices
 // ---------------------------------------------------------------------------
 
@@ -141,40 +193,27 @@ export async function DELETE(request: Request) {
   }
   const userId = authResult.userId;
 
-  let body: { device_id?: string };
+  let body: { device_id?: string } | null;
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const deviceId = body.device_id;
-  if (!deviceId || typeof deviceId !== "string" || !deviceId.trim()) {
+  const deviceId = body?.device_id;
+  if (!isNonEmptyString(deviceId, MAX_STRING_LENGTH)) {
     return NextResponse.json(
-      { error: "device_id is required" },
+      { error: `device_id must be a non-empty string of at most ${MAX_STRING_LENGTH} characters` },
       { status: 400 }
     );
   }
 
-  const dbRead = await getDbRead();
   const dbWrite = await getDbWrite();
 
   try {
-    // 1. Ensure device has zero usage records — refuse to delete otherwise
-    const hasRecords = await dbRead.checkDeviceHasRecords(userId, deviceId);
-
-    if (hasRecords) {
-      return NextResponse.json(
-        { error: "Cannot delete a device that has usage records" },
-        { status: 409 }
-      );
-    }
-
-    // 2. Delete the alias row
-    await dbWrite.execute(
-      `DELETE FROM device_aliases WHERE user_id = ? AND device_id = ?`,
-      [userId, deviceId]
-    );
+    await dbWrite.batch([
+      { sql: `DELETE FROM device_records WHERE user_id = ? AND device_id = ?`, params: [userId, deviceId] },
+    ]);
 
     return NextResponse.json({ success: true });
   } catch (err) {

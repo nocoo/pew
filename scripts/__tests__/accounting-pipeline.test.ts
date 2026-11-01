@@ -19,8 +19,10 @@ describe("accounting annotations through native transaction-shaped SQLite batche
       CREATE TABLE usage_records (user_id TEXT, device_id TEXT, source TEXT, model TEXT, hour_start TEXT,
       input_tokens INTEGER, cached_input_tokens INTEGER, output_tokens INTEGER, reasoning_output_tokens INTEGER, total_tokens INTEGER,
       created_at TEXT DEFAULT (datetime('now')), UNIQUE(user_id,device_id,source,model,hour_start));`);
+    db.exec(readFileSync("scripts/migrations/009-device-aliases.sql", "utf8"));
     db.exec(readFileSync("scripts/migrations/022-usage-evidence.sql", "utf8"));
     db.exec(readFileSync("scripts/migrations/026-usage-accounting.sql", "utf8"));
+    db.exec(readFileSync("scripts/migrations/030-device-revocations.sql", "utf8"));
     const prepare = (sql: string) => {
       const stmt = db.prepare(sql);
       return { bind: (...args: unknown[]) => ({
@@ -113,7 +115,6 @@ describe("accounting annotations through native transaction-shaped SQLite batche
   });
 
   it("carries private-cost-free annotations through all device queries without changing base counters", async () => {
-    db.exec("CREATE TABLE device_aliases(user_id TEXT, device_id TEXT, alias TEXT)");
     const r = await seed();
     const costs = [{ units: "9000000000", scale: 10, currency: "USD", kind: "actual", status: "complete", source: "grok" }];
     await send([{ ...r, groups: [{ ...r.groups[0], reported_costs: costs }] }]);

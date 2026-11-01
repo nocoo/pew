@@ -74,6 +74,8 @@ async function cleanupTestData(d1: D1Client): Promise<void> {
     { sql: "DELETE FROM device_aliases WHERE user_id = ?", params: [TEST_USER_ID] },
     { sql: "DELETE FROM session_records WHERE user_id = ?", params: [TEST_USER_ID] },
     { sql: "DELETE FROM usage_records WHERE user_id = ?", params: [TEST_USER_ID] },
+    { sql: "DELETE FROM device_records WHERE user_id = ?", params: [TEST_USER_ID] },
+    { sql: "DELETE FROM device_revocations WHERE user_id = ?", params: [TEST_USER_ID] },
     { sql: "DELETE FROM accounts WHERE user_id = ?", params: [TEST_USER_ID] },
     { sql: "DELETE FROM users WHERE id = ?", params: [TEST_USER_ID] },
   ];
@@ -713,6 +715,106 @@ describe("GET /api/devices", () => {
     const body = await res.json();
 
     expect(Array.isArray(body.devices)).toBe(true);
+  });
+
+  it("deletes management metadata but preserves history and revocation until an explicit restore", async () => {
+    const deviceId = "e2e-device-lifecycle";
+    const sessionKey = "e2e-device-lifecycle-session";
+    const original = makeRecord({ device_id: deviceId, source: "pi", model: "lifecycle-model",
+      hour_start: "2026-03-01T10:00:00.000Z", input_tokens: 100, cached_input_tokens: 20,
+      output_tokens: 30, reasoning_output_tokens: 10, total_tokens: 160 });
+    const count = async (sql: string, params: unknown[]) => (await d1.query<{ n: number }>(sql, params)).results[0]?.n;
+    const cleanup = async () => {
+      await d1.execute("DELETE FROM usage_details WHERE user_id=? AND device_id=?", [TEST_USER_ID, deviceId]);
+      await d1.execute("DELETE FROM usage_evidence WHERE user_id=? AND device_id=?", [TEST_USER_ID, deviceId]);
+      await d1.execute("DELETE FROM usage_records WHERE user_id=? AND device_id=?", [TEST_USER_ID, deviceId]);
+      await d1.execute("DELETE FROM session_records WHERE user_id=? AND session_key=?", [TEST_USER_ID, sessionKey]);
+      await d1.execute("DELETE FROM device_aliases WHERE user_id=? AND device_id=?", [TEST_USER_ID, deviceId]);
+      await d1.execute("DELETE FROM device_records WHERE user_id=? AND device_id=?", [TEST_USER_ID, deviceId]);
+      await d1.execute("DELETE FROM device_revocations WHERE user_id=? AND device_id=?", [TEST_USER_ID, deviceId]);
+    };
+
+    await cleanup();
+    try {
+      const ingest = async (rows: unknown[]) => fetch(`${BASE_URL}/api/ingest`, {
+        method: "POST", headers: INGEST_HEADERS, body: JSON.stringify(rows),
+      });
+      expect((await ingest([original])).status).toBe(200);
+      const firstList = await (await fetch(`${BASE_URL}/api/devices`)).json() as { devices: Array<{ device_id: string; revoked: boolean }> };
+      expect(firstList.devices.find((device) => device.device_id === deviceId)?.revoked).toBe(false);
+      expect((await fetch(`${BASE_URL}/api/devices`, { method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device_id: deviceId, alias: "Lifecycle alias" }) })).status).toBe(200);
+
+      const removed = await fetch(`${BASE_URL}/api/devices`, { method: "DELETE", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device_id: deviceId }) });
+      expect(removed.status).toBe(200);
+      const afterDelete = await (await fetch(`${BASE_URL}/api/devices`)).json() as { devices: Array<{ device_id: string }> };
+      expect(afterDelete.devices.some((device) => device.device_id === deviceId)).toBe(false);
+      expect(await count("SELECT COUNT(*) AS n FROM device_aliases WHERE user_id=? AND device_id=?", [TEST_USER_ID, deviceId])).toBe(0);
+      expect(await count("SELECT COUNT(*) AS n FROM usage_records WHERE user_id=? AND device_id=?", [TEST_USER_ID, deviceId])).toBe(1);
+
+      expect((await ingest([original])).status).toBe(200);
+      const reappeared = await (await fetch(`${BASE_URL}/api/devices`)).json() as { devices: Array<{ device_id: string; alias: string | null }> };
+      expect(reappeared.devices.find((device) => device.device_id === deviceId)).toMatchObject({ device_id: deviceId, alias: null });
+
+      const revoke = await fetch(`${BASE_URL}/api/devices`, { method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device_id: deviceId, revoked: true }) });
+      expect(revoke.status).toBe(200);
+      const rejected = await ingest([original, { ...original, device_id: "e2e-device-lifecycle-active", model: "active-model" }]);
+      expect(await rejected.json()).toMatchObject({ ingested: 2 });
+      expect(await count("SELECT COUNT(*) AS n FROM usage_records WHERE user_id=? AND device_id=? AND model='lifecycle-model'", [TEST_USER_ID, deviceId])).toBe(1);
+      expect(await count("SELECT COUNT(*) AS n FROM usage_records WHERE user_id=? AND device_id='e2e-device-lifecycle-active' AND model='active-model'", [TEST_USER_ID])).toBe(1);
+      const revokedList = await (await fetch(`${BASE_URL}/api/devices`)).json() as { devices: Array<{ device_id: string; revoked: boolean }> };
+      expect(revokedList.devices.find((device) => device.device_id === deviceId)?.revoked).toBe(true);
+
+      const session = { source: "codex", session_key: sessionKey, kind: "human", started_at: original.hour_start,
+        last_message_at: original.hour_start, duration_seconds: 60, user_messages: 1, assistant_messages: 1,
+        total_messages: 2, project_ref: null, model: "lifecycle-model", snapshot_at: original.hour_start };
+      const sessionResponse = await fetch(`${BASE_URL}/api/ingest/sessions`, { method: "POST", headers: INGEST_HEADERS, body: JSON.stringify([session]) });
+      expect(sessionResponse.status).toBe(200);
+      expect(await count("SELECT COUNT(*) AS n FROM session_records WHERE user_id=? AND session_key=?", [TEST_USER_ID, sessionKey])).toBe(1);
+      const historicalUsage = await fetch(`${BASE_URL}/api/usage/by-device?from=2020-01-01`);
+      const historicalBody: ByDeviceResponse = await historicalUsage.json();
+      expect(historicalBody.devices.find((device) => device.device_id === deviceId)?.total_tokens).toBe(160);
+
+      expect((await fetch(`${BASE_URL}/api/devices`, { method: "DELETE", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device_id: deviceId }) })).status).toBe(200);
+      const blockedAfterDelete = await ingest([{ ...original, model: "blocked-after-delete" }]);
+      expect(await blockedAfterDelete.json()).toMatchObject({ ingested: 1 });
+      expect(await count("SELECT COUNT(*) AS n FROM usage_records WHERE user_id=? AND device_id=? AND model='blocked-after-delete'", [TEST_USER_ID, deviceId])).toBe(0);
+      const hiddenRevoked = await (await fetch(`${BASE_URL}/api/devices`)).json() as { devices: Array<{ device_id: string }> };
+      expect(hiddenRevoked.devices.some((device) => device.device_id === deviceId)).toBe(false);
+      expect(await count("SELECT COUNT(*) AS n FROM usage_records WHERE user_id=? AND device_id=?", [TEST_USER_ID, deviceId])).toBe(1);
+
+      expect((await fetch(`${BASE_URL}/api/devices`, { method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device_id: deviceId, revoked: false }) })).status).toBe(200);
+      expect((await ingest([{ ...original, model: "restored-sync" }])).status).toBe(200);
+      const restored = await (await fetch(`${BASE_URL}/api/devices`)).json() as { devices: Array<{ device_id: string; revoked: boolean }> };
+      expect(restored.devices.find((device) => device.device_id === deviceId)?.revoked).toBe(false);
+    } finally {
+      await cleanup();
+      await d1.execute("DELETE FROM usage_records WHERE user_id=? AND device_id=?", [TEST_USER_ID, "e2e-device-lifecycle-active"]);
+    }
+  });
+
+  it("revokes explicitly tagged default uploads but accepts legacy records without device_id", async () => {
+    const count = async (sql: string, params: unknown[]) => (await d1.query<{ n: number }>(sql, params)).results[0]?.n;
+    const legacy = makeRecord({ source: "pi", model: "e2e-untagged-legacy", hour_start: "2026-03-01T10:00:00.000Z" });
+    const tagged = { ...legacy, model: "e2e-tagged-default", device_id: "default" };
+    await d1.execute("DELETE FROM usage_records WHERE user_id=? AND model IN (?,?)", [TEST_USER_ID, legacy.model, tagged.model]);
+    const revoked = await fetch(`${BASE_URL}/api/devices`, { method: "PATCH", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ device_id: "default", revoked: true }) });
+    expect(revoked.status).toBe(200);
+    try {
+      const response = await fetch(`${BASE_URL}/api/ingest`, { method: "POST", headers: INGEST_HEADERS, body: JSON.stringify([legacy, tagged]) });
+      expect(response.status).toBe(200);
+      expect(await count("SELECT COUNT(*) AS n FROM usage_records WHERE user_id=? AND model=? AND device_id='default'", [TEST_USER_ID, legacy.model])).toBe(1);
+      expect(await count("SELECT COUNT(*) AS n FROM usage_records WHERE user_id=? AND model=?", [TEST_USER_ID, tagged.model])).toBe(0);
+    } finally {
+      await fetch(`${BASE_URL}/api/devices`, { method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device_id: "default", revoked: false }) });
+      await d1.execute("DELETE FROM usage_records WHERE user_id=? AND model IN (?,?)", [TEST_USER_ID, legacy.model, tagged.model]);
+    }
   });
 });
 

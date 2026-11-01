@@ -668,15 +668,6 @@ export function createWorkerDbRead(): DbRead {
       return result.exists;
     },
 
-    async checkDeviceHasRecords(userId: string, deviceId: string): Promise<boolean> {
-      const result = await rpc<{ hasRecords: boolean }>({
-        method: "devices.hasRecords",
-        userId,
-        deviceId,
-      });
-      return result.hasRecords;
-    },
-
     // -------------------------------------------------------------------------
     // Auth domain RPC methods
     // -------------------------------------------------------------------------

@@ -18,6 +18,7 @@ interface DeviceRow {
   total_tokens: number;
   sources: string | null;
   model_count: number;
+  revoked: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -75,15 +76,9 @@ async function handleListDevices(
 
   const results = await db
     .prepare(
-      `SELECT
-        d.device_id,
-        da.alias,
-        d.first_seen,
-        d.last_seen,
-        d.total_tokens,
-        d.sources,
-        d.model_count
-      FROM (
+      `WITH management_devices AS (
+        SELECT device_id FROM device_records WHERE user_id = ?
+      ), usage AS (
         SELECT
           device_id,
           MIN(hour_start) AS first_seen,
@@ -94,23 +89,21 @@ async function handleListDevices(
         FROM usage_bases
         WHERE (event_id = '' OR total_tokens > 0) AND user_id = ?
         GROUP BY device_id
-        UNION ALL
-        SELECT
-          da2.device_id,
-          NULL AS first_seen,
-          NULL AS last_seen,
-          0 AS total_tokens,
-          NULL AS sources,
-          0 AS model_count
-        FROM device_aliases da2
-        WHERE da2.user_id = ?
-          AND da2.device_id NOT IN (
-            SELECT DISTINCT device_id FROM usage_bases WHERE (event_id = '' OR total_tokens > 0) AND user_id = ?
-          )
-      ) d
-      LEFT JOIN device_aliases da
-        ON da.user_id = ? AND da.device_id = d.device_id
-      ORDER BY d.total_tokens DESC, d.device_id`
+      )
+      SELECT
+        m.device_id,
+        da.alias,
+        u.first_seen,
+        u.last_seen,
+        COALESCE(u.total_tokens, 0) AS total_tokens,
+        u.sources,
+        COALESCE(u.model_count, 0) AS model_count,
+        CASE WHEN drv.device_id IS NULL THEN 0 ELSE 1 END AS revoked
+      FROM management_devices m
+      LEFT JOIN usage u ON u.device_id = m.device_id
+      LEFT JOIN device_aliases da ON da.user_id = ? AND da.device_id = m.device_id
+      LEFT JOIN device_revocations drv ON drv.user_id = ? AND drv.device_id = m.device_id
+      ORDER BY COALESCE(u.total_tokens, 0) DESC, m.device_id`
     )
     .bind(req.userId, req.userId, req.userId, req.userId)
     .all<DeviceRow>();
@@ -132,8 +125,8 @@ async function handleCheckDeviceExists(
   const result = await db
     .prepare(
       `SELECT device_id FROM (
-        SELECT device_id FROM usage_bases
-        WHERE (event_id = '' OR total_tokens > 0) AND user_id = ? AND device_id = ?
+        SELECT device_id FROM device_records
+        WHERE user_id = ? AND device_id = ?
         UNION ALL
         SELECT device_id FROM device_aliases
         WHERE user_id = ? AND device_id = ?

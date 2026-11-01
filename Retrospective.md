@@ -1,5 +1,31 @@
 # Retrospective
 
+### 2026-11-01: Keep failed push evidence visible
+
+The first Devices pre-push rejected the browser gate when the privacy readiness
+check missed a session request; five isolated repeats passed, leaving the cause
+unproven. Retain the failure and rerun the full gate rather than weakening it.
+The push wrapper also assigned to zsh's read-only `status`, hiding its failure
+output until the log was inspected. Use a non-reserved variable and always print
+the captured failure log.
+
+### 2026-11-01: Verify delegated browser and commit results
+
+A delegated device-focus fix was committed without running its browser regression
+because the task-local Chromium path was not supplied; the controller's run then
+found that the last-device focus target disagreed with the test. Pass the isolated
+browser path to delegated runs and verify the actual focus target before claiming
+success. A separate delegated commit also omitted the Conventional Commit colon;
+check every resulting subject before considering the branch ready to push.
+
+### 2026-11-01: A temporary registry changed lockfile provenance
+
+Updating workspace versions with Bun's per-command registry override rewrote
+resolved package URLs to the local mirror. The churn was caught before commit;
+the existing dependency entries were restored and only workspace versions were
+updated, then verified with a frozen-lockfile dry run. Inspect lockfile diffs
+after registry overrides and keep machine-specific mirrors out of release commits.
+
 ### 2026-10-22: An IPv4-mapped socket is not native IPv6 evidence
 
 The initial cutover probe used `curl -6`, but the machine's resolver/network layer
