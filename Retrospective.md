@@ -1,5 +1,14 @@
 # Retrospective
 
+### 2026-11-01: Keep failed push evidence visible
+
+The first Devices pre-push rejected the browser gate when the privacy readiness
+check missed a session request; five isolated repeats passed, leaving the cause
+unproven. Retain the failure and rerun the full gate rather than weakening it.
+The push wrapper also assigned to zsh's read-only `status`, hiding its failure
+output until the log was inspected. Use a non-reserved variable and always print
+the captured failure log.
+
 ### 2026-11-01: Verify delegated browser and commit results
 
 A delegated device-focus fix was committed without running its browser regression
