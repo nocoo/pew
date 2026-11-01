@@ -1,5 +1,13 @@
 # Retrospective
 
+### 2026-11-01: A temporary registry changed lockfile provenance
+
+Updating workspace versions with Bun's per-command registry override rewrote
+resolved package URLs to the local mirror. The churn was caught before commit;
+the existing dependency entries were restored and only workspace versions were
+updated, then verified with a frozen-lockfile dry run. Inspect lockfile diffs
+after registry overrides and keep machine-specific mirrors out of release commits.
+
 ### 2026-10-22: An IPv4-mapped socket is not native IPv6 evidence
 
 The initial cutover probe used `curl -6`, but the machine's resolver/network layer
