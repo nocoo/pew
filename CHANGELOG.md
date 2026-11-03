@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v3.5.1
+
+### Changed
+- Bump minor/patch dependencies (@aws-sdk/client-s3, @biomejs/biome, @types/node, oxc-parser, wrangler).
+
 ## v3.5.0
 
 ### Added
