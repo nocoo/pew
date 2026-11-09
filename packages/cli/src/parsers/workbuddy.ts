@@ -246,13 +246,14 @@ export async function parseWorkbuddyFile(opts: {
 
       const counters = readWorkbuddyCounters(raw);
       const iso = new Date(tsMs).toISOString();
-      // The server's ISO regex only accepts a 4-digit year, while
-      // isRepresentableEpochMs allows ±275,760 years. A representable-but-
-      // far-future timestamp would format as `+160413-…Z`, 400 the batch, and
-      // wedge every later upload, so gate on the server's own rule. Checked
-      // before the id is claimed: like zero-usage stubs, a row dropped here
-      // must not occupy the messageId slot and permanently suppress a later
-      // corrected rewrite of the same request.
+      // The server's ISO regex only accepts a 4-digit year. The number path is
+      // already inside that window (isRepresentableEpochMs bounds at 9999),
+      // but this check also covers any extended-year spelling that reached
+      // tsMs another way; a far-future timestamp would format as `+160413-…Z`,
+      // 400 the batch, and wedge every later upload. Checked before the id is
+      // claimed: like zero-usage stubs, a row dropped here must not occupy the
+      // messageId slot and permanently suppress a later corrected rewrite of
+      // the same request.
       if (!isValidISODate(iso)) continue;
 
       const tokens = normalizeWorkbuddyUsage(raw);

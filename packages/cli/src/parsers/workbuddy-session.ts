@@ -162,11 +162,12 @@ export async function collectWorkbuddySessions(
       // WorkBuddy writes integer epoch milliseconds; ISO strings are tolerated
       // so a future format change degrades to "fewer bounds" rather than a
       // crash. Both paths must satisfy the server's ISO date rule, whose
-      // regex only accepts a 4-digit year — the number path because
-      // isRepresentableEpochMs is wider than that window, and the string
-      // path because Date.parse also accepts extended years like
-      // "+275760-…", whose toISOString renders a 6-digit year and would
-      // 400 the whole upload batch. Gate once on the resulting ms.
+      // regex only accepts a 4-digit year: the number path is already inside
+      // that window because isRepresentableEpochMs bounds at MAX_EPOCH_MS
+      // (9999-12-31), and the string path needs this check because Date.parse
+      // also accepts extended years like "+275760-…", whose toISOString
+      // renders a 6-digit year and would 400 the whole upload batch. Gate once
+      // on the resulting ms.
       const rawMs =
         typeof obj.timestamp === "number"
           ? isRepresentableEpochMs(obj.timestamp)

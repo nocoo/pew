@@ -97,9 +97,10 @@ describe("workbuddy timestamp server-compatibility window", () => {
   });
 
   it("drops a row whose timestamp is representable but outside the server's 4-digit-year window", async () => {
-    // 5e15 ms passes isRepresentableEpochMs (|ms| <= 8.64e15) and formats as
-    // `+160413-09-10T…Z`, but the server's ISO regex only accepts a 4-digit
-    // year, so such a row would 400 the batch and wedge every later upload.
+    // 5e15 ms is a valid Date (`+160413-09-10T…Z`) but outside the server's
+    // 4-digit-year window, so such a row would 400 the batch and wedge every
+    // later upload. isRepresentableEpochMs now bounds at 9999 and rejects it
+    // before the parse even formats the string; the row above it still counts.
     const path = join(tempDir, "far-future.jsonl");
     await writeFile(path, [
       JSON.stringify({ timestamp: 5e15, providerData: { model: "m", rawUsage: { prompt_tokens: 100 } } }),
