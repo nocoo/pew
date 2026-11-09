@@ -63,6 +63,56 @@ describe("E2E process isolation", () => {
     }
   });
 
+  it("hands the api tier the documented 120s per-test budget", async () => {
+    // Under load a single `next dev` route compile has been measured past a
+    // minute on this lane, and the 30s budget turned that into a false
+    // failure (24 timed-out cases on a warmed server at load ~100 that passed
+    // at load ~40). The per-test budget is a hang detector, not a speed gate.
+    const root = mkdtempSync(join(tmpdir(), "pew-l2-budget-"));
+    mkdirSync(join(root, "packages", "web"), { recursive: true });
+    const commands: string[][] = [];
+    const removed = vi.mocked((await import("node:fs")).rmSync);
+    const listed = vi.mocked((await import("node:fs")).readdirSync);
+    const listeners = new Map(["SIGINT", "SIGTERM"].map((event) => [event, new Set(process.listeners(event))]));
+    const env = {
+      NODE_ENV: "development", RESOURCE_ENV: "test", E2E_SKIP_AUTH: "true",
+      CF_ACCOUNT_ID: "pew-local-test", CF_D1_DATABASE_ID: "pew-local-test", CF_D1_API_TOKEN: "synthetic",
+      PEW_LOCAL_D1_URL: "http://127.0.0.1:12345", WORKER_INGEST_URL: "http://127.0.0.1:12345/ingest",
+      WORKER_READ_URL: "http://127.0.0.1:12345", PEW_TEST_RUN_ID: "owned-run",
+    };
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+      success: true, result: [{ results: [{ key: "env", value: "test" }, { key: "run", value: "owned-run" }] }],
+    })));
+    vi.stubGlobal("Bun", {
+      spawn: vi.fn((command: string[], options: { ipc?: (message: unknown) => void }) => {
+        const exit = Promise.withResolvers<number>();
+        const child = {
+          pid: 123456, exitCode: null as number | null, exited: exit.promise,
+          kill() { this.exitCode = 0; exit.resolve(0); },
+          send() { this.kill(); },
+        };
+        if (options.ipc) queueMicrotask(() => options.ipc?.({ env, state: root }));
+        else if (command.includes("packages/web/src/__tests__/e2e")) { commands.push(command); child.kill(); } else if (!command.includes("dev")) child.kill();
+        return child;
+      }),
+      sleep: vi.fn(async () => {}),
+    });
+    listed.mockReturnValue([]);
+    removed.mockImplementation(() => {});
+    try {
+      await expect(runLocalE2e("api")).resolves.toBe(0);
+      const testCommand = commands.find((args) => args.includes("packages/web/src/__tests__/e2e"));
+      expect(testCommand).toBeDefined();
+      expect(testCommand![testCommand!.indexOf("--timeout") + 1]).toBe("120000");
+    } finally {
+      for (const [event, original] of listeners) {
+        for (const listener of process.listeners(event)) if (!original.has(listener)) process.removeListener(event, listener);
+      }
+      removed.mockRestore(); listed.mockRestore(); vi.unstubAllGlobals();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it.each([false, true])("bounds no-IPC startup and disposal (abort=%s)", async (interrupt) => {
     let exit: (code: number) => void;
     const exited = new Promise<number>((done) => { exit = done; });

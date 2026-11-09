@@ -154,7 +154,11 @@ export async function runLocalE2e(tier: "api" | "ui", args: string[] = []): Prom
     }
     await verifyLocalMarker(env);
     tests = Bun.spawn(tier === "api"
-      ? [process.execPath, "--no-env-file", "test", "packages/web/src/__tests__/e2e", "--timeout", "30000"]
+      // Per-test budget is a hang detector, not a speed gate. `next dev`
+      // compiles each route on its first request and a cold compile has been
+      // measured past a minute under load, so a 30s budget turns a healthy
+      // lane into false failures; the documented L2 budget is 120s.
+      ? [process.execPath, "--no-env-file", "test", "packages/web/src/__tests__/e2e", "--timeout", "120000"]
       : ["node", resolve("node_modules/@playwright/test/cli.js"), "test", "--config", "packages/web/e2e/playwright.config.ts", ...args],
     { env, stdout: "inherit", stderr: "inherit" });
     return await tests.exited;
