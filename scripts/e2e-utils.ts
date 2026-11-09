@@ -13,7 +13,28 @@ async function deadline<Result>(promise: Promise<Result>, milliseconds: number, 
   } finally { clearTimeout(timer); }
 }
 
-export async function startLocalBindings(signal: AbortSignal, timeoutMs = 60_000, readiness = false) {
+// The startup deadline exists to catch a wedged child, not to enforce a speed
+// budget. On a host running several other suites, a healthy start has been
+// measured at 99s against the 60s default — a false failure, and the reason
+// the pre-push lane gets bypassed rather than trusted. A positive integer
+// override lets that host raise the budget without editing code for every
+// clone; anything else falls back to the default rather than disabling the
+// deadline entirely.
+const DEFAULT_BINDINGS_TIMEOUT_MS = 60_000;
+const BINDINGS_TIMEOUT_ENV = "PEW_E2E_BINDINGS_TIMEOUT_MS";
+
+function configuredBindingsTimeoutMs(): number {
+  const raw = process.env[BINDINGS_TIMEOUT_ENV];
+  if (raw === undefined || !/^\d+$/.test(raw)) return DEFAULT_BINDINGS_TIMEOUT_MS;
+  const value = Number(raw);
+  return value > 0 ? value : DEFAULT_BINDINGS_TIMEOUT_MS;
+}
+
+export async function startLocalBindings(
+  signal: AbortSignal,
+  timeoutMs = configuredBindingsTimeoutMs(),
+  readiness = false,
+) {
   signal.throwIfAborted();
   let receive: (value: { env: Record<string, string>; state: string }) => void;
   const ready = new Promise<{ env: Record<string, string>; state: string }>((done) => { receive = done; });
