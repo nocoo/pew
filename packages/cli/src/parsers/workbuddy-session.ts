@@ -117,6 +117,11 @@ export async function collectWorkbuddySessions(
       } catch {
         continue;
       }
+      // JSON.parse succeeds on bare JSON primitives and arrays (`null`, `42`,
+      // `"text"`, `[1,2]`), which then throw on the property reads below and
+      // abort the whole file — losing every message after the bad line, since
+      // the session cursor still advances. Treat them like malformed JSON.
+      if (typeof obj !== "object" || obj === null || Array.isArray(obj)) continue;
 
       const sessionId = typeof obj.sessionId === "string" ? obj.sessionId : null;
       if (!sessionId) continue;
