@@ -140,9 +140,13 @@ describe("E2E process isolation", () => {
     child.stdout.on("data", (data) => { output += data; });
     child.stderr.on("data", (data) => { output += data; });
     try {
+      // Poll budget is a hang detector, not a performance budget, and it must
+      // sit above the runner's own 900s readiness deadline: a slower inner
+      // deadline would make this report "Server did not start" instead of
+      // the runner's own diagnostic.
       const started = Date.now();
       while (!output.includes("Local:")) {
-        if (child.exitCode !== null || Date.now() - started > 70_000) throw new Error(`Server did not start: ${output}`);
+        if (child.exitCode !== null || Date.now() - started > 900_000) throw new Error(`Server did not start: ${output}`);
         await new Promise((done) => setTimeout(done, 50));
       }
       child.kill("SIGTERM");
@@ -153,7 +157,9 @@ describe("E2E process isolation", () => {
       if (child.exitCode === null && child.signalCode === null) { child.kill("SIGTERM"); await exited; }
       rmSync(root, { recursive: true, maxRetries: 3, retryDelay: 100 });
     }
-  }, 90_000);
+    // Outer budget above the inner legal worst case: 900s readiness poll +
+    // SIGTERM cleanup (5s kill wait + 30s dispose + 30s forced exit).
+  }, 1_200_000);
 
   it("cleans D1 when the Next process fails to start", async () => {
     const root = mkdtempSync(join(tmpdir(), "pew-start-failure-"));
@@ -174,5 +180,8 @@ describe("E2E process isolation", () => {
       if (child.exitCode === null && child.signalCode === null) { child.kill("SIGTERM"); await exited; }
       rmSync(root, { recursive: true, maxRetries: 3, retryDelay: 100 });
     }
-  }, 90_000);
+    // Inner worst case: the startup budget (900s) + 30s dispose + 30s forced
+    // exit; keep the outer budget strictly above it so a wedged child surfaces
+    // its own "startup timed out" diagnostic instead of a vitest timeout.
+  }, 1_200_000);
 });

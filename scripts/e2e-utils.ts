@@ -14,13 +14,12 @@ async function deadline<Result>(promise: Promise<Result>, milliseconds: number, 
 }
 
 // The startup deadline exists to catch a wedged child, not to enforce a speed
-// budget. On a host running several other suites, a healthy start has been
-// measured at 99s against the 60s default — a false failure, and the reason
-// the pre-push lane gets bypassed rather than trusted. A positive integer
-// override lets that host raise the budget without editing code for every
-// clone; anything else falls back to the default rather than disabling the
-// deadline entirely.
-const DEFAULT_BINDINGS_TIMEOUT_MS = 60_000;
+// budget: timing is not part of the gate contract, and on a host running
+// several other suites a healthy start has been measured at 99s. Fixed at 900s
+// so a slow host cannot fail the lane. PEW_E2E_BINDINGS_TIMEOUT_MS raises it
+// further without an edit per clone; a non-numeric or non-positive value keeps
+// the default rather than switching the deadline off.
+const DEFAULT_BINDINGS_TIMEOUT_MS = 900_000;
 const BINDINGS_TIMEOUT_ENV = "PEW_E2E_BINDINGS_TIMEOUT_MS";
 
 function configuredBindingsTimeoutMs(): number {
@@ -49,15 +48,30 @@ export async function startLocalBindings(
     stop = () => reject(signal.reason);
     signal.addEventListener("abort", stop, { once: true });
   });
+  // Dispose deadlines are capped independently of the (load-tolerant) startup
+  // budget: a child that ignores IPC will not start responding sooner just
+  // because startup was given a long budget. The cap keeps the failure path
+  // short while still honoring a caller that passes a smaller explicit budget
+  // (the no-IPC regression passes 20ms and expects disposal bounded by it).
+  const disposeTimeoutMs = Math.min(timeoutMs, 30_000);
   const dispose = async () => {
     let code: number;
     try {
       if (child.exitCode === null) child.send("dispose");
-      code = await deadline(child.exited, timeoutMs, "Local bindings disposal");
+      code = await deadline(child.exited, disposeTimeoutMs, "Local bindings disposal");
     } catch (error) {
-      if (child.exitCode === null) {
-        process.kill(-child.pid, "SIGKILL");
-        await deadline(child.exited, timeoutMs, "Local bindings forced exit");
+      // exitCode stays null when the child was killed by a signal, so a dead
+      // child must be recognized by signalCode too — otherwise this sends
+      // SIGKILL to a gone process group and throws ESRCH, replacing the IPC
+      // error that explains what actually happened.
+      const dead = child.exitCode !== null || (child.signalCode ?? null) !== null;
+      if (!dead) {
+        try {
+          process.kill(-child.pid, "SIGKILL");
+          await deadline(child.exited, disposeTimeoutMs, "Local bindings forced exit");
+        } catch (killError) {
+          throw new AggregateError([error, killError], "Local bindings disposal failed and forced exit also failed");
+        }
       }
       throw error;
     }
@@ -131,7 +145,11 @@ export async function runLocalE2e(tier: "api" | "ui", args: string[] = []): Prom
       } catch {
         abort.signal.throwIfAborted();
       }
-      if (Date.now() - started > 60_000) throw new Error("E2E server readiness timed out");
+      // Same rationale as startLocalBindings' timeout: this guards against a
+      // wedged server, not slow load. The api tier boots `next dev`, whose
+      // first compile can exceed a minute when the gate runs beside the
+      // browser lane's production build.
+      if (Date.now() - started > 900_000) throw new Error("E2E server readiness timed out");
       await Bun.sleep(200);
     }
     await verifyLocalMarker(env);
