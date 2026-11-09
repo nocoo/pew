@@ -47,19 +47,25 @@ describe("real D1 lifecycle", () => {
   });
 
   it("preserves full fresh schema, native Worker RPC and failure cleanup", () => {
-    const result = spawnSync("bun", ["--no-env-file", "scripts/test-local-e2e.ts"], { encoding: "utf8", timeout: 120_000, env: { ...process.env, CI: "true", PEW_SYNTHETIC_PARENT_SECRET: "must-not-forward" } });
+    // The deadline is a hang detector: spawning wrangler, applying the whole
+    // migration set and exercising the RPC round trip has been measured at
+    // 2m30s on a loaded host, which the old 120s deadline killed.
+    const result = spawnSync("bun", ["--no-env-file", "scripts/test-local-e2e.ts"], { encoding: "utf8", timeout: 300_000, env: { ...process.env, CI: "true", PEW_SYNTHETIC_PARENT_SECRET: "must-not-forward" } });
     expect(result.status, result.stdout + result.stderr).toBe(0);
-  }, 125_000);
+  }, 310_000);
   it.each(["THIS IS NOT SQL;", "CREATE TABLE duplicate(id TEXT); CREATE TABLE duplicate(id TEXT);"])("fails invalid or duplicate SQL and cleans only fresh state: %s", (sql) => {
     const migrations = mkdtempSync(join(tmpdir(), "pew-invalid-migration-"));
     const before = new Set(readdirSync(tmpdir()).filter((name) => name.startsWith("pew-e2e-")));
     try {
       writeFileSync(join(migrations, "0001.sql"), sql);
-      const result = spawnSync("bun", ["--no-env-file", "-e", 'import {localIsolatedEnv} from "./scripts/local-e2e-bindings.ts"; await localIsolatedEnv(process.argv[1]);', migrations], { encoding: "utf8", timeout: 30_000 });
+      // A failing migration still pays wrangler's full startup: measured at
+      // 31.5s for the unparseable file, which the old 30s deadline killed
+      // before it could report "migrations failed".
+      const result = spawnSync("bun", ["--no-env-file", "-e", 'import {localIsolatedEnv} from "./scripts/local-e2e-bindings.ts"; await localIsolatedEnv(process.argv[1]);', migrations], { encoding: "utf8", timeout: 120_000 });
       expect(result.status).not.toBe(0);
       expect(result.stderr).toContain("migrations failed");
       expect(new Set(readdirSync(tmpdir()).filter((name) => name.startsWith("pew-e2e-")))).toEqual(before);
       expect(existsSync(migrations)).toBe(true);
     } finally { rmSync(migrations, { recursive: true }); }
-  }, 30_000);
+  }, 130_000);
 });
