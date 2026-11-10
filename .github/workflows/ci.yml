@@ -16,7 +16,7 @@ jobs:
   l1-pre-commit-selftest:
     name: "L1 Pre-commit Gate Self-test"
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    uses: nocoo/base-ci/.github/workflows/test-job.yml@1ea10ecab22b72512399485391603fe03a161016 # v2026.12
+    uses: nocoo/base-ci/.github/workflows/test-job.yml@1ea10ecab22b72512399485391603fe03a161016  # v2026.12
     with:
       runtime-version: "1.4.0"
       install-policy: blocked
@@ -25,7 +25,7 @@ jobs:
       command: bun run test:l1-gate
 
   quality:
-    uses: nocoo/base-ci/.github/workflows/quality.yml@1ea10ecab22b72512399485391603fe03a161016 # v2026.12
+    uses: nocoo/base-ci/.github/workflows/quality.yml@1ea10ecab22b72512399485391603fe03a161016  # v2026.12
     with:
       runtime-version: "1.4.0"
       node-version: "26.12.1"
@@ -33,7 +33,7 @@ jobs:
       coverage-path: coverage
       prepare-command: bun run build
       typecheck-command: bun run typecheck
-      lint-command: biome check --no-errors-on-unmatched --error-on-warnings --max-diagnostics=500 . && bun run gate:dynamic-delete && bun run gate:ts-expect-error
+      lint-command: bunx biome check --no-errors-on-unmatched --error-on-warnings --max-diagnostics=500 . && bun run gate:dynamic-delete && bun run gate:ts-expect-error
       test-command: bun run test:coverage
       osv-config: osv-scanner.toml
       gitleaks-config: .gitleaks.toml
@@ -65,7 +65,7 @@ jobs:
 
   container-smoke:
     name: "Linux Image Native and Startup Smoke"
-    uses: nocoo/base-ci/.github/workflows/test-job.yml@1ea10ecab22b72512399485391603fe03a161016 # v2026.12
+    uses: nocoo/base-ci/.github/workflows/test-job.yml@1ea10ecab22b72512399485391603fe03a161016  # v2026.12
     with:
       runtime: "none"
       node-version: "26.12.1"
