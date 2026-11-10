@@ -21,6 +21,7 @@
     "test:e2e:ui": "bun run scripts/run-e2e-ui.ts",
     "test:e2e:bdd": "bun run test:e2e:ui",
     "test:security": "bun run scripts/run-security.ts",
+    "test:l1-gate": "bun scripts/l1-gate-selftest.ts",
     "sync": "bun run build && NODE_TLS_REJECT_UNAUTHORIZED=0 bun packages/cli/dist/bin.js sync --dev",
     "sync:prod": "bun run build && bun packages/cli/dist/bin.js sync",
     "release": "bun run scripts/release.ts",

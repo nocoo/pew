@@ -8,6 +8,17 @@ on:
   workflow_dispatch:
 
 jobs:
+  l1-pre-commit-selftest:
+    name: "L1 Pre-commit Gate Self-test"
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    uses: nocoo/base-ci/.github/workflows/test-job.yml@af9a2b3f82c367d6eb6def5c3583ac717e0868ad  # main 2026-10-26
+    with:
+      runtime-version: "1.4.0"
+      install-policy: "blocked"
+      timeout-minutes: 90
+      pre-command: "bun run build"
+      command: "bun run test:l1-gate"
+
   quality:
     uses: nocoo/base-ci/.github/workflows/quality.yml@af9a2b3f82c367d6eb6def5c3583ac717e0868ad  # main 2026-10-26
     with:

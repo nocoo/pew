@@ -88,9 +88,15 @@ if [ ! -d node_modules/next ] && [ ! -d packages/web/node_modules/next ]; then
   echo "pre-commit: next is not installed — run 'bun install' and commit the result" >&2
   exit 1
 fi
-(cd packages/web && bunx next typegen)
+(cd packages/web && bun x next typegen)
 
-bun run test:coverage
+# Invoke vitest with --coverage directly so a staged package.json script cannot
+# drop coverage collection while still passing thresholds in vitest.config.ts.
+bun x vitest run --coverage
+if [ ! -d coverage ] || [ ! -f coverage/index.html ] || [ ! -f coverage/coverage-summary.json ]; then
+  echo "pre-commit: coverage output is missing after vitest — coverage must run on the index snapshot" >&2
+  exit 1
+fi
 bash scripts/parallel-typecheck.sh
 biome check --no-errors-on-unmatched --error-on-warnings --max-diagnostics=500 .
 bun run gate:dynamic-delete

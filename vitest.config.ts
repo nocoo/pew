@@ -29,7 +29,7 @@ export default defineConfig({
       // experimentalAstAwareRemapping reduces variance and slightly improves
       // wall-clock by avoiding the legacy source-map-based remap path.
       experimentalAstAwareRemapping: true,
-      reporter: ["text", "html"],
+      reporter: ["text", "html", "json-summary"],
       include: ["packages/*/src/**/*.ts"],
       exclude: [
         "**/*.test.ts",
