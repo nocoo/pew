@@ -106,7 +106,7 @@ describe("GET /api/admin/check", () => {
   });
 
   // -------------------------------------------------------------------------
-  // E2E admin bypass guard (E2E_SKIP_AUTH + E2E_ADMIN_BYPASS + dev + !railway)
+  // E2E admin bypass guard (shared gate in lib/e2e-mode.ts + E2E_ADMIN_BYPASS)
   // -------------------------------------------------------------------------
 
   describe("E2E admin bypass", () => {
@@ -133,11 +133,14 @@ describe("GET /api/admin/check", () => {
       }
     }
 
-    it("should return isAdmin: true when all four bypass conditions are met", async () => {
+    it("should return isAdmin: true inside the runner's marked environment", async () => {
       const body = await callWithEnv({
         E2E_SKIP_AUTH: "true",
+        RESOURCE_ENV: "test",
+        PEW_TEST_RUN_ID: "owned-run",
         E2E_ADMIN_BYPASS: "true",
-        NODE_ENV: "development",
+        // The L3 lane serves a production build; the gate must not key on it.
+        NODE_ENV: "production",
         RAILWAY_ENVIRONMENT: undefined,
       });
       expect(body.isAdmin).toBe(true);
@@ -146,8 +149,9 @@ describe("GET /api/admin/check", () => {
     it("should NOT bypass when E2E_SKIP_AUTH is missing", async () => {
       const body = await callWithEnv({
         E2E_SKIP_AUTH: undefined,
+        RESOURCE_ENV: "test",
+        PEW_TEST_RUN_ID: "owned-run",
         E2E_ADMIN_BYPASS: "true",
-        NODE_ENV: "development",
         RAILWAY_ENVIRONMENT: undefined,
       });
       expect(body.isAdmin).toBe(false);
@@ -156,28 +160,36 @@ describe("GET /api/admin/check", () => {
     it("should NOT bypass when E2E_ADMIN_BYPASS is missing", async () => {
       const body = await callWithEnv({
         E2E_SKIP_AUTH: "true",
+        RESOURCE_ENV: "test",
+        PEW_TEST_RUN_ID: "owned-run",
         E2E_ADMIN_BYPASS: undefined,
-        NODE_ENV: "development",
         RAILWAY_ENVIRONMENT: undefined,
       });
       expect(body.isAdmin).toBe(false);
     });
 
-    it("should NOT bypass when NODE_ENV is not development", async () => {
-      const body = await callWithEnv({
-        E2E_SKIP_AUTH: "true",
-        E2E_ADMIN_BYPASS: "true",
-        NODE_ENV: "production",
-        RAILWAY_ENVIRONMENT: undefined,
-      });
-      expect(body.isAdmin).toBe(false);
+    it("should NOT bypass without the runner's positive run marker", async () => {
+      for (const env of [
+        { RESOURCE_ENV: "production", PEW_TEST_RUN_ID: "owned-run" },
+        { RESOURCE_ENV: "test", PEW_TEST_RUN_ID: undefined },
+        { RESOURCE_ENV: "test", PEW_TEST_RUN_ID: "" },
+      ]) {
+        const body = await callWithEnv({
+          E2E_SKIP_AUTH: "true",
+          E2E_ADMIN_BYPASS: "true",
+          RAILWAY_ENVIRONMENT: undefined,
+          ...env,
+        });
+        expect(body.isAdmin).toBe(false);
+      }
     });
 
     it("should NOT bypass when RAILWAY_ENVIRONMENT is set (production guard)", async () => {
       const body = await callWithEnv({
         E2E_SKIP_AUTH: "true",
+        RESOURCE_ENV: "test",
+        PEW_TEST_RUN_ID: "owned-run",
         E2E_ADMIN_BYPASS: "true",
-        NODE_ENV: "development",
         RAILWAY_ENVIRONMENT: "production",
       });
       expect(body.isAdmin).toBe(false);

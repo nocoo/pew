@@ -4,27 +4,19 @@
  * Admin status is determined by the ADMIN_EMAILS environment variable,
  * a comma-separated list of email addresses.
  *
- * In E2E mode with admin bypass (E2E_SKIP_AUTH=true + E2E_ADMIN_BYPASS=true
- * in development), all users are treated as admins so Playwright tests
- * can exercise admin pages. This is separate from E2E_SKIP_AUTH alone,
- * which only bypasses authentication but preserves admin role checks.
+ * In E2E mode with admin bypass (the shared gate plus E2E_ADMIN_BYPASS=true),
+ * all users are treated as admins so Playwright tests can exercise admin
+ * pages. This is separate from E2E_SKIP_AUTH alone, which only bypasses
+ * authentication but preserves admin role checks.
  */
 
 import { resolveUser, type AuthResult, E2E_TEST_USER_ID, E2E_TEST_USER_EMAIL } from "./auth-helpers";
 import { getDbRead } from "./db";
+import { isE2EMode } from "./e2e-mode";
 
 // ---------------------------------------------------------------------------
 // E2E mode checks
 // ---------------------------------------------------------------------------
-
-/** Check if we're running in E2E skip-auth mode */
-function isE2EMode(): boolean {
-  return (
-    process.env.E2E_SKIP_AUTH === "true" &&
-    process.env.NODE_ENV === "development" &&
-    !process.env.RAILWAY_ENVIRONMENT
-  );
-}
 
 /** Check if admin bypass is enabled (for L3 Playwright tests) */
 function isAdminBypass(): boolean {

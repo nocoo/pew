@@ -13,13 +13,13 @@ const TEST_CONFIG = {
 
 describe("local D1 transport safety", () => {
   const config = { accountId: "pew-local-test", databaseId: "pew-local-test", apiToken: "synthetic" };
-  const env = { NODE_ENV: "development", RESOURCE_ENV: "test", E2E_SKIP_AUTH: "true", PEW_LOCAL_D1_URL: "http://127.0.0.1:12345" };
+  const env = { NODE_ENV: "development", RESOURCE_ENV: "test", E2E_SKIP_AUTH: "true", PEW_LOCAL_D1_URL: "http://127.0.0.1:12345", PEW_TEST_RUN_ID: "owned-run" };
   it("keeps production API selection when no local override exists", () => {
     expect(localD1BaseUrl(TEST_CONFIG, {})).toBeUndefined();
     expect(localD1BaseUrl(config, env)).toBe(env.PEW_LOCAL_D1_URL);
   });
   it.each([
-    { NODE_ENV: "production" }, { RAILWAY_ENVIRONMENT: "production" },
+    { RAILWAY_ENVIRONMENT: "production" },
     { RESOURCE_ENV: "production" }, { E2E_SKIP_AUTH: "false" },
     { PEW_LOCAL_D1_URL: "https://127.0.0.1:12345" },
     { PEW_LOCAL_D1_URL: "http://example.com:12345" },
@@ -30,7 +30,16 @@ describe("local D1 transport safety", () => {
     { PEW_LOCAL_D1_URL: "http://127.0.0.1:12345/?unsafe=1" },
     { PEW_LOCAL_D1_URL: "http://127.0.0.1:12345/#unsafe" },
   ])("rejects unsafe local override %j", (change) => {
-    expect(() => localD1BaseUrl(config, { ...env, ...change })).toThrow();
+    expect(() => localD1BaseUrl(config, { ...env, PEW_TEST_RUN_ID: "owned-run", ...change })).toThrow();
+  });
+  it("allows the production build the L3 lane serves when the run is marked", () => {
+    // L3 serves `next build` output, so the app runs with NODE_ENV=production;
+    // a veto on that would make the guarded lane unable to use the local D1 at
+    // all. The per-run marker the runner writes into the isolated D1 stands in
+    // for it, and a deployed host has no such marker.
+    expect(localD1BaseUrl(config, { ...env, NODE_ENV: "production", PEW_TEST_RUN_ID: "owned-run" })).toBe(env.PEW_LOCAL_D1_URL);
+    expect(() => localD1BaseUrl(config, { ...env, NODE_ENV: "production", PEW_TEST_RUN_ID: undefined })).toThrow();
+    expect(() => localD1BaseUrl(config, { ...env, NODE_ENV: "production", PEW_TEST_RUN_ID: "" })).toThrow();
   });
   it("rejects non-test account or database IDs", () => {
     expect(() => localD1BaseUrl({ ...config, accountId: "production" }, env)).toThrow();
