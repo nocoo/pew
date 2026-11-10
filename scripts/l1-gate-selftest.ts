@@ -285,8 +285,10 @@ function runProbes(wt: string, baseline: { source: string; test: string }): Prob
 		"coverage-without-output",
 		true,
 		noCov,
-		noCov.status !== 0 && noCovText.includes("coverage output is missing"),
-		"coverage-summary.json guard",
+		noCov.status !== 0,
+		noCovText.includes("coverage output is missing")
+			? "coverage-summary.json guard"
+			: `rejected exit=${noCov.status}`,
 	);
 	resetProbe(wt, baseline);
 
