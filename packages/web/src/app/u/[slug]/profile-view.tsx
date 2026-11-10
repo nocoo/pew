@@ -14,7 +14,7 @@ import { chromeIconClassName } from "@/components/ui/button";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { PageHeader } from "@/components/leaderboard/page-header";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { HeaderTooltip, HexlyLink } from "@/components/layout/hexly-link";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -54,18 +54,7 @@ function TopRightIcons() {
 }
 
 function PewPageHeader() {
-  return (
-    <PageHeader>
-      <h1 className="tracking-tight text-foreground">
-        <span className="text-[36px] font-bold font-handwriting leading-none mr-2">
-          pew
-        </span>
-        <span className="text-[19px] font-normal text-muted-foreground">
-          Profile
-        </span>
-      </h1>
-    </PageHeader>
-  );
+  return <PageHeader title="Profile" />;
 }
 
 // ---------------------------------------------------------------------------
