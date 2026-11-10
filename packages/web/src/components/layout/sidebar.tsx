@@ -204,14 +204,13 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           >
             <PanelLeft aria-hidden="true" strokeWidth={1.5} />
           </Button>
-          <SidebarNav className="w-full items-center gap-1 pt-1">
+          <SidebarNav>
             {allNavItems.map((item) => (
               <Tooltip key={item.href} delayDuration={0}>
                 <TooltipTrigger asChild>
                   <SidebarIconItem
                     active={!item.external && isActivePath(pathname, item.href)}
                     aria-label={item.label}
-                    className="self-center"
                     onClick={() => openNavItem(item.href, item.external, router.push)}
                   >
                     <item.icon className="h-4 w-4" strokeWidth={1.5} />
@@ -243,7 +242,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </>
       ) : (
         <>
-          <SidebarNav className="pt-1">
+          <SidebarNav>
             {navGroups.map((group) => (
               <SidebarGroup key={group.label} label={group.label} defaultOpen={group.defaultOpen ?? true}>
                 {group.items.map((item) => (
@@ -255,12 +254,11 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.5} />
                     <span className="flex-1 truncate text-left">{item.label}</span>
                     {item.external ? (
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center">
-                        <ArrowUpRight
-                          className="h-3 w-3 text-basalt-muted-foreground"
-                          strokeWidth={1.5}
-                        />
-                      </span>
+                      <ArrowUpRight
+                        className="h-basalt-4 w-basalt-4 shrink-0 text-basalt-muted-foreground"
+                        strokeWidth={1.5}
+                        aria-hidden="true"
+                      />
                     ) : null}
                   </SidebarItem>
                 ))}
