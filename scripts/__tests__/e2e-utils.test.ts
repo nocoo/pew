@@ -242,3 +242,16 @@ describe("E2E process isolation", () => {
     // its own "startup timed out" diagnostic instead of a vitest timeout.
   }, 1_200_000);
 });
+
+describe("L3 browser budgets", () => {
+  it("keeps the documented hang-detector budgets", async () => {
+    // QUALITY_CONTRACT.md / AGENTS.md record "Playwright test 180s / navigation
+    // 120s": the ui lane shares the machine with the API lane and the security
+    // scan, and `next dev` compiles a page on its first navigation, which has
+    // been measured past every short budget on a loaded host. These are hang
+    // detectors, so the numbers only move with the contract.
+    const { default: config } = await import("../../packages/web/e2e/playwright.config");
+    expect(config.timeout).toBe(180_000);
+    expect(config.use?.navigationTimeout).toBe(120_000);
+  });
+});
