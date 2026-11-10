@@ -52,7 +52,6 @@ import {
 } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/version";
-import { ghostIconClassName } from "@/components/ui/button";
 
 const ICON_MAP: Record<string, ElementType> = {
   LayoutDashboard,
@@ -154,9 +153,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const avatar = (
     <Avatar className="h-9 w-9 shrink-0">
       {userImage ? <AvatarImage src={userImage} alt={userName} /> : null}
-      <AvatarFallback className="text-xs bg-basalt-primary text-basalt-primary-foreground">
-        {userInitial}
-      </AvatarFallback>
+      <AvatarFallback className="text-basalt-sm">{userInitial}</AvatarFallback>
     </Avatar>
   );
 
@@ -226,12 +223,12 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               </Tooltip>
             ))}
           </SidebarNav>
-          <SidebarFooter className="flex w-full justify-center px-0">
+          <SidebarFooter>
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="h-9 w-9 p-0"
+                  size="icon"
                   onClick={() => signOut({ callbackUrl: "/login" })}
                   aria-label={`${userName} · Click to sign out`}
                 >
@@ -276,20 +273,15 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               email={userEmail}
               avatar={avatar}
               action={
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={`${ghostIconClassName} h-8 w-8 shrink-0 hover:bg-basalt-accent`}
-                      onClick={() => signOut({ callbackUrl: "/login" })}
-                      aria-label="Sign out"
-                    >
-                      <LogOut aria-hidden="true" strokeWidth={1.5} />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">Sign out</TooltipContent>
-                </Tooltip>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-8 shrink-0"
+                  onClick={() => signOut({ callbackUrl: "/login" })}
+                  aria-label="Sign out"
+                >
+                  <LogOut aria-hidden="true" strokeWidth={1.5} />
+                </Button>
               }
             />
           </SidebarFooter>
