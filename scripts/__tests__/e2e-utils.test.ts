@@ -126,7 +126,14 @@ describe("E2E process isolation", () => {
       const abort = new AbortController();
       const pending = startLocalBindings(abort.signal, 20);
       if (interrupt) abort.abort(new Error("synthetic interruption"));
-      await expect(pending).rejects.toThrow("disposal timed out");
+      // Startup and cleanup both fail here and both surface: the original
+      // startup/interruption error must remain the first member, never be
+      // replaced by "disposal timed out" (that was the pre-fix behavior).
+      const error = await pending.then(() => undefined, (rejection: unknown) => rejection) as AggregateError;
+      expect(error).toBeInstanceOf(AggregateError);
+      expect(error.message).toBe("Local bindings startup failed and cleanup also failed");
+      expect((error.errors[0] as Error).message).toContain(interrupt ? "synthetic interruption" : "startup timed out");
+      expect((error.errors[1] as Error).message).toContain("disposal timed out");
       expect(child.send).toHaveBeenCalledWith("dispose");
       expect(kill).toHaveBeenCalledExactlyOnceWith(-123456, "SIGKILL");
       expect(spawnChild).toHaveBeenCalledWith(expect.any(Array), expect.objectContaining({ env: expect.objectContaining({ CI: "true" }) }));
