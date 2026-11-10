@@ -195,15 +195,21 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
       </SidebarHeader>
       {collapsed ? (
         <>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggle}
-            aria-label="Expand sidebar"
-            className="mb-basalt-space-sm self-center"
-          >
-            <PanelLeft aria-hidden="true" strokeWidth={1.5} />
-          </Button>
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onToggle}
+                aria-label="Expand sidebar"
+              >
+                <PanelLeft aria-hidden="true" strokeWidth={1.5} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8}>
+              Expand sidebar
+            </TooltipContent>
+          </Tooltip>
           <SidebarNav>
             {allNavItems.map((item) => (
               <Tooltip key={item.href} delayDuration={0}>
