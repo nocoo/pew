@@ -12,6 +12,7 @@ import { Badge } from "@nocoo/basalt/components/badge";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
+import { Breadcrumbs } from "@nocoo/basalt/components/breadcrumbs";
 import { cn, formatTokensFull } from "@/lib/utils";
 import { formatDuration } from "@/lib/date-helpers";
 import { getSeasonEndExclusiveISO } from "@/lib/season-helpers";
@@ -29,7 +30,7 @@ import { SeasonCountdown } from "@/components/leaderboard/season-countdown";
 import { RankBadge } from "@/components/leaderboard/rank-badge";
 import { StatusBadge } from "@/components/leaderboard/status-badge";
 import { LeaderboardSkeleton } from "@/components/leaderboard/leaderboard-skeleton";
-import { PageHeader } from "@nocoo/basalt/components/page-header";
+import { PageHeader } from "@/components/leaderboard/page-header";
 import { TokenTierBadge } from "@/components/leaderboard/token-tier-badge";
 import { UserProfileDialog } from "@/components/user-profile-dialog";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -52,6 +53,23 @@ function SeasonTableHeader() {
         <span className="w-4 shrink-0" />
       </div>
       <div className="h-px bg-border/50" />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Breadcrumb navigation
+// ---------------------------------------------------------------------------
+
+function Breadcrumb({ seasonName }: { seasonName?: string | undefined }) {
+  const items = [
+    { href: "/leaderboard", label: "Leaderboard" },
+    { href: "/leaderboard/seasons", label: "Seasons" },
+    ...(seasonName ? [{ label: seasonName }] : []),
+  ];
+  return (
+    <div className="animate-fade-up" style={{ animationDelay: "120ms" }}>
+      <Breadcrumbs items={items} />
     </div>
   );
 }
@@ -290,58 +308,47 @@ export default function SeasonLeaderboardPage() {
 
   return (
     <TooltipProvider>
-      {/* Header — season name, status, breadcrumbs when loaded */}
-      {(data || isLoading) && (
-        <PageHeader
-          breadcrumbs={
-            data
-              ? [
-                  { href: "/leaderboard", label: "Leaderboard" },
-                  { href: "/leaderboard/seasons", label: "Seasons" },
-                  { label: data.season.name },
-                ]
-              : [
-                  { href: "/leaderboard", label: "Leaderboard" },
-                  { href: "/leaderboard/seasons", label: "Seasons" },
-                ]
-          }
-          title={
-            data ? (
-              data.season.name
-            ) : (
-              <Skeleton className="h-9 w-48 max-w-full" />
-            )
-          }
-          description={
-            data ? (
-              <span className="flex flex-wrap items-center gap-2">
-                <StatusBadge status={data.season.status} />
-                {data.season.is_snapshot ? (
-                  <Badge variant="secondary">
-                    <Camera className="h-3 w-3" />
-                    Final Results
-                  </Badge>
-                ) : data.season.status === "active" ? (
-                  <Badge variant="success">
-                    <Zap className="h-3 w-3" />
-                    Live
-                  </Badge>
-                ) : null}
-                <SeasonCountdown
-                  status={data.season.status}
-                  startDate={data.season.start_date}
-                  endDate={data.season.end_date}
-                />
+      {/* Header — context-aware: shows season name + status when loaded */}
+      <PageHeader>
+        {data ? (
+          <>
+            <h1 className="tracking-tight text-foreground">
+              <span className="text-[36px] font-bold font-handwriting leading-none mr-2">
+                {data.season.name}
               </span>
-            ) : (
-              <Skeleton className="h-4 w-56 max-w-full" />
-            )
-          }
-        />
-      )}
+            </h1>
+            <div className="mt-2 flex items-center gap-2 flex-wrap">
+              <StatusBadge status={data.season.status} />
+              {data.season.is_snapshot ? (
+                <Badge variant="secondary">
+                  <Camera className="h-3 w-3" />
+                  Final Results
+                </Badge>
+              ) : data.season.status === "active" ? (
+                <Badge variant="success">
+                  <Zap className="h-3 w-3" />
+                  Live
+                </Badge>
+              ) : null}
+              <SeasonCountdown
+                status={data.season.status}
+                startDate={data.season.start_date}
+                endDate={data.season.end_date}
+              />
+            </div>
+          </>
+        ) : isLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-10 w-48" />
+            <Skeleton className="h-4 w-56" />
+          </div>
+        ) : null}
+      </PageHeader>
 
       {/* Main content */}
       <main className="flex-1 py-4 space-y-4">
+        {/* Breadcrumb navigation */}
+        <Breadcrumb seasonName={data?.season.name} />
 
         {/* Error */}
         {error && (

@@ -1,6 +1,8 @@
-import { PageHeader } from "@nocoo/basalt/components/page-header";
+import Link from "next/link";
+import { Button } from "@nocoo/basalt/components/button";
 import { ArrowLeft } from "lucide-react";
-import { HexlyLink } from "@/components/layout/hexly-link";
+import { chromeIconClassName } from "@/lib/ghost-icon";
+import { HeaderTooltip, HexlyLink } from "@/components/layout/hexly-link";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 
 export const metadata = {
@@ -13,18 +15,29 @@ export default function PrivacyPage() {
   return (
     <div className="min-h-screen bg-background p-2 md:p-4 flex items-center justify-center">
       <div className="mx-auto w-full max-w-2xl rounded-[16px] md:rounded-[20px] bg-card p-6 md:p-10">
-        <div className="mb-8">
-          <PageHeader
-            breadcrumbs={[{ href: "/", label: "Home", icon: <ArrowLeft strokeWidth={1.5} aria-hidden="true" /> }]}
-            title="Privacy Policy"
-            description="Last updated: March 12, 2026"
-            actions={
-              <>
-                <HexlyLink />
-                <ThemeToggle />
-              </>
-            }
-          />
+        {/* Header */}
+        <div className="space-y-4 mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <HeaderTooltip label="Back to Pew">
+                <Button variant="ghost" size="icon" className={chromeIconClassName} asChild>
+                  <Link href="/" aria-label="Back to home">
+                    <ArrowLeft strokeWidth={1.5} aria-hidden="true" />
+                  </Link>
+                </Button>
+              </HeaderTooltip>
+              <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight text-foreground">
+                Privacy Policy
+              </h1>
+            </div>
+            <div className="flex items-center gap-1">
+              <HexlyLink />
+              <ThemeToggle />
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Last updated: March 12, 2026
+          </p>
         </div>
 
         {/* Body */}

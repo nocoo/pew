@@ -1,13 +1,13 @@
-import { PageHeader } from "@nocoo/basalt/components/page-header";
+import { PageHeader } from "@/components/leaderboard/page-header";
 
 // ---------------------------------------------------------------------------
-// LeaderboardPageTitle — shared heading for public leaderboard pages
+// LeaderboardPageTitle — shared "pew" heading used by every leaderboard page
 // ---------------------------------------------------------------------------
 
 interface LeaderboardPageTitleProps {
-  /** Page title (e.g. "Leaderboard", "Seasons") */
+  /** Text shown next to "pew" (e.g. "Leaderboard", "Seasons") */
   subtitle: string;
-  /** Supporting text below the title */
+  /** Short description below the heading */
   description: string;
 }
 
@@ -15,5 +15,17 @@ export function LeaderboardPageTitle({
   subtitle,
   description,
 }: LeaderboardPageTitleProps) {
-  return <PageHeader title={subtitle} description={description} />;
+  return (
+    <PageHeader>
+      <h1 className="tracking-tight text-foreground">
+        <span className="text-[36px] font-bold font-handwriting leading-none mr-2">
+          pew
+        </span>
+        <span className="text-[19px] font-normal text-muted-foreground">
+          {subtitle}
+        </span>
+      </h1>
+      <p className="mt-2 text-sm text-muted-foreground">{description}</p>
+    </PageHeader>
+  );
 }
