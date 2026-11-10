@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -43,7 +43,11 @@ describe("E2E process isolation", () => {
           send() { this.kill(); },
         };
         if (options.ipc) queueMicrotask(() => options.ipc?.({ env, state: root }));
-        else if (!command.includes("dev")) child.kill();
+        // The ui tier builds first (`next build`, must exit 0) and then serves
+        // `next start`, which stays up until cleanup kills it. Only the api
+        // tier's `next dev` mock is left alive the same way.
+        else if (command.includes("build")) child.kill();
+        else if (!command.includes("dev") && !command.includes("start")) child.kill();
         return child;
       }),
       sleep: vi.fn(async () => {}),
@@ -244,6 +248,16 @@ describe("E2E process isolation", () => {
 });
 
 describe("L3 browser budgets", () => {
+  it("serves the L3 lane a production build, not next dev", () => {
+    // `next dev` compiles each page on its first navigation; the /leaderboard
+    // page wedged past a 120s navigation twice in a row (the dev compiler
+    // never answered), and the same page loaded in 23s on a production
+    // build. The source is checked structurally so the test stays a unit.
+    const source = readFileSync(join(import.meta.dirname, "../e2e-utils.ts"), "utf8");
+    expect(source).toContain('"build"]');
+    expect(source).toContain('"start", "--hostname"');
+  });
+
   it("keeps the documented hang-detector budgets", async () => {
     // QUALITY_CONTRACT.md / AGENTS.md record "Playwright test 180s / navigation
     // 120s": the ui lane shares the machine with the API lane and the security
@@ -254,4 +268,29 @@ describe("L3 browser budgets", () => {
     expect(config.timeout).toBe(180_000);
     expect(config.use?.navigationTimeout).toBe(120_000);
   });
+
+  it("never races a child against a bare Bun.sleep, which keeps the loop alive", () => {
+    // Bun holds the event loop open for a pending Bun.sleep(). Racing one
+    // against a child that exits immediately still leaves the timer pending,
+    // so the runner stayed alive after the Playwright summary and had to be
+    // signalled by hand. The wait must use a cleared setTimeout instead.
+    const source = readFileSync(join(import.meta.dirname, "../e2e-utils.ts"), "utf8");
+    expect(source).not.toMatch(/Promise\.race\(\[[^\]]*Bun\.sleep/);
+    expect(source).toContain("settleWithin");
+  });
+
+  it.each(["run-e2e.ts", "run-e2e-ui.ts"])(
+    "exits %s deterministically once cleanup has finished",
+    (entry) => {
+      // Measured on Bun 1.4.4: after a full ui lane the process reaches the
+      // last statement of the entry script, has no child processes, no pipes
+      // and no sockets left (lsof shows only empty KQUEUEs), and still never
+      // returns from its event loop — SIGTERM was the only way out. Cleanup
+      // runs before this point, so the exit is deterministic rather than a
+      // timeout: inheriting stdout means no buffered output is lost.
+      const source = readFileSync(join(import.meta.dirname, "..", entry), "utf8");
+      expect(source).toMatch(/process\.exit\(/);
+      expect(source).not.toMatch(/^\s*process\.exitCode\s*=/m);
+    },
+  );
 });

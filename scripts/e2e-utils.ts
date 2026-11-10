@@ -13,6 +13,18 @@ async function deadline<Result>(promise: Promise<Result>, milliseconds: number, 
   } finally { clearTimeout(timer); }
 }
 
+// Like deadline(), but resolves instead of rejecting and always clears its
+// timer: Bun keeps the event loop alive for a pending Bun.sleep(), so racing
+// one against a child that exits immediately delayed every lane's exit by the
+// full 5s — and a sleep that never wins the race left the runner alive after
+// the Playwright summary until it was signalled by hand.
+async function settleWithin(promise: Promise<unknown>, milliseconds: number): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([promise, new Promise<void>((done) => { timer = setTimeout(done, milliseconds); })]);
+  } finally { clearTimeout(timer); }
+}
+
 // The startup deadline exists to catch a wedged child, not to enforce a speed
 // budget: timing is not part of the gate contract, and on a host running
 // several other suites a healthy start has been measured at 99s. Fixed at 900s
@@ -132,13 +144,22 @@ export async function runLocalE2e(tier: "api" | "ui", args: string[] = []): Prom
   let local: Awaited<ReturnType<typeof startLocalBindings>> | undefined;
   let server: ReturnType<typeof Bun.spawn> | undefined;
   let tests: ReturnType<typeof Bun.spawn> | undefined;
-  const killChildren = () => { server?.kill(); tests?.kill(); };
+  let build: ReturnType<typeof Bun.spawn> | undefined;
+  const killChildren = () => {
+    server?.kill(); tests?.kill();
+    // An interrupted build must not keep writing into the dist dir the
+    // finally block is about to remove.
+    build?.kill();
+    void build?.exited.catch(() => {
+      // Ignore: an aborted build's exit code is irrelevant to cleanup.
+    });
+  };
   abort.signal.addEventListener("abort", killChildren);
   const dist = tier === "api" ? ".next-e2e" : ".next-e2e-ui";
   try {
     local = await startLocalBindings(abort.signal, undefined, tier === "ui");
     abort.signal.throwIfAborted();
-    const env = {
+    const env: Record<string, string> = {
       ...local.env,
       NEXT_DIST_DIR: dist,
       E2E_TEST_USER_ID: `e2e-test-user-${local.env.PEW_TEST_RUN_ID}`,
@@ -149,9 +170,38 @@ export async function runLocalE2e(tier: "api" | "ui", args: string[] = []): Prom
       PLAYWRIGHT_BROWSERS_PATH: process.env.PLAYWRIGHT_BROWSERS_PATH ?? join(homedir(), process.platform === "darwin" ? "Library/Caches/ms-playwright" : ".cache/ms-playwright"),
     };
     await verifyLocalMarker(env);
-    server = Bun.spawn(["node", resolve("packages/web/node_modules/next/dist/bin/next"), "dev", "--hostname", "127.0.0.1", "--port", port], {
-      cwd: "packages/web", env, stdout: "inherit", stderr: "inherit",
-    });
+    if (tier === "ui") {
+      // `next build` prerenders with React; a development NODE_ENV makes the
+      // static pass crash (`useContext` on null - React's dev branch needs a
+      // renderer during prerender). The E2E gates key off RESOURCE_ENV plus
+      // the per-run marker, not NODE_ENV, so production here matches what
+      // `next start` serves.
+      env.NODE_ENV = "production";
+      // L3 runs the production build: `next dev` compiles each page on its
+      // first navigation, and a heavy page can wedge the dev compiler past
+      // any navigation budget (/leaderboard never answered within 120s twice
+      // in a row while the same page served in 23s pre-built). A prod server
+      // answers in milliseconds and the journeys exercise the deployed shape.
+      build = Bun.spawn(["node", resolve("packages/web/node_modules/next/dist/bin/next"), "build"], {
+        cwd: "packages/web", env, stdout: "inherit", stderr: "inherit",
+      });
+      const buildCode = await Promise.race([build.exited, new Promise<number>((_, reject) => {
+        const timer = setTimeout(() => reject(new Error("next build timed out")), 1_800_000);
+        abort.signal.addEventListener("abort", () => { clearTimeout(timer); reject(abort.signal.reason); }, { once: true });
+      })]);
+      await build.exited.catch(() => {
+        // A killed build rejects; its code already told the story above.
+      });
+      build = undefined;
+      if (buildCode !== 0) throw new Error(`next build failed (${buildCode})`);
+      server = Bun.spawn(["node", resolve("packages/web/node_modules/next/dist/bin/next"), "start", "--hostname", "127.0.0.1", "--port", port], {
+        cwd: "packages/web", env, stdout: "inherit", stderr: "inherit",
+      });
+    } else {
+      server = Bun.spawn(["node", resolve("packages/web/node_modules/next/dist/bin/next"), "dev", "--hostname", "127.0.0.1", "--port", port], {
+        cwd: "packages/web", env, stdout: "inherit", stderr: "inherit",
+      });
+    }
     const started = Date.now();
     while (true) {
       abort.signal.throwIfAborted();
@@ -180,10 +230,10 @@ export async function runLocalE2e(tier: "api" | "ui", args: string[] = []): Prom
     { env, stdout: "inherit", stderr: "inherit" });
     return await tests.exited;
   } finally {
-    for (const child of [tests, server]) {
+    for (const child of [tests, server, build]) {
       if (child && child.exitCode === null) {
         child.kill();
-        await Promise.race([child.exited, Bun.sleep(5000)]);
+        await settleWithin(child.exited, 5000);
         if (child.exitCode === null) { child.kill("SIGKILL"); await child.exited; }
       }
     }
