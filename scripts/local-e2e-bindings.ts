@@ -1,6 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { copyFileSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import type { PlatformProxy } from "../packages/worker/node_modules/wrangler";
 import type { D1Database, KVNamespace } from "../packages/worker/node_modules/@cloudflare/workers-types";
@@ -8,6 +9,150 @@ import { localD1BaseUrl } from "../packages/web/src/lib/d1";
 
 type Bindings = { DB: D1Database; CACHE: KVNamespace };
 type LocalWorker = { default: { fetch(request: Request, env: Bindings & { WORKER_SECRET?: string; WORKER_READ_SECRET?: string }): Promise<Response> } };
+
+/**
+ * Split a migration file into statements the way wrangler's local
+ * `d1 execute` does. Migrations carry triggers, whose bodies contain `;`, so
+ * a quote-aware split is not enough: the statement ends only after the `END`
+ * that closes the body. Ported from wrangler's `src/d1/splitter.ts` state
+ * machine; the cursor moves by token, so a `;` inside `--` quotes or a
+ * quoted identifier never splits.
+ */
+export function splitStatements(sql: string): string[] {
+  // D1 runs each batch in its own transaction, so an exported dump's explicit
+  // BEGIN TRANSACTION;/COMMIT; pair must be dropped (wrangler does the same).
+  const source = sql.includes("BEGIN TRANSACTION") ? sql.replace("BEGIN TRANSACTION;", "").replace("COMMIT;", "") : sql;
+  const text = source.replace(/\r\n/g, "\n");
+  type State = "INVALID" | "START" | "NORMAL" | "EXPLAIN" | "CREATE" | "TRIGGER" | "SEMI" | "END";
+  type Token = "SEMI" | "WS" | "OTHER" | "EXPLAIN" | "CREATE" | "TEMP" | "TRIGGER" | "END";
+  const transitions: Record<State, Record<Token, State>> = {
+    INVALID: { SEMI: "START", WS: "INVALID", OTHER: "NORMAL", EXPLAIN: "EXPLAIN", CREATE: "CREATE", TEMP: "NORMAL", TRIGGER: "NORMAL", END: "NORMAL" },
+    START: { SEMI: "START", WS: "START", OTHER: "NORMAL", EXPLAIN: "EXPLAIN", CREATE: "CREATE", TEMP: "NORMAL", TRIGGER: "NORMAL", END: "NORMAL" },
+    NORMAL: { SEMI: "START", WS: "NORMAL", OTHER: "NORMAL", EXPLAIN: "NORMAL", CREATE: "NORMAL", TEMP: "NORMAL", TRIGGER: "NORMAL", END: "NORMAL" },
+    EXPLAIN: { SEMI: "START", WS: "EXPLAIN", OTHER: "EXPLAIN", EXPLAIN: "NORMAL", CREATE: "CREATE", TEMP: "NORMAL", TRIGGER: "NORMAL", END: "NORMAL" },
+    CREATE: { SEMI: "START", WS: "CREATE", OTHER: "NORMAL", EXPLAIN: "NORMAL", CREATE: "NORMAL", TEMP: "CREATE", TRIGGER: "TRIGGER", END: "NORMAL" },
+    TRIGGER: { SEMI: "SEMI", WS: "TRIGGER", OTHER: "TRIGGER", EXPLAIN: "TRIGGER", CREATE: "TRIGGER", TEMP: "TRIGGER", TRIGGER: "TRIGGER", END: "TRIGGER" },
+    SEMI: { SEMI: "SEMI", WS: "SEMI", OTHER: "TRIGGER", EXPLAIN: "TRIGGER", CREATE: "TRIGGER", TEMP: "TRIGGER", TRIGGER: "TRIGGER", END: "END" },
+    END: { SEMI: "START", WS: "END", OTHER: "TRIGGER", EXPLAIN: "TRIGGER", CREATE: "TRIGGER", TEMP: "TRIGGER", TRIGGER: "TRIGGER", END: "TRIGGER" },
+  };
+  const tokenOfWord = (word: string): Token => {
+    switch (word.toLowerCase()) {
+      case "explain": return "EXPLAIN";
+      case "create": return "CREATE";
+      case "temp":
+      case "temporary": return "TEMP";
+      case "trigger": return "TRIGGER";
+      case "end": return "END";
+      default: return "OTHER";
+    }
+  };
+  const isWordChar = (char: string) => /[A-Za-z0-9_$]/.test(char) || char.charCodeAt(0) > 0x7f;
+  // Offset just past the `;` that ends the statement starting at `from`, such
+  // that `text.slice(from, end - 1)` is the statement body.
+  const statementEnd = (from: number): number | undefined => {
+    let state: State = "INVALID";
+    let index = from;
+    while (index < text.length) {
+      const char = text[index] as string;
+      let token: Token;
+      if (char === ";") {
+        token = "SEMI";
+        index++;
+      } else if (/\s/.test(char)) {
+        token = "WS";
+        index++;
+      } else if ((char === "/" && text[index + 1] === "*") || (char === "-" && text[index + 1] === "-")) {
+        const close = char === "/" ? text.indexOf("*/", index + 2) : text.indexOf("\n", index + 2);
+        if (close === -1) return undefined;
+        index = char === "/" ? close + 2 : close + 1;
+        token = "WS";
+      } else if (char === "'" || char === '"' || char === "`" || char === "[") {
+        const close = text.indexOf(char === "[" ? "]" : char, index + 1);
+        if (close === -1) return undefined;
+        index = close + 1;
+        token = "OTHER";
+      } else if (isWordChar(char)) {
+        const wordStart = index;
+        while (index < text.length && isWordChar(text[index] as string)) index++;
+        token = tokenOfWord(text.slice(wordStart, index));
+      } else {
+        index++;
+        token = "OTHER";
+      }
+      state = transitions[state][token];
+      if (state === "START") return index;
+    }
+    return undefined;
+  };
+  // A comment-only span is not a query: D1 rejects empty prepares, and
+  // wrangler's splitter treats comments as whitespace.
+  const isQuery = (statement: string) => statement.replace(/--[^\n]*|#[^\n]*|\/\*[\s\S]*?\*\//g, "").trim().length > 0;
+  const statements: string[] = [];
+  let start = 0;
+  while (start < text.length) {
+    const end = statementEnd(start);
+    const statement = text.slice(start, end === undefined ? text.length : end - 1).trim();
+    if (isQuery(statement)) statements.push(statement);
+    if (end === undefined) break;
+    start = end;
+  }
+  return statements;
+}
+
+/**
+ * Apply the migrations in one Miniflare instance, reproducing what
+ * `wrangler d1 migrations apply --local` does: create the tracking table, run
+ * each file's statements in a batch together with its bookkeeping insert.
+ *
+ * The CLI is not used because it starts a fresh Miniflare (and workerd child)
+ * per migration file; on a loaded host that measured 30-50s for this
+ * repository's set against about 1s for a single instance. This is test-only
+ * plumbing over the same D1 binding type the suite runs against.
+ *
+ * `databaseId` must equal the id `getPlatformProxy` later resolves from the
+ * config: Miniflare names the persistence file after it, so a mismatched id
+ * writes a second, empty database that the binding never opens.
+ */
+async function applyMigrations(directory: string, persistTo: string, databaseId: string, signal?: AbortSignal): Promise<void> {
+  const files = readdirSync(directory).filter((name) => name.endsWith(".sql")).sort();
+  if (files.length === 0) throw new Error(`No migrations present at ${directory}`);
+  const scripts = files.map((name) => {
+    const statements = splitStatements(readFileSync(join(directory, name), "utf8"));
+    if (statements.length === 0) throw new Error(`Local D1 migrations failed: ${name}: no statements`);
+    return [name, [...statements, `INSERT INTO "d1_migrations" (name) values ('${name.replace(/'/g, "''")}')`]] as const;
+  });
+  const wranglerEntry = createRequire(resolve("packages/worker/package.json")).resolve("wrangler");
+  const { Miniflare, convertV4MiniflareOptions } = await import(createRequire(wranglerEntry).resolve("miniflare") as string);
+  const mf = new Miniflare(convertV4MiniflareOptions({ modules: true, script: "", resourcePersistencePath: join(persistTo, "v3"), d1Databases: { DATABASE: databaseId } }));
+  // An interrupt must stop the work in progress, not just the next file: the
+  // caller's cleanup only runs once this returns, and each batch or instance
+  // start can take seconds on a loaded host.
+  let rejectOnAbort: (reason: unknown) => void = () => undefined;
+  const interrupted = new Promise<never>((_, reject) => { rejectOnAbort = reject; });
+  const onAbort = () => rejectOnAbort(signal?.reason ?? new Error("Interrupted"));
+  signal?.addEventListener("abort", onAbort, { once: true });
+  const abortable = <T>(work: Promise<T>): Promise<T> => Promise.race([work, interrupted]);
+  try {
+    if (signal?.aborted) throw signal.reason;
+    const db = await abortable(mf.getD1Database("DATABASE")) as unknown as D1Database;
+    await abortable(db.prepare('CREATE TABLE IF NOT EXISTS "d1_migrations"(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT UNIQUE, applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL)').run());
+    const applied = await db.prepare('SELECT name FROM "d1_migrations"').all<{ name: string }>();
+    const done = new Set(applied.results.map(({ name }) => name));
+    for (const [name, queries] of scripts) {
+      if (done.has(name)) continue;
+      if (signal?.aborted) throw signal.reason;
+      try {
+        await abortable(db.batch(queries.map((query) => db.prepare(query))));
+      } catch (error) {
+        if (signal?.aborted) throw signal.reason;
+        throw new Error(`Local D1 migrations failed: ${name}: ${(error as { cause?: Error }).cause?.message ?? (error as Error).message}`);
+      }
+    }
+  } finally {
+    signal?.removeEventListener("abort", onAbort);
+    await mf.dispose();
+  }
+}
 
 export async function verifyLocalMarker(env: Record<string, string>): Promise<void> {
   const base = localD1BaseUrl({
@@ -92,20 +237,13 @@ export async function localIsolatedEnv(migrations = resolve("scripts/migrations"
       copyFileSync(join(migrations, name), join(migrationDir, `${String(index).padStart(4, "0")}-${name}`));
     }
     const configPath = join(state, "wrangler.json");
+    const databaseId = runId;
     writeFileSync(configPath, JSON.stringify({
       name: "pew-local-test", compatibility_date: "2026-03-01", workers_dev: false, routes: [],
-      d1_databases: [{ binding: "DB", database_name: "pew-local-test", database_id: runId, migrations_dir: migrationDir }],
+      d1_databases: [{ binding: "DB", database_name: "pew-local-test", database_id: databaseId, migrations_dir: migrationDir }],
       kv_namespaces: [{ binding: "CACHE", id: runId.replaceAll("-", "") }],
     }));
-    const command = Bun.spawn([
-      "node", resolve("packages/worker/node_modules/wrangler/bin/wrangler.js"),
-      "d1", "migrations", "apply", "DB", "--local", "--config", configPath, "--persist-to", state,
-    ], { env, stdin: "ignore", stdout: "pipe", stderr: "pipe" });
-    const stopMigration = () => command.kill();
-    signal?.addEventListener("abort", stopMigration, { once: true });
-    const [stdout, stderr, code] = await Promise.all([new Response(command.stdout).text(), new Response(command.stderr).text(), command.exited]).finally(() => signal?.removeEventListener("abort", stopMigration));
-    signal?.throwIfAborted();
-    if (code) throw new Error(`Local D1 migrations failed: ${stdout}\n${stderr}`);
+    await applyMigrations(migrationDir, state, databaseId, signal);
     const { getPlatformProxy } = await import("../packages/worker/node_modules/wrangler");
     proxy = await getPlatformProxy<Bindings>({ configPath, envFiles: [], persist: { path: join(state, "v3") }, remoteBindings: false });
     const bindings = proxy.env;
