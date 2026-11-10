@@ -1,3 +1,5 @@
+# CI slot standard v1 (nocoo/base-ci docs/slots.md): impl S1–S3, G1–G2, B1, L1, L2, L3, Z1 via quality.yml;
+# na L1.5, P1 in slot-status. nocoo/base-ci v2026.12: top-level slot jobs, L2/L3 folded into quality.yml.
 name: CI
 
 on:
@@ -7,57 +9,63 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   l1-pre-commit-selftest:
     name: "L1 Pre-commit Gate Self-test"
     if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    uses: nocoo/base-ci/.github/workflows/test-job.yml@633a5545fcfec91b688840650d4edf3e9cc1abbd  # v2026.10
+    uses: nocoo/base-ci/.github/workflows/test-job.yml@1ea10ecab22b72512399485391603fe03a161016  # v2026.12
     with:
       runtime-version: "1.4.0"
-      install-policy: "blocked"
+      install-policy: blocked
       timeout-minutes: 90
-      pre-command: "bun run build"
-      command: "bun run test:l1-gate"
+      pre-command: bun run build
+      command: bun run test:l1-gate
 
   quality:
-    uses: nocoo/base-ci/.github/workflows/quality.yml@633a5545fcfec91b688840650d4edf3e9cc1abbd  # v2026.10
+    uses: nocoo/base-ci/.github/workflows/quality.yml@1ea10ecab22b72512399485391603fe03a161016  # v2026.12
     with:
       runtime-version: "1.4.0"
-      install-policy: "blocked"
-      coverage-path: "coverage"
-      prepare-command: "bun run build"
-      lint-command: "bun run lint"
-      test-command: "bun run test:coverage"
-      typecheck: false
-      disabled-check-reasons: '{"typecheck": "typecheck already executed as first step inside bun run lint"}'
-      osv-config: "osv-scanner.toml"
-
-  api-e2e:
-    name: "L2 API E2E"
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    uses: nocoo/base-ci/.github/workflows/test-job.yml@633a5545fcfec91b688840650d4edf3e9cc1abbd  # v2026.10
-    with:
-      runtime-version: "1.4.0"
-      install-policy: "blocked"
-      timeout-minutes: 15
-      pre-command: "bun run build"
-      command: "bun run test:e2e"
-
-  browser-e2e:
-    name: "L3 Browser E2E"
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    uses: nocoo/base-ci/.github/workflows/test-job.yml@633a5545fcfec91b688840650d4edf3e9cc1abbd  # v2026.10
-    with:
-      runtime-version: "1.4.0"
-      install-policy: "blocked"
-      browser: "chromium"
-      timeout-minutes: 20
-      pre-command: "bun run build"
-      command: "bun run test:e2e:ui"
+      node-version: "26.12.1"
+      install-policy: blocked
+      coverage-path: coverage
+      prepare-command: bun run build
+      typecheck-command: bun run typecheck
+      lint-command: bunx biome check --no-errors-on-unmatched --error-on-warnings --max-diagnostics=500 . && bun run gate:dynamic-delete && bun run gate:ts-expect-error
+      test-command: bun run test:coverage
+      osv-config: osv-scanner.toml
+      gitleaks-config: .gitleaks.toml
+      build: true
+      build-command: bun run build
+      workflow-lint: true
+      workflow-lint-files: .github/workflows/ci.yml .github/workflows/release.yml
+      workflow-lint-required-workflow: nocoo/base-ci/.github/workflows/deploy-docker.yml
+      workflow-lint-yamllint: true
+      l2: true
+      l2-command: bun run test:e2e
+      l3: true
+      l3-browser: chromium
+      l3-prepare-command: bun run build
+      l3-command: bun run test:e2e:ui
+      slot-status: >-
+        {"S1": {"status": "impl"},
+        "S2": {"status": "impl"},
+        "S3": {"status": "impl"},
+        "G1": {"status": "impl"},
+        "G2": {"status": "impl"},
+        "B1": {"status": "impl"},
+        "L1": {"status": "impl"},
+        "L1.5": {"status": "na", "reason": "无 @cloudflare/vitest-pool-workers / miniflare Worker 运行时测试套件"},
+        "L2": {"status": "impl"},
+        "L3": {"status": "impl"},
+        "P1": {"status": "na", "reason": "monorepo 根为 private；CLI 发布走授权流程与 npm publish --dry-run，无 ci:package 脚本"},
+        "Z1": {"status": "impl"}}
 
   container-smoke:
     name: "Linux Image Native and Startup Smoke"
-    uses: nocoo/base-ci/.github/workflows/test-job.yml@633a5545fcfec91b688840650d4edf3e9cc1abbd  # v2026.10
+    uses: nocoo/base-ci/.github/workflows/test-job.yml@1ea10ecab22b72512399485391603fe03a161016  # v2026.12
     with:
       runtime: "none"
       node-version: "26.12.1"
@@ -65,11 +73,3 @@ jobs:
       command: |
         docker build --platform linux/amd64 --tag pew-ci:${{ github.sha }} .
         node scripts/smoke-container.mjs pew-ci:${{ github.sha }}
-
-  release-smoke:
-    name: "Release Workflow Smoke"
-    uses: nocoo/base-ci/.github/workflows/workflow-lint.yml@633a5545fcfec91b688840650d4edf3e9cc1abbd  # v2026.10
-    with:
-      files: ".github/workflows/ci.yml .github/workflows/release.yml"
-      required-reusable-workflow: "nocoo/base-ci/.github/workflows/deploy-docker.yml"
-      yamllint: true
