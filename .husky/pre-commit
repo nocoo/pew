@@ -93,7 +93,7 @@ fi
 # Invoke vitest with --coverage directly so a staged package.json script cannot
 # drop coverage collection while still passing thresholds in vitest.config.ts.
 bun x vitest run --coverage
-if [ ! -d coverage ] || [ ! -f coverage/index.html ]; then
+if [ ! -d coverage ] || [ ! -f coverage/index.html ] || [ ! -f coverage/coverage-summary.json ]; then
   echo "pre-commit: coverage output is missing after vitest — coverage must run on the index snapshot" >&2
   exit 1
 fi

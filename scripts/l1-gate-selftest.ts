@@ -172,48 +172,31 @@ function runProbes(wt: string, baseline: { source: string; test: string }): Prob
 	);
 	resetProbe(wt, baseline);
 
-	stageFile(wt, PROBE_REL_SOURCE, `${baseline.source}\nexport function l1ProbeUncoveredStmt(): number { return 42; }\n`);
-	push("coverage-statements", true, runHook(wt), true, "uncovered export");
-	resetProbe(wt, baseline);
+	const vitestRel = "vitest.config.ts";
+	const vitestGood = () => readFileSync(join(repoRoot, vitestRel), "utf8");
 
-	const covBranch = `${baseline.source}
-export function l1ProbeBranches(flag: boolean): number {
-  if (flag) return 1;
-  if (!flag) return 2;
-  return 3;
-}
-`;
-	stageFile(
-		wt,
-		PROBE_REL_TEST,
-		`${baseline.test}\nimport { l1ProbeBranches } from "./l1-probe.js";\nit("one branch", () => { expect(l1ProbeBranches(false)).toBe(2); });\n`,
-	);
-	stageFile(wt, PROBE_REL_SOURCE, covBranch);
-	push("coverage-branches", true, runHook(wt), true, "missing branch");
-	resetProbe(wt, baseline);
+	const stageThresholdProbe = (
+		id: string,
+		metric: "statements" | "branches" | "functions" | "lines",
+		floor: number,
+		detail: string,
+	) => {
+		const next = vitestGood().replace(
+			new RegExp(`${metric}:\\s*\\d+`),
+			`${metric}: ${floor}`,
+		);
+		stageIndexOnlyGoodWorktree(wt, vitestRel, next, vitestGood());
+		const run = runHook(wt);
+		git(["reset", "HEAD", "--", vitestRel], wt);
+		git(["checkout", "--", vitestRel], wt);
+		push(id, true, run, run.status !== 0, detail);
+		resetProbe(wt, baseline);
+	};
 
-	stageFile(
-		wt,
-		PROBE_REL_SOURCE,
-		`${baseline.source}\nexport function l1ProbeUncoveredFn(): void { return undefined; }\n`,
-	);
-	push("coverage-functions", true, runHook(wt), true, "uncovered function");
-	resetProbe(wt, baseline);
-
-	stageFile(
-		wt,
-		PROBE_REL_SOURCE,
-		`${baseline.source}
-export function l1ProbeUncoveredLines(): number {
-  const a = 1;
-  const b = 2;
-  const c = 3;
-  return a + b + c;
-}
-`,
-	);
-	push("coverage-lines", true, runHook(wt), true, "uncovered lines");
-	resetProbe(wt, baseline);
+	stageThresholdProbe("coverage-statements", "statements", 100, "statements floor");
+	stageThresholdProbe("coverage-branches", "branches", 96, "branches floor");
+	stageThresholdProbe("coverage-functions", "functions", 100, "functions floor");
+	stageThresholdProbe("coverage-lines", "lines", 100, "lines floor");
 
 	stageFile(wt, "packages/core/src/l1-probe-lint.ts", "var l1ProbeLintBad = 1;\nexport {};\n");
 	const lint = runHook(wt);
@@ -289,13 +272,11 @@ export function l1ProbeUncoveredLines(): number {
 	push("missing-bun", true, runHook(wt, { PATH: "/usr/bin:/bin" }), true, "PATH without bun");
 	resetProbe(wt, baseline);
 
-	const vitestRel = "vitest.config.ts";
-	const vitestGood = readFileSync(join(repoRoot, vitestRel), "utf8");
-	const vitestBad = vitestGood.replace(
-		"coverage: {",
-		"coverage: { enabled: false,",
+	const vitestNoSummary = vitestGood().replace(
+		'"json-summary"',
+		'"json-summary-disabled"',
 	);
-	stageIndexOnlyGoodWorktree(wt, vitestRel, vitestBad, vitestGood);
+	stageIndexOnlyGoodWorktree(wt, vitestRel, vitestNoSummary, vitestGood());
 	const noCov = runHook(wt);
 	git(["reset", "HEAD", "--", vitestRel], wt);
 	git(["checkout", "--", vitestRel], wt);
@@ -304,11 +285,8 @@ export function l1ProbeUncoveredLines(): number {
 		"coverage-without-output",
 		true,
 		noCov,
-		noCov.status !== 0 &&
-			(noCovText.includes("coverage output is missing") ||
-				noCovText.includes("coverage") ||
-				noCovText.includes("FAIL")),
-		"coverage dir guard",
+		noCov.status !== 0 && noCovText.includes("coverage output is missing"),
+		"coverage-summary.json guard",
 	);
 	resetProbe(wt, baseline);
 
