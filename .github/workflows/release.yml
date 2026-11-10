@@ -18,7 +18,7 @@ jobs:
     if: |
       github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.head_branch == 'main')
-    uses: nocoo/base-ci/.github/workflows/deploy-docker.yml@633a5545fcfec91b688840650d4edf3e9cc1abbd  # v2026.10
+    uses: nocoo/base-ci/.github/workflows/deploy-docker.yml@1ea10ecab22b72512399485391603fe03a161016 # v2026.12
     with:
       tailscale: true
       environment: pew / production
