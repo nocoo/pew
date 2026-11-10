@@ -60,7 +60,7 @@ jobs:
     uses: nocoo/base-ci/.github/workflows/test-job.yml@633a5545fcfec91b688840650d4edf3e9cc1abbd  # v2026.10
     with:
       runtime: "none"
-      node-version: "22.23.4"
+      node-version: "26.12.1"
       timeout-minutes: 25
       command: |
         docker build --platform linux/amd64 --tag pew-ci:${{ github.sha }} .
