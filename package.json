@@ -1,6 +1,6 @@
 {
   "name": "pew-monorepo",
-  "version": "3.5.1",
+  "version": "3.5.2",
   "private": true,
   "workspaces": [
     "packages/*"
@@ -21,6 +21,7 @@
     "test:e2e:ui": "bun run scripts/run-e2e-ui.ts",
     "test:e2e:bdd": "bun run test:e2e:ui",
     "test:security": "bun run scripts/run-security.ts",
+    "test:l1-gate": "bun scripts/l1-gate-selftest.ts",
     "verify": "bun run lint && bun run test:coverage && bun run test:e2e && bun run test:e2e:ui && bun run test:security",
     "sync": "bun run build && NODE_TLS_REJECT_UNAUTHORIZED=0 bun packages/cli/dist/bin.js sync --dev",
     "sync:prod": "bun run build && bun packages/cli/dist/bin.js sync",
@@ -29,15 +30,15 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.4",
-    "@playwright/test": "1.64.1",
+    "@biomejs/biome": "2.6.6",
+    "@playwright/test": "1.65.0",
     "@types/bun": "1.4.4",
-    "@vitest/coverage-v8": "5.0.5",
+    "@vitest/coverage-v8": "5.1.0",
     "husky": "^9.1.7",
     "lint-staged": "17.6.0",
     "oxc-parser": "0.156.0",
     "typescript": "^7.0.2",
-    "vitest": "5.0.5"
+    "vitest": "5.1.0"
   },
   "overrides": {
     "brace-expansion@^2": "2.0.3",

@@ -40,10 +40,10 @@ describe("workbuddy string length caps", () => {
 
   it("keeps a usage row whose model sits exactly at MAX_STRING_LENGTH", async () => {
     const path = join(tempDir, "edge.jsonl");
-    await writeFile(path, JSON.stringify({
+    await writeFile(path, `${JSON.stringify({
       timestamp: Date.now(),
       providerData: { model: "m".repeat(1024), rawUsage: { prompt_tokens: 100 } },
-    }) + "\n");
+    })}\n`);
 
     const res = await parseWorkbuddyFile({ filePath: path, startOffset: 0 });
     expect(res.deltas).toHaveLength(1);
@@ -72,12 +72,12 @@ describe("workbuddy string length caps", () => {
 
   it("drops an overlong model from a session snapshot instead of queueing it", async () => {
     const path = join(tempDir, "session-model.jsonl");
-    await writeFile(path, JSON.stringify({
+    await writeFile(path, `${JSON.stringify({
       timestamp: Date.now(),
       sessionId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
       providerData: { model: "y".repeat(2000) },
       message: { role: "assistant", content: "ok" },
-    }) + "\n");
+    })}\n`);
 
     const snaps = await collectWorkbuddySessions(path);
     expect(snaps).toHaveLength(1);

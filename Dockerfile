@@ -1,4 +1,4 @@
-ARG NODE_VERSION=22
+ARG NODE_VERSION=26
 FROM node:${NODE_VERSION}-slim AS base
 
 # Keep Bun for workspace installs/build scripts while pinning every Node.js
@@ -28,7 +28,7 @@ WORKDIR /app
 # resolver cannot load sharp's @img/sharp-linux-x64 native binding from inside
 # Next.js's Turbopack page-data collection workers under bun's isolated install
 # layout. The base image pins Node.js to the same supported major as the runner.
-RUN node --version | grep -Eq '^v22\.'
+RUN node --version | grep -Eq '^v26\.'
 
 COPY --from=deps /app ./
 COPY . .

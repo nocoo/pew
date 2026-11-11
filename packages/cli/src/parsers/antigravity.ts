@@ -1,4 +1,5 @@
-import { chmod, copyFile, lstat, mkdtemp, readdir, rm } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { chmod, copyFile, lstat, mkdtemp, readFile, readdir, rm } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
@@ -178,7 +179,8 @@ async function fingerprint(path: string): Promise<string | null> {
   const after = await lstat(path, { bigint: true });
   const identity = (st: typeof before) => `${st.dev}:${st.ino}:${st.size}:${st.mtimeNs}:${st.ctimeNs}`;
   if (identity(before) !== identity(after)) throw new Error("Unstable Antigravity source snapshot");
-  return identity(after);
+  const digest = createHash("sha256").update(await readFile(path)).digest("hex");
+  return `${identity(after)}:${digest}`;
 }
 
 export function validateAntigravitySession(snapshot: SessionSnapshot): SessionSnapshot {

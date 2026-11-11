@@ -40,6 +40,7 @@ import {
   GitCompareArrows,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import type { ElementType } from "react";
@@ -49,8 +50,8 @@ import {
   BASE_NAV_GROUPS,
   type NavGroupDef,
 } from "@/lib/navigation";
+import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/version";
-import { ghostIconClassName } from "@/components/ui/button";
 
 const ICON_MAP: Record<string, ElementType> = {
   LayoutDashboard,
@@ -72,6 +73,8 @@ const ICON_MAP: Record<string, ElementType> = {
   Building2,
   GitCompareArrows,
 };
+
+const SIDEBAR_MARK_SLOT_CLASS = "flex w-full items-center";
 
 interface NavItem {
   href: string;
@@ -118,7 +121,13 @@ function openNavItem(href: string, external: boolean | undefined, push: (href: s
 
 function PewMark() {
   return (
-    <Image src="/logo-80.png" alt="pew" width={24} height={24} className="shrink-0" />
+    <Image
+      src="/logo-80.png"
+      alt=""
+      width={28}
+      height={28}
+      className="h-7 w-7 shrink-0 object-contain"
+    />
   );
 }
 
@@ -144,138 +153,144 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const avatar = (
     <Avatar className="h-9 w-9 shrink-0">
       {userImage ? <AvatarImage src={userImage} alt={userName} /> : null}
-      <AvatarFallback className="text-xs bg-basalt-primary text-basalt-primary-foreground">
-        {userInitial}
-      </AvatarFallback>
+      <AvatarFallback className="text-basalt-sm">{userInitial}</AvatarFallback>
     </Avatar>
   );
 
-  if (collapsed) {
-    return (
-      <BasaltSidebar collapsed>
-        <SidebarHeader className="justify-center px-0">
-          <PewMark />
-        </SidebarHeader>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={`${ghostIconClassName} mb-2 h-10 w-10 self-center hover:bg-basalt-accent`}
-          onClick={onToggle}
-          aria-label="Expand sidebar"
+  return (
+    <BasaltSidebar collapsed={collapsed}>
+      <SidebarHeader>
+        <div
+          className={cn(
+            SIDEBAR_MARK_SLOT_CLASS,
+            collapsed ? "justify-center" : "justify-between pl-basalt-layout-sm",
+          )}
         >
-          <PanelLeft aria-hidden="true" strokeWidth={1.5} />
-        </Button>
-        <SidebarNav className="w-full items-center gap-1 pt-1">
-          {allNavItems.map((item) => (
-            <Tooltip key={item.href} delayDuration={0}>
-              <TooltipTrigger asChild>
-                <SidebarIconItem
-                  active={!item.external && isActivePath(pathname, item.href)}
-                  aria-label={item.label}
-                  className="self-center"
-                  onClick={() => openNavItem(item.href, item.external, router.push)}
-                >
-                  <item.icon className="h-4 w-4" strokeWidth={1.5} />
-                </SidebarIconItem>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={8}>
-                {item.label}
-              </TooltipContent>
-            </Tooltip>
-          ))}
-        </SidebarNav>
-        <SidebarFooter className="flex w-full justify-center px-0">
+          <Link
+            href="/dashboard"
+            aria-label="pew home"
+            className="flex items-center gap-basalt-space-lg text-basalt-foreground no-underline hover:no-underline"
+          >
+            <PewMark />
+            {collapsed ? null : (
+              <>
+                <span className="text-basalt-xl font-semibold text-basalt-foreground">pew</span>
+                <span className="rounded-basalt-md bg-basalt-secondary px-basalt-space-md py-basalt-space-xs text-basalt-sm leading-basalt-tight font-medium text-basalt-muted-foreground">
+                  v{APP_VERSION}
+                </span>
+              </>
+            )}
+          </Link>
+          {collapsed ? null : (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onToggle}
+              aria-label="Collapse sidebar"
+            >
+              <PanelLeft aria-hidden="true" strokeWidth={1.5} />
+            </Button>
+          )}
+        </div>
+      </SidebarHeader>
+      {collapsed ? (
+        <>
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
-                className="h-9 w-9 p-0"
-                onClick={() => signOut({ callbackUrl: "/login" })}
-                aria-label={`${userName} · Click to sign out`}
+                size="icon"
+                onClick={onToggle}
+                aria-label="Expand sidebar"
               >
-                {avatar}
+                <PanelLeft aria-hidden="true" strokeWidth={1.5} />
               </Button>
             </TooltipTrigger>
             <TooltipContent side="right" sideOffset={8}>
-              {userName} · Click to sign out
+              Expand sidebar
             </TooltipContent>
           </Tooltip>
-        </SidebarFooter>
-      </BasaltSidebar>
-    );
-  }
-
-  return (
-    <BasaltSidebar collapsed={false}>
-      <SidebarHeader>
-        <div className="flex w-full items-center justify-between">
-          <div className="flex min-w-0 items-center gap-3 pl-3">
-            <PewMark />
-            <span className="shrink-0 font-handwriting text-2xl leading-none font-bold tracking-tight text-basalt-foreground">
-              pew
-            </span>
-            <span className="shrink-0 rounded-md bg-basalt-secondary px-1.5 py-0.5 text-[10px] leading-none font-medium text-basalt-muted-foreground">
-              v{APP_VERSION}
-            </span>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={`${ghostIconClassName} h-7 w-7 shrink-0`}
-            onClick={onToggle}
-            aria-label="Collapse sidebar"
-          >
-            <PanelLeft aria-hidden="true" strokeWidth={1.5} />
-          </Button>
-        </div>
-      </SidebarHeader>
-      <SidebarNav className="pt-1">
-        {navGroups.map((group) => (
-          <SidebarGroup key={group.label} label={group.label} defaultOpen={group.defaultOpen ?? true}>
-            {group.items.map((item) => (
-              <SidebarItem
-                key={item.href}
-                active={!item.external && isActivePath(pathname, item.href)}
-                onClick={() => openNavItem(item.href, item.external, router.push)}
-              >
-                <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.5} />
-                <span className="flex-1 truncate text-left">{item.label}</span>
-                {item.external ? (
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center">
-                    <ArrowUpRight
-                      className="h-3 w-3 text-basalt-muted-foreground"
-                      strokeWidth={1.5}
-                    />
-                  </span>
-                ) : null}
-              </SidebarItem>
+          <SidebarNav>
+            {allNavItems.map((item) => (
+              <Tooltip key={item.href} delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <SidebarIconItem
+                    active={!item.external && isActivePath(pathname, item.href)}
+                    aria-label={item.label}
+                    onClick={() => openNavItem(item.href, item.external, router.push)}
+                  >
+                    <item.icon className="h-4 w-4" strokeWidth={1.5} />
+                  </SidebarIconItem>
+                </TooltipTrigger>
+                <TooltipContent side="right" sideOffset={8}>
+                  {item.label}
+                </TooltipContent>
+              </Tooltip>
             ))}
-          </SidebarGroup>
-        ))}
-      </SidebarNav>
-      <SidebarFooter>
-        <SidebarUser
-          name={userName}
-          email={userEmail}
-          avatar={avatar}
-          action={
-            <Tooltip>
+          </SidebarNav>
+          <SidebarFooter>
+            <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={`${ghostIconClassName} h-8 w-8 shrink-0 hover:bg-basalt-accent`}
+                  onClick={() => signOut({ callbackUrl: "/login" })}
+                  aria-label={`${userName} · Click to sign out`}
+                >
+                  {avatar}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                {userName} · Click to sign out
+              </TooltipContent>
+            </Tooltip>
+          </SidebarFooter>
+        </>
+      ) : (
+        <>
+          <SidebarNav>
+            {navGroups.map((group) => (
+              <SidebarGroup key={group.label} label={group.label} defaultOpen={group.defaultOpen ?? true}>
+                {group.items.map((item) => (
+                  <SidebarItem
+                    key={item.href}
+                    active={!item.external && isActivePath(pathname, item.href)}
+                    onClick={() => openNavItem(item.href, item.external, router.push)}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+                    <span className="flex-1 truncate text-left">{item.label}</span>
+                    {item.external ? (
+                      <ArrowUpRight
+                        className="h-basalt-4 w-basalt-4 shrink-0 text-basalt-muted-foreground"
+                        strokeWidth={1.5}
+                        aria-hidden="true"
+                      />
+                    ) : null}
+                  </SidebarItem>
+                ))}
+              </SidebarGroup>
+            ))}
+          </SidebarNav>
+          <SidebarFooter>
+            <SidebarUser
+              name={userName}
+              email={userEmail}
+              avatar={avatar}
+              action={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="w-8 shrink-0"
                   onClick={() => signOut({ callbackUrl: "/login" })}
                   aria-label="Sign out"
                 >
                   <LogOut aria-hidden="true" strokeWidth={1.5} />
                 </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top">Sign out</TooltipContent>
-            </Tooltip>
-          }
-        />
-      </SidebarFooter>
+              }
+            />
+          </SidebarFooter>
+        </>
+      )}
     </BasaltSidebar>
   );
 }

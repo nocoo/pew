@@ -66,11 +66,13 @@ describe("real D1 lifecycle", () => {
     const before = new Set(readdirSync(tmpdir()).filter((name) => name.startsWith("pew-e2e-")));
     try {
       writeFileSync(join(migrations, "0001.sql"), sql);
-      const result = spawnSync("bun", ["--no-env-file", "-e", 'import {localIsolatedEnv} from "./scripts/local-e2e-bindings.ts"; await localIsolatedEnv(process.argv[1]);', migrations], { encoding: "utf8", timeout: 120_000 });
+      // Hang detector, not a performance budget: the Miniflare instance this
+      // spawns has been measured well past 100s on a loaded host.
+      const result = spawnSync("bun", ["--no-env-file", "-e", 'import {localIsolatedEnv} from "./scripts/local-e2e-bindings.ts"; await localIsolatedEnv(process.argv[1]);', migrations], { encoding: "utf8", timeout: 600_000 });
       expect(result.status).not.toBe(0);
       expect(result.stderr).toContain("migrations failed");
       expect(new Set(readdirSync(tmpdir()).filter((name) => name.startsWith("pew-e2e-")))).toEqual(before);
       expect(existsSync(migrations)).toBe(true);
     } finally { rmSync(migrations, { recursive: true }); }
-  }, 130_000);
+  }, 900_000);
 });

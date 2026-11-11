@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { Badge } from "@nocoo/basalt/components/badge";
+import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
@@ -597,121 +598,115 @@ export default function TeamDetailPage() {
       <MessageBanner message={message} />
 
       {/* Header */}
-      <div>
-        <div className="flex items-start gap-4">
-          {/* Team Logo */}
-          <div className="relative shrink-0 group">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-accent text-muted-foreground overflow-hidden">
-              {team.logoUrl ? (
-                // biome-ignore lint/performance/noImgElement: user-supplied image URL, not amenable to next/image domain allowlist -- external team logos
-                <img
-                  src={team.logoUrl}
-                  alt={`${team.name} logo`}
-                  className="h-14 w-14 object-cover"
-                />
-              ) : (
-                <Users className="h-6 w-6" strokeWidth={1.5} />
-              )}
-            </div>
-            {/* Logo edit overlay (owner only, hover to show) */}
-            {isOwner && (
-              <>
+      <div className="flex items-start gap-4">
+        {/* Team Logo */}
+        <div className="relative shrink-0 group">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-accent text-muted-foreground overflow-hidden">
+            {team.logoUrl ? (
+              // biome-ignore lint/performance/noImgElement: user-supplied image URL, not amenable to next/image domain allowlist -- external team logos
+              <img
+                src={team.logoUrl}
+                alt={`${team.name} logo`}
+                className="h-14 w-14 object-cover"
+              />
+            ) : (
+              <Users className="h-6 w-6" strokeWidth={1.5} />
+            )}
+          </div>
+          {/* Logo edit overlay (owner only, hover to show) */}
+          {isOwner && (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => logoInputRef.current?.click()}
+                disabled={uploadingLogo}
+                className="absolute inset-0 h-auto w-auto rounded-xl bg-black/50 opacity-0 group-hover:opacity-100 hover:bg-black/50"
+                aria-label="Change logo"
+              >
+                {uploadingLogo ? (
+                  <Loader2 className="h-4 w-4 text-white animate-spin" strokeWidth={2} />
+                ) : (
+                  <Camera className="h-4 w-4 text-white" strokeWidth={1.5} />
+                )}
+              </Button>
+              {team.logoUrl && (
                 <Button
                   type="button"
-                  variant="ghost"
-                  onClick={() => logoInputRef.current?.click()}
-                  disabled={uploadingLogo}
-                  className="absolute inset-0 h-auto w-auto rounded-xl bg-black/50 opacity-0 group-hover:opacity-100 hover:bg-black/50"
-                  aria-label="Change logo"
+                  variant="destructive"
+                  size="icon"
+                  onClick={handleRemoveLogo}
+                  className="absolute -top-1 -right-1 h-5 w-5 opacity-0 group-hover:opacity-100"
+                  aria-label="Remove logo"
                 >
-                  {uploadingLogo ? (
-                    <Loader2 className="h-4 w-4 text-white animate-spin" strokeWidth={2} />
-                  ) : (
-                    <Camera className="h-4 w-4 text-white" strokeWidth={1.5} />
-                  )}
+                  <X className="h-3 w-3" strokeWidth={2} />
                 </Button>
-                {team.logoUrl && (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="icon"
-                    onClick={handleRemoveLogo}
-                    className="absolute -top-1 -right-1 h-5 w-5 opacity-0 group-hover:opacity-100"
-                    aria-label="Remove logo"
-                  >
-                    <X className="h-3 w-3" strokeWidth={2} />
-                  </Button>
-                )}
-              </>
-            )}
-            <input
-              ref={logoInputRef}
-              type="file"
-              accept="image/png,image/jpeg"
-              onChange={handleLogoChange}
-              className="hidden"
-            />
-          </div>
-
-          {/* Team Name + Info */}
-          <div className="flex-1 min-w-0">
-            {editing ? (
-              <div className="flex items-center gap-2">
-                <Input
-                  ref={editInputRef}
-                  type="text"
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  maxLength={64}
-                  className="min-w-0 flex-1 text-lg font-semibold"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") handleRename();
-                    if (e.key === "Escape") cancelEditing();
-                  }}
-                  disabled={savingName}
-                />
-                {savingName && (
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" strokeWidth={1.5} />
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 group/name">
-                <h1 className="text-2xl md:text-3xl font-semibold font-display tracking-tight truncate">
-                  {team.name}
-                </h1>
-                {isOwner && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`${rowIconClassName} shrink-0 text-basalt-muted-foreground/50 group-hover/name:text-basalt-muted-foreground`}
-                    onClick={startEditing}
-                    aria-label="Rename team"
-                  >
-                    <Pencil strokeWidth={1.5} />
-                  </Button>
-                )}
-              </div>
-            )}
-            <p className="mt-1 text-sm text-muted-foreground">
-              {team.members.length} member
-              {team.members.length !== 1 ? "s" : ""}
-              {isOwner && " · You are the owner"}
-            </p>
-          </div>
-
-          {/* Invite button (owner only) */}
-          {isOwner && (
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="shrink-0"
-              onClick={() => openInviteDialog(team.name, team.invite_code)}
-            >
-              <UserPlus className="h-3.5 w-3.5" strokeWidth={1.5} />
-              Invite
-            </Button>
+              )}
+            </>
           )}
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/png,image/jpeg"
+            onChange={handleLogoChange}
+            className="hidden"
+          />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <PageHeader
+            title={
+              editing ? (
+                <span className="flex items-center gap-2">
+                  <Input
+                    ref={editInputRef}
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    maxLength={64}
+                    className="min-w-0 flex-1"
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleRename();
+                      if (e.key === "Escape") cancelEditing();
+                    }}
+                    disabled={savingName}
+                  />
+                  {savingName && (
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" strokeWidth={1.5} />
+                  )}
+                </span>
+              ) : (
+                <span className="flex items-center gap-2 group/name">
+                  <span className="truncate">{team.name}</span>
+                  {isOwner && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className={`${rowIconClassName} shrink-0 text-basalt-muted-foreground/50 group-hover/name:text-basalt-muted-foreground`}
+                      onClick={startEditing}
+                      aria-label="Rename team"
+                    >
+                      <Pencil strokeWidth={1.5} />
+                    </Button>
+                  )}
+                </span>
+              )
+            }
+            description={`${team.members.length} member${team.members.length !== 1 ? "s" : ""}${isOwner ? " · You are the owner" : ""}`}
+            actions={
+              isOwner ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => openInviteDialog(team.name, team.invite_code)}
+                >
+                  <UserPlus className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  Invite
+                </Button>
+              ) : undefined
+            }
+          />
         </div>
       </div>
 

@@ -6,12 +6,12 @@ import { collectWorkbuddySessions } from "../parsers/workbuddy-session.ts";
 import { parseWorkbuddyFile } from "../parsers/workbuddy.ts";
 
 function usageRow(ts: unknown, messageId: string): string {
-  return JSON.stringify({
+  return `${JSON.stringify({
     type: "message", timestamp: ts,
     providerData: { model: "m", messageId,
       rawUsage: { prompt_tokens: 100, prompt_cache_hit_tokens: 0, prompt_cache_miss_tokens: 100,
         completion_tokens: 20, completion_thinking_tokens: 5, total_tokens: 120 } },
-  }) + "\n";
+  })}\n`;
 }
 
 const TS = 1757491200000; // 2025-09-10T08:00:00.000Z
@@ -27,10 +27,10 @@ describe("workbuddy timestamp server-window gate", () => {
     const file = join(dir, "s.jsonl");
     // Date.parse accepts extended years; toISOString would render
     // "+275760-…" with a 6-digit year and 400 the whole batch.
-    writeFileSync(file, JSON.stringify({
+    writeFileSync(file, `${JSON.stringify({
       sessionId: "ses-1", type: "message", role: "assistant",
       timestamp: "+275760-09-13T00:00:00Z", message: { model: "m" },
-    }) + "\n");
+    })}\n`);
     const snaps = await collectWorkbuddySessions(file);
     rmSync(dir, { recursive: true, force: true });
     expect(snaps).toEqual([]);
@@ -39,10 +39,10 @@ describe("workbuddy timestamp server-window gate", () => {
   it("session parser: normal epoch timestamps still produce bounds", async () => {
     const dir = mkdtempSync(join(tmpdir(), "wb-gate-"));
     const file = join(dir, "s.jsonl");
-    writeFileSync(file, JSON.stringify({
+    writeFileSync(file, `${JSON.stringify({
       sessionId: "ses-1", type: "message", role: "assistant",
       timestamp: TS, message: { model: "m" },
-    }) + "\n");
+    })}\n`);
     const snaps = await collectWorkbuddySessions(file);
     rmSync(dir, { recursive: true, force: true });
     expect(snaps).toHaveLength(1);

@@ -2,24 +2,53 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const source = (file: string) => readFileSync(new URL(`../../${file}`, import.meta.url), "utf8");
-const revision = "af9a2b3f82c367d6eb6def5c3583ac717e0868ad";
+const revision = "1ea10ecab22b72512399485391603fe03a161016";
 const ci = source(".github/workflows/ci.yml");
 const release = source(".github/workflows/release.yml");
 const compose = source("deploy/compose.yaml");
 
 describe("Docker CD contract", () => {
   it("retains quality, API and browser lanes and adds a clean Linux image smoke", () => {
-    for (const command of ["bun run lint", "bun run test:coverage", "bun run test:e2e", "bun run test:e2e:ui"]) {
+    for (const command of [
+      "bun run typecheck",
+      "bun run gate:dynamic-delete",
+      "bun run test:coverage",
+      "bun run test:e2e",
+      "bun run test:e2e:ui",
+    ]) {
       expect(ci).toContain(command);
     }
-    const smoke = ci.split("  container-smoke:\n")[1]?.split("\n  release-smoke:")[0];
+    const smoke = ci.split("  container-smoke:\n")[1];
     expect(smoke).toContain(`uses: nocoo/base-ci/.github/workflows/test-job.yml@${revision}`);
     expect(smoke).toContain('runtime: "none"');
     expect(smoke).toContain("docker build --platform linux/amd64 --tag pew-ci:");
     expect(smoke).toContain("node scripts/smoke-container.mjs pew-ci:");
     expect(smoke).not.toMatch(/secrets:|build-arg|env-file/);
-    expect(ci).toContain(`uses: nocoo/base-ci/.github/workflows/workflow-lint.yml@${revision}`);
-    expect(ci).toContain('required-reusable-workflow: "nocoo/base-ci/.github/workflows/deploy-docker.yml"');
+    expect(ci).toContain("workflow-lint: true");
+    expect(ci).toContain("workflow-lint-required-workflow: nocoo/base-ci/.github/workflows/deploy-docker.yml");
+    expect(ci).toContain("l2: true");
+    expect(ci).toContain("l3: true");
+  });
+
+  it("runs every gate on a manual dispatch, not only on push and internal PRs", () => {
+    // The `head.repo.full_name` guard exists so a fork PR cannot reach the
+    // test-only CI resources. A manual dispatch is a maintainer running this
+    // branch's own gate (on this fork, the only way a feature branch gets CI),
+    // and it matched neither side of the guard: the run reported success while
+    // the E2E lanes and the pre-commit self-test had never executed. Since
+    // base-ci v2026.12 L2/L3 live inside `quality.yml`, so the flag is what
+    // has to be reachable, plus the self-test job that is still top-level.
+    expect(ci.split("  l1-pre-commit-selftest:\n")[1]?.split("\n  quality:")[0]).toContain(
+      "github.event_name == 'workflow_dispatch'",
+    );
+    const quality = ci.split("  quality:\n")[1]?.split("\n  container-smoke:")[0];
+    expect(quality).toContain("l2: true");
+    expect(quality).toContain("l3: true");
+    // The reusable workflow only runs when the caller job runs: a caller-level
+    // `if:` that excludes dispatch silently skips every folded lane.
+    if (/^\s+if:/m.test(quality ?? "")) {
+      expect(quality).toContain("github.event_name == 'workflow_dispatch'");
+    }
   });
 
   it("uses only the pinned existing release chain and exact CI provenance", () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { mkdtemp, rm, writeFile, mkdir, readFile, symlink, chmod, utimes } from "node:fs/promises";
+import { mkdtemp, rm, writeFile, mkdir, readFile, symlink, chmod, utimes, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { executeSync } from "../commands/sync.js";
@@ -3111,11 +3111,18 @@ describe("executeSync", () => {
     // First sync
     await executeSync({ stateDir, claudeDir: join(dataDir, ".claude") });
 
+    const inodeBefore = (await stat(filePath)).ino;
+
     // Simulate inode change
     const { rm: rmFile } = await import("node:fs/promises");
     await rmFile(filePath);
     await new Promise((r) => setTimeout(r, 50));
     await writeFile(filePath, content);
+
+    if ((await stat(filePath)).ino === inodeBefore) {
+      // Filesystem reused inode after replace; inode-only detection does not apply here.
+      return;
+    }
 
     // Second sync with onProgress
     const events: Array<{ source: string; phase: string; message?: string }> = [];

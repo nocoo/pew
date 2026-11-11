@@ -94,7 +94,7 @@ if [ ! -d node_modules/next ] && [ ! -d packages/web/node_modules/next ]; then
   echo "pre-commit: next is not installed — run 'bun install' and commit the result" >&2
   exit 1
 fi
-(cd packages/web && bunx next typegen)
+(cd packages/web && bun x next typegen)
 
 bash scripts/parallel-typecheck.sh
 biome check --no-errors-on-unmatched --error-on-warnings --max-diagnostics=500 .

@@ -13,12 +13,12 @@ import { parseWorkbuddyFile } from "../parsers/workbuddy.ts";
 // sane id for the same request still counts.
 
 function usageRow(id: string): string {
-  return JSON.stringify({
+  return `${JSON.stringify({
     type: "message", timestamp: 1757491200000,
     providerData: { model: "m", messageId: id,
       rawUsage: { prompt_tokens: 10, prompt_cache_hit_tokens: 0, prompt_cache_miss_tokens: 10,
         completion_tokens: 0, total_tokens: 10 } },
-  }) + "\n";
+  })}\n`;
 }
 
 describe("workbuddy parser gates oversized messageIds", () => {

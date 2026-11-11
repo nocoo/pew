@@ -37,7 +37,7 @@
   ],
   "license": "MIT",
   "engines": {
-    "node": ">=22"
+    "node": ">=26"
   },
   "dependencies": {
     "@nocoo/base-cli": "^0.3.0"

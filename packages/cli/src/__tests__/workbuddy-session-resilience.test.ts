@@ -8,13 +8,13 @@ describe("WorkBuddy session parser resilience", () => {
   it("skips primitive JSONL rows (null, array, bare string) instead of crashing", async () => {
     const dir = mkdtempSync(join(tmpdir(), "wb-session-"));
     const file = join(dir, "s.jsonl");
-    writeFileSync(file, [
+    writeFileSync(file, `${[
       "null",
       JSON.stringify({ sessionId: "s1", type: "message", message: { id: "m1", role: "user" }, timestamp: "2026-03-01T10:00:00Z" }),
       "[1,2]",
       '"just-a-string"',
       JSON.stringify({ sessionId: "s1", type: "message", message: { id: "m2", role: "assistant" }, timestamp: "2026-03-01T10:01:00Z" }),
-    ].join("\n") + "\n");
+    ].join("\n")}\n`);
 
     const sessions = await collectWorkbuddySessions(file);
 

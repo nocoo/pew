@@ -16,10 +16,10 @@ const YEAR_9999 = Date.parse("9999-12-31T23:59:59Z");
 // workbuddy must do the same instead of queueing an un-uploadable record.
 
 function usageRow(raw: Record<string, unknown>): string {
-  return JSON.stringify({
+  return `${JSON.stringify({
     type: "message", timestamp: 1757491200000,
     providerData: { model: "m", messageId: "M1", rawUsage: raw },
-  }) + "\n";
+  })}\n`;
 }
 
 describe("workbuddy parser enforces the server's record limits locally", () => {
@@ -78,8 +78,8 @@ describe("workbuddy parser enforces the server's record limits locally", () => {
     const dir = mkdtempSync(join(tmpdir(), "wb-cap-"));
     const file = join(dir, "s.jsonl");
     writeFileSync(file, [
-      JSON.stringify({ sessionId: "ses-1", type: "message", role: "assistant", timestamp: YEAR_0001, message: { model: "m" } }) + "\n",
-      JSON.stringify({ sessionId: "ses-1", type: "message", role: "assistant", timestamp: YEAR_9999, message: { model: "m" } }) + "\n",
+      `${JSON.stringify({ sessionId: "ses-1", type: "message", role: "assistant", timestamp: YEAR_0001, message: { model: "m" } })}\n`,
+      `${JSON.stringify({ sessionId: "ses-1", type: "message", role: "assistant", timestamp: YEAR_9999, message: { model: "m" } })}\n`,
       "",
     ].join("\n"));
     const snaps = await collectWorkbuddySessions(file);
@@ -91,8 +91,8 @@ describe("workbuddy parser enforces the server's record limits locally", () => {
     const dir = mkdtempSync(join(tmpdir(), "wb-cap-"));
     const file = join(dir, "s.jsonl");
     writeFileSync(file, [
-      JSON.stringify({ sessionId: "ses-1", type: "message", role: "assistant", timestamp: 0, message: { model: "m" } }) + "\n",
-      JSON.stringify({ sessionId: "ses-1", type: "message", role: "assistant", timestamp: MAX_SESSION_DURATION_SECONDS * 1000, message: { model: "m" } }) + "\n",
+      `${JSON.stringify({ sessionId: "ses-1", type: "message", role: "assistant", timestamp: 0, message: { model: "m" } })}\n`,
+      `${JSON.stringify({ sessionId: "ses-1", type: "message", role: "assistant", timestamp: MAX_SESSION_DURATION_SECONDS * 1000, message: { model: "m" } })}\n`,
       "",
     ].join("\n"));
     const snaps = await collectWorkbuddySessions(file);
