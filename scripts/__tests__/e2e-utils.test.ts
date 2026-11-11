@@ -4,7 +4,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
-import { ensurePortFree, runLocalE2e, startLocalBindings } from "../e2e-utils";
+import { apiRouteWarmupPaths, ensurePortFree, runLocalE2e, startLocalBindings } from "../e2e-utils";
 
 vi.mock("node:fs", async (importOriginal) => {
   const fs = await importOriginal<typeof import("node:fs")>();
@@ -322,4 +322,53 @@ describe("L3 browser budgets", () => {
       expect(source).not.toMatch(/^\s*process\.exitCode\s*=/m);
     },
   );
+});
+
+describe("API route warmup", () => {
+  // L2 boots `next dev`, so every route compiles on its first request and the
+  // compile counts against the per-test budget. A retired-endpoint test that
+  // hits a path with no route (e.g. /api/showcases) makes Next compile its
+  // not-found boundary — the most expensive compile in the tree, measured at
+  // 2.1min of next.js time against a 120s test budget. The lane therefore
+  // warms every route, and the not-found boundary first, before the tests run.
+  function buildTree(root: string): void {
+    const route = (dir: string) => {
+      mkdirSync(join(root, dir), { recursive: true });
+      writeFileSync(join(root, dir, "route.ts"), "export function GET() {}\n");
+    };
+    route("static");
+    route("grouped/(admin)/inside");
+    route("slot/@modal/inside");
+    route("dynamic/[slug]");
+    route("catchall/[...rest]");
+    route("optional/[[...rest]]");
+    // A directory with no route file must not produce a candidate.
+    mkdirSync(join(root, "empty/nested"), { recursive: true });
+  }
+
+  it("maps route files to warmup URLs and skips organizational folders", () => {
+    const root = mkdtempSync(join(tmpdir(), "pew-warmup-"));
+    try {
+      buildTree(root);
+      expect(apiRouteWarmupPaths(root)).toEqual([
+        "/api/catchall/e2e-warmup",
+        "/api/dynamic/e2e-warmup",
+        "/api/grouped/inside",
+        "/api/optional/e2e-warmup",
+        "/api/slot/inside",
+        "/api/static",
+      ]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("probes the not-found boundary and marks every request as a warmup", () => {
+    // The marker lets rate-limited routes skip accounting, so warming up cannot
+    // consume the quota the tests themselves rely on.
+    const source = readFileSync(join(import.meta.dirname, "../e2e-utils.ts"), "utf8");
+    expect(source).toMatch(/\/api\/\$\{WARMUP_SEGMENT\}-not-found/);
+    expect(source).toContain("pew-warmup=1");
+    expect(source).toMatch(/await warmApiRoutes\(port, abort\.signal\)/);
+  });
 });

@@ -133,6 +133,89 @@ export function assertNoLocalEnv(): void {
   }
 }
 
+const WARMUP_SEGMENT = "e2e-warmup";
+// Per-request budget. A hang detector, not a performance budget: the lane
+// runs beside the ui tier's production build, where a cold compile of the
+// not-found boundary has been observed past 120s. Only a server that never
+// answers trips it.
+export const WARMUP_TIMEOUT_MS = 600_000;
+// Concurrent warmup requests: `next dev` compiles each route in its own
+// worker, so a few in flight at once overlap the compiles instead of paying
+// them end to end. Kept small — the lane runs beside the ui tier's production
+// build, and a wide fan-out would trade the compile wall-clock for CPU
+// contention on an already-loaded machine.
+const WARMUP_CONCURRENCY = 4;
+
+/**
+ * Map every `route.*` file under an `src/app/api` tree to the URL a warmup
+ * GET should hit. Dynamic segments are replaced with a placeholder: Next
+ * compiles the concrete route module for any request to it, while a literal
+ * `[slug]` path would match no route and compile nothing.
+ */
+export function apiRouteWarmupPaths(apiDir: string): string[] {
+  const paths: string[] = [];
+  const walk = (dir: string, url: string): void => {
+    const entries = readdirSync(dir, { withFileTypes: true });
+    if (entries.some((entry) => entry.isFile() && /^route\.(?:ts|tsx|js|jsx|mjs)$/.test(entry.name))) paths.push(url);
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      // Route groups `(group)` and named slots `@slot` are organizational
+      // folders: they contribute no URL segment, so probing them under a
+      // literal name would compile the not-found boundary instead of the
+      // route and leave it cold for the tests. Recurse at the same URL.
+      if (/^\(.+\)$/.test(entry.name) || entry.name.startsWith("@")) {
+        walk(join(dir, entry.name), url);
+        continue;
+      }
+      // Any dynamic form — `[slug]`, `[...rest]`, `[[...rest]]`.
+      const segment = entry.name.startsWith("[") ? WARMUP_SEGMENT : entry.name;
+      walk(join(dir, entry.name), `${url}/${segment}`);
+    }
+  };
+  walk(apiDir, "/api");
+  return paths.sort();
+}
+
+export async function warmApiRoutes(port: string, signal: AbortSignal): Promise<void> {
+  const paths = apiRouteWarmupPaths(resolve("packages/web/src/app/api"));
+  // First, not last: a path no route matches makes Next compile its not-found
+  // boundary — the single most expensive compile here (measured at 2.1min of
+  // next.js time beside the ui build) — and the retired-endpoint tests hit it
+  // first. Putting it in the initial batch overlaps it with three route
+  // compiles instead of paying for it alone at the end.
+  const warmups = [`/api/${WARMUP_SEGMENT}-not-found`, ...paths];
+  // Mark every probe: routes that would otherwise charge the caller (e.g.
+  // /api/auth/cli's per-IP limiter) recognize the marker inside the isolated
+  // E2E environment and skip accounting, so warming up cannot consume the
+  // quota the tests themselves rely on.
+  const probeUrl = (path: string): string =>
+    `${path}${path.includes("?") ? "&" : "?"}pew-warmup=1`;
+  const started = Date.now();
+  let next = 0;
+  // A wedged server must fail the lane with one clear message instead of
+  // timing out test by test for the rest of the run, so the first failure
+  // aborts its siblings and wins over whatever they would report.
+  let failure: unknown;
+  const worker = async (): Promise<void> => {
+    while (failure === undefined && next < warmups.length) {
+      const path = warmups[next++] as string;
+      signal.throwIfAborted();
+      try {
+        // The response status is irrelevant — a 401/404/405 still proves the
+        // route compiled.
+        await fetch(`http://127.0.0.1:${port}${probeUrl(path)}`, { signal: AbortSignal.any([signal, AbortSignal.timeout(WARMUP_TIMEOUT_MS)]) });
+      } catch (error) {
+        failure ??= new Error(`API route warmup failed for ${path} (no answer within ${WARMUP_TIMEOUT_MS / 1000}s)`, { cause: error });
+        return;
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(WARMUP_CONCURRENCY, warmups.length) }, worker));
+  signal.throwIfAborted();
+  if (failure !== undefined) throw failure;
+  console.log(`API route warmup: ${warmups.length} routes in ${((Date.now() - started) / 1000).toFixed(1)}s`);
+}
+
 export async function runLocalE2e(tier: "api" | "ui", args: string[] = []): Promise<number> {
   assertNoLocalEnv();
   const port = tier === "api" ? process.env.E2E_PORT ?? "17020" : process.env.E2E_UI_PORT ?? "27020";
@@ -225,6 +308,10 @@ export async function runLocalE2e(tier: "api" | "ui", args: string[] = []): Prom
       await Bun.sleep(200);
     }
     await verifyLocalMarker(env);
+    // Compile every api route before the clock starts on the tests: `next dev`
+    // charges each first hit to the test that made it, and the not-found
+    // boundary alone has been measured at 2.1min against a 120s budget.
+    if (tier === "api") await warmApiRoutes(port, abort.signal);
     tests = Bun.spawn(tier === "api"
       // Per-test budget is a hang detector, not a speed gate. `next dev`
       // compiles each route on its first request and a cold compile has been
