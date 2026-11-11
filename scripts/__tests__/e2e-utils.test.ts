@@ -267,7 +267,10 @@ describe("L3 browser budgets", () => {
     const { default: config } = await import("../../packages/web/e2e/playwright.config");
     expect(config.timeout).toBe(180_000);
     expect(config.use?.navigationTimeout).toBe(120_000);
-  });
+    // The assertion is a static config read, but importing @playwright/test
+    // takes seconds on a loaded machine and blew the 5s default twice during
+    // pre-commit. The budget below is a hang detector, not a speed gate.
+  }, 60_000);
 
   it("never races a child against a bare Bun.sleep, which keeps the loop alive", () => {
     // Bun holds the event loop open for a pending Bun.sleep(). Racing one
@@ -279,15 +282,41 @@ describe("L3 browser budgets", () => {
     expect(source).toContain("settleWithin");
   });
 
+  it("clears the build deadline timer instead of leaving it pending", () => {
+    // The build wait raced `build.exited` against an inline 1_800_000ms
+    // setTimeout that was only cleared on abort. A build that finished
+    // normally left that timer pending, so Bun kept the event loop alive for
+    // the full thirty minutes — the actual cause of the runner outliving the
+    // Playwright summary. The wait must go through deadline(), which clears
+    // its timer in a finally.
+    const source = readFileSync(join(import.meta.dirname, "../e2e-utils.ts"), "utf8");
+    expect(source).toMatch(/deadline\(build\.exited, 1_800_000/);
+    expect(source).not.toContain('new Error("next build timed out")');
+  });
+
+  it("recognizes a signal-killed child and keeps the real failure visible", () => {
+    // Bun leaves exitCode === null for a child killed by a signal, so an
+    // exitCode-only liveness check sends a redundant SIGKILL (harmless on Bun,
+    // ESRCH elsewhere). And a throw inside finally replaces the in-flight
+    // error, so cleanup has to record and re-throw afterwards.
+    const source = readFileSync(join(import.meta.dirname, "../e2e-utils.ts"), "utf8");
+    expect(source).toContain("signalCode");
+    expect(source).toContain("cleanupErrors");
+    expect(source).not.toMatch(/finally\s*{\s*for \(const child/);
+  });
+
   it.each(["run-e2e.ts", "run-e2e-ui.ts"])(
     "exits %s deterministically once cleanup has finished",
     (entry) => {
-      // Measured on Bun 1.4.4: after a full ui lane the process reaches the
-      // last statement of the entry script, has no child processes, no pipes
-      // and no sockets left (lsof shows only empty KQUEUEs), and still never
-      // returns from its event loop — SIGTERM was the only way out. Cleanup
-      // runs before this point, so the exit is deterministic rather than a
-      // timeout: inheriting stdout means no buffered output is lost.
+      // Belt and braces next to the timer-leak fix above: measured on Bun
+      // 1.4.4, a full ui lane reached the last statement of the entry script
+      // with no child processes, no pipes and no sockets left (lsof showed
+      // only empty KQUEUEs) and never returned from the event loop — SIGTERM
+      // was the only way out. The leak that caused it is fixed and the same
+      // run now exits on its own, but an exit that does not depend on every
+      // pending handle being released cannot regress that way again. Cleanup
+      // has already finished here, and stdout is inherited throughout, so no
+      // buffered output is lost.
       const source = readFileSync(join(import.meta.dirname, "..", entry), "utf8");
       expect(source).toMatch(/process\.exit\(/);
       expect(source).not.toMatch(/^\s*process\.exitCode\s*=/m);

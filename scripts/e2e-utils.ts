@@ -156,6 +156,10 @@ export async function runLocalE2e(tier: "api" | "ui", args: string[] = []): Prom
   };
   abort.signal.addEventListener("abort", killChildren);
   const dist = tier === "api" ? ".next-e2e" : ".next-e2e-ui";
+  let failure: unknown;
+  let failed = false;
+  let cleanupFailure: unknown;
+  let exitCode: number | undefined;
   try {
     local = await startLocalBindings(abort.signal, undefined, tier === "ui");
     abort.signal.throwIfAborted();
@@ -185,14 +189,15 @@ export async function runLocalE2e(tier: "api" | "ui", args: string[] = []): Prom
       build = Bun.spawn(["node", resolve("packages/web/node_modules/next/dist/bin/next"), "build"], {
         cwd: "packages/web", env, stdout: "inherit", stderr: "inherit",
       });
-      const buildCode = await Promise.race([build.exited, new Promise<number>((_, reject) => {
-        const timer = setTimeout(() => reject(new Error("next build timed out")), 1_800_000);
-        abort.signal.addEventListener("abort", () => { clearTimeout(timer); reject(abort.signal.reason); }, { once: true });
-      })]);
+      const buildCode = await deadline(build.exited, 1_800_000, "next build");
       await build.exited.catch(() => {
         // A killed build rejects; its code already told the story above.
       });
       build = undefined;
+      // An interrupt outranks the build's exit code: killChildren makes the
+      // build die with a signal, and reporting that as "next build failed"
+      // would hide the reason the run was cut short.
+      abort.signal.throwIfAborted();
       if (buildCode !== 0) throw new Error(`next build failed (${buildCode})`);
       server = Bun.spawn(["node", resolve("packages/web/node_modules/next/dist/bin/next"), "start", "--hostname", "127.0.0.1", "--port", port], {
         cwd: "packages/web", env, stdout: "inherit", stderr: "inherit",
@@ -228,20 +233,52 @@ export async function runLocalE2e(tier: "api" | "ui", args: string[] = []): Prom
       ? [process.execPath, "--no-env-file", "test", "packages/web/src/__tests__/e2e", "--timeout", "120000"]
       : ["node", resolve("node_modules/@playwright/test/cli.js"), "test", "--config", "packages/web/e2e/playwright.config.ts", ...args],
     { env, stdout: "inherit", stderr: "inherit" });
-    return await tests.exited;
+    exitCode = await tests.exited;
+  } catch (error) {
+    failure = error;
+    failed = true;
   } finally {
+    // Every cleanup step records instead of throwing: a throw inside finally
+    // replaces the in-flight failure, which is the masking this block exists
+    // to prevent. Surface them after the finally instead.
+    const cleanupErrors: unknown[] = [];
     for (const child of [tests, server, build]) {
       if (child && child.exitCode === null) {
-        child.kill();
-        await settleWithin(child.exited, 5000);
-        if (child.exitCode === null) { child.kill("SIGKILL"); await child.exited; }
+        try {
+          child.kill();
+          await settleWithin(child.exited, 5000);
+          // A child killed by a signal keeps exitCode === null and reports it
+          // through signalCode (Bun: SIGTERM resolves as 143). Without this
+          // check every signal-killed child looked alive and took a redundant
+          // SIGKILL — harmless on Bun, ESRCH elsewhere, which would turn a
+          // clean run into "cleanup failed".
+          const dead = child.exitCode !== null || (child.signalCode ?? null) !== null;
+          if (!dead) { child.kill("SIGKILL"); await child.exited; }
+        } catch (error) {
+          cleanupErrors.push(error);
+        }
       }
     }
-    try { await local?.dispose(); } finally {
-      if (local) rmSync(join("packages/web", dist), { recursive: true, force: true });
-      process.removeListener("SIGINT", stop);
-      process.removeListener("SIGTERM", stop);
-      abort.signal.removeEventListener("abort", killChildren);
+    try {
+      await local?.dispose();
+    } catch (error) {
+      cleanupErrors.push(error);
     }
+    try {
+      if (local) rmSync(join("packages/web", dist), { recursive: true, force: true });
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+    process.removeListener("SIGINT", stop);
+    process.removeListener("SIGTERM", stop);
+    abort.signal.removeEventListener("abort", killChildren);
+    if (cleanupErrors.length === 1) cleanupFailure = cleanupErrors[0];
+    else if (cleanupErrors.length > 1) cleanupFailure = new AggregateError(cleanupErrors, "E2E cleanup failed");
   }
+  if (cleanupFailure !== undefined && failed) {
+    throw new AggregateError([failure, cleanupFailure], "E2E run failed and cleanup also failed");
+  }
+  if (cleanupFailure !== undefined) throw cleanupFailure;
+  if (failed) throw failure;
+  return exitCode ?? 1;
 }
