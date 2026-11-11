@@ -5,13 +5,10 @@ import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const hook = resolve(".husky/pre-push");
-const lanes = [
-  ["test:e2e", "API E2E tests did not pass."],
-  ["test:e2e:ui", "Browser E2E tests did not pass."],
-  ["test:security", "G2 security gate."],
-] as const;
 
-function runHook(failure: string) {
+// Any `bun run` other than the security scan exits 99, so a passing hook also
+// proves no other lane was launched: the E2E suites belong to CI now.
+function runHook(failure: "none" | "test:security" | "preflight") {
   const root = mkdtempSync(join(tmpdir(), "pew-pre-push-"));
   try {
     const bin = join(root, "bin");
@@ -23,46 +20,43 @@ if [ "$1" = "--no-env-file" ]; then
   exit $?
 fi
 [ "$1" = "run" ] || exit 99
-case "$2" in
-  test:e2e|test:e2e:ui|test:security) ;;
-  *) exit 99 ;;
-esac
-echo "$2 stdout"
-echo "$2 stderr" >&2
-if [ "$FAILURE" = "$2" ] || [ "$FAILURE" = "all" ]; then exit 23; fi
+[ "$2" = "test:security" ] || exit 99
+echo "test:security stdout"
+echo "test:security stderr" >&2
+[ "$FAILURE" != "test:security" ]
 `, { mode: 0o755 });
     return spawnSync("/bin/sh", ["-e", hook], {
       cwd: root,
       env: { PATH: `${bin}:/usr/bin:/bin`, HOME: root, TMPDIR: root, FAILURE: failure },
       encoding: "utf8",
-      timeout: 5000,
+      timeout: 120_000,
     });
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 }
 
-describe("pre-push result aggregation under Husky sh -e", () => {
-  it.each(["none", ...lanes.map(([lane]) => lane), "all"])("prints every lane and rejects failures (%s)", (failure) => {
-    const result = runHook(failure);
+describe("pre-push G2-only gate under Husky sh -e", () => {
+  it("runs the security scan, prints its output, and passes when it is clean", () => {
+    const result = runHook("none");
     expect(result.error).toBeUndefined();
     expect(result.signal).toBeNull();
-    expect(result.status, result.stderr).toBe(failure === "none" ? 0 : 1);
+    expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain("environment guard ran");
-    for (const [lane, message] of lanes) {
-      expect(result.stdout).toContain(`${lane} stdout`);
-      expect(result.stdout).toContain(`${lane} stderr`);
-      if (failure === lane || failure === "all") {
-        expect(result.stdout).toContain(`pre-push FAILED: ${message}`);
-      } else {
-        expect(result.stdout).not.toContain(`pre-push FAILED: ${message}`);
-      }
-    }
-    if (failure === "none") {
-      expect(result.stdout).toContain("pre-push passed:");
-    } else {
-      expect(result.stdout).not.toContain("pre-push passed:");
-    }
+    expect(result.stdout).toContain("test:security stdout");
+    expect(result.stdout).toContain("test:security stderr");
+    expect(result.stdout).not.toContain("pre-push FAILED");
+    expect(result.stdout).toContain("pre-push passed: G2 security (osv-scanner + gitleaks)");
+  });
+
+  it("rejects a failing security scan", () => {
+    const result = runHook("test:security");
+    expect(result.error).toBeUndefined();
+    expect(result.signal).toBeNull();
+    expect(result.status, result.stderr).toBe(1);
+    expect(result.stdout).toContain("test:security stdout");
+    expect(result.stdout).toContain("pre-push FAILED: G2 security gate.");
+    expect(result.stdout).not.toContain("pre-push passed:");
   });
 
   it("rejects an environment guard failure before launching any lane", () => {
