@@ -11,7 +11,7 @@ jobs:
   quality:
     uses: nocoo/base-ci/.github/workflows/quality.yml@af9a2b3f82c367d6eb6def5c3583ac717e0868ad  # main 2026-10-26
     with:
-      runtime-version: "1.4.0"
+      runtime-version: "1.4.4"
       install-policy: "blocked"
       coverage-path: "coverage"
       prepare-command: "bun run build"
@@ -23,24 +23,24 @@ jobs:
 
   api-e2e:
     name: "L2 API E2E"
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     uses: nocoo/base-ci/.github/workflows/test-job.yml@af9a2b3f82c367d6eb6def5c3583ac717e0868ad  # main 2026-10-26
     with:
-      runtime-version: "1.4.0"
+      runtime-version: "1.4.4"
       install-policy: "blocked"
-      timeout-minutes: 15
+      timeout-minutes: 25
       pre-command: "bun run build"
       command: "bun run test:e2e"
 
   browser-e2e:
     name: "L3 Browser E2E"
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     uses: nocoo/base-ci/.github/workflows/test-job.yml@af9a2b3f82c367d6eb6def5c3583ac717e0868ad  # main 2026-10-26
     with:
-      runtime-version: "1.4.0"
+      runtime-version: "1.4.4"
       install-policy: "blocked"
       browser: "chromium"
-      timeout-minutes: 20
+      timeout-minutes: 35
       pre-command: "bun run build"
       command: "bun run test:e2e:ui"
 
