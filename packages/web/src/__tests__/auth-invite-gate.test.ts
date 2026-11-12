@@ -219,9 +219,12 @@ describe("handleInviteGate", () => {
     vi.mocked(shouldUseSecureCookies).mockReturnValue(false);
   });
 
-  it("should skip check when E2E_SKIP_AUTH=true in non-production", async () => {
+  it("skips the check inside the runner's marked environment, including a production build", async () => {
     vi.stubEnv("E2E_SKIP_AUTH", "true");
-    vi.stubEnv("NODE_ENV", "test");
+    vi.stubEnv("RESOURCE_ENV", "test");
+    vi.stubEnv("PEW_TEST_RUN_ID", "owned-run");
+    // The L3 lane serves `next build` output; the gate must not key on NODE_ENV.
+    vi.stubEnv("NODE_ENV", "production");
 
     const result = await handleInviteGate(
       makeReq(),
@@ -237,7 +240,8 @@ describe("handleInviteGate", () => {
 
   it("should NOT skip check when RAILWAY_ENVIRONMENT is set (production guard)", async () => {
     vi.stubEnv("E2E_SKIP_AUTH", "true");
-    vi.stubEnv("NODE_ENV", "test");
+    vi.stubEnv("RESOURCE_ENV", "test");
+    vi.stubEnv("PEW_TEST_RUN_ID", "owned-run");
     process.env.RAILWAY_ENVIRONMENT = "production";
 
     // New user (no existing account)
@@ -257,6 +261,23 @@ describe("handleInviteGate", () => {
     } finally {
       delete process.env.RAILWAY_ENVIRONMENT;
     }
+  });
+
+  it("does NOT skip the check without the runner's run marker", async () => {
+    // Same two variables the old gate keyed on, but with no isolated runner
+    // environment: a deployed host copying E2E_SKIP_AUTH must not open it.
+    vi.stubEnv("E2E_SKIP_AUTH", "true");
+    vi.stubEnv("NODE_ENV", "production");
+    vi.mocked(mockDbRead.getUserByOAuthAccount).mockResolvedValueOnce(null);
+
+    const result = await handleInviteGate(
+      makeReq(), // no invite cookie
+      GOOGLE_ACCOUNT,
+      mockDbRead,
+      mockDbWrite
+    );
+    expect(typeof result).toBe("string");
+    expect(result).toContain("/login?error=InviteRequired");
   });
 
   it("should handle req=undefined gracefully (Server Component safety)", async () => {

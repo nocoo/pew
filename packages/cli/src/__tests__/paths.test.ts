@@ -136,7 +136,7 @@ describe("resolveDefaultPaths", () => {
     expect(paths.hermesProfileDbPaths[0].dbKey).toBe("profiles/tomato");
   });
 
-  it("should return exactly 18 path properties", () => {
+  it("should return exactly 19 path properties", () => {
     const keys = [
       "antigravityDir",
       "stateDir",
@@ -156,6 +156,7 @@ describe("resolveDefaultPaths", () => {
       "openCodeMessageDir",
       "openclawDir",
       "piSessionsDir",
+      "workbuddyDirs",
     ];
     const paths = resolveDefaultPaths("/fakehome");
     expect(Object.keys(paths)).toHaveLength(keys.length);
@@ -169,6 +170,14 @@ describe("resolveDefaultPaths", () => {
   it("should return empty hermesProfileDbPaths when no profiles exist", () => {
     const paths = resolveDefaultPaths("/fakehome");
     expect(paths.hermesProfileDbPaths).toEqual([]);
+  });
+
+  it("should resolve both WorkBuddy data roots (domestic + international)", () => {
+    const paths = resolveDefaultPaths("/fakehome");
+    expect(paths.workbuddyDirs).toEqual([
+      join("/fakehome", ".workbuddy"),
+      join("/fakehome", ".workbuddy-ai"),
+    ]);
   });
 
   it("should discover hermes profile databases", () => {

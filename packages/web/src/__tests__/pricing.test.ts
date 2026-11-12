@@ -205,6 +205,14 @@ describe("pricing", () => {
       expect(map.fallback).toEqual(DEFAULT_FALLBACK);
     });
 
+    it("should have a fallback price for every supported source", async () => {
+      const { SOURCES } = await import("@pew/core");
+      const defaults = getDefaultPricingMap().sourceDefaults;
+      for (const source of SOURCES) {
+        expect(source in defaults, source).toBe(true);
+      }
+    });
+
     it("should return a fresh copy each time (mutations don't leak)", () => {
       const map1 = getDefaultPricingMap();
       const map2 = getDefaultPricingMap();

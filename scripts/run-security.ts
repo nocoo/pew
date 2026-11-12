@@ -15,14 +15,18 @@ import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveGitInfoDir } from "./git-admin-dir";
 
 const softMode = process.env.PEW_G2_SOFT === "1";
 const noCache = process.env.PEW_G2_NO_CACHE === "1";
 
 // Cache successful osv-scanner runs keyed by bun.lock hash + tool version.
-// Stored under .git/info (gitignored by default). Skips network on no-op pushes.
+// Stored under the git admin dir's `info` (gitignored by default). Skips
+// network on no-op pushes. Resolved through the worktree pointer: in a linked
+// worktree `.git` is a file, and `<repo>/.git/info` cannot be created, which
+// silently lost the cache (writeCache is best-effort).
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const CACHE_DIR = resolve(REPO_ROOT, ".git/info");
+const CACHE_DIR = resolveGitInfoDir(REPO_ROOT);
 const CACHE_FILE = resolve(CACHE_DIR, "g2-cache.json");
 
 interface G2Cache {

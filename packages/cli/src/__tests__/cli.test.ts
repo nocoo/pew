@@ -7,7 +7,7 @@ import { readVersion } from "@nocoo/base-cli";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { main } from "../cli.js";
+import { main, isSource } from "../cli.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const expectedVersion = readVersion(dirname(dirname(__dirname)));
@@ -39,5 +39,14 @@ describe("CLI main command", () => {
   it("should have exactly 10 subcommands", () => {
     const names = Object.keys(main.subCommands!);
     expect(names).toHaveLength(10);
+  });
+
+  it("should accept every supported source in isSource, including workbuddy", async () => {
+    const { SOURCES } = await import("@pew/core");
+    for (const source of SOURCES) {
+      expect(isSource(source), source).toBe(true);
+    }
+    expect(isSource("workbuddy")).toBe(true);
+    expect(isSource("not-a-source")).toBe(false);
   });
 });

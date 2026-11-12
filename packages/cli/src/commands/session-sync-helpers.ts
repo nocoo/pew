@@ -17,7 +17,8 @@ export type SessionSyncSourceKey =
   | "grok"
   | "opencode"
   | "openclaw"
-  | "pi";
+  | "pi"
+  | "workbuddy";
 
 /**
  * Convert a SessionSnapshot to a SessionQueueRecord for upload.
@@ -59,6 +60,7 @@ export function sourceKey(source: Source): SessionSyncSourceKey | null {
     case "opencode": return "opencode";
     case "openclaw": return "openclaw";
     case "pi": return "pi";
+    case "workbuddy": return "workbuddy";
     case "gemini-cli":
     case "kosmos":
     case "omp":

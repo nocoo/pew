@@ -1,24 +1,4 @@
-/** Pure helpers for L1 gate self-test reporting (unit-tested). */
-
-export function parseCoverageText(text: string): {
-	statements: number;
-	branches: number;
-	functions: number;
-	lines: number;
-} | null {
-	const block = text.match(
-		/All files\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)/,
-	);
-	if (!block) {
-		return null;
-	}
-	return {
-		statements: Number(block[1]),
-		branches: Number(block[2]),
-		functions: Number(block[3]),
-		lines: Number(block[4]),
-	};
-}
+/** Pure helpers for the pre-commit static-gate self-test (unit-tested). */
 
 export function probePassed(
 	expectReject: boolean,

@@ -9,6 +9,7 @@
 import { getDbRead, getDbWrite } from "./db";
 import { shouldUseSecureCookies } from "@/auth";
 import type { DbRead, DbWrite } from "./db";
+import { isE2EMode } from "./e2e-mode";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -97,14 +98,8 @@ export async function handleInviteGate(
   dbReadOverride?: DbRead,
   dbWriteOverride?: DbWrite
 ): Promise<true | string> {
-  // E2E test bypass
-  if (
-    process.env.E2E_SKIP_AUTH === "true" &&
-    process.env.NODE_ENV !== "production" &&
-    !process.env.RAILWAY_ENVIRONMENT
-  ) {
-    return true;
-  }
+  // E2E test bypass — the shared gate definition (lib/e2e-mode.ts).
+  if (isE2EMode()) return true;
 
   // No request context (Server Component call) — allow
   if (!req) return true;

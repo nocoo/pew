@@ -13,6 +13,15 @@ export default defineConfig({
     globals: true,
     pool: "threads",
     isolate: true,
+    // Hang detectors, not performance budgets: the CI unit lane runs the whole
+    // suite beside everything else, and the vitest defaults (5s/10s) failed
+    // real child-process cases that complete in well over five seconds even
+    // unloaded. A genuinely wedged test still fails; a slow one no longer
+    // does. Individual tests may still override.
+    testTimeout: 120_000,
+    hookTimeout: 120_000,
+    // A worker killed mid-test must be replaced, not silently drop its file.
+    teardownTimeout: 60_000,
     include: [
       "packages/*/src/**/*.test.{ts,tsx}",
       "scripts/**/*.test.{ts,tsx}",
@@ -37,7 +46,10 @@ export default defineConfig({
         "**/*.d.ts",
         "**/__tests__/**",
         "**/__test-helpers__/**",
-        "**/index.ts",
+        // Barrel-only entry points: pure `export * from` re-exports with no
+        // runtime logic.
+        "packages/core/src/index.ts",
+        "packages/cli/src/index.ts",
         "**/bin.ts",
         "**/cli.ts",
         "**/types.ts",

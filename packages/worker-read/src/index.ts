@@ -85,7 +85,9 @@ async function secureCompare(a: string, b: string): Promise<boolean> {
   // Fallback constant-time comparison (XOR every byte, accumulate diff bits).
   let diff = bufA.byteLength ^ bufB.byteLength;
   for (let i = 0; i < len; i++) {
-    diff |= (paddedA[i] ?? 0) ^ (paddedB[i] ?? 0);
+    // Both padded arrays are Uint8Array(len), so every index is defined;
+    // the nullish branches would be unreachable.
+    diff |= (paddedA[i] as number) ^ (paddedB[i] as number);
   }
   return diff === 0;
 }
@@ -188,11 +190,17 @@ async function handleRpc(body: unknown, env: Env): Promise<Response> {
         );
     }
   } catch (err) {
+    // Unreachable today: every domain handler is `async`, so even a throw from
+    // its synchronous prologue becomes a rejection that checkedCountResponse
+    // in `fetch` absorbs. Kept as a last line of defence so a future
+    // synchronous handler degrades to a generic 500 instead of a crash.
+    /* v8 ignore start */
     console.error(err);
     return Response.json(
       { error: "Internal server error" },
       { status: 500 },
     );
+    /* v8 ignore stop */
   }
 }
 

@@ -287,6 +287,72 @@ export async function discoverGrokSessionDirs(
   return collectFiles(sessionsDir, (name) => name === "summary.json");
 }
 
+/**
+ * Discover WorkBuddy session JSONL files across one or more data roots.
+ *
+ * Path pattern: `<root>/projects/<slug>/<sessionId>.jsonl`. The domestic build
+ * installs at `~/.workbuddy`; the international build at `~/.workbuddy-ai`
+ * (product name `workbuddy-ai`). Both keep the same layout. Only depth-2 files
+ * are sessions — deeper entries (subagent transcripts at
+ * `<slug>/subagents/agent-*.jsonl` and tool outputs under `<sessionId>/`) are
+ * auxiliary and deliberately excluded.
+ *
+ * Files are deduplicated by inode (`dev:ino`), so a root reached twice through
+ * a symlink alias yields each file once and the token driver cannot parse and
+ * count it twice. The merged list is globally sorted, and a missing root
+ * contributes nothing.
+ */
+export async function discoverWorkbuddyFilesFromRoots(
+  roots: string[],
+): Promise<string[]> {
+  const results: string[] = [];
+  const seenInodes = new Set<string>();
+  for (const root of roots) {
+    const projectsDir = join(root, "projects");
+    let slugs: import("node:fs").Dirent[];
+    try {
+      slugs = await readdir(projectsDir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+
+    for (const slug of slugs) {
+      if (!slug.isDirectory()) continue;
+      const slugDir = join(projectsDir, slug.name);
+      let entries: import("node:fs").Dirent[];
+      try {
+        entries = await readdir(slugDir, { withFileTypes: true });
+      } catch {
+        // An unreadable project directory never fails the whole scan.
+        continue;
+      }
+      for (const entry of entries) {
+        if (!entry.isFile() || !entry.name.endsWith(".jsonl")) continue;
+        const filePath = join(slugDir, entry.name);
+        // Dedupe by inode: two configured roots (or a symlinked root) can
+        // resolve to the same file under different path strings.
+        try {
+          const st = await stat(filePath);
+          const key = `${st.dev}:${st.ino}`;
+          if (seenInodes.has(key)) continue;
+          seenInodes.add(key);
+        } catch {
+          // stat failure: keep the file and let downstream handle it
+        }
+        results.push(filePath);
+      }
+    }
+  }
+  return results.sort();
+}
+
+/** Discover WorkBuddy session JSONL files under a single data root. */
+export async function discoverWorkbuddyFiles(
+  workbuddyDir: string,
+): Promise<string[]> {
+  return discoverWorkbuddyFilesFromRoots([workbuddyDir]);
+}
+
 /** Accounting reads turn updates, including sessions without a summary file. */
 export async function discoverGrokUsageFiles(sessionsDir: string): Promise<string[]> {
   return collectFiles(sessionsDir, (name) => name === "updates.jsonl");

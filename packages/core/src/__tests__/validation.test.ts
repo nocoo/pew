@@ -23,7 +23,7 @@ import {
 // ---------------------------------------------------------------------------
 
 describe("isValidSource", () => {
-  it("should accept all 15 sources", () => {
+  it("should accept all 16 sources", () => {
     expect(isValidSource("antigravity")).toBe(true);
     expect(isValidSource("claude-code")).toBe(true);
     expect(isValidSource("codex")).toBe(true);
@@ -38,6 +38,7 @@ describe("isValidSource", () => {
     expect(isValidSource("pi")).toBe(true);
     expect(isValidSource("pmstudio")).toBe(true);
     expect(isValidSource("vscode-copilot")).toBe(true);
+    expect(isValidSource("workbuddy")).toBe(true);
     expect(isValidSource("zcode")).toBe(true);
   });
 
@@ -232,8 +233,8 @@ describe("validateIngestRecord", () => {
     }
   });
 
-  it("should accept all 15 sources", () => {
-    for (const source of ["antigravity", "claude-code", "codex", "copilot-cli", "gemini-cli", "grok", "hermes", "kosmos", "omp", "opencode", "openclaw", "pi", "pmstudio", "vscode-copilot", "zcode"]) {
+  it("should accept all 16 sources", () => {
+    for (const source of ["antigravity", "claude-code", "codex", "copilot-cli", "gemini-cli", "grok", "hermes", "kosmos", "omp", "opencode", "openclaw", "pi", "pmstudio", "vscode-copilot", "workbuddy", "zcode"]) {
       const rec = { ...validTokenRecord(), source };
       expect(validateIngestRecord(rec, 0).valid).toBe(true);
     }
@@ -366,6 +367,13 @@ describe("validateSessionIngestRecord", () => {
   it("should accept null project_ref and model", () => {
     const rec = { ...validSessionRecord(), project_ref: null, model: null };
     expect(validateSessionIngestRecord(rec, 0).valid).toBe(true);
+  });
+
+  it("should accept all 16 sources", () => {
+    for (const source of ["antigravity", "claude-code", "codex", "copilot-cli", "gemini-cli", "grok", "hermes", "kosmos", "omp", "opencode", "openclaw", "pi", "pmstudio", "vscode-copilot", "workbuddy", "zcode"]) {
+      const rec = { ...validSessionRecord(), source };
+      expect(validateSessionIngestRecord(rec, 0).valid, source).toBe(true);
+    }
   });
 
   it("should reject non-object inputs", () => {

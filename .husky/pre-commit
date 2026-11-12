@@ -1,15 +1,21 @@
 #!/usr/bin/env sh
-# pre-commit: L1 + G1 quality gate against the Git index snapshot.
+# pre-commit: G1 static gate against the Git index snapshot.
 #
 # Materialises the staged tree into a temp snapshot (checkout-index),
 # regenerates staged prerequisites inside it, reuses worktree
-# dependencies read-only, and runs the sequential gate there:
-#   L1  vitest run --coverage (95% x4 floors, exit-enforced)
+# dependencies read-only, and runs the static gate there:
 #   G1a scripts/parallel-typecheck.sh (5 packages, strict tsc)
 #   G1b biome check --error-on-warnings
 #   G1c AST gates: dynamic-delete + @ts-expect-error
+#
+# Unit tests and coverage are deliberately NOT run here. They are slow, and a
+# hung runner must never block a commit or a push: the suite twice outlived
+# its own summary and left the commit gate waiting on the event loop. CI runs
+# `bun run test:coverage`, L2, L3 and G2 as the enforcement gate; run them
+# locally on demand with `bun run verify`.
+#
 # No result caches, no extension fast paths: every commit runs the full
-# gate, so a staged bug fails even when the worktree holds an unstaged
+# static gate, so a staged bug fails even when the worktree holds an unstaged
 # fix. The worktree and index are never mutated; all generated output
 # stays inside the snapshot and is removed on every exit path.
 
@@ -90,16 +96,9 @@ if [ ! -d node_modules/next ] && [ ! -d packages/web/node_modules/next ]; then
 fi
 (cd packages/web && bun x next typegen)
 
-# Invoke vitest with --coverage directly so a staged package.json script cannot
-# drop coverage collection while still passing thresholds in vitest.config.ts.
-bun x vitest run --coverage
-if [ ! -d coverage ] || [ ! -f coverage/index.html ] || [ ! -f coverage/coverage-summary.json ]; then
-  echo "pre-commit: coverage output is missing after vitest — coverage must run on the index snapshot" >&2
-  exit 1
-fi
 bash scripts/parallel-typecheck.sh
 biome check --no-errors-on-unmatched --error-on-warnings --max-diagnostics=500 .
 bun run gate:dynamic-delete
 bun run gate:ts-expect-error
 
-echo "✅ pre-commit passed: L1 coverage ≥95% (statements/branches/functions/lines) + G1 strict statics on the index snapshot"
+echo "✅ pre-commit passed: G1 strict statics on the index snapshot (tsc, biome, AST gates)"

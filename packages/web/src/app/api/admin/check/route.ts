@@ -4,24 +4,20 @@
  * Returns { isAdmin: true/false }.
  * Used by client-side components to conditionally show admin UI.
  *
- * In E2E mode with admin bypass (E2E_SKIP_AUTH=true + E2E_ADMIN_BYPASS=true
- * in development), always returns { isAdmin: true } so Playwright tests
+ * In E2E mode with admin bypass (the shared gate plus E2E_ADMIN_BYPASS), it
+ * always returns { isAdmin: true } so Playwright tests
  * can exercise admin pages.
  */
 
 import { NextResponse } from "next/server";
 import { resolveUser } from "@/lib/auth-helpers";
+import { isE2EMode } from "@/lib/e2e-mode";
 import { isAdmin } from "@/lib/admin";
 import { getDbRead } from "@/lib/db";
 
 /** Check if admin bypass is enabled (for L3 Playwright tests) */
 function isAdminBypass(): boolean {
-  return (
-    process.env.E2E_SKIP_AUTH === "true" &&
-    process.env.E2E_ADMIN_BYPASS === "true" &&
-    process.env.NODE_ENV === "development" &&
-    !process.env.RAILWAY_ENVIRONMENT
-  );
+  return isE2EMode() && process.env.E2E_ADMIN_BYPASS === "true";
 }
 
 export async function GET(request: Request) {

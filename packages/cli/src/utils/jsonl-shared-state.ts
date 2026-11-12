@@ -8,9 +8,21 @@ export type CodexSharedSnapshot = {
   usageKeys: string[];
 } | null;
 
+/**
+ * Dedup-set rollback marker.
+ *
+ * The set only ever grows during a parse — nothing removes from it — so a
+ * discarded parse is undone by deleting whatever was appended after the
+ * marker. Recording a size instead of a copy keeps this O(1) on the happy
+ * path: a cold scan holds one entry per emitted id across every file, and
+ * copying all of them once per file made the copy 39% of a wide scan.
+ */
+export type IdsSnapshot = { existed: false } | { existed: true; size: number };
+
 export type JsonlSharedSnapshot = {
   codex: CodexSharedSnapshot;
-  claudeIds: string[] | null;
+  claudeIds: IdsSnapshot;
+  workbuddyIds: IdsSnapshot;
 };
 
 export function snapshotCodexSharedState(
@@ -51,14 +63,39 @@ export function restoreCodexSharedState(
   }
 }
 
+const idsSnapshot = (seen: Set<string> | undefined): IdsSnapshot =>
+  seen ? { existed: true, size: seen.size } : { existed: false };
+
 export function snapshotJsonlSharedState(
   ctx: SyncContext,
   filePath: string,
 ): JsonlSharedSnapshot {
   return {
     codex: snapshotCodexSharedState(ctx, filePath),
-    claudeIds: ctx.seenClaudeMessageIds ? [...ctx.seenClaudeMessageIds] : null,
+    claudeIds: idsSnapshot(ctx.seenClaudeMessageIds),
+    workbuddyIds: idsSnapshot(ctx.seenWorkbuddyMessageIds),
   };
+}
+
+/**
+ * Drop every id a discarded parse appended after `snapshot`. Insertion order
+ * is stable and nothing deletes mid-parse, so the entries past the marker are
+ * exactly this parse's additions. A set that did not exist before the parse
+ * holds only discarded ids, so it is cleared outright — which also covers the
+ * case where the parse itself created the set.
+ */
+function dropIdsAppendedAfter(seen: Set<string>, snapshot: IdsSnapshot): void {
+  if (!snapshot.existed) {
+    seen.clear();
+    return;
+  }
+  const appended: string[] = [];
+  let index = 0;
+  for (const id of seen) {
+    if (index >= snapshot.size) appended.push(id);
+    index += 1;
+  }
+  for (const id of appended) seen.delete(id);
 }
 
 export function restoreJsonlSharedState(
@@ -66,12 +103,8 @@ export function restoreJsonlSharedState(
   snapshot: JsonlSharedSnapshot,
 ): void {
   restoreCodexSharedState(ctx, snapshot.codex);
-  if (snapshot.claudeIds === null) {
-    ctx.seenClaudeMessageIds?.clear();
-    return;
-  }
-  const seen = ctx.seenClaudeMessageIds ?? new Set<string>();
-  seen.clear();
-  for (const id of snapshot.claudeIds) seen.add(id);
-  ctx.seenClaudeMessageIds = seen;
+  const workbuddy = ctx.seenWorkbuddyMessageIds;
+  if (workbuddy) dropIdsAppendedAfter(workbuddy, snapshot.workbuddyIds);
+  const seen = ctx.seenClaudeMessageIds;
+  if (seen) dropIdsAppendedAfter(seen, snapshot.claudeIds);
 }

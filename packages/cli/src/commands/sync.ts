@@ -90,7 +90,9 @@ export interface SyncOptions {
   grokLogsPath?: string;
   /** Override: Grok CLI sessions directory (~/.grok/sessions) */
   grokSessionsDir?: string;
-      /** Progress callback */
+  /** Override: WorkBuddy data roots (domestic + international) */
+  workbuddyDirs?: string[];
+  /** Progress callback */
   onProgress?: (event: ProgressEvent) => void;
   /** Callback invoked when a corrupted JSONL line is found in the queue */
   onCorruptLine?: OnCorruptLine;
@@ -138,7 +140,7 @@ export interface SyncResult {
 
     copilotCli: number;
     hermes: number;
-
+    workbuddy: number;
   };
   /** Total files scanned per source */
   filesScanned: {
@@ -154,7 +156,7 @@ export interface SyncResult {
 
     copilotCli: number;
     hermes: number;
-
+    workbuddy: number;
   };
   /** Total SQLite databases scanned per source */
   dbsScanned: {
@@ -185,8 +187,13 @@ function sourceKey(source: Source): keyof SyncResult["sources"] {
     case "codex": return "codex";
     case "copilot-cli": return "copilotCli";
     case "hermes": return "hermes";
+    case "workbuddy": return "workbuddy";
     default: {
-      // Exhaustiveness check — if Source adds a new value, this will fail to compile
+      // Inactive sources (retired slugs, and any slug added to Source before
+      // it gets a driver) reach here. This is runtime-only: unlike the
+      // session-side switch, retired sources flow through the default case,
+      // so `source` is not `never` and no compile-time exhaustiveness
+      // assertion is possible here.
       throw new Error(`Inactive source: ${source}`);
     }
   }
@@ -209,6 +216,23 @@ function emptyEpochCursor(
     lastModel: null,
     scopeId: null,
   } as FileCursor;
+}
+
+/**
+ * True for a WorkBuddy cursor that is already at the empty epoch: it points at
+ * byte 0 and its dedup ring is empty (or the `seenMessageIds` field is absent).
+ * Such a cursor must NOT be rewritten by the fast-skip empty branch — rewriting
+ * would drop the `seenMessageIds` field, whose absence is exactly what
+ * `needsReplay()` keys on, so an always-empty file would alternate between
+ * flagged and unflagged cursors and rescan on every other sync.
+ *
+ * Only WorkBuddy needs this guard: every other source's needsReplay field
+ * (claude `seenIds`, codex `scopeId`) is WRITTEN by `emptyEpochCursor`, so
+ * rewriting those stays unconditional and idempotent.
+ */
+function isWorkbuddyEmptyEpochCursor(cursor: FileCursorBase & { offset: number }): boolean {
+  const c = cursor as { offset?: number; seenMessageIds?: unknown[] };
+  return (c.offset ?? 0) === 0 && (c.seenMessageIds?.length ?? 0) === 0;
 }
 
 /**
@@ -260,7 +284,8 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   const cursors = Object.fromEntries(Object.entries(await cursorStore.load()).filter(([key]) => key !== "zcodeSqlite")) as CursorState;
   const activePaths = [opts.claudeDir, opts.codexSessionsDir, ...(opts.multicaCodexDirs ?? []),
     opts.openCodeMessageDir, opts.openclawDir, opts.piSessionsDir, opts.copilotCliLogsDir,
-    ...(opts.copilotCliOtelPaths ?? []), opts.grokLogsPath, opts.grokSessionsDir];
+    ...(opts.copilotCliOtelPaths ?? []), opts.grokLogsPath, opts.grokSessionsDir,
+    ...(opts.workbuddyDirs ?? [])];
   cursors.files = Object.fromEntries(Object.entries(cursors.files).filter(([path]) => !isRetiredCursorPath(path, activePaths)));
   if (cursors.knownFilePaths) cursors.knownFilePaths = Object.fromEntries(Object.entries(cursors.knownFilePaths).filter(([path]) => !isRetiredCursorPath(path, activePaths)));
   if (cursors.knownDbSources) cursors.knownDbSources = Object.fromEntries(Object.entries(cursors.knownDbSources).filter(([key]) => key !== "zcodeSqlite"));
@@ -393,8 +418,8 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   let replayDetected = false;
 
   const allDeltas: ParsedDelta[] = [];
-  const sourceCounts = { antigravity: opts.antigravitySnapshot?.deltas.length ?? 0, claude: 0, codex: 0, copilotCli: 0,  grok: 0, hermes: 0,   opencode: 0, openclaw: 0, pi: 0,  };
-  const filesScanned = { antigravity: opts.antigravitySnapshot?.dbCount ?? 0, claude: 0, codex: 0, copilotCli: 0,  grok: 0, hermes: 0,   opencode: 0, openclaw: 0, pi: 0,  };
+  const sourceCounts = { antigravity: opts.antigravitySnapshot?.deltas.length ?? 0, claude: 0, codex: 0, copilotCli: 0,  grok: 0, hermes: 0,   opencode: 0, openclaw: 0, pi: 0, workbuddy: 0,  };
+  const filesScanned = { antigravity: opts.antigravitySnapshot?.dbCount ?? 0, claude: 0, codex: 0, copilotCli: 0,  grok: 0, hermes: 0,   opencode: 0, openclaw: 0, pi: 0, workbuddy: 0,  };
   const dbsScanned = { antigravity: opts.antigravitySnapshot?.dbCount ?? 0, opencode: 0, hermes: 0 };
 
   // Collect all discovered file paths (across all drivers) for knownFilePaths
@@ -461,6 +486,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
     copilotCliOtelPaths: opts.copilotCliOtelPaths,
     grokLogsPath: opts.grokLogsPath,
     grokSessionsDir: opts.grokSessionsDir,
+    workbuddyDirs: opts.workbuddyDirs,
   };
 
   // ---------- Phase 1: File-based drivers (generic loop) ----------
@@ -559,7 +585,17 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
           usesJsonlOffsetResume(driver.source, filePath) &&
           fingerprint.size === 0
         ) {
-          cursors.files[filePath] = emptyEpochCursor(offsetCursor, fingerprint);
+          // shouldSkip() matched, so the cursor's size already equals this 0-byte
+          // file's size — the cursor is already at the empty-epoch state. For
+          // WorkBuddy specifically, leave an already-empty cursor alone: its
+          // `seenMessageIds` field is deliberately absent at the empty epoch, and
+          // rewriting it every sync would alternately strip and restore that
+          // field, making `needsReplay()` clear every cursor and rescan on every
+          // other sync (a full-rescan oscillation for a file that stays empty).
+          // Other sources rewrite unconditionally, as before.
+          if (driver.source !== "workbuddy" || !isWorkbuddyEmptyEpochCursor(offsetCursor)) {
+            cursors.files[filePath] = emptyEpochCursor(offsetCursor, fingerprint);
+          }
           onProgress?.({
             source: driver.source,
             phase: "parse",
@@ -636,7 +672,15 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
       // instead of SUM-replaying a retained tail or wiping every source.
       const jsonlSource = usesJsonlOffsetResume(driver.source, filePath);
       if (offsetCursor && jsonlSource && fingerprint.size === 0) {
-        cursors.files[filePath] = emptyEpochCursor(offsetCursor, fingerprint);
+        // Same guard as the fast-skip empty branch: a WorkBuddy cursor that is
+        // already at the empty epoch must not be rewritten, or a file that
+        // stays 0 bytes while its mtime changes would alternate its
+        // `seenMessageIds` field and rescan every other sync. A real truncation
+        // (cursor.size > 0 -> 0) still has a non-empty ring/offset, so it is
+        // rewritten as before.
+        if (driver.source !== "workbuddy" || !isWorkbuddyEmptyEpochCursor(offsetCursor)) {
+          cursors.files[filePath] = emptyEpochCursor(offsetCursor, fingerprint);
+        }
         continue;
       }
 

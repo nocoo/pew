@@ -30,6 +30,27 @@ describe("Docker CD contract", () => {
     expect(ci).toContain("l3: true");
   });
 
+  it("runs every gate on a manual dispatch, not only on push and internal PRs", () => {
+    // The `head.repo.full_name` guard exists so a fork PR cannot reach the
+    // test-only CI resources. A manual dispatch is a maintainer running this
+    // branch's own gate (on this fork, the only way a feature branch gets CI),
+    // and it matched neither side of the guard: the run reported success while
+    // the E2E lanes and the pre-commit self-test had never executed. Since
+    // base-ci v2026.12 L2/L3 live inside `quality.yml`, so the flag is what
+    // has to be reachable, plus the self-test job that is still top-level.
+    expect(ci.split("  l1-pre-commit-selftest:\n")[1]?.split("\n  quality:")[0]).toContain(
+      "github.event_name == 'workflow_dispatch'",
+    );
+    const quality = ci.split("  quality:\n")[1]?.split("\n  container-smoke:")[0];
+    expect(quality).toContain("l2: true");
+    expect(quality).toContain("l3: true");
+    // The reusable workflow only runs when the caller job runs: a caller-level
+    // `if:` that excludes dispatch silently skips every folded lane.
+    if (/^\s+if:/m.test(quality ?? "")) {
+      expect(quality).toContain("github.event_name == 'workflow_dispatch'");
+    }
+  });
+
   it("uses only the pinned existing release chain and exact CI provenance", () => {
     expect(release).toContain(`uses: nocoo/base-ci/.github/workflows/deploy-docker.yml@${revision}`);
     expect(release).toContain("workflow_run:");

@@ -1,7 +1,13 @@
 #!/usr/bin/env bun
 /**
- * L1 pre-commit gate self-test: negative probes in an isolated worktree with
- * read-only node_modules reuse, optional timing on the invoking repository.
+ * Pre-commit static-gate self-test: negative probes in an isolated worktree
+ * with read-only node_modules reuse, optional timing on the invoking
+ * repository.
+ *
+ * The hook runs only the index-snapshot static gate (strict tsc across five
+ * packages, Biome with --error-on-warnings, and the AST gates). Unit tests and
+ * coverage belong to the CI `quality` job, so this self-test proves the static
+ * gate rejects — it does not assert that a test suite ran.
  *
  * Usage:
  *   bun scripts/l1-gate-selftest.ts           # probes only
@@ -18,7 +24,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { parseCoverageText, probePassed } from "./l1-gate-selftest-lib.js";
+import { probePassed } from "./l1-gate-selftest-lib.js";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const hook = join(repoRoot, ".husky", "pre-commit");
@@ -42,7 +48,6 @@ type MeasureResult = {
 	warmMs: number;
 	coldExit: number | null;
 	warmExit: number | null;
-	coverage: ReturnType<typeof parseCoverageText> | null;
 };
 
 function git(args: string[], cwd: string) {
@@ -157,47 +162,6 @@ function runProbes(wt: string, baseline: { source: string; test: string }): Prob
 	push("healthy", false, runHook(wt), true, "full gate");
 	resetProbe(wt, baseline);
 
-	stageFile(
-		wt,
-		PROBE_REL_TEST,
-		baseline.test.replace("expect(l1ProbeOk()).toBe(true)", "expect(l1ProbeOk()).toBe(false)"),
-	);
-	const ut = runHook(wt);
-	push(
-		"ut-failure",
-		true,
-		ut,
-		true,
-		`failed=${ut.stdout.includes("FAIL") || ut.stderr.includes("FAIL")}`,
-	);
-	resetProbe(wt, baseline);
-
-	const vitestRel = "vitest.config.ts";
-	const vitestGood = () => readFileSync(join(repoRoot, vitestRel), "utf8");
-
-	const stageThresholdProbe = (
-		id: string,
-		metric: "statements" | "branches" | "functions" | "lines",
-		floor: number,
-		detail: string,
-	) => {
-		const next = vitestGood().replace(
-			new RegExp(`${metric}:\\s*\\d+`),
-			`${metric}: ${floor}`,
-		);
-		stageIndexOnlyGoodWorktree(wt, vitestRel, next, vitestGood());
-		const run = runHook(wt);
-		git(["reset", "HEAD", "--", vitestRel], wt);
-		git(["checkout", "--", vitestRel], wt);
-		push(id, true, run, run.status !== 0, detail);
-		resetProbe(wt, baseline);
-	};
-
-	stageThresholdProbe("coverage-statements", "statements", 100, "statements floor");
-	stageThresholdProbe("coverage-branches", "branches", 96, "branches floor");
-	stageThresholdProbe("coverage-functions", "functions", 100, "functions floor");
-	stageThresholdProbe("coverage-lines", "lines", 100, "lines floor");
-
 	stageFile(wt, "packages/core/src/l1-probe-lint.ts", "var l1ProbeLintBad = 1;\nexport {};\n");
 	const lint = runHook(wt);
 	push("lint-error", true, lint, true, "biome var");
@@ -239,11 +203,14 @@ function runProbes(wt: string, baseline: { source: string; test: string }): Prob
 	push("skipped-test", true, runHook(wt), true, "noSkippedTests");
 	resetProbe(wt, baseline);
 
+	// The static gate must judge the INDEX, not the worktree: a type error is
+	// staged while the worktree keeps the good copy. A wrong test expectation
+	// would no longer do here — the hook does not run the suite.
 	stageIndexOnlyGoodWorktree(
 		wt,
-		PROBE_REL_TEST,
-		baseline.test.replace("expect(l1ProbeOk()).toBe(true)", "expect(l1ProbeOk()).toBe(false)"),
-		baseline.test,
+		PROBE_REL_SOURCE,
+		`${baseline.source}\nexport const l1IndexOnly: number = "x";\n`,
+		baseline.source,
 	);
 	push("index-bad-worktree-good", true, runHook(wt), true, "checkout-index");
 	resetProbe(wt, baseline);
@@ -253,43 +220,7 @@ function runProbes(wt: string, baseline: { source: string; test: string }): Prob
 		PROBE_REL_TEST,
 		baseline.test.replace("expect(l1ProbeOk()).toBe(true)", "expect(l1ProbeOk()).toBe(false)"),
 	);
-	const masked = runHook(wt);
-	const reachedBiome = (masked.stdout + masked.stderr).includes("Checked");
-	push(
-		"ut-failure-not-masked",
-		true,
-		masked,
-		!reachedBiome,
-		`biome_ran=${reachedBiome}`,
-	);
-	resetProbe(wt, baseline);
-
-	stageFile(
-		wt,
-		PROBE_REL_TEST,
-		baseline.test.replace("expect(l1ProbeOk()).toBe(true)", "expect(l1ProbeOk()).toBe(false)"),
-	);
 	push("missing-bun", true, runHook(wt, { PATH: "/usr/bin:/bin" }), true, "PATH without bun");
-	resetProbe(wt, baseline);
-
-	const vitestNoSummary = vitestGood().replace(
-		'"json-summary"',
-		'"json-summary-disabled"',
-	);
-	stageIndexOnlyGoodWorktree(wt, vitestRel, vitestNoSummary, vitestGood());
-	const noCov = runHook(wt);
-	git(["reset", "HEAD", "--", vitestRel], wt);
-	git(["checkout", "--", vitestRel], wt);
-	const noCovText = noCov.stdout + noCov.stderr;
-	push(
-		"coverage-without-output",
-		true,
-		noCov,
-		noCov.status !== 0,
-		noCovText.includes("coverage output is missing")
-			? "coverage-summary.json guard"
-			: `rejected exit=${noCov.status}`,
-	);
 	resetProbe(wt, baseline);
 
 	const interrupted = runHook(wt, {}, 3_000);
@@ -329,7 +260,6 @@ function measurePreCommit(): MeasureResult {
 		warmMs,
 		coldExit: coldRun.status,
 		warmExit: warmRun.status,
-		coverage: parseCoverageText(coldRun.stdout + coldRun.stderr),
 	};
 }
 

@@ -166,7 +166,8 @@ describe("resolveAdmin — E2E admin bypass", () => {
     process.env = {
       ...ORIGINAL_ENV,
       E2E_SKIP_AUTH: "true",
-      NODE_ENV: "development",
+      RESOURCE_ENV: "test",
+      PEW_TEST_RUN_ID: "owned-run",
       E2E_ADMIN_BYPASS: "true",
     };
     delete process.env.RAILWAY_ENVIRONMENT;
@@ -197,7 +198,8 @@ describe("isAdmin — E2E admin bypass", () => {
     process.env = {
       ...ORIGINAL_ENV,
       E2E_SKIP_AUTH: "true",
-      NODE_ENV: "development",
+      RESOURCE_ENV: "test",
+      PEW_TEST_RUN_ID: "owned-run",
       E2E_ADMIN_BYPASS: "true",
       ADMIN_EMAILS: "",
     };
@@ -214,7 +216,8 @@ describe("isAdminUser — E2E admin bypass", () => {
     process.env = {
       ...ORIGINAL_ENV,
       E2E_SKIP_AUTH: "true",
-      NODE_ENV: "development",
+      RESOURCE_ENV: "test",
+      PEW_TEST_RUN_ID: "owned-run",
       E2E_ADMIN_BYPASS: "true",
     };
     delete process.env.RAILWAY_ENVIRONMENT;

@@ -201,9 +201,8 @@ export async function POST(
           params: [seasonId, teamId, JSON.stringify(userIds)],
         });
       }
-      if (cleanupStatements.length > 0) {
-        await dbWrite.batch(cleanupStatements);
-      }
+      // One statement per team, so the batch is never empty here.
+      await dbWrite.batch(cleanupStatements);
     }
 
     // 8. All writes succeeded — mark snapshot as ready.

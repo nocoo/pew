@@ -1,60 +1,33 @@
 #!/usr/bin/env sh
 
-# pre-push: L2 Integration/API + L3 Browser E2E + G2 Security (quality system)
-# L1+G1 already enforced by pre-commit.
-# All three gates are independent — run in parallel.
+# pre-push: G2 Security (dependency CVEs + secret scan).
+#
+# L2 API E2E, L3 browser E2E and the unit/coverage suite deliberately do NOT
+# run here. Each takes minutes and each has hung past its own summary at least
+# once, which left a push waiting on a process that would never exit. CI runs
+# them as the enforcement gate (api-e2e, browser-e2e, quality jobs); run them
+# locally on demand with `bun run verify`.
+#
+# G2 stays: it is fast (seconds), it fails closed when a scanner is missing,
+# and it is the one check that must not wait for CI — a leaked credential is
+# already public by the time CI reports it.
 
-bun --no-env-file -e 'import { assertNoLocalEnv } from "./scripts/e2e-utils.ts"; assertNoLocalEnv();' || exit 1
+set -e
 
-TMP_DIR=$(mktemp -d)
-trap 'rm -rf "$TMP_DIR"' EXIT
-E2E_OUT="$TMP_DIR/e2e.log"
-E2E_UI_OUT="$TMP_DIR/e2e_ui.log"
-G2_OUT="$TMP_DIR/g2.log"
+bun --no-env-file -e 'import { assertNoLocalEnv } from "./scripts/e2e-utils.ts"; assertNoLocalEnv();'
 
-# L2 Integration/API: real HTTP E2E against dev server on :17020
-bun run test:e2e > "$E2E_OUT" 2>&1 &
-E2E_PID=$!
+G2_OUT=$(mktemp)
+trap 'rm -f "$G2_OUT"' EXIT
 
-# L3 Browser E2E: Playwright BDD against dev server on :27020
-bun run test:e2e:ui > "$E2E_UI_OUT" 2>&1 &
-E2E_UI_PID=$!
-
-# G2 Security: osv-scanner (dependency CVEs) + gitleaks (secret leak in commits)
-bun run test:security > "$G2_OUT" 2>&1 &
-G2_PID=$!
-
-# Husky invokes sh -e; capture each failed wait instead of exiting before logs.
-E2E_EXIT=0
-E2E_UI_EXIT=0
 G2_EXIT=0
-wait "$E2E_PID" || E2E_EXIT=$?
-wait "$E2E_UI_PID" || E2E_UI_EXIT=$?
-wait "$G2_PID" || G2_EXIT=$?
+bun run test:security > "$G2_OUT" 2>&1 || G2_EXIT=$?
 
-echo "─── L2 Integration/API E2E ───"
-cat "$E2E_OUT"
-echo "─── L3 Browser E2E (Playwright) ───"
-cat "$E2E_UI_OUT"
 echo "─── G2 Security ───"
 cat "$G2_OUT"
 
-FAILED=0
-if [ "$E2E_EXIT" -ne 0 ]; then
-  echo "❌ pre-push FAILED: API E2E tests did not pass."
-  FAILED=1
-fi
-
-if [ "$E2E_UI_EXIT" -ne 0 ]; then
-  echo "❌ pre-push FAILED: Browser E2E tests did not pass."
-  FAILED=1
-fi
-
 if [ "$G2_EXIT" -ne 0 ]; then
   echo "❌ pre-push FAILED: G2 security gate."
-  FAILED=1
+  exit 1
 fi
 
-[ "$FAILED" -eq 0 ] || exit 1
-
-echo "✅ pre-push passed: L2 Integration/API + L3 Browser E2E + G2 Security"
+echo "✅ pre-push passed: G2 security (osv-scanner + gitleaks)"

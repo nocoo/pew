@@ -83,6 +83,21 @@ describe("Worker retired source defense", () => {
     expect(e.DB.batch).not.toHaveBeenCalled();
   });
 
+  it("returns no success receipt if the evidence transaction fails", async () => {
+    const e = env();
+    vi.mocked(e.DB.batch).mockRejectedValueOnce(new Error("D1_ERROR: PRIVATE table"));
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const response = await worker.fetch(request("/ingest/evidence", [event]), e);
+      expect(response.status).toBe(500);
+      expect(await response.json()).toEqual({ error: "Internal server error" });
+      // The evidence path must not echo bound values, source identifiers or
+      // the driver message into its log line.
+      expect(log).toHaveBeenCalledOnce();
+      expect(log.mock.calls.flat().join(" ")).not.toContain("PRIVATE");
+    } finally { log.mockRestore(); }
+  });
+
   it("interleaves retired and applied accounting acknowledgments in original order", async () => {
     const e = env();
     const active = accountingFixture();

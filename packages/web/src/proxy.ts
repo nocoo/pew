@@ -1,9 +1,13 @@
 import { auth } from "@/auth";
+import { isE2EMode } from "@/lib/e2e-mode";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Skip auth in E2E test environment
-const SKIP_AUTH = process.env.E2E_SKIP_AUTH === "true";
+// Skip auth in the E2E runner's isolated environment. Shares the single gate
+// definition (lib/e2e-mode.ts) with the API routes, so a stray
+// E2E_SKIP_AUTH=true on a deployed host cannot disable the page-level
+// invite/redirect logic. Evaluated once at module load.
+const SKIP_AUTH = isE2EMode();
 
 /**
  * Trusted origin derived from NEXTAUTH_URL at startup.

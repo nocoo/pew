@@ -297,6 +297,30 @@ describe("POST /api/admin/seasons/[seasonId]/snapshot", () => {
     expect(cleanupBatch[1]!.sql).toContain("NOT IN");
   });
 
+  it("should delete all snapshot rows for the season when no teams are registered", async () => {
+    // With zero teams the "NOT IN (active teams)" form would never match, so
+    // the route must fall back to deleting everything for the season.
+    resolveAdmin.mockResolvedValueOnce(ADMIN);
+    mockDbRead.getSeasonById.mockResolvedValueOnce(ENDED_SEASON);
+    mockDbRead.getRegisteredTeamIds.mockResolvedValueOnce([]);
+    mockDbRead.aggregateSeasonMemberTokens.mockResolvedValueOnce([]);
+    mockDbWrite.batch.mockResolvedValue([]);
+
+    const res = await POST(makeRequest(), { params: routeParams });
+
+    expect(res.status).toBe(201);
+    const cleanupBatch = mockDbWrite.batch.mock.calls[1]![0] as {
+      sql: string;
+      params: unknown[];
+    }[];
+    expect(cleanupBatch).toHaveLength(2);
+    expect(cleanupBatch[0]!.sql).toContain("DELETE FROM season_member_snapshots");
+    expect(cleanupBatch[0]!.sql).not.toContain("NOT IN");
+    expect(cleanupBatch[1]!.sql).toContain("DELETE FROM season_snapshots");
+    expect(cleanupBatch[1]!.sql).not.toContain("NOT IN");
+    expect(mockDbWrite.batch).toHaveBeenCalledTimes(2);
+  });
+
   it("should reject non-ended season", async () => {
     resolveAdmin.mockResolvedValueOnce(ADMIN);
     mockDbRead.getSeasonById.mockResolvedValueOnce(ACTIVE_SEASON);

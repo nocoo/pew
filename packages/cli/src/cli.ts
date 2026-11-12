@@ -55,7 +55,7 @@ function parseNotBefore(raw: string | undefined): number | undefined {
   return Number.isFinite(n) && n >= 0 ? n : undefined;
 }
 
-function isSource(value: string): value is Source {
+export function isSource(value: string): value is Source {
   return [
     "antigravity",
     "claude-code",
@@ -71,6 +71,7 @@ function isSource(value: string): value is Source {
     "vscode-copilot",
     "copilot-cli",
     "hermes",
+    "workbuddy",
     "zcode",
   ].includes(value);
 }
@@ -185,7 +186,7 @@ const SOURCE_LABELS: Record<string, string> = {
 
   copilotCli: "Copilot CLI",
   hermes: "Hermes",
-
+  workbuddy: "WorkBuddy",
 };
 
 /**
@@ -291,6 +292,7 @@ export const syncCommand = defineCommand({
 
       antigravityDir: paths.antigravityDir,
 
+      workbuddyDirs: paths.workbuddyDirs,
       onCorruptLine: handleCorruptLine,
       onProgress(event) {
         logSyncProgress(event);
@@ -320,6 +322,7 @@ export const syncCommand = defineCommand({
       if (result.sources.hermes > 0) deltaParts.push(`Hermes: ${result.sources.hermes}`);
 
       if (result.sources.antigravity > 0) deltaParts.push(`Antigravity CLI: ${result.sources.antigravity}`);
+      if (result.sources.workbuddy > 0) deltaParts.push(`WorkBuddy: ${result.sources.workbuddy}`);
       if (deltaParts.length > 0) {
         log.text(pc.dim(deltaParts.join("  ")));
       }
@@ -351,6 +354,7 @@ export const syncCommand = defineCommand({
 
       antigravityDir: paths.antigravityDir,
 
+      workbuddyDirs: paths.workbuddyDirs,
       onCorruptLine: handleCorruptLine,
       onProgress(event) {
         logSessionSyncProgress(event);
@@ -369,12 +373,13 @@ export const syncCommand = defineCommand({
       if (sessionResult.sources.claude > 0) sessParts.push(`Claude: ${sessionResult.sources.claude}`);
       if (sessionResult.sources.codex > 0) sessParts.push(`Codex: ${sessionResult.sources.codex}`);
       if (sessionResult.sources.copilotCli > 0) sessParts.push(`Copilot CLI: ${sessionResult.sources.copilotCli}`);
-
+      if (sessionResult.sources.grok > 0) sessParts.push(`Grok: ${sessionResult.sources.grok}`);
       if (sessionResult.sources.opencode > 0) sessParts.push(`OpenCode: ${sessionResult.sources.opencode}`);
       if (sessionResult.sources.openclaw > 0) sessParts.push(`OpenClaw: ${sessionResult.sources.openclaw}`);
       if (sessionResult.sources.pi > 0) sessParts.push(`Pi: ${sessionResult.sources.pi}`);
 
       if (sessionResult.sources.antigravity > 0) sessParts.push(`Antigravity CLI: ${sessionResult.sources.antigravity}`);
+      if (sessionResult.sources.workbuddy > 0) sessParts.push(`WorkBuddy: ${sessionResult.sources.workbuddy}`);
       if (sessParts.length > 0) {
         log.text(pc.dim(sessParts.join("  ")));
       }
@@ -416,6 +421,7 @@ const statusCommand = defineCommand({
         copilotCliOtelPaths: paths.copilotCliOtelPaths,
         multicaCodexDirs: paths.multicaCodexDirs,
         grokHome: paths.grokHome,
+        workbuddyDirs: paths.workbuddyDirs,
       },
       notifierStatuses,
       onCorruptLine: handleCorruptLine,
@@ -724,6 +730,7 @@ const notifyCommand = defineCommand({
 
       antigravityDir: paths.antigravityDir,
 
+      workbuddyDirs: paths.workbuddyDirs,
       version: CLI_VERSION,
     });
 

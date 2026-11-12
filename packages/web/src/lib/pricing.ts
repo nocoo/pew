@@ -24,7 +24,7 @@ import {
   normalizeForMatch,
   stripVariantSuffix,
 } from "@/lib/model-info-helpers";
-import type { CachePriceDetails, PublicContextTier } from "@pew/core";
+import type { CachePriceDetails, PublicContextTier, Source } from "@pew/core";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -101,8 +101,9 @@ export const DEFAULT_PREFIX_PRICES: Array<{ prefix: string; pricing: ModelPricin
   { prefix: "gpt-4o", pricing: { input: 2.5, output: 10, cached: 1.25 } },
 ];
 
-/** Fallback pricing per source (conservative estimates, alphabetical order) */
-export const DEFAULT_SOURCE_DEFAULTS: Record<string, ModelPricing> = {
+/** Fallback pricing per source (conservative estimates, ordered by chart color) */
+export const DEFAULT_SOURCE_DEFAULTS: Record<Source, ModelPricing> = {
+  antigravity: { input: 3, output: 15, cached: 0.3 },
   "claude-code": { input: 3, output: 15, cached: 0.3 },
   codex: { input: 2, output: 8, cached: 0.5 },
   "copilot-cli": { input: 3, output: 15, cached: 0.3 },
@@ -116,6 +117,7 @@ export const DEFAULT_SOURCE_DEFAULTS: Record<string, ModelPricing> = {
   pi: { input: 3, output: 15, cached: 0.3 },
   pmstudio: { input: 3, output: 15, cached: 0.3 },
   "vscode-copilot": { input: 3, output: 15, cached: 0.3 },
+  workbuddy: { input: 3, output: 15, cached: 0.3 },
   zcode: { input: 2, output: 8, cached: 0.5 },
 };
 

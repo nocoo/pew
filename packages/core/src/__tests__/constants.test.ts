@@ -13,8 +13,8 @@ import {
 } from "../constants.js";
 
 describe("SOURCES", () => {
-  it("should contain exactly 9 supported AI tools", () => {
-    expect(SOURCES).toHaveLength(9);
+  it("should contain exactly 10 supported AI tools", () => {
+    expect(SOURCES).toHaveLength(10);
     expect(SOURCES).toContain("antigravity");
     expect(SOURCES).toContain("claude-code");
     expect(SOURCES).toContain("codex");
@@ -24,9 +24,10 @@ describe("SOURCES", () => {
     expect(SOURCES).toContain("opencode");
     expect(SOURCES).toContain("openclaw");
     expect(SOURCES).toContain("pi");
+    expect(SOURCES).toContain("workbuddy");
   });
 
-  it("should be readonly and sorted alphabetically", () => {
+  it("should be readonly and contain every source", () => {
     // `as const` is a compile-time-only constraint;
     // we verify the array has the correct contents instead.
     expect(SOURCES).toEqual([
@@ -39,13 +40,14 @@ describe("SOURCES", () => {
       "opencode",
       "openclaw",
       "pi",
+      "workbuddy",
     ]);
   });
 });
 
 describe("VALID_SOURCES", () => {
   it("retains all historical identities independently of active support", () => {
-    expect(VALID_SOURCES.size).toBe(15);
+    expect(VALID_SOURCES.size).toBe(16);
     expect(RETIRED_SOURCES).toEqual(["gemini-cli", "kosmos", "omp", "pmstudio", "vscode-copilot", "zcode"]);
     expect(SOURCES.some((source) => RETIRED_SOURCES.includes(source))).toBe(false);
     for (const s of [...SOURCES, ...RETIRED_SOURCES]) {

@@ -21,8 +21,15 @@ export function localD1BaseUrl(config: D1Config, env: Record<string, string | un
   if (!env.PEW_LOCAL_D1_URL) return undefined;
   const url = new URL(env.PEW_LOCAL_D1_URL);
   if (
-    env.NODE_ENV === "production" || env.RAILWAY_ENVIRONMENT ||
+    // RESOURCE_ENV=test marks the runner's isolated per-run environment; it
+    // also holds under a production build so the E2E lane can run against
+    // `next start`. PEW_TEST_RUN_ID is the same positive marker the auth gate
+    // requires (a fresh per-run UUID the runner also writes into the isolated
+    // D1), so a deployed host cannot reach this loopback override by
+    // misconfiguring the other variable. RAILWAY is an independent veto.
+    env.RAILWAY_ENVIRONMENT ||
     env.RESOURCE_ENV !== "test" || env.E2E_SKIP_AUTH !== "true" ||
+    typeof env.PEW_TEST_RUN_ID !== "string" || env.PEW_TEST_RUN_ID.length === 0 ||
     config.accountId !== "pew-local-test" || config.databaseId !== "pew-local-test" ||
     url.protocol !== "http:" || url.hostname !== "127.0.0.1" || !url.port ||
     url.username || url.password || url.pathname !== "/" || url.search || url.hash

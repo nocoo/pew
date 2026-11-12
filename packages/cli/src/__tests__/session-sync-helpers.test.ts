@@ -81,6 +81,7 @@ describe("toQueueRecord", () => {
 describe("sourceKey", () => {
   // Sources that map to a result key
   const mapped: Array<[Source, string]> = [
+    ["antigravity", "antigravity"],
     ["claude-code", "claude"],
     ["codex", "codex"],
     ["copilot-cli", "copilotCli"],
@@ -88,6 +89,7 @@ describe("sourceKey", () => {
     ["openclaw", "openclaw"],
     ["pi", "pi"],
     ["grok", "grok"],
+    ["workbuddy", "workbuddy"],
   ];
 
   for (const [src, key] of mapped) {
@@ -99,6 +101,14 @@ describe("sourceKey", () => {
   // Sources without session drivers map to null
   it("returns null for vscode-copilot (no session driver)", () => {
     expect(sourceKey("vscode-copilot")).toBeNull();
+  });
+
+  it("returns null for retired zcode (no session driver)", () => {
+    expect(sourceKey("zcode")).toBeNull();
+  });
+
+  it("returns null for retired omp (no session driver)", () => {
+    expect(sourceKey("omp")).toBeNull();
   });
 
   it("returns null for hermes (no session driver)", () => {

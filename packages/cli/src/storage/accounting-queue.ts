@@ -54,7 +54,7 @@ function checkedRecord(value: AccountingRecord): AccountingRecord {
     ![value.source_revision, value.parser_revision, value.detail_revision].every((n) => optionalToken(n) !== null && n > 0)) throw new Error("Invalid accounting ledger");
   if (!hasKeys(value, "details_version source model device_id hour_start event_id evidence_snapshot_seq source_revision parser_revision detail_revision basis groups") ||
     !validBasis(value.basis) || typeof value.model !== "string" ||
-    !["antigravity", "claude-code", "codex", "copilot-cli", "gemini-cli", "grok", "hermes", "kosmos", "omp", "opencode", "openclaw", "pi", "pmstudio", "vscode-copilot", "zcode"].includes(value.source) ||
+    !["antigravity", "claude-code", "codex", "copilot-cli", "gemini-cli", "grok", "hermes", "kosmos", "omp", "opencode", "openclaw", "pi", "pmstudio", "vscode-copilot", "workbuddy", "zcode"].includes(value.source) ||
     !Number.isFinite(Date.parse(value.hour_start)) || new Date(value.hour_start).toISOString() !== value.hour_start ||
     (value.event_id === null ? value.evidence_snapshot_seq !== null : value.evidence_snapshot_seq === null || value.evidence_snapshot_seq < 1)) invalid();
   const sums = { input_tokens: 0, cached_input_tokens: 0, output_tokens: 0, reasoning_output_tokens: 0, total_tokens: 0 };
@@ -145,9 +145,17 @@ export function planAccountingUpdates(opts: {
   const incoming = new Map<string, { ref: Omit<AccountingRecord, "groups" | "basis" | "source_revision" | "parser_revision" | "detail_revision">; groups: AccountingGroup[]; hasDetails: boolean }>();
   for (const d of opts.deltas) {
     const hour = toUtcHalfHourStart(d.timestamp); if (!hour) continue;
-    const ref = { details_version: 1 as const, source: d.source, model: d.evidence ? usageLabel(d.model) : d.model, device_id: opts.deviceId,
+    // The accounting endpoint validates `model` with the strict label rule
+    // (ASCII, ≤128) even though the token endpoint accepts any non-empty
+    // string up to 1024. A model that passes the token upload but not the
+    // accounting one would make the details upload 400 forever (no retry on
+    // 4xx, dirty keys never clear), so every record — evidence or not — is
+    // normalized through usageLabel; a plain ASCII model is unchanged.
+    const ref = { details_version: 1 as const, source: d.source, model: usageLabel(d.model), device_id: opts.deviceId,
       hour_start: hour, event_id: d.evidence?.eventId ?? null, evidence_snapshot_seq: d.evidence?.snapshotSeq ?? null };
-    const key = accountingKey(ref); const old = incoming.get(key);
+    // The token bucket keeps its own key (the token record uploads with the
+    // raw model), so the basis lookup uses the un-normalized model.
+    const key = accountingKey({ ...ref, model: d.model }); const old = incoming.get(key);
     const g = d.accounting ?? unknownAccounting(legacyCounts(d.tokens), d.model);
     if (d.evidence) {
       // Absolute evidence can be seen in several fork files. Never SUM it.

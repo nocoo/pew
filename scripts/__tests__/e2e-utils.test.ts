@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
-import { ensurePortFree, runLocalE2e, startLocalBindings } from "../e2e-utils";
+import { apiRouteWarmupPaths, ensurePortFree, runLocalE2e, startLocalBindings } from "../e2e-utils";
 
 vi.mock("node:fs", async (importOriginal) => {
   const fs = await importOriginal<typeof import("node:fs")>();
@@ -43,7 +43,11 @@ describe("E2E process isolation", () => {
           send() { this.kill(); },
         };
         if (options.ipc) queueMicrotask(() => options.ipc?.({ env, state: root }));
-        else if (!command.includes("dev")) child.kill();
+        // The ui tier builds first (`next build`, must exit 0) and then serves
+        // `next start`, which stays up until cleanup kills it. Only the api
+        // tier's `next dev` mock is left alive the same way.
+        else if (command.includes("build")) child.kill();
+        else if (!command.includes("dev") && !command.includes("start")) child.kill();
         return child;
       }),
       sleep: vi.fn(async () => {}),
@@ -63,6 +67,56 @@ describe("E2E process isolation", () => {
     }
   });
 
+  it("hands the api tier the documented 120s per-test budget", async () => {
+    // Under load a single `next dev` route compile has been measured past a
+    // minute on this lane, and the 30s budget turned that into a false
+    // failure (24 timed-out cases on a warmed server at load ~100 that passed
+    // at load ~40). The per-test budget is a hang detector, not a speed gate.
+    const root = mkdtempSync(join(tmpdir(), "pew-l2-budget-"));
+    mkdirSync(join(root, "packages", "web"), { recursive: true });
+    const commands: string[][] = [];
+    const removed = vi.mocked((await import("node:fs")).rmSync);
+    const listed = vi.mocked((await import("node:fs")).readdirSync);
+    const listeners = new Map(["SIGINT", "SIGTERM"].map((event) => [event, new Set(process.listeners(event))]));
+    const env = {
+      NODE_ENV: "development", RESOURCE_ENV: "test", E2E_SKIP_AUTH: "true",
+      CF_ACCOUNT_ID: "pew-local-test", CF_D1_DATABASE_ID: "pew-local-test", CF_D1_API_TOKEN: "synthetic",
+      PEW_LOCAL_D1_URL: "http://127.0.0.1:12345", WORKER_INGEST_URL: "http://127.0.0.1:12345/ingest",
+      WORKER_READ_URL: "http://127.0.0.1:12345", PEW_TEST_RUN_ID: "owned-run",
+    };
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({
+      success: true, result: [{ results: [{ key: "env", value: "test" }, { key: "run", value: "owned-run" }] }],
+    })));
+    vi.stubGlobal("Bun", {
+      spawn: vi.fn((command: string[], options: { ipc?: (message: unknown) => void }) => {
+        const exit = Promise.withResolvers<number>();
+        const child = {
+          pid: 123456, exitCode: null as number | null, exited: exit.promise,
+          kill() { this.exitCode = 0; exit.resolve(0); },
+          send() { this.kill(); },
+        };
+        if (options.ipc) queueMicrotask(() => options.ipc?.({ env, state: root }));
+        else if (command.includes("packages/web/src/__tests__/e2e")) { commands.push(command); child.kill(); } else if (!command.includes("dev")) child.kill();
+        return child;
+      }),
+      sleep: vi.fn(async () => {}),
+    });
+    listed.mockReturnValue([]);
+    removed.mockImplementation(() => {});
+    try {
+      await expect(runLocalE2e("api")).resolves.toBe(0);
+      const testCommand = commands.find((args) => args.includes("packages/web/src/__tests__/e2e"));
+      expect(testCommand).toBeDefined();
+      expect(testCommand![testCommand!.indexOf("--timeout") + 1]).toBe("120000");
+    } finally {
+      for (const [event, original] of listeners) {
+        for (const listener of process.listeners(event)) if (!original.has(listener)) process.removeListener(event, listener);
+      }
+      removed.mockRestore(); listed.mockRestore(); vi.unstubAllGlobals();
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it.each([false, true])("bounds no-IPC startup and disposal (abort=%s)", async (interrupt) => {
     let exit: (code: number) => void;
     const exited = new Promise<number>((done) => { exit = done; });
@@ -76,7 +130,14 @@ describe("E2E process isolation", () => {
       const abort = new AbortController();
       const pending = startLocalBindings(abort.signal, 20);
       if (interrupt) abort.abort(new Error("synthetic interruption"));
-      await expect(pending).rejects.toThrow("disposal timed out");
+      // Startup and cleanup both fail here and both surface: the original
+      // startup/interruption error must remain the first member, never be
+      // replaced by "disposal timed out" (that was the pre-fix behavior).
+      const error = await pending.then(() => undefined, (rejection: unknown) => rejection) as AggregateError;
+      expect(error).toBeInstanceOf(AggregateError);
+      expect(error.message).toBe("Local bindings startup failed and cleanup also failed");
+      expect((error.errors[0] as Error).message).toContain(interrupt ? "synthetic interruption" : "startup timed out");
+      expect((error.errors[1] as Error).message).toContain("disposal timed out");
       expect(child.send).toHaveBeenCalledWith("dispose");
       expect(kill).toHaveBeenCalledExactlyOnceWith(-123456, "SIGKILL");
       expect(spawnChild).toHaveBeenCalledWith(expect.any(Array), expect.objectContaining({ env: expect.objectContaining({ CI: "true" }) }));
@@ -140,9 +201,13 @@ describe("E2E process isolation", () => {
     child.stdout.on("data", (data) => { output += data; });
     child.stderr.on("data", (data) => { output += data; });
     try {
+      // Poll budget is a hang detector, not a performance budget, and it must
+      // sit above the runner's own 900s readiness deadline: a slower inner
+      // deadline would make this report "Server did not start" instead of
+      // the runner's own diagnostic.
       const started = Date.now();
       while (!output.includes("Local:")) {
-        if (child.exitCode !== null || Date.now() - started > 70_000) throw new Error(`Server did not start: ${output}`);
+        if (child.exitCode !== null || Date.now() - started > 900_000) throw new Error(`Server did not start: ${output}`);
         await new Promise((done) => setTimeout(done, 50));
       }
       child.kill("SIGTERM");
@@ -153,7 +218,9 @@ describe("E2E process isolation", () => {
       if (child.exitCode === null && child.signalCode === null) { child.kill("SIGTERM"); await exited; }
       rmSync(root, { recursive: true, maxRetries: 3, retryDelay: 100 });
     }
-  }, 90_000);
+    // Outer budget above the inner legal worst case: 900s readiness poll +
+    // SIGTERM cleanup (5s kill wait + 30s dispose + 30s forced exit).
+  }, 1_200_000);
 
   it("cleans D1 when the Next process fails to start", async () => {
     const root = mkdtempSync(join(tmpdir(), "pew-start-failure-"));
@@ -174,5 +241,134 @@ describe("E2E process isolation", () => {
       if (child.exitCode === null && child.signalCode === null) { child.kill("SIGTERM"); await exited; }
       rmSync(root, { recursive: true, maxRetries: 3, retryDelay: 100 });
     }
-  }, 90_000);
+    // Inner worst case: the startup budget (900s) + 30s dispose + 30s forced
+    // exit; keep the outer budget strictly above it so a wedged child surfaces
+    // its own "startup timed out" diagnostic instead of a vitest timeout.
+  }, 1_200_000);
+});
+
+describe("L3 browser budgets", () => {
+  it("serves the L3 lane a production build, not next dev", () => {
+    // `next dev` compiles each page on its first navigation; the /leaderboard
+    // page wedged past a 120s navigation twice in a row (the dev compiler
+    // never answered), and the same page loaded in 23s on a production
+    // build. The source is checked structurally so the test stays a unit.
+    const source = readFileSync(join(import.meta.dirname, "../e2e-utils.ts"), "utf8");
+    expect(source).toContain('"build"]');
+    expect(source).toContain('"start", "--hostname"');
+  });
+
+  it("keeps the documented hang-detector budgets", async () => {
+    // QUALITY_CONTRACT.md / AGENTS.md record "Playwright test 180s / navigation
+    // 120s": the ui lane shares the machine with the API lane and the security
+    // scan, and `next dev` compiles a page on its first navigation, which has
+    // been measured past every short budget on a loaded host. These are hang
+    // detectors, so the numbers only move with the contract.
+    const { default: config } = await import("../../packages/web/e2e/playwright.config");
+    expect(config.timeout).toBe(180_000);
+    expect(config.use?.navigationTimeout).toBe(120_000);
+    // The assertion is a static config read, but importing @playwright/test
+    // takes seconds on a loaded machine and blew the 5s default twice during
+    // pre-commit. The budget below is a hang detector, not a speed gate.
+  }, 60_000);
+
+  it("never races a child against a bare Bun.sleep, which keeps the loop alive", () => {
+    // Bun holds the event loop open for a pending Bun.sleep(). Racing one
+    // against a child that exits immediately still leaves the timer pending,
+    // so the runner stayed alive after the Playwright summary and had to be
+    // signalled by hand. The wait must use a cleared setTimeout instead.
+    const source = readFileSync(join(import.meta.dirname, "../e2e-utils.ts"), "utf8");
+    expect(source).not.toMatch(/Promise\.race\(\[[^\]]*Bun\.sleep/);
+    expect(source).toContain("settleWithin");
+  });
+
+  it("clears the build deadline timer instead of leaving it pending", () => {
+    // The build wait raced `build.exited` against an inline 1_800_000ms
+    // setTimeout that was only cleared on abort. A build that finished
+    // normally left that timer pending, so Bun kept the event loop alive for
+    // the full thirty minutes — the actual cause of the runner outliving the
+    // Playwright summary. The wait must go through deadline(), which clears
+    // its timer in a finally.
+    const source = readFileSync(join(import.meta.dirname, "../e2e-utils.ts"), "utf8");
+    expect(source).toMatch(/deadline\(build\.exited, 1_800_000/);
+    expect(source).not.toContain('new Error("next build timed out")');
+  });
+
+  it("recognizes a signal-killed child and keeps the real failure visible", () => {
+    // Bun leaves exitCode === null for a child killed by a signal, so an
+    // exitCode-only liveness check sends a redundant SIGKILL (harmless on Bun,
+    // ESRCH elsewhere). And a throw inside finally replaces the in-flight
+    // error, so cleanup has to record and re-throw afterwards.
+    const source = readFileSync(join(import.meta.dirname, "../e2e-utils.ts"), "utf8");
+    expect(source).toContain("signalCode");
+    expect(source).toContain("cleanupErrors");
+    expect(source).not.toMatch(/finally\s*{\s*for \(const child/);
+  });
+
+  it.each(["run-e2e.ts", "run-e2e-ui.ts"])(
+    "exits %s deterministically once cleanup has finished",
+    (entry) => {
+      // Belt and braces next to the timer-leak fix above: measured on Bun
+      // 1.4.4, a full ui lane reached the last statement of the entry script
+      // with no child processes, no pipes and no sockets left (lsof showed
+      // only empty KQUEUEs) and never returned from the event loop — SIGTERM
+      // was the only way out. The leak that caused it is fixed and the same
+      // run now exits on its own, but an exit that does not depend on every
+      // pending handle being released cannot regress that way again. Cleanup
+      // has already finished here, and stdout is inherited throughout, so no
+      // buffered output is lost.
+      const source = readFileSync(join(import.meta.dirname, "..", entry), "utf8");
+      expect(source).toMatch(/process\.exit\(/);
+      expect(source).not.toMatch(/^\s*process\.exitCode\s*=/m);
+    },
+  );
+});
+
+describe("API route warmup", () => {
+  // L2 boots `next dev`, so every route compiles on its first request and the
+  // compile counts against the per-test budget. A retired-endpoint test that
+  // hits a path with no route (e.g. /api/showcases) makes Next compile its
+  // not-found boundary — the most expensive compile in the tree, measured at
+  // 2.1min of next.js time against a 120s test budget. The lane therefore
+  // warms every route, and the not-found boundary first, before the tests run.
+  function buildTree(root: string): void {
+    const route = (dir: string) => {
+      mkdirSync(join(root, dir), { recursive: true });
+      writeFileSync(join(root, dir, "route.ts"), "export function GET() {}\n");
+    };
+    route("static");
+    route("grouped/(admin)/inside");
+    route("slot/@modal/inside");
+    route("dynamic/[slug]");
+    route("catchall/[...rest]");
+    route("optional/[[...rest]]");
+    // A directory with no route file must not produce a candidate.
+    mkdirSync(join(root, "empty/nested"), { recursive: true });
+  }
+
+  it("maps route files to warmup URLs and skips organizational folders", () => {
+    const root = mkdtempSync(join(tmpdir(), "pew-warmup-"));
+    try {
+      buildTree(root);
+      expect(apiRouteWarmupPaths(root)).toEqual([
+        "/api/catchall/e2e-warmup",
+        "/api/dynamic/e2e-warmup",
+        "/api/grouped/inside",
+        "/api/optional/e2e-warmup",
+        "/api/slot/inside",
+        "/api/static",
+      ]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("probes the not-found boundary and marks every request as a warmup", () => {
+    // The marker lets rate-limited routes skip accounting, so warming up cannot
+    // consume the quota the tests themselves rely on.
+    const source = readFileSync(join(import.meta.dirname, "../e2e-utils.ts"), "utf8");
+    expect(source).toMatch(/\/api\/\$\{WARMUP_SEGMENT\}-not-found/);
+    expect(source).toContain("pew-warmup=1");
+    expect(source).toMatch(/await warmApiRoutes\(port, abort\.signal\)/);
+  });
 });

@@ -1,7 +1,7 @@
 /**
  * Shared auth helper for API routes.
  *
- * In E2E mode (E2E_SKIP_AUTH=true + NODE_ENV=development), returns the
+ * In E2E mode (the shared gate in lib/e2e-mode.ts), returns the
  * test user configured via E2E_TEST_USER_ID / E2E_TEST_USER_EMAIL env vars
  * so that API tests can run without OAuth. Defaults to a fixed ID for
  * local dev; the E2E runner overrides these with a per-run unique ID to
@@ -10,6 +10,7 @@
 
 import { auth } from "@/auth";
 import { getDbRead } from "@/lib/db";
+import { isE2EMode } from "@/lib/e2e-mode";
 
 /** The user ID used when E2E auth is bypassed (overridable via env) */
 export const E2E_TEST_USER_ID =
@@ -26,7 +27,7 @@ export interface AuthResult {
  * Resolve the authenticated user for an API request.
  *
  * Priority:
- * 1. E2E bypass (E2E_SKIP_AUTH=true in development)
+ * 1. E2E bypass (the shared gate in lib/e2e-mode.ts)
  * 2. Auth.js session
  * 3. Bearer api_key
  *
@@ -62,11 +63,4 @@ export async function resolveUser(
   return null;
 }
 
-/** Check if we're running in E2E skip-auth mode */
-function isE2EMode(): boolean {
-  return (
-    process.env.E2E_SKIP_AUTH === "true" &&
-    process.env.NODE_ENV === "development" &&
-    !process.env.RAILWAY_ENVIRONMENT
-  );
-}
+

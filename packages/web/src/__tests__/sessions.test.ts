@@ -1,3 +1,4 @@
+import { SOURCES } from "@pew/core";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import * as dbModule from "@/lib/db";
 import { createMockDbRead, loadMockedAuthHelpers, makeGetRequest } from "./test-utils";
@@ -89,6 +90,15 @@ describe("GET /api/sessions", () => {
       expect(res.status).toBe(200);
       const [, , , options] = mockDbRead.getSessionRecords.mock.calls[0]!;
       expect(options.source).toBe("claude-code");
+    });
+
+    it.each([...SOURCES])("should accept source filter %s", async (source) => {
+      mockDbRead.getSessionRecords.mockResolvedValueOnce([]);
+
+      const res = await GET(makeGetRequest("/api/sessions", { source }));
+
+      expect(res.status).toBe(200);
+      expect(mockDbRead.getSessionRecords.mock.calls[0]![3].source).toBe(source);
     });
 
     it("keeps an explicit timestamp as the exclusive end bound in UTC", async () => {

@@ -2,6 +2,8 @@
 // All values reference CSS custom properties defined in globals.css.
 // Use these constants everywhere instead of hardcoded color strings.
 
+import { isValidSource, type Source } from "@pew/core";
+
 /** Helper — wraps a CSS custom property name for inline style usage. */
 const v = (token: string) => `hsl(var(--${token}))`;
 
@@ -12,8 +14,8 @@ const v = (token: string) => `hsl(var(--${token}))`;
 export const withAlpha = (token: string, alpha: number) =>
   `hsl(var(--${token}) / ${alpha})`;
 
-// -- 15 sequential chart colors --
-// Spectrum: Violet → Magenta → Pink → Coral → Orange → Gold → Lime → Acid Lime → Teal → Sky → Indigo → Rose → Cyan → Emerald → Blue
+// -- 16 sequential chart colors --
+// Spectrum: Violet → Magenta → Pink → Coral → Orange → Gold → Lime → Acid Lime → Teal → Sky → Indigo → Rose → Cyan → Emerald → Blue → Leaf
 
 export const chart = {
   violet:  v("chart-1"),  // Brand violet (= --primary)
@@ -30,14 +32,15 @@ export const chart = {
   rose:    v("chart-12"), // Rose — 12th color (Grok)
   cyan:    v("chart-13"), // Cyan — 13th color (ZCode)
   emerald: v("chart-14"), // Emerald — 14th color (Oh My Pi)
-  blue:    v("chart-15"),
+  blue:    v("chart-15"), // Blue — 15th color (Antigravity)
+  leaf:    v("chart-16"), // Leaf green — 16th color (WorkBuddy)
 } as const;
 
 /** Ordered array — use for pie / donut / bar where you need N colors by index. */
 export const CHART_COLORS = Object.values(chart);
 
 /** CSS variable names (without --) matching CHART_COLORS order — for withAlpha(). */
-export const CHART_TOKENS = Array.from({ length: 15 }, (_, i) => `chart-${i + 1}`) as readonly string[];
+export const CHART_TOKENS = Array.from({ length: 16 }, (_, i) => `chart-${i + 1}`) as readonly string[];
 
 // -- Semantic aliases --
 
@@ -65,10 +68,10 @@ export interface ChartColor {
 }
 
 /**
- * Fixed color assignment for known agent slugs (alphabetical order).
+ * Fixed color assignment for known agent slugs, ordered by chart color.
  * Every agent always renders the same color across all charts.
  */
-const AGENT_COLOR_MAP: Record<string, ChartColor> = {
+const AGENT_COLOR_MAP: Record<Source, ChartColor> = {
   "antigravity":   { color: chart.blue,    token: "chart-15" },
   "claude-code":   { color: chart.violet,  token: "chart-1" },
   "codex":         { color: chart.magenta, token: "chart-2" },
@@ -83,6 +86,7 @@ const AGENT_COLOR_MAP: Record<string, ChartColor> = {
   "pi":            { color: chart.teal,    token: "chart-9" },
   "pmstudio":      { color: chart.sky,     token: "chart-10" },
   "vscode-copilot":{ color: chart.indigo,  token: "chart-11" },
+  "workbuddy":     { color: chart.leaf,    token: "chart-16" },
   "zcode":         { color: chart.cyan,    token: "chart-13" },
 };
 
@@ -94,7 +98,7 @@ const AGENT_FALLBACK: ChartColor = { color: chart.violet, token: "chart-1" };
  * Known agents always get the same color; unknown agents get the fallback.
  */
 export function agentColor(source: string): ChartColor {
-  return AGENT_COLOR_MAP[source] ?? AGENT_FALLBACK;
+  return (isValidSource(source) ? AGENT_COLOR_MAP[source] : undefined) ?? AGENT_FALLBACK;
 }
 
 /**
@@ -111,7 +115,7 @@ function hashString(s: string): number {
 
 /**
  * Get a stable color for a model name.
- * Uses a hash to deterministically pick from the 9 chart colors.
+ * Uses a hash to deterministically pick from the chart palette.
  */
 export function modelColor(model: string): ChartColor {
   const idx = hashString(model) % CHART_COLORS.length;

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { SOURCES } from "@pew/core";
 import { GET } from "@/app/api/usage/route";
 import * as dbModule from "@/lib/db";
 import { createMockDbRead, loadMockedAuthHelpers, makeGetRequest } from "./test-utils";
@@ -97,6 +98,15 @@ describe("GET /api/usage", () => {
       expect(res.status).toBe(400);
       const body = await res.json();
       expect(body.error).toContain("source");
+    });
+
+    it.each([...SOURCES])("should accept source filter %s", async (source) => {
+      mockDbRead.getUsageRecords.mockResolvedValueOnce([]);
+
+      const res = await GET(makeGetRequest("/api/usage", { source }));
+
+      expect(res.status).toBe(200);
+      expect(mockDbRead.getUsageRecords.mock.calls[0]![3].source).toBe(source);
     });
 
     it("should reject invalid date format for from", async () => {

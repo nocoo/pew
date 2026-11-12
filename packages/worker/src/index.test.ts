@@ -134,6 +134,103 @@ describe("Worker ingest endpoint", () => {
 
       expect(res.status).toBe(200);
     });
+
+    it.each([
+      ["a shorter prefix of the secret", SECRET.slice(0, SECRET.length - 2)],
+      ["the secret with a trailing char", `${SECRET}x`],
+      ["a different-length wrong value", "x"],
+    ])("rejects %s with 401 (a wrong length is never a pass)", async (_label, secret) => {
+      // secureCompare pads both inputs to the longer length, so a wrong
+      // length must not short-circuit into anything but a rejection.
+      const req = makeRequest({ userId: "u1", records: [VALID_RECORD] }, { secret });
+
+      const res = await worker.fetch(req, env);
+
+      expect(res.status).toBe(401);
+      expect(env.DB.batch).not.toHaveBeenCalled();
+    });
+
+    it("accepts matching bytes when the runtime provides subtle.timingSafeEqual", async () => {
+      // The Workers fast path. Bun/Node do not expose it, so it must be stubbed
+      // explicitly, otherwise this branch is never executed in the suite.
+      const fastEqual = (a: BufferSource, b: BufferSource): boolean => {
+        const x = a as Uint8Array;
+        const y = b as Uint8Array;
+        return x.length === y.length && x.every((v, i) => v === y[i]);
+      };
+      const realCrypto = (globalThis as unknown as { crypto: Crypto }).crypto;
+      vi.stubGlobal("crypto", new Proxy(realCrypto, {
+        get: (target, key) => key === "subtle"
+          ? { timingSafeEqual: fastEqual }
+          : Reflect.get(target, key),
+      }));
+      try {
+        const ok = await worker.fetch(
+          makeRequest({ userId: "u1", records: [VALID_RECORD] }, { secret: SECRET }),
+          env,
+        );
+        expect(ok.status).toBe(200);
+
+        const bad = await worker.fetch(
+          makeRequest({ userId: "u1", records: [VALID_RECORD] }, { secret: `${SECRET.slice(0, -1)}X` }),
+          env,
+        );
+        expect(bad.status).toBe(401);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+
+    it("rejects a same-length wrong secret (the fast path must compare bytes)", async () => {
+      // Matches SECRET's length, so a length short-circuit would accept it.
+      const sameLength = `${SECRET.slice(0, -1)}X`;
+      expect(sameLength).toHaveLength(SECRET.length);
+      const res = await worker.fetch(
+        makeRequest({ userId: "u1", records: [VALID_RECORD] }, { secret: sameLength }),
+        env,
+      );
+      expect(res.status).toBe(401);
+      expect(env.DB.batch).not.toHaveBeenCalled();
+    });
+
+    it("authenticates when the runtime lacks subtle.timingSafeEqual", async () => {
+      // The XOR fallback exists for runtimes whose crypto.subtle has no
+      // timingSafeEqual. Stub the global so the fast path is unreachable and
+      // both outcomes of the loop are exercised.
+      vi.stubGlobal("crypto", { subtle: {} });
+      try {
+        const ok = await worker.fetch(
+          makeRequest({ userId: "u1", records: [VALID_RECORD] }, { secret: SECRET }),
+          env,
+        );
+        expect(ok.status).toBe(200);
+        const afterAccept = vi.mocked(env.DB.batch).mock.calls.length;
+
+        const bad = await worker.fetch(
+          makeRequest({ userId: "u1", records: [VALID_RECORD] }, { secret: `${SECRET.slice(0, -1)}X` }),
+          env,
+        );
+        expect(bad.status).toBe(401);
+        // The rejected request must have been stopped at auth, not ingested.
+        expect(vi.mocked(env.DB.batch).mock.calls.length).toBe(afterAccept);
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
+
+    it("rejects the raw secret without the Bearer prefix", async () => {
+      // makeRequest always adds "Bearer ", so build the header by hand: the
+      // comparison is against the full "Bearer <secret>" string.
+      const req = new Request("https://pew-ingest.workers.dev/ingest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: SECRET },
+        body: JSON.stringify({ userId: "u1", records: [VALID_RECORD] }),
+      });
+
+      const res = await worker.fetch(req, env);
+
+      expect(res.status).toBe(401);
+    });
   });
 
   // -----------------------------------------------------------------------
@@ -218,6 +315,24 @@ describe("Worker ingest endpoint", () => {
       expect(res.status).toBe(400);
       const body = await json(res);
       expect(body.error).toContain("record[0]");
+    });
+
+    it("should reject a JSON body that is not an envelope", async () => {
+      // `null` is the `typeof body === "object"` trap the explicit null check
+      // exists for; a number or string fails `typeof !== "object"`; an array
+      // is an object and falls through to the userId check. None may reach D1.
+      for (const raw of ["null", "5", '"str"', "[1,2]"]) {
+        const req = new Request("https://pew-ingest.workers.dev/ingest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${SECRET}` },
+          body: raw,
+        });
+        const res = await worker.fetch(req, env);
+        expect(res.status, raw).toBe(400);
+        const body = await json(res);
+        if (raw === "null") expect(body.error).toContain("Invalid request body");
+      }
+      expect(env.DB.batch).not.toHaveBeenCalled();
     });
 
     it("should reject record with non-number token fields", async () => {
