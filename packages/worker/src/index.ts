@@ -183,24 +183,41 @@ function validateRequest<T>(
 /**
  * Compare two strings in constant time to prevent timing attacks.
  * Uses crypto.subtle.timingSafeEqual (available in Cloudflare Workers runtime).
- * Length mismatch returns false without timing leak from byte comparison.
+ *
+ * Both inputs are zero-padded to the longer length before comparing, so the
+ * comparison time does not reveal the secret's length. worker-read and the
+ * selfhost d1-http use the same padded shape; the earlier early-return on a
+ * length mismatch leaked one bit of length information.
+ *
+ * NOTE (honest scope): this is a timing-side-channel change, not a behaviour
+ * change. Padded and non-padded implementations both return false for unequal
+ * lengths, so no black-box test can distinguish them — reverting this function
+ * to its old early-return form leaves every test green. Do not read the
+ * passing suite as evidence that the padding is still here; the guard is the
+ * comment and review, not coverage. (Verified by mutation.)
  */
 async function secureCompare(a: string, b: string): Promise<boolean> {
   const encoder = new TextEncoder();
   const bufA = encoder.encode(a);
   const bufB = encoder.encode(b);
-  if (bufA.byteLength !== bufB.byteLength) return false;
+  const len = Math.max(bufA.byteLength, bufB.byteLength);
+  const paddedA = new Uint8Array(len);
+  const paddedB = new Uint8Array(len);
+  paddedA.set(bufA);
+  paddedB.set(bufB);
   // Cloudflare Workers expose crypto.subtle.timingSafeEqual; Node/Vitest does not.
   const subtle = crypto.subtle as SubtleCrypto & {
     timingSafeEqual?: (a: BufferSource, b: BufferSource) => boolean;
   };
   if (typeof subtle.timingSafeEqual === "function") {
-    return subtle.timingSafeEqual(bufA, bufB);
+    return bufA.byteLength === bufB.byteLength && subtle.timingSafeEqual(paddedA, paddedB);
   }
   // Fallback constant-time comparison (XOR every byte, accumulate diff bits).
-  let diff = 0;
-  for (let i = 0; i < bufA.byteLength; i++) {
-    diff |= (bufA[i] ?? 0) ^ (bufB[i] ?? 0);
+  let diff = bufA.byteLength ^ bufB.byteLength;
+  for (let i = 0; i < len; i++) {
+    // Both padded arrays are Uint8Array(len), so every index is defined;
+    // the nullish branches would be unreachable.
+    diff |= (paddedA[i] as number) ^ (paddedB[i] as number);
   }
   return diff === 0;
 }

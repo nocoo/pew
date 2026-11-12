@@ -46,7 +46,10 @@ export default defineConfig({
         "**/*.d.ts",
         "**/__tests__/**",
         "**/__test-helpers__/**",
-        "**/index.ts",
+        // Barrel-only entry points: pure `export * from` re-exports with no
+        // runtime logic.
+        "packages/core/src/index.ts",
+        "packages/cli/src/index.ts",
         "**/bin.ts",
         "**/cli.ts",
         "**/types.ts",
