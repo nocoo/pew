@@ -119,7 +119,14 @@ Successful main push CI now triggers the pinned Docker CD workflow, publishing
 `ghcr.io/nocoo/pew` and deploying one immutable-digest container to `/opt/pew` on
 jp2. All hooks remain enabled; never use `railway up` or manual image rebuilding
 to bypass the proven-source deployment chain. Any Worker code or schema change
-still requires `wrangler deploy` plus a real verification request.
+still requires `wrangler deploy` plus a real verification request. On this fork
+that CD chain is switched off by hand (`gh workflow disable Release --repo
+MisonL/pew`, 2026-11-12): its image target is the upstream `ghcr.io/nocoo/pew`
+package and a fork's token is rejected there (`denied: permission_denied: The
+requested installation does not exist`), so every main push used to leave a red
+run that could never pass. Re-enable it only after retargeting the image
+namespace and supplying the deploy secrets; the self-hosted path in
+`deploy/selfhost/` is a separate deployment and is unaffected.
 
 The [jp2 migration](docs/52-jp2-migration.md) completed public cutover on 2026-10-22.
 `pew.md` uses jp2 with Full (strict), shared AOP and `DEPLOY_PHASE=production`;
