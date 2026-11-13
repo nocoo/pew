@@ -28,7 +28,7 @@ jobs:
     uses: nocoo/base-ci/.github/workflows/quality.yml@1ea10ecab22b72512399485391603fe03a161016  # v2026.12
     with:
       runtime-version: "1.4.0"
-      node-version: "26.12.1"
+      node-version: "26.13.1"
       install-policy: blocked
       coverage-path: coverage
       prepare-command: bun run build
@@ -68,7 +68,7 @@ jobs:
     uses: nocoo/base-ci/.github/workflows/test-job.yml@1ea10ecab22b72512399485391603fe03a161016  # v2026.12
     with:
       runtime: "none"
-      node-version: "26.12.1"
+      node-version: "26.13.1"
       timeout-minutes: 25
       command: |
         docker build --platform linux/amd64 --tag pew-ci:${{ github.sha }} .
