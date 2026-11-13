@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v3.5.3
+
+### Fixed
+- Pin Docker build/runtime images and CI Node.js versions to the official 26.13.1 security release; require the exact Node.js version during the Docker build.
+
 ## v3.5.1
 
 ### Changed
