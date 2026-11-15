@@ -2,8 +2,9 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const source = (file: string) => readFileSync(new URL(`../../${file}`, import.meta.url), "utf8");
-const revision = "1ea10ecab22b72512399485391603fe03a161016";
+const revision = "777bbe4f9bacab8a91d8c01974480a6ee23d28e0";
 const ci = source(".github/workflows/ci.yml");
+const slots = source(".github/workflows/quality-slots.yml");
 const release = source(".github/workflows/release.yml");
 const compose = source("deploy/compose.yaml");
 
@@ -16,7 +17,7 @@ describe("Docker CD contract", () => {
       "bun run test:e2e",
       "bun run test:e2e:ui",
     ]) {
-      expect(ci).toContain(command);
+      expect(slots).toContain(command);
     }
     const smoke = ci.split("  container-smoke:\n")[1];
     expect(smoke).toContain(`uses: nocoo/base-ci/.github/workflows/test-job.yml@${revision}`);
@@ -24,10 +25,10 @@ describe("Docker CD contract", () => {
     expect(smoke).toContain("docker build --platform linux/amd64 --tag pew-ci:");
     expect(smoke).toContain("node scripts/smoke-container.mjs pew-ci:");
     expect(smoke).not.toMatch(/secrets:|build-arg|env-file/);
-    expect(ci).toContain("workflow-lint: true");
-    expect(ci).toContain("workflow-lint-required-workflow: nocoo/base-ci/.github/workflows/deploy-docker.yml");
-    expect(ci).toContain("l2: true");
-    expect(ci).toContain("l3: true");
+    expect(ci).toContain("uses: ./.github/workflows/quality-slots.yml");
+    expect(slots).toContain("l2-runtime:");
+    expect(slots).toContain("l4-e2e:");
+    expect(slots).toContain("z1-gate:");
   });
 
   it("uses only the pinned existing release chain and exact CI provenance", () => {

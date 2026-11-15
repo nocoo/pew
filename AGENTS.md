@@ -98,7 +98,7 @@ Run the checks relevant to the change; hook and CI requirements still apply. Sta
 
 Current hooks: pre-commit runs the full local index-snapshot L1 gate; pre-push runs isolated L2 E2E, L3 BDD and G2 in parallel and rejects local environment files. CI `quality` mirrors staged lint/test coverage; CI `L1 Pre-commit Gate Self-test` runs `bun run test:l1-gate` (pre-command `bun run build`) without cloud-secret injection. Tag pushes also invoke Git pre-push hooks; never bypass them. Pre-push ref/lane timing targets remain best-effort; L1 wall-clock evidence lives in AGENTS L1 row and CI self-test logs.
 
-The owner merged former G1 into L1 on 2026-09-21; the framework keeps the 6DQ name. Use `system0-6dq-l1` for the L1 contract and its S/A/B/F rubric.
+The quality framework follows System1 (S1–S3, G1–G2, B1, L1–L4, P1, Z1) with unified L1. Use `system1-quality` for the quality contract.
 
 ## Operations and release
 
