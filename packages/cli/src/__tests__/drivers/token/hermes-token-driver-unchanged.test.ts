@@ -63,7 +63,22 @@ describe("Hermes token driver unchanged evidence", () => {
           close: () => {},
         }),
       });
-      const ctx: SyncContext = { evidenceRecords: [previous] };
+      const ctx: SyncContext = {
+        evidenceRecords: [previous],
+        collectAccounting: true,
+        accountingRecords: [{
+          event_id: "event-1",
+          evidence_snapshot_seq: 2,
+          parser_revision: 1,
+          basis: {
+            input_tokens: 10,
+            cached_input_tokens: 5,
+            output_tokens: 3,
+            reasoning_output_tokens: 2,
+            total_tokens: 20,
+          },
+        } as never],
+      };
       const result = await driver.run(undefined, ctx);
       expect(result.deltas).toEqual([]);
     } finally {

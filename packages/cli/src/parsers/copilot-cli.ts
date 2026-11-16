@@ -11,6 +11,7 @@ import type { ParsedDelta } from "./claude.js";
 export interface CopilotCliFileResult {
   deltas: ParsedDelta[];
   endOffset: number;
+  apiCallIds: string[];
 }
 
 /**
@@ -38,12 +39,15 @@ export async function parseCopilotCliFile(opts: {
   const { filePath, startOffset } = opts;
   const deltas: ParsedDelta[] = [];
   const st = await stat(filePath).catch(() => null);
-  if (!st?.isFile()) return { deltas, endOffset: startOffset };
+  if (!st?.isFile()) return { deltas, endOffset: startOffset, apiCallIds: [] };
   const bound = jsonlStreamBound(st.size, opts.endBound);
-  if (startOffset >= bound) return { deltas, endOffset: bound };
+  if (startOffset >= bound) return { deltas, endOffset: bound, apiCallIds: [] };
   const seenApiCallIds = opts.seenApiCallIds ?? new Set<string>();
-  if (filePath.endsWith(".jsonl") && !basename(filePath).startsWith("process-")) return parseUsageJsonl({ filePath, startOffset, bound, deltas, seenApiCallIds });
-  return parseLegacyProcessLog({ filePath, startOffset, bound, deltas, seenApiCallIds });
+  const apiCallIds = new Set<string>();
+  if (filePath.endsWith(".jsonl") && !basename(filePath).startsWith("process-")) {
+    return parseUsageJsonl({ filePath, startOffset, bound, deltas, seenApiCallIds, apiCallIds });
+  }
+  return parseLegacyProcessLog({ filePath, startOffset, bound, deltas, seenApiCallIds, apiCallIds });
 }
 
 async function parseUsageJsonl(opts: {
@@ -52,6 +56,7 @@ async function parseUsageJsonl(opts: {
   bound: number;
   deltas: ParsedDelta[];
   seenApiCallIds: Set<string>;
+  apiCallIds: Set<string>;
 }): Promise<CopilotCliFileResult> {
   const stream = createReadStream(opts.filePath, { start: opts.startOffset, end: opts.bound - 1 });
   let pending = Buffer.alloc(0);
@@ -64,7 +69,10 @@ async function parseUsageJsonl(opts: {
     const extracted = extractUsageDelta(parsed as Record<string, unknown>, true);
     if (!extracted) return;
     if (extracted.apiCallId && opts.seenApiCallIds.has(extracted.apiCallId)) return;
-    if (extracted.apiCallId) opts.seenApiCallIds.add(extracted.apiCallId);
+    if (extracted.apiCallId) {
+      opts.seenApiCallIds.add(extracted.apiCallId);
+      opts.apiCallIds.add(extracted.apiCallId);
+    }
     opts.deltas.push(extracted.delta);
   };
   try {
@@ -84,7 +92,11 @@ async function parseUsageJsonl(opts: {
       pending = offset === 0 ? pending : pending.subarray(offset);
     }
   } finally { stream.destroy(); }
-  return { deltas: opts.deltas, endOffset: clampedJsonlEndOffset(opts.startOffset, opts.bound, completeBytes) };
+  return {
+    deltas: opts.deltas,
+    endOffset: clampedJsonlEndOffset(opts.startOffset, opts.bound, completeBytes),
+    apiCallIds: [...opts.apiCallIds],
+  };
 }
 
 async function parseLegacyProcessLog(opts: {
@@ -93,6 +105,7 @@ async function parseLegacyProcessLog(opts: {
   bound: number;
   deltas: ParsedDelta[];
   seenApiCallIds: Set<string>;
+  apiCallIds: Set<string>;
 }): Promise<CopilotCliFileResult> {
   const eolBytes = await detectEolSize(opts.filePath);
   const stream = createReadStream(opts.filePath, { start: opts.startOffset, end: opts.bound - 1, encoding: "utf8" });
@@ -108,7 +121,10 @@ async function parseLegacyProcessLog(opts: {
     const extracted = extractUsageDelta(parsed, false);
     if (!extracted) return;
     if (extracted.apiCallId && opts.seenApiCallIds.has(extracted.apiCallId)) return;
-    if (extracted.apiCallId) opts.seenApiCallIds.add(extracted.apiCallId);
+    if (extracted.apiCallId) {
+      opts.seenApiCallIds.add(extracted.apiCallId);
+      opts.apiCallIds.add(extracted.apiCallId);
+    }
     opts.deltas.push(extracted.delta);
   };
   function tryFlushJson(): boolean {
@@ -131,7 +147,11 @@ async function parseLegacyProcessLog(opts: {
       }
     }
   } finally { rl.close(); stream.destroy(); }
-  return { deltas: opts.deltas, endOffset: collectingJson && jsonLines.length > 0 ? lastCompletedOffset : opts.startOffset + bytesConsumed };
+  return {
+    deltas: opts.deltas,
+    endOffset: collectingJson && jsonLines.length > 0 ? lastCompletedOffset : opts.startOffset + bytesConsumed,
+    apiCallIds: [...opts.apiCallIds],
+  };
 }
 
 function extractUsageDelta(event: Record<string, unknown>, jsonl: boolean): { delta: ParsedDelta; apiCallId: string | null } | null {
