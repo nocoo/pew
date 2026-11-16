@@ -199,4 +199,11 @@ describe("collectCopilotCliSessions", () => {
     expect(result).toHaveLength(1);
     expect(result[0].model).toBeNull();
   });
+
+  it("skips session-state events JSONL without scanning token history", async () => {
+    const filePath = join(tempDir, "events.jsonl");
+    await writeFile(filePath, JSON.stringify({ type: "session.usage_record", data: { usage: { inputTokens: 1 } } }));
+    expect(await collectCopilotCliSessions(filePath)).toEqual([]);
+  });
+
 });

@@ -16,6 +16,7 @@ import type { HermesQueryHandle } from "../../parsers/hermes-sqlite.js";
 import { readHermesReviewCalls } from "../../parsers/hermes-review.js";
 import { collectHermesUsageEvidence } from "../../parsers/hermes-usage-evidence.js";
 import type { DbTokenDriver, DbTokenResult, SyncContext } from "../types.js";
+import { ACCOUNTING_PARSER_REVISION, sameBasis } from "../../storage/accounting-queue.js";
 
 /** Options needed to construct the Hermes SQLite token driver */
 export interface HermesSqliteTokenDriverOpts {
@@ -94,8 +95,36 @@ export function createHermesSqliteTokenDriver(
               warnings.push("Hermes review timestamps unavailable; retaining cumulative ledger usage");
               return [];
             });
-            result.deltas.push(...collectHermesUsageEvidence({ dbKey: opts.dbKey, rows, calls, previous: ctx.evidenceRecords ?? [],
-              ...(ctx.collectAccounting ? { includeAccounting: true, accountingRecords: ctx.accountingRecords } : {}) }));
+            const evidenceDeltas = collectHermesUsageEvidence({ dbKey: opts.dbKey, rows, calls, previous: ctx.evidenceRecords ?? [],
+              ...(ctx.collectAccounting ? { includeAccounting: true, accountingRecords: ctx.accountingRecords } : {}) });
+            const unchangedEvidence = (delta: import("../../parsers/claude.js").ParsedDelta): boolean => {
+              const evidence = delta.evidence;
+              if (!evidence) return false;
+              const previous = (ctx.evidenceRecords ?? []).find((record) =>
+                record.evidence.eventId === evidence.eventId &&
+                record.evidence.snapshotSeq === evidence.snapshotSeq &&
+                record.input_tokens === delta.tokens.inputTokens &&
+                record.cached_input_tokens === delta.tokens.cachedInputTokens &&
+                record.output_tokens === delta.tokens.outputTokens &&
+                record.reasoning_output_tokens === delta.tokens.reasoningOutputTokens,
+              );
+              if (!previous) return false;
+              if (!ctx.collectAccounting) return true;
+              const accounting = (ctx.accountingRecords ?? []).find((record) =>
+                record.event_id === evidence.eventId &&
+                record.evidence_snapshot_seq === evidence.snapshotSeq &&
+                record.parser_revision === ACCOUNTING_PARSER_REVISION,
+              );
+              if (!accounting) return false;
+              return sameBasis(accounting.basis, {
+                input_tokens: delta.tokens.inputTokens,
+                cached_input_tokens: delta.tokens.cachedInputTokens,
+                output_tokens: delta.tokens.outputTokens,
+                reasoning_output_tokens: delta.tokens.reasoningOutputTokens,
+                total_tokens: delta.tokens.inputTokens + delta.tokens.cachedInputTokens + delta.tokens.outputTokens + delta.tokens.reasoningOutputTokens,
+              });
+            };
+            result.deltas.push(...evidenceDeltas.filter((delta) => !unchangedEvidence(delta)));
           } catch {
             warnings.push("Hermes auxiliary evidence unavailable; main session accounting preserved");
           }

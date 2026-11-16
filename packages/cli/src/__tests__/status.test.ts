@@ -236,6 +236,13 @@ describe("executeStatus", () => {
           size: 200,
           mtimeMs: 7001,
         },
+        "/home/.copilot/session-state/session-1/events.jsonl": {
+          type: "byte-offset",
+          offset: 100,
+          inode: 22,
+          size: 100,
+          mtimeMs: 7002,
+        },
       },
       updatedAt: "2026-03-09T10:00:00.000Z",
     });
@@ -244,8 +251,8 @@ describe("executeStatus", () => {
       stateDir,
       sourceDirs: defaultDirs,
     });
-    expect(result.trackedFiles).toBe(2);
-    expect(result.sources["copilot-cli"]).toBe(2);
+    expect(result.trackedFiles).toBe(3);
+    expect(result.sources["copilot-cli"]).toBe(3);
     expect(result.sources.unknown).toBeUndefined();
   });
 

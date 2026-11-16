@@ -48,6 +48,7 @@ export const copilotCliTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
     // extension — a valid `copilot-otel.out` would otherwise be handed to the
     // process-log parser and silently yield nothing.
     ctx.copilotOtelPaths = new Set(otelFiles);
+    ctx.seenCopilotApiCallIds ??= new Set();
     return [...new Set([...processLogs, ...otelFiles])].sort();
   },
 
@@ -73,6 +74,7 @@ export const copilotCliTokenDriver: FileTokenDriver<ByteOffsetCursor> = {
           filePath,
           startOffset: r.startOffset,
           endBound: r.endBound,
+          seenApiCallIds: ctx.seenCopilotApiCallIds,
         });
     return { deltas: result.deltas, endOffset: result.endOffset };
   },

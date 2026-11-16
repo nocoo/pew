@@ -1,8 +1,9 @@
 import { createReadStream } from "node:fs";
 import { open, stat } from "node:fs/promises";
+import { basename } from "node:path";
 import { createInterface } from "node:readline";
 import type { TokenDelta } from "@pew/core";
-import { jsonlStreamBound } from "../utils/jsonl-offset.js";
+import { clampedJsonlEndOffset, jsonlStreamBound } from "../utils/jsonl-offset.js";
 import { isAllZero, toNonNegInt } from "../utils/token-delta.js";
 import type { ParsedDelta } from "./claude.js";
 
@@ -32,183 +33,135 @@ export async function parseCopilotCliFile(opts: {
   filePath: string;
   startOffset: number;
   endBound?: number;
+  seenApiCallIds?: Set<string>;
 }): Promise<CopilotCliFileResult> {
   const { filePath, startOffset } = opts;
   const deltas: ParsedDelta[] = [];
-
   const st = await stat(filePath).catch(() => null);
   if (!st?.isFile()) return { deltas, endOffset: startOffset };
+  const bound = jsonlStreamBound(st.size, opts.endBound);
+  if (startOffset >= bound) return { deltas, endOffset: bound };
+  const seenApiCallIds = opts.seenApiCallIds ?? new Set<string>();
+  if (filePath.endsWith(".jsonl") && !basename(filePath).startsWith("process-")) return parseUsageJsonl({ filePath, startOffset, bound, deltas, seenApiCallIds });
+  return parseLegacyProcessLog({ filePath, startOffset, bound, deltas, seenApiCallIds });
+}
 
-  const fileSize = jsonlStreamBound(st.size, opts.endBound);
-  if (startOffset >= fileSize) return { deltas, endOffset: fileSize };
+async function parseUsageJsonl(opts: {
+  filePath: string;
+  startOffset: number;
+  bound: number;
+  deltas: ParsedDelta[];
+  seenApiCallIds: Set<string>;
+}): Promise<CopilotCliFileResult> {
+  const stream = createReadStream(opts.filePath, { start: opts.startOffset, end: opts.bound - 1 });
+  let pending = Buffer.alloc(0);
+  let completeBytes = 0;
+  const consume = (line: string): void => {
+    if (!line.trim()) return;
+    let parsed: unknown;
+    try { parsed = JSON.parse(line); } catch { return; }
+    if (!parsed || typeof parsed !== "object" || (parsed as Record<string, unknown>).type !== "session.usage_record") return;
+    const extracted = extractUsageDelta(parsed as Record<string, unknown>, true);
+    if (!extracted) return;
+    if (extracted.apiCallId && opts.seenApiCallIds.has(extracted.apiCallId)) return;
+    if (extracted.apiCallId) opts.seenApiCallIds.add(extracted.apiCallId);
+    opts.deltas.push(extracted.delta);
+  };
+  try {
+    for await (const chunk of stream) {
+      const piece = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      pending = pending.length === 0 ? piece : Buffer.concat([pending, piece]);
+      let offset = 0;
+      while (offset < pending.length) {
+        const nl = pending.indexOf(0x0a, offset);
+        if (nl === -1) break;
+        const line = pending.subarray(offset, nl);
+        completeBytes += nl - offset + 1;
+        offset = nl + 1;
+        const end = line.length > 0 && line[line.length - 1] === 0x0d ? line.length - 1 : line.length;
+        if (end > 0) consume(line.subarray(0, end).toString("utf8"));
+      }
+      pending = offset === 0 ? pending : pending.subarray(offset);
+    }
+  } finally { stream.destroy(); }
+  return { deltas: opts.deltas, endOffset: clampedJsonlEndOffset(opts.startOffset, opts.bound, completeBytes) };
+}
 
-  // Detect line ending width (LF=1, CRLF=2) from the first 4 KB.
-  // readline with crlfDelay:Infinity strips both \n and \r\n, but we
-  // must account for the actual on-disk bytes to keep offset tracking
-  // accurate. Windows-generated logs use \r\n.
-  const eolBytes = await detectEolSize(filePath);
-
-  const stream = createReadStream(filePath, {
-    start: startOffset,
-    end: fileSize - 1,
-    encoding: "utf8",
-  });
-
+async function parseLegacyProcessLog(opts: {
+  filePath: string;
+  startOffset: number;
+  bound: number;
+  deltas: ParsedDelta[];
+  seenApiCallIds: Set<string>;
+}): Promise<CopilotCliFileResult> {
+  const eolBytes = await detectEolSize(opts.filePath);
+  const stream = createReadStream(opts.filePath, { start: opts.startOffset, end: opts.bound - 1, encoding: "utf8" });
   const rl = createInterface({ input: stream, crlfDelay: Infinity });
-
-  // Timestamp pattern that starts a new log line
   const LOG_LINE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
   const TELEMETRY_MARKER = "[Telemetry] cli.telemetry:";
-
   let collectingJson = false;
   let jsonLines: string[] = [];
-
-  // Track byte position relative to startOffset for safe endOffset.
-  // If the file ends mid-JSON-block, we rewind to the last fully
-  // parsed position so the incomplete block gets re-parsed next sync.
   let bytesConsumed = 0;
-  let lastCompletedOffset = startOffset;
-
-  /**
-   * Try to parse the accumulated JSON lines.
-   * Returns true if parse succeeded (or lines were empty), false if
-   * the buffer looks incomplete (JSON.parse threw SyntaxError).
-   */
+  let lastCompletedOffset = opts.startOffset;
+  const emit = (parsed: Record<string, unknown>): void => {
+    if (parsed.kind !== "assistant_usage") return;
+    const extracted = extractUsageDelta(parsed, false);
+    if (!extracted) return;
+    if (extracted.apiCallId && opts.seenApiCallIds.has(extracted.apiCallId)) return;
+    if (extracted.apiCallId) opts.seenApiCallIds.add(extracted.apiCallId);
+    opts.deltas.push(extracted.delta);
+  };
   function tryFlushJson(): boolean {
     if (jsonLines.length === 0) return true;
-    const raw = jsonLines.join("\n");
-    try {
-      const parsed = JSON.parse(raw) as Record<string, unknown>;
-      if (parsed.kind === "assistant_usage") {
-        const delta = extractUsageDelta(parsed);
-        if (delta) deltas.push(delta);
-      }
-      jsonLines = [];
-      return true;
-    } catch {
-      // Could be incomplete JSON (still accumulating) or truly malformed
-      return false;
-    }
+    try { emit(JSON.parse(jsonLines.join("\n")) as Record<string, unknown>); jsonLines = []; return true; }
+    catch { return false; }
   }
-
   try {
     for await (const line of rl) {
-      // Add line content bytes + EOL bytes that readline stripped
       bytesConsumed += Buffer.byteLength(line, "utf8") + eolBytes;
-
       if (LOG_LINE_RE.test(line)) {
-        // New log line — flush any in-progress JSON block first
-        if (collectingJson) {
-          // Force-flush: a new log line means the JSON block ended (or was malformed).
-          // tryFlushJson clears jsonLines on success; on failure the block was
-          // malformed and we discard it below.
-          tryFlushJson();
-          jsonLines = [];
-          collectingJson = false;
-        }
-
-        if (line.includes(TELEMETRY_MARKER)) {
-          collectingJson = true;
-          // Do NOT advance lastCompletedOffset past the marker line.
-          // If the JSON block that follows is incomplete (file truncated),
-          // we need to rewind to BEFORE this marker so the next sync
-          // re-reads it and re-enters collectingJson mode.
-        } else {
-          // Non-telemetry log line — safe to advance past it
-          lastCompletedOffset = startOffset + bytesConsumed;
-        }
+        if (collectingJson) { tryFlushJson(); jsonLines = []; collectingJson = false; }
+        if (line.includes(TELEMETRY_MARKER)) collectingJson = true;
+        else lastCompletedOffset = opts.startOffset + bytesConsumed;
         continue;
       }
-
       if (collectingJson) {
         jsonLines.push(line);
-
-        // Attempt JSON.parse after each line containing "}" — this is
-        // more robust than brace-depth counting which breaks on braces
-        // inside JSON string values.
-        if (line.includes("}")) {
-          const parsed = tryFlushJson();
-          if (parsed) {
-            collectingJson = false;
-            lastCompletedOffset = startOffset + bytesConsumed;
-          }
-          // If parse failed, keep accumulating — might be nested object
-        }
+        if (line.includes("}") && tryFlushJson()) { collectingJson = false; lastCompletedOffset = opts.startOffset + bytesConsumed; }
       }
     }
-  } finally {
-    rl.close();
-    stream.destroy();
-  }
-
-  // Do NOT flush trailing incomplete blocks — leave them for next sync.
-  // If the file was fully consumed and no block is pending, endOffset
-  // equals fileSize. Otherwise endOffset rewinds to the safe point.
-  const endOffset = collectingJson && jsonLines.length > 0
-    ? lastCompletedOffset
-    : startOffset + bytesConsumed;
-
-  return { deltas, endOffset };
+  } finally { rl.close(); stream.destroy(); }
+  return { deltas: opts.deltas, endOffset: collectingJson && jsonLines.length > 0 ? lastCompletedOffset : opts.startOffset + bytesConsumed };
 }
 
-/**
- * Extract a ParsedDelta from an `assistant_usage` telemetry event.
- * Returns null if the event has no usable token data or missing timestamp.
- */
-function extractUsageDelta(
-  event: Record<string, unknown>,
-): ParsedDelta | null {
-  const props = event.properties as Record<string, unknown> | undefined;
-  const metrics = event.metrics as Record<string, unknown> | undefined;
-
-  // Require created_at for idempotent uploads — skip events without it.
-  // Using current time as fallback would break reset+sync idempotency.
-  const timestamp =
-    typeof event.created_at === "string" && event.created_at.length > 0
-      ? event.created_at
-      : null;
-  if (!timestamp) return null;
-
-  const model =
-    typeof props?.model === "string" && props.model.length > 0
-      ? props.model
-      : "unknown";
-
-  const tokens = normalizeCopilotCliUsage(metrics ?? {});
+function extractUsageDelta(event: Record<string, unknown>, jsonl: boolean): { delta: ParsedDelta; apiCallId: string | null } | null {
+  const usage = (jsonl ? (event.data as Record<string, unknown> | undefined)?.usage ?? event.usage : event.metrics) as Record<string, unknown> | undefined;
+  const props = (event.properties ?? {}) as Record<string, unknown>;
+  const timestamp = jsonl ? event.timestamp : event.created_at;
+  if (typeof timestamp !== "string" || timestamp.length === 0) return null;
+  const model = jsonl
+    ? (typeof usage?.model === "string" && usage.model.length > 0 ? usage.model : typeof usage?.responseModel === "string" && usage.responseModel.length > 0 ? usage.responseModel : "unknown")
+    : (typeof props.model === "string" && props.model.length > 0 ? props.model : "unknown");
+  const tokens = normalizeCopilotCliUsage(usage ?? {});
   if (isAllZero(tokens)) return null;
-
-  return { source: "copilot-cli", model, timestamp, tokens };
+  const apiCallId = firstString(usage?.apiCallId, usage?.api_call_id, event.apiCallId, event.api_call_id, props.apiCallId, props.api_call_id);
+  return { delta: { source: "copilot-cli", model, timestamp, tokens }, apiCallId };
 }
 
-/**
- * Normalize Copilot CLI telemetry metrics to disjoint TokenDelta fields.
- *
- * Prefer `input_tokens_uncached` when present (modern logs). Fall back to
- * max(0, input_tokens - cache_read_tokens) for older telemetry that only
- * reports inclusive input_tokens.
- */
-export function normalizeCopilotCliUsage(
-  metrics: Record<string, unknown>,
-): TokenDelta {
-  const cached = toNonNegInt(metrics.cache_read_tokens);
-  const inputUncached = metrics.input_tokens_uncached;
-  // Prefer explicit uncached field when present and numeric (including 0).
-  // Fall back when the key is absent or non-numeric (e.g. string garbage).
-  const hasUncached =
-    inputUncached !== undefined &&
-    inputUncached !== null &&
-    Number.isFinite(Number(inputUncached)) &&
-    Number(inputUncached) >= 0;
+function firstString(...values: unknown[]): string | null {
+  return values.find((value): value is string => typeof value === "string" && value.length > 0) ?? null;
+}
 
-  const inputTokens = hasUncached
-    ? toNonNegInt(inputUncached)
-    : Math.max(0, toNonNegInt(metrics.input_tokens) - cached);
-
+export function normalizeCopilotCliUsage(metrics: Record<string, unknown>): TokenDelta {
+  const cached = toNonNegInt(metrics.cacheReadTokens ?? metrics.cache_read_tokens);
+  const inputUncached = metrics.inputTokensUncached ?? metrics.input_tokens_uncached;
+  const hasUncached = inputUncached !== undefined && inputUncached !== null && Number.isFinite(Number(inputUncached)) && Number(inputUncached) >= 0;
+  const inputTotal = metrics.inputTokens ?? metrics.input_tokens;
   return {
-    inputTokens,
+    inputTokens: hasUncached ? toNonNegInt(inputUncached) : Math.max(0, toNonNegInt(inputTotal) - cached),
     cachedInputTokens: cached,
-    outputTokens: toNonNegInt(metrics.output_tokens),
-    reasoningOutputTokens: 0,
+    outputTokens: toNonNegInt(metrics.outputTokens ?? metrics.output_tokens),
+    reasoningOutputTokens: toNonNegInt(metrics.reasoningTokens ?? metrics.reasoning_tokens),
   };
 }
 
