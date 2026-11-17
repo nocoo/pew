@@ -111,7 +111,7 @@ export default function DashboardPage() {
       {!loading && data && !hasRecords && period === "all" && <DashboardEmptyState />}
 
       {!loading && data && (hasRecords || period !== "all") && <>
-        {!hasRecords && <p className="rounded-card bg-basalt-secondary px-4 py-3 text-sm text-basalt-muted-foreground">No usage in this period.</p>}
+        {!hasRecords && <p className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card px-4 py-3 text-sm text-basalt-muted-foreground">No usage in this period.</p>}
 
         <div className="grid grid-cols-1 gap-3 md:gap-4 xl:grid-cols-3">
           <div className="min-w-0 xl:col-span-2">

@@ -9,7 +9,7 @@ interface ChartCardSkeletonProps {
 
 /**
  * Dashboard chart-card loading skeleton: title bar + full-width chart body
- * inside the standard `rounded-card bg-basalt-secondary p-4 md:p-5` shell.
+ * inside the standard `rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5` shell.
  *
  * Intentionally narrow — covers only "title + full-width chart" cards.
  * Donut cards, stat grids, hero composites, and any nested-grid composites
@@ -20,7 +20,7 @@ export function ChartCardSkeleton({
   chartHeight,
 }: ChartCardSkeletonProps) {
   return (
-    <div className="rounded-card bg-basalt-secondary p-4 md:p-5">
+    <div className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5">
       <SkeletonLine style={{ width: undefined }} className={`h-3 ${titleWidth} mb-4`} />
       <SkeletonLine style={{ width: undefined }} className={`${chartHeight} w-full`} />
     </div>

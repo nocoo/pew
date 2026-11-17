@@ -140,7 +140,7 @@ function SalaryEstimatorCard({
   return (
     <div
       className={cn(
-        "rounded-card bg-basalt-secondary p-4 md:p-5 flex flex-col",
+        "rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5 flex flex-col",
         className
       )}
     >
@@ -271,7 +271,7 @@ function SalaryTrendChart({ data, compact = false, className }: SalaryTrendChart
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-card bg-basalt-secondary p-8 text-sm text-basalt-muted-foreground",
+          "flex items-center justify-center rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8 text-sm text-basalt-muted-foreground",
           className
         )}
       >
@@ -284,7 +284,7 @@ function SalaryTrendChart({ data, compact = false, className }: SalaryTrendChart
     <div
       className={cn(
         "min-w-0 flex flex-col",
-        !compact && "rounded-card bg-basalt-secondary p-4 md:p-5",
+        !compact && "rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5",
         className
       )}
     >
@@ -541,7 +541,7 @@ export function SalaryCalculatorCard({
   return (
     <SalaryEstimatorContext.Provider value={contextValue}>
       <Dialog>
-        <section aria-label="Salary calculator" className={cn("@container min-w-0 rounded-card bg-basalt-secondary p-4 flex flex-col", className)}>
+        <section aria-label="Salary calculator" className={cn("@container min-w-0 rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 flex flex-col", className)}>
           <div className="mb-3 flex min-h-12 items-center justify-between gap-2">
             <div className="space-y-1">
               <div className="flex items-center gap-2 text-basalt-muted-foreground">

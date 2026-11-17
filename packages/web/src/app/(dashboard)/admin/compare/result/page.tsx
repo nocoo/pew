@@ -93,10 +93,10 @@ function getUserLabel(user: CompareUser): string {
 function CompareSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="rounded-xl bg-basalt-secondary p-4">
+      <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
         <SkeletonLine style={{ width: undefined }} className="h-[280px] w-full" />
       </div>
-      <div className="rounded-xl bg-basalt-secondary p-4">
+      <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
         {Array.from({ length: 3 }).map((_, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
           <div key={`slot-${i}`} className="flex items-center gap-4 py-3">
@@ -418,7 +418,7 @@ function CompareResultContent() {
 
         {/* Chart */}
         {!loading && data && chartData.length > 0 && (
-          <div className="rounded-card bg-basalt-secondary p-4 md:p-5">
+          <div className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5">
             <div className="mb-4 flex items-center justify-between">
               <p className="text-xs md:text-sm text-basalt-muted-foreground">
                 Daily Token Usage
@@ -495,13 +495,13 @@ function CompareResultContent() {
         {!loading && data && chartData.length === 0 && (
           <Empty
             title="No usage data in the selected date range."
-            className="rounded-basalt-card bg-basalt-secondary p-8"
+            className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
           />
         )}
 
         {/* User Table */}
         {!loading && userTableData.length > 0 && (
-          <div className="rounded-xl bg-basalt-secondary p-1 overflow-x-auto">
+          <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-1 overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-basalt-border">

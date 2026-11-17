@@ -118,7 +118,7 @@ function TeamCard({
   // -------------------------------------------------------------------------
 
   return (
-    <div className="rounded-xl bg-basalt-secondary p-4">
+    <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
       {/* Header row */}
       <div className="flex items-center gap-3">
         <TeamLogo team={team} />
@@ -338,7 +338,7 @@ export default function TeamsPage() {
 
         {/* Create team form */}
         {showCreateTeam && (
-          <div className="rounded-xl bg-basalt-secondary p-4 mb-3">
+          <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 mb-3">
             <Label htmlFor={newTeamNameId}>Team Name</Label>
             <div className="mt-1.5 flex gap-2">
               <Input
@@ -367,7 +367,7 @@ export default function TeamsPage() {
 
         {/* Join team form */}
         {showJoinTeam && (
-          <div className="rounded-xl bg-basalt-secondary p-4 mb-3">
+          <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 mb-3">
             <Label htmlFor={inviteCodeId}>Invite Code</Label>
             <div className="mt-1.5 flex gap-2">
               <Input
@@ -399,7 +399,7 @@ export default function TeamsPage() {
           <Empty
             title="You're not in any teams yet."
             description="Create one or join with an invite code."
-            className="rounded-basalt-card bg-basalt-secondary p-6"
+            className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-6"
           />
         ) : (
           <div className="space-y-2">

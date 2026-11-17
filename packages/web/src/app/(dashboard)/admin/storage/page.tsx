@@ -116,13 +116,13 @@ function StorageSkeleton() {
         <div className="grid grid-cols-3 gap-3">
           {Array.from({ length: 3 }).map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-            <div key={`slot-${i}`} className="rounded-xl bg-basalt-secondary p-4">
+            <div key={`slot-${i}`} className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
               <SkeletonLine style={{ width: undefined }} className="h-3 w-12 mb-2" />
               <SkeletonLine style={{ width: undefined }} className="h-6 w-16" />
             </div>
           ))}
         </div>
-        <div className="rounded-xl bg-basalt-secondary p-4">
+        <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
           {Array.from({ length: 5 }).map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
             <div key={`slot-${i}`} className="flex items-center gap-4 py-3">
@@ -139,13 +139,13 @@ function StorageSkeleton() {
         <div className="grid grid-cols-2 gap-3">
           {Array.from({ length: 2 }).map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-            <div key={`slot-${i}`} className="rounded-xl bg-basalt-secondary p-4">
+            <div key={`slot-${i}`} className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
               <SkeletonLine style={{ width: undefined }} className="h-3 w-12 mb-2" />
               <SkeletonLine style={{ width: undefined }} className="h-6 w-16" />
             </div>
           ))}
         </div>
-        <div className="rounded-xl bg-basalt-secondary p-4">
+        <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
           <SkeletonLine style={{ width: undefined }} className="h-4 w-24 mb-3" />
           {Array.from({ length: 3 }).map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
@@ -464,19 +464,19 @@ export default function AdminStoragePage() {
               {/* Summary cards */}
               {summary && (
                 <div className="grid grid-cols-3 gap-3 shrink-0">
-                  <div className="rounded-xl bg-basalt-secondary p-4">
+                  <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
                     <p className="text-xs text-basalt-muted-foreground">Users</p>
                     <p className="text-xl font-semibold tabular-nums mt-1">
                       {summary.total_users.toLocaleString()}
                     </p>
                   </div>
-                  <div className="rounded-xl bg-basalt-secondary p-4">
+                  <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
                     <p className="text-xs text-basalt-muted-foreground">Usage Rows</p>
                     <p className="text-xl font-semibold tabular-nums mt-1">
                       {summary.total_usage_rows.toLocaleString()}
                     </p>
                   </div>
-                  <div className="rounded-xl bg-basalt-secondary p-4">
+                  <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
                     <p className="text-xs text-basalt-muted-foreground">Tokens</p>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -489,19 +489,19 @@ export default function AdminStoragePage() {
                       </TooltipContent>
                     </Tooltip>
                   </div>
-                  <div className="rounded-xl bg-basalt-secondary p-4">
+                  <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
                     <p className="text-xs text-basalt-muted-foreground">Sessions</p>
                     <p className="text-xl font-semibold tabular-nums mt-1">
                       {summary.total_sessions.toLocaleString()}
                     </p>
                   </div>
-                  <div className="rounded-xl bg-basalt-secondary p-4">
+                  <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
                     <p className="text-xs text-basalt-muted-foreground">Messages</p>
                     <p className="text-xl font-semibold tabular-nums mt-1">
                       {summary.total_messages.toLocaleString()}
                     </p>
                   </div>
-                  <div className="rounded-xl bg-basalt-secondary p-4">
+                  <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
                     <p className="text-xs text-basalt-muted-foreground">Duration</p>
                     <p className="text-xl font-semibold tabular-nums mt-1">
                       {formatDuration(summary.total_duration_seconds, { precise: true })}
@@ -549,10 +549,10 @@ export default function AdminStoragePage() {
               {filteredUsers.length === 0 ? (
                 <Empty
                   title={search ? "No users match your filter." : "No users found."}
-                  className="rounded-basalt-card bg-basalt-secondary p-8"
+                  className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
                 />
               ) : (
-                <div className="rounded-xl bg-basalt-secondary overflow-x-auto flex-1 lg:overflow-y-auto min-h-0">
+                <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card overflow-x-auto flex-1 lg:overflow-y-auto min-h-0">
                   <table className="w-full">
                     <thead className="sticky top-0 z-10 bg-basalt-secondary shadow-[0_1px_0_0_hsl(var(--basalt-border)/0.3)]">
                       <tr>
@@ -714,7 +714,7 @@ export default function AdminStoragePage() {
 
               {/* Summary cards */}
               <div className="grid grid-cols-2 gap-3 shrink-0">
-                <div className="rounded-xl bg-basalt-secondary p-4">
+                <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
                   <p className="text-xs text-basalt-muted-foreground">Cached Keys</p>
                   <p className="text-xl font-semibold tabular-nums mt-1">
                     {cacheCount.toLocaleString()}
@@ -725,7 +725,7 @@ export default function AdminStoragePage() {
                     )}
                   </p>
                 </div>
-                <div className="rounded-xl bg-basalt-secondary p-4">
+                <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
                   <p className="text-xs text-basalt-muted-foreground">Cache Types</p>
                   <div className="flex flex-wrap gap-1 mt-2">
                     {Object.entries(cacheTypeCounts).map(([type, count]) => (
@@ -746,7 +746,7 @@ export default function AdminStoragePage() {
 
               {/* Cache key list */}
               {cacheLoading ? (
-                <div className="rounded-xl bg-basalt-secondary p-4 space-y-2">
+                <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 space-y-2">
                   <SkeletonLine style={{ width: undefined }} className="h-4 w-24" />
                   <SkeletonLine style={{ width: undefined }} className="h-12 w-full" />
                   <SkeletonLine style={{ width: undefined }} className="h-12 w-full" />
@@ -755,10 +755,10 @@ export default function AdminStoragePage() {
                 <Empty
                   title="No cached entries."
                   description="Cache will be populated as users access pricing, seasons, and leaderboards."
-                  className="rounded-basalt-card bg-basalt-secondary p-8"
+                  className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
                 />
               ) : (
-                <div className="rounded-xl bg-basalt-secondary p-1 space-y-1 flex-1 lg:overflow-y-auto min-h-0">
+                <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-1 space-y-1 flex-1 lg:overflow-y-auto min-h-0">
                   {cacheKeys.map((key) => {
                     const { type, description } = describeCacheKey(key);
                     const isDeleting = cacheDeletingKey === key;

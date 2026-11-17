@@ -32,7 +32,7 @@ function AgentCard({ group, color }: { group: AgentGroup; color: string }) {
   const pct = (v: number) => (group.totalTokens > 0 ? ((v / group.totalTokens) * 100).toFixed(1) : "0");
 
   return (
-    <div className="rounded-xl bg-basalt-secondary overflow-hidden">
+    <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card overflow-hidden">
       {/* Header */}
       <Button
         type="button"
@@ -140,7 +140,7 @@ function AgentsSkeleton() {
       <ChartCardSkeleton titleWidth="w-24" chartHeight="h-[240px]" />
       {Array.from({ length: 3 }).map((_, i) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-        <div key={`slot-${i}`} className="rounded-xl bg-basalt-secondary p-5">
+        <div key={`slot-${i}`} className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-5">
           <div className="flex items-center gap-4">
             <SkeletonLine style={{ width: undefined }} className="h-3 w-3 rounded-full" />
             <div className="flex-1">
@@ -205,7 +205,7 @@ export default function AgentsPage() {
             <Empty
               title="No usage data yet."
               description="Start using your AI coding tools and sync with pew!"
-              className="rounded-basalt-card bg-basalt-secondary p-8"
+              className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
             />
           ) : (
             <div className="space-y-4">

@@ -10,7 +10,7 @@ export function DashboardSkeleton() {
     <div className="space-y-4 md:space-y-6" role="status" aria-label="Loading overview" aria-busy="true">
       <div className="grid grid-cols-1 gap-3 md:gap-4 xl:grid-cols-3">
         <HeatmapHero data={[]} year={new Date().getFullYear()} totalTokens={0} activeDays={0} loading className="xl:col-span-2" />
-        <div className="rounded-card bg-basalt-secondary p-4 space-y-3">
+        <div className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 space-y-3">
           <SkeletonLine style={{ width: undefined }} className="h-12 w-full" />
           <SkeletonLine style={{ width: undefined }} className="h-[114px] w-full" />
           <SkeletonLine style={{ width: undefined }} className="h-[72px] w-full" />
@@ -18,7 +18,7 @@ export function DashboardSkeleton() {
       </div>
       <DashboardSegment title="Usage summary">
         <StatGrid columns={3} className="sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
-          {["total", "hit-rate", "cost"].map((metric) => <div key={metric} className={`rounded-card bg-basalt-secondary p-4 md:p-5 space-y-4 ${metric === "cost" ? "lg:col-span-2 xl:col-span-1" : ""}`}>
+          {["total", "hit-rate", "cost"].map((metric) => <div key={metric} className={`rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5 space-y-4 ${metric === "cost" ? "lg:col-span-2 xl:col-span-1" : ""}`}>
             <SkeletonLine style={{ width: undefined }} className="h-0.5 w-8" />
             <SkeletonLine style={{ width: undefined }} className="h-4 w-24" />
             <SkeletonLine style={{ width: undefined }} className="h-10 w-32" />
@@ -37,7 +37,7 @@ export function DashboardSkeleton() {
             <ChartCardSkeleton titleWidth="w-32" chartHeight="h-[200px] md:h-[240px]" />
           </div>
           <div className="space-y-4">
-            {["agent", "input-output"].map((chart) => <div key={chart} className="rounded-card bg-basalt-secondary p-4 md:p-5">
+            {["agent", "input-output"].map((chart) => <div key={chart} className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5">
               <SkeletonLine style={{ width: undefined }} className="mb-4 h-3 w-24" />
               <SkeletonLine style={{ width: undefined }} className="mx-auto h-[180px] w-[180px] rounded-full" />
             </div>)}

@@ -120,7 +120,7 @@ export function LeaderboardPageShell({
       {!loading && entries.length === 0 && !error && (
         <Empty
           title={emptyMessage}
-          className="rounded-basalt-card bg-basalt-secondary p-8"
+          className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
         />
       )}
 

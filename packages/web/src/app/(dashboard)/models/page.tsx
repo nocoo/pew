@@ -39,7 +39,7 @@ function ModelsSkeleton() {
       <ChartCardSkeleton titleWidth="w-28" chartHeight="h-[200px] md:h-[240px]" />
 
       {/* Summary table */}
-      <div className="rounded-xl bg-basalt-secondary p-1">
+      <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-1">
         <table className="w-full">
           <thead>
             <tr className="border-b border-basalt-border">
@@ -134,7 +134,7 @@ export default function ModelsPage() {
             <Empty
               title="No usage data yet."
               description="Start using your AI coding tools and sync with pew!"
-              className="rounded-basalt-card bg-basalt-secondary p-8"
+              className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
             />
           ) : (
             <>
@@ -148,7 +148,7 @@ export default function ModelsPage() {
               <ModelBreakdownChart data={models} />
 
               {/* Summary table */}
-              <div className="rounded-xl bg-basalt-secondary p-1 overflow-x-auto">
+              <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-1 overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-basalt-border">

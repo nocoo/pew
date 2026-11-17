@@ -182,7 +182,7 @@ export default function SettingsPage() {
           <User className="h-4 w-4" strokeWidth={1.5} />
           Account
         </h2>
-        <div className="rounded-xl bg-basalt-secondary p-5">
+        <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-5">
           <div className="flex items-center gap-4">
             <Avatar className="h-12 w-12">
               {userImage && <AvatarImage src={userImage} alt={userName} />}
@@ -209,7 +209,7 @@ export default function SettingsPage() {
           <ExternalLink className="h-4 w-4" strokeWidth={1.5} />
           Public Profile
         </h2>
-        <div className="rounded-xl bg-basalt-secondary p-5 space-y-4">
+        <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-5 space-y-4">
           {/* Nickname */}
           <Field
             label="Leaderboard Nickname"

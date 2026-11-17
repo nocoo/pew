@@ -41,7 +41,7 @@ function DevicesSkeleton() {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-          <div key={`slot-${i}`} className="rounded-card bg-basalt-secondary p-4 space-y-2">
+          <div key={`slot-${i}`} className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 space-y-2">
             <SkeletonLine style={{ width: undefined }} className="h-3 w-20" />
             <SkeletonLine style={{ width: undefined }} className="h-7 w-24" />
           </div>
@@ -59,7 +59,7 @@ function DevicesSkeleton() {
       <ChartCardSkeleton titleWidth="w-28" chartHeight="h-[200px] md:h-[240px]" />
 
       {/* Summary table */}
-      <div className="rounded-xl bg-basalt-secondary p-1">
+      <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-1">
         <table className="w-full">
           <thead>
             <tr className="border-b border-basalt-border">
@@ -134,17 +134,17 @@ function StatGrid({ devices }: { devices: DeviceAggregate[] }) {
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <div className="rounded-card bg-basalt-secondary p-4">
+      <div className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
         <p className="text-xs text-basalt-muted-foreground">Devices</p>
         <p className="mt-1 text-2xl font-bold tabular-nums">{deviceCount}</p>
       </div>
-      <div className="rounded-card bg-basalt-secondary p-4">
+      <div className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
         <p className="text-xs text-basalt-muted-foreground">Most Active</p>
         <p className="mt-1 text-lg font-bold truncate">
           {mostActive ? deviceLabel(mostActive) : "—"}
         </p>
       </div>
-      <div className="rounded-card bg-basalt-secondary p-4">
+      <div className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
         <p className="text-xs text-basalt-muted-foreground">Active (7d)</p>
         <p className="mt-1 text-2xl font-bold tabular-nums">
           {recentlyActive}
@@ -272,7 +272,7 @@ export default function ByDevicePage() {
             <Empty
               title="No device data yet."
               description="Sync from multiple devices to compare usage."
-              className="rounded-basalt-card bg-basalt-secondary p-8"
+              className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
             />
           ) : (
             <>
@@ -295,7 +295,7 @@ export default function ByDevicePage() {
               </DashboardSegment>
 
               {/* Summary table */}
-              <div className="rounded-xl bg-basalt-secondary p-1 overflow-x-auto">
+              <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-1 overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-basalt-border">

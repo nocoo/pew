@@ -58,7 +58,7 @@ export function HeatmapHero({
     return (
       <div className={cn("grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4", className)}>
         {["Activity", "Goal Tracker"].map((label) => (
-          <section key={label} aria-label={label} aria-busy="true" className="rounded-card bg-basalt-secondary p-4 min-w-0">
+          <section key={label} aria-label={label} aria-busy="true" className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 min-w-0">
             <div className="mb-3 flex h-12 items-center justify-between">
               <div className="space-y-2"><SkeletonLine style={{ width: undefined }} className="h-4 w-24" /><SkeletonLine style={{ width: undefined }} className="h-3 w-32" /></div>
               <SkeletonLine style={{ width: undefined }} className="h-8 w-16" />
@@ -76,7 +76,7 @@ export function HeatmapHero({
 
   return (
     <div className={cn("grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4", className)}>
-      <section aria-label="Activity" className="rounded-card bg-basalt-secondary p-4 min-w-0 flex flex-col">
+      <section aria-label="Activity" className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 min-w-0 flex flex-col">
         <div className="mb-3 flex min-h-12 items-center justify-between gap-3">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
@@ -112,7 +112,7 @@ export function HeatmapHero({
         </div>
       </section>
 
-      <section aria-label="Goal Tracker" className="rounded-card bg-basalt-secondary p-4 min-w-0 flex flex-col">
+      <section aria-label="Goal Tracker" className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 min-w-0 flex flex-col">
         <GoalHeatmap data={data} year={year} className="flex-1" />
       </section>
     </div>

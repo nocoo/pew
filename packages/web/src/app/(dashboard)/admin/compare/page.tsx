@@ -59,7 +59,7 @@ function SelectionSkeleton() {
       {/* Table skeleton */}
       {Array.from({ length: 8 }).map((_, i) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-        <div key={`slot-${i}`} className="rounded-xl bg-basalt-secondary p-4">
+        <div key={`slot-${i}`} className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
           <div className="flex items-center gap-4">
             <SkeletonLine style={{ width: undefined }} className="h-5 w-5 rounded" />
             <SkeletonLine style={{ width: undefined }} className="h-8 w-8 rounded-full" />
@@ -392,10 +392,10 @@ function ComparePageContent() {
           filteredUsers.length === 0 ? (
               <Empty
                 title={search ? "No users match your filter." : "No users found."}
-                className="rounded-basalt-card bg-basalt-secondary p-8"
+                className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
               />
             ) : (
-              <div className="rounded-xl bg-basalt-secondary p-1 overflow-x-auto">
+              <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-1 overflow-x-auto">
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-basalt-border">

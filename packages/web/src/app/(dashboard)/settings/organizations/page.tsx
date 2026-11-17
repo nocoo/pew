@@ -211,10 +211,10 @@ export default function OrganizationsPage() {
         {organizations.length === 0 ? (
           <Empty
             title="No organizations available yet."
-            className="rounded-basalt-card bg-basalt-secondary p-8"
+            className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
           />
         ) : (
-          <div className="rounded-xl bg-basalt-secondary divide-y divide-basalt-border overflow-hidden">
+          <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card divide-y divide-basalt-border overflow-hidden">
             {organizations.map((org) => {
               const isMember = myOrgIds.has(org.id);
               const isPending = pendingAction === org.id;

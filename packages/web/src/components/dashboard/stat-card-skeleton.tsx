@@ -10,7 +10,7 @@ import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
  */
 export function StatCardSkeleton() {
   return (
-    <div className="rounded-card bg-basalt-secondary p-4 md:p-5 space-y-3">
+    <div className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5 space-y-3">
       <SkeletonLine style={{ width: undefined }} className="h-3 w-20" />
       <SkeletonLine style={{ width: undefined }} className="h-7 w-28" />
       <SkeletonLine style={{ width: undefined }} className="h-3 w-16" />

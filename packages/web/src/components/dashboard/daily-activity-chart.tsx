@@ -240,7 +240,7 @@ export function DailyActivityChart({
   const isEmpty = view.data.length === 0 || view.series.length === 0;
 
   return (
-    <div className={cn("rounded-card bg-basalt-secondary p-4 md:p-5", className)}>
+    <div className={cn("rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5", className)}>
       {/* Header: title + segmented control */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-baseline gap-2">

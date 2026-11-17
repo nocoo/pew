@@ -98,7 +98,7 @@ export function SourceTrendChart({ data, className, title = "Tool Usage Trend" }
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-card bg-basalt-secondary p-8 text-sm text-basalt-muted-foreground",
+          "flex items-center justify-center rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8 text-sm text-basalt-muted-foreground",
           className
         )}
       >
@@ -122,7 +122,7 @@ export function SourceTrendChart({ data, className, title = "Tool Usage Trend" }
     <figure
       aria-label={title}
       className={cn(
-        "min-w-0 rounded-card bg-basalt-secondary p-4 md:p-5",
+        "min-w-0 rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5",
         className
       )}
     >

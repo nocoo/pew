@@ -47,7 +47,7 @@ export function PeakHoursCard({ hourly, slots, className }: PeakHoursCardProps) 
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-card bg-basalt-secondary p-8 text-sm text-basalt-muted-foreground",
+          "flex items-center justify-center rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8 text-sm text-basalt-muted-foreground",
           className,
         )}
       >
@@ -57,7 +57,7 @@ export function PeakHoursCard({ hourly, slots, className }: PeakHoursCardProps) 
   }
 
   return (
-    <div className={cn("rounded-card bg-basalt-secondary p-4 md:p-5", className)}>
+    <div className={cn("rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5", className)}>
       {/* Header — matches Working Hours / Daily Messages style */}
       <div className="mb-4 flex items-center justify-between">
         <p className="text-xs md:text-sm text-basalt-muted-foreground">Peak Hours</p>

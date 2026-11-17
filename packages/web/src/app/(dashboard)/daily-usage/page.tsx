@@ -174,7 +174,7 @@ function DayRow({ group, pricingMap }: { group: DailyGroup; pricingMap: PricingM
 
 function ChartSkeleton() {
   return (
-    <div className="rounded-card bg-basalt-secondary p-4 md:p-5">
+    <div className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5">
       <div className="mb-4 flex items-center justify-between">
         <SkeletonLine style={{ width: undefined }} className="h-3 w-20" />
         <div className="flex items-center gap-4">
@@ -189,7 +189,7 @@ function ChartSkeleton() {
 
 function DonutSkeleton() {
   return (
-    <div className="rounded-card bg-basalt-secondary p-3">
+    <div className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-3">
       <SkeletonLine style={{ width: undefined }} className="h-3 w-16 mb-2" />
       <div className="flex items-center gap-3">
         {/* Donut placeholder */}
@@ -215,7 +215,7 @@ function DailySkeleton() {
     <div className="grid gap-4 md:gap-6 xl:grid-cols-4">
       {/* Left column skeleton: 4 charts + table */}
       <div className="xl:col-span-3 space-y-4 md:space-y-6">
-        <div className="rounded-card border border-basalt-secondary bg-basalt-background p-4 md:p-5">
+        <div className="rounded-card border border-basalt-secondary bg-basalt-background ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5">
           <div className="flex items-center gap-2 mb-4">
             <SkeletonLine style={{ width: undefined }} className="h-4 w-32" />
           </div>
@@ -258,7 +258,7 @@ function DailySkeleton() {
 
       {/* Right column skeleton: 3 donut charts */}
       <div className="xl:col-span-1 space-y-4 md:space-y-6">
-        <div className="rounded-card border border-basalt-secondary bg-basalt-background p-4 md:p-5">
+        <div className="rounded-card border border-basalt-secondary bg-basalt-background ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5">
           <div className="flex items-center gap-2 mb-4">
             <SkeletonLine style={{ width: undefined }} className="h-4 w-32" />
           </div>
@@ -500,7 +500,7 @@ export default function DailyUsagePage() {
           ) : (
             <Empty
               title={`No usage data for ${formatMonth(year, month)}.`}
-              className="rounded-basalt-card bg-basalt-secondary p-8"
+              className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
             />
           )
       )}

@@ -95,7 +95,7 @@ export function PricingTable({ entries }: Props) {
   if (entries.length === 0) {
     return (
       <Empty
-        className="rounded-basalt-card bg-basalt-secondary p-8"
+        className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
         title="No pricing data available"
         description="Try refreshing the page."
       />
@@ -155,7 +155,7 @@ export function PricingTable({ entries }: Props) {
         </Select>
       </div>
 
-      <div className="rounded-xl bg-basalt-secondary p-1 overflow-x-auto">
+      <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-1 overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="border-b border-basalt-border">

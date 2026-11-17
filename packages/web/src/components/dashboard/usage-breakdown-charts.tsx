@@ -69,7 +69,7 @@ export function UsageBreakdownCharts({ records, from, to, start, end, tzOffset, 
       </Button>)}
     </fieldset>
     <div className="grid grid-cols-1 gap-3 md:gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-      <figure aria-label="Daily token breakdown" className="flex min-w-0 flex-col rounded-card bg-basalt-secondary p-4 md:p-5">
+      <figure aria-label="Daily token breakdown" className="flex min-w-0 flex-col rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5">
         <figcaption className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs md:text-sm text-basalt-muted-foreground">
           <span>Daily Tokens by {DIMENSIONS[dimension]}</span>
           <span className="text-xs">{dateLabel(start)} – {dateLabel(end)} · Local time</span>
@@ -99,7 +99,7 @@ export function UsageBreakdownCharts({ records, from, to, start, end, tzOffset, 
           </div>
         </> : <div className="flex min-h-[280px] flex-1 items-center justify-center text-sm text-basalt-muted-foreground" role="status">{emptyMessage}</div>}
       </figure>
-      <figure aria-label="Token share" className="flex min-w-0 flex-col rounded-card bg-basalt-secondary p-4 md:p-5">
+      <figure aria-label="Token share" className="flex min-w-0 flex-col rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5">
         <figcaption className="flex items-center justify-between gap-2 text-xs md:text-sm text-basalt-muted-foreground">
           <span>{DIMENSIONS[dimension]} Share</span>
           {available && <span className="text-xs tabular-nums">{formatTokens(breakdown.total)} tokens</span>}

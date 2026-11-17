@@ -324,7 +324,7 @@ export default function AdminInvitesPage() {
       />
 
       {/* Require invite code toggle */}
-      <div className="rounded-xl bg-basalt-secondary p-4">
+      <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
         <div className="flex items-start gap-3">
           <Switch
             id={requireInviteId}
@@ -354,7 +354,7 @@ export default function AdminInvitesPage() {
 
       {/* Generate form */}
       {showGenerate && (
-        <div className="rounded-xl bg-basalt-secondary p-4">
+        <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
           <h3 className="text-sm font-medium text-basalt-foreground mb-3">
             Generate Invite Codes
           </h3>
@@ -432,10 +432,10 @@ export default function AdminInvitesPage() {
               {...(statusFilter === "available"
                 ? {}
                 : { description: "Generate some to get started." })}
-              className="rounded-basalt-card bg-basalt-secondary p-8"
+              className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
             />
           ) : (
-            <div className="rounded-xl bg-basalt-secondary p-1 overflow-x-auto">
+            <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-1 overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-basalt-border">

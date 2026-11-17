@@ -171,7 +171,7 @@ function DeviceCard({
   }
 
   return (
-    <div data-device-card className="rounded-xl bg-basalt-secondary p-4 space-y-3">
+    <div data-device-card className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 space-y-3">
       {/* Header row */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
@@ -620,7 +620,7 @@ export default function ManageDevicesPage() {
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-28 rounded-xl bg-basalt-secondary animate-pulse"
+              className="h-28 rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card animate-pulse"
             />
           ))}
         </div>

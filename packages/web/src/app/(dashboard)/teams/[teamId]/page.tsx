@@ -268,7 +268,7 @@ function SeasonRegistration({
       {seasons.length === 0 ? (
         <Empty
           title="No upcoming or active seasons available."
-          className="rounded-basalt-card bg-basalt-secondary p-8"
+          className="rounded-basalt-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-8"
         />
       ) : (
         <div className="space-y-2">
