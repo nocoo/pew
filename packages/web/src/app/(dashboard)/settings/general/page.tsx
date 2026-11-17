@@ -8,10 +8,10 @@ import {
   User,
   ExternalLink,
   AlertTriangle,
-} from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
-import { Separator } from "@/components/ui/separator";
+} from "@nocoo/basalt/icons";
+import { Avatar, AvatarFallback, AvatarImage } from "@nocoo/basalt/components/avatar";
+import { MessageBanner, type MessageBannerMsg } from "@/components/message-banner";
+import { Separator } from "@nocoo/basalt/components/separator";
 import { Button } from "@nocoo/basalt/components/button";
 import { Field } from "@nocoo/basalt/components/field";
 import { Input } from "@nocoo/basalt/components/input";
@@ -178,23 +178,23 @@ export default function SettingsPage() {
 
       {/* Account Section */}
       <section>
-        <h2 className="flex items-center gap-2 text-sm font-medium text-foreground mb-3">
+        <h2 className="flex items-center gap-2 text-sm font-medium text-basalt-foreground mb-3">
           <User className="h-4 w-4" strokeWidth={1.5} />
           Account
         </h2>
-        <div className="rounded-xl bg-secondary p-5">
+        <div className="rounded-xl bg-basalt-secondary p-5">
           <div className="flex items-center gap-4">
             <Avatar className="h-12 w-12">
               {userImage && <AvatarImage src={userImage} alt={userName} />}
-              <AvatarFallback className="bg-primary text-primary-foreground">
+              <AvatarFallback className="bg-basalt-primary text-basalt-primary-foreground">
                 {userName[0] ?? "?"}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">{userName}</p>
-              <p className="text-xs text-muted-foreground truncate">{userEmail}</p>
+              <p className="text-sm font-medium text-basalt-foreground truncate">{userName}</p>
+              <p className="text-xs text-basalt-muted-foreground truncate">{userEmail}</p>
             </div>
-            <span className="rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+            <span className="rounded-full bg-basalt-accent px-2.5 py-0.5 text-[10px] font-medium text-basalt-muted-foreground">
               Google
             </span>
           </div>
@@ -205,11 +205,11 @@ export default function SettingsPage() {
 
       {/* Profile Section */}
       <section>
-        <h2 className="flex items-center gap-2 text-sm font-medium text-foreground mb-3">
+        <h2 className="flex items-center gap-2 text-sm font-medium text-basalt-foreground mb-3">
           <ExternalLink className="h-4 w-4" strokeWidth={1.5} />
           Public Profile
         </h2>
-        <div className="rounded-xl bg-secondary p-5 space-y-4">
+        <div className="rounded-xl bg-basalt-secondary p-5 space-y-4">
           {/* Nickname */}
           <Field
             label="Leaderboard Nickname"
@@ -256,7 +256,7 @@ export default function SettingsPage() {
               <Label htmlFor="public-profile" className="text-xs">
                 Show my profile publicly
               </Label>
-              <p className="mt-0.5 text-[10px] text-muted-foreground">
+              <p className="mt-0.5 text-[10px] text-basalt-muted-foreground">
                 When enabled, your profile appears on the leaderboard and is accessible at your public URL.
               </p>
             </div>
@@ -275,16 +275,16 @@ export default function SettingsPage() {
 
       {/* Danger Zone */}
       <section>
-        <h2 className="flex items-center gap-2 text-sm font-medium text-destructive mb-3">
+        <h2 className="flex items-center gap-2 text-sm font-medium text-basalt-destructive mb-3">
           <AlertTriangle className="h-4 w-4" strokeWidth={1.5} />
           Danger Zone
         </h2>
-        <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-5 space-y-4">
+        <div className="rounded-xl border border-basalt-destructive/30 bg-basalt-destructive/5 p-5 space-y-4">
           <div>
-            <p className="text-sm font-medium text-foreground">
+            <p className="text-sm font-medium text-basalt-foreground">
               Delete Account
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-xs text-basalt-muted-foreground">
               Permanently delete your account and all associated data. This action cannot be undone.
               All your usage records, session history, and team memberships will be removed.
             </p>
@@ -294,7 +294,7 @@ export default function SettingsPage() {
             label={
               <>
                 To confirm, type your email:{" "}
-                <span className="font-mono text-foreground">{userEmail}</span>
+                <span className="font-mono text-basalt-foreground">{userEmail}</span>
               </>
             }
             htmlFor="confirm-email"

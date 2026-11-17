@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Button } from "@nocoo/basalt/components/button";
-import { chromeIconClassName } from "@/components/ui/button";
-import { ShieldCheck } from "lucide-react";
+import { chromeIconClassName } from "@/lib/ghost-icon";
+import { ShieldCheck } from "@nocoo/basalt/icons";
 import { BadgeAmbientGlow } from "@/components/brand/badge-card";
 import { Github } from "@/components/icons/github";
 import { LandingContent } from "@/components/landing/landing-content";

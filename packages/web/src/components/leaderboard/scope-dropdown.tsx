@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@nocoo/basalt/components/dropdown-menu";
-import { Globe, ChevronDown } from "lucide-react";
+import { Globe, ChevronDown } from "@nocoo/basalt/icons";
 import { TeamLogoIcon, OrgLogoIcon } from "@/components/leaderboard/logo-icons";
 import { cn } from "@/lib/utils";
 import type { ScopeSelection, Organization, Team } from "@/lib/leaderboard-scope";

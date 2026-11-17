@@ -3,12 +3,12 @@
 import { useMemo, useState } from "react";
 import { useUsageData, sourceLabel } from "@/hooks/use-usage-data";
 import { useTzOffset } from "@/hooks/use-tz-offset";
-import { ErrorBanner } from "@/components/ui/error-banner";
+import { ErrorBanner } from "@/components/error-banner";
 import { formatTokens } from "@/lib/utils";
 import { usePricingMap, formatCost } from "@/hooks/use-pricing";
 import { UsageInformation } from "@/components/dashboard/usage-information";
 import { groupByModel, toSourceTrendPoints } from "@/lib/usage-helpers";
-import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
 import { ChartCardSkeleton } from "@/components/dashboard/chart-card-skeleton";
 import { modelColor, agentColor, withAlpha } from "@/lib/palette";
 import { ModelBreakdownChart } from "@/components/dashboard/model-breakdown-chart";
@@ -39,32 +39,32 @@ function ModelsSkeleton() {
       <ChartCardSkeleton titleWidth="w-28" chartHeight="h-[200px] md:h-[240px]" />
 
       {/* Summary table */}
-      <div className="rounded-xl bg-secondary p-1">
+      <div className="rounded-xl bg-basalt-secondary p-1">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-border">
-              <th className="px-4 py-3 text-left"><Skeleton className="h-3 w-12" /></th>
-              <th className="px-4 py-3 text-left hidden lg:table-cell"><Skeleton className="h-3 w-10" /></th>
-              <th className="px-4 py-3 text-right"><Skeleton className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right"><Skeleton className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right hidden md:table-cell"><Skeleton className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right"><Skeleton className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right hidden sm:table-cell"><Skeleton className="h-3 w-14 ml-auto" /></th>
-              <th className="px-4 py-3 text-right hidden md:table-cell"><Skeleton className="h-3 w-10 ml-auto" /></th>
+            <tr className="border-b border-basalt-border">
+              <th className="px-4 py-3 text-left"><SkeletonLine style={{ width: undefined }} className="h-3 w-12" /></th>
+              <th className="px-4 py-3 text-left hidden lg:table-cell"><SkeletonLine style={{ width: undefined }} className="h-3 w-10" /></th>
+              <th className="px-4 py-3 text-right"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-right"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-right hidden md:table-cell"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-right"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-right hidden sm:table-cell"><SkeletonLine style={{ width: undefined }} className="h-3 w-14 ml-auto" /></th>
+              <th className="px-4 py-3 text-right hidden md:table-cell"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
             </tr>
           </thead>
           <tbody>
             {Array.from({ length: 5 }).map((_, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-              <tr key={`slot-${i}`} className="border-b border-border/50 last:border-0">
-                <td className="px-4 py-3"><Skeleton className="h-4 w-32" /></td>
-                <td className="px-4 py-3 hidden lg:table-cell"><Skeleton className="h-4 w-16" /></td>
-                <td className="px-4 py-3"><Skeleton className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3"><Skeleton className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3 hidden md:table-cell"><Skeleton className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3"><Skeleton className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3 hidden sm:table-cell"><Skeleton className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3 hidden md:table-cell"><Skeleton className="h-2 w-full rounded-full" /></td>
+              <tr key={`slot-${i}`} className="border-b border-basalt-border/50 last:border-0">
+                <td className="px-4 py-3"><SkeletonLine style={{ width: undefined }} className="h-4 w-32" /></td>
+                <td className="px-4 py-3 hidden lg:table-cell"><SkeletonLine style={{ width: undefined }} className="h-4 w-16" /></td>
+                <td className="px-4 py-3"><SkeletonLine style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3"><SkeletonLine style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3 hidden md:table-cell"><SkeletonLine style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3"><SkeletonLine style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3 hidden sm:table-cell"><SkeletonLine style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3 hidden md:table-cell"><SkeletonLine style={{ width: undefined }} className="h-2 w-full rounded-full" /></td>
               </tr>
             ))}
           </tbody>
@@ -148,25 +148,25 @@ export default function ModelsPage() {
               <ModelBreakdownChart data={models} />
 
               {/* Summary table */}
-              <div className="rounded-xl bg-secondary p-1 overflow-x-auto">
+              <div className="rounded-xl bg-basalt-secondary p-1 overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-border">
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Model</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground hidden lg:table-cell">Agent</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Input</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Output</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground hidden md:table-cell">Cached</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Total</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground hidden sm:table-cell">Est. Cost</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground w-32 hidden md:table-cell">Share</th>
+                    <tr className="border-b border-basalt-border">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">Model</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden lg:table-cell">Agent</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">Input</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">Output</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden md:table-cell">Cached</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">Total</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden sm:table-cell">Est. Cost</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground w-32 hidden md:table-cell">Share</th>
                     </tr>
                   </thead>
                   <tbody>
                     {modelGroups.map((group) => (
                       <tr
                         key={group.model}
-                        className="border-b border-border/50 last:border-0 hover:bg-accent/50 transition-colors"
+                        className="border-b border-basalt-border/50 last:border-0 hover:bg-basalt-accent/50 transition-colors"
                       >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2.5">
@@ -174,7 +174,7 @@ export default function ModelsPage() {
                               className="h-2.5 w-2.5 rounded-full shrink-0"
                               style={{ backgroundColor: modelColor(group.model).color }}
                             />
-                            <span className="text-sm font-mono font-medium text-foreground">{group.model}</span>
+                            <span className="text-sm font-mono font-medium text-basalt-foreground">{group.model}</span>
                             <ModelInfoTooltip model={group.model} className="ml-0.5" />
                           </div>
                         </td>
@@ -204,7 +204,7 @@ export default function ModelsPage() {
                         <td className="px-4 py-3 text-sm text-right tabular-nums hidden sm:table-cell">{formatCost(group.estimatedCost)}</td>
                         <td className="px-4 py-3 hidden md:table-cell">
                           <div className="flex items-center gap-2">
-                            <div className="flex-1 h-2 rounded-full bg-background overflow-hidden">
+                            <div className="flex-1 h-2 rounded-full bg-basalt-background overflow-hidden">
                               <div
                                 key={group.pctOfTotal}
                                 className="chart-animate chart-grow-x h-full rounded-full"
@@ -214,7 +214,7 @@ export default function ModelsPage() {
                                 }}
                               />
                             </div>
-                            <span className="text-[10px] tabular-nums text-muted-foreground w-8 text-right">
+                            <span className="text-[10px] tabular-nums text-basalt-muted-foreground w-8 text-right">
                               {group.pctOfTotal.toFixed(0)}%
                             </span>
                           </div>
@@ -223,7 +223,7 @@ export default function ModelsPage() {
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t border-border">
+                    <tr className="border-t border-basalt-border">
                       <td className="px-4 py-3 text-sm font-medium" colSpan={2}>Total</td>
                       <td className="px-4 py-3 text-sm text-right tabular-nums font-medium hidden lg:table-cell" />
                       <td className="px-4 py-3 text-sm text-right tabular-nums font-medium" />

@@ -10,7 +10,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@nocoo/basalt/components/tooltip";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -47,7 +47,7 @@ export function PeakHoursCard({ hourly, slots, className }: PeakHoursCardProps) 
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-card bg-secondary p-8 text-sm text-muted-foreground",
+          "flex items-center justify-center rounded-card bg-basalt-secondary p-8 text-sm text-basalt-muted-foreground",
           className,
         )}
       >
@@ -57,14 +57,14 @@ export function PeakHoursCard({ hourly, slots, className }: PeakHoursCardProps) 
   }
 
   return (
-    <div className={cn("rounded-card bg-secondary p-4 md:p-5", className)}>
+    <div className={cn("rounded-card bg-basalt-secondary p-4 md:p-5", className)}>
       {/* Header — matches Working Hours / Daily Messages style */}
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-xs md:text-sm text-muted-foreground">Peak Hours</p>
+        <p className="text-xs md:text-sm text-basalt-muted-foreground">Peak Hours</p>
         {peakHourIndex >= 0 && (
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-basalt-muted-foreground">
             Busiest at{" "}
-            <span className="text-foreground font-medium">
+            <span className="text-basalt-foreground font-medium">
               {fmtHour(peakHourIndex)}
             </span>
           </p>
@@ -88,7 +88,7 @@ export function PeakHoursCard({ hourly, slots, className }: PeakHoursCardProps) 
                   <div className="flex-1 flex flex-col items-center justify-end h-full cursor-pointer group">
                     <div
                       key={heightPct}
-                      className="chart-animate chart-grow-y w-full rounded-sm group-hover:ring-1 group-hover:ring-foreground/40"
+                      className="chart-animate chart-grow-y w-full rounded-sm group-hover:ring-1 group-hover:ring-basalt-foreground/40"
                       style={{
                         height: `${heightPct}%`,
                         minHeight: tokens > 0 ? 2 : 0,
@@ -100,7 +100,7 @@ export function PeakHoursCard({ hourly, slots, className }: PeakHoursCardProps) 
                 <TooltipContent>
                   <div className="text-sm">
                     <div className="font-medium">{fmtHour(h)}</div>
-                    <div className="text-muted-foreground tabular-nums">
+                    <div className="text-basalt-muted-foreground tabular-nums">
                       {formatTokens(tokens)} tokens
                     </div>
                   </div>
@@ -112,7 +112,7 @@ export function PeakHoursCard({ hourly, slots, className }: PeakHoursCardProps) 
       </TooltipProvider>
 
       {/* Hour axis ticks (every 6 hours) */}
-      <div className="mt-1 flex text-[10px] text-muted-foreground tabular-nums">
+      <div className="mt-1 flex text-[10px] text-basalt-muted-foreground tabular-nums">
         {Array.from({ length: 24 }).map((_, h) => (
           <div
             // biome-ignore lint/suspicious/noArrayIndexKey: compile-time constant tuple (24 hour buckets); positional key is authoritative.
@@ -127,8 +127,8 @@ export function PeakHoursCard({ hourly, slots, className }: PeakHoursCardProps) 
 
       {/* Ranked half-hour slots */}
       {slots.length > 0 && (
-        <div className="mt-4 space-y-1.5 border-t border-border/40 pt-3">
-          <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
+        <div className="mt-4 space-y-1.5 border-t border-basalt-border/40 pt-3">
+          <p className="text-[11px] uppercase tracking-wider text-basalt-muted-foreground">
             Top slots
           </p>
           {slots.map((slot, i) => (
@@ -137,17 +137,17 @@ export function PeakHoursCard({ hourly, slots, className }: PeakHoursCardProps) 
               className="flex items-baseline justify-between gap-2 text-xs"
             >
               <div className="flex items-center gap-2 min-w-0">
-                <span className="shrink-0 w-4 text-right text-muted-foreground tabular-nums">
+                <span className="shrink-0 w-4 text-right text-basalt-muted-foreground tabular-nums">
                   {i + 1}
                 </span>
-                <span className="truncate font-medium text-foreground">
+                <span className="truncate font-medium text-basalt-foreground">
                   {slot.dayOfWeek}
                 </span>
-                <span className="truncate text-muted-foreground">
+                <span className="truncate text-basalt-muted-foreground">
                   {slot.timeSlot}
                 </span>
               </div>
-              <span className="shrink-0 font-medium text-foreground tabular-nums">
+              <span className="shrink-0 font-medium text-basalt-foreground tabular-nums">
                 {formatTokens(slot.totalTokens)}
               </span>
             </div>

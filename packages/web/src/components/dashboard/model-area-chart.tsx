@@ -131,7 +131,7 @@ export function ModelAreaChart({
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-card bg-secondary p-8 text-sm text-muted-foreground",
+          "flex items-center justify-center rounded-card bg-basalt-secondary p-8 text-sm text-basalt-muted-foreground",
           className
         )}
       >
@@ -143,12 +143,12 @@ export function ModelAreaChart({
   return (
     <div
       className={cn(
-        "rounded-card bg-secondary p-4 md:p-5",
+        "rounded-card bg-basalt-secondary p-4 md:p-5",
         className
       )}
     >
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-xs md:text-sm text-muted-foreground">By Model</p>
+        <p className="text-xs md:text-sm text-basalt-muted-foreground">By Model</p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
           {modelKeys.slice(0, 5).map((model) => (
             <div key={model} className="flex items-center gap-1.5">
@@ -158,7 +158,7 @@ export function ModelAreaChart({
                   background: modelColor(model).color,
                 }}
               />
-              <span className="text-xs text-muted-foreground truncate max-w-[80px]">
+              <span className="text-xs text-basalt-muted-foreground truncate max-w-[80px]">
                 {shortModel(model)}
               </span>
             </div>

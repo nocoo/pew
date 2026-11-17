@@ -13,14 +13,14 @@ import {
   Trash2,
   ChevronRight,
   UserPlus,
-} from "lucide-react";
-import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
+} from "@nocoo/basalt/icons";
+import { ConfirmDialog, useConfirm } from "@nocoo/basalt/components/confirm-dialog";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
 import { Input } from "@nocoo/basalt/components/input";
 import { Label } from "@nocoo/basalt/components/label";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
-import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
+import { MessageBanner, type MessageBannerMsg } from "@/components/message-banner";
 import { InviteDialog, useInviteDialog } from "@/components/teams/invite-dialog";
 
 // ---------------------------------------------------------------------------
@@ -45,7 +45,7 @@ function TeamLogo({ team }: { team: Team }) {
   const hasLogo = !!team.logoUrl;
 
   return (
-    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-accent text-muted-foreground overflow-hidden">
+    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-basalt-accent text-basalt-muted-foreground overflow-hidden">
       {hasLogo ? (
         // biome-ignore lint/performance/noImgElement: user-supplied image URL, not amenable to next/image domain allowlist -- external team logos
         <img
@@ -118,7 +118,7 @@ function TeamCard({
   // -------------------------------------------------------------------------
 
   return (
-    <div className="rounded-xl bg-secondary p-4">
+    <div className="rounded-xl bg-basalt-secondary p-4">
       {/* Header row */}
       <div className="flex items-center gap-3">
         <TeamLogo team={team} />
@@ -126,12 +126,12 @@ function TeamCard({
           {/* Team name — link to detail page */}
           <Link
             href={`/teams/${team.id}`}
-            className="text-sm font-medium text-foreground truncate block hover:text-primary transition-colors"
+            className="text-sm font-medium text-basalt-foreground truncate block hover:text-basalt-primary transition-colors"
           >
             {team.name}
           </Link>
           {/* Member count */}
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-basalt-muted-foreground">
             {team.member_count} member{team.member_count !== 1 ? "s" : ""}
           </p>
         </div>
@@ -175,7 +175,7 @@ function TeamCard({
           {/* Navigate to detail */}
           <Link
             href={`/teams/${team.id}`}
-            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-basalt-muted-foreground hover:text-basalt-foreground hover:bg-basalt-accent transition-colors"
             title="View team"
           >
             <span>Details</span>
@@ -302,7 +302,7 @@ export default function TeamsPage() {
       {/* Teams Section */}
       <section>
         <div className="flex items-center justify-between mb-3">
-          <h2 className="flex items-center gap-2 text-sm font-medium text-foreground">
+          <h2 className="flex items-center gap-2 text-sm font-medium text-basalt-foreground">
             <Users className="h-4 w-4" strokeWidth={1.5} />
             Your Teams
           </h2>
@@ -338,7 +338,7 @@ export default function TeamsPage() {
 
         {/* Create team form */}
         {showCreateTeam && (
-          <div className="rounded-xl bg-secondary p-4 mb-3">
+          <div className="rounded-xl bg-basalt-secondary p-4 mb-3">
             <Label htmlFor={newTeamNameId}>Team Name</Label>
             <div className="mt-1.5 flex gap-2">
               <Input
@@ -367,7 +367,7 @@ export default function TeamsPage() {
 
         {/* Join team form */}
         {showJoinTeam && (
-          <div className="rounded-xl bg-secondary p-4 mb-3">
+          <div className="rounded-xl bg-basalt-secondary p-4 mb-3">
             <Label htmlFor={inviteCodeId}>Invite Code</Label>
             <div className="mt-1.5 flex gap-2">
               <Input

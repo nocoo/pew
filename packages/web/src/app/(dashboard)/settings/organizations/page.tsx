@@ -3,8 +3,8 @@
 import { useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
-import { Building2, Users, Check, Loader2, X } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Building2, Users, Check, Loader2, X } from "@nocoo/basalt/icons";
+import { Avatar, AvatarFallback, AvatarImage } from "@nocoo/basalt/components/avatar";
 import { Button } from "@nocoo/basalt/components/button";
 import {
   Dialog,
@@ -167,7 +167,7 @@ export default function OrganizationsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Loader2 className="h-6 w-6 animate-spin text-basalt-muted-foreground" />
       </div>
     );
   }
@@ -203,7 +203,7 @@ export default function OrganizationsPage() {
 
       {/* Organization List */}
       <section>
-        <h2 className="flex items-center gap-2 text-sm font-medium text-foreground mb-3">
+        <h2 className="flex items-center gap-2 text-sm font-medium text-basalt-foreground mb-3">
           <Building2 className="h-4 w-4" strokeWidth={1.5} />
           Available Organizations
         </h2>
@@ -214,7 +214,7 @@ export default function OrganizationsPage() {
             className="rounded-basalt-card bg-basalt-secondary p-8"
           />
         ) : (
-          <div className="rounded-xl bg-secondary divide-y divide-border overflow-hidden">
+          <div className="rounded-xl bg-basalt-secondary divide-y divide-basalt-border overflow-hidden">
             {organizations.map((org) => {
               const isMember = myOrgIds.has(org.id);
               const isPending = pendingAction === org.id;
@@ -222,12 +222,12 @@ export default function OrganizationsPage() {
               return (
                 <div
                   key={org.id}
-                  className="flex items-center gap-4 p-4 hover:bg-accent/50 transition-colors"
+                  className="flex items-center gap-4 p-4 hover:bg-basalt-accent/50 transition-colors"
                 >
                   {/* Logo */}
                   <Avatar className="h-10 w-10">
                     {org.logoUrl && <AvatarImage src={org.logoUrl} alt={org.name} />}
-                    <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                    <AvatarFallback className="bg-basalt-primary/10 text-basalt-primary text-sm">
                       {org.name[0]?.toUpperCase() ?? "?"}
                     </AvatarFallback>
                   </Avatar>
@@ -241,10 +241,10 @@ export default function OrganizationsPage() {
                     aria-label={`View members of ${org.name}`}
                   >
                     <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-foreground">
+                      <span className="block truncate text-sm font-medium text-basalt-foreground">
                         {org.name}
                       </span>
-                      <span className="block text-xs text-muted-foreground">
+                      <span className="block text-xs text-basalt-muted-foreground">
                         {org.memberCount} {org.memberCount === 1 ? "member" : "members"}
                       </span>
                     </span>
@@ -301,7 +301,7 @@ export default function OrganizationsPage() {
                     {membersModalOrg.logoUrl && (
                       <AvatarImage src={membersModalOrg.logoUrl} alt={membersModalOrg.name} />
                     )}
-                    <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                    <AvatarFallback className="bg-basalt-primary/10 text-basalt-primary text-xs">
                       {membersModalOrg.name[0]?.toUpperCase() ?? "?"}
                     </AvatarFallback>
                   </Avatar>
@@ -319,35 +319,35 @@ export default function OrganizationsPage() {
               <div className="mt-4">
                 {loadingMembers ? (
                   <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    <Loader2 className="h-5 w-5 animate-spin text-basalt-muted-foreground" />
                   </div>
                 ) : members.length === 0 ? (
                   <Empty title="No members yet." />
                 ) : (
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+                    <div className="flex items-center gap-2 text-xs text-basalt-muted-foreground mb-3">
                       <Users className="h-3.5 w-3.5" strokeWidth={1.5} />
                       Members
                     </div>
                     {members.map((member) => (
                       <div
                         key={member.id}
-                        className="flex items-center gap-3 rounded-lg bg-secondary p-3"
+                        className="flex items-center gap-3 rounded-lg bg-basalt-secondary p-3"
                       >
                         <Avatar className="h-8 w-8">
                           {member.user.image && (
                             <AvatarImage src={member.user.image} alt={member.user.name ?? "User"} />
                           )}
-                          <AvatarFallback className="bg-accent text-foreground text-xs">
+                          <AvatarFallback className="bg-basalt-accent text-basalt-foreground text-xs">
                             {member.user.name?.[0]?.toUpperCase() ?? "?"}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">
+                          <p className="text-sm font-medium text-basalt-foreground truncate">
                             {member.user.name ?? "Anonymous"}
                           </p>
                           {member.user.slug && (
-                            <p className="text-xs text-muted-foreground truncate">
+                            <p className="text-xs text-basalt-muted-foreground truncate">
                               @{member.user.slug}
                             </p>
                           )}

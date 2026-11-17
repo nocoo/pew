@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Settings, Target } from "lucide-react";
+import { Settings, Target } from "@nocoo/basalt/icons";
 import { Button } from "@nocoo/basalt/components/button";
-import { rowIconClassName } from "@/components/ui/button";
+import { rowIconClassName } from "@/lib/ghost-icon";
 import { cn, formatTokens } from "@/lib/utils";
 import { HeatmapCalendar, type HeatmapDataPoint } from "./heatmap-calendar";
 import {
@@ -65,17 +65,17 @@ export function GoalHeatmap({ data, year, className }: GoalHeatmapProps) {
       <div className="mb-3 flex min-h-12 items-center justify-between gap-2">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Target className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.5} />
-            <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Goal Tracker</span>
+            <Target className="h-4 w-4 shrink-0 text-basalt-muted-foreground" strokeWidth={1.5} />
+            <span className="text-xs font-medium uppercase tracking-wider text-basalt-muted-foreground">Goal Tracker</span>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-basalt-muted-foreground">
             {daysOnTarget} day{daysOnTarget !== 1 ? "s" : ""} above {formatTokens(thresholds.upper)}/day
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <div className="text-right">
-            <span className="text-2xl font-bold font-display tracking-tight text-foreground">{onTargetRate}%</span>
-            <p className="text-xs text-muted-foreground">on target</p>
+            <span className="text-2xl font-bold font-display tracking-tight text-basalt-foreground">{onTargetRate}%</span>
+            <p className="text-xs text-basalt-muted-foreground">on target</p>
           </div>
           <Button
             variant="ghost"
@@ -102,7 +102,7 @@ export function GoalHeatmap({ data, year, className }: GoalHeatmapProps) {
         />
       </div>
 
-      <div className="mt-3 flex min-h-9 flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border/50 pt-2 text-xs text-muted-foreground">
+      <div className="mt-3 flex min-h-9 flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-basalt-border/50 pt-2 text-xs text-basalt-muted-foreground">
         <span>
           <span
             className="inline-block w-2.5 h-2.5 rounded-full mr-1 align-[-1px]"

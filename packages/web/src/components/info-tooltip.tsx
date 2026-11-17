@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Info } from "lucide-react";
+import { Info } from "@nocoo/basalt/icons";
 import { Button } from "@nocoo/basalt/components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@nocoo/basalt/components/tooltip";
 
@@ -10,7 +10,7 @@ export function InfoTooltip({ label, children }: { label: string; children: Reac
   return <Tooltip open={open} onOpenChange={setOpen} delayDuration={0}>
     <TooltipTrigger asChild onPointerDown={(event) => event.preventDefault()}
       onClick={(event) => { event.preventDefault(); event.currentTarget.focus(); setOpen(true); }}>
-      <Button type="button" variant="ghost" size="icon" aria-label={label} className="h-8 w-8 shrink-0 text-muted-foreground">
+      <Button type="button" variant="ghost" size="icon" aria-label={label} className="h-8 w-8 shrink-0 text-basalt-muted-foreground">
         <Info className="h-4 w-4" strokeWidth={1.5} aria-hidden="true" />
       </Button>
     </TooltipTrigger>

@@ -7,7 +7,7 @@ import {
   ChevronDown,
   Zap,
   Camera,
-} from "lucide-react";
+} from "@nocoo/basalt/icons";
 import { Badge } from "@nocoo/basalt/components/badge";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
@@ -18,8 +18,8 @@ import { formatDuration } from "@/lib/date-helpers";
 import { getSeasonEndExclusiveISO } from "@/lib/season-helpers";
 
 import { teamColor, withAlpha } from "@/lib/palette";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@nocoo/basalt/components/avatar";
+import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
 import {
   useSeasonLeaderboard,
   type SeasonTeamEntry,
@@ -33,8 +33,8 @@ import { LeaderboardSkeleton } from "@/components/leaderboard/leaderboard-skelet
 import { PageHeader } from "@/components/leaderboard/page-header";
 import { TokenTierBadge } from "@/components/leaderboard/token-tier-badge";
 import { UserProfileDialog } from "@/components/user-profile-dialog";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { Trophy } from "lucide-react";
+import { TooltipProvider } from "@nocoo/basalt/components/tooltip";
+import { Trophy } from "@nocoo/basalt/icons";
 
 // ---------------------------------------------------------------------------
 // Season table header
@@ -43,7 +43,7 @@ import { Trophy } from "lucide-react";
 function SeasonTableHeader() {
   return (
     <div className="animate-fade-up" style={{ animationDelay: "200ms" }}>
-      <div className="flex items-center gap-3 px-4 pb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+      <div className="flex items-center gap-3 px-4 pb-2 text-[10px] font-semibold uppercase tracking-widest text-basalt-muted-foreground/60">
         <span className="w-8 shrink-0 text-center">Rank</span>
         <span className="flex-1">Team</span>
         <span className="hidden sm:block w-24 shrink-0 text-right">Sessions</span>
@@ -52,7 +52,7 @@ function SeasonTableHeader() {
         {/* Expand chevron spacer */}
         <span className="w-4 shrink-0" />
       </div>
-      <div className="h-px bg-border/50" />
+      <div className="h-px bg-basalt-border/50" />
     </div>
   );
 }
@@ -116,9 +116,9 @@ function TeamRow({
         variant="ghost"
         onClick={() => canExpand && handleToggle()}
         className={cn(
-          "relative flex h-auto w-full items-center gap-3 overflow-hidden rounded-card bg-secondary px-4 py-3 text-left hover:bg-secondary",
-          canExpand && "cursor-pointer hover:bg-accent",
-          entry.rank <= 3 && "ring-1 ring-border/50",
+          "relative flex h-auto w-full items-center gap-3 overflow-hidden rounded-card bg-basalt-secondary px-4 py-3 text-left hover:bg-basalt-secondary",
+          canExpand && "cursor-pointer hover:bg-basalt-accent",
+          entry.rank <= 3 && "ring-1 ring-basalt-border/50",
           expanded && "rounded-b-none",
         )}
       >
@@ -148,13 +148,13 @@ function TeamRow({
           )}
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-foreground truncate">
+              <span className="text-sm font-medium text-basalt-foreground truncate">
                 {entry.team.name}
               </span>
               <TokenTierBadge totalTokens={entry.total_tokens} />
             </div>
             {hasMembers && (
-              <span className="text-[10px] text-muted-foreground">
+              <span className="text-[10px] text-basalt-muted-foreground">
                 {members.length}{" "}
                 {members.length === 1 ? "member" : "members"}
               </span>
@@ -178,7 +178,7 @@ function TeamRow({
 
         {/* Total */}
         <div className="relative z-10 w-[160px] sm:w-[280px] shrink-0 text-right flex items-center justify-end">
-          <span className="font-handwriting text-[32px] sm:text-[39px] leading-none tracking-tight text-foreground whitespace-nowrap">
+          <span className="font-handwriting text-[32px] sm:text-[39px] leading-none tracking-tight text-basalt-foreground whitespace-nowrap">
             {formatTokensFull(entry.total_tokens)}
           </span>
         </div>
@@ -187,7 +187,7 @@ function TeamRow({
         {canExpand && (
           <ChevronDown
             className={cn(
-              "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+              "h-4 w-4 shrink-0 text-basalt-muted-foreground transition-transform duration-200",
               expanded && "rotate-180",
             )}
           />
@@ -196,11 +196,11 @@ function TeamRow({
 
       {/* Expanded member list */}
       {expanded && (
-        <div className="rounded-b-card border-t border-border bg-secondary/50 px-4 py-2 space-y-1">
+        <div className="rounded-b-card border-t border-basalt-border bg-basalt-secondary/50 px-4 py-2 space-y-1">
           {membersLoading ? (
             <div className="flex items-center justify-center py-4">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
-              <span className="ml-2 text-sm text-muted-foreground">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-basalt-muted-foreground border-t-transparent" />
+              <span className="ml-2 text-sm text-basalt-muted-foreground">
                 Loading members...
               </span>
             </div>
@@ -231,12 +231,12 @@ function TeamRow({
                       {member.image && (
                         <AvatarImage src={member.image} alt={displayName} />
                       )}
-                      <AvatarFallback className="text-[10px] bg-primary text-primary-foreground">
+                      <AvatarFallback className="text-[10px] bg-basalt-primary text-basalt-primary-foreground">
                         {initial}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-sm text-muted-foreground truncate">
+                      <span className="text-sm text-basalt-muted-foreground truncate">
                         {displayName}
                       </span>
                       <TokenTierBadge totalTokens={member.total_tokens} />
@@ -260,7 +260,7 @@ function TeamRow({
 
                 {/* Tokens — same width and font size as team row */}
                 <div className="relative z-10 w-[160px] sm:w-[280px] shrink-0 text-right flex items-center justify-end">
-                  <span className="font-handwriting text-[32px] sm:text-[39px] leading-none tracking-tight text-muted-foreground whitespace-nowrap">
+                  <span className="font-handwriting text-[32px] sm:text-[39px] leading-none tracking-tight text-basalt-muted-foreground whitespace-nowrap">
                     {formatTokensFull(member.total_tokens)}
                   </span>
                 </div>
@@ -312,7 +312,7 @@ export default function SeasonLeaderboardPage() {
       <PageHeader>
         {data ? (
           <>
-            <h1 className="tracking-tight text-foreground">
+            <h1 className="tracking-tight text-basalt-foreground">
               <span className="text-[36px] font-bold font-handwriting leading-none mr-2">
                 {data.season.name}
               </span>
@@ -339,8 +339,8 @@ export default function SeasonLeaderboardPage() {
           </>
         ) : isLoading ? (
           <div className="space-y-2">
-            <Skeleton className="h-10 w-48" />
-            <Skeleton className="h-4 w-56" />
+            <SkeletonLine style={{ width: undefined }} className="h-10 w-48" />
+            <SkeletonLine style={{ width: undefined }} className="h-4 w-56" />
           </div>
         ) : null}
       </PageHeader>

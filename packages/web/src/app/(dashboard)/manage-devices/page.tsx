@@ -25,7 +25,7 @@ import {
   Terminal,
   Trash2,
   X,
-} from "lucide-react";
+} from "@nocoo/basalt/icons";
 import { cn, formatTokens } from "@/lib/utils";
 import { sourceLabel } from "@/hooks/use-usage-data";
 import { deviceLabel, shortDeviceId, sortRecentActivityRecords, formatRecentActivityRelativeTime } from "@/lib/device-helpers";
@@ -171,7 +171,7 @@ function DeviceCard({
   }
 
   return (
-    <div data-device-card className="rounded-xl bg-secondary p-4 space-y-3">
+    <div data-device-card className="rounded-xl bg-basalt-secondary p-4 space-y-3">
       {/* Header row */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
@@ -198,13 +198,13 @@ function DeviceCard({
               type="button"
               variant="ghost"
               onClick={handleStartEdit}
-              className="h-auto px-0 py-0 text-left text-sm font-medium text-foreground hover:bg-transparent hover:text-foreground/80"
+              className="h-auto px-0 py-0 text-left text-sm font-medium text-basalt-foreground hover:bg-transparent hover:text-basalt-foreground/80"
               title="Click to rename"
             >
               {hasAlias ? (
                 label
               ) : (
-                <span className="text-muted-foreground/70 italic">
+                <span className="text-basalt-muted-foreground/70 italic">
                   {isDefault ? "Legacy Device" : "Set a name..."}
                 </span>
               )}
@@ -212,8 +212,8 @@ function DeviceCard({
           )}
 
           {/* Meta row */}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-muted-foreground">
-            <span className="font-mono text-[10px] text-muted-foreground/60">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-basalt-muted-foreground">
+            <span className="font-mono text-[10px] text-basalt-muted-foreground/60">
               {isDefault ? "default" : shortDeviceId(device.device_id)}
             </span>
             {device.first_seen && (
@@ -331,7 +331,7 @@ function DeviceCard({
           {/* Tools */}
           {device.sources.length > 0 && (
             <div className="flex items-center gap-1.5">
-              <span className="text-xs text-muted-foreground">Tools:</span>
+              <span className="text-xs text-basalt-muted-foreground">Tools:</span>
               <div className="flex gap-1">
                 {device.sources.map((s) => (
                   <SourceBadge key={s} source={s} />
@@ -340,11 +340,11 @@ function DeviceCard({
             </div>
           )}
 
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-basalt-muted-foreground">
             {device.model_count} {device.model_count === 1 ? "model" : "models"}
           </span>
 
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-basalt-muted-foreground">
             {formatTokens(device.total_tokens)} tokens
           </span>
         </div>
@@ -557,19 +557,19 @@ function AuthCodeModal({
 
               {/* Expiry countdown */}
               <div className="flex items-center justify-center gap-2 text-sm">
-                <span className="text-muted-foreground">Expires in</span>
+                <span className="text-basalt-muted-foreground">Expires in</span>
                 <span className={cn(
                   "font-mono font-semibold tabular-nums",
-                  authCodeRemaining <= 60 ? "text-destructive" : "text-foreground"
+                  authCodeRemaining <= 60 ? "text-basalt-destructive" : "text-basalt-foreground"
                 )}>
                   {Math.floor(authCodeRemaining / 60)}:{String(authCodeRemaining % 60).padStart(2, "0")}
                 </span>
               </div>
 
               {/* Command preview */}
-              <div className="rounded-lg bg-secondary/50 border border-border/50 p-3">
-                <p className="text-[11px] text-muted-foreground mb-1.5">Run on your machine:</p>
-                <code className="block text-sm font-mono text-foreground">
+              <div className="rounded-lg bg-basalt-secondary/50 border border-basalt-border/50 p-3">
+                <p className="text-[11px] text-basalt-muted-foreground mb-1.5">Run on your machine:</p>
+                <code className="block text-sm font-mono text-basalt-foreground">
                   pew login --code {authCode}
                 </code>
               </div>
@@ -620,7 +620,7 @@ export default function ManageDevicesPage() {
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-28 rounded-xl bg-secondary animate-pulse"
+              className="h-28 rounded-xl bg-basalt-secondary animate-pulse"
             />
           ))}
         </div>
@@ -684,10 +684,10 @@ export default function ManageDevicesPage() {
       {devices.length > 0 && (
         <section>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <h2 className="flex items-center gap-2 text-sm font-medium text-basalt-foreground">
               <Monitor className="h-4 w-4" strokeWidth={1.5} />
               Your Devices
-              <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+              <span className="rounded-full bg-basalt-accent px-2 py-0.5 text-[10px] font-medium text-basalt-muted-foreground">
                 {devices.length}
               </span>
             </h2>
@@ -711,9 +711,9 @@ export default function ManageDevicesPage() {
 
       {/* Footer info */}
       {devices.length > 0 && (
-        <div className="flex items-start gap-2 rounded-lg bg-accent/30 px-4 py-3">
-          <Info className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" strokeWidth={1.5} />
-          <p className="text-xs text-muted-foreground">
+        <div className="flex items-start gap-2 rounded-lg bg-basalt-accent/30 px-4 py-3">
+          <Info className="h-4 w-4 text-basalt-muted-foreground mt-0.5 shrink-0" strokeWidth={1.5} />
+          <p className="text-xs text-basalt-muted-foreground">
             Device IDs are auto-generated per machine when you first run{" "}
             <code className="font-mono text-[11px]">pew sync</code>.
           </p>

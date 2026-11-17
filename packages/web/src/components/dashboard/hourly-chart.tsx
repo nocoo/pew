@@ -14,7 +14,7 @@ import { formatTokens } from "@/lib/utils";
 import { chart, chartAxis, chartMuted } from "@/lib/palette";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 import type { HourlyWeekdayWeekendPoint } from "@/lib/usage-helpers";
-import { Clock } from "lucide-react";
+import { Clock } from "@nocoo/basalt/icons";
 import { ChartTooltip, ChartTooltipRow } from "./chart-tooltip";
 
 // ---------------------------------------------------------------------------
@@ -85,7 +85,7 @@ export function HourlyChart({ data, className }: HourlyChartProps) {
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-card bg-secondary p-8 text-sm text-muted-foreground",
+          "flex items-center justify-center rounded-card bg-basalt-secondary p-8 text-sm text-basalt-muted-foreground",
           className
         )}
       >
@@ -100,7 +100,7 @@ export function HourlyChart({ data, className }: HourlyChartProps) {
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-card bg-secondary p-8 text-sm text-muted-foreground",
+          "flex items-center justify-center rounded-card bg-basalt-secondary p-8 text-sm text-basalt-muted-foreground",
           className
         )}
       >
@@ -112,15 +112,15 @@ export function HourlyChart({ data, className }: HourlyChartProps) {
   return (
     <div
       className={cn(
-        "rounded-card bg-secondary p-4 md:p-5 flex flex-col",
+        "rounded-card bg-basalt-secondary p-4 md:p-5 flex flex-col",
         className
       )}
     >
       {/* Header */}
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
-          <p className="text-xs md:text-sm text-muted-foreground">
+          <Clock className="h-4 w-4 text-basalt-muted-foreground" strokeWidth={1.5} />
+          <p className="text-xs md:text-sm text-basalt-muted-foreground">
             Hourly Usage
           </p>
         </div>
@@ -130,14 +130,14 @@ export function HourlyChart({ data, className }: HourlyChartProps) {
               className="h-2 w-2 rounded-full"
               style={{ background: chart.violet }}
             />
-            <span className="text-xs text-muted-foreground">Weekday</span>
+            <span className="text-xs text-basalt-muted-foreground">Weekday</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div
               className="h-2 w-2 rounded-full"
               style={{ background: chartMuted, opacity: 0.6 }}
             />
-            <span className="text-xs text-muted-foreground">Weekend</span>
+            <span className="text-xs text-basalt-muted-foreground">Weekend</span>
           </div>
         </div>
       </div>

@@ -33,7 +33,7 @@ export function PeriodTabs({
   onChange: (p: LeaderboardPeriod) => void;
 }) {
   return (
-    <div className="flex gap-1 rounded-lg bg-secondary p-1 flex-1">
+    <div className="flex gap-1 rounded-lg bg-basalt-secondary p-1 flex-1">
       {PERIODS.map((p) => (
         <button type="button"
           key={p.value}
@@ -41,8 +41,8 @@ export function PeriodTabs({
           className={cn(
             "flex-1 whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
             value === p.value
-              ? "bg-secondary text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground",
+              ? "bg-basalt-secondary text-basalt-foreground shadow-sm"
+              : "text-basalt-muted-foreground hover:text-basalt-foreground",
           )}
         >
           <span className="sm:hidden">{p.shortLabel}</span>

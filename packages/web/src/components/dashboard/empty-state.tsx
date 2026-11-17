@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
-import { type LucideIcon, Rocket, Zap } from "lucide-react";
+import { type LucideIcon, Rocket, Zap } from "@nocoo/basalt/icons";
 import { cn } from "@/lib/utils";
 
 interface EmptyStateProps {

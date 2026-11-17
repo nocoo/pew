@@ -3,14 +3,14 @@
 import { useMemo, useState } from "react";
 import { useDeviceData } from "@/hooks/use-device-data";
 import { useTzOffset } from "@/hooks/use-tz-offset";
-import { ErrorBanner } from "@/components/ui/error-banner";
+import { ErrorBanner } from "@/components/error-banner";
 import { useUsageData } from "@/hooks/use-usage-data";
 import { formatTokens } from "@/lib/utils";
 import { formatCost, usePricingMap } from "@/hooks/use-pricing";
 import { sourceLabel } from "@/hooks/use-usage-data";
 import { deviceLabel, shortDeviceId, toDeviceAgentBreakdown, toDeviceModelBreakdown } from "@/lib/device-helpers";
 import { toSourceTrendPoints } from "@/lib/usage-helpers";
-import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
 import { ChartCardSkeleton } from "@/components/dashboard/chart-card-skeleton";
 import { Empty } from "@nocoo/basalt/components/empty";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
@@ -41,9 +41,9 @@ function DevicesSkeleton() {
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-          <div key={`slot-${i}`} className="rounded-card bg-secondary p-4 space-y-2">
-            <Skeleton className="h-3 w-20" />
-            <Skeleton className="h-7 w-24" />
+          <div key={`slot-${i}`} className="rounded-card bg-basalt-secondary p-4 space-y-2">
+            <SkeletonLine style={{ width: undefined }} className="h-3 w-20" />
+            <SkeletonLine style={{ width: undefined }} className="h-7 w-24" />
           </div>
         ))}
       </div>
@@ -59,34 +59,34 @@ function DevicesSkeleton() {
       <ChartCardSkeleton titleWidth="w-28" chartHeight="h-[200px] md:h-[240px]" />
 
       {/* Summary table */}
-      <div className="rounded-xl bg-secondary p-1">
+      <div className="rounded-xl bg-basalt-secondary p-1">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-border">
-              <th className="px-4 py-3 text-left"><Skeleton className="h-3 w-14" /></th>
-              <th className="px-4 py-3 text-left hidden lg:table-cell"><Skeleton className="h-3 w-10" /></th>
-              <th className="px-4 py-3 text-left hidden xl:table-cell"><Skeleton className="h-3 w-12" /></th>
-              <th className="px-4 py-3 text-right"><Skeleton className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right"><Skeleton className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right hidden md:table-cell"><Skeleton className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right"><Skeleton className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right hidden sm:table-cell"><Skeleton className="h-3 w-14 ml-auto" /></th>
-              <th className="px-4 py-3 text-right hidden md:table-cell"><Skeleton className="h-3 w-10 ml-auto" /></th>
+            <tr className="border-b border-basalt-border">
+              <th className="px-4 py-3 text-left"><SkeletonLine style={{ width: undefined }} className="h-3 w-14" /></th>
+              <th className="px-4 py-3 text-left hidden lg:table-cell"><SkeletonLine style={{ width: undefined }} className="h-3 w-10" /></th>
+              <th className="px-4 py-3 text-left hidden xl:table-cell"><SkeletonLine style={{ width: undefined }} className="h-3 w-12" /></th>
+              <th className="px-4 py-3 text-right"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-right"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-right hidden md:table-cell"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-right"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-right hidden sm:table-cell"><SkeletonLine style={{ width: undefined }} className="h-3 w-14 ml-auto" /></th>
+              <th className="px-4 py-3 text-right hidden md:table-cell"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
             </tr>
           </thead>
           <tbody>
             {Array.from({ length: 4 }).map((_, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-              <tr key={`slot-${i}`} className="border-b border-border/50 last:border-0">
-                <td className="px-4 py-3"><Skeleton className="h-4 w-28" /></td>
-                <td className="px-4 py-3 hidden lg:table-cell"><Skeleton className="h-4 w-16" /></td>
-                <td className="px-4 py-3 hidden xl:table-cell"><Skeleton className="h-4 w-16" /></td>
-                <td className="px-4 py-3"><Skeleton className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3"><Skeleton className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3 hidden md:table-cell"><Skeleton className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3"><Skeleton className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3 hidden sm:table-cell"><Skeleton className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3 hidden md:table-cell"><Skeleton className="h-2 w-full rounded-full" /></td>
+              <tr key={`slot-${i}`} className="border-b border-basalt-border/50 last:border-0">
+                <td className="px-4 py-3"><SkeletonLine style={{ width: undefined }} className="h-4 w-28" /></td>
+                <td className="px-4 py-3 hidden lg:table-cell"><SkeletonLine style={{ width: undefined }} className="h-4 w-16" /></td>
+                <td className="px-4 py-3 hidden xl:table-cell"><SkeletonLine style={{ width: undefined }} className="h-4 w-16" /></td>
+                <td className="px-4 py-3"><SkeletonLine style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3"><SkeletonLine style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3 hidden md:table-cell"><SkeletonLine style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3"><SkeletonLine style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3 hidden sm:table-cell"><SkeletonLine style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3 hidden md:table-cell"><SkeletonLine style={{ width: undefined }} className="h-2 w-full rounded-full" /></td>
               </tr>
             ))}
           </tbody>
@@ -96,9 +96,9 @@ function DevicesSkeleton() {
       {/* Deep Dive skeleton */}
       <div className="space-y-3 md:space-y-4">
         <div className="flex items-center gap-3">
-          <Skeleton className="h-3 w-20" />
-          <div className="h-px flex-1 bg-border/60" />
-          <Skeleton className="h-8 w-40" />
+          <SkeletonLine style={{ width: undefined }} className="h-3 w-20" />
+          <div className="h-px flex-1 bg-basalt-border/60" />
+          <SkeletonLine style={{ width: undefined }} className="h-8 w-40" />
         </div>
         <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
           {Array.from({ length: 2 }).map((_, i) => (
@@ -134,18 +134,18 @@ function StatGrid({ devices }: { devices: DeviceAggregate[] }) {
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-      <div className="rounded-card bg-secondary p-4">
-        <p className="text-xs text-muted-foreground">Devices</p>
+      <div className="rounded-card bg-basalt-secondary p-4">
+        <p className="text-xs text-basalt-muted-foreground">Devices</p>
         <p className="mt-1 text-2xl font-bold tabular-nums">{deviceCount}</p>
       </div>
-      <div className="rounded-card bg-secondary p-4">
-        <p className="text-xs text-muted-foreground">Most Active</p>
+      <div className="rounded-card bg-basalt-secondary p-4">
+        <p className="text-xs text-basalt-muted-foreground">Most Active</p>
         <p className="mt-1 text-lg font-bold truncate">
           {mostActive ? deviceLabel(mostActive) : "—"}
         </p>
       </div>
-      <div className="rounded-card bg-secondary p-4">
-        <p className="text-xs text-muted-foreground">Active (7d)</p>
+      <div className="rounded-card bg-basalt-secondary p-4">
+        <p className="text-xs text-basalt-muted-foreground">Active (7d)</p>
         <p className="mt-1 text-2xl font-bold tabular-nums">
           {recentlyActive}
         </p>
@@ -295,35 +295,35 @@ export default function ByDevicePage() {
               </DashboardSegment>
 
               {/* Summary table */}
-              <div className="rounded-xl bg-secondary p-1 overflow-x-auto">
+              <div className="rounded-xl bg-basalt-secondary p-1 overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-border">
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+                    <tr className="border-b border-basalt-border">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
                         Device
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground hidden lg:table-cell">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden lg:table-cell">
                         Tools
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground hidden xl:table-cell">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden xl:table-cell">
                         Models
                       </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">
+                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
                         Input
                       </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">
+                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
                         Output
                       </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground hidden md:table-cell">
+                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden md:table-cell">
                         Cached
                       </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">
+                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
                         Total
                       </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground hidden sm:table-cell">
+                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden sm:table-cell">
                         Est. Cost
                       </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground w-32 hidden md:table-cell">
+                      <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground w-32 hidden md:table-cell">
                         Share
                       </th>
                     </tr>
@@ -337,7 +337,7 @@ export default function ByDevicePage() {
                       return (
                         <tr
                           key={device.device_id}
-                          className="border-b border-border/50 last:border-0 hover:bg-accent/50 transition-colors"
+                          className="border-b border-basalt-border/50 last:border-0 hover:bg-basalt-accent/50 transition-colors"
                         >
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2.5">
@@ -349,11 +349,11 @@ export default function ByDevicePage() {
                                 }}
                               />
                               <div>
-                                <span className="text-sm font-medium text-foreground">
+                                <span className="text-sm font-medium text-basalt-foreground">
                                   {deviceLabel(device)}
                                 </span>
                                 {device.device_id !== "default" && (
-                                  <span className="ml-2 text-[10px] font-mono text-muted-foreground/60">
+                                  <span className="ml-2 text-[10px] font-mono text-basalt-muted-foreground/60">
                                     {shortDeviceId(device.device_id)}
                                   </span>
                                 )}
@@ -365,7 +365,7 @@ export default function ByDevicePage() {
                               {device.sources.map((s) => (
                                 <span
                                   key={s}
-                                  className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                                  className="rounded-full bg-basalt-accent px-2 py-0.5 text-[10px] font-medium text-basalt-muted-foreground"
                                 >
                                   {sourceLabel(s)}
                                 </span>
@@ -373,7 +373,7 @@ export default function ByDevicePage() {
                             </div>
                           </td>
                           <td className="px-4 py-3 hidden xl:table-cell">
-                            <span className="text-xs text-muted-foreground truncate block max-w-[200px]">
+                            <span className="text-xs text-basalt-muted-foreground truncate block max-w-[200px]">
                               {device.models.length > 0
                                 ? device.models.join(", ")
                                 : "—"}
@@ -394,12 +394,12 @@ export default function ByDevicePage() {
                           <td className="px-4 py-3 text-sm text-right tabular-nums hidden sm:table-cell">
                             {formatCost(device.estimated_cost)}
                             {device.estimated_cost_complete !== true && (
-                              <span className="block text-[10px] text-muted-foreground">Includes assumptions</span>
+                              <span className="block text-[10px] text-basalt-muted-foreground">Includes assumptions</span>
                             )}
                           </td>
                           <td className="px-4 py-3 hidden md:table-cell">
                             <div className="flex items-center gap-2">
-                              <div className="flex-1 h-2 rounded-full bg-background overflow-hidden">
+                              <div className="flex-1 h-2 rounded-full bg-basalt-background overflow-hidden">
                                 <div
                                   key={pct}
                                   className="chart-animate chart-grow-x h-full rounded-full"
@@ -410,7 +410,7 @@ export default function ByDevicePage() {
                                   }}
                                 />
                               </div>
-                              <span className="text-[10px] tabular-nums text-muted-foreground w-8 text-right">
+                              <span className="text-[10px] tabular-nums text-basalt-muted-foreground w-8 text-right">
                                 {pct.toFixed(0)}%
                               </span>
                             </div>
@@ -420,7 +420,7 @@ export default function ByDevicePage() {
                     })}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t border-border">
+                    <tr className="border-t border-basalt-border">
                       <td className="px-4 py-3 text-sm font-medium" colSpan={3}>
                         Total
                       </td>

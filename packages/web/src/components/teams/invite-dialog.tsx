@@ -11,10 +11,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@nocoo/basalt/components/dialog";
-import { UserPlus, X } from "lucide-react";
+import { UserPlus, X } from "@nocoo/basalt/icons";
 import { chromeIconClassName } from "@/lib/ghost-icon";
 import { useRestoreDialogFocus } from "@/lib/restore-dialog-focus";
-import { CopyButton } from "@/components/ui/copy-button";
+import { CopyButton } from "@/components/copy-button";
 
 export interface InviteDialogProps {
   open: boolean;

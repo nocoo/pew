@@ -111,7 +111,7 @@ export function CostTrendChart({ data, className }: CostTrendChartProps) {
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-card bg-secondary p-8 text-sm text-muted-foreground",
+          "flex items-center justify-center rounded-card bg-basalt-secondary p-8 text-sm text-basalt-muted-foreground",
           className
         )}
       >
@@ -123,13 +123,13 @@ export function CostTrendChart({ data, className }: CostTrendChartProps) {
   return (
     <div
       className={cn(
-        "rounded-card bg-secondary p-4 md:p-5",
+        "rounded-card bg-basalt-secondary p-4 md:p-5",
         className
       )}
     >
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-xs md:text-sm text-muted-foreground">
+          <p className="text-xs md:text-sm text-basalt-muted-foreground">
             Daily Cost
           </p>
         </div>
@@ -145,7 +145,7 @@ export function CostTrendChart({ data, className }: CostTrendChartProps) {
                 className="h-2 w-2 rounded-full"
                 style={{ background: color }}
               />
-              <span className="text-xs text-muted-foreground">{label}</span>
+              <span className="text-xs text-basalt-muted-foreground">{label}</span>
             </div>
           ))}
         </div>

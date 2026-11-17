@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy } from "@nocoo/basalt/icons";
 import { Button } from "@nocoo/basalt/components/button";
 
 /** Copy an existing block or a collection without displaying the text again. */
@@ -29,7 +29,7 @@ export function CopyButton({ text, children }: { text: string; children: string 
       >
         <span aria-live="polite">{copied ? "Copied" : children}</span>
       </Button>
-      {failed && <p role="alert" className="text-xs text-destructive">Could not copy. Try again.</p>}
+      {failed && <p role="alert" className="text-xs text-basalt-destructive">Could not copy. Try again.</p>}
     </div>
   );
 }

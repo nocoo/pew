@@ -98,7 +98,7 @@ export function SourceTrendChart({ data, className, title = "Tool Usage Trend" }
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-card bg-secondary p-8 text-sm text-muted-foreground",
+          "flex items-center justify-center rounded-card bg-basalt-secondary p-8 text-sm text-basalt-muted-foreground",
           className
         )}
       >
@@ -122,11 +122,11 @@ export function SourceTrendChart({ data, className, title = "Tool Usage Trend" }
     <figure
       aria-label={title}
       className={cn(
-        "min-w-0 rounded-card bg-secondary p-4 md:p-5",
+        "min-w-0 rounded-card bg-basalt-secondary p-4 md:p-5",
         className
       )}
     >
-      <p className="mb-3 text-xs md:text-sm text-muted-foreground">{title}</p>
+      <p className="mb-3 text-xs md:text-sm text-basalt-muted-foreground">{title}</p>
         <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
           {sourceKeys.slice(0, 5).map((source) => {
             const isHidden = hiddenSources.has(source);
@@ -148,7 +148,7 @@ export function SourceTrendChart({ data, className, title = "Tool Usage Trend" }
                   className="h-2 w-2 shrink-0 rounded-full"
                   style={{ background: agentColor(source).color }}
                 />
-                <span className="max-w-[160px] truncate text-xs text-muted-foreground">
+                <span className="max-w-[160px] truncate text-xs text-basalt-muted-foreground">
                   {sourceLabel(source)}
                 </span>
               </Button>

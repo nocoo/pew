@@ -1,4 +1,4 @@
-import { Trophy, Medal, Award } from "lucide-react";
+import { Trophy, Medal, Award } from "@nocoo/basalt/icons";
 
 interface RankBadgeProps {
   rank: number;
@@ -18,7 +18,7 @@ export function RankBadge({ rank }: RankBadgeProps) {
     return <Award className="h-5 w-5 text-rank-bronze" strokeWidth={1.5} />;
   }
   return (
-    <span className="flex h-5 w-5 items-center justify-center text-xs font-medium tabular-nums text-muted-foreground">
+    <span className="flex h-5 w-5 items-center justify-center text-xs font-medium tabular-nums text-basalt-muted-foreground">
       {rank}
     </span>
   );

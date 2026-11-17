@@ -1,38 +1,9 @@
-@source "../../node_modules/@nocoo/basalt/dist/**/*.{js,jsx,ts,tsx}";
-@import "@nocoo/basalt/styles/tailwind";
+@import "@nocoo/basalt/styles";
 @import "tailwindcss";
-@import "tw-animate-css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme inline {
-  --color-border: hsl(var(--basalt-border));
-  --color-input: hsl(var(--basalt-input));
-  --color-ring: hsl(var(--basalt-ring));
-  --color-background: hsl(var(--basalt-background));
-  --color-foreground: hsl(var(--basalt-foreground));
-
-  --color-primary: hsl(var(--basalt-primary));
-  --color-primary-foreground: hsl(var(--basalt-primary-foreground));
-
-  --color-secondary: hsl(var(--basalt-secondary));
-  --color-secondary-foreground: hsl(var(--basalt-secondary-foreground));
-
-  --color-destructive: hsl(var(--basalt-destructive));
-  --color-destructive-foreground: hsl(var(--basalt-destructive-foreground));
-
-  --color-muted: hsl(var(--basalt-muted));
-  --color-muted-foreground: hsl(var(--basalt-muted-foreground));
-
-  --color-accent: hsl(var(--basalt-accent));
-  --color-accent-foreground: hsl(var(--basalt-accent-foreground));
-
-  --color-popover: hsl(var(--basalt-popover));
-  --color-popover-foreground: hsl(var(--basalt-popover-foreground));
-
-  --color-card: hsl(var(--basalt-card));
-  --color-card-foreground: hsl(var(--basalt-card-foreground));
-
   --color-success: hsl(var(--success));
   --color-success-foreground: hsl(var(--success-foreground));
 
@@ -72,9 +43,6 @@
 
   --radius-card: 14px;
   --radius-widget: 10px;
-  --radius-lg: var(--basalt-radius);
-  --radius-md: calc(var(--basalt-radius) - 2px);
-  --radius-sm: calc(var(--basalt-radius) - 4px);
 }
 
 :root {

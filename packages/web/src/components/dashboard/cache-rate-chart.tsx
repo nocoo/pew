@@ -66,7 +66,7 @@ function CacheRateTooltip({
 
   return (
     <ChartTooltip title={label ? fmtDate(label) : undefined}>
-      <p className="text-sm font-semibold text-popover-foreground">
+      <p className="text-sm font-semibold text-basalt-popover-foreground">
         {point.cacheRate === null ? "Unknown" : `${point.cacheRate.toFixed(1)}%`}
       </p>
       <ChartTooltipSubtitle>
@@ -90,7 +90,7 @@ export function CacheRateChart({ data, className }: CacheRateChartProps) {
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-card bg-secondary p-8 text-sm text-muted-foreground",
+          "flex items-center justify-center rounded-card bg-basalt-secondary p-8 text-sm text-basalt-muted-foreground",
           className,
         )}
       >
@@ -104,17 +104,17 @@ export function CacheRateChart({ data, className }: CacheRateChartProps) {
   return (
     <div
       className={cn(
-        "rounded-card bg-secondary p-4 md:p-5",
+        "rounded-card bg-basalt-secondary p-4 md:p-5",
         className,
       )}
     >
       <div className="mb-4 flex items-center justify-between">
         <div>
-          <p className="text-xs md:text-sm text-muted-foreground">
+          <p className="text-xs md:text-sm text-basalt-muted-foreground">
             Daily Cache Hit Rate
           </p>
         </div>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1.5 text-xs text-basalt-muted-foreground">
           <div
             className="h-0.5 w-4"
             style={{

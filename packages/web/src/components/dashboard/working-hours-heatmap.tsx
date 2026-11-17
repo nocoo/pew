@@ -7,7 +7,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@nocoo/basalt/components/tooltip";
 import { withAlpha } from "@/lib/palette";
 import { getHeatmapColor, HOUR_LABELS, EMPTY_COLOR } from "@/lib/heatmap-helpers";
 import type { WorkingHoursDay } from "@/lib/session-helpers";
@@ -56,7 +56,7 @@ export function WorkingHoursHeatmap({
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-card bg-secondary p-8 text-sm text-muted-foreground",
+          "flex items-center justify-center rounded-card bg-basalt-secondary p-8 text-sm text-basalt-muted-foreground",
           className
         )}
       >
@@ -68,16 +68,16 @@ export function WorkingHoursHeatmap({
   return (
     <div
       className={cn(
-        "rounded-card bg-secondary p-4 md:p-5",
+        "rounded-card bg-basalt-secondary p-4 md:p-5",
         className
       )}
     >
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-xs md:text-sm text-muted-foreground">
+        <p className="text-xs md:text-sm text-basalt-muted-foreground">
           Working Hours
         </p>
         {/* Legend */}
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+        <div className="flex items-center gap-1 text-xs text-basalt-muted-foreground">
           <span>Less</span>
           {[0, 0.3, 0.5, 0.75, 1].map((alpha) => (
             <div
@@ -100,7 +100,7 @@ export function WorkingHoursHeatmap({
           <div className="inline-block">
             {/* Hour labels */}
             <div
-              className="flex text-[10px] text-muted-foreground mb-1"
+              className="flex text-[10px] text-basalt-muted-foreground mb-1"
               style={{ paddingLeft: 36 }}
             >
               {HOUR_LABELS.map((label, i) => (
@@ -123,7 +123,7 @@ export function WorkingHoursHeatmap({
               <div key={day.day} className="flex items-center" style={{ gap: 0 }}>
                 {/* Day label */}
                 <div
-                  className="text-[11px] text-muted-foreground shrink-0 text-right pr-2"
+                  className="text-[11px] text-basalt-muted-foreground shrink-0 text-right pr-2"
                   style={{ width: 36 }}
                 >
                   {day.day}
@@ -137,7 +137,7 @@ export function WorkingHoursHeatmap({
                       <TooltipTrigger asChild>
                         <div
                           key={getHeatmapColor(count, maxValue)}
-                          className="chart-animate rounded-sm cursor-pointer hover:ring-1 hover:ring-foreground"
+                          className="chart-animate rounded-sm cursor-pointer hover:ring-1 hover:ring-basalt-foreground"
                           style={{
                             width: CELL_SIZE,
                             height: CELL_SIZE,
@@ -150,7 +150,7 @@ export function WorkingHoursHeatmap({
                           <div className="font-medium">
                             {day.day} {HOUR_LABELS[hour]}
                           </div>
-                          <div className="text-muted-foreground">
+                          <div className="text-basalt-muted-foreground">
                             {count} session{count !== 1 ? "s" : ""}
                           </div>
                         </div>

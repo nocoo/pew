@@ -143,7 +143,7 @@ export function HeatmapCalendar({
         <div className="inline-block">
           {/* Month labels */}
           <div
-            className="grid h-4 text-xs text-muted-foreground mb-1"
+            className="grid h-4 text-xs text-basalt-muted-foreground mb-1"
             style={{ marginLeft: labelWidth + 4, gap: cellGap, gridTemplateColumns: `repeat(${weeks.length}, ${cellSize}px)` }}
           >
             {monthLabels.map((label) => (
@@ -160,7 +160,7 @@ export function HeatmapCalendar({
           <div className="flex">
             {/* Weekday labels */}
             <div
-              className="flex shrink-0 flex-col text-xs text-muted-foreground mr-1"
+              className="flex shrink-0 flex-col text-xs text-basalt-muted-foreground mr-1"
               style={{ width: labelWidth }}
             >
               {WEEKDAYS.map((day, i) => (
@@ -215,8 +215,8 @@ export function HeatmapCalendar({
                         role="img"
                         aria-label={`${dateStr}: ${metricLabel} ${valueFormatter(value, dateStr)}`}
                         className={cn(
-                          "chart-animate rounded-full cursor-pointer hover:ring-1 hover:ring-foreground",
-                          colorIndex === 0 && "border border-border/60",
+                          "chart-animate rounded-full cursor-pointer hover:ring-1 hover:ring-basalt-foreground",
+                          colorIndex === 0 && "border border-basalt-border/60",
                         )}
                         style={{
                           width: cellSize,
@@ -234,7 +234,7 @@ export function HeatmapCalendar({
           </div>
 
           {/* Legend */}
-          <div className="flex items-center justify-end gap-1 mt-2 text-xs text-muted-foreground">
+          <div className="flex items-center justify-end gap-1 mt-2 text-xs text-basalt-muted-foreground">
             <span>{legendLabels?.[0] ?? "Less"}</span>
             {colorScale.map((color, i) => (
               <div
@@ -242,7 +242,7 @@ export function HeatmapCalendar({
                 key={`legend-${i}`}
                 className={cn(
                   "rounded-full",
-                  i === 0 && "border border-border/60",
+                  i === 0 && "border border-basalt-border/60",
                 )}
                 style={{
                   width: cellSize,
@@ -261,7 +261,7 @@ export function HeatmapCalendar({
       {hoveredCell && (
         <div
           role="tooltip"
-          className="pointer-events-none absolute z-50 w-fit max-w-full rounded-[var(--radius-widget)] bg-popover px-3 py-2 text-xs text-popover-foreground shadow-lg ring-1 ring-border/50 animate-in fade-in-0 zoom-in-95"
+          className="pointer-events-none absolute z-50 w-fit max-w-full rounded-[var(--radius-widget)] bg-basalt-popover px-3 py-2 text-xs text-basalt-popover-foreground shadow-lg ring-1 ring-basalt-border/50 animate-in fade-in-0 zoom-in-95"
           style={{
             top: hoveredCell.rect.top - 4,
             ...(hoveredCell.rect.left > hoveredCell.rect.right
@@ -272,7 +272,7 @@ export function HeatmapCalendar({
         >
           <div className="text-sm">
             <div className="whitespace-nowrap font-medium">{hoveredCell.dateStr}</div>
-            <div className="text-muted-foreground">
+            <div className="text-basalt-muted-foreground">
               {metricLabel}: {valueFormatter(hoveredCell.value, hoveredCell.dateStr)}
             </div>
           </div>

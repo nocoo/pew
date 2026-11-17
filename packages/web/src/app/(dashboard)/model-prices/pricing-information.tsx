@@ -1,6 +1,6 @@
 "use client";
 
-import { InfoTooltip } from "@/components/ui/info-tooltip";
+import { InfoTooltip } from "@/components/info-tooltip";
 import type { DynamicPricingMetaDto } from "@/lib/rpc-types";
 
 export function PricingInformation({ meta, servedFrom }: { meta: DynamicPricingMetaDto | undefined; servedFrom: "kv" | "baseline" | undefined }) {

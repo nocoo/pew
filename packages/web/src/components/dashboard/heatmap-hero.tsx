@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
-import { Zap, Calendar, Activity } from "lucide-react";
+import { Zap, Calendar, Activity } from "@nocoo/basalt/icons";
 import { cn, formatTokens } from "@/lib/utils";
 import { HeatmapCalendar, type HeatmapDataPoint } from "./heatmap-calendar";
 import { GoalHeatmap } from "./goal-heatmap";
-import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
 
 export interface HeatmapHeroProps {
   data: HeatmapDataPoint[];
@@ -27,9 +27,9 @@ function MiniStat({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <Icon className="h-4 w-4 text-muted-foreground" strokeWidth={1.5} />
-      <span className="text-xs text-muted-foreground">
-        <span className="font-semibold tabular-nums text-foreground">{value}</span>
+      <Icon className="h-4 w-4 text-basalt-muted-foreground" strokeWidth={1.5} />
+      <span className="text-xs text-basalt-muted-foreground">
+        <span className="font-semibold tabular-nums text-basalt-foreground">{value}</span>
         {" "}{label}
       </span>
     </div>
@@ -58,15 +58,15 @@ export function HeatmapHero({
     return (
       <div className={cn("grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4", className)}>
         {["Activity", "Goal Tracker"].map((label) => (
-          <section key={label} aria-label={label} aria-busy="true" className="rounded-card bg-secondary p-4 min-w-0">
+          <section key={label} aria-label={label} aria-busy="true" className="rounded-card bg-basalt-secondary p-4 min-w-0">
             <div className="mb-3 flex h-12 items-center justify-between">
-              <div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-3 w-32" /></div>
-              <Skeleton className="h-8 w-16" />
+              <div className="space-y-2"><SkeletonLine style={{ width: undefined }} className="h-4 w-24" /><SkeletonLine style={{ width: undefined }} className="h-3 w-32" /></div>
+              <SkeletonLine style={{ width: undefined }} className="h-8 w-16" />
             </div>
-            <Skeleton className="h-[142px] w-full" />
-            <div className="mt-3 flex gap-5 border-t border-border/50 pt-3">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-32" />
+            <SkeletonLine style={{ width: undefined }} className="h-[142px] w-full" />
+            <div className="mt-3 flex gap-5 border-t border-basalt-border/50 pt-3">
+              <SkeletonLine style={{ width: undefined }} className="h-4 w-24" />
+              <SkeletonLine style={{ width: undefined }} className="h-4 w-32" />
             </div>
           </section>
         ))}
@@ -76,20 +76,20 @@ export function HeatmapHero({
 
   return (
     <div className={cn("grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4", className)}>
-      <section aria-label="Activity" className="rounded-card bg-secondary p-4 min-w-0 flex flex-col">
+      <section aria-label="Activity" className="rounded-card bg-basalt-secondary p-4 min-w-0 flex flex-col">
         <div className="mb-3 flex min-h-12 items-center justify-between gap-3">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <Activity className="h-4 w-4 shrink-0 text-muted-foreground" strokeWidth={1.5} />
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Activity</span>
+              <Activity className="h-4 w-4 shrink-0 text-basalt-muted-foreground" strokeWidth={1.5} />
+              <span className="text-xs font-medium uppercase tracking-wider text-basalt-muted-foreground">Activity</span>
             </div>
-            <p className="text-xs text-muted-foreground">{year} · {activityRate}% active days</p>
+            <p className="text-xs text-basalt-muted-foreground">{year} · {activityRate}% active days</p>
           </div>
           <div className="shrink-0 text-right">
-            <span className="text-2xl font-bold font-display tracking-tight text-foreground">
+            <span className="text-2xl font-bold font-display tracking-tight text-basalt-foreground">
               {formatTokens(totalTokens)}
             </span>
-            <p className="text-xs text-muted-foreground">tokens</p>
+            <p className="text-xs text-basalt-muted-foreground">tokens</p>
           </div>
         </div>
 
@@ -102,7 +102,7 @@ export function HeatmapHero({
           />
         </div>
 
-        <div className="mt-3 flex min-h-9 flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-border/50 pt-2">
+        <div className="mt-3 flex min-h-9 flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-basalt-border/50 pt-2">
           <MiniStat icon={Calendar} value={activeDays} label="active days" />
           <MiniStat
             icon={Zap}
@@ -112,7 +112,7 @@ export function HeatmapHero({
         </div>
       </section>
 
-      <section aria-label="Goal Tracker" className="rounded-card bg-secondary p-4 min-w-0 flex flex-col">
+      <section aria-label="Goal Tracker" className="rounded-card bg-basalt-secondary p-4 min-w-0 flex flex-col">
         <GoalHeatmap data={data} year={year} className="flex-1" />
       </section>
     </div>

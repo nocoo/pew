@@ -33,12 +33,12 @@ export function ModelEvolutionChart({ records, tzOffset, end, title = "Model Evo
     return { date: point.date, ...Object.fromEntries(breakdown.series.map((s) => [s.key, total ? Number(point[s.key]) / total * 100 : 0])) };
   });
 
-  if (!breakdown.total) return <div className="flex items-center justify-center rounded-card bg-secondary p-8 text-sm text-muted-foreground">No model data yet</div>;
+  if (!breakdown.total) return <div className="flex items-center justify-center rounded-card bg-basalt-secondary p-8 text-sm text-basalt-muted-foreground">No model data yet</div>;
 
-  return <figure aria-label={title} className="min-w-0 rounded-card bg-secondary p-4 md:p-5">
-    <p className="mb-3 text-xs md:text-sm text-muted-foreground">{title}</p>
+  return <figure aria-label={title} className="min-w-0 rounded-card bg-basalt-secondary p-4 md:p-5">
+    <p className="mb-3 text-xs md:text-sm text-basalt-muted-foreground">{title}</p>
     <div className="mb-4 flex flex-wrap gap-x-4 gap-y-2">
-      {series.slice(0, 5).map((s) => <span key={s.key} className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground" title={s.name}>
+      {series.slice(0, 5).map((s) => <span key={s.key} className="flex min-w-0 items-center gap-1.5 text-xs text-basalt-muted-foreground" title={s.name}>
         <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
         <span className="max-w-[160px] truncate">{shortModel(s.name)}</span>
       </span>)}

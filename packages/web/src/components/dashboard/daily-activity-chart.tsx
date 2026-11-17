@@ -240,16 +240,16 @@ export function DailyActivityChart({
   const isEmpty = view.data.length === 0 || view.series.length === 0;
 
   return (
-    <div className={cn("rounded-card bg-secondary p-4 md:p-5", className)}>
+    <div className={cn("rounded-card bg-basalt-secondary p-4 md:p-5", className)}>
       {/* Header: title + segmented control */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-baseline gap-2">
-          <p className="text-xs md:text-sm text-muted-foreground">Daily Activity</p>
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">
+          <p className="text-xs md:text-sm text-basalt-muted-foreground">Daily Activity</p>
+          <span className="text-[10px] uppercase tracking-wider text-basalt-muted-foreground/70">
             {view.unit}
           </span>
         </div>
-        <div className="inline-flex rounded-md bg-background p-0.5">
+        <div className="inline-flex rounded-md bg-basalt-background p-0.5">
           {DIMENSIONS.map((opt) => (
             <Button
               type="button"
@@ -270,7 +270,7 @@ export function DailyActivityChart({
           {view.series.map((s) => (
             <div key={s.key} className="flex items-center gap-1.5">
               <div className="h-2 w-2 rounded-full" style={{ background: s.color }} />
-              <span className="text-xs text-muted-foreground">{s.label}</span>
+              <span className="text-xs text-basalt-muted-foreground">{s.label}</span>
             </div>
           ))}
         </div>
@@ -278,11 +278,11 @@ export function DailyActivityChart({
 
       {/* Chart */}
       {deviceLoading && dim === "device" ? (
-        <div className="flex h-[240px] items-center justify-center text-sm text-muted-foreground">
+        <div className="flex h-[240px] items-center justify-center text-sm text-basalt-muted-foreground">
           Loading device data…
         </div>
       ) : isEmpty ? (
-        <div className="flex h-[240px] items-center justify-center text-sm text-muted-foreground">
+        <div className="flex h-[240px] items-center justify-center text-sm text-basalt-muted-foreground">
           No {dim === "device" ? "device" : "message"} data yet
         </div>
       ) : (

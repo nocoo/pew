@@ -1,6 +1,6 @@
 "use client";
 
-import { Info } from "lucide-react";
+import { Info } from "@nocoo/basalt/icons";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
@@ -8,7 +8,7 @@ import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from "@/components/ui/hover-card";
+} from "@nocoo/basalt/components/hover-card";
 import { usePricingEntries } from "@/hooks/use-pricing-entries";
 import {
   findPricingEntriesForModel,
@@ -50,7 +50,7 @@ export function ModelInfoTooltip({ model, className }: Props) {
           size="icon"
           aria-label={`Pricing info for ${model}`}
           className={cn(
-            "inline-flex h-3.5 w-3.5 items-center justify-center text-muted-foreground/60 hover:bg-transparent hover:text-foreground align-middle",
+            "inline-flex h-3.5 w-3.5 items-center justify-center text-basalt-muted-foreground/60 hover:bg-transparent hover:text-basalt-foreground align-middle",
             className,
           )}
           onClick={(e) => e.stopPropagation()}
@@ -64,18 +64,18 @@ export function ModelInfoTooltip({ model, className }: Props) {
         className="w-80 space-y-3"
       >
         <div>
-          <div className="font-mono text-xs text-foreground break-all">
+          <div className="font-mono text-xs text-basalt-foreground break-all">
             {model}
           </div>
           {matches[0]?.displayName && (
-            <div className="mt-0.5 text-xs text-muted-foreground">
+            <div className="mt-0.5 text-xs text-basalt-muted-foreground">
               {matches[0].displayName}
             </div>
           )}
         </div>
 
         {loading && matches.length === 0 && (
-          <div className="text-xs text-muted-foreground">Loading…</div>
+          <div className="text-xs text-basalt-muted-foreground">Loading…</div>
         )}
 
         {!loading && matches.length === 0 && !error && (
@@ -112,9 +112,9 @@ function ModelPricingRow({
 }) {
   const ctx = formatContextWindow(entry.contextWindow);
   return (
-    <div className="rounded-md border border-border/50 p-2 space-y-1">
+    <div className="rounded-md border border-basalt-border/50 p-2 space-y-1">
       <div className="flex items-center justify-between gap-2 text-[11px]">
-        <span className="flex items-center gap-1 font-medium text-foreground">
+        <span className="flex items-center gap-1 font-medium text-basalt-foreground">
           {(() => {
             const icon = providerIconPath(entry.provider) ?? (entry.origin === "openrouter" ? OPENROUTER_FALLBACK_ICON : null);
             if (!icon) return null;
@@ -145,7 +145,7 @@ function ModelPricingRow({
         />
       </div>
       {ctx && (
-        <div className="text-[11px] text-muted-foreground">
+        <div className="text-[11px] text-basalt-muted-foreground">
           Context: <span className="font-mono">{ctx}</span>
         </div>
       )}
@@ -156,8 +156,8 @@ function ModelPricingRow({
 function PricingCell({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col">
-      <span className="text-muted-foreground/70">{label}</span>
-      <span className="font-mono text-foreground">{value}</span>
+      <span className="text-basalt-muted-foreground/70">{label}</span>
+      <span className="font-mono text-basalt-foreground">{value}</span>
     </div>
   );
 }

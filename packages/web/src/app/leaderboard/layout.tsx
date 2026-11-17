@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button } from "@nocoo/basalt/components/button";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "@nocoo/basalt/icons";
 import { Github } from "@/components/icons/github";
 import { chromeIconClassName } from "@/lib/ghost-icon";
 import { HeaderTooltip, HexlyLink } from "@/components/layout/hexly-link";
@@ -19,7 +19,7 @@ export default function LeaderboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="relative flex min-h-screen flex-col bg-background">
+    <div className="relative flex min-h-screen flex-col bg-basalt-background">
       {/* Top-right icons — same pattern as landing page */}
       <div className="absolute right-6 top-4 z-50 flex items-center gap-1">
         <HeaderTooltip label="Privacy policy">

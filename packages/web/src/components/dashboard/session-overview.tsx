@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, MessageSquare, Timer, Hash } from "lucide-react";
+import { Clock, MessageSquare, Timer, Hash } from "@nocoo/basalt/icons";
 import { StatCard, StatGrid } from "@/components/dashboard/stat-card";
 import type { SessionOverview as SessionOverviewData } from "@/lib/session-helpers";
 
@@ -30,7 +30,7 @@ export function SessionOverview({
         value={data.totalSessions}
         {...(subtitle ? { subtitle } : {})}
         icon={Hash}
-        iconColor="text-primary"
+        iconColor="text-basalt-primary"
       />
       <StatCard
         title="Total Hours"

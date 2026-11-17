@@ -4,7 +4,7 @@ import { memo, useCallback } from "react";
 import { Button } from "@nocoo/basalt/components/button";
 import { cn, formatTokensFull } from "@/lib/utils";
 import { formatDuration } from "@/lib/date-helpers";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@nocoo/basalt/components/avatar";
 import { CheckRuling } from "@/components/leaderboard/check-ruling";
 import { RankBadge } from "@/components/leaderboard/rank-badge";
 import { TokenTierBadge } from "@/components/leaderboard/token-tier-badge";
@@ -47,9 +47,9 @@ export const LeaderboardRow = memo(function LeaderboardRow({
   const content = (
     <div
       className={cn(
-        `relative flex items-center gap-3 overflow-hidden ${ROW_CLASSES} transition-colors hover:bg-accent cursor-pointer`,
+        `relative flex items-center gap-3 overflow-hidden ${ROW_CLASSES} transition-colors hover:bg-basalt-accent cursor-pointer`,
         shouldAnimate && "animate-fade-up",
-        rank <= 3 && "ring-1 ring-border/50",
+        rank <= 3 && "ring-1 ring-basalt-border/50",
       )}
       style={shouldAnimate ? { animationDelay: `${Math.min(animationIndex * 40, 600)}ms` } : undefined}
     >
@@ -64,13 +64,13 @@ export const LeaderboardRow = memo(function LeaderboardRow({
       <div className="flex flex-1 items-center gap-3 min-w-0">
         <Avatar className="h-8 w-8 shrink-0">
           {user.image && <AvatarImage src={user.image} alt={displayName} />}
-          <AvatarFallback className="text-xs bg-primary text-primary-foreground">
+          <AvatarFallback className="text-xs bg-basalt-primary text-basalt-primary-foreground">
             {initial}
           </AvatarFallback>
         </Avatar>
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-foreground truncate">
+            <span className="text-sm font-medium text-basalt-foreground truncate">
               {displayName}
             </span>
             <TokenTierBadge totalTokens={total_tokens} />
@@ -80,7 +80,7 @@ export const LeaderboardRow = memo(function LeaderboardRow({
               {teams.map((team) => (
                 <span
                   key={team.id}
-                  className="inline-flex items-center gap-1 text-xs leading-tight text-muted-foreground bg-muted px-1.5 py-0.5 rounded"
+                  className="inline-flex items-center gap-1 text-xs leading-tight text-basalt-muted-foreground bg-basalt-muted px-1.5 py-0.5 rounded"
                 >
                   <TeamLogoBadge logoUrl={team.logoUrl} name={team.name} />
                   {team.name}
@@ -107,7 +107,7 @@ export const LeaderboardRow = memo(function LeaderboardRow({
 
       {/* Total — check-style handwriting font, full number */}
       <div className={cn(COL_TOKENS, "relative z-10 text-right flex items-center justify-end")}>
-        <span className="font-handwriting text-[28px] sm:text-[39px] leading-none tracking-tight text-foreground whitespace-nowrap">
+        <span className="font-handwriting text-[28px] sm:text-[39px] leading-none tracking-tight text-basalt-foreground whitespace-nowrap">
           {formatTokensFull(total_tokens)}
         </span>
       </div>

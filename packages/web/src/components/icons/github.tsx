@@ -1,4 +1,6 @@
-import { createLucideIcon } from "lucide-react";
+"use client";
+
+import { createLucideIcon } from "@nocoo/basalt/icons";
 
 // Extracted from lucide-react 0.577.0 (ISC license).
 // Brand icons were removed in lucide v1.

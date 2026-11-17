@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Calendar, Clock } from "lucide-react";
+import { Calendar, Clock } from "@nocoo/basalt/icons";
 import { formatSeasonDate } from "@/lib/seasons";
 import { getSeasonEndExclusive } from "@/lib/season-helpers";
 import type { SeasonStatus } from "@pew/core";
@@ -9,7 +9,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@nocoo/basalt/components/tooltip";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -98,7 +98,7 @@ export function SeasonCountdown({
   // Ended — show static date range, no tooltip needed
   if (status === "ended") {
     return (
-      <span className="text-sm text-muted-foreground inline-flex items-center gap-1">
+      <span className="text-sm text-basalt-muted-foreground inline-flex items-center gap-1">
         <Calendar className="h-3.5 w-3.5" />
         {fullRange}
       </span>
@@ -118,7 +118,7 @@ export function SeasonCountdown({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="text-sm text-muted-foreground inline-flex items-center gap-1 cursor-default">
+        <span className="text-sm text-basalt-muted-foreground inline-flex items-center gap-1 cursor-default">
           <Clock className="h-3.5 w-3.5" />
           {label} {formatCountdown(remaining)}
         </span>

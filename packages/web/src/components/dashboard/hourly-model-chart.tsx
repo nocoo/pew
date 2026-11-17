@@ -68,7 +68,7 @@ export function HourlyModelChart({
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-card bg-secondary p-8 text-sm text-muted-foreground",
+          "flex items-center justify-center rounded-card bg-basalt-secondary p-8 text-sm text-basalt-muted-foreground",
           className,
         )}
       >
@@ -96,12 +96,12 @@ export function HourlyModelChart({
   return (
     <div
       className={cn(
-        "rounded-card bg-secondary p-4 md:p-5",
+        "rounded-card bg-basalt-secondary p-4 md:p-5",
         className,
       )}
     >
       <div className={cn("flex flex-wrap items-center justify-between gap-2", compact ? "mb-2" : "mb-4")}>
-        <p className="text-xs md:text-sm text-muted-foreground">
+        <p className="text-xs md:text-sm text-basalt-muted-foreground">
           {compact ? "By Model" : "Hourly By Model"}
         </p>
         {!compact && (
@@ -112,7 +112,7 @@ export function HourlyModelChart({
                   className="h-2 w-2 rounded-full"
                   style={{ background: color }}
                 />
-                <span className="text-xs text-muted-foreground truncate max-w-[100px]">
+                <span className="text-xs text-basalt-muted-foreground truncate max-w-[100px]">
                   {label}
                 </span>
               </div>

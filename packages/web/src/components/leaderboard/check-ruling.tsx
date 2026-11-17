@@ -11,7 +11,7 @@ export function CheckRuling() {
       <div className="absolute inset-0 flex flex-col justify-evenly">
         {Array.from({ length: 5 }).map((_, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: compile-time constant tuple; positional key is authoritative.
-          <div key={`rule-${i}`} className="h-px bg-foreground" />
+          <div key={`rule-${i}`} className="h-px bg-basalt-foreground" />
         ))}
       </div>
     </div>

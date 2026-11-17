@@ -4,15 +4,15 @@ import { useState, useEffect, useCallback, useMemo, useId } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "@nocoo/basalt/icons";
 
 import { useAdmin } from "@/hooks/use-admin";
-import { ErrorBanner } from "@/components/ui/error-banner";
-import { Skeleton } from "@/components/ui/skeleton";
-import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
-import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
-import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
-import { CopyButton } from "@/components/ui/copy-button";
+import { ErrorBanner } from "@/components/error-banner";
+import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { RowListSkeleton } from "@/components/row-list-skeleton";
+import { MessageBanner, type MessageBannerMsg } from "@/components/message-banner";
+import { ConfirmDialog, useConfirm } from "@nocoo/basalt/components/confirm-dialog";
+import { CopyButton } from "@/components/copy-button";
 import { Badge } from "@nocoo/basalt/components/badge";
 import { Button } from "@nocoo/basalt/components/button";
 import { ClipboardText } from "@nocoo/basalt/components/clipboard-text";
@@ -21,7 +21,7 @@ import { Field } from "@nocoo/basalt/components/field";
 import { Input } from "@nocoo/basalt/components/input";
 import { Label } from "@nocoo/basalt/components/label";
 import { Switch } from "@nocoo/basalt/components/switch";
-import { rowIconDangerClassName } from "@/components/ui/button";
+import { rowIconDangerClassName } from "@/lib/ghost-icon";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { toErrorMessage } from "@/lib/error-message";
 import type { InviteCodeRow } from "@/lib/rpc-types";
@@ -278,8 +278,8 @@ export default function AdminInvitesPage() {
     return (
       <div className="space-y-4 md:space-y-6">
         <div>
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-80 mt-2" />
+          <SkeletonLine style={{ width: undefined }} className="h-8 w-48" />
+          <SkeletonLine style={{ width: undefined }} className="h-4 w-80 mt-2" />
         </div>
         <InvitesSkeleton />
       </div>
@@ -324,7 +324,7 @@ export default function AdminInvitesPage() {
       />
 
       {/* Require invite code toggle */}
-      <div className="rounded-xl bg-secondary p-4">
+      <div className="rounded-xl bg-basalt-secondary p-4">
         <div className="flex items-start gap-3">
           <Switch
             id={requireInviteId}
@@ -337,7 +337,7 @@ export default function AdminInvitesPage() {
             <Label htmlFor={requireInviteId}>
               Require invite code for registration
             </Label>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <p className="mt-0.5 text-xs text-basalt-muted-foreground">
               {requireInvite
                 ? "New users must enter a valid invite code to register."
                 : "Anyone can register without an invite code."}
@@ -354,8 +354,8 @@ export default function AdminInvitesPage() {
 
       {/* Generate form */}
       {showGenerate && (
-        <div className="rounded-xl bg-secondary p-4">
-          <h3 className="text-sm font-medium text-foreground mb-3">
+        <div className="rounded-xl bg-basalt-secondary p-4">
+          <h3 className="text-sm font-medium text-basalt-foreground mb-3">
             Generate Invite Codes
           </h3>
           <div className="flex items-end gap-3">
@@ -394,7 +394,7 @@ export default function AdminInvitesPage() {
       {/* Toolbar: segment filter + copy available */}
       {!loading && rows.length > 0 && (
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1 rounded-lg bg-secondary p-1">
+          <div className="flex items-center gap-1 rounded-lg bg-basalt-secondary p-1">
             {(["all", "available"] as const).map((opt) => (
               <Button
                 type="button"
@@ -435,26 +435,26 @@ export default function AdminInvitesPage() {
               className="rounded-basalt-card bg-basalt-secondary p-8"
             />
           ) : (
-            <div className="rounded-xl bg-secondary p-1 overflow-x-auto">
+            <div className="rounded-xl bg-basalt-secondary p-1 overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-border">
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+                  <tr className="border-b border-basalt-border">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
                       Code
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
                       Status
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground hidden sm:table-cell">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden sm:table-cell">
                       Used By
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground hidden md:table-cell">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden md:table-cell">
                       Created By
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground hidden lg:table-cell">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden lg:table-cell">
                       Created At
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground w-20">
+                    <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground w-20">
                       Actions
                     </th>
                   </tr>
@@ -463,7 +463,7 @@ export default function AdminInvitesPage() {
                   {filteredRows.map((row) => (
                     <tr
                       key={row.id}
-                      className="border-b border-border/50 last:border-0 hover:bg-accent/50 transition-colors"
+                      className="border-b border-basalt-border/50 last:border-0 hover:bg-basalt-accent/50 transition-colors"
                     >
                       <td className="px-4 py-3">
                         <ClipboardText text={row.code} />
@@ -472,7 +472,7 @@ export default function AdminInvitesPage() {
                         <StatusBadge usedBy={row.used_by} />
                       </td>
                       <td className="px-4 py-3 hidden sm:table-cell">
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-sm text-basalt-muted-foreground">
                           {row.used_by_email ??
                             (row.used_by?.startsWith("pending:")
                               ? row.used_by
@@ -480,12 +480,12 @@ export default function AdminInvitesPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3 hidden md:table-cell">
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-sm text-basalt-muted-foreground">
                           {row.created_by_email ?? row.created_by}
                         </span>
                       </td>
                       <td className="px-4 py-3 hidden lg:table-cell">
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-basalt-muted-foreground">
                           {formatDate(row.created_at)}
                         </span>
                       </td>

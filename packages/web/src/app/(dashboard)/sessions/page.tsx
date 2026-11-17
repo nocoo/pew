@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Zap, Brain } from "lucide-react";
+import { Zap, Brain } from "@nocoo/basalt/icons";
 import { useSessionData } from "@/hooks/use-session-data";
 import { useTzOffset } from "@/hooks/use-tz-offset";
-import { ErrorBanner } from "@/components/ui/error-banner";
+import { ErrorBanner } from "@/components/error-banner";
 import { useUsageData } from "@/hooks/use-usage-data";
 import { useDeviceData } from "@/hooks/use-device-data";
 import { SessionOverview } from "@/components/dashboard/session-overview";

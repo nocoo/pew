@@ -14,9 +14,9 @@ import {
   Upload,
   Building2,
   UserPlus,
-} from "lucide-react";
+} from "@nocoo/basalt/icons";
 import { cn } from "@/lib/utils";
-import { ErrorBanner } from "@/components/ui/error-banner";
+import { ErrorBanner } from "@/components/error-banner";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
@@ -30,13 +30,13 @@ import {
 } from "@nocoo/basalt/components/dialog";
 import { Field } from "@nocoo/basalt/components/field";
 import { Input } from "@nocoo/basalt/components/input";
-import { chromeIconClassName, rowIconClassName, rowIconDangerClassName } from "@/components/ui/button";
+import { chromeIconClassName, rowIconClassName, rowIconDangerClassName } from "@/lib/ghost-icon";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { useAdmin } from "@/hooks/use-admin";
-import { Skeleton } from "@/components/ui/skeleton";
-import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
-import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
-import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
+import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { RowListSkeleton } from "@/components/row-list-skeleton";
+import { MessageBanner, type MessageBannerMsg } from "@/components/message-banner";
+import { ConfirmDialog, useConfirm } from "@nocoo/basalt/components/confirm-dialog";
 import { toErrorMessage } from "@/lib/error-message";
 
 // ---------------------------------------------------------------------------
@@ -105,12 +105,12 @@ function OrgLogo({
       <div
         className={cn(
           sizeClasses[size],
-          "rounded-lg bg-muted flex items-center justify-center"
+          "rounded-lg bg-basalt-muted flex items-center justify-center"
         )}
       >
         <Building2
           className={cn(
-            "text-muted-foreground",
+            "text-basalt-muted-foreground",
             size === "sm" ? "h-3 w-3" : size === "md" ? "h-5 w-5" : "h-8 w-8"
           )}
           strokeWidth={1.5}
@@ -221,8 +221,8 @@ function CreateOrgForm({
   };
 
   return (
-    <div className="rounded-xl bg-secondary p-4">
-      <h3 className="text-sm font-medium text-foreground mb-3">
+    <div className="rounded-xl bg-basalt-secondary p-4">
+      <h3 className="text-sm font-medium text-basalt-foreground mb-3">
         Create Organization
       </h3>
       {error && (
@@ -320,7 +320,7 @@ function EditOrgRow({
   };
 
   return (
-    <tr className="border-b border-border/50">
+    <tr className="border-b border-basalt-border/50">
       <td colSpan={5} className="px-4 py-3">
         {error && (
           <Banner variant="error" size="sm" className="mb-2" description={error} />
@@ -544,7 +544,7 @@ function MembersModal({
                   {searchResults.map((user) => (
                     <div
                       key={user.id}
-                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent transition-colors"
+                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-basalt-accent transition-colors"
                     >
                       {user.image ? (
                         // biome-ignore lint/performance/noImgElement: user-supplied image URL, not amenable to next/image domain allowlist
@@ -554,15 +554,15 @@ function MembersModal({
                           className="h-7 w-7 rounded-full object-cover"
                         />
                       ) : (
-                        <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">
+                        <div className="h-7 w-7 rounded-full bg-basalt-muted flex items-center justify-center text-xs font-medium text-basalt-muted-foreground">
                           {(user.name ?? user.email)[0]?.toUpperCase()}
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
+                        <p className="text-sm font-medium text-basalt-foreground truncate">
                           {user.name ?? "Anonymous"}
                         </p>
-                        <p className="text-xs text-muted-foreground truncate">
+                        <p className="text-xs text-basalt-muted-foreground truncate">
                           {user.email}
                         </p>
                       </div>
@@ -586,7 +586,7 @@ function MembersModal({
               <div className="space-y-3">
                 {Array.from({ length: 3 }).map((_, i) => (
                   // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-                  <Skeleton key={`slot-${i}`} className="h-12 w-full" />
+                  <SkeletonLine style={{ width: undefined }} key={`slot-${i}`} className="h-12 w-full" />
                 ))}
               </div>
             ) : members.length === 0 ? (
@@ -596,7 +596,7 @@ function MembersModal({
                 {members.map((member) => (
                   <div
                     key={member.id}
-                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent/50 transition-colors"
+                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-basalt-accent/50 transition-colors"
                   >
                     {member.user.image ? (
                       // biome-ignore lint/performance/noImgElement: user-supplied image URL, not amenable to next/image domain allowlist
@@ -606,15 +606,15 @@ function MembersModal({
                         className="h-8 w-8 rounded-full object-cover"
                       />
                     ) : (
-                      <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center text-xs font-medium text-muted-foreground">
+                      <div className="h-8 w-8 rounded-full bg-basalt-muted flex items-center justify-center text-xs font-medium text-basalt-muted-foreground">
                         {(member.user.name ?? member.user.email)[0]?.toUpperCase()}
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">
+                      <p className="text-sm font-medium text-basalt-foreground truncate">
                         {member.user.name ?? "Anonymous"}
                       </p>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="text-xs text-basalt-muted-foreground truncate">
                         {member.user.email}
                       </p>
                     </div>
@@ -752,8 +752,8 @@ export default function AdminOrganizationsPage() {
     return (
       <div className="space-y-4 md:space-y-6">
         <div>
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-80 mt-2" />
+          <SkeletonLine style={{ width: undefined }} className="h-8 w-48" />
+          <SkeletonLine style={{ width: undefined }} className="h-4 w-80 mt-2" />
         </div>
         <OrgsSkeleton />
       </div>
@@ -809,23 +809,23 @@ export default function AdminOrganizationsPage() {
               className="rounded-basalt-card bg-basalt-secondary p-8"
             />
           ) : (
-            <div className="rounded-xl bg-secondary p-1 overflow-x-auto">
+            <div className="rounded-xl bg-basalt-secondary p-1 overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-border">
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+                  <tr className="border-b border-basalt-border">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
                       Organization
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground hidden sm:table-cell">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden sm:table-cell">
                       Slug
                     </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-basalt-muted-foreground">
                       Members
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground hidden md:table-cell">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden md:table-cell">
                       Created
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground w-32">
+                    <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground w-32">
                       Actions
                     </th>
                   </tr>
@@ -846,7 +846,7 @@ export default function AdminOrganizationsPage() {
                     ) : (
                       <tr
                         key={row.id}
-                        className="border-b border-border/50 last:border-0 hover:bg-accent/50 transition-colors"
+                        className="border-b border-basalt-border/50 last:border-0 hover:bg-basalt-accent/50 transition-colors"
                       >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
@@ -862,23 +862,23 @@ export default function AdminOrganizationsPage() {
                                 onFile={(file) => handleLogoUpload(row, file)}
                               />
                             </div>
-                            <span className="text-sm font-medium text-foreground">
+                            <span className="text-sm font-medium text-basalt-foreground">
                               {row.name}
                             </span>
                           </div>
                         </td>
                         <td className="px-4 py-3 hidden sm:table-cell">
-                          <span className="text-sm font-mono text-muted-foreground">
+                          <span className="text-sm font-mono text-basalt-muted-foreground">
                             {row.slug}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-center">
-                          <span className="text-sm tabular-nums text-muted-foreground">
+                          <span className="text-sm tabular-nums text-basalt-muted-foreground">
                             {row.memberCount}
                           </span>
                         </td>
                         <td className="px-4 py-3 hidden md:table-cell">
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-basalt-muted-foreground">
                             {new Date(row.createdAt).toLocaleDateString()}
                           </span>
                         </td>

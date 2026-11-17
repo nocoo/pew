@@ -11,7 +11,7 @@ import {
 describe("leaderboard-layout", () => {
   it("ROW_CLASSES contains expected Tailwind classes", () => {
     expect(ROW_CLASSES).toContain("rounded-");
-    expect(ROW_CLASSES).toContain("bg-secondary");
+    expect(ROW_CLASSES).toContain("bg-basalt-secondary");
   });
 
   it("COL_RANK defines a width", () => {

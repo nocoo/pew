@@ -97,7 +97,7 @@ export function filterEntries(
 export function originChipClass(origin: DynamicPricingOrigin): string {
   switch (origin) {
     case "baseline":
-      return "bg-muted text-muted-foreground";
+      return "bg-basalt-muted text-basalt-muted-foreground";
     case "openrouter":
       return "bg-blue-500/10 text-blue-600 dark:text-blue-400";
     case "models.dev":

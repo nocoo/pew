@@ -74,7 +74,7 @@ export function IoRatioChart({
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-card bg-secondary p-8 text-sm text-muted-foreground",
+          "flex items-center justify-center rounded-card bg-basalt-secondary p-8 text-sm text-basalt-muted-foreground",
           className,
         )}
       >
@@ -104,11 +104,11 @@ export function IoRatioChart({
   return (
     <div
       className={cn(
-        "rounded-card bg-secondary p-4 md:p-5",
+        "rounded-card bg-basalt-secondary p-4 md:p-5",
         className,
       )}
     >
-      <p className="mb-3 text-xs md:text-sm text-muted-foreground">
+      <p className="mb-3 text-xs md:text-sm text-basalt-muted-foreground">
         Input / Output
       </p>
 
@@ -136,10 +136,10 @@ export function IoRatioChart({
           </DashboardResponsiveContainer>
           {/* Center label showing I/O ratio */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-            <span className="text-lg font-semibold text-foreground">
+            <span className="text-lg font-semibold text-basalt-foreground">
               {ratioLabel}
             </span>
-            <span className="text-[10px] text-muted-foreground">I/O ratio</span>
+            <span className="text-[10px] text-basalt-muted-foreground">I/O ratio</span>
           </div>
         </div>
 
@@ -151,10 +151,10 @@ export function IoRatioChart({
                 className="h-2 w-2 shrink-0 rounded-full"
                 style={{ background: item.fill }}
               />
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-basalt-muted-foreground">
                 {item.name}
               </span>
-              <span className="ml-auto text-xs font-medium text-foreground">
+              <span className="ml-auto text-xs font-medium text-basalt-foreground">
                 {formatTokens(item.value)}
               </span>
             </div>

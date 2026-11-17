@@ -2,9 +2,9 @@
 
 import { useAdmin } from "@/hooks/use-admin";
 import { invalidatePricingEntries } from "@/hooks/use-pricing-entries";
-import { ErrorBanner } from "@/components/ui/error-banner";
+import { ErrorBanner } from "@/components/error-banner";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
-import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import type {
@@ -24,9 +24,9 @@ interface ModelsResponse {
 function PageSkeleton() {
   return (
     <div className="space-y-4">
-      <Skeleton className="h-8 w-48" />
-      <Skeleton className="h-16 w-full" />
-      <Skeleton className="h-64 w-full" />
+      <SkeletonLine style={{ width: undefined }} className="h-8 w-48" />
+      <SkeletonLine style={{ width: undefined }} className="h-16 w-full" />
+      <SkeletonLine style={{ width: undefined }} className="h-64 w-full" />
     </div>
   );
 }

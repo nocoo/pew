@@ -5,15 +5,15 @@ import {
   Calendar,
   ArrowLeft,
   ShieldCheck,
-} from "lucide-react";
+} from "@nocoo/basalt/icons";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
 import { Github } from "@/components/icons/github";
-import { chromeIconClassName } from "@/components/ui/button";
+import { chromeIconClassName } from "@/lib/ghost-icon";
 import { useUserProfile } from "@/hooks/use-user-profile";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { Avatar, AvatarFallback, AvatarImage } from "@nocoo/basalt/components/avatar";
 import { PageHeader } from "@/components/leaderboard/page-header";
 import { HeaderTooltip, HexlyLink } from "@/components/layout/hexly-link";
 import { SiteFooter } from "@/components/layout/site-footer";
@@ -56,11 +56,11 @@ function TopRightIcons() {
 function PewPageHeader() {
   return (
     <PageHeader>
-      <h1 className="tracking-tight text-foreground">
+      <h1 className="tracking-tight text-basalt-foreground">
         <span className="text-[36px] font-bold font-handwriting leading-none mr-2">
           pew
         </span>
-        <span className="text-[19px] font-normal text-muted-foreground">
+        <span className="text-[19px] font-normal text-basalt-muted-foreground">
           Profile
         </span>
       </h1>
@@ -86,7 +86,7 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
   // 404
   if (notFound) {
     return (
-      <div className="relative flex min-h-screen flex-col bg-background">
+      <div className="relative flex min-h-screen flex-col bg-basalt-background">
         <TopRightIcons />
         <div className="mx-auto w-full max-w-6xl flex-1 flex flex-col px-6">
           <PewPageHeader />
@@ -98,7 +98,7 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
               />
               <Link
                 href="/leaderboard"
-                className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                className="inline-flex items-center gap-2 text-sm text-basalt-primary hover:underline"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back to leaderboard
@@ -114,7 +114,7 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
   // Error
   if (error && !loading) {
     return (
-      <div className="relative flex min-h-screen flex-col bg-background">
+      <div className="relative flex min-h-screen flex-col bg-basalt-background">
         <TopRightIcons />
         <div className="mx-auto w-full max-w-6xl flex-1 flex flex-col px-6">
           <PewPageHeader />
@@ -123,7 +123,7 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
               <Banner variant="error" description={`Failed to load profile: ${error}`} />
               <Link
                 href="/leaderboard"
-                className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
+                className="inline-flex items-center gap-2 text-sm text-basalt-primary hover:underline"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back to leaderboard
@@ -137,7 +137,7 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col bg-background">
+    <div className="relative flex min-h-screen flex-col bg-basalt-background">
       <TopRightIcons />
 
       <div className="mx-auto w-full max-w-6xl flex-1 flex flex-col px-6">
@@ -147,10 +147,10 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
           {/* Profile header */}
           {loading && !user ? (
             <div className="flex items-center gap-4">
-              <Skeleton className="h-16 w-16 rounded-full" />
+              <SkeletonLine style={{ width: undefined }} className="h-16 w-16 rounded-full" />
               <div className="space-y-2">
-                <Skeleton className="h-6 w-40" />
-                <Skeleton className="h-4 w-24" />
+                <SkeletonLine style={{ width: undefined }} className="h-6 w-40" />
+                <SkeletonLine style={{ width: undefined }} className="h-4 w-24" />
               </div>
             </div>
           ) : (
@@ -160,15 +160,15 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
                   {user.image && (
                     <AvatarImage src={user.image} alt={user.name ?? slug} />
                   )}
-                  <AvatarFallback className="text-lg bg-primary text-primary-foreground">
+                  <AvatarFallback className="text-lg bg-basalt-primary text-basalt-primary-foreground">
                     {(user.name ?? slug)[0]?.toUpperCase() ?? "?"}
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <h2 className="text-2xl font-bold font-display text-foreground">
+                  <h2 className="text-2xl font-bold font-display text-basalt-foreground">
                     {user.name ?? slug}
                   </h2>
-                  <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <p className="flex items-center gap-1.5 text-sm text-basalt-muted-foreground">
                     <Calendar className="h-3.5 w-3.5" />
                     Member since {formatMemberSince(user.created_at)}
                   </p>

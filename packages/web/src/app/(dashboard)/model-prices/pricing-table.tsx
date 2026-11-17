@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from "@nocoo/basalt/icons";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
 import { Input } from "@nocoo/basalt/components/input";
-import { InfoTooltip } from "@/components/ui/info-tooltip";
+import { InfoTooltip } from "@/components/info-tooltip";
 import {
   Select,
   SelectContent,
@@ -155,10 +155,10 @@ export function PricingTable({ entries }: Props) {
         </Select>
       </div>
 
-      <div className="rounded-xl bg-secondary p-1 overflow-x-auto">
+      <div className="rounded-xl bg-basalt-secondary p-1 overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-border">
+            <tr className="border-b border-basalt-border">
               {COLUMNS.map((col) => {
                 const isActive = sortKey === col.key;
                 const ariaSort = isActive
@@ -171,7 +171,7 @@ export function PricingTable({ entries }: Props) {
                     key={col.key}
                     aria-sort={ariaSort}
                     className={cn(
-                      "px-4 py-3 text-xs font-medium text-muted-foreground",
+                      "px-4 py-3 text-xs font-medium text-basalt-muted-foreground",
                       col.numeric ? "text-right" : "text-left",
                     )}
                   >
@@ -181,9 +181,9 @@ export function PricingTable({ entries }: Props) {
                       size="sm"
                       onClick={() => toggleSort(col.key)}
                       className={cn(
-                        "h-auto gap-1 px-0 py-0 text-xs font-medium text-muted-foreground hover:bg-transparent",
+                        "h-auto gap-1 px-0 py-0 text-xs font-medium text-basalt-muted-foreground hover:bg-transparent",
                         col.numeric && "ml-auto",
-                        isActive && "text-foreground",
+                        isActive && "text-basalt-foreground",
                       )}
                     >
                       {col.label}
@@ -203,9 +203,9 @@ export function PricingTable({ entries }: Props) {
             {paged.map((e) => (
               <tr
                 key={`${e.provider}/${e.model}`}
-                className="border-b border-border/50 last:border-0 hover:bg-accent/50 transition-colors"
+                className="border-b border-basalt-border/50 last:border-0 hover:bg-basalt-accent/50 transition-colors"
               >
-                <td className="px-4 py-3 text-sm font-mono text-foreground" title={e.aliases?.join(", ")}>
+                <td className="px-4 py-3 text-sm font-mono text-basalt-foreground" title={e.aliases?.join(", ")}>
                   <div className="flex items-start justify-between gap-2">
                   <span>{e.model}</span>
                   {(e.contextTiers?.length || Object.keys(e.routePrices ?? {}).length > 0) ? (
@@ -239,7 +239,7 @@ export function PricingTable({ entries }: Props) {
                     {e.provider ?? "—"}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-sm text-muted-foreground">{e.displayName ?? "—"}</td>
+                <td className="px-4 py-3 text-sm text-basalt-muted-foreground">{e.displayName ?? "—"}</td>
                 <td className="px-4 py-3 text-sm text-right tabular-nums">
                   {formatPrice(e.inputPerMillion)}
                 </td>
@@ -264,7 +264,7 @@ export function PricingTable({ entries }: Props) {
                     {e.origin}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap" title={e.updatedAt}>
+                <td className="px-4 py-3 text-xs text-basalt-muted-foreground whitespace-nowrap" title={e.updatedAt}>
                   {e.updatedAt.slice(0, 10)}
                 </td>
               </tr>
@@ -273,7 +273,7 @@ export function PricingTable({ entries }: Props) {
         </table>
       </div>
 
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
+      <div className="flex items-center justify-between text-xs text-basalt-muted-foreground">
         <span>
           Showing {rangeStart}–{rangeEnd} of {visible.length} models
         </span>

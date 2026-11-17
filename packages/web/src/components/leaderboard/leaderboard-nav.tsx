@@ -31,7 +31,7 @@ export function LeaderboardNav() {
 
   return (
     <nav
-      className="relative flex gap-6 border-b border-border animate-fade-up overflow-x-auto scrollbar-hide"
+      className="relative flex gap-6 border-b border-basalt-border animate-fade-up overflow-x-auto scrollbar-hide"
       style={{ animationDelay: "120ms" }}
       aria-label="Leaderboard navigation"
     >
@@ -47,14 +47,14 @@ export function LeaderboardNav() {
             className={cn(
               "relative shrink-0 whitespace-nowrap pb-2.5 text-sm font-semibold uppercase tracking-wider transition-colors",
               isActive
-                ? "text-foreground"
-                : "text-muted-foreground hover:text-foreground",
+                ? "text-basalt-foreground"
+                : "text-basalt-muted-foreground hover:text-basalt-foreground",
             )}
           >
             {tab.label}
             {/* Active underline indicator */}
             {isActive && (
-              <span className="absolute inset-x-0 -bottom-px h-0.5 bg-primary rounded-full" />
+              <span className="absolute inset-x-0 -bottom-px h-0.5 bg-basalt-primary rounded-full" />
             )}
           </Link>
         );

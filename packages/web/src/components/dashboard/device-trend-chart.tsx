@@ -104,7 +104,7 @@ export function DeviceTrendChart({
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-card bg-secondary p-8 text-sm text-muted-foreground",
+          "flex items-center justify-center rounded-card bg-basalt-secondary p-8 text-sm text-basalt-muted-foreground",
           className
         )}
       >
@@ -127,12 +127,12 @@ export function DeviceTrendChart({
   return (
     <div
       className={cn(
-        "rounded-card bg-secondary p-4 md:p-5",
+        "rounded-card bg-basalt-secondary p-4 md:p-5",
         className
       )}
     >
       <div className="mb-4 space-y-3">
-        <p className="text-xs md:text-sm text-muted-foreground">
+        <p className="text-xs md:text-sm text-basalt-muted-foreground">
           Device Trend
         </p>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -158,7 +158,7 @@ export function DeviceTrendChart({
                     background: CHART_COLORS[i % CHART_COLORS.length],
                   }}
                 />
-                <span className="max-w-[160px] truncate text-xs text-muted-foreground">
+                <span className="max-w-[160px] truncate text-xs text-basalt-muted-foreground">
                   {labelMap.get(deviceId) ?? deviceId}
                 </span>
               </Button>

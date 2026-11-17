@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Banner } from "@nocoo/basalt/components/banner";
-import { Button } from "@/components/ui/button";
+import { Button } from "@nocoo/basalt/components/button";
 import type { SyncOutcomeDto } from "@/lib/rpc-types";
 
 interface Props {

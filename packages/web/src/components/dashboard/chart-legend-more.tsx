@@ -14,7 +14,7 @@ export function ChartLegendMore({ items, visibleCount = 5, hiddenKeys, onSelect 
   return <Popover>
     <PopoverTrigger asChild>
       <Button type="button" variant="ghost" aria-label={`Show all ${items.length} series`}
-        className="h-auto rounded px-1 py-0.5 text-xs font-normal text-muted-foreground underline underline-offset-4">
+        className="h-auto rounded px-1 py-0.5 text-xs font-normal text-basalt-muted-foreground underline underline-offset-4">
         +{items.length - visibleCount} more
       </Button>
     </PopoverTrigger>

@@ -3,7 +3,7 @@
 import { Button } from "@nocoo/basalt/components/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@nocoo/basalt/components/tooltip";
 import { useTheme } from "@nocoo/basalt/providers/theme";
-import { Monitor, Moon, Sun } from "lucide-react";
+import { Monitor, Moon, Sun } from "@nocoo/basalt/icons";
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();

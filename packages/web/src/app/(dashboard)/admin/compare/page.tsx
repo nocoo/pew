@@ -11,23 +11,23 @@ import {
   Search,
   X,
   Users,
-} from "lucide-react";
+} from "@nocoo/basalt/icons";
 import { cn, formatTokens, formatTokensFull } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
-import { ErrorBanner } from "@/components/ui/error-banner";
+import { ErrorBanner } from "@/components/error-banner";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
 import { Checkbox } from "@nocoo/basalt/components/checkbox";
 import { Input } from "@nocoo/basalt/components/input";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { Avatar, AvatarFallback, AvatarImage } from "@nocoo/basalt/components/avatar";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@nocoo/basalt/components/tooltip";
 import type {
   StorageUserRow,
   StorageSummary,
@@ -59,14 +59,14 @@ function SelectionSkeleton() {
       {/* Table skeleton */}
       {Array.from({ length: 8 }).map((_, i) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-        <div key={`slot-${i}`} className="rounded-xl bg-secondary p-4">
+        <div key={`slot-${i}`} className="rounded-xl bg-basalt-secondary p-4">
           <div className="flex items-center gap-4">
-            <Skeleton className="h-5 w-5 rounded" />
-            <Skeleton className="h-8 w-8 rounded-full" />
-            <Skeleton className="h-4 w-32" />
+            <SkeletonLine style={{ width: undefined }} className="h-5 w-5 rounded" />
+            <SkeletonLine style={{ width: undefined }} className="h-8 w-8 rounded-full" />
+            <SkeletonLine style={{ width: undefined }} className="h-4 w-32" />
             <div className="flex-1" />
-            <Skeleton className="h-4 w-20" />
-            <Skeleton className="h-4 w-16 hidden md:block" />
+            <SkeletonLine style={{ width: undefined }} className="h-4 w-20" />
+            <SkeletonLine style={{ width: undefined }} className="h-4 w-16 hidden md:block" />
           </div>
         </div>
       ))}
@@ -110,7 +110,7 @@ function SortHeader({
     <th
       aria-sort={ariaSort as "ascending" | "descending" | "none"}
       className={cn(
-        "px-4 py-3 text-xs font-medium text-muted-foreground",
+        "px-4 py-3 text-xs font-medium text-basalt-muted-foreground",
         className
       )}
     >
@@ -119,7 +119,7 @@ function SortHeader({
         variant="ghost"
         size="sm"
         onClick={() => onSort(sortKey)}
-        className={cn("ml-auto h-auto gap-1 px-0 py-0", isActive && "text-foreground")}
+        className={cn("ml-auto h-auto gap-1 px-0 py-0", isActive && "text-basalt-foreground")}
       >
         {label}
         <Icon className="h-3 w-3" strokeWidth={1.5} />
@@ -263,8 +263,8 @@ function ComparePageContent() {
     return (
       <div className="space-y-4 md:space-y-6">
         <div>
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-80 mt-2" />
+          <SkeletonLine style={{ width: undefined }} className="h-8 w-48" />
+          <SkeletonLine style={{ width: undefined }} className="h-4 w-80 mt-2" />
         </div>
         <SelectionSkeleton />
       </div>
@@ -287,18 +287,18 @@ function ComparePageContent() {
 
         {/* Selected user chips */}
         {selectedUsers.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-secondary/50 border border-border">
-            <span className="text-xs text-muted-foreground mr-1">Selected:</span>
+          <div className="flex flex-wrap items-center gap-2 p-3 rounded-xl bg-basalt-secondary/50 border border-basalt-border">
+            <span className="text-xs text-basalt-muted-foreground mr-1">Selected:</span>
             {selectedUsers.map((user, i) => (
               <div
                 key={user.user_id}
-                className="flex items-center gap-2 rounded-full border border-border bg-background pl-1 pr-2 py-0.5"
+                className="flex items-center gap-2 rounded-full border border-basalt-border bg-basalt-background pl-1 pr-2 py-0.5"
               >
                 <Avatar className="h-5 w-5 shrink-0">
                   {user.image && (
                     <AvatarImage src={user.image} alt={user.name ?? ""} />
                   )}
-                  <AvatarFallback className="text-[8px] bg-primary text-primary-foreground">
+                  <AvatarFallback className="text-[8px] bg-basalt-primary text-basalt-primary-foreground">
                     {(user.name ?? user.email ?? "?")[0]?.toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -325,7 +325,7 @@ function ComparePageContent() {
                 </Button>
               </div>
             ))}
-            <span className="text-xs text-muted-foreground tabular-nums ml-auto">
+            <span className="text-xs text-basalt-muted-foreground tabular-nums ml-auto">
               {selectedUsers.length}/10
             </span>
             {selectedUsers.length > 0 && (
@@ -354,7 +354,7 @@ function ComparePageContent() {
           <div className="flex items-center gap-3">
             <div className="relative flex-1 max-w-sm">
               <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground"
+                className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-basalt-muted-foreground"
                 strokeWidth={1.5}
               />
               <Input
@@ -378,7 +378,7 @@ function ComparePageContent() {
                 </Button>
               )}
             </div>
-            <span className="text-xs text-muted-foreground tabular-nums">
+            <span className="text-xs text-basalt-muted-foreground tabular-nums">
               {filteredUsers.length} of {users.length} users
             </span>
           </div>
@@ -395,14 +395,14 @@ function ComparePageContent() {
                 className="rounded-basalt-card bg-basalt-secondary p-8"
               />
             ) : (
-              <div className="rounded-xl bg-secondary p-1 overflow-x-auto">
+              <div className="rounded-xl bg-basalt-secondary p-1 overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b border-border">
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground w-10">
+                    <tr className="border-b border-basalt-border">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground w-10">
                         <span className="sr-only">Select</span>
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
                         User
                       </th>
                       <SortHeader
@@ -457,10 +457,10 @@ function ComparePageContent() {
                         <tr
                           key={user.user_id}
                           className={cn(
-                            "border-b border-border/50 last:border-0 transition-colors",
+                            "border-b border-basalt-border/50 last:border-0 transition-colors",
                             isSelected
-                              ? "bg-accent/30"
-                              : "hover:bg-accent/50",
+                              ? "bg-basalt-accent/30"
+                              : "hover:bg-basalt-accent/50",
                             isDisabled && "opacity-50"
                           )}
                         >
@@ -489,7 +489,7 @@ function ComparePageContent() {
                                     alt={user.name ?? ""}
                                   />
                                 )}
-                                <AvatarFallback className="text-[10px] bg-primary text-primary-foreground">
+                                <AvatarFallback className="text-[10px] bg-basalt-primary text-basalt-primary-foreground">
                                   {(
                                     user.name ??
                                     user.email ??
@@ -499,11 +499,11 @@ function ComparePageContent() {
                               </Avatar>
                               <div className="min-w-0">
                                 {user.name && (
-                                  <p className="text-sm font-medium text-foreground truncate">
+                                  <p className="text-sm font-medium text-basalt-foreground truncate">
                                     {user.name}
                                   </p>
                                 )}
-                                <p className="text-xs text-muted-foreground truncate">
+                                <p className="text-xs text-basalt-muted-foreground truncate">
                                   {user.email ?? user.user_id}
                                 </p>
                               </div>
@@ -526,7 +526,7 @@ function ComparePageContent() {
                           <td className="px-4 py-3 text-right hidden md:table-cell">
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <span className="text-sm text-muted-foreground tabular-nums cursor-default">
+                                <span className="text-sm text-basalt-muted-foreground tabular-nums cursor-default">
                                   {formatTokens(user.tokens_7d)}
                                 </span>
                               </TooltipTrigger>
@@ -539,7 +539,7 @@ function ComparePageContent() {
                           <td className="px-4 py-3 text-right hidden md:table-cell">
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <span className="text-sm text-muted-foreground tabular-nums cursor-default">
+                                <span className="text-sm text-basalt-muted-foreground tabular-nums cursor-default">
                                   {formatTokens(user.tokens_30d)}
                                 </span>
                               </TooltipTrigger>
@@ -550,13 +550,13 @@ function ComparePageContent() {
                           </td>
                           {/* Sessions */}
                           <td className="px-4 py-3 text-right hidden sm:table-cell">
-                            <span className="text-sm text-muted-foreground tabular-nums">
+                            <span className="text-sm text-basalt-muted-foreground tabular-nums">
                               {user.session_count.toLocaleString()}
                             </span>
                           </td>
                           {/* Messages */}
                           <td className="px-4 py-3 text-right hidden lg:table-cell">
-                            <span className="text-sm text-muted-foreground tabular-nums">
+                            <span className="text-sm text-basalt-muted-foreground tabular-nums">
                               {user.total_messages.toLocaleString()}
                             </span>
                           </td>
@@ -593,8 +593,8 @@ export default function AdminComparePage() {
       fallback={
         <div className="space-y-4 md:space-y-6">
           <div>
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-4 w-80 mt-2" />
+            <SkeletonLine style={{ width: undefined }} className="h-8 w-48" />
+            <SkeletonLine style={{ width: undefined }} className="h-4 w-80 mt-2" />
           </div>
           <SelectionSkeleton />
         </div>

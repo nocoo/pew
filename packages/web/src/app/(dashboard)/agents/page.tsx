@@ -1,15 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight } from "@nocoo/basalt/icons";
 import { useUsageData } from "@/hooks/use-usage-data";
-import { ErrorBanner } from "@/components/ui/error-banner";
+import { ErrorBanner } from "@/components/error-banner";
 import { formatTokens } from "@/lib/utils";
 import { usePricingMap, formatCost } from "@/hooks/use-pricing";
 import { UsageInformation } from "@/components/dashboard/usage-information";
 import { groupByAgent, toSourceTrendPoints } from "@/lib/usage-helpers";
 import type { AgentGroup } from "@/lib/usage-helpers";
-import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
 import { ChartCardSkeleton } from "@/components/dashboard/chart-card-skeleton";
 import { SourceTrendChart } from "@/components/dashboard/source-trend-chart";
 import { SourceDonutChart } from "@/components/dashboard/source-donut-chart";
@@ -32,39 +32,39 @@ function AgentCard({ group, color }: { group: AgentGroup; color: string }) {
   const pct = (v: number) => (group.totalTokens > 0 ? ((v / group.totalTokens) * 100).toFixed(1) : "0");
 
   return (
-    <div className="rounded-xl bg-secondary overflow-hidden">
+    <div className="rounded-xl bg-basalt-secondary overflow-hidden">
       {/* Header */}
       <Button
         type="button"
         variant="ghost"
         onClick={() => setExpanded(!expanded)}
-        className="flex h-auto w-full items-center gap-4 rounded-none px-5 py-4 text-left hover:bg-accent/50"
+        className="flex h-auto w-full items-center gap-4 rounded-none px-5 py-4 text-left hover:bg-basalt-accent/50"
       >
         <div
           className="h-3 w-3 rounded-full shrink-0"
           style={{ backgroundColor: color }}
         />
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-semibold text-foreground">{group.label}</h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
+          <h3 className="text-sm font-semibold text-basalt-foreground">{group.label}</h3>
+          <p className="text-xs text-basalt-muted-foreground mt-0.5">
             {group.models.length} model{group.models.length !== 1 ? "s" : ""} &middot;{" "}
             {formatCost(group.estimatedCost)} estimated
           </p>
         </div>
         <div className="text-right shrink-0">
           <p className="text-sm font-semibold font-display">{formatTokens(group.totalTokens)}</p>
-          <p className="text-xs text-muted-foreground">total</p>
+          <p className="text-xs text-basalt-muted-foreground">total</p>
         </div>
         {expanded ? (
-          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" strokeWidth={1.5} />
+          <ChevronDown className="h-4 w-4 text-basalt-muted-foreground shrink-0" strokeWidth={1.5} />
         ) : (
-          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" strokeWidth={1.5} />
+          <ChevronRight className="h-4 w-4 text-basalt-muted-foreground shrink-0" strokeWidth={1.5} />
         )}
       </Button>
 
       {/* Usage bar */}
       <div className="px-5 pb-2">
-        <div key={`${group.inputTokens}-${group.outputTokens}-${group.cachedTokens}`} className="chart-animate chart-grow-x flex h-2 rounded-full overflow-hidden bg-background">
+        <div key={`${group.inputTokens}-${group.outputTokens}-${group.cachedTokens}`} className="chart-animate chart-grow-x flex h-2 rounded-full overflow-hidden bg-basalt-background">
           <div
             className="h-full"
             style={{ width: `${pct(group.inputTokens - group.cachedTokens)}%`, backgroundColor: color, opacity: 0.8 }}
@@ -81,7 +81,7 @@ function AgentCard({ group, color }: { group: AgentGroup; color: string }) {
             title={`Cached: ${formatTokens(group.cachedTokens)}`}
           />
         </div>
-        <div className="flex gap-4 mt-1.5 text-xs text-muted-foreground">
+        <div className="flex gap-4 mt-1.5 text-xs text-basalt-muted-foreground">
           <span>Input {formatTokens(group.inputTokens)}</span>
           <span>Output {formatTokens(group.outputTokens)}</span>
           <span>Cached {formatTokens(group.cachedTokens)}</span>
@@ -94,30 +94,30 @@ function AgentCard({ group, color }: { group: AgentGroup; color: string }) {
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-border/50">
-                  <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Model</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Input</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Output</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider hidden md:table-cell">Cached</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">Total</th>
-                  <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider hidden sm:table-cell">Cost</th>
+                <tr className="border-b border-basalt-border/50">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-basalt-muted-foreground uppercase tracking-wider">Model</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-basalt-muted-foreground uppercase tracking-wider">Input</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-basalt-muted-foreground uppercase tracking-wider">Output</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-basalt-muted-foreground uppercase tracking-wider hidden md:table-cell">Cached</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-basalt-muted-foreground uppercase tracking-wider">Total</th>
+                  <th className="px-4 py-2 text-right text-xs font-medium text-basalt-muted-foreground uppercase tracking-wider hidden sm:table-cell">Cost</th>
                 </tr>
               </thead>
               <tbody>
                 {group.models.map((row) => (
                   <tr
                     key={row.model}
-                    className="border-b border-border/30 last:border-0 hover:bg-accent/30 transition-colors"
+                    className="border-b border-basalt-border/30 last:border-0 hover:bg-basalt-accent/30 transition-colors"
                   >
-                    <td className="px-4 py-2.5 text-xs font-mono text-foreground/80">
+                    <td className="px-4 py-2.5 text-xs font-mono text-basalt-foreground/80">
                       <span className="align-middle">{row.model}</span>
                       <ModelInfoTooltip model={row.model} className="ml-1.5" />
                     </td>
-                    <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground">{formatTokens(row.input)}</td>
-                    <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground">{formatTokens(row.output)}</td>
-                    <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground hidden md:table-cell">{formatTokens(row.cached)}</td>
+                    <td className="px-4 py-2.5 text-xs text-right tabular-nums text-basalt-muted-foreground">{formatTokens(row.input)}</td>
+                    <td className="px-4 py-2.5 text-xs text-right tabular-nums text-basalt-muted-foreground">{formatTokens(row.output)}</td>
+                    <td className="px-4 py-2.5 text-xs text-right tabular-nums text-basalt-muted-foreground hidden md:table-cell">{formatTokens(row.cached)}</td>
                     <td className="px-4 py-2.5 text-xs text-right tabular-nums font-medium">{formatTokens(row.total)}</td>
-                    <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground hidden sm:table-cell">{formatCost(row.cost)}</td>
+                    <td className="px-4 py-2.5 text-xs text-right tabular-nums text-basalt-muted-foreground hidden sm:table-cell">{formatCost(row.cost)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -140,16 +140,16 @@ function AgentsSkeleton() {
       <ChartCardSkeleton titleWidth="w-24" chartHeight="h-[240px]" />
       {Array.from({ length: 3 }).map((_, i) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-        <div key={`slot-${i}`} className="rounded-xl bg-secondary p-5">
+        <div key={`slot-${i}`} className="rounded-xl bg-basalt-secondary p-5">
           <div className="flex items-center gap-4">
-            <Skeleton className="h-3 w-3 rounded-full" />
+            <SkeletonLine style={{ width: undefined }} className="h-3 w-3 rounded-full" />
             <div className="flex-1">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-3 w-40 mt-1" />
+              <SkeletonLine style={{ width: undefined }} className="h-4 w-24" />
+              <SkeletonLine style={{ width: undefined }} className="h-3 w-40 mt-1" />
             </div>
-            <Skeleton className="h-4 w-16" />
+            <SkeletonLine style={{ width: undefined }} className="h-4 w-16" />
           </div>
-          <Skeleton className="h-2 w-full mt-3 rounded-full" />
+          <SkeletonLine style={{ width: undefined }} className="h-2 w-full mt-3 rounded-full" />
         </div>
       ))}
     </div>

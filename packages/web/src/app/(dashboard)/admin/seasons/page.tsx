@@ -16,10 +16,10 @@ import {
   UserPlus,
   ArrowLeftRight,
   LogOut,
-} from "lucide-react";
+} from "@nocoo/basalt/icons";
 import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
-import { ErrorBanner } from "@/components/ui/error-banner";
+import { ErrorBanner } from "@/components/error-banner";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
@@ -27,12 +27,12 @@ import { StatusBadge as SharedStatusBadge } from "@/components/leaderboard/statu
 import { Checkbox } from "@nocoo/basalt/components/checkbox";
 import { Field } from "@nocoo/basalt/components/field";
 import { Input } from "@nocoo/basalt/components/input";
-import { rowIconClassName } from "@/components/ui/button";
+import { rowIconClassName } from "@/lib/ghost-icon";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
-import { Skeleton } from "@/components/ui/skeleton";
-import { RowListSkeleton } from "@/components/ui/row-list-skeleton";
-import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
-import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
+import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { RowListSkeleton } from "@/components/row-list-skeleton";
+import { MessageBanner, type MessageBannerMsg } from "@/components/message-banner";
+import { ConfirmDialog, useConfirm } from "@nocoo/basalt/components/confirm-dialog";
 import { toErrorMessage } from "@/lib/error-message";
 import { formatSeasonDate } from "@/lib/seasons";
 import { utcToLocalDatetimeValue, localDatetimeValueToUtc } from "@/lib/date-helpers";
@@ -107,7 +107,7 @@ function SeasonRules({ season }: { season: SeasonRow }) {
           <span
             key={rule.key}
             title={rule.label}
-            className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground transition-colors hover:text-foreground hover:border-border"
+            className="inline-flex items-center gap-1 rounded-md border border-basalt-border/60 bg-basalt-background px-1.5 py-0.5 text-[10px] font-medium text-basalt-muted-foreground transition-colors hover:text-basalt-foreground hover:border-basalt-border"
           >
             <Icon className="h-2.5 w-2.5" strokeWidth={1.5} />
             {rule.shortLabel}
@@ -141,13 +141,13 @@ function SeasonProgress({ season }: { season: SeasonRow }) {
 
   return (
     <div className="mt-2 space-y-1">
-      <div className="flex items-center justify-between text-[10px] text-muted-foreground tabular-nums">
+      <div className="flex items-center justify-between text-[10px] text-basalt-muted-foreground tabular-nums">
         <span>{pct}% elapsed</span>
         <span>
           {daysLeft}d left
         </span>
       </div>
-      <div className="h-1 w-full rounded-full bg-border/60 overflow-hidden">
+      <div className="h-1 w-full rounded-full bg-basalt-border/60 overflow-hidden">
         <div
           key={pct}
           className="chart-animate chart-grow-x h-full rounded-full bg-success"
@@ -225,8 +225,8 @@ function CreateSeasonForm({
   };
 
   return (
-    <div className="rounded-xl bg-secondary p-4">
-      <h3 className="text-sm font-medium text-foreground mb-3">
+    <div className="rounded-xl bg-basalt-secondary p-4">
+      <h3 className="text-sm font-medium text-basalt-foreground mb-3">
         Create Season
       </h3>
       {error && (
@@ -286,7 +286,7 @@ function CreateSeasonForm({
           setAllowLateWithdrawal(next.includes("late-wd"));
         }}
       >
-        <Checkbox.Legend className="text-xs font-medium text-muted-foreground">
+        <Checkbox.Legend className="text-xs font-medium text-basalt-muted-foreground">
           Rules
         </Checkbox.Legend>
         <Checkbox.Item value="late-reg">Allow late registration</Checkbox.Item>
@@ -385,7 +385,7 @@ function EditSeasonRow({
   };
 
   return (
-    <tr className="border-b border-border/50">
+    <tr className="border-b border-basalt-border/50">
       <td colSpan={6} className="px-4 py-3">
         {error && (
           <Banner variant="error" size="sm" className="mb-2" description={error} />
@@ -437,7 +437,7 @@ function EditSeasonRow({
             setAllowLateWithdrawal(next.includes("late-wd"));
           }}
         >
-          <Checkbox.Legend className="text-xs font-medium text-muted-foreground">
+          <Checkbox.Legend className="text-xs font-medium text-basalt-muted-foreground">
             Rules
           </Checkbox.Legend>
           <Checkbox.Item value="late-reg">Allow late registration</Checkbox.Item>
@@ -667,8 +667,8 @@ export default function AdminSeasonsPage() {
     return (
       <div className="space-y-4 md:space-y-6">
         <div>
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-80 mt-2" />
+          <SkeletonLine style={{ width: undefined }} className="h-8 w-48" />
+          <SkeletonLine style={{ width: undefined }} className="h-4 w-80 mt-2" />
         </div>
         <SeasonsSkeleton />
       </div>
@@ -728,26 +728,26 @@ export default function AdminSeasonsPage() {
               className="rounded-basalt-card bg-basalt-secondary p-8"
             />
           ) : (
-            <div className="rounded-xl bg-secondary p-1 overflow-x-auto">
+            <div className="rounded-xl bg-basalt-secondary p-1 overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-border">
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+                  <tr className="border-b border-basalt-border">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
                       Name
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
                       Slug
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
                       Status
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground hidden sm:table-cell">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground hidden sm:table-cell">
                       Dates
                     </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground hidden md:table-cell">
+                    <th className="px-4 py-3 text-center text-xs font-medium text-basalt-muted-foreground hidden md:table-cell">
                       Teams
                     </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground w-32">
+                    <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground w-32">
                       Actions
                     </th>
                   </tr>
@@ -827,14 +827,14 @@ function SeasonTableRow({
 
   return (
     <>
-      <tr className="border-b border-border/50 last:border-0 hover:bg-accent/50 transition-colors">
+      <tr className="border-b border-basalt-border/50 last:border-0 hover:bg-basalt-accent/50 transition-colors">
         <td className="px-4 py-3">
-          <span className="text-sm font-medium text-foreground">
+          <span className="text-sm font-medium text-basalt-foreground">
             {row.name}
           </span>
         </td>
         <td className="px-4 py-3">
-          <span className="text-sm font-mono text-muted-foreground">
+          <span className="text-sm font-mono text-basalt-muted-foreground">
             {row.slug}
           </span>
         </td>
@@ -846,12 +846,12 @@ function SeasonTableRow({
           </div>
         </td>
         <td className="px-4 py-3 hidden sm:table-cell">
-          <span className="text-xs text-muted-foreground tabular-nums">
+          <span className="text-xs text-basalt-muted-foreground tabular-nums">
             {formatSeasonDate(row.start_date)} &mdash; {formatSeasonDate(row.end_date)}
           </span>
         </td>
         <td className="px-4 py-3 text-center hidden md:table-cell">
-          <span className="text-sm tabular-nums text-muted-foreground">
+          <span className="text-sm tabular-nums text-basalt-muted-foreground">
             {row.team_count}
           </span>
         </td>
@@ -921,20 +921,20 @@ function SeasonTableRow({
 
       {/* Expanded teams sub-row */}
       {isExpanded && (
-        <tr className="border-b border-border/50">
-          <td colSpan={6} className="px-4 py-3 bg-accent/30">
+        <tr className="border-b border-basalt-border/50">
+          <td colSpan={6} className="px-4 py-3 bg-basalt-accent/30">
             {expandedLoading ? (
               <div className="space-y-2">
                 {Array.from({ length: 3 }).map((_, i) => (
                   // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-                  <Skeleton key={`slot-${i}`} className="h-4 w-48" />
+                  <SkeletonLine style={{ width: undefined }} key={`slot-${i}`} className="h-4 w-48" />
                 ))}
               </div>
             ) : expandedTeams.length === 0 ? (
               <Empty title="No team data available." />
             ) : (
               <div className="space-y-1">
-                <p className="text-xs font-medium text-muted-foreground mb-2">
+                <p className="text-xs font-medium text-basalt-muted-foreground mb-2">
                   Registered Teams ({expandedTeams.length})
                 </p>
                 {expandedTeams.map((t) => (
@@ -942,8 +942,8 @@ function SeasonTableRow({
                     key={t.team_id}
                     className="flex items-center gap-3 text-sm"
                   >
-                    <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-foreground">{t.team_name}</span>
+                    <Users className="h-3.5 w-3.5 text-basalt-muted-foreground" />
+                    <span className="text-basalt-foreground">{t.team_name}</span>
                   </div>
                 ))}
               </div>

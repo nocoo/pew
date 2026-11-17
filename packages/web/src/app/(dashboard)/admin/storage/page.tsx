@@ -14,27 +14,27 @@ import {
   RefreshCw,
   Database,
   HardDrive,
-} from "lucide-react";
+} from "@nocoo/basalt/icons";
 import { cn } from "@/lib/utils";
 import { formatTokens, formatTokensFull, formatDuration } from "@/lib/format";
-import { ErrorBanner } from "@/components/ui/error-banner";
+import { ErrorBanner } from "@/components/error-banner";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
 import { Input } from "@nocoo/basalt/components/input";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
-import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
-import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
+import { ConfirmDialog, useConfirm } from "@nocoo/basalt/components/confirm-dialog";
+import { MessageBanner, type MessageBannerMsg } from "@/components/message-banner";
 import { toErrorMessage } from "@/lib/error-message";
 import { useAdmin } from "@/hooks/use-admin";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { Avatar, AvatarFallback, AvatarImage } from "@nocoo/basalt/components/avatar";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@nocoo/basalt/components/tooltip";
 import {
   UserProfileDialog,
   type ProfileDialogTab,
@@ -116,20 +116,20 @@ function StorageSkeleton() {
         <div className="grid grid-cols-3 gap-3">
           {Array.from({ length: 3 }).map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-            <div key={`slot-${i}`} className="rounded-xl bg-secondary p-4">
-              <Skeleton className="h-3 w-12 mb-2" />
-              <Skeleton className="h-6 w-16" />
+            <div key={`slot-${i}`} className="rounded-xl bg-basalt-secondary p-4">
+              <SkeletonLine style={{ width: undefined }} className="h-3 w-12 mb-2" />
+              <SkeletonLine style={{ width: undefined }} className="h-6 w-16" />
             </div>
           ))}
         </div>
-        <div className="rounded-xl bg-secondary p-4">
+        <div className="rounded-xl bg-basalt-secondary p-4">
           {Array.from({ length: 5 }).map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
             <div key={`slot-${i}`} className="flex items-center gap-4 py-3">
-              <Skeleton className="h-8 w-8 rounded-full" />
-              <Skeleton className="h-4 w-32" />
+              <SkeletonLine style={{ width: undefined }} className="h-8 w-8 rounded-full" />
+              <SkeletonLine style={{ width: undefined }} className="h-4 w-32" />
               <div className="flex-1" />
-              <Skeleton className="h-4 w-16" />
+              <SkeletonLine style={{ width: undefined }} className="h-4 w-16" />
             </div>
           ))}
         </div>
@@ -139,17 +139,17 @@ function StorageSkeleton() {
         <div className="grid grid-cols-2 gap-3">
           {Array.from({ length: 2 }).map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-            <div key={`slot-${i}`} className="rounded-xl bg-secondary p-4">
-              <Skeleton className="h-3 w-12 mb-2" />
-              <Skeleton className="h-6 w-16" />
+            <div key={`slot-${i}`} className="rounded-xl bg-basalt-secondary p-4">
+              <SkeletonLine style={{ width: undefined }} className="h-3 w-12 mb-2" />
+              <SkeletonLine style={{ width: undefined }} className="h-6 w-16" />
             </div>
           ))}
         </div>
-        <div className="rounded-xl bg-secondary p-4">
-          <Skeleton className="h-4 w-24 mb-3" />
+        <div className="rounded-xl bg-basalt-secondary p-4">
+          <SkeletonLine style={{ width: undefined }} className="h-4 w-24 mb-3" />
           {Array.from({ length: 3 }).map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-            <Skeleton key={`slot-${i}`} className="h-12 w-full mb-2" />
+            <SkeletonLine style={{ width: undefined }} key={`slot-${i}`} className="h-12 w-full mb-2" />
           ))}
         </div>
       </div>
@@ -193,7 +193,7 @@ function SortHeader({
     <th
       aria-sort={ariaSort as "ascending" | "descending" | "none"}
       className={cn(
-        "px-4 py-3 text-xs font-medium text-muted-foreground",
+        "px-4 py-3 text-xs font-medium text-basalt-muted-foreground",
         className
       )}
     >
@@ -203,8 +203,8 @@ function SortHeader({
         size="sm"
         onClick={() => onSort(sortKey)}
         className={cn(
-          "ml-auto inline-flex h-auto items-center gap-1 px-0 py-0 text-xs font-medium hover:bg-transparent hover:text-foreground",
-          isActive && "text-foreground"
+          "ml-auto inline-flex h-auto items-center gap-1 px-0 py-0 text-xs font-medium hover:bg-transparent hover:text-basalt-foreground",
+          isActive && "text-basalt-foreground"
         )}
       >
         {label}
@@ -419,8 +419,8 @@ export default function AdminStoragePage() {
     return (
       <div className="space-y-4 md:space-y-6">
         <div>
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-80 mt-2" />
+          <SkeletonLine style={{ width: undefined }} className="h-8 w-48" />
+          <SkeletonLine style={{ width: undefined }} className="h-4 w-80 mt-2" />
         </div>
         <StorageSkeleton />
       </div>
@@ -455,7 +455,7 @@ export default function AdminStoragePage() {
               {/* Section header */}
               <div className="flex items-center gap-2 shrink-0">
                 <Database
-                  className="h-4 w-4 text-muted-foreground"
+                  className="h-4 w-4 text-basalt-muted-foreground"
                   strokeWidth={1.5}
                 />
                 <h2 className="font-medium">Database (D1)</h2>
@@ -464,20 +464,20 @@ export default function AdminStoragePage() {
               {/* Summary cards */}
               {summary && (
                 <div className="grid grid-cols-3 gap-3 shrink-0">
-                  <div className="rounded-xl bg-secondary p-4">
-                    <p className="text-xs text-muted-foreground">Users</p>
+                  <div className="rounded-xl bg-basalt-secondary p-4">
+                    <p className="text-xs text-basalt-muted-foreground">Users</p>
                     <p className="text-xl font-semibold tabular-nums mt-1">
                       {summary.total_users.toLocaleString()}
                     </p>
                   </div>
-                  <div className="rounded-xl bg-secondary p-4">
-                    <p className="text-xs text-muted-foreground">Usage Rows</p>
+                  <div className="rounded-xl bg-basalt-secondary p-4">
+                    <p className="text-xs text-basalt-muted-foreground">Usage Rows</p>
                     <p className="text-xl font-semibold tabular-nums mt-1">
                       {summary.total_usage_rows.toLocaleString()}
                     </p>
                   </div>
-                  <div className="rounded-xl bg-secondary p-4">
-                    <p className="text-xs text-muted-foreground">Tokens</p>
+                  <div className="rounded-xl bg-basalt-secondary p-4">
+                    <p className="text-xs text-basalt-muted-foreground">Tokens</p>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <p className="text-xl font-semibold tabular-nums mt-1 cursor-default">
@@ -489,20 +489,20 @@ export default function AdminStoragePage() {
                       </TooltipContent>
                     </Tooltip>
                   </div>
-                  <div className="rounded-xl bg-secondary p-4">
-                    <p className="text-xs text-muted-foreground">Sessions</p>
+                  <div className="rounded-xl bg-basalt-secondary p-4">
+                    <p className="text-xs text-basalt-muted-foreground">Sessions</p>
                     <p className="text-xl font-semibold tabular-nums mt-1">
                       {summary.total_sessions.toLocaleString()}
                     </p>
                   </div>
-                  <div className="rounded-xl bg-secondary p-4">
-                    <p className="text-xs text-muted-foreground">Messages</p>
+                  <div className="rounded-xl bg-basalt-secondary p-4">
+                    <p className="text-xs text-basalt-muted-foreground">Messages</p>
                     <p className="text-xl font-semibold tabular-nums mt-1">
                       {summary.total_messages.toLocaleString()}
                     </p>
                   </div>
-                  <div className="rounded-xl bg-secondary p-4">
-                    <p className="text-xs text-muted-foreground">Duration</p>
+                  <div className="rounded-xl bg-basalt-secondary p-4">
+                    <p className="text-xs text-basalt-muted-foreground">Duration</p>
                     <p className="text-xl font-semibold tabular-nums mt-1">
                       {formatDuration(summary.total_duration_seconds, { precise: true })}
                     </p>
@@ -515,7 +515,7 @@ export default function AdminStoragePage() {
                 <div className="flex items-center gap-3 shrink-0">
                   <div className="relative flex-1">
                     <Search
-                      className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground"
+                      className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-basalt-muted-foreground"
                       strokeWidth={1.5}
                     />
                     <Input
@@ -523,7 +523,7 @@ export default function AdminStoragePage() {
                       placeholder="Filter users..."
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
-                      className="bg-secondary pl-9 pr-8"
+                      className="bg-basalt-secondary pl-9 pr-8"
                       aria-label="Filter users"
                     />
                     {search && (
@@ -539,7 +539,7 @@ export default function AdminStoragePage() {
                       </Button>
                     )}
                   </div>
-                  <span className="text-xs text-muted-foreground tabular-nums shrink-0">
+                  <span className="text-xs text-basalt-muted-foreground tabular-nums shrink-0">
                     {filteredUsers.length}/{users.length}
                   </span>
                 </div>
@@ -552,11 +552,11 @@ export default function AdminStoragePage() {
                   className="rounded-basalt-card bg-basalt-secondary p-8"
                 />
               ) : (
-                <div className="rounded-xl bg-secondary overflow-x-auto flex-1 lg:overflow-y-auto min-h-0">
+                <div className="rounded-xl bg-basalt-secondary overflow-x-auto flex-1 lg:overflow-y-auto min-h-0">
                   <table className="w-full">
-                    <thead className="sticky top-0 z-10 bg-secondary shadow-[0_1px_0_0_hsl(var(--basalt-border)/0.3)]">
+                    <thead className="sticky top-0 z-10 bg-basalt-secondary shadow-[0_1px_0_0_hsl(var(--basalt-border)/0.3)]">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+                        <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
                           User
                         </th>
                         <SortHeader
@@ -589,7 +589,7 @@ export default function AdminStoragePage() {
                       {filteredUsers.map((user) => (
                         <tr
                           key={user.user_id}
-                          className="border-b border-border/30 last:border-0 hover:bg-accent/30 transition-colors"
+                          className="border-b border-basalt-border/30 last:border-0 hover:bg-basalt-accent/30 transition-colors"
                         >
                           {/* User */}
                           <td className="px-4 py-3">
@@ -606,7 +606,7 @@ export default function AdminStoragePage() {
                                     alt={user.name ?? ""}
                                   />
                                 )}
-                                <AvatarFallback className="text-[10px] bg-primary text-primary-foreground">
+                                <AvatarFallback className="text-[10px] bg-basalt-primary text-basalt-primary-foreground">
                                   {(
                                     user.name ??
                                     user.email ??
@@ -616,11 +616,11 @@ export default function AdminStoragePage() {
                               </Avatar>
                               <div className="min-w-0">
                                 {user.name && (
-                                  <p className="text-sm font-medium text-foreground truncate">
+                                  <p className="text-sm font-medium text-basalt-foreground truncate">
                                     {user.name}
                                   </p>
                                 )}
-                                <p className="text-xs text-muted-foreground truncate">
+                                <p className="text-xs text-basalt-muted-foreground truncate">
                                   {user.email ?? user.user_id}
                                 </p>
                               </div>
@@ -634,7 +634,7 @@ export default function AdminStoragePage() {
                           </td>
                           {/* Sessions */}
                           <td className="px-4 py-3 text-right hidden sm:table-cell">
-                            <span className="text-sm text-muted-foreground tabular-nums">
+                            <span className="text-sm text-basalt-muted-foreground tabular-nums">
                               {user.session_count.toLocaleString()}
                             </span>
                           </td>
@@ -642,7 +642,7 @@ export default function AdminStoragePage() {
                           <td className="px-4 py-3 text-right hidden md:table-cell">
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <span className="text-sm text-muted-foreground tabular-nums cursor-default">
+                                <span className="text-sm text-basalt-muted-foreground tabular-nums cursor-default">
                                   {formatTokens(user.total_tokens)}
                                 </span>
                               </TooltipTrigger>
@@ -665,7 +665,7 @@ export default function AdminStoragePage() {
               <div className="flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
                   <HardDrive
-                    className="h-4 w-4 text-muted-foreground"
+                    className="h-4 w-4 text-basalt-muted-foreground"
                     strokeWidth={1.5}
                   />
                   <h2 className="font-medium">Edge Cache (KV)</h2>
@@ -714,31 +714,31 @@ export default function AdminStoragePage() {
 
               {/* Summary cards */}
               <div className="grid grid-cols-2 gap-3 shrink-0">
-                <div className="rounded-xl bg-secondary p-4">
-                  <p className="text-xs text-muted-foreground">Cached Keys</p>
+                <div className="rounded-xl bg-basalt-secondary p-4">
+                  <p className="text-xs text-basalt-muted-foreground">Cached Keys</p>
                   <p className="text-xl font-semibold tabular-nums mt-1">
                     {cacheCount.toLocaleString()}
                     {cacheTruncated && (
-                      <span className="text-xs text-muted-foreground font-normal ml-1">
+                      <span className="text-xs text-basalt-muted-foreground font-normal ml-1">
                         +
                       </span>
                     )}
                   </p>
                 </div>
-                <div className="rounded-xl bg-secondary p-4">
-                  <p className="text-xs text-muted-foreground">Cache Types</p>
+                <div className="rounded-xl bg-basalt-secondary p-4">
+                  <p className="text-xs text-basalt-muted-foreground">Cache Types</p>
                   <div className="flex flex-wrap gap-1 mt-2">
                     {Object.entries(cacheTypeCounts).map(([type, count]) => (
                       <span
                         key={type}
-                        className="inline-flex items-center gap-1 rounded-full bg-secondary px-2 py-0.5 text-xs"
+                        className="inline-flex items-center gap-1 rounded-full bg-basalt-secondary px-2 py-0.5 text-xs"
                       >
-                        <span className="text-muted-foreground">{type}:</span>
+                        <span className="text-basalt-muted-foreground">{type}:</span>
                         <span className="font-medium tabular-nums">{count}</span>
                       </span>
                     ))}
                     {Object.keys(cacheTypeCounts).length === 0 && (
-                      <span className="text-sm text-muted-foreground">—</span>
+                      <span className="text-sm text-basalt-muted-foreground">—</span>
                     )}
                   </div>
                 </div>
@@ -746,10 +746,10 @@ export default function AdminStoragePage() {
 
               {/* Cache key list */}
               {cacheLoading ? (
-                <div className="rounded-xl bg-secondary p-4 space-y-2">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-12 w-full" />
-                  <Skeleton className="h-12 w-full" />
+                <div className="rounded-xl bg-basalt-secondary p-4 space-y-2">
+                  <SkeletonLine style={{ width: undefined }} className="h-4 w-24" />
+                  <SkeletonLine style={{ width: undefined }} className="h-12 w-full" />
+                  <SkeletonLine style={{ width: undefined }} className="h-12 w-full" />
                 </div>
               ) : cacheKeys.length === 0 ? (
                 <Empty
@@ -758,7 +758,7 @@ export default function AdminStoragePage() {
                   className="rounded-basalt-card bg-basalt-secondary p-8"
                 />
               ) : (
-                <div className="rounded-xl bg-secondary p-1 space-y-1 flex-1 lg:overflow-y-auto min-h-0">
+                <div className="rounded-xl bg-basalt-secondary p-1 space-y-1 flex-1 lg:overflow-y-auto min-h-0">
                   {cacheKeys.map((key) => {
                     const { type, description } = describeCacheKey(key);
                     const isDeleting = cacheDeletingKey === key;
@@ -767,7 +767,7 @@ export default function AdminStoragePage() {
                       <div
                         key={key}
                         className={cn(
-                          "flex items-start gap-3 rounded-lg bg-secondary p-3 group",
+                          "flex items-start gap-3 rounded-lg bg-basalt-secondary p-3 group",
                           isDeleting && "opacity-50"
                         )}
                       >
@@ -785,16 +785,16 @@ export default function AdminStoragePage() {
                                 type === "Leaderboard" &&
                                   "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
                                 type === "Unknown" &&
-                                  "bg-secondary text-muted-foreground"
+                                  "bg-basalt-secondary text-basalt-muted-foreground"
                               )}
                             >
                               {type}
                             </span>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-1 truncate">
+                          <p className="text-xs text-basalt-muted-foreground mt-1 truncate">
                             {description}
                           </p>
-                          <code className="text-[10px] text-muted-foreground/60 font-mono block mt-1 truncate">
+                          <code className="text-[10px] text-basalt-muted-foreground/60 font-mono block mt-1 truncate">
                             {key}
                           </code>
                         </div>
@@ -804,7 +804,7 @@ export default function AdminStoragePage() {
                           size="icon"
                           onClick={() => handleInvalidateKey(key)}
                           disabled={isDeleting}
-                          className="h-auto shrink-0 p-1.5 text-muted-foreground opacity-0 hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 focus:opacity-100"
+                          className="h-auto shrink-0 p-1.5 text-basalt-muted-foreground opacity-0 hover:bg-basalt-destructive/10 hover:text-basalt-destructive group-hover:opacity-100 focus:opacity-100"
                           aria-label="Delete this cache entry"
                           title="Delete this cache entry"
                         >
@@ -814,7 +814,7 @@ export default function AdminStoragePage() {
                     );
                   })}
                   {cacheTruncated && (
-                    <p className="text-xs text-muted-foreground text-center py-2">
+                    <p className="text-xs text-basalt-muted-foreground text-center py-2">
                       More keys exist beyond the 10,000 limit
                     </p>
                   )}

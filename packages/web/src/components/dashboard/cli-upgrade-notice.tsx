@@ -7,8 +7,8 @@ import { Button } from "@nocoo/basalt/components/button";
 import {
   Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@nocoo/basalt/components/dialog";
-import { ChevronDown, Terminal, X } from "lucide-react";
-import { CopyButton } from "@/components/ui/copy-button";
+import { ChevronDown, Terminal, X } from "@nocoo/basalt/icons";
+import { CopyButton } from "@/components/copy-button";
 import { useRestoreDialogFocus } from "@/lib/restore-dialog-focus";
 
 const installers = [

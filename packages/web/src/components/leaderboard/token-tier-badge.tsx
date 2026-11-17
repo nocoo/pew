@@ -2,7 +2,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@nocoo/basalt/components/tooltip";
 
 // ---------------------------------------------------------------------------
 // Token Tier Badge — "Asset Notation" style

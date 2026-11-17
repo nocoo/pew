@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { PricingInformation } from "../pricing-information";
 import type { DynamicPricingMetaDto } from "@/lib/rpc-types";
 
-vi.mock("@/components/ui/info-tooltip", () => ({ InfoTooltip: ({ children }: { children: React.ReactNode }) => createElement("aside", null, children) }));
+vi.mock("@/components/info-tooltip", () => ({ InfoTooltip: ({ children }: { children: React.ReactNode }) => createElement("aside", null, children) }));
 
 const meta: DynamicPricingMetaDto = {
   lastSyncedAt: "2026-10-04T00:00:00Z", modelCount: 99, baselineCount: 50, openRouterCount: 30, modelsDevCount: 19, lastErrors: null,

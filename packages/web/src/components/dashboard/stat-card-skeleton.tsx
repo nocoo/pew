@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
 
 /**
  * Loading skeleton for the 3-row dashboard stat card
@@ -10,10 +10,10 @@ import { Skeleton } from "@/components/ui/skeleton";
  */
 export function StatCardSkeleton() {
   return (
-    <div className="rounded-card bg-secondary p-4 md:p-5 space-y-3">
-      <Skeleton className="h-3 w-20" />
-      <Skeleton className="h-7 w-28" />
-      <Skeleton className="h-3 w-16" />
+    <div className="rounded-card bg-basalt-secondary p-4 md:p-5 space-y-3">
+      <SkeletonLine style={{ width: undefined }} className="h-3 w-20" />
+      <SkeletonLine style={{ width: undefined }} className="h-7 w-28" />
+      <SkeletonLine style={{ width: undefined }} className="h-3 w-16" />
     </div>
   );
 }

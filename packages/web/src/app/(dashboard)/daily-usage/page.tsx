@@ -2,7 +2,7 @@
 
 import { estimateUsageCost, accountedTotal, displayCounters } from "@/lib/accounting";
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, ChevronLeft } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronLeft } from "@nocoo/basalt/icons";
 import {
   useUsageData,
   toDailyPoints,
@@ -10,7 +10,7 @@ import {
 } from "@/hooks/use-usage-data";
 import { useDeviceData } from "@/hooks/use-device-data";
 import { useTzOffset } from "@/hooks/use-tz-offset";
-import { ErrorBanner } from "@/components/ui/error-banner";
+import { ErrorBanner } from "@/components/error-banner";
 import { UsageInformation } from "@/components/dashboard/usage-information";
 import { formatTokens } from "@/lib/utils";
 import { usePricingMap, formatCost } from "@/hooks/use-pricing";
@@ -26,10 +26,10 @@ import {
 } from "@/components/dashboard/compact-donut-charts";
 import { DashboardSegment } from "@/components/dashboard/dashboard-segment";
 import { ModelInfoTooltip } from "@/components/dashboard/model-info-tooltip";
-import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
-import { ghostIconClassName } from "@/components/ui/button";
+import { ghostIconClassName } from "@/lib/ghost-icon";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import {
   groupByDate,
@@ -91,7 +91,7 @@ function DayRow({ group, pricingMap }: { group: DailyGroup; pricingMap: PricingM
   return (
     <>
       <tr
-        className="border-b border-border/50 last:border-0 hover:bg-accent/50 transition-colors cursor-pointer"
+        className="border-b border-basalt-border/50 last:border-0 hover:bg-basalt-accent/50 transition-colors cursor-pointer"
         onClick={() => setExpanded(!expanded)}
       >
         <td className="px-4 py-3 text-sm">
@@ -137,29 +137,29 @@ function DayRow({ group, pricingMap }: { group: DailyGroup; pricingMap: PricingM
         modelRows.map((row) => (
           <tr
             key={`${row.source}:${row.model}`}
-            className="border-b border-border/30 last:border-0 bg-accent/30"
+            className="border-b border-basalt-border/30 last:border-0 bg-basalt-accent/30"
           >
-            <td className="pl-10 pr-4 py-2.5 text-xs text-muted-foreground">
-              <span className="text-foreground/70">
+            <td className="pl-10 pr-4 py-2.5 text-xs text-basalt-muted-foreground">
+              <span className="text-basalt-foreground/70">
                 {sourceLabel(row.source)}
               </span>
-              <span className="mx-1.5 text-border">/</span>
-              <span className="font-mono text-foreground/60">{row.model}</span>
+              <span className="mx-1.5 text-basalt-border">/</span>
+              <span className="font-mono text-basalt-foreground/60">{row.model}</span>
               <ModelInfoTooltip model={row.model} className="ml-1.5" />
             </td>
-            <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground">
+            <td className="px-4 py-2.5 text-xs text-right tabular-nums text-basalt-muted-foreground">
               {formatTokens(row.input)}
             </td>
-            <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground">
+            <td className="px-4 py-2.5 text-xs text-right tabular-nums text-basalt-muted-foreground">
               {formatTokens(row.output)}
             </td>
-            <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground hidden md:table-cell">
+            <td className="px-4 py-2.5 text-xs text-right tabular-nums text-basalt-muted-foreground hidden md:table-cell">
               {formatTokens(row.cached)}
             </td>
-            <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground">
+            <td className="px-4 py-2.5 text-xs text-right tabular-nums text-basalt-muted-foreground">
               {formatTokens(row.total)}
             </td>
-            <td className="px-4 py-2.5 text-xs text-right tabular-nums text-muted-foreground hidden sm:table-cell">
+            <td className="px-4 py-2.5 text-xs text-right tabular-nums text-basalt-muted-foreground hidden sm:table-cell">
               {formatCost(row.cost)}
             </td>
           </tr>
@@ -174,34 +174,34 @@ function DayRow({ group, pricingMap }: { group: DailyGroup; pricingMap: PricingM
 
 function ChartSkeleton() {
   return (
-    <div className="rounded-card bg-secondary p-4 md:p-5">
+    <div className="rounded-card bg-basalt-secondary p-4 md:p-5">
       <div className="mb-4 flex items-center justify-between">
-        <Skeleton className="h-3 w-20" />
+        <SkeletonLine style={{ width: undefined }} className="h-3 w-20" />
         <div className="flex items-center gap-4">
-          <Skeleton className="h-2 w-2 rounded-full" />
-          <Skeleton className="h-2 w-12" />
+          <SkeletonLine style={{ width: undefined }} className="h-2 w-2 rounded-full" />
+          <SkeletonLine style={{ width: undefined }} className="h-2 w-12" />
         </div>
       </div>
-      <Skeleton className="h-[200px] w-full rounded-lg" />
+      <SkeletonLine style={{ width: undefined }} className="h-[200px] w-full rounded-lg" />
     </div>
   );
 }
 
 function DonutSkeleton() {
   return (
-    <div className="rounded-card bg-secondary p-3">
-      <Skeleton className="h-3 w-16 mb-2" />
+    <div className="rounded-card bg-basalt-secondary p-3">
+      <SkeletonLine style={{ width: undefined }} className="h-3 w-16 mb-2" />
       <div className="flex items-center gap-3">
         {/* Donut placeholder */}
-        <Skeleton className="w-[80px] h-[80px] rounded-full shrink-0" />
+        <SkeletonLine style={{ width: undefined }} className="w-[80px] h-[80px] rounded-full shrink-0" />
         {/* Legend */}
         <div className="flex-1 space-y-1">
           {Array.from({ length: 5 }).map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
             <div key={`slot-${i}`} className="flex items-center gap-1.5">
-              <Skeleton className="h-2 w-2 rounded-full shrink-0" />
-              <Skeleton className="h-3 flex-1" />
-              <Skeleton className="h-3 w-8 shrink-0" />
+              <SkeletonLine style={{ width: undefined }} className="h-2 w-2 rounded-full shrink-0" />
+              <SkeletonLine style={{ width: undefined }} className="h-3 flex-1" />
+              <SkeletonLine style={{ width: undefined }} className="h-3 w-8 shrink-0" />
             </div>
           ))}
         </div>
@@ -215,9 +215,9 @@ function DailySkeleton() {
     <div className="grid gap-4 md:gap-6 xl:grid-cols-4">
       {/* Left column skeleton: 4 charts + table */}
       <div className="xl:col-span-3 space-y-4 md:space-y-6">
-        <div className="rounded-card border border-secondary bg-background p-4 md:p-5">
+        <div className="rounded-card border border-basalt-secondary bg-basalt-background p-4 md:p-5">
           <div className="flex items-center gap-2 mb-4">
-            <Skeleton className="h-4 w-32" />
+            <SkeletonLine style={{ width: undefined }} className="h-4 w-32" />
           </div>
           <div className="space-y-4">
             <ChartSkeleton />
@@ -226,28 +226,28 @@ function DailySkeleton() {
             <ChartSkeleton />
           </div>
           {/* Table skeleton */}
-          <div className="mt-6 rounded-xl bg-background/50 p-1 overflow-x-auto">
+          <div className="mt-6 rounded-xl bg-basalt-background/50 p-1 overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-border">
-                  <th className="px-4 py-3 text-left"><Skeleton className="h-3 w-12" /></th>
-                  <th className="px-4 py-3 text-right"><Skeleton className="h-3 w-10 ml-auto" /></th>
-                  <th className="px-4 py-3 text-right"><Skeleton className="h-3 w-10 ml-auto" /></th>
-                  <th className="px-4 py-3 text-right hidden md:table-cell"><Skeleton className="h-3 w-10 ml-auto" /></th>
-                  <th className="px-4 py-3 text-right"><Skeleton className="h-3 w-10 ml-auto" /></th>
-                  <th className="px-4 py-3 text-right hidden sm:table-cell"><Skeleton className="h-3 w-10 ml-auto" /></th>
+                <tr className="border-b border-basalt-border">
+                  <th className="px-4 py-3 text-left"><SkeletonLine style={{ width: undefined }} className="h-3 w-12" /></th>
+                  <th className="px-4 py-3 text-right"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+                  <th className="px-4 py-3 text-right"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+                  <th className="px-4 py-3 text-right hidden md:table-cell"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+                  <th className="px-4 py-3 text-right"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+                  <th className="px-4 py-3 text-right hidden sm:table-cell"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
                 </tr>
               </thead>
               <tbody>
                 {Array.from({ length: 5 }).map((_, i) => (
                   // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-                  <tr key={`slot-${i}`} className="border-b border-border/50">
-                    <td className="px-4 py-3"><Skeleton className="h-4 w-20" /></td>
-                    <td className="px-4 py-3"><Skeleton className="h-4 w-12 ml-auto" /></td>
-                    <td className="px-4 py-3"><Skeleton className="h-4 w-12 ml-auto" /></td>
-                    <td className="px-4 py-3 hidden md:table-cell"><Skeleton className="h-4 w-12 ml-auto" /></td>
-                    <td className="px-4 py-3"><Skeleton className="h-4 w-12 ml-auto" /></td>
-                    <td className="px-4 py-3 hidden sm:table-cell"><Skeleton className="h-4 w-12 ml-auto" /></td>
+                  <tr key={`slot-${i}`} className="border-b border-basalt-border/50">
+                    <td className="px-4 py-3"><SkeletonLine style={{ width: undefined }} className="h-4 w-20" /></td>
+                    <td className="px-4 py-3"><SkeletonLine style={{ width: undefined }} className="h-4 w-12 ml-auto" /></td>
+                    <td className="px-4 py-3"><SkeletonLine style={{ width: undefined }} className="h-4 w-12 ml-auto" /></td>
+                    <td className="px-4 py-3 hidden md:table-cell"><SkeletonLine style={{ width: undefined }} className="h-4 w-12 ml-auto" /></td>
+                    <td className="px-4 py-3"><SkeletonLine style={{ width: undefined }} className="h-4 w-12 ml-auto" /></td>
+                    <td className="px-4 py-3 hidden sm:table-cell"><SkeletonLine style={{ width: undefined }} className="h-4 w-12 ml-auto" /></td>
                   </tr>
                 ))}
               </tbody>
@@ -258,9 +258,9 @@ function DailySkeleton() {
 
       {/* Right column skeleton: 3 donut charts */}
       <div className="xl:col-span-1 space-y-4 md:space-y-6">
-        <div className="rounded-card border border-secondary bg-background p-4 md:p-5">
+        <div className="rounded-card border border-basalt-secondary bg-basalt-background p-4 md:p-5">
           <div className="flex items-center gap-2 mb-4">
-            <Skeleton className="h-4 w-32" />
+            <SkeletonLine style={{ width: undefined }} className="h-4 w-32" />
           </div>
           <div className="space-y-4">
             <DonutSkeleton />
@@ -436,26 +436,26 @@ export default function DailyUsagePage() {
 
                   {/* Per-day detail table */}
                   {dailyGroups.length > 0 && (
-                    <div className="mt-6 rounded-xl bg-background/50 p-1 overflow-x-auto">
+                    <div className="mt-6 rounded-xl bg-basalt-background/50 p-1 overflow-x-auto">
                       <table className="w-full">
                         <thead>
-                          <tr className="border-b border-border">
-                            <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+                          <tr className="border-b border-basalt-border">
+                            <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
                               Date
                             </th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">
+                            <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
                               Input
                             </th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">
+                            <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
                               Output
                             </th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground hidden md:table-cell">
+                            <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden md:table-cell">
                               Cached
                             </th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">
+                            <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
                               Total
                             </th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground hidden sm:table-cell">
+                            <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden sm:table-cell">
                               Est. Cost
                             </th>
                           </tr>

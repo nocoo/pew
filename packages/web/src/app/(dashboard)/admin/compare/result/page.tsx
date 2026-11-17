@@ -5,11 +5,11 @@ import { useState, useEffect, useMemo, useId, Suspense } from "react";
 import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink } from "@nocoo/basalt/icons";
 import { formatTokens, formatTokensFull } from "@/lib/utils";
 import { useAdmin } from "@/hooks/use-admin";
 import { useTzOffset } from "@/hooks/use-tz-offset";
-import { ErrorBanner } from "@/components/ui/error-banner";
+import { ErrorBanner } from "@/components/error-banner";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
 import { Input } from "@nocoo/basalt/components/input";
@@ -21,14 +21,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@nocoo/basalt/components/select";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { Avatar, AvatarFallback, AvatarImage } from "@nocoo/basalt/components/avatar";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from "@nocoo/basalt/components/tooltip";
 import {
   LineChart,
   Line,
@@ -93,17 +93,17 @@ function getUserLabel(user: CompareUser): string {
 function CompareSkeleton() {
   return (
     <div className="space-y-4">
-      <div className="rounded-xl bg-secondary p-4">
-        <Skeleton className="h-[280px] w-full" />
+      <div className="rounded-xl bg-basalt-secondary p-4">
+        <SkeletonLine style={{ width: undefined }} className="h-[280px] w-full" />
       </div>
-      <div className="rounded-xl bg-secondary p-4">
+      <div className="rounded-xl bg-basalt-secondary p-4">
         {Array.from({ length: 3 }).map((_, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
           <div key={`slot-${i}`} className="flex items-center gap-4 py-3">
-            <Skeleton className="h-8 w-8 rounded-full" />
-            <Skeleton className="h-4 w-32" />
+            <SkeletonLine style={{ width: undefined }} className="h-8 w-8 rounded-full" />
+            <SkeletonLine style={{ width: undefined }} className="h-4 w-32" />
             <div className="flex-1" />
-            <Skeleton className="h-4 w-20" />
+            <SkeletonLine style={{ width: undefined }} className="h-4 w-20" />
           </div>
         ))}
       </div>
@@ -283,8 +283,8 @@ function CompareResultContent() {
     return (
       <div className="space-y-4 md:space-y-6">
         <div>
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-4 w-80 mt-2" />
+          <SkeletonLine style={{ width: undefined }} className="h-8 w-48" />
+          <SkeletonLine style={{ width: undefined }} className="h-4 w-80 mt-2" />
         </div>
         <CompareSkeleton />
       </div>
@@ -326,13 +326,13 @@ function CompareResultContent() {
             {data.users.map((user, i) => (
               <div
                 key={user.id}
-                className="flex items-center gap-2 rounded-full border border-border bg-secondary pl-1 pr-3 py-0.5"
+                className="flex items-center gap-2 rounded-full border border-basalt-border bg-basalt-secondary pl-1 pr-3 py-0.5"
               >
                 <Avatar className="h-5 w-5 shrink-0">
                   {user.image && (
                     <AvatarImage src={user.image} alt={user.name ?? ""} />
                   )}
-                  <AvatarFallback className="text-[8px] bg-primary text-primary-foreground">
+                  <AvatarFallback className="text-[8px] bg-basalt-primary text-basalt-primary-foreground">
                     {(user.name ?? user.email ?? "?")[0]?.toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -355,7 +355,7 @@ function CompareResultContent() {
         {/* Filter Bar */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <label htmlFor={dateFromId} className="text-xs text-muted-foreground">From</label>
+            <label htmlFor={dateFromId} className="text-xs text-basalt-muted-foreground">From</label>
             <Input
               id={dateFromId}
               type="date"
@@ -365,7 +365,7 @@ function CompareResultContent() {
             />
           </div>
           <div className="flex items-center gap-2">
-            <label htmlFor={dateToId} className="text-xs text-muted-foreground">To</label>
+            <label htmlFor={dateToId} className="text-xs text-basalt-muted-foreground">To</label>
             <Input
               id={dateToId}
               type="date"
@@ -418,9 +418,9 @@ function CompareResultContent() {
 
         {/* Chart */}
         {!loading && data && chartData.length > 0 && (
-          <div className="rounded-card bg-secondary p-4 md:p-5">
+          <div className="rounded-card bg-basalt-secondary p-4 md:p-5">
             <div className="mb-4 flex items-center justify-between">
-              <p className="text-xs md:text-sm text-muted-foreground">
+              <p className="text-xs md:text-sm text-basalt-muted-foreground">
                 Daily Token Usage
               </p>
               <div className="flex flex-wrap items-center gap-3">
@@ -434,7 +434,7 @@ function CompareResultContent() {
                         ] as string,
                       }}
                     />
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-basalt-muted-foreground">
                       {getUserLabel(user)}
                     </span>
                   </div>
@@ -501,23 +501,23 @@ function CompareResultContent() {
 
         {/* User Table */}
         {!loading && userTableData.length > 0 && (
-          <div className="rounded-xl bg-secondary p-1 overflow-x-auto">
+          <div className="rounded-xl bg-basalt-secondary p-1 overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-border">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+                <tr className="border-b border-basalt-border">
+                  <th className="px-4 py-3 text-left text-xs font-medium text-basalt-muted-foreground">
                     User
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">
+                  <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground">
                     Total Tokens
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground hidden sm:table-cell">
+                  <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden sm:table-cell">
                     Daily Avg
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground hidden md:table-cell">
+                  <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground hidden md:table-cell">
                     Last Active
                   </th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground w-10">
+                  <th className="px-4 py-3 text-right text-xs font-medium text-basalt-muted-foreground w-10">
                     <span className="sr-only">Link</span>
                   </th>
                 </tr>
@@ -526,7 +526,7 @@ function CompareResultContent() {
                 {userTableData.map((user) => (
                   <tr
                     key={user.id}
-                    className="border-b border-border/50 last:border-0 hover:bg-accent/50 transition-colors"
+                    className="border-b border-basalt-border/50 last:border-0 hover:bg-basalt-accent/50 transition-colors"
                   >
                     {/* User */}
                     <td className="px-4 py-3">
@@ -545,7 +545,7 @@ function CompareResultContent() {
                               alt={user.name ?? ""}
                             />
                           )}
-                          <AvatarFallback className="text-[10px] bg-primary text-primary-foreground">
+                          <AvatarFallback className="text-[10px] bg-basalt-primary text-basalt-primary-foreground">
                             {(
                               user.name ??
                               user.email ??
@@ -555,11 +555,11 @@ function CompareResultContent() {
                         </Avatar>
                         <div className="min-w-0">
                           {user.name && (
-                            <p className="text-sm font-medium text-foreground truncate">
+                            <p className="text-sm font-medium text-basalt-foreground truncate">
                               {user.name}
                             </p>
                           )}
-                          <p className="text-xs text-muted-foreground truncate">
+                          <p className="text-xs text-basalt-muted-foreground truncate">
                             {user.email ?? user.id}
                           </p>
                         </div>
@@ -580,13 +580,13 @@ function CompareResultContent() {
                     </td>
                     {/* Daily Avg */}
                     <td className="px-4 py-3 text-right hidden sm:table-cell">
-                      <span className="text-sm text-muted-foreground tabular-nums">
+                      <span className="text-sm text-basalt-muted-foreground tabular-nums">
                         {formatTokens(user.dailyAvg)}
                       </span>
                     </td>
                     {/* Last Active */}
                     <td className="px-4 py-3 text-right hidden md:table-cell">
-                      <span className="text-sm text-muted-foreground tabular-nums">
+                      <span className="text-sm text-basalt-muted-foreground tabular-nums">
                         {user.lastActive !== "—"
                           ? fmtDate(user.lastActive)
                           : "—"}
@@ -599,7 +599,7 @@ function CompareResultContent() {
                           href={`/u/${user.slug}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center text-muted-foreground hover:text-foreground transition-colors"
+                          className="inline-flex items-center text-basalt-muted-foreground hover:text-basalt-foreground transition-colors"
                         >
                           <ExternalLink
                             className="h-3.5 w-3.5"
@@ -629,8 +629,8 @@ export default function AdminCompareResultPage() {
       fallback={
         <div className="space-y-4 md:space-y-6">
           <div>
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-4 w-80 mt-2" />
+            <SkeletonLine style={{ width: undefined }} className="h-8 w-48" />
+            <SkeletonLine style={{ width: undefined }} className="h-4 w-80 mt-2" />
           </div>
           <CompareSkeleton />
         </div>

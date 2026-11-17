@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowDownToLine, ArrowUpFromLine, DollarSign, Gauge, TrendingUp, Zap, type LucideIcon } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, DollarSign, Gauge, TrendingUp, Zap, type LucideIcon } from "@nocoo/basalt/icons";
 import { Button } from "@nocoo/basalt/components/button";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { useUsageData, toHeatmapData, type DailyPoint } from "@/hooks/use-usage-data";
@@ -30,7 +30,7 @@ import { UsageInformation } from "@/components/dashboard/usage-information";
 import { SnapshotAlert } from "@/components/dashboard/snapshot-alert";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { DashboardEmptyState } from "@/components/dashboard/empty-state";
-import { ErrorBanner } from "@/components/ui/error-banner";
+import { ErrorBanner } from "@/components/error-banner";
 
 export default function DashboardPage() {
   const [period, setPeriod] = useState<Period>("all");
@@ -111,7 +111,7 @@ export default function DashboardPage() {
       {!loading && data && !hasRecords && period === "all" && <DashboardEmptyState />}
 
       {!loading && data && (hasRecords || period !== "all") && <>
-        {!hasRecords && <p className="rounded-card bg-secondary px-4 py-3 text-sm text-muted-foreground">No usage in this period.</p>}
+        {!hasRecords && <p className="rounded-card bg-basalt-secondary px-4 py-3 text-sm text-basalt-muted-foreground">No usage in this period.</p>}
 
         <div className="grid grid-cols-1 gap-3 md:gap-4 xl:grid-cols-3">
           <div className="min-w-0 xl:col-span-2">
@@ -134,9 +134,9 @@ export default function DashboardPage() {
           <StatGrid columns={3} className="sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
             <StatCard
               title="Total Tokens" value={formatTokens(accounting.totalTokens)} subtitle={periodLabel(period)}
-              icon={Zap} iconColor="text-primary" variant="primary"
+              icon={Zap} iconColor="text-basalt-primary" variant="primary"
               className="p-4 md:p-5"
-              accentColor="bg-gradient-to-r from-primary to-chart-8"
+              accentColor="bg-gradient-to-r from-basalt-primary to-chart-8"
               trendsLayout="grid"
               trends={[
                 ...(wow && wow.previousWeekSameDay.tokens > 0
@@ -161,10 +161,10 @@ export default function DashboardPage() {
               icon={Gauge} iconColor="text-chart-2" accentColor="bg-chart-2" variant="primary">
               {accounting.readCoverage > 0 && <div className="mt-4 mb-2 space-y-2">
                 <meter aria-label="Cache hit rate" min={0} max={100} value={accounting.cacheReadRate} className="sr-only" />
-                <div aria-hidden="true" className="h-1.5 overflow-hidden rounded-full bg-muted">
+                <div aria-hidden="true" className="h-1.5 overflow-hidden rounded-full bg-basalt-muted">
                   <div key={accounting.cacheReadRate} className="chart-animate chart-grow-x h-full rounded-full bg-chart-2" style={{ width: `${accounting.cacheReadRate}%` }} />
                 </div>
-                <p className="text-xs text-muted-foreground">Share of known input served from cache</p>
+                <p className="text-xs text-basalt-muted-foreground">Share of known input served from cache</p>
               </div>}
               <SummaryDetails items={[
                 { title: "Cache Read", value: accounting.inputTokens === 0 || accounting.readCoverage > 0 ? formatTokens(accounting.cacheReadTokens) : "—",
@@ -205,7 +205,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 gap-3 md:gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
             <div className="flex min-w-0 flex-col gap-3 md:gap-4">
               <div>
-                <div className="mb-3 flex w-fit items-center gap-1 rounded-lg bg-muted p-1">
+                <div className="mb-3 flex w-fit items-center gap-1 rounded-lg bg-basalt-muted p-1">
                   {(["tokens", "cost"] as const).map((tab) => (
                     <Button key={tab} type="button" size="sm" aria-pressed={chartTab === tab}
                       variant={chartTab === tab ? "secondary" : "ghost"} onClick={() => setChartTab(tab)}>
@@ -242,14 +242,14 @@ export default function DashboardPage() {
 function SummaryDetails({ items }: { items: { title: string; value: string; subtitle: string; icon: LucideIcon; iconColor: string }[] }) {
   return (
     <div className="mt-auto pt-4">
-      <dl className="grid grid-cols-2 gap-3 border-t border-border/50 pt-3">
+      <dl className="grid grid-cols-2 gap-3 border-t border-basalt-border/50 pt-3">
         {items.map(({ title, value, subtitle, icon: Icon, iconColor }) => <div key={title} className="min-w-0">
-          <dt className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <dt className="flex items-center gap-1.5 text-xs text-basalt-muted-foreground">
             <Icon className={`h-3.5 w-3.5 shrink-0 ${iconColor}`} strokeWidth={1.5} aria-hidden="true" />
             <span>{title}</span>
           </dt>
           <dd className="mt-1 font-display text-xl font-semibold tabular-nums tracking-tight">{value}</dd>
-          <dd className="mt-1 text-xs text-muted-foreground">{subtitle}</dd>
+          <dd className="mt-1 text-xs text-basalt-muted-foreground">{subtitle}</dd>
         </div>)}
       </dl>
     </div>

@@ -4,12 +4,12 @@ import { useCallback, useState } from "react";
 import type { LeaderboardEntry, LeaderboardPeriod } from "@/hooks/use-leaderboard";
 import { Button } from "@nocoo/basalt/components/button";
 import { Empty } from "@nocoo/basalt/components/empty";
-import { ErrorBanner } from "@/components/ui/error-banner";
+import { ErrorBanner } from "@/components/error-banner";
 import { TableHeader } from "@/components/leaderboard/table-header";
 import { LeaderboardSkeleton } from "@/components/leaderboard/leaderboard-skeleton";
 import { LeaderboardRow } from "@/components/leaderboard/leaderboard-row";
 import { UserProfileDialog } from "@/components/user-profile-dialog";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@nocoo/basalt/components/tooltip";
 import { PERIOD_TO_TAB } from "@/components/leaderboard/period-tabs";
 import { ROW_CLASSES } from "@/components/leaderboard/leaderboard-layout";
 

@@ -3,20 +3,20 @@
 import { useMemo } from "react";
 import { useRestoreDialogFocus } from "@/lib/restore-dialog-focus";
 import { Button } from "@nocoo/basalt/components/button";
-import { chromeIconClassName } from "@/components/ui/button";
+import { chromeIconClassName } from "@/lib/ghost-icon";
 import {
   Dialog,
   DialogClose,
   DialogContent,
   DialogTitle,
 } from "@nocoo/basalt/components/dialog";
-import { Calendar, X } from "lucide-react";
+import { Calendar, X } from "@nocoo/basalt/icons";
 import { formatMemberSince } from "@/lib/date-helpers";
 import { useAdmin } from "@/hooks/use-admin";
 import { useSeasons } from "@/hooks/use-seasons";
 import { useUserProfile } from "@/hooks/use-user-profile";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Avatar, AvatarFallback, AvatarImage } from "@nocoo/basalt/components/avatar";
+import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
 import {
   ProfileContent,
   type ProfileTab,
@@ -87,7 +87,7 @@ function ConfigLoadingSkeleton({
             {displayImage && (
               <AvatarImage src={displayImage} alt={displayName} />
             )}
-            <AvatarFallback className="bg-primary text-primary-foreground text-lg">
+            <AvatarFallback className="bg-basalt-primary text-basalt-primary-foreground text-lg">
               {initial}
             </AvatarFallback>
           </Avatar>
@@ -95,7 +95,7 @@ function ConfigLoadingSkeleton({
             <DialogTitle className="text-xl font-semibold text-basalt-foreground">
               {displayName}
             </DialogTitle>
-            <Skeleton className="h-4 w-32 mt-1" />
+            <SkeletonLine style={{ width: undefined }} className="h-4 w-32 mt-1" />
           </div>
         </div>
         <DialogClose asChild>
@@ -106,11 +106,11 @@ function ConfigLoadingSkeleton({
       </div>
 
       {/* Tab bar skeleton */}
-      <div className="flex gap-1 rounded-lg bg-secondary p-1 mb-5">
+      <div className="flex gap-1 rounded-lg bg-basalt-secondary p-1 mb-5">
         {Array.from({ length: 3 }).map((_, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
           <div key={`tab-${i}`} className="flex-1 rounded-md px-3 py-2">
-            <Skeleton className="h-4 w-full" />
+            <SkeletonLine style={{ width: undefined }} className="h-4 w-full" />
           </div>
         ))}
       </div>
@@ -122,22 +122,22 @@ function ConfigLoadingSkeleton({
             <div
               // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
               key={`stat-${i}`}
-              className="rounded-card bg-secondary p-4 md:p-5 space-y-2"
+              className="rounded-card bg-basalt-secondary p-4 md:p-5 space-y-2"
             >
-              <Skeleton className="h-4 w-16" />
-              <Skeleton className="h-8 w-24" />
+              <SkeletonLine style={{ width: undefined }} className="h-4 w-16" />
+              <SkeletonLine style={{ width: undefined }} className="h-8 w-24" />
             </div>
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-3">
-          <div className="rounded-card bg-secondary p-4 md:p-5">
-            <Skeleton className="h-4 w-24 mb-3" />
-            <Skeleton className="h-[220px] w-full" />
+          <div className="rounded-card bg-basalt-secondary p-4 md:p-5">
+            <SkeletonLine style={{ width: undefined }} className="h-4 w-24 mb-3" />
+            <SkeletonLine style={{ width: undefined }} className="h-[220px] w-full" />
           </div>
-          <div className="rounded-card bg-secondary p-4 md:p-5 flex flex-col">
-            <Skeleton className="h-4 w-20 mb-3" />
+          <div className="rounded-card bg-basalt-secondary p-4 md:p-5 flex flex-col">
+            <SkeletonLine style={{ width: undefined }} className="h-4 w-20 mb-3" />
             <div className="flex flex-1 items-center justify-center">
-              <Skeleton className="h-[180px] w-[180px] rounded-full" />
+              <SkeletonLine style={{ width: undefined }} className="h-[180px] w-[180px] rounded-full" />
             </div>
           </div>
         </div>
@@ -178,24 +178,24 @@ function ProfileDialogHeader({
           {displayImage && (
             <AvatarImage src={displayImage} alt={displayName} />
           )}
-          <AvatarFallback className="bg-primary text-primary-foreground text-lg">
+          <AvatarFallback className="bg-basalt-primary text-basalt-primary-foreground text-lg">
             {initial}
           </AvatarFallback>
         </Avatar>
         <div>
           <DialogTitle className="text-xl font-semibold text-basalt-foreground">
             {isFirstLoad ? (
-              <Skeleton className="h-6 w-40" />
+              <SkeletonLine style={{ width: undefined }} className="h-6 w-40" />
             ) : (
               displayName
             )}
           </DialogTitle>
           {user && (
-            <p className="flex items-center gap-1.5 text-sm text-muted-foreground mt-0.5">
+            <p className="flex items-center gap-1.5 text-sm text-basalt-muted-foreground mt-0.5">
               <Calendar className="h-3.5 w-3.5" strokeWidth={1.5} />
               Member since {formatMemberSince(user.created_at)}
               {isAdmin && user.first_seen && (
-                <span className="text-muted-foreground/60">
+                <span className="text-basalt-muted-foreground/60">
                   · Data since {formatMemberSince(user.first_seen)}
                 </span>
               )}

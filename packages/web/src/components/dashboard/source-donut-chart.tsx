@@ -64,7 +64,7 @@ export function SourceDonutChart({ data, className }: SourceDonutChartProps) {
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-card bg-secondary p-8 text-sm text-muted-foreground",
+          "flex items-center justify-center rounded-card bg-basalt-secondary p-8 text-sm text-basalt-muted-foreground",
           className
         )}
       >
@@ -84,11 +84,11 @@ export function SourceDonutChart({ data, className }: SourceDonutChartProps) {
   return (
     <div
       className={cn(
-        "flex flex-col rounded-card bg-secondary p-4 md:p-5",
+        "flex flex-col rounded-card bg-basalt-secondary p-4 md:p-5",
         className
       )}
     >
-      <p className="mb-3 text-xs md:text-sm text-muted-foreground">By Agent</p>
+      <p className="mb-3 text-xs md:text-sm text-basalt-muted-foreground">By Agent</p>
 
       <div className="flex flex-1 flex-col items-center">
         <div className="h-[160px] w-full max-w-[220px] shrink-0">
@@ -122,10 +122,10 @@ export function SourceDonutChart({ data, className }: SourceDonutChartProps) {
                 className="h-2 w-2 shrink-0 rounded-full"
                 style={{ background: item.fill }}
               />
-              <span className="text-xs text-muted-foreground truncate">
+              <span className="text-xs text-basalt-muted-foreground truncate">
                 {item.name}
               </span>
-              <span className="ml-auto text-xs font-medium text-foreground">
+              <span className="ml-auto text-xs font-medium text-basalt-foreground">
                 {formatTokens(item.value)}
               </span>
             </div>

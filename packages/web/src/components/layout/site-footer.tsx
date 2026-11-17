@@ -11,22 +11,22 @@ const GITHUB_URL = "https://github.com/nocoo/pew";
 export function SiteFooter() {
   return (
     <footer className="px-6 py-3">
-      <p className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1.5 flex-wrap">
+      <p className="text-center text-xs text-basalt-muted-foreground flex items-center justify-center gap-1.5 flex-wrap">
         <span>&copy; {new Date().getFullYear()} pew.md</span>
-        <span className="text-muted-foreground/40">&middot;</span>
+        <span className="text-basalt-muted-foreground/40">&middot;</span>
         <a
           href={GITHUB_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+          className="inline-flex items-center gap-1 hover:text-basalt-foreground transition-colors"
         >
           <Github className="h-3 w-3" strokeWidth={1.5} />
           GitHub
         </a>
-        <span className="text-muted-foreground/40">&middot;</span>
+        <span className="text-basalt-muted-foreground/40">&middot;</span>
         <Link
           href="/privacy"
-          className="hover:text-foreground transition-colors"
+          className="hover:text-basalt-foreground transition-colors"
         >
           Privacy
         </Link>

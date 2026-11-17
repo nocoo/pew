@@ -12,7 +12,7 @@ import {
 } from "@nocoo/basalt/components/dialog";
 import { Field } from "@nocoo/basalt/components/field";
 import { Input } from "@nocoo/basalt/components/input";
-import { Settings } from "lucide-react";
+import { Settings } from "@nocoo/basalt/icons";
 import { formatTokensFull } from "@/lib/utils";
 import { useRestoreDialogFocus } from "@/lib/restore-dialog-focus";
 

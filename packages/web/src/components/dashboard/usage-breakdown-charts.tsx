@@ -11,7 +11,7 @@ import { agentColor, chartAxis, chartMuted, CHART_COLORS, modelColor } from "@/l
 import { toUsageBreakdown, type UsageDimension } from "@/lib/usage-breakdown";
 import { sourceLabel, type UsageRow } from "@/lib/usage-transforms";
 import { formatTokens } from "@/lib/utils";
-import { ErrorBanner } from "@/components/ui/error-banner";
+import { ErrorBanner } from "@/components/error-banner";
 import { DashboardResponsiveContainer } from "./dashboard-responsive-container";
 import { ChartLegendMore } from "./chart-legend-more";
 import { ChartTooltip, ChartTooltipRow } from "./chart-tooltip";
@@ -62,15 +62,15 @@ export function UsageBreakdownCharts({ records, from, to, start, end, tzOffset, 
   const emptyMessage = loading ? "Loading device usage…" : error ? "Device usage unavailable" : "No tokens to display.";
 
   return <section aria-label="Usage breakdown" className="space-y-3">
-    <fieldset aria-label="Breakdown dimension" className="flex w-fit items-center gap-1 rounded-lg bg-muted p-1">
+    <fieldset aria-label="Breakdown dimension" className="flex w-fit items-center gap-1 rounded-lg bg-basalt-muted p-1">
       {(Object.keys(DIMENSIONS) as UsageDimension[]).map((value) => <Button key={value} type="button" size="sm"
         variant={dimension === value ? "secondary" : "ghost"} aria-pressed={dimension === value} onClick={() => onDimensionChange(value)}>
         {DIMENSIONS[value]}
       </Button>)}
     </fieldset>
     <div className="grid grid-cols-1 gap-3 md:gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
-      <figure aria-label="Daily token breakdown" className="flex min-w-0 flex-col rounded-card bg-secondary p-4 md:p-5">
-        <figcaption className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs md:text-sm text-muted-foreground">
+      <figure aria-label="Daily token breakdown" className="flex min-w-0 flex-col rounded-card bg-basalt-secondary p-4 md:p-5">
+        <figcaption className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs md:text-sm text-basalt-muted-foreground">
           <span>Daily Tokens by {DIMENSIONS[dimension]}</span>
           <span className="text-xs">{dateLabel(start)} – {dateLabel(end)} · Local time</span>
         </figcaption>
@@ -80,7 +80,7 @@ export function UsageBreakdownCharts({ records, from, to, start, end, tzOffset, 
         </div>}
         {available ? <>
           <div className="mb-4 flex flex-wrap gap-x-4 gap-y-2">
-            {series.slice(0, legendLimit).map((s) => <span key={s.key} className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground" title={s.name}>
+            {series.slice(0, legendLimit).map((s) => <span key={s.key} className="flex min-w-0 items-center gap-1.5 text-xs text-basalt-muted-foreground" title={s.name}>
               <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
               <span className="max-w-[160px] truncate">{dimension === "model" ? shortModel(s.name) : s.name}</span>
             </span>)}
@@ -97,10 +97,10 @@ export function UsageBreakdownCharts({ records, from, to, start, end, tzOffset, 
               </BarChart>
             </DashboardResponsiveContainer>
           </div>
-        </> : <div className="flex min-h-[280px] flex-1 items-center justify-center text-sm text-muted-foreground" role="status">{emptyMessage}</div>}
+        </> : <div className="flex min-h-[280px] flex-1 items-center justify-center text-sm text-basalt-muted-foreground" role="status">{emptyMessage}</div>}
       </figure>
-      <figure aria-label="Token share" className="flex min-w-0 flex-col rounded-card bg-secondary p-4 md:p-5">
-        <figcaption className="flex items-center justify-between gap-2 text-xs md:text-sm text-muted-foreground">
+      <figure aria-label="Token share" className="flex min-w-0 flex-col rounded-card bg-basalt-secondary p-4 md:p-5">
+        <figcaption className="flex items-center justify-between gap-2 text-xs md:text-sm text-basalt-muted-foreground">
           <span>{DIMENSIONS[dimension]} Share</span>
           {available && <span className="text-xs tabular-nums">{formatTokens(breakdown.total)} tokens</span>}
         </figcaption>
@@ -123,14 +123,14 @@ export function UsageBreakdownCharts({ records, from, to, start, end, tzOffset, 
             <ul className="space-y-2">
               {series.slice(0, legendLimit).map((s) => <li key={s.key} className="flex items-center gap-2 text-xs" title={s.name}>
                 <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: s.color }} />
-                <span className="min-w-0 flex-1 truncate text-muted-foreground">{dimension === "model" ? shortModel(s.name) : s.name}</span>
+                <span className="min-w-0 flex-1 truncate text-basalt-muted-foreground">{dimension === "model" ? shortModel(s.name) : s.name}</span>
                 <span className="shrink-0 tabular-nums">{formatTokens(s.total)}</span>
-                <span className="w-11 shrink-0 text-right tabular-nums text-muted-foreground">{(s.total / breakdown.total * 100).toFixed(1)}%</span>
+                <span className="w-11 shrink-0 text-right tabular-nums text-basalt-muted-foreground">{(s.total / breakdown.total * 100).toFixed(1)}%</span>
               </li>)}
             </ul>
             <ChartLegendMore items={legendItems} visibleCount={legendLimit} />
           </div>
-        </> : <div className="flex min-h-[280px] flex-1 items-center justify-center text-sm text-muted-foreground">{emptyMessage}</div>}
+        </> : <div className="flex min-h-[280px] flex-1 items-center justify-center text-sm text-basalt-muted-foreground">{emptyMessage}</div>}
       </figure>
     </div>
   </section>;

@@ -1,4 +1,6 @@
-import { createLucideIcon } from "lucide-react";
+"use client";
+
+import { createLucideIcon } from "@nocoo/basalt/icons";
 
 // Hexly's six-segment mark, reduced to the same outline style as the toolbar.
 export const Hexly = createLucideIcon("Hexly", [

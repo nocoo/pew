@@ -38,7 +38,7 @@ import {
   Database,
   Building2,
   GitCompareArrows,
-} from "lucide-react";
+} from "@nocoo/basalt/icons";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { AppHeader } from "@nocoo/basalt/components/app-header";
 import { AppMain, AppShell as BasaltAppShell, AppSkipLink } from "@nocoo/basalt/components/app-shell";
 import { Button, ContentIsland, Sheet, SheetContent, SheetTitle, Tooltip, TooltipContent, TooltipTrigger } from "@nocoo/basalt";
-import { Menu, ShieldCheck } from "lucide-react";
+import { Menu, ShieldCheck } from "@nocoo/basalt/icons";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePauseChartsForSidebar } from "@/components/chart-animation-provider";

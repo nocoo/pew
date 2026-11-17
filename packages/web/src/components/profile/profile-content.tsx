@@ -10,14 +10,14 @@ import {
   Database,
   DollarSign,
   Calendar,
-} from "lucide-react";
+} from "@nocoo/basalt/icons";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { Empty } from "@nocoo/basalt/components/empty";
 import { cn, formatTokens } from "@/lib/utils";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { usePricingMap, formatCost } from "@/hooks/use-pricing";
 import { computeTotalCost } from "@/lib/cost-helpers";
-import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
 import { StatCard, StatGrid } from "@/components/dashboard/stat-card";
 import { UsageTrendChart } from "@/components/dashboard/usage-trend-chart";
 import { SourceDonutChart } from "@/components/dashboard/source-donut-chart";
@@ -58,10 +58,10 @@ function ContentSkeleton() {
             <div
               // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
               key={`slot-${i}`}
-              className="rounded-card bg-secondary p-4 md:p-5 space-y-2"
+              className="rounded-card bg-basalt-secondary p-4 md:p-5 space-y-2"
             >
-              <Skeleton className="h-4 w-16" />
-              <Skeleton className="h-8 w-24" />
+              <SkeletonLine style={{ width: undefined }} className="h-4 w-16" />
+              <SkeletonLine style={{ width: undefined }} className="h-8 w-24" />
             </div>
           ))}
         </StatGrid>
@@ -69,22 +69,22 @@ function ContentSkeleton() {
 
       {/* Charts skeleton */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-3">
-        <div className="rounded-card bg-secondary p-4 md:p-5">
-          <Skeleton className="h-4 w-24 mb-3" />
-          <Skeleton className="h-[220px] w-full" />
+        <div className="rounded-card bg-basalt-secondary p-4 md:p-5">
+          <SkeletonLine style={{ width: undefined }} className="h-4 w-24 mb-3" />
+          <SkeletonLine style={{ width: undefined }} className="h-[220px] w-full" />
         </div>
-        <div className="rounded-card bg-secondary p-4 md:p-5 flex flex-col">
-          <Skeleton className="h-4 w-20 mb-3" />
+        <div className="rounded-card bg-basalt-secondary p-4 md:p-5 flex flex-col">
+          <SkeletonLine style={{ width: undefined }} className="h-4 w-20 mb-3" />
           <div className="flex flex-1 items-center justify-center">
-            <Skeleton className="h-[180px] w-[180px] rounded-full" />
+            <SkeletonLine style={{ width: undefined }} className="h-[180px] w-[180px] rounded-full" />
           </div>
         </div>
       </div>
 
       {/* Model breakdown skeleton */}
-      <div className="rounded-card bg-secondary p-4 md:p-5">
-        <Skeleton className="h-4 w-20 mb-4" />
-        <Skeleton className="h-[200px] w-full" />
+      <div className="rounded-card bg-basalt-secondary p-4 md:p-5">
+        <SkeletonLine style={{ width: undefined }} className="h-4 w-20 mb-4" />
+        <SkeletonLine style={{ width: undefined }} className="h-[200px] w-full" />
       </div>
     </div>
   );
@@ -197,7 +197,7 @@ export function ProfileContent({
       <div className="mb-5 flex items-start justify-end gap-2">
       {/* Tab bar — hidden when only 1 tab */}
       {tabs.length > 1 && (
-        <div className="flex min-w-0 flex-1 gap-1 rounded-lg bg-secondary p-1">
+        <div className="flex min-w-0 flex-1 gap-1 rounded-lg bg-basalt-secondary p-1">
           {tabs.map((t) => (
             <button type="button"
               key={t.id}
@@ -205,8 +205,8 @@ export function ProfileContent({
               className={cn(
                 "flex-1 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                 tab === t.id
-                  ? "bg-secondary text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
+                  ? "bg-basalt-secondary text-basalt-foreground shadow-sm"
+                  : "text-basalt-muted-foreground hover:text-basalt-foreground",
               )}
             >
               {t.label}
@@ -219,7 +219,7 @@ export function ProfileContent({
 
       {/* Season date range indicator */}
       {tab === "season" && season && (
-        <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-5">
+        <div className="flex items-center gap-1.5 text-sm text-basalt-muted-foreground mb-5">
           <Calendar className="h-3.5 w-3.5" />
           <span>
             {new Date(season.start).toLocaleDateString()} –{" "}
@@ -260,7 +260,7 @@ export function ProfileContent({
                 value={formatTokens(accountingSummary.totalTokens)}
                 subtitle={tabSubtitle}
                 icon={Zap}
-                iconColor="text-primary"
+                iconColor="text-basalt-primary"
               />
               <StatCard
                 title="Est. Cost"
@@ -311,12 +311,12 @@ export function ProfileContent({
 
 
             {/* Activity heatmap */}
-            <div className="rounded-card bg-secondary p-4 md:p-5">
-              <p className="mb-3 text-xs md:text-sm text-muted-foreground">
+            <div className="rounded-card bg-basalt-secondary p-4 md:p-5">
+              <p className="mb-3 text-xs md:text-sm text-basalt-muted-foreground">
                 {currentYear} Activity
               </p>
               {yearData.loading ? (
-                <Skeleton className="h-[120px] w-full" />
+                <SkeletonLine style={{ width: undefined }} className="h-[120px] w-full" />
               ) : (
                 <HeatmapCalendar
                   data={yearData.heatmap}

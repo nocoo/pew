@@ -16,7 +16,7 @@ import {
   Camera,
   Pencil,
   X,
-} from "lucide-react";
+} from "@nocoo/basalt/icons";
 import { Badge } from "@nocoo/basalt/components/badge";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
 import { Banner } from "@nocoo/basalt/components/banner";
@@ -25,12 +25,12 @@ import { Empty } from "@nocoo/basalt/components/empty";
 import { Input } from "@nocoo/basalt/components/input";
 import { Label } from "@nocoo/basalt/components/label";
 import { Switch } from "@nocoo/basalt/components/switch";
-import { rowIconClassName } from "@/components/ui/button";
+import { rowIconClassName } from "@/lib/ghost-icon";
 import { StatusBadge } from "@/components/leaderboard/status-badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ConfirmDialog, useConfirm } from "@/components/ui/confirm-dialog";
-import { MessageBanner, type MessageBannerMsg } from "@/components/ui/message-banner";
+import { Avatar, AvatarFallback, AvatarImage } from "@nocoo/basalt/components/avatar";
+import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { ConfirmDialog, useConfirm } from "@nocoo/basalt/components/confirm-dialog";
+import { MessageBanner, type MessageBannerMsg } from "@/components/message-banner";
 import { InviteDialog, useInviteDialog } from "@/components/teams/invite-dialog";
 import {
   useSeasonRegistration,
@@ -83,16 +83,16 @@ function SeasonRow({
   const isBusy = busy === season.id;
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg bg-accent/50 px-4 py-3">
+    <div className="flex items-center justify-between gap-3 rounded-lg bg-basalt-accent/50 px-4 py-3">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <p className="text-sm font-medium text-foreground truncate">
+          <p className="text-sm font-medium text-basalt-foreground truncate">
             {season.name}
           </p>
           <StatusBadge status={season.status} />
           {season.is_registered && <Badge variant="info">Registered</Badge>}
         </div>
-        <p className="mt-0.5 text-xs text-muted-foreground">
+        <p className="mt-0.5 text-xs text-basalt-muted-foreground">
           {formatSeasonDate(season.start_date)} – {formatSeasonDate(season.end_date)}
           {" · "}
           {season.team_count} team{season.team_count !== 1 ? "s" : ""}
@@ -181,7 +181,7 @@ function AutoRegisterToggle({
   };
 
   return (
-    <div className="flex items-start gap-3 rounded-lg bg-accent/50 px-4 py-3">
+    <div className="flex items-start gap-3 rounded-lg bg-basalt-accent/50 px-4 py-3">
       <Switch
         id={toggleId}
         checked={enabled}
@@ -195,10 +195,10 @@ function AutoRegisterToggle({
             Auto-register for new seasons
           </Label>
           {saving && (
-            <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" strokeWidth={1.5} />
+            <Loader2 className="h-3 w-3 animate-spin text-basalt-muted-foreground" strokeWidth={1.5} />
           )}
         </div>
-        <p className="mt-0.5 text-xs text-muted-foreground">
+        <p className="mt-0.5 text-xs text-basalt-muted-foreground">
           When enabled, your team will be automatically registered for new upcoming
           seasons. You can withdraw before a season starts; later withdrawal follows its rules.
         </p>
@@ -250,8 +250,8 @@ function SeasonRegistration({
   if (loading) {
     return (
       <div className="space-y-2">
-        <Skeleton className="h-14 w-full rounded-lg" />
-        <Skeleton className="h-14 w-full rounded-lg" />
+        <SkeletonLine style={{ width: undefined }} className="h-14 w-full rounded-lg" />
+        <SkeletonLine style={{ width: undefined }} className="h-14 w-full rounded-lg" />
       </div>
     );
   }
@@ -546,10 +546,10 @@ export default function TeamDetailPage() {
   if (loading) {
     return (
       <div className="max-w-3xl space-y-8">
-        <Skeleton className="h-8 w-48" />
+        <SkeletonLine style={{ width: undefined }} className="h-8 w-48" />
         <div className="space-y-4">
-          <Skeleton className="h-24 w-full rounded-xl" />
-          <Skeleton className="h-40 w-full rounded-xl" />
+          <SkeletonLine style={{ width: undefined }} className="h-24 w-full rounded-xl" />
+          <SkeletonLine style={{ width: undefined }} className="h-40 w-full rounded-xl" />
         </div>
       </div>
     );
@@ -601,7 +601,7 @@ export default function TeamDetailPage() {
       <div className="flex items-start gap-4">
         {/* Team Logo */}
         <div className="relative shrink-0 group">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-accent text-muted-foreground overflow-hidden">
+          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-basalt-accent text-basalt-muted-foreground overflow-hidden">
             {team.logoUrl ? (
               // biome-ignore lint/performance/noImgElement: user-supplied image URL, not amenable to next/image domain allowlist -- external team logos
               <img
@@ -672,7 +672,7 @@ export default function TeamDetailPage() {
                     disabled={savingName}
                   />
                   {savingName && (
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" strokeWidth={1.5} />
+                    <Loader2 className="h-4 w-4 animate-spin text-basalt-muted-foreground" strokeWidth={1.5} />
                   )}
                 </span>
               ) : (
@@ -712,7 +712,7 @@ export default function TeamDetailPage() {
 
       {/* Members */}
       <section>
-        <h2 className="flex items-center gap-2 text-sm font-medium text-foreground mb-3">
+        <h2 className="flex items-center gap-2 text-sm font-medium text-basalt-foreground mb-3">
           <Users className="h-4 w-4" strokeWidth={1.5} />
           Members
         </h2>
@@ -720,7 +720,7 @@ export default function TeamDetailPage() {
           {team.members.map((member) => (
             <div
               key={member.userId}
-              className="flex items-center gap-3 rounded-lg bg-secondary px-4 py-2.5"
+              className="flex items-center gap-3 rounded-lg bg-basalt-secondary px-4 py-2.5"
             >
               <Button
                 type="button"
@@ -734,12 +734,12 @@ export default function TeamDetailPage() {
                     {(member.name ?? "?").charAt(0).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <p className="min-w-0 flex-1 truncate text-left text-sm text-foreground">
+                <p className="min-w-0 flex-1 truncate text-left text-sm text-basalt-foreground">
                   {member.name ?? "Unknown"}
                 </p>
               </Button>
               {member.role === "owner" ? (
-                <span className="text-xs font-medium text-primary shrink-0">
+                <span className="text-xs font-medium text-basalt-primary shrink-0">
                   Owner
                 </span>
               ) : isOwner ? (
@@ -755,7 +755,7 @@ export default function TeamDetailPage() {
                   <span className="hidden sm:inline">Remove</span>
                 </Button>
               ) : (
-                <span className="text-xs font-medium text-muted-foreground shrink-0">
+                <span className="text-xs font-medium text-basalt-muted-foreground shrink-0">
                   Member
                 </span>
               )}
@@ -767,11 +767,11 @@ export default function TeamDetailPage() {
       {/* Season registration — owners only */}
       {isOwner && (
         <section>
-          <h2 className="flex items-center gap-2 text-sm font-medium text-foreground mb-3">
+          <h2 className="flex items-center gap-2 text-sm font-medium text-basalt-foreground mb-3">
             <Trophy className="h-4 w-4" strokeWidth={1.5} />
             Season Registration
           </h2>
-          <p className="text-xs text-muted-foreground mb-3">
+          <p className="text-xs text-basalt-muted-foreground mb-3">
             {autoRegisterEnabled
               ? "Your team is automatically registered for all upcoming seasons."
               : "Register your team for upcoming seasons to compete on the leaderboard. Rosters are frozen at registration time."}
@@ -792,11 +792,11 @@ export default function TeamDetailPage() {
 
       {/* Leave/Delete Team */}
       <section>
-        <div className="rounded-lg border border-border p-4">
-          <h3 className="text-sm font-medium text-foreground mb-2">
+        <div className="rounded-lg border border-basalt-border p-4">
+          <h3 className="text-sm font-medium text-basalt-foreground mb-2">
             {isSoloOwner ? "Delete Team" : "Leave Team"}
           </h3>
-          <p className="text-xs text-muted-foreground mb-3">
+          <p className="text-xs text-basalt-muted-foreground mb-3">
             {isSoloOwner
               ? "Permanently delete this team and all its data. This action cannot be undone."
               : isOwner

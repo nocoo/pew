@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Banner } from "@nocoo/basalt/components/banner";
 import { Button } from "@nocoo/basalt/components/button";
-import { chromeIconClassName } from "@/components/ui/button";
+import { chromeIconClassName } from "@/lib/ghost-icon";
 import { Input } from "@nocoo/basalt/components/input";
 import { LoadingScreen } from "@nocoo/basalt/components/loading-screen";
 import { signIn } from "next-auth/react";

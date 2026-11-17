@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
 
 interface ChartCardSkeletonProps {
   /** Tailwind width class for the title bar (e.g. "w-24"). */
@@ -9,7 +9,7 @@ interface ChartCardSkeletonProps {
 
 /**
  * Dashboard chart-card loading skeleton: title bar + full-width chart body
- * inside the standard `rounded-card bg-secondary p-4 md:p-5` shell.
+ * inside the standard `rounded-card bg-basalt-secondary p-4 md:p-5` shell.
  *
  * Intentionally narrow — covers only "title + full-width chart" cards.
  * Donut cards, stat grids, hero composites, and any nested-grid composites
@@ -20,9 +20,9 @@ export function ChartCardSkeleton({
   chartHeight,
 }: ChartCardSkeletonProps) {
   return (
-    <div className="rounded-card bg-secondary p-4 md:p-5">
-      <Skeleton className={`h-3 ${titleWidth} mb-4`} />
-      <Skeleton className={`${chartHeight} w-full`} />
+    <div className="rounded-card bg-basalt-secondary p-4 md:p-5">
+      <SkeletonLine style={{ width: undefined }} className={`h-3 ${titleWidth} mb-4`} />
+      <SkeletonLine style={{ width: undefined }} className={`${chartHeight} w-full`} />
     </div>
   );
 }

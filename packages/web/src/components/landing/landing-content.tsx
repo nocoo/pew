@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight } from "@nocoo/basalt/icons";
 import { Button } from "@nocoo/basalt/components/button";
 import { ClipboardText } from "@nocoo/basalt/components/clipboard-text";
 import {
@@ -27,7 +27,7 @@ const NO_HOOK_NOTE =
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground/65">
+    <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-basalt-muted-foreground/65">
       {children}
     </p>
   );
@@ -35,7 +35,7 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 
 function Code({ children }: { children: React.ReactNode }) {
   return (
-    <code className="rounded bg-foreground/[0.06] px-1.5 py-0.5 font-mono text-[11px] text-foreground sm:text-[12px]">
+    <code className="rounded bg-basalt-foreground/[0.06] px-1.5 py-0.5 font-mono text-[11px] text-basalt-foreground sm:text-[12px]">
       {children}
     </code>
   );
@@ -56,11 +56,11 @@ function Coupon({
     <section
       className={cn(
         "flex min-w-0 flex-col px-3.5 pt-4 pb-5 sm:px-4 sm:pt-4 sm:pb-6",
-        tinted && "bg-secondary/40",
+        tinted && "bg-basalt-secondary/40",
         className,
       )}
     >
-      <p className="mb-2.5 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground/70">
+      <p className="mb-2.5 text-[10px] font-medium uppercase tracking-[0.14em] text-basalt-muted-foreground/70">
         {title}
       </p>
       <div className="flex min-h-0 flex-1 flex-col">{children}</div>
@@ -121,29 +121,29 @@ function PassengerCoupon() {
           aria-hidden="true"
         />
         <div className="min-w-0">
-          <h1 className="font-handwriting text-3xl leading-none tracking-tight text-foreground">
+          <h1 className="font-handwriting text-3xl leading-none tracking-tight text-basalt-foreground">
             pew
           </h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">Token tracker</p>
+          <p className="mt-0.5 text-xs text-basalt-muted-foreground">Token tracker</p>
         </div>
       </div>
 
-      <p className="mt-3 font-display text-sm font-semibold leading-snug tracking-tight text-foreground">
+      <p className="mt-3 font-display text-sm font-semibold leading-snug tracking-tight text-basalt-foreground">
         The contribution graph for AI-native devs.
       </p>
-      <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-        Counts <span className="text-foreground">tokens</span>, never conversations.
+      <p className="mt-1.5 text-xs leading-relaxed text-basalt-muted-foreground">
+        Counts <span className="text-basalt-foreground">tokens</span>, never conversations.
         Local-first · privacy by default.
       </p>
 
-      <div className="mt-auto grid grid-cols-2 gap-2 border-t border-border/70 pt-3">
+      <div className="mt-auto grid grid-cols-2 gap-2 border-t border-basalt-border/70 pt-3">
         <div>
           <FieldLabel>Class</FieldLabel>
-          <p className="mt-0.5 text-xs font-semibold text-foreground">AI Native</p>
+          <p className="mt-0.5 text-xs font-semibold text-basalt-foreground">AI Native</p>
         </div>
         <div>
           <FieldLabel>Cabin</FieldLabel>
-          <p className="mt-0.5 text-xs font-semibold text-foreground">Local-first</p>
+          <p className="mt-0.5 text-xs font-semibold text-basalt-foreground">Local-first</p>
         </div>
       </div>
     </Coupon>
@@ -154,30 +154,30 @@ function FlightCoupon() {
   return (
     <Coupon title="Flight" className="lg:flex-[1.2]">
       {/* FROM → TO — boarding-pass route decoration */}
-      <div className="rounded-lg border border-border/80 bg-secondary/30 px-2.5 py-2.5 sm:px-3">
+      <div className="rounded-lg border border-basalt-border/80 bg-basalt-secondary/30 px-2.5 py-2.5 sm:px-3">
         <div className="flex items-center justify-between gap-1.5">
           <div className="min-w-0">
             <FieldLabel>From</FieldLabel>
-            <p className="font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+            <p className="font-display text-xl font-bold tracking-tight text-basalt-foreground sm:text-2xl">
               LCL
             </p>
-            <p className="truncate text-[10px] text-muted-foreground">Local logs</p>
+            <p className="truncate text-[10px] text-basalt-muted-foreground">Local logs</p>
           </div>
 
           <div className="flex min-w-0 flex-1 flex-col items-center gap-0.5 px-1">
             <div className="flex w-full items-center gap-1">
-              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-border to-primary/40" />
-              <SpaceshipIcon className="h-3.5 w-7 shrink-0 text-primary sm:h-4 sm:w-8" />
-              <div className="h-px flex-1 bg-gradient-to-r from-primary/40 via-border to-transparent" />
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-basalt-border to-basalt-primary/40" />
+              <SpaceshipIcon className="h-3.5 w-7 shrink-0 text-basalt-primary sm:h-4 sm:w-8" />
+              <div className="h-px flex-1 bg-gradient-to-r from-basalt-primary/40 via-basalt-border to-transparent" />
             </div>
           </div>
 
           <div className="min-w-0 text-right">
             <FieldLabel>To</FieldLabel>
-            <p className="font-display text-xl font-bold tracking-tight text-primary sm:text-2xl">
+            <p className="font-display text-xl font-bold tracking-tight text-basalt-primary sm:text-2xl">
               AIN
             </p>
-            <p className="truncate text-[10px] text-muted-foreground">AI Native</p>
+            <p className="truncate text-[10px] text-basalt-muted-foreground">AI Native</p>
           </div>
         </div>
       </div>
@@ -192,8 +192,8 @@ function FlightCoupon() {
                 <span
                   className={cn(
                     "inline-flex items-center gap-1 rounded-full",
-                    "border border-border/70 bg-card px-1.5 py-0.5",
-                    "text-[10px] font-medium text-foreground/90",
+                    "border border-basalt-border/70 bg-basalt-card px-1.5 py-0.5",
+                    "text-[10px] font-medium text-basalt-foreground/90",
                   )}
                 >
                   <span
@@ -221,11 +221,11 @@ function BoardingCoupon() {
       </div>
 
       <ol
-        className="mt-3 space-y-1 text-xs text-muted-foreground sm:text-[13px]"
+        className="mt-3 space-y-1 text-xs text-basalt-muted-foreground sm:text-[13px]"
         aria-label="Quick start"
       >
         <li className="flex items-baseline gap-2">
-          <span className="font-mono text-[10px] text-primary" aria-hidden="true">
+          <span className="font-mono text-[10px] text-basalt-primary" aria-hidden="true">
             1
           </span>
           <span>
@@ -233,7 +233,7 @@ function BoardingCoupon() {
           </span>
         </li>
         <li className="flex items-baseline gap-2">
-          <span className="font-mono text-[10px] text-primary" aria-hidden="true">
+          <span className="font-mono text-[10px] text-basalt-primary" aria-hidden="true">
             2
           </span>
           <span>
@@ -241,14 +241,14 @@ function BoardingCoupon() {
           </span>
         </li>
         <li className="flex items-baseline gap-2">
-          <span className="font-mono text-[10px] text-primary" aria-hidden="true">
+          <span className="font-mono text-[10px] text-basalt-primary" aria-hidden="true">
             3
           </span>
           <span>auto-sync after sessions</span>
         </li>
       </ol>
 
-      <p className="mt-2 text-[10px] leading-snug text-muted-foreground/60">{NO_HOOK_NOTE}</p>
+      <p className="mt-2 text-[10px] leading-snug text-basalt-muted-foreground/60">{NO_HOOK_NOTE}</p>
 
       <Button asChild className="mt-auto w-full">
         <Link href="/login">
@@ -264,26 +264,26 @@ function BoardingCoupon() {
 function CommandsStub() {
   return (
     <Coupon title="Commands" tinted className="lg:w-[152px] lg:flex-none lg:shrink-0 xl:w-[168px]">
-      <div className="space-y-2 text-xs text-muted-foreground sm:text-[13px]">
+      <div className="space-y-2 text-xs text-basalt-muted-foreground sm:text-[13px]">
         <div>
           <Code>pew sync</Code>
-          <p className="mt-0.5 text-[10px] text-muted-foreground/70">sync now</p>
+          <p className="mt-0.5 text-[10px] text-basalt-muted-foreground/70">sync now</p>
         </div>
         <div>
           <Code>pew status</Code>
-          <p className="mt-0.5 text-[10px] text-muted-foreground/70">local summary</p>
+          <p className="mt-0.5 text-[10px] text-basalt-muted-foreground/70">local summary</p>
         </div>
         <div>
           <Code>pew reset</Code>
-          <p className="mt-0.5 text-[10px] text-muted-foreground/70">full re-scan</p>
+          <p className="mt-0.5 text-[10px] text-basalt-muted-foreground/70">full re-scan</p>
         </div>
         <div>
           <Code>pew update</Code>
-          <p className="mt-0.5 text-[10px] text-muted-foreground/70">latest version</p>
+          <p className="mt-0.5 text-[10px] text-basalt-muted-foreground/70">latest version</p>
         </div>
       </div>
 
-      <p className="mt-auto pt-3 text-[10px] leading-snug text-muted-foreground/50">
+      <p className="mt-auto pt-3 text-[10px] leading-snug text-basalt-muted-foreground/50">
         Keep this stub · gate CLI
       </p>
     </Coupon>
@@ -296,7 +296,7 @@ export function LandingContent() {
   return (
     <main className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-3 pt-16 pb-5 sm:px-5 sm:pt-16 sm:pb-8 lg:pt-8">
       <div
-        className="animate-fade-up overflow-hidden rounded-2xl bg-card ring-1 ring-black/[0.08] dark:ring-white/[0.06]"
+        className="animate-fade-up overflow-hidden rounded-2xl bg-basalt-card ring-1 ring-black/[0.08] dark:ring-white/[0.06]"
         style={{ boxShadow: BADGE_CARD_SHADOW, animationDelay: "40ms" }}
       >
         <PassHeader

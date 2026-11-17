@@ -29,12 +29,12 @@ export function ChartTooltip({ title, children, className }: ChartTooltipProps) 
   return (
     <div
       className={cn(
-        "rounded-[var(--radius-widget)] bg-popover p-2.5 shadow-lg ring-1 ring-border/50",
+        "rounded-[var(--radius-widget)] bg-basalt-popover p-2.5 shadow-lg ring-1 ring-basalt-border/50",
         className
       )}
     >
       {title && (
-        <p className="mb-1.5 text-xs font-medium text-popover-foreground">
+        <p className="mb-1.5 text-xs font-medium text-basalt-popover-foreground">
           {title}
         </p>
       )}
@@ -73,10 +73,10 @@ export function ChartTooltipRow({
         className="h-2 w-2 shrink-0 rounded-full"
         style={{ backgroundColor: color }}
       />
-      <span className="min-w-0 truncate text-muted-foreground" title={label}>{label}</span>
+      <span className="min-w-0 truncate text-basalt-muted-foreground" title={label}>{label}</span>
       <span
         className={cn(
-          "ml-auto shrink-0 font-medium text-popover-foreground",
+          "ml-auto shrink-0 font-medium text-basalt-popover-foreground",
           tabularNums && "tabular-nums"
         )}
       >
@@ -94,7 +94,7 @@ export function ChartTooltipRow({
  * A subtle horizontal divider for separating sections in the tooltip.
  */
 function ChartTooltipDivider() {
-  return <div className="my-1 border-b border-border/50" />;
+  return <div className="my-1 border-b border-basalt-border/50" />;
 }
 
 // ---------------------------------------------------------------------------
@@ -116,8 +116,8 @@ export function ChartTooltipSummary({ label, value }: ChartTooltipSummaryProps) 
     <>
       <ChartTooltipDivider />
       <div className="flex items-center gap-2 text-xs">
-        <span className="text-muted-foreground">{label}</span>
-        <span className="ml-auto font-medium text-popover-foreground">
+        <span className="text-basalt-muted-foreground">{label}</span>
+        <span className="ml-auto font-medium text-basalt-popover-foreground">
           {value}
         </span>
       </div>
@@ -138,6 +138,6 @@ interface ChartTooltipSubtitleProps {
  */
 export function ChartTooltipSubtitle({ children }: ChartTooltipSubtitleProps) {
   return (
-    <p className="mb-1 text-xs text-muted-foreground">{children}</p>
+    <p className="mb-1 text-xs text-basalt-muted-foreground">{children}</p>
   );
 }

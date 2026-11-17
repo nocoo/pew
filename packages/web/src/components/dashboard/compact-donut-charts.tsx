@@ -68,7 +68,7 @@ function CompactDonutChart({ title, data, className }: CompactDonutChartProps) {
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-card bg-secondary p-4 text-sm text-muted-foreground",
+          "flex items-center justify-center rounded-card bg-basalt-secondary p-4 text-sm text-basalt-muted-foreground",
           className
         )}
       >
@@ -80,11 +80,11 @@ function CompactDonutChart({ title, data, className }: CompactDonutChartProps) {
   return (
     <div
       className={cn(
-        "rounded-card bg-secondary p-3",
+        "rounded-card bg-basalt-secondary p-3",
         className
       )}
     >
-      <p className="text-xs text-muted-foreground mb-2">{title}</p>
+      <p className="text-xs text-basalt-muted-foreground mb-2">{title}</p>
 
       <div className="flex items-center gap-3">
         {/* Donut chart */}
@@ -119,10 +119,10 @@ function CompactDonutChart({ title, data, className }: CompactDonutChartProps) {
                 className="h-2 w-2 shrink-0 rounded-full"
                 style={{ background: item.color }}
               />
-              <span className="text-xs text-muted-foreground truncate flex-1">
+              <span className="text-xs text-basalt-muted-foreground truncate flex-1">
                 {item.name}
               </span>
-              <span className="text-xs tabular-nums text-foreground shrink-0">
+              <span className="text-xs tabular-nums text-basalt-foreground shrink-0">
                 {(item.percent * 100).toFixed(0)}%
               </span>
             </div>

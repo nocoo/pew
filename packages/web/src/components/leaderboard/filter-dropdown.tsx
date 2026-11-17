@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@nocoo/basalt/components/dropdown-menu";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown } from "@nocoo/basalt/icons";
 
 export interface FilterDropdownItem {
   key: string;

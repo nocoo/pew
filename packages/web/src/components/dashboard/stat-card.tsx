@@ -1,5 +1,5 @@
 import { LayerCard } from "@nocoo/basalt/components/layer-card";
-import type { LucideIcon } from "lucide-react";
+import type { LucideIcon } from "@nocoo/basalt/icons";
 import { cn } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
@@ -24,7 +24,7 @@ export interface StatCardProps {
   variant?: "primary" | "secondary";
   /**
    * Accent bar at top of card — shows a colored line as visual decoration.
-   * Pass a Tailwind color class (e.g., "bg-primary", "bg-chart-5").
+   * Pass a Tailwind color class (e.g., "bg-basalt-primary", "bg-chart-5").
    */
   accentColor?: string;
   /**
@@ -39,7 +39,7 @@ export interface StatCardProps {
 }
 
 /**
- * Compact stat card — basalt L2 style (bg-secondary, no border/shadow).
+ * Compact stat card — basalt L2 style (bg-basalt-secondary, no border/shadow).
  * Shows title, large value, optional icon, optional trend.
  *
  * Variants:
@@ -51,7 +51,7 @@ export function StatCard({
   value,
   subtitle,
   icon: Icon,
-  iconColor = "text-muted-foreground",
+  iconColor = "text-basalt-muted-foreground",
   trend,
   trends,
   trendUpIsGood = true,
@@ -85,15 +85,15 @@ export function StatCard({
               className={cn(
                 "font-medium",
                 (trendUpIsGood ? isPos : isNeg) && "text-success",
-                (trendUpIsGood ? isNeg : isPos) && "text-destructive",
-                !isPos && !isNeg && "text-muted-foreground"
+                (trendUpIsGood ? isNeg : isPos) && "text-basalt-destructive",
+                !isPos && !isNeg && "text-basalt-muted-foreground"
               )}
             >
               {isPos && "+"}
               {t.value}%
             </span>
             {t.label && (
-              <span className="text-muted-foreground">{t.label}</span>
+              <span className="text-basalt-muted-foreground">{t.label}</span>
             )}
           </div>
         );
@@ -121,7 +121,7 @@ export function StatCard({
           <div className="shrink-0 space-y-1">
             <p
               className={cn(
-                "text-muted-foreground",
+                "text-basalt-muted-foreground",
                 isPrimary ? "text-xs md:text-sm font-medium" : "text-xs md:text-sm"
               )}
             >
@@ -129,18 +129,18 @@ export function StatCard({
             </p>
             <p
               className={cn(
-                "font-semibold text-foreground font-display tracking-tight",
+                "font-semibold text-basalt-foreground font-display tracking-tight",
                 isPrimary ? "text-3xl md:text-4xl" : "text-2xl md:text-3xl"
               )}
             >
               {typeof value === "number" ? value.toLocaleString() : value}
             </p>
             {subtitle && (
-              <p className="text-xs text-muted-foreground">{subtitle}</p>
+              <p className="text-xs text-basalt-muted-foreground">{subtitle}</p>
             )}
           </div>
           {/* Middle: trends (hidden on mobile, shown below instead) */}
-          <div className="hidden md:flex md:flex-1 md:items-center md:justify-end md:border-r md:border-border/50 md:pr-4">
+          <div className="hidden md:flex md:flex-1 md:items-center md:justify-end md:border-r md:border-basalt-border/50 md:pr-4">
             {TrendsContent}
           </div>
           {/* Right: icon */}
@@ -168,7 +168,7 @@ export function StatCard({
             <div className="min-w-0 space-y-1">
               <p
                 className={cn(
-                  "text-muted-foreground",
+                  "text-basalt-muted-foreground",
                   isPrimary ? "text-xs md:text-sm font-medium" : "text-xs md:text-sm"
                 )}
               >
@@ -176,14 +176,14 @@ export function StatCard({
               </p>
               <p
                 className={cn(
-                  "font-semibold text-foreground font-display tracking-tight",
+                  "font-semibold text-basalt-foreground font-display tracking-tight",
                   isPrimary ? "text-3xl md:text-4xl" : "text-2xl md:text-3xl"
                 )}
               >
                 {typeof value === "number" ? value.toLocaleString() : value}
               </p>
               {subtitle && (
-                <p className="text-xs text-muted-foreground">{subtitle}</p>
+                <p className="text-xs text-basalt-muted-foreground">{subtitle}</p>
               )}
             </div>
             {Icon && (

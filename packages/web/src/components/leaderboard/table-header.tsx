@@ -19,7 +19,7 @@ export function TableHeader() {
   return (
     <div className="animate-fade-up" style={{ animationDelay: "200ms" }}>
       {/* Column labels — px-4 matches row padding */}
-      <div className="flex items-center px-4 pb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+      <div className="flex items-center px-4 pb-2 text-[10px] font-semibold uppercase tracking-widest text-basalt-muted-foreground/60">
         {/* Rank — matches row's rank column */}
         <span className={cn(COL_RANK, "text-center")}>Rank</span>
         {/* Gap placeholder — matches row's gap-3 between rank and avatar+name */}
@@ -34,7 +34,7 @@ export function TableHeader() {
         <span className={cn(COL_TOKENS, "text-right")}>Tokens</span>
       </div>
       {/* Thin divider — Armory's Divider--thin--silver */}
-      <div className="h-px bg-border/50" />
+      <div className="h-px bg-basalt-border/50" />
     </div>
   );
 }

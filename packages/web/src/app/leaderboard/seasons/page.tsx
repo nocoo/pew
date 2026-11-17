@@ -8,10 +8,10 @@ import {
   Users,
   Camera,
   Zap,
-} from "lucide-react";
+} from "@nocoo/basalt/icons";
 import { cn } from "@/lib/utils";
 import { TIMELINE_DOT_COLORS } from "@/lib/season-status-config";
-import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
 import { useSeasons, type SeasonListItem } from "@/hooks/use-seasons";
 import { formatSeasonDate } from "@/lib/seasons";
 import { CheckRuling } from "@/components/leaderboard/check-ruling";
@@ -63,7 +63,7 @@ function SeasonCard({
         <TimelineDot status={season.status} />
         {/* Vertical connector — extends through gap to next card, hidden for last item */}
         {!isLast && (
-          <div className="absolute top-7 left-1/2 -translate-x-1/2 w-0.5 h-[calc(100%+8px-4px)] bg-border" />
+          <div className="absolute top-7 left-1/2 -translate-x-1/2 w-0.5 h-[calc(100%+8px-4px)] bg-basalt-border" />
         )}
       </div>
 
@@ -71,8 +71,8 @@ function SeasonCard({
       <Link
         href={`/leaderboard/seasons/${season.slug}`}
         className={cn(
-          "group relative flex-1 block overflow-hidden rounded-card bg-secondary px-4 py-3 transition-colors",
-          "hover:bg-accent cursor-pointer",
+          "group relative flex-1 block overflow-hidden rounded-card bg-basalt-secondary px-4 py-3 transition-colors",
+          "hover:bg-basalt-accent cursor-pointer",
         )}
       >
         <CheckRuling />
@@ -80,13 +80,13 @@ function SeasonCard({
         <div className="relative z-10 flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <h3 className="text-lg font-semibold tracking-tight group-hover:text-primary transition-colors">
+              <h3 className="text-lg font-semibold tracking-tight group-hover:text-basalt-primary transition-colors">
                 {season.name}
               </h3>
               <StatusBadge status={season.status} />
             </div>
 
-            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-basalt-muted-foreground">
               <span className="inline-flex items-center gap-1">
                 <Calendar className="h-3.5 w-3.5" />
                 {formatSeasonDate(season.start_date)} &mdash; {formatSeasonDate(season.end_date)}
@@ -110,7 +110,7 @@ function SeasonCard({
             </div>
           </div>
 
-          <Trophy className="h-5 w-5 text-muted-foreground/50 group-hover:text-primary/50 transition-colors shrink-0 mt-1" />
+          <Trophy className="h-5 w-5 text-basalt-muted-foreground/50 group-hover:text-basalt-primary/50 transition-colors shrink-0 mt-1" />
         </div>
       </Link>
     </div>
@@ -123,19 +123,19 @@ function SeasonCard({
 
 function SeasonCardSkeleton() {
   return (
-    <div className="rounded-card bg-secondary px-4 py-3">
+    <div className="rounded-card bg-basalt-secondary px-4 py-3">
       <div className="flex items-start justify-between">
         <div className="flex-1 space-y-3">
           <div className="flex items-center gap-2">
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="h-5 w-16 rounded-full" />
+            <SkeletonLine style={{ width: undefined }} className="h-5 w-32" />
+            <SkeletonLine style={{ width: undefined }} className="h-5 w-16 rounded-full" />
           </div>
           <div className="flex gap-4">
-            <Skeleton className="h-4 w-48" />
-            <Skeleton className="h-4 w-20" />
+            <SkeletonLine style={{ width: undefined }} className="h-4 w-48" />
+            <SkeletonLine style={{ width: undefined }} className="h-4 w-20" />
           </div>
         </div>
-        <Skeleton className="h-5 w-5 rounded" />
+        <SkeletonLine style={{ width: undefined }} className="h-5 w-5 rounded" />
       </div>
     </div>
   );

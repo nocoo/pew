@@ -5,7 +5,7 @@ import { formatTokens } from "@/lib/utils";
 import { formatCost } from "@/lib/pricing";
 import { chart } from "@/lib/palette";
 import type { WeekdayWeekendStats } from "@/lib/usage-helpers";
-import { CalendarRange } from "lucide-react";
+import { CalendarRange } from "@nocoo/basalt/icons";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,28 +39,28 @@ function ComparisonRow({
 
   return (
     <div className="space-y-2">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
+      <p className="text-xs font-medium text-basalt-muted-foreground">{label}</p>
       <div className="space-y-1.5">
         <div className="flex items-center gap-3">
-          <span className="w-16 shrink-0 text-xs text-muted-foreground">
+          <span className="w-16 shrink-0 text-xs text-basalt-muted-foreground">
             Weekday
           </span>
-          <div className="flex-1 h-5 rounded bg-muted/50 overflow-hidden">
+          <div className="flex-1 h-5 rounded bg-basalt-muted/50 overflow-hidden">
             <div
               key={weekdayPct}
               className="chart-animate chart-grow-x h-full rounded"
               style={{ width: `${weekdayPct}%`, backgroundColor: color }}
             />
           </div>
-          <span className="w-20 shrink-0 text-right text-xs font-medium tabular-nums text-foreground">
+          <span className="w-20 shrink-0 text-right text-xs font-medium tabular-nums text-basalt-foreground">
             {formatter(weekdayValue)}
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="w-16 shrink-0 text-xs text-muted-foreground">
+          <span className="w-16 shrink-0 text-xs text-basalt-muted-foreground">
             Weekend
           </span>
-          <div className="flex-1 h-5 rounded bg-muted/50 overflow-hidden">
+          <div className="flex-1 h-5 rounded bg-basalt-muted/50 overflow-hidden">
             <div
               key={weekendPct}
               className="chart-animate chart-grow-x h-full rounded"
@@ -71,7 +71,7 @@ function ComparisonRow({
               }}
             />
           </div>
-          <span className="w-20 shrink-0 text-right text-xs font-medium tabular-nums text-foreground">
+          <span className="w-20 shrink-0 text-right text-xs font-medium tabular-nums text-basalt-foreground">
             {formatter(weekendValue)}
           </span>
         </div>
@@ -99,7 +99,7 @@ export function WeekdayWeekendChart({
     return (
       <div
         className={cn(
-          "flex items-center justify-center rounded-card bg-secondary p-8 text-sm text-muted-foreground",
+          "flex items-center justify-center rounded-card bg-basalt-secondary p-8 text-sm text-basalt-muted-foreground",
           className,
         )}
       >
@@ -121,7 +121,7 @@ export function WeekdayWeekendChart({
   return (
     <div
       className={cn(
-        "rounded-card bg-secondary p-4 md:p-5",
+        "rounded-card bg-basalt-secondary p-4 md:p-5",
         className,
       )}
     >
@@ -129,15 +129,15 @@ export function WeekdayWeekendChart({
       <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <div className="flex items-center gap-2">
           <CalendarRange
-            className="h-4 w-4 text-muted-foreground"
+            className="h-4 w-4 text-basalt-muted-foreground"
             strokeWidth={1.5}
           />
-          <p className="text-xs md:text-sm text-muted-foreground">
+          <p className="text-xs md:text-sm text-basalt-muted-foreground">
             Weekday vs Weekend
           </p>
         </div>
         {ratioLabel && (
-          <span className="text-xs text-muted-foreground/60">
+          <span className="text-xs text-basalt-muted-foreground/60">
             {ratioLabel}
           </span>
         )}

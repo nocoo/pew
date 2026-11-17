@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@nocoo/basalt/components/dialog";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle } from "@nocoo/basalt/icons";
 import { useState } from "react";
 import { useAdmin } from "@/hooks/use-admin";
 import { useSeasons, type SeasonListItem } from "@/hooks/use-seasons";
