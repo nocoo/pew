@@ -1,2 +1,11 @@
 # OSV-Scanner configuration
 # https://google.github.io/osv-scanner/configuration/
+
+# Dev-only waiver, 30 days. Remove once picomatch has an upstream fix and the lockfile is bumped.
+# picomatch 4.0.7 (GHSA-fc5q-39xc-vjpf, CVSS 8.7) has no fixed version in npm.
+# Reached only via root devDependencies (lint-staged, vite/vitest → tinyglobby/fdir); no package runtime dependency pulls it in.
+# Expires 2026-12-18; re-audit the advisory before then.
+[[IgnoredVulns]]
+id = "GHSA-fc5q-39xc-vjpf"
+ignoreUntil = 2026-12-18
+reason = "picomatch 4.0.7 has no upstream fix; dev-only tooling path, 30-day waiver"
