@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1161.0",
-    "@nocoo/basalt": "^3.5.0",
+    "@nocoo/basalt": "^3.5.1",
     "clsx": "^2.1.1",
     "nanoid": "6.0.2",
     "next": "16.4.3",

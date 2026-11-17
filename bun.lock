@@ -42,7 +42,7 @@
       "version": "3.5.3",
       "dependencies": {
         "@aws-sdk/client-s3": "3.1161.0",
-        "@nocoo/basalt": "^3.5.0",
+        "@nocoo/basalt": "^3.5.1",
         "clsx": "^2.1.1",
         "nanoid": "6.0.2",
         "next": "16.4.3",
@@ -341,7 +341,7 @@
 
     "@next/swc-win32-x64-msvc": ["@next/swc-win32-x64-msvc@16.4.3", "", { "os": "win32", "cpu": "x64" }, "sha512-NmQC9RkJdnPXRaMxtkCzobB3teVjqF33oSOnwDfi+XYGWWYpt+xlGK3mtktSKLbdjwaWbJu2OkkMiRFGUUncKg=="],
 
-    "@nocoo/basalt": ["@nocoo/basalt@3.5.0", "", { "dependencies": { "@radix-ui/react-accordion": "1.3.1", "@radix-ui/react-alert-dialog": "1.2.1", "@radix-ui/react-avatar": "1.3.1", "@radix-ui/react-checkbox": "1.4.1", "@radix-ui/react-collapsible": "1.2.1", "@radix-ui/react-context-menu": "2.4.1", "@radix-ui/react-dialog": "1.3.1", "@radix-ui/react-dropdown-menu": "2.2.1", "@radix-ui/react-hover-card": "1.2.1", "@radix-ui/react-label": "2.1.17", "@radix-ui/react-popover": "1.3.1", "@radix-ui/react-progress": "1.2.1", "@radix-ui/react-radio-group": "1.5.1", "@radix-ui/react-scroll-area": "1.4.0", "@radix-ui/react-select": "2.4.1", "@radix-ui/react-separator": "1.2.0", "@radix-ui/react-slider": "1.6.1", "@radix-ui/react-slot": "1.5.0", "@radix-ui/react-switch": "1.4.1", "@radix-ui/react-tabs": "1.2.1", "@radix-ui/react-toggle": "1.2.1", "@radix-ui/react-toggle-group": "1.2.1", "@radix-ui/react-tooltip": "1.4.1", "class-variance-authority": "^0.7.1", "clsx": "^2.1.1", "cmdk": "^1.1.1", "lucide-react": "^1.70.0", "sonner": "2.0.8", "tailwind-merge": "3.7.0" }, "peerDependencies": { "@tanstack/react-table": "^9", "react": "^19", "react-day-picker": "^10", "react-dom": "^19", "tailwindcss": "^4" }, "optionalPeers": ["@tanstack/react-table", "react-day-picker", "tailwindcss"] }, "sha512-Cr01c5CQn2r/zGIeMLa78i99aSE/hG1MQ0gSON7ugtki/oNV7HHXhRtnf8TyOEvT4BMZs4zIKheHuEN8oUn4AQ=="],
+    "@nocoo/basalt": ["@nocoo/basalt@3.5.1", "", { "dependencies": { "@radix-ui/react-accordion": "1.3.1", "@radix-ui/react-alert-dialog": "1.2.1", "@radix-ui/react-avatar": "1.3.1", "@radix-ui/react-checkbox": "1.4.1", "@radix-ui/react-collapsible": "1.2.1", "@radix-ui/react-context-menu": "2.4.1", "@radix-ui/react-dialog": "1.3.1", "@radix-ui/react-dropdown-menu": "2.2.1", "@radix-ui/react-hover-card": "1.2.1", "@radix-ui/react-label": "2.1.17", "@radix-ui/react-popover": "1.3.1", "@radix-ui/react-progress": "1.2.1", "@radix-ui/react-radio-group": "1.5.1", "@radix-ui/react-scroll-area": "1.4.0", "@radix-ui/react-select": "2.4.1", "@radix-ui/react-separator": "1.2.0", "@radix-ui/react-slider": "1.6.1", "@radix-ui/react-slot": "1.5.0", "@radix-ui/react-switch": "1.4.1", "@radix-ui/react-tabs": "1.2.1", "@radix-ui/react-toggle": "1.2.1", "@radix-ui/react-toggle-group": "1.2.1", "@radix-ui/react-tooltip": "1.4.1", "class-variance-authority": "^0.7.1", "clsx": "^2.1.1", "cmdk": "^1.1.1", "lucide-react": "^1.70.0", "sonner": "2.0.8", "tailwind-merge": "3.7.0" }, "peerDependencies": { "@tanstack/react-table": "^9", "react": "^19", "react-day-picker": "^10", "react-dom": "^19", "tailwindcss": "^4" }, "optionalPeers": ["@tanstack/react-table", "react-day-picker", "tailwindcss"] }, "sha512-o6v86ZRAE9sQVvU/OKKcmWVSvlJzmoAXYSpxMp3Fuuvs6io5L6JRE5qeSB3W8Fj4L0joldT9qvdaUHs0nu0t3Q=="],
 
     "@nocoo/base-cli": ["@nocoo/base-cli@0.3.0", "", { "dependencies": { "citty": "^0.2.2", "consola": "^3.4.2", "picocolors": "^1.1.1", "yocto-spinner": "^1.1.0" } }, "sha512-7YOwAJjOvVT+1Ek5bszLRnAhHx0pUCBSUR3TUYO/4+D67XNee5jw7gmtDesIB2k4u/Lv0jXmgdYqq6tuIx3FVQ=="],
 
