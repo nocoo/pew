@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v3.5.5
+
+### Fixed
+- Unify `ring-1 ring-basalt-border/80 shadow-basalt-card` across all dashboard cards, charts, tables, empty states, and skeletons inside `ContentIsland`.
+
 ## v3.5.4
 
 ### Changed
