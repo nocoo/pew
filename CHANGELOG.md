@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v3.5.4
+
+### Changed
+- Migrate web UI to @nocoo/basalt 3.5 and bump it to 3.5.1.
+
 ## v3.5.3
 
 ### Fixed
