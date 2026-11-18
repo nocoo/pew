@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v3.5.6
+
+### Fixed
+- Align `Sidebar` and `AppShell` with the `@nocoo/basalt` template (`SidebarProvider`, `SidebarBrand`, `SidebarToggle`, `SidebarUser`, `SidebarDrawer`, `AppHeaderMenuButton`) to eliminate logo jitter and collapsed toggle width mismatch.
+
 ## v3.5.5
 
 ### Fixed
