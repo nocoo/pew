@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { AppHeader } from "@nocoo/basalt/components/app-header";
+import { AppHeader, AppHeaderMenuButton } from "@nocoo/basalt/components/app-header";
 import { AppMain, AppShell as BasaltAppShell, AppSkipLink } from "@nocoo/basalt/components/app-shell";
-import { Button, ContentIsland, Sheet, SheetContent, SheetTitle, Tooltip, TooltipContent, TooltipTrigger } from "@nocoo/basalt";
-import { Menu, ShieldCheck } from "@nocoo/basalt/icons";
+import { Button, ContentIsland, Tooltip, TooltipContent, TooltipTrigger } from "@nocoo/basalt";
+import { SidebarDrawer, SidebarProvider } from "@nocoo/basalt/components/sidebar";
+import { ShieldCheck } from "@nocoo/basalt/icons";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { usePauseChartsForSidebar } from "@/components/chart-animation-provider";
 import { Github } from "@/components/icons/github";
 import { HexlyLink } from "./hexly-link";
@@ -14,7 +15,6 @@ import { Sidebar } from "./sidebar";
 import { ThemeToggle } from "./theme-toggle";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { breadcrumbsFromPathname } from "@/lib/navigation";
-import { useRestoreDialogFocus } from "@/lib/restore-dialog-focus";
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -48,45 +48,44 @@ export function AppShell({ children }: AppShellProps) {
   }, [mobileOpen]);
 
   const items = breadcrumbsFromPathname(pathname);
-  const restoreFocus = useRestoreDialogFocus(mobileOpen);
+  const mobileTriggerRef = useRef<HTMLButtonElement>(null);
+  const mobileDrawerId = useId();
 
   return (
     <BasaltAppShell>
       <AppSkipLink>Skip to main content</AppSkipLink>
       {!isMobile ? (
-        <Sidebar collapsed={collapsed} onToggle={() => {
-          pauseCharts();
-          setCollapsed((v) => !v);
-        }} />
+        <SidebarProvider
+          collapsed={collapsed}
+          onCollapsedChange={(next) => {
+            pauseCharts();
+            setCollapsed(next);
+          }}
+        >
+          <Sidebar />
+        </SidebarProvider>
       ) : (
-        <Sheet open={mobileOpen} onOpenChange={changeMobileOpen}>
-          <SheetContent
-            side="left"
-            className="w-[260px] max-w-[260px] border-0 bg-basalt-background p-0 sm:p-0"
-            onCloseAutoFocus={restoreFocus}
-          >
-            <SheetTitle className="sr-only">Navigation</SheetTitle>
-            <Sidebar collapsed={false} onToggle={() => changeMobileOpen(false)} />
-          </SheetContent>
-        </Sheet>
+        <SidebarDrawer
+          id={mobileDrawerId}
+          open={mobileOpen}
+          onOpenChange={changeMobileOpen}
+          returnFocusRef={mobileTriggerRef}
+          title="Navigation"
+          description="Workspace navigation links and account"
+        >
+          <Sidebar resizable={false} onDismiss={() => changeMobileOpen(false)} />
+        </SidebarDrawer>
       )}
       <AppMain>
         <AppHeader
           leading={
             isMobile ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => changeMobileOpen(true)}
-                    aria-label="Open navigation"
-                  >
-                    <Menu aria-hidden="true" strokeWidth={1.5} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">Open navigation</TooltipContent>
-              </Tooltip>
+              <AppHeaderMenuButton
+                ref={mobileTriggerRef}
+                label="Open navigation"
+                aria-controls={mobileDrawerId}
+                onClick={() => changeMobileOpen(true)}
+              />
             ) : null
           }
           breadcrumbs={items}
@@ -122,7 +121,7 @@ export function AppShell({ children }: AppShellProps) {
             </>
           }
         />
-        <div className="flex min-h-0 flex-1 flex-col px-2 pb-2 md:px-3 md:pb-3">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col px-basalt-space-lg pb-basalt-space-lg md:px-basalt-layout-sm md:pb-basalt-layout-sm">
           <ContentIsland>{children}</ContentIsland>
         </div>
       </AppMain>

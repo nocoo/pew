@@ -1,27 +1,22 @@
 "use client";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@nocoo/basalt";
 import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-  Button,
   Sidebar as BasaltSidebar,
+  SidebarBrand,
   SidebarFooter,
   SidebarGroup,
   SidebarHeader,
   SidebarIconItem,
   SidebarItem,
   SidebarNav,
+  SidebarToggle,
   SidebarUser,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@nocoo/basalt";
+  useSidebar,
+} from "@nocoo/basalt/components/sidebar";
 import {
   LayoutDashboard,
   Settings,
-  PanelLeft,
-  LogOut,
   Trophy,
   CalendarDays,
   Clock,
@@ -50,7 +45,6 @@ import {
   BASE_NAV_GROUPS,
   type NavGroupDef,
 } from "@/lib/navigation";
-import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/version";
 
 const ICON_MAP: Record<string, ElementType> = {
@@ -73,8 +67,6 @@ const ICON_MAP: Record<string, ElementType> = {
   Building2,
   GitCompareArrows,
 };
-
-const SIDEBAR_MARK_SLOT_CLASS = "flex w-full items-center";
 
 interface NavItem {
   href: string;
@@ -119,31 +111,19 @@ function openNavItem(href: string, external: boolean | undefined, push: (href: s
   push(href);
 }
 
-function PewMark() {
-  return (
-    <Image
-      src="/logo-80.png"
-      alt=""
-      width={28}
-      height={28}
-      className="h-7 w-7 shrink-0 object-contain"
-    />
-  );
-}
-
 interface SidebarProps {
-  collapsed: boolean;
-  onToggle: () => void;
+  resizable?: boolean;
+  onDismiss?: () => void;
 }
 
-export function Sidebar({ collapsed, onToggle }: SidebarProps) {
+export function Sidebar({ resizable = true, onDismiss }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session } = useSession();
   const { isAdmin } = useAdmin();
+  const { collapsed } = useSidebar();
 
   const navGroups = getNavGroups(isAdmin);
-  const allNavItems = navGroups.flatMap((g) => g.items);
 
   const userName = session?.user?.name ?? "User";
   const userEmail = session?.user?.email ?? "";
@@ -151,105 +131,43 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const userInitial = userName[0] ?? "?";
 
   const avatar = (
-    <Avatar className="h-9 w-9 shrink-0">
+    <Avatar>
       {userImage ? <AvatarImage src={userImage} alt={userName} /> : null}
-      <AvatarFallback className="text-basalt-sm">{userInitial}</AvatarFallback>
+      <AvatarFallback>{userInitial}</AvatarFallback>
     </Avatar>
   );
 
   return (
-    <BasaltSidebar collapsed={collapsed}>
+    <BasaltSidebar resizable={resizable}>
       <SidebarHeader>
-        <div
-          className={cn(
-            SIDEBAR_MARK_SLOT_CLASS,
-            collapsed ? "justify-center" : "justify-between pl-basalt-layout-sm",
-          )}
-        >
-          <Link
-            href="/dashboard"
-            aria-label="pew home"
-            className="flex items-center gap-basalt-space-lg text-basalt-foreground no-underline hover:no-underline"
-          >
-            <PewMark />
-            {collapsed ? null : (
-              <>
-                <span className="text-basalt-xl font-semibold text-basalt-foreground">pew</span>
-                <span className="rounded-basalt-md bg-basalt-secondary px-basalt-space-md py-basalt-space-xs text-basalt-sm leading-basalt-tight font-medium text-basalt-muted-foreground">
-                  v{APP_VERSION}
-                </span>
-              </>
-            )}
-          </Link>
-          {collapsed ? null : (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onToggle}
-              aria-label="Collapse sidebar"
-            >
-              <PanelLeft aria-hidden="true" strokeWidth={1.5} />
-            </Button>
-          )}
-        </div>
+        <SidebarBrand
+          logo={
+            <Link href="/dashboard" aria-label="pew home">
+              <Image src="/logo-80.png" alt="" width={24} height={24} />
+            </Link>
+          }
+          name="pew"
+          version={`v${APP_VERSION}`}
+          action={
+            onDismiss ? <SidebarToggle mode="dismiss" onDismiss={onDismiss} /> : <SidebarToggle />
+          }
+        />
       </SidebarHeader>
-      {collapsed ? (
-        <>
-          <Tooltip delayDuration={0}>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onToggle}
-                aria-label="Expand sidebar"
-              >
-                <PanelLeft aria-hidden="true" strokeWidth={1.5} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right" sideOffset={8}>
-              Expand sidebar
-            </TooltipContent>
-          </Tooltip>
-          <SidebarNav>
-            {allNavItems.map((item) => (
-              <Tooltip key={item.href} delayDuration={0}>
-                <TooltipTrigger asChild>
-                  <SidebarIconItem
-                    active={!item.external && isActivePath(pathname, item.href)}
-                    aria-label={item.label}
-                    onClick={() => openNavItem(item.href, item.external, router.push)}
-                  >
-                    <item.icon className="h-4 w-4" strokeWidth={1.5} />
-                  </SidebarIconItem>
-                </TooltipTrigger>
-                <TooltipContent side="right" sideOffset={8}>
-                  {item.label}
-                </TooltipContent>
-              </Tooltip>
-            ))}
-          </SidebarNav>
-          <SidebarFooter>
-            <Tooltip delayDuration={0}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => signOut({ callbackUrl: "/login" })}
-                  aria-label={`${userName} · Click to sign out`}
+      <SidebarNav aria-label="Workspace navigation">
+        {collapsed
+          ? navGroups.flatMap((group) =>
+              group.items.map((item) => (
+                <SidebarIconItem
+                  key={item.href}
+                  active={!item.external && isActivePath(pathname, item.href)}
+                  onClick={() => openNavItem(item.href, item.external, router.push)}
                 >
-                  {avatar}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={8}>
-                {userName} · Click to sign out
-              </TooltipContent>
-            </Tooltip>
-          </SidebarFooter>
-        </>
-      ) : (
-        <>
-          <SidebarNav>
-            {navGroups.map((group) => (
+                  <item.icon className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+                  <span className="sr-only">{item.label}</span>
+                </SidebarIconItem>
+              )),
+            )
+          : navGroups.map((group) => (
               <SidebarGroup key={group.label} label={group.label} defaultOpen={group.defaultOpen ?? true}>
                 {group.items.map((item) => (
                   <SidebarItem
@@ -270,27 +188,15 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 ))}
               </SidebarGroup>
             ))}
-          </SidebarNav>
-          <SidebarFooter>
-            <SidebarUser
-              name={userName}
-              email={userEmail}
-              avatar={avatar}
-              action={
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-8 shrink-0"
-                  onClick={() => signOut({ callbackUrl: "/login" })}
-                  aria-label="Sign out"
-                >
-                  <LogOut aria-hidden="true" strokeWidth={1.5} />
-                </Button>
-              }
-            />
-          </SidebarFooter>
-        </>
-      )}
+      </SidebarNav>
+      <SidebarFooter>
+        <SidebarUser
+          name={userName}
+          email={userEmail}
+          avatar={avatar}
+          onSignOut={() => void signOut({ callbackUrl: "/login" })}
+        />
+      </SidebarFooter>
     </BasaltSidebar>
   );
 }
