@@ -64,7 +64,7 @@ export function readAuditInputs(root: string): Map<string, string> {
   }
   for (const pkg of ["cli", "core", "web", "worker", "worker-read"]) walk(`packages/${pkg}/src`);
   walk("scripts");
-  for (const path of ["package.json", "bun.lock", "vitest.config.ts", "CLAUDE.md", "scripts/ponytail-audit.sh",
+  for (const path of ["package.json", "bun.lock", "vitest.config.ts", "AGENTS.md", "scripts/ponytail-audit.sh",
     ".agents/skills/ponytail-audit/SKILL.md", ".claude/commands/ponytail-audit.md", "docs/47-usage-evidence.md"]) {
     const file = join(root, path);
     try { if (noLinks(path) && lstatSync(file).isFile()) files.set(path, readFileSync(file, "utf8")); } catch { /* missing inputs fail the stage checks */ }

@@ -1,143 +1,70 @@
 # pew
 
-Bun-workspaces monorepo tracking token usage from local AI coding tools. Human overview: [README.md](README.md).
+Bun-workspaces monorepo tracking token usage and sessions from local AI coding tools across a published CLI, Next.js 16 dashboard, and two Cloudflare Workers.
+Docs: [README.md](README.md) · [Operations & Release](docs/49-agent-operations.md) · [Local E2E Isolation](docs/32-local-e2e-isolation.md) · [jp2 Migration](docs/52-jp2-migration.md) · [Retrospective](Retrospective.md)
 
-- `packages/core` — shared TypeScript types (`@pew/core`, private, zero runtime deps)
-- `packages/cli` — CLI tool (`@nocoo/pew`, published to npm, citty + consola + picocolors)
-- `packages/web` — SaaS dashboard (`@pew/web`, private, Next.js 16 + App Router)
-- `packages/worker` — Cloudflare Worker for D1 ingest writes (`@pew/worker`, private)
-- `packages/worker-read` — Cloudflare Worker for D1 read queries (`@pew/worker-read`, private)
+- `packages/core` (`@pew/core`, private): pure shared TS types, zero runtime deps, `import type` only, `devDependencies`.
+- `packages/cli` (`@nocoo/pew`, public npm): local source parsers, cursors, queues, and upload CLI.
+- `packages/web` (`@pew/web`, private): Next.js 16 App Router dashboard (`@nocoo/basalt`); also follow [packages/web/AGENTS.md](packages/web/AGENTS.md).
+- `packages/worker` (`@pew/worker`, private) & `packages/worker-read` (`@pew/worker-read`, private): Cloudflare Workers for D1 ingest writes and typed read RPC.
 
-Supported tools (9): Antigravity CLI, Claude Code, Codex, GitHub Copilot CLI, Grok, Hermes, OpenCode, OpenClaw, Pi.
+## Commands
 
-Retired sources stay readable and count toward historical rankings, but never accept new token, session, evidence or accounting writes. Core `SOURCES` lists active tools; `VALID_SOURCES` includes historical identities. Ingest acknowledges and ignores exact retired identities so old mixed-source batches do not block active uploads.
-
-## Scope and instruction sources
-
-- This file applies throughout the repository.
-- `packages/web/AGENTS.md` and `packages/web/CLAUDE.md` are Next.js-generated adapters. Follow their framework guidance for web changes; do not recreate root legacy compatibility in them.
-- Maintain this file as the only root handbook; do not recreate `CLAUDE.md`, a symlink, an import or a compatibility alias.
-- Source of truth: root and `packages/*/package.json`, `vitest.config.ts` and `vitest.e2e-cli.config.ts`, `biome.json`, composite `tsconfig` references, `.husky/`, `scripts/`, `.github/workflows/ci.yml`, and the quality-system docs ([upgrade](docs/30-quality-system-upgrade.md), [D1 isolation](docs/31-d1-test-isolation.md)). Record drift rather than lowering the contract.
-
-## Setup and commands
-
-Run from the repository root with Bun as package manager and runtime.
+Run from repo root with pinned Bun `1.4.0` and Node `26.13.1` (CI/Docker parity). Local web env variable names live in `packages/web/.env.example`.
 
 ```sh
 bun install --frozen-lockfile
-bun run build
-bun run dev
-bun run typecheck
-bun run lint
-bun run test
-bun run test:coverage
-bun run test:e2e
-bun run test:e2e:cli
-bun run test:e2e:ui
-bun run test:security
-bun run sync-prices
-bun run release
+bun run dev                       # @pew/web -> http://localhost:7020
+bun run build                     # @pew/core + @pew/web only (B1)
+bun run --cwd packages/cli build  # explicit CLI build before npm publish
+bun run typecheck                 # S1: all 5 packages + tsconfig.e2e.json
+bun run lint                      # S2: typecheck + Biome (0 warnings) + oxc-parser AST gates
+bun run test                      # L1: Vitest unit suite (sole test runner)
+bun run test:coverage             # L1: v8 >=95% statements/branches/functions/lines
+bun run test:e2e                  # L2: API E2E on :17020 (isolated local D1/KV)
+bun run test:e2e:ui               # L4: Playwright E2E on :27020 (isolated D1/KV)
+bun run test:e2e:cli              # CLI pipeline E2E (synthetic temp dirs)
+bun run test:security             # G1/G2: osv-scanner + gitleaks
+bun run test:l1-gate              # L1 pre-commit negative-probe self-test
+bun run sync-prices               # model pricing table sync
+sh scripts/ponytail-audit.sh      # read-only accounting/complexity JSON audit
 ```
 
-`build` builds core types then web; the CLI must be built explicitly with `bun run --cwd packages/cli build` before publishing. `lint` chains typecheck, Biome `--error-on-warnings`, and the two AST gates (`scripts/check-dynamic-delete.ts`, `scripts/check-ts-expect-error.ts`, both on oxc-parser, decoupled from the tsc version). Ports: dev=7020, API E2E=17020, BDD E2E=27020.
+## Invariants
 
-E2E uses per-run temporary local D1/KV bindings and source Workers, never remote test resources. Run from a clean task clone without `.env*` files (except examples); the runners fail closed instead of reading daily-development secrets. Build `@pew/core` first. Each run verifies both `_test_marker` environment and random ownership ID, uses a test-only loopback Cloudflare-envelope bridge, and cleans owned processes/state in `finally`. Port conflicts fail without killing another process. CI must not materialize cloud credentials for these tests.
+- **Active & retired sources**: 9 active tools (`SOURCES`: Antigravity CLI, Claude Code, Codex, Copilot CLI, Grok, Hermes, OpenCode, OpenClaw, Pi); `VALID_SOURCES` keeps historical identities readable for rankings.
+- **Retired ingest**: exact retired identities are acknowledged and ignored (no new token/session/evidence/accounting writes) so mixed-source batches never block active uploads.
+- **Read-only raw data**: never modify, delete, or move original AI-tool logs/SQLite; pew writes only under `~/.config/pew/`.
+- **Source isolation & idempotency**: each parser is independent and must never corrupt other sources; `pew reset && pew sync` is always safe, deduplicating via `ON CONFLICT` upserts (never summed).
+- **Privacy & recovery**: preserve incremental rewind, cursor-loss recovery, and Antigravity tombstone baselines; never upload raw conversation bodies or put raw logs/real CLI state in fixtures.
+- **Auth & typed RPC**: preserve Google login, invite/device flows, bearer auth, server-only secrets, thin routes, and MVVM. Web reads use `DbRead` RPC via `worker-read` `/api/rpc`; never add generic SQL.
+- **DateTime (UTC-in, local-out)**: D1, Workers, and CLI store/compute strictly in UTC (`datetime('now')`, `toISOString()`, `Date.UTC()`, `getUTC*`/`setUTCDate`); derive season status via `deriveSeasonStatus()`.
+- **DateTime UI & ordering**: convert to local time in web UI (`tzOffset`, `toLocaleString()`); use `utcToLocalDatetimeValue()`/`localDatetimeValueToUtc()` for `datetime-local` (never append `Z`); compare by epoch ms.
+- **Build & strictness**: TS strict composite refs across all 5 packages; preserve standalone assets (`public/`, `.next/static`) and `scripts/fix-standalone-swc-helpers.ts`; ban `.skip`/`.only` (Biome error).
+- **Scoped releases**: root and `packages/web` share Web version; CLI/core/Workers version independently. Never use `bun run release` for scoped releases (it bumps every package/Worker and pushes without prompt).
+- **Production deploy**: `main` push triggers Docker CD (`.github/workflows/release.yml`) to `/opt/pew` on jp2; never use `railway up` or manual rebuilds. Worker/schema changes need `wrangler deploy` + live check.
+- **jp2 & Railway safety**: retain stopped Railway project/vars/rollback image; shared Caddy uses `SIGUSR1` hot reload (never restart). Full SOP: [agent operations](docs/49-agent-operations.md).
+- **Ponytail audit**: read `.agents/skills/ponytail-audit/SKILL.md` and run `sh scripts/ponytail-audit.sh` (deterministic stdout JSON only; never write reports or touch real logs, state, queues, or services).
 
-## Source scanning principles
+## Quality & Local Gates
 
-Three inviolable rules govern how pew interacts with source data:
+Follows `system1-quality`; CI slot definitions and pinned `base-ci` revision live in `.github/workflows/quality-slots.yml` (`quality / Z1: Gate` required on `main` and by `release.yml`). Status vocabulary: `enforced`, `planned`, `manual`, `N/A`.
 
-1. **Raw data is read-only**: never modify, delete or move original AI-tool log files. Write operations are limited to pew's own state files under `~/.config/pew/`.
-2. **Source isolation**: each source is completely independent. Even a buggy parser must never corrupt or affect data from other sources.
-3. **Idempotent uploads**: `pew reset && pew sync` is always safe. Duplicate uploads deduplicate via `ON CONFLICT` upserts, never summed; the same raw data always produces the same final state.
+- **Exceptions / gaps**: `L3 Integration` is `N/A` (API/Worker HTTP runs in `L2 Runtime`, CLI pipeline in `test:e2e:cli`); `P1 Package` is `N/A` in CI (private root; `@nocoo/pew` npm publish check is `manual`).
+- **Coverage boundary**: `L1` enforces >=95% x4; `vitest.config.ts` excludes `.tsx` views, client hooks, thin auth/proxy/R2/RPC adapters, and CLI orchestrators.
+- **Extra CI checks**: `ci.yml` adds `L1` pre-commit self-test and Linux container smoke; `admission-primitive.yml` tests cross-OS `wx` lock atomicity.
+- **Pre-commit hook**: installed via `bun run prepare` (`.husky/`). Checks staged index snapshot (`L1`/`S1`/`S2` + AST gates); `G1` runs in `pre-push` and CI; cold full hook exceeds the 30s target.
+- **Pre-push hook**: rejects local `.env*` files, then runs `L2` API E2E (`:17020`), `L4` Playwright E2E (`:27020`), and `G1`/`G2` (`test:security`) in parallel; runs on tag pushes too (never bypass).
 
-## Conventions
+## Resources & Isolation
 
-- TypeScript strict mode with composite project references across all five packages.
-- TDD: write tests first, then implement. Conventional Commits, atomic, one logical change per commit.
-- `@pew/core` is not published: pure types, `import type` only, `devDependencies`.
-- Preserve incremental rewind/cursor-loss recovery and source-specific token accounting; raw conversation bodies are not uploaded. Keep raw logs and real CLI state out of fixtures.
-- Preserve Google login, invitation/device flows, bearer handling and authorized data/query access. Keep secrets server-side, routes thin and MVVM boundaries intact. All web reads use typed `DbRead` RPC methods; the read Worker owns SQL and accepts parameters only through `/api/rpc`. Do not restore a generic SQL endpoint.
-- Preserve standalone assets/SWC helper packaging and pin Bun across local/CI/container versions.
-- Tests must not use `.skip`/`.only`; Biome elevates `noSkippedTests`/`noFocusedTests` to errors in the test-file override.
-
-### DateTime strategy
-
-All date/time values follow a strict UTC-in, local-out pattern:
-
-- **Storage (D1 SQLite)**: `created_at`, `updated_at`, `hour_start` use `datetime('now')` (UTC). Season `start_date`/`end_date` are ISO 8601 UTC strings (`YYYY-MM-DDTHH:mm:ssZ`), precision to minute; status is derived at read time via `deriveSeasonStatus()`, never stored.
-- **Computation (API routes, Worker, CLI)**: all date arithmetic in UTC (`toISOString()`, `Date.UTC()`, `getUTC*()`); never `setDate()`/`getDate()` server-side — use `setUTCDate()`/`getUTCDate()`.
-- **Display (Web UI)**: convert to the user's local timezone before rendering; `tzOffset` pattern for bucketing; `toLocaleString()`/`toLocaleDateString()` on the client.
-- **`datetime-local` inputs** show local wallclock time: UTC → local via `utcToLocalDatetimeValue()`, local → UTC via `localDatetimeValueToUtc()` (both in `date-helpers.ts`). Never append `Z` to a `datetime-local` value directly.
-- **Ordering/equality**: always epoch ms (`new Date(x).getTime()`), never string comparison — ISO variants have unstable lexicographic order.
-
-## CLI dev workflow and state files
-
-Detailed state, time and release contracts: [agent operations](docs/49-agent-operations.md). CLI sync/init/reset are state-changing operations, not documentation checks. Use synthetic sources and temporary directories for CLI tests (`bun run test:e2e:cli`).
-
-```sh
-bun run build
-bun run --cwd packages/cli build
-bun run --filter '@pew/web' dev
-NODE_TLS_REJECT_UNAUTHORIZED=0 bun packages/cli/dist/bin.js sync --dev
-```
-
-A full reset invalidates token/session cursors before rebuilding active-source queues. Retired token/session records and their pending upload intent remain in Pew's own queues because their collectors no longer replay them. Antigravity snapshot baselines also remain so corrected or removed keys can upload tombstones. State files: `config.json` (prod API key `pk_...`), `config.dev.json` (dev API key), `cursors.json` (per-file byte offsets + directory mtimes, shared across dev/prod), `queue.jsonl` (pending upload records), `queue.state.json` (queue metadata).
-
-## Testing and quality contract
-
-Run the checks relevant to the change; hook and CI requirements still apply. Statuses: `enforced`, `planned`, `manual`, `N/A`.
-
-| Dimension | Required contract | Current status and evidence |
+| Lane | Endpoint / State | Boundary |
 | --- | --- | --- |
-| L1 — pre-commit quality | UT with all four coverage metrics ≥95%; strict types and check-only lint with zero errors/warnings; installed hooks on the index snapshot; proven rejection; under 30s; no skipped/focused tests. Pure Views may be covered by L3; business logic stays in scope. | **enforced** on pinned CI (`ubuntu-latest`, Bun 1.4.0). Measured entrypoint: `sh .husky/pre-commit` (same chain as Husky). Command: `bun run test:l1-gate` on a detached worktree with read-only `node_modules` reuse (`scripts/snapshot-node-modules.sh`). Optional wall-clock on the invoking tree: `bun run test:l1-gate -- --measure` (cold = first run after deleting `node_modules/.cache/vitest` and `node_modules/.cache/xdg`; warm = immediate second run). Coverage floors: `vitest.config.ts` 95/95/95/95 (v8); PR #767 CI `quality` reported **98.04 / 95.30 / 98.40 / 98.98** (statements/branches/functions/lines) on ubuntu-latest Bun 1.4.0. Hook chain (set `-e`, snapshot cwd): manifest/lockfile guards → `@pew/core` build → `bun x next typegen` → `bun x vitest run --coverage` + `coverage/index.html` guard → `scripts/parallel-typecheck.sh` → Biome `--error-on-warnings` → AST gates. **≤30s target:** not met on the full cold path while `build` + `typegen` stay in-hook; warm-path timing is recorded by `--measure` in CI when enabled — treat as an execution hardening item, not a skipped check. Negative probes exercised by `scripts/l1-gate-selftest.ts`: UT failure; each coverage metric below floor (statements/branches/functions/lines); lint error; lint warning-only; type error; `.only`/`.skip`; staged bad vs unstaged good; missing `bun`; missing coverage output; timeout/interrupt; UT failure must not reach Biome. |
-| L2 — integration | Real HTTP against the actual application; complete endpoint/method coverage | enforced for the existing 99 API cases, including all-time device totals/details/timeline and exact status assertions. `scripts/run-e2e.ts` runs the actual local Next server on `127.0.0.1:17020` backed by per-run real D1/KV and source Workers. Exhaustive endpoint/method inventory is not certified. |
-| L3 — system | Critical user journeys on isolated resources | enforced for the existing 91 Playwright cases. Page readiness maps all 29 pages to populated real-API/module checks or explicit redirects; L1 rejects missing page inventory entries and typechecks browser tests. Responsive trend layout and agent visualizations use real data; intentional visual/failure mocks remain separate. `scripts/run-e2e-ui.ts` uses `:27020` and its own temporary seeded D1/KV/Worker target, separate from the API lane. |
-| G2 — security | Dependency and secret scans; missing required scanner fails | enforced. `scripts/run-security.ts` is the single entry point (osv-scanner + gitleaks) and runs in pre-push; CI quality uses the tracked `osv-scanner.toml`. |
-| D1 — test isolation | Test state physically separate from production and daily development; guards before destructive fixture operations | enforced by the local runner: no environment files, synthetic credentials, test-only loopback endpoint, actual SQL environment/run markers, native migrations and per-run cleanup. Guard/schema/failure/signal regressions run in the normal test gate and strict harness typecheck. See [local E2E isolation](docs/32-local-e2e-isolation.md). |
-
-Current hooks: pre-commit runs the full local index-snapshot L1 gate; pre-push runs isolated L2 E2E, L3 BDD and G2 in parallel and rejects local environment files. CI `quality` mirrors staged lint/test coverage; CI `L1 Pre-commit Gate Self-test` runs `bun run test:l1-gate` (pre-command `bun run build`) without cloud-secret injection. Tag pushes also invoke Git pre-push hooks; never bypass them. Pre-push ref/lane timing targets remain best-effort; L1 wall-clock evidence lives in AGENTS L1 row and CI self-test logs.
-
-The quality framework follows System1 (S1–S3, G1–G2, B1, L1–L4, P1, Z1) with unified L1. Use `system1-quality` for the quality contract.
-
-## Operations and release
-
-Root `package.json` is the project/Web release version; keep `packages/web/package.json` aligned with it. CLI, core and Worker versions are independent and do not change for a Web-only release. Prepare scoped releases manually with the matching manifest, lockfile, changelog, normal Git hooks, exact tag and GitHub Release. The existing `bun run release` script synchronizes every package and Worker constant and pushes without a confirmation prompt; use it only when an explicitly coordinated version bump is intended, not for a scoped release.
-
-npm publication of `@nocoo/pew` follows the full procedure; it is an authorized operation, not a per-edit step:
-
-1. Prepare the explicitly authorized CLI version, sync the lockfile, update the changelog and commit. The CLI version is independent of the Web release; a Web-only release does not authorize an npm publication. Pre-push runs the isolated L2/L3/G2 gates without cloud credentials.
-2. Build both: `bun install && bun run build && bun run --cwd packages/cli build` — root `build` builds core + web only.
-3. `bun run test`.
-4. Verify the dist version (`packages/cli/package.json` is authoritative; the CLI reads its version at runtime via `readVersion()`).
-5. `cd packages/cli && npm publish --dry-run`.
-6. `npm publish` (OTP via `--otp=<code>` or browser auth when prompted).
-7. Verify with `npx @nocoo/pew@latest --help`.
-8. Watch CI: after push, check `gh run list --limit 5` within a few minutes; local pre-push does not catch every failure mode (workspace links, deploy pipeline).
-
-Successful main push CI now triggers the pinned Docker CD workflow, publishing
-`ghcr.io/nocoo/pew` and deploying one immutable-digest container to `/opt/pew` on
-jp2. All hooks remain enabled; never use `railway up` or manual image rebuilding
-to bypass the proven-source deployment chain. Any Worker code or schema change
-still requires `wrangler deploy` plus a real verification request.
-
-The [jp2 migration](docs/52-jp2-migration.md) completed public cutover on 2026-10-22.
-`pew.md` uses jp2 with Full (strict), shared AOP and `DEPLOY_PHASE=production`;
-the temporary internal listener is removed. Railway's runtime is stopped under
-the owner's 2026-10-22 approval; its project, service, variables and old deployment
-record remain for recovery, with the main trigger removed. Do not delete those
-resources. An authorized Railway recovery must reuse the recorded old image and
-verify its running instance, digest and health before routing back. Shared Caddy
-uses validated `SIGUSR1` hot reload, never a proxy
-restart. Runtime values remain unchanged from Railway. A routing rollback to
-Railway must restore `DEPLOY_PHASE=precutover` before later releases; an image-only
-rollback on jp2 retains production. See [Retrospective.md](Retrospective.md) for
-the operational lessons.
-
-## Ponytail audit
-
-For `ponytail-audit`, read `.agents/skills/ponytail-audit/SKILL.md`. Its pew-specific scope extends the global complexity audit to parser → cursor → spool → upload → Worker UPSERT → API/UI correctness, privacy, timestamps and compatibility. Run `sh scripts/ponytail-audit.sh` for deterministic JSON on stdout; the audit must not write reports or touch real logs, state, queues or services. Full tests and independent reviews stay separate from this read-only audit.
+| Dev | `127.0.0.1:7020`, `packages/web/.env.local`, `~/.config/pew/` | Daily local data; CLI `sync`/`init`/`reset` mutate state; preserve running server |
+| API E2E | `127.0.0.1:17020`, per-run temp D1/KV + source Workers | Clean env-free clone only; build `@pew/core` first; `_test_marker` (`env`+`run`); fails on port conflict |
+| Browser E2E | `127.0.0.1:27020`, per-run seeded D1/KV + source Workers | Isolated Playwright lane separate from API E2E; loopback bridge only, no cloud secrets |
+| Prod | `https://pew.md` (jp2 `/opt/pew`), Cloudflare Workers/D1 | Read-only checks unless deploy/publish is authorized; see [docs/52-jp2-migration.md](docs/52-jp2-migration.md) |
 
 ## Retrospective
 
-Accident narratives live in [Retrospective.md](Retrospective.md). Keep only concise recurring project rules here; cross-project lessons go to global rules/nmem, deterministic checks to hooks/tests.
+Record incident narratives in [Retrospective.md](Retrospective.md); promote recurring project constraints to `Invariants` above and enforceable safeguards to tests/hooks.
