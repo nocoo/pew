@@ -37,7 +37,7 @@
     "lint-staged": "17.6.1",
     "oxc-parser": "0.159.0",
     "typescript": "^7.0.2",
-    "vitest": "5.1.0"
+    "vitest": "5.1.1"
   },
   "overrides": {
     "brace-expansion@^2": "2.0.3",
