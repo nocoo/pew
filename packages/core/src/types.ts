@@ -6,6 +6,8 @@
  *   SaaS (API)    → Store in D1  → Dashboard / Leaderboard
  */
 
+import type { AccountingGroup } from "./accounting-types.js";
+
 // ---------------------------------------------------------------------------
 // Source: Active and historical AI coding tools
 // ---------------------------------------------------------------------------
@@ -248,10 +250,35 @@ export interface CodexScopeState {
   usageKeys: string[];
 }
 
+/** Collapsed half-hour Antigravity token+accounting snapshot for one DB */
+export interface AntigravityCachedDelta {
+  model: string;
+  hourStart: string;
+  tokens: TokenDelta;
+  accounting: AccountingGroup;
+}
+
+/** Per-DB cached snapshot keyed by absolute `.db` path */
+export interface AntigravityDbCache {
+  dbStat: string;
+  walStat: string | null;
+  stepCount: number;
+  deltas: AntigravityCachedDelta[];
+  snapshot: SessionSnapshot | null;
+}
+
+/** Antigravity top-level cursor state persisted on CursorState */
+export interface AntigravityCursorState {
+  dbCount: number;
+  updatedAt: string;
+  cacheVersion?: number;
+  dbs?: Record<string, AntigravityDbCache>;
+}
+
 /** Top-level cursor store persisted to disk */
 export interface CursorState {
   version: 1;
-  antigravity?: { dbCount: number; updatedAt: string };
+  antigravity?: AntigravityCursorState;
   /**
    * Token accounting schema version (see ACCOUNTING_SCHEMA_VERSION).
    * Absent on cursors.json written before schema stamping landed.
