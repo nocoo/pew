@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## v3.5.7
+
+### Changed
+- Bump minor/patch dependencies (`@aws-sdk/client-s3`, `@biomejs/biome`, `@cloudflare/workers-types`, `@playwright/test`, `@types/bun`, `@vitest/coverage-v8`, `lint-staged`, `next`, `oxc-parser`, `recharts`, `tailwind-merge`, `vitest`, `wrangler`).
+
 ## v3.5.6
 
 ### Fixed
