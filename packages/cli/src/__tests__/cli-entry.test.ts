@@ -102,8 +102,8 @@ describe("syncCommand.run() forwarding", () => {
     const text = vi.spyOn(log, "text").mockImplementation(() => {});
     try {
       await syncCommand.run!({ args: { upload: false, dev: false } as never });
-      expect(text.mock.calls.filter(([line]) => line.includes("Antigravity CLI: 1"))).toHaveLength(2);
-      expect(text.mock.calls.filter(([line]) => line.includes("Antigravity CLI: 2 dbs"))).toHaveLength(2);
+      expect(text.mock.calls.filter(([line]) => line.includes("Antigravity: 1"))).toHaveLength(2);
+      expect(text.mock.calls.filter(([line]) => line.includes("Antigravity: 2 dbs"))).toHaveLength(2);
     } finally { text.mockRestore(); }
   });
 

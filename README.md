@@ -26,11 +26,11 @@ pew 由本地 CLI 和 Web 仪表盘组成。CLI 读取 AI 编程工具的日志�
 - 从动态模型价格与回退价格表估算用量成本，查看价格来源和更新时间。
 - 为部分工具配置会话后的自动同步，其余来源可通过 `pew sync` 手动汇总。
 
-当前支持 9 种 token 来源：Antigravity CLI、Claude Code、Codex、GitHub Copilot CLI、Grok、Hermes、OpenClaw、OpenCode 和 Pi。会话统计目前不含 Hermes。
+当前支持 9 种 token 来源：Antigravity、Claude Code、Codex、GitHub Copilot CLI、Grok、Hermes、OpenClaw、OpenCode 和 Pi。会话统计目前不含 Hermes。
 
 ## 使用
 
-推荐使用 Node.js 24 或更新版本。npm 包声明支持 Node.js 18，但 Antigravity CLI、OpenCode、Hermes 的 SQLite 数据源依赖运行时内置 SQLite，旧版 Node.js 无法读取这些来源。
+推荐使用 Node.js 24 或更新版本。npm 包声明支持 Node.js 18，但 Antigravity、OpenCode、Hermes 的 SQLite 数据源依赖运行时内置 SQLite，旧版 Node.js 无法读取这些来源。
 
 ```bash
 npm install -g @nocoo/pew
@@ -55,7 +55,7 @@ pew status
 
 Copilot CLI 的 OTel 文件可通过 `COPILOT_OTEL_FILE_EXPORTER_PATH` 指定；多个文件或目录可放入 `PEW_COPILOT_OTEL_PATHS`，使用操作系统的路径分隔符。默认来源路径见 [paths.ts](packages/cli/src/utils/paths.ts)。
 
-Antigravity CLI 从 `~/.gemini/antigravity-cli/conversations/*.db` 收集用量与会话，不需要登录上游服务或启动 `agy`。它没有自动同步集成，使用 `pew sync` 汇总。输入与缓存读取分别统计；输出拆分为可见输出与推理，不重复计数。缓存命中率按缓存读取 / 总输入计算，包含已报告的零命中调用。详见 [Antigravity accounting](docs/51-antigravity-support.md)。
+Antigravity（CLI 与桌面/IDE 应用）从 `~/.gemini/antigravity-cli/conversations/*.db` 与 `~/.gemini/antigravity/conversations/*.db`（可通过 `PEW_ANTIGRAVITY_DIRS` 覆盖）收集用量与会话，不需要登录上游服务或启动 `agy`。它没有自动同步集成，使用 `pew sync` 汇总。输入与缓存读取分别统计；输出拆分为可见输出与推理，不重复计数。缓存命中率按缓存读取 / 总输入计算，包含已报告的零命中调用。详见 [Antigravity accounting](docs/51-antigravity-support.md)。
 
 ## 开发
 

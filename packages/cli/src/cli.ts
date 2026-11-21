@@ -173,7 +173,7 @@ function logSessionSyncProgress(event: {
 
 /** Display name mapping for source keys */
 const SOURCE_LABELS: Record<string, string> = {
-  antigravity: "Antigravity CLI",
+  antigravity: "Antigravity",
   claude: "Claude",
   codex: "Codex",
 
@@ -319,7 +319,7 @@ export const syncCommand = defineCommand({
       if (result.sources.copilotCli > 0) deltaParts.push(`Copilot CLI: ${result.sources.copilotCli}`);
       if (result.sources.hermes > 0) deltaParts.push(`Hermes: ${result.sources.hermes}`);
 
-      if (result.sources.antigravity > 0) deltaParts.push(`Antigravity CLI: ${result.sources.antigravity}`);
+      if (result.sources.antigravity > 0) deltaParts.push(`Antigravity: ${result.sources.antigravity}`);
       if (deltaParts.length > 0) {
         log.text(pc.dim(deltaParts.join("  ")));
       }
@@ -374,7 +374,7 @@ export const syncCommand = defineCommand({
       if (sessionResult.sources.openclaw > 0) sessParts.push(`OpenClaw: ${sessionResult.sources.openclaw}`);
       if (sessionResult.sources.pi > 0) sessParts.push(`Pi: ${sessionResult.sources.pi}`);
 
-      if (sessionResult.sources.antigravity > 0) sessParts.push(`Antigravity CLI: ${sessionResult.sources.antigravity}`);
+      if (sessionResult.sources.antigravity > 0) sessParts.push(`Antigravity: ${sessionResult.sources.antigravity}`);
       if (sessParts.length > 0) {
         log.text(pc.dim(sessParts.join("  ")));
       }

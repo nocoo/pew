@@ -1,4 +1,4 @@
-# Antigravity CLI Accounting
+# Antigravity Accounting
 
 ## Scope
 

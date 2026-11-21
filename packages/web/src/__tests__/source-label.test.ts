@@ -3,7 +3,7 @@ import { sourceLabel } from "../lib/usage-transforms";
 
 describe("sourceLabel", () => {
   it("maps every known source to its human-facing label", () => {
-    expect(sourceLabel("antigravity")).toBe("Antigravity CLI");
+    expect(sourceLabel("antigravity")).toBe("Antigravity");
     expect(sourceLabel("claude-code")).toBe("Claude Code");
     expect(sourceLabel("codex")).toBe("Codex");
     expect(sourceLabel("copilot-cli")).toBe("GitHub Copilot CLI");

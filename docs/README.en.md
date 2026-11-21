@@ -26,11 +26,11 @@ Source logs remain read-only. Token uploads are aggregated into half-hour bucket
 - Estimate usage costs with dynamic model prices and fallback tables, including price sources and update times.
 - Configure automatic synchronization after sessions for supported tools, and use `pew sync` for other sources.
 
-The 9 supported token sources are Antigravity CLI, Claude Code, Codex, GitHub Copilot CLI, Grok, Hermes, OpenClaw, OpenCode, and Pi. Session statistics currently exclude Hermes.
+The 9 supported token sources are Antigravity, Claude Code, Codex, GitHub Copilot CLI, Grok, Hermes, OpenClaw, OpenCode, and Pi. Session statistics currently exclude Hermes.
 
 ## Usage
 
-Node.js 24 or newer is recommended. The npm package declares Node.js 18 support, but SQLite sources for Antigravity CLI, OpenCode, and Hermes require built-in SQLite support and cannot be read on older Node.js versions.
+Node.js 24 or newer is recommended. The npm package declares Node.js 18 support, but SQLite sources for Antigravity, OpenCode, and Hermes require built-in SQLite support and cannot be read on older Node.js versions.
 
 ```bash
 npm install -g @nocoo/pew

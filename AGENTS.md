@@ -32,7 +32,7 @@ sh scripts/ponytail-audit.sh      # read-only accounting/complexity JSON audit
 
 ## Invariants
 
-- **Active & retired sources**: 9 active tools (`SOURCES`: Antigravity CLI, Claude Code, Codex, Copilot CLI, Grok, Hermes, OpenCode, OpenClaw, Pi); `VALID_SOURCES` keeps historical identities readable for rankings.
+- **Active & retired sources**: 9 active tools (`SOURCES`: Antigravity, Claude Code, Codex, Copilot CLI, Grok, Hermes, OpenCode, OpenClaw, Pi); `VALID_SOURCES` keeps historical identities readable for rankings.
 - **Retired ingest**: exact retired identities are acknowledged and ignored (no new token/session/evidence/accounting writes) so mixed-source batches never block active uploads.
 - **Read-only raw data**: never modify, delete, or move original AI-tool logs/SQLite; pew writes only under `~/.config/pew/`.
 - **Source isolation & idempotency**: each parser is independent and must never corrupt other sources; `pew reset && pew sync` is always safe, deduplicating via `ON CONFLICT` upserts (never summed).

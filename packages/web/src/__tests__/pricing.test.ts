@@ -483,5 +483,15 @@ describe("pricing", () => {
       expect(p.input).toBe(1.25);
       expect(p.output).toBe(10);
     });
+
+    it("Antigravity source default prices uncatalogued models via DEFAULT_SOURCE_DEFAULTS", () => {
+      expect(DEFAULT_SOURCE_DEFAULTS.antigravity).toEqual({
+        input: 1.25,
+        output: 10,
+        cached: 0.31,
+      });
+      const p = lookupPricing(getDefaultPricingMap(), "gemini-4-neon", "antigravity");
+      expect(p).toEqual(DEFAULT_SOURCE_DEFAULTS.antigravity);
+    });
   });
 });
