@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+## v3.6.0
+
+### Added
+- Support Antigravity App/IDE (`~/.gemini/antigravity/conversations`) alongside Antigravity CLI (`~/.gemini/antigravity-cli/conversations`) with multi-root discovery (`PEW_ANTIGRAVITY_DIRS` override), same-DB checkpoint (`step_type = 23`) usage model attribution fallback, and per-DB `dbStat`/`walStat` collapsed caching (`ANTIGRAVITY_CACHE_VERSION = 1`) with busy-DB isolation.
+- Add `antigravity` fallback source pricing in Web (`DEFAULT_SOURCE_DEFAULTS`).
+
+### Changed
+- Unify Antigravity display label from `"Antigravity CLI"` to `"Antigravity"` across Web (Landing, Dashboard, Agents, Models, Daily Usage, Devices, Leaderboard, Public Profile), CLI output, READMEs, and docs.
+- Publish `@nocoo/pew@3.4.0` to npm (includes Antigravity snapshot hashing fix and Node.js `>=26` engine floor since `3.3.0`).
+
+### Operations
+- Root and Web are `3.6.0`; `@nocoo/pew` CLI and `@pew/core` are `3.4.0`. Both Cloudflare Workers remain unchanged at `3.3.4` (no Worker deployment or D1 migration).
+
 ## v3.5.7
 
 ### Changed

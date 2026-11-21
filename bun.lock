@@ -18,7 +18,7 @@
     },
     "packages/cli": {
       "name": "@nocoo/pew",
-      "version": "3.3.3",
+      "version": "3.4.0",
       "bin": {
         "pew": "dist/bin.js",
       },
@@ -32,14 +32,14 @@
     },
     "packages/core": {
       "name": "@pew/core",
-      "version": "3.3.4",
+      "version": "3.4.0",
       "devDependencies": {
         "@types/node": "26.6.6",
       },
     },
     "packages/web": {
       "name": "@pew/web",
-      "version": "3.5.7",
+      "version": "3.6.0",
       "dependencies": {
         "@aws-sdk/client-s3": "3.1173.0",
         "@nocoo/basalt": "^3.5.1",
