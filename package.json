@@ -29,15 +29,15 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.6",
-    "@playwright/test": "1.65.0",
+    "@biomejs/biome": "2.6.8",
+    "@playwright/test": "1.65.1",
     "@types/bun": "1.4.4",
-    "@vitest/coverage-v8": "5.1.0",
+    "@vitest/coverage-v8": "5.1.1",
     "husky": "^9.1.7",
-    "lint-staged": "17.6.0",
-    "oxc-parser": "0.156.0",
+    "lint-staged": "17.6.1",
+    "oxc-parser": "0.159.0",
     "typescript": "^7.0.2",
-    "vitest": "5.1.0"
+    "vitest": "5.1.1"
   },
   "overrides": {
     "brace-expansion@^2": "2.0.3",
