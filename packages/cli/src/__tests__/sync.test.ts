@@ -1855,7 +1855,7 @@ describe("executeSync", () => {
     expect(records[0]!.input_tokens).toBe(3000); // not doubled
 
     const updated = JSON.parse(await readFile(cursorsPath, "utf-8"));
-    expect(updated.accountingSchemaVersion).toBe(2);
+    expect(updated.accountingSchemaVersion).toBe(3);
   });
 
   it("should tombstone codex buckets removed by an accounting schema rescan", async () => {

@@ -36,6 +36,7 @@ const TIMESTAMP_RE = /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z)/;
 export async function collectCopilotCliSessions(
   filePath: string,
 ): Promise<SessionSnapshot[]> {
+  if (filePath.endsWith("events.jsonl")) return [];
   const st = await stat(filePath).catch(() => null);
   if (!st?.isFile() || st.size === 0) return [];
 

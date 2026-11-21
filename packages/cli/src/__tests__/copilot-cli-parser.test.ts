@@ -542,4 +542,50 @@ describe("parseCopilotCliFile", () => {
     expect(r2.deltas[0]!.tokens.inputTokens).toBe(2000);
     expect(r2.endOffset).toBe(Buffer.byteLength(block1 + block2, "utf8"));
   });
+
+  it("parses session.usage_record JSONL with disjoint token fields", async () => {
+    const filePath = join(tempDir, "events.jsonl");
+    const event = {
+      type: "session.usage_record",
+      timestamp: "2026-03-16T10:42:00.000Z",
+      data: { usage: {
+        model: "gpt-5.1-codex",
+        inputTokens: 100,
+        cacheReadTokens: 25,
+        outputTokens: 7,
+        reasoningTokens: 3,
+        apiCallId: "call-1",
+      } },
+    };
+    await writeFile(filePath, `${JSON.stringify(event)}\n`);
+    const result = await parseCopilotCliFile({ filePath, startOffset: 0 });
+    expect(result.deltas).toHaveLength(1);
+    expect(result.deltas[0]).toMatchObject({
+      model: "gpt-5.1-codex",
+      timestamp: "2026-03-16T10:42:00.000Z",
+      tokens: { inputTokens: 75, cachedInputTokens: 25, outputTokens: 7, reasoningOutputTokens: 3 },
+    });
+  });
+
+  it("deduplicates the same api call across legacy and JSONL files", async () => {
+    const apiCallId = "shared-call";
+    const logPath = join(tempDir, "process-shared.log");
+    const legacy = buildLogWithUsage({ input_tokens: 100, output_tokens: 10 }).replace(
+      '"copilot_pid": "26207"',
+      `"copilot_pid": "26207",\n    "apiCallId": "${apiCallId}"`,
+    );
+    await writeFile(logPath, legacy);
+    const seenApiCallIds = new Set<string>();
+    const first = await parseCopilotCliFile({ filePath: logPath, startOffset: 0, seenApiCallIds });
+    expect(first.deltas).toHaveLength(1);
+    const jsonPath = join(tempDir, "events-shared.jsonl");
+    await writeFile(jsonPath, `${JSON.stringify({
+      type: "session.usage_record",
+      timestamp: "2026-03-16T10:40:00.959Z",
+      data: { usage: { model: "claude-opus-4.6", inputTokens: 100, outputTokens: 10, apiCallId } },
+    })}\n`);
+    const second = await parseCopilotCliFile({ filePath: jsonPath, startOffset: 0, seenApiCallIds });
+    expect(second.deltas).toHaveLength(0);
+  });
+
 });

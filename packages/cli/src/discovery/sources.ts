@@ -1,5 +1,5 @@
 import { readdir, stat } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 
 /**
  * Recursively collect files matching a predicate under a directory.
@@ -225,15 +225,37 @@ export async function discoverCodexFiles(
 }
 
 /**
- * Discover GitHub Copilot CLI process log files.
- * Path pattern: ~/.copilot/logs/process-*.log
+ * Discover GitHub Copilot CLI process logs and session-state usage events.
+ * Paths: ~/.copilot/logs/process-*.log and
+ * ~/.copilot/session-state/<session>/events.jsonl.
  */
 export async function discoverCopilotCliFiles(
   logsDir: string,
 ): Promise<string[]> {
-  return collectFiles(logsDir, (name) =>
+  const processFiles = await collectFiles(logsDir, (name) =>
     name.startsWith("process-") && name.endsWith(".log"),
   );
+  const files = [...processFiles];
+  if (basename(logsDir) === "logs") {
+    const sessionStateDir = join(dirname(logsDir), "session-state");
+    let entries: import("node:fs").Dirent[] = [];
+    try {
+      entries = await readdir(sessionStateDir, { withFileTypes: true });
+    } catch {
+      entries = [];
+    }
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const eventsPath = join(sessionStateDir, entry.name, "events.jsonl");
+      try {
+        const eventsStat = await stat(eventsPath);
+        if (eventsStat.isFile()) files.push(eventsPath);
+      } catch {
+        // Copilot can rotate or remove a session while discovery runs.
+      }
+    }
+  }
+  return [...new Set(files)].sort();
 }
 
 /**

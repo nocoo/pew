@@ -91,6 +91,9 @@ export interface SyncContext {
    */
   copilotOtelPaths?: Set<string>;
 
+  /** API-call IDs already emitted by Copilot legacy or session-state files. */
+  seenCopilotApiCallIds?: Set<string>;
+
   /**
    * Directory mtime cache for OpenCode JSON discovery optimization.
    * Read/written by the OpenCode JSON token driver.

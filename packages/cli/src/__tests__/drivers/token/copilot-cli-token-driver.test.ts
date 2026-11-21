@@ -264,4 +264,35 @@ describe("copilotCliTokenDriver", () => {
       expect(r2.deltas[0]!.tokens.inputTokens).toBe(2000);
     });
   });
+
+  it("preloads persisted API-call IDs before parsing changed companion files", async () => {
+    const logsDir = join(tempDir, "logs");
+    const stateDir = join(tempDir, "session-state", "session-1");
+    await mkdir(logsDir, { recursive: true });
+    await mkdir(stateDir, { recursive: true });
+    const legacyPath = join(logsDir, "process-1.log");
+    const apiCallId = "shared-call";
+    await writeFile(legacyPath, buildUsageBlock().replace(
+      '"model": "claude-opus-4.6"',
+      `"model": "claude-opus-4.6", "apiCallId": "${apiCallId}"`,
+    ));
+    const firstCtx: SyncContext = {};
+    await copilotCliTokenDriver.discover({ copilotCliLogsDir: logsDir }, firstCtx);
+    const first = await copilotCliTokenDriver.parse(legacyPath, { kind: "byte-offset", startOffset: 0 }, firstCtx);
+    const cursor = copilotCliTokenDriver.buildCursor(
+      { inode: 1, mtimeMs: 1, size: 1 },
+      first,
+    );
+    const eventsPath = join(stateDir, "events.jsonl");
+    await writeFile(eventsPath, `${JSON.stringify({
+      type: "session.usage_record",
+      timestamp: "2026-03-16T10:40:00.959Z",
+      data: { usage: { model: "claude-opus-4.6", inputTokens: 1000, outputTokens: 100, apiCallId } },
+    })}\n`);
+    const nextCtx: SyncContext = {};
+    copilotCliTokenDriver.preload?.({ [legacyPath]: cursor }, nextCtx);
+    const second = await copilotCliTokenDriver.parse(eventsPath, { kind: "byte-offset", startOffset: 0 }, nextCtx);
+    expect(second.deltas).toHaveLength(0);
+  });
+
 });

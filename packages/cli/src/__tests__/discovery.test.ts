@@ -200,6 +200,24 @@ describe("discoverCopilotCliFiles", () => {
   });
 });
 
+
+  it("discovers session-state events.jsonl alongside process logs", async () => {
+    const root = await mkdtemp(join(tmpdir(), "pew-discover-copilot-state-"));
+    const logsDir = join(root, "copilot", "logs");
+    const eventsDir = join(root, "copilot", "session-state", "session-1");
+    await mkdir(logsDir, { recursive: true });
+    await mkdir(eventsDir, { recursive: true });
+    await writeFile(join(logsDir, "process-1.log"), "log");
+    await writeFile(join(eventsDir, "events.jsonl"), "{}\n");
+    const files = await discoverCopilotCliFiles(logsDir);
+    expect(files).toEqual([
+      join(eventsDir, "events.jsonl"),
+      join(logsDir, "process-1.log"),
+    ].sort());
+    await rm(root, { recursive: true, force: true });
+  });
+
+
 describe("discoverCodexFiles", () => {
   let tempDir: string;
 

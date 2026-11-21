@@ -11,6 +11,7 @@ export type CodexSharedSnapshot = {
 export type JsonlSharedSnapshot = {
   codex: CodexSharedSnapshot;
   claudeIds: string[] | null;
+  copilotApiCallIds: string[] | null;
 };
 
 export function snapshotCodexSharedState(
@@ -58,6 +59,7 @@ export function snapshotJsonlSharedState(
   return {
     codex: snapshotCodexSharedState(ctx, filePath),
     claudeIds: ctx.seenClaudeMessageIds ? [...ctx.seenClaudeMessageIds] : null,
+    copilotApiCallIds: ctx.seenCopilotApiCallIds ? [...ctx.seenCopilotApiCallIds] : null,
   };
 }
 
@@ -68,10 +70,18 @@ export function restoreJsonlSharedState(
   restoreCodexSharedState(ctx, snapshot.codex);
   if (snapshot.claudeIds === null) {
     ctx.seenClaudeMessageIds?.clear();
+  } else {
+    const seen = ctx.seenClaudeMessageIds ?? new Set<string>();
+    seen.clear();
+    for (const id of snapshot.claudeIds) seen.add(id);
+    ctx.seenClaudeMessageIds = seen;
+  }
+  if (snapshot.copilotApiCallIds === null) {
+    ctx.seenCopilotApiCallIds?.clear();
     return;
   }
-  const seen = ctx.seenClaudeMessageIds ?? new Set<string>();
-  seen.clear();
-  for (const id of snapshot.claudeIds) seen.add(id);
-  ctx.seenClaudeMessageIds = seen;
+  const copilotIds = ctx.seenCopilotApiCallIds ?? new Set<string>();
+  copilotIds.clear();
+  for (const id of snapshot.copilotApiCallIds) copilotIds.add(id);
+  ctx.seenCopilotApiCallIds = copilotIds;
 }
