@@ -11,10 +11,10 @@ describe("directed accounting enrichment", () => {
     const dir = await mkdtemp(join(tmpdir(), "pew-enrich-antigravity-"));
     const replay = vi.spyOn(syncCommands, "executeSync");
     try {
-      const antigravityDir = join(dir, "conversations");
-      expect(await executeEnrich({ stateDir: dir, deviceId: "test", source, antigravityDir,
+      const antigravityDirs = [join(dir, "conversations")];
+      expect(await executeEnrich({ stateDir: dir, deviceId: "test", source, antigravityDirs,
         from: "2026-09-01", to: "2026-09-02" })).toMatchObject({ source, matched: 0, applied: 0 });
-      expect(replay).toHaveBeenCalledWith(expect.objectContaining({ antigravityDir, deviceId: "test" }));
+      expect(replay).toHaveBeenCalledWith(expect.objectContaining({ antigravityDirs, deviceId: "test" }));
     } finally { replay.mockRestore(); await rm(dir, { recursive: true, force: true }); }
   });
 

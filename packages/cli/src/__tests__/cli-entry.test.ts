@@ -82,11 +82,14 @@ beforeEach(() => {
 });
 
 describe("syncCommand.run() forwarding", () => {
-  it("passes the Antigravity CLI conversations root into both sync pipelines", async () => {
+  it("passes the Antigravity conversations roots into both sync pipelines", async () => {
     await syncCommand.run!({ args: { upload: false, dev: false } as never });
-    const root = join(homedir(), ".gemini", "antigravity-cli", "conversations");
-    expect(executeSyncMock).toHaveBeenCalledWith(expect.objectContaining({ antigravityDir: root }));
-    expect(executeSessionSyncMock).toHaveBeenCalledWith(expect.objectContaining({ antigravityDir: root }));
+    const roots = [
+      join(homedir(), ".gemini", "antigravity-cli", "conversations"),
+      join(homedir(), ".gemini", "antigravity", "conversations"),
+    ];
+    expect(executeSyncMock).toHaveBeenCalledWith(expect.objectContaining({ antigravityDirs: roots }));
+    expect(executeSessionSyncMock).toHaveBeenCalledWith(expect.objectContaining({ antigravityDirs: roots }));
   });
 
   it("labels Antigravity token, session and database summaries", async () => {
@@ -104,12 +107,15 @@ describe("syncCommand.run() forwarding", () => {
     } finally { text.mockRestore(); }
   });
 
-  it("accepts Antigravity for accounting details and forwards the conversations root", async () => {
+  it("accepts Antigravity for accounting details and forwards the conversations roots", async () => {
     const output = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
     try {
       await enrichCommand.run!({ args: { source: "antigravity", from: "2026-09-01", to: "2026-09-02", apply: false } as never });
       expect(executeEnrichMock).toHaveBeenCalledWith(expect.objectContaining({ source: "antigravity",
-        antigravityDir: join(homedir(), ".gemini", "antigravity-cli", "conversations") }));
+        antigravityDirs: [
+          join(homedir(), ".gemini", "antigravity-cli", "conversations"),
+          join(homedir(), ".gemini", "antigravity", "conversations"),
+        ] }));
     } finally { output.mockRestore(); }
   });
 

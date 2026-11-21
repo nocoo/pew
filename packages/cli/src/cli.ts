@@ -289,7 +289,7 @@ export const syncCommand = defineCommand({
       grokLogsPath: paths.grokLogsPath,
       grokSessionsDir: paths.grokSessionsDir,
 
-      antigravityDir: paths.antigravityDir,
+      antigravityDirs: paths.antigravityDirs,
 
       onCorruptLine: handleCorruptLine,
       onProgress(event) {
@@ -349,7 +349,7 @@ export const syncCommand = defineCommand({
       grokLogsPath: paths.grokLogsPath,
       grokSessionsDir: paths.grokSessionsDir,
 
-      antigravityDir: paths.antigravityDir,
+      antigravityDirs: paths.antigravityDirs,
 
       onCorruptLine: handleCorruptLine,
       onProgress(event) {
@@ -722,7 +722,7 @@ const notifyCommand = defineCommand({
       grokLogsPath: paths.grokLogsPath,
       grokSessionsDir: paths.grokSessionsDir,
 
-      antigravityDir: paths.antigravityDir,
+      antigravityDirs: paths.antigravityDirs,
 
       version: CLI_VERSION,
     });

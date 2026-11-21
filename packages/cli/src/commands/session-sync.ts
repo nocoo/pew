@@ -13,7 +13,7 @@
  * separate queue, separate files.
  */
 
-import { readAntigravitySource } from "../parsers/antigravity.js";
+import { ANTIGRAVITY_CACHE_VERSION, readAntigravitySource } from "../parsers/antigravity.js";
 import { stat } from "node:fs/promises";
 import type {
   SessionSnapshot,
@@ -21,6 +21,7 @@ import type {
   SessionCursorState,
   OpenCodeSqliteSessionCursor,
 } from "@pew/core";
+import { CursorStore } from "../storage/cursor-store.js";
 import { SessionCursorStore } from "../storage/session-cursor-store.js";
 import { SessionQueue } from "../storage/session-queue.js";
 import { withStateLock } from "../storage/state-lock.js";
@@ -43,7 +44,7 @@ import { isRetiredCursorPath } from "../utils/retired-sources.js";
 export interface SessionSyncOptions {
   /** Directory for persisting state (cursors, queue) */
   stateDir: string;
-  antigravityDir?: string;
+  antigravityDirs?: string[];
   /** Override: Claude data directory (~/.claude) */
   claudeDir?: string;
   /** Override: Codex CLI sessions directory (~/.codex/sessions) */
@@ -166,9 +167,18 @@ async function sessionSyncLocked(
   const filesScanned = { antigravity: 0, claude: 0, codex: 0, copilotCli: 0,  grok: 0,   opencode: 0, openclaw: 0, pi: 0, };
   const dbsScanned = { antigravity: 0, opencode: 0 };
 
-  if (opts.antigravityDir) {
+  if (opts.antigravityDirs?.length) {
     try {
-      const snapshot = await readAntigravitySource(opts.antigravityDir);
+      const tokenAgy = (await new CursorStore(stateDir).load()).antigravity;
+      const cache =
+        tokenAgy?.cacheVersion === ANTIGRAVITY_CACHE_VERSION ? tokenAgy.dbs : undefined;
+      const snapshot = await readAntigravitySource(opts.antigravityDirs, {
+        cache,
+        allowSkipUncachedUnstable: true,
+      });
+      for (const message of snapshot.warnings) {
+        onProgress?.({ source: "antigravity", phase: "warn", message });
+      }
       allSnapshots.push(...snapshot.snapshots);
       sourceCounts.antigravity = snapshot.snapshots.length;
       filesScanned.antigravity = snapshot.dbCount;

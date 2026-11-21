@@ -66,7 +66,7 @@ export async function executeNotify(
           codexSessionsDir: opts.codexSessionsDir,
           multicaCodexDirs: opts.multicaCodexDirs,
 
-          antigravityDir: opts.antigravityDir,
+          antigravityDirs: opts.antigravityDirs,
 
           openCodeMessageDir: opts.openCodeMessageDir,
           openCodeDbPath: opts.openCodeDbPath,
@@ -102,7 +102,7 @@ export async function executeNotify(
           codexSessionsDir: opts.codexSessionsDir,
           multicaCodexDirs: opts.multicaCodexDirs,
 
-          antigravityDir: opts.antigravityDir,
+          antigravityDirs: opts.antigravityDirs,
 
           openCodeMessageDir: opts.openCodeMessageDir,
           openCodeDbPath: opts.openCodeDbPath,

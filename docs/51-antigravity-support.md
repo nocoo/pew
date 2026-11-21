@@ -2,11 +2,15 @@
 
 ## Scope
 
-Source identity: `antigravity` (Antigravity CLI, `agy`). The collector reads
-`~/.gemini/antigravity-cli/conversations/<conversation-id>.db`. IDE/app roots,
-quota APIs, credentials, generated transcripts and conversation bodies are not
-collection sources. The former Gemini CLI collector has been retired; its
-historical records remain separate from Antigravity CLI data.
+Source identity: `antigravity` (Antigravity CLI, `agy`, and Antigravity app/IDE).
+The collector discovers `<conversation-id>.db` files across both default roots:
+`~/.gemini/antigravity-cli/conversations/*.db` and
+`~/.gemini/antigravity/conversations/*.db` (overridable via `PEW_ANTIGRAVITY_DIRS`,
+separated by the OS path delimiter). Missing individual roots are skipped while
+duplicate conversation IDs across roots fail closed. Quota APIs, credentials,
+generated transcripts and conversation bodies are not collection sources. The
+former Gemini CLI collector has been retired; its historical records remain
+separate from Antigravity data.
 
 Token and session data use the existing aggregation, queue,
 upload and typed dashboard pipelines. Automatic session-end synchronization is
@@ -23,6 +27,7 @@ synthetic messages and databases only.
 | --- | --- | --- |
 | `CortexStepMetadata` | 1 | `created_at`, Protobuf UTC Timestamp |
 | `CortexStepMetadata` | 9 | `ModelUsageStats` |
+| `CortexStepMetadata` | 12 | `turn_id`, UTF-8 string |
 | `CortexStepGeneratorMetadata` | 2 | Repeated `step_indices`, packed or unpacked |
 | `CortexStepGeneratorMetadata` | 1 | `ChatModelMetadata` |
 | `ChatModelMetadata` | 4 | `ModelUsageStats` |
@@ -38,9 +43,13 @@ synthetic messages and databases only.
 Generation indices and step indices are different namespaces. Attribute actual
 model names by the generation's `step_indices`; do not join on equal table
 indices or use today's selected model. Placeholder model enums are not pricing
-identities. Unknown fields are skipped without inspecting their opaque bytes.
-Invalid, unsafe or contradictory counters must not be guessed or silently
-clamped into valid usage.
+identities and are never hardcoded to model names. Steps that omit a
+`gen_metadata` mapping (such as `step_type = 23` context checkpoints) fall back
+strictly to an unambiguous same-database correlation against `gen_metadata`-attributed
+steps: first by `(turn_id, model_enum)`, then by database-wide `model_enum`.
+Missing or ambiguous attributions fail closed. Unknown fields are skipped
+without inspecting their opaque bytes. Invalid, unsafe or contradictory counters
+must not be guessed or silently clamped into valid usage.
 
 The installed `codeium_common.proto` descriptor declares `proto3`. Usage fields
 2/3/4/5/9/10 are ordinary `uint64` scalars without `proto3_optional` or a oneof:
@@ -83,23 +92,35 @@ it ignores WAL. Preserve source bytes and sidecars, clean temporary copies in
 The SQLite connection may write only to this private copy, allowing Bun to
 create a temporary shared-memory index and recover copied WAL transactions.
 
-Main database mtime/size alone cannot detect WAL-only changes. Every sync reads
-and validates the complete Antigravity source, including a final DB/WAL and
-directory stability check. File identity signatures cover inode, size and
-nanosecond mtime/ctime for the main database and WAL before copying, after copying
-and querying, and across the entire source scan. No body or opaque blob is hashed.
+Main database mtime/size alone cannot detect WAL-only changes. Each database's
+stat identity (`dev:ino:size:mtimeNs:ctimeNs` for both `.db` and `-wal`) and its
+collapsed per-bucket snapshot are cached under `cursors.antigravity.dbs`
+(guarded by `cacheVersion`). Unchanged databases skip copying, SHA-256 hashing
+and SQLite opening; changed or uncached databases undergo single-DB SHA-256
+stability checks before copying, after copying, and after SQLite queries. No
+body or opaque blob is hashed.
 Absolute snapshots replace only Antigravity's current
 device partition; they never enter other sources' incremental SUM path. Changed
 model/time keys and deleted steps produce zero-valued tombstones, including
 matching accounting annotations. The existing durable commit journal joins
 usage, details, pending-upload intent and the source status marker.
 
-The candidate is validated before generic cursor-recovery logic runs. Failed
-discovery, unsupported SQLite, decoding, accounting or stability checks preserve
-the previous Antigravity partition and its pending detail/usage uploads, even
-when unrelated cursors restart. Missing roots are not valid empty snapshots.
-Nonzero cache writes currently fail closed because their input inclusion
-semantics remain unverified; reported zero writes are preserved as known zero.
+Transient write instability (`UnstableAntigravityError`) is isolated per
+database while preserving the No-False-Tombstones invariant:
+- A busy database with a valid per-DB cache retains its cached snapshot with a
+  warning so unaffected sibling databases still sync.
+- An uncached busy database is skipped with a warning only when a valid per-DB
+  cache exists or no prior Antigravity baseline exists (and at least one other
+  database succeeds). After `pew reset` with a retained baseline (no per-DB cache),
+  any unstable database fails the whole Antigravity snapshot closed and preserves
+  the previous partition.
+- Structural, decoding, accounting, or session validation errors always fail the
+  whole Antigravity snapshot closed before generic cursor-recovery logic runs,
+  preserving the previous Antigravity partition and its pending detail/usage
+  uploads even when unrelated cursors restart. Missing roots are not valid
+  empty snapshots. Nonzero cache writes currently fail closed because their
+  input inclusion semantics remain unverified; reported zero writes are
+  preserved as known zero.
 
 Full-source snapshots are O(total local database size), an intentional initial
 tradeoff for correction and WAL correctness. Tombstones require retained local

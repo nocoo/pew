@@ -12,6 +12,7 @@ import { executeStatus } from "../../commands/status.js";
 import { executeSync } from "../../commands/sync.js";
 import { executeUpload } from "../../commands/upload.js";
 import { AccountingQueue, accountingKey } from "../../storage/accounting-queue.js";
+import { CursorStore } from "../../storage/cursor-store.js";
 import { LocalQueue } from "../../storage/local-queue.js";
 import { SessionQueue } from "../../storage/session-queue.js";
 import { hashProjectRef } from "../../utils/hash-project-ref.js";
@@ -38,13 +39,20 @@ function bytes(field: number, value: string | Buffer): Buffer {
   return Buffer.concat([varint(field * 8 + 2), varint(data.length), data]);
 }
 
-function metadata(input: number, read: number | null = 0, seconds = 1_759_320_060): Buffer {
+function metadata(
+  input: number,
+  read: number | null = 0,
+  seconds = 1_759_320_060,
+  modelEnum = 99,
+  turnId?: string,
+): Buffer {
   return Buffer.concat([
     bytes(1, scalar(1, seconds)),
     bytes(9, Buffer.concat([
-      scalar(1, 99), scalar(2, input), scalar(3, 30), scalar(4, 0),
+      scalar(1, modelEnum), scalar(2, input), scalar(3, 30), scalar(4, 0),
       ...(read === null ? [] : [scalar(5, read)]), scalar(9, 7), scalar(10, 23),
     ])),
+    ...(turnId !== undefined ? [bytes(12, turnId)] : []),
   ]);
 }
 
@@ -88,7 +96,7 @@ describe("CLI E2E: real Antigravity SQLite/WAL accounting", () => {
     ]));
   }
 
-  const sync = () => executeSync({ stateDir, antigravityDir, deviceId: "synthetic-device" });
+  const sync = () => executeSync({ stateDir, antigravityDirs: [antigravityDir], deviceId: "synthetic-device" });
   const records = async () => (await new LocalQueue(stateDir).readFromOffset(0)).records;
   const details = async () => (await new AccountingQueue(stateDir).readFromOffset(0)).records;
   const tokenKey = (record: QueueRecord) => JSON.stringify([record.device_id, record.source, record.model, record.hour_start]);
@@ -125,7 +133,7 @@ describe("CLI E2E: real Antigravity SQLite/WAL accounting", () => {
     const source = await Promise.all(paths.map((file) => readFile(file)));
     const { stdout } = await promisify(execFile)("bun", ["-e", `
       import { readAntigravitySource } from ${JSON.stringify(new URL("../../parsers/antigravity.ts", import.meta.url).pathname)};
-      const result = await readAntigravitySource(${JSON.stringify(antigravityDir)});
+      const result = await readAntigravitySource([${JSON.stringify(antigravityDir)}]);
       console.log(JSON.stringify({ tokens: result.deltas[0].tokens, dbCount: result.dbCount }));
     `]);
     expect(JSON.parse(stdout)).toEqual({ dbCount: 1, tokens: {
@@ -143,7 +151,7 @@ describe("CLI E2E: real Antigravity SQLite/WAL accounting", () => {
       output_tokens: 23, reasoning_output_tokens: 7, total_tokens: 150 });
     expect((await details())[0].groups[0].counts).toMatchObject({ input_total_tokens: 120, cache_read_input_tokens: 20,
       output_total_tokens: 30, reasoning_output_tokens: 7 });
-    const sessions = await executeSessionSync({ stateDir, antigravityDir });
+    const sessions = await executeSessionSync({ stateDir, antigravityDirs: [antigravityDir] });
     expect(sessions.sources.antigravity).toBe(1);
     expect((await new SessionQueue(stateDir).readFromOffset(0)).records[0]).toMatchObject({
       session_key: "antigravity:synthetic-conversation", source: "antigravity", user_messages: 1, assistant_messages: 1,
@@ -216,7 +224,7 @@ describe("CLI E2E: real Antigravity SQLite/WAL accounting", () => {
     await mkdir(project, { recursive: true });
     await writeFile(join(project, "session.jsonl"), `${JSON.stringify({ type: "assistant", timestamp: "2025-10-01T12:01:00Z",
       message: { id: "synthetic-id", model: "claude-sonnet-4", usage: { input_tokens: 40, output_tokens: 10 } } })}\n`);
-    const options = { stateDir, antigravityDir, claudeDir, deviceId: "synthetic-device" };
+    const options = { stateDir, antigravityDirs: [antigravityDir], claudeDir, deviceId: "synthetic-device" };
     await executeSync(options);
     const before = await records();
     const accounting = await details();
@@ -231,5 +239,80 @@ describe("CLI E2E: real Antigravity SQLite/WAL accounting", () => {
     await executeSync(options);
     expect(await records()).toEqual(before);
     expect(await details()).toEqual(accounting);
+  });
+
+  it("syncs multiple roots with step_type=23 attribution, hits per-DB cache, and refreshes WAL-only DB mutations", async () => {
+    const appDir = join(dir, "app-conversations");
+    await mkdir(appDir);
+    const secondPath = join(appDir, "compaction-conversation.db");
+    const secondDb = new DatabaseSync(secondPath);
+    try {
+      secondDb.exec(`
+        PRAGMA journal_mode=WAL;
+        PRAGMA wal_autocheckpoint=0;
+        CREATE TABLE steps (idx INTEGER PRIMARY KEY, step_type INTEGER, status INTEGER, metadata BLOB, payload BLOB);
+        CREATE TABLE gen_metadata (idx INTEGER PRIMARY KEY, data BLOB);
+        CREATE TABLE trajectory_metadata_blob (data BLOB);
+      `);
+      secondDb.prepare("INSERT INTO trajectory_metadata_blob VALUES (?)").run(bytes(7, "file:///synthetic/app-project"));
+      secondDb.prepare("INSERT INTO steps VALUES (?,?,?,?,?)").run(0, 14, 3, bytes(1, scalar(1, 1_759_320_000)), Buffer.from("synthetic-body"));
+      secondDb.prepare("INSERT INTO steps VALUES (?,?,?,?,?)").run(1, 15, 3, metadata(40, 10, 1_759_320_070, 1319, "turn-1"), Buffer.from("synthetic-body"));
+      secondDb.prepare("INSERT INTO gen_metadata VALUES (?,?)").run(10, Buffer.concat([
+        bytes(1, Buffer.concat([bytes(19, "gemini-3.8-flash-n"), bytes(4, scalar(2, 999_999))])),
+        bytes(2, varint(1)),
+      ]));
+      // step_type=23 compaction step with no gen_metadata row, attributed via (turnId, modelEnum)
+      secondDb.prepare("INSERT INTO steps VALUES (?,?,?,?,?)").run(2, 23, 3, metadata(50, 200, 1_759_320_080, 1319, "turn-1"), Buffer.from("synthetic-body"));
+
+      const multiSync = () => executeSync({
+        stateDir,
+        antigravityDirs: [antigravityDir, appDir],
+        deviceId: "synthetic-device",
+      });
+      const first = await multiSync();
+      expect(first.dbsScanned.antigravity).toBe(2);
+      expect(first.sources.antigravity).toBe(3);
+
+      const firstRecords = await records();
+      expect(firstRecords.find((r) => r.model === "gemini-3.1-pro")?.total_tokens).toBe(150);
+      expect(firstRecords.find((r) => r.model === "gemini-3.8-flash-n")).toMatchObject({
+        input_tokens: 90,
+        cached_input_tokens: 210,
+        output_tokens: 46,
+        reasoning_output_tokens: 14,
+        total_tokens: 360,
+      });
+
+      const sessions = await executeSessionSync({ stateDir, antigravityDirs: [antigravityDir, appDir] });
+      expect(sessions.sources.antigravity).toBe(2);
+
+      const cursor = (await new CursorStore(stateDir).load()).antigravity;
+      expect(cursor).toMatchObject({ dbCount: 2, cacheVersion: 1 });
+      expect(Object.keys(cursor?.dbs ?? {}).sort()).toEqual([path, secondPath].sort());
+
+      const remote = server();
+      expect((await remote.upload()).success).toBe(true);
+      expect(remote.usage.size).toBe(2);
+
+      // Second sync hits per-DB cache with zero uploads
+      const second = await multiSync();
+      expect(second.sources.antigravity).toBe(3);
+      expect(await records()).toEqual(firstRecords);
+      expect((await remote.upload()).uploaded).toBe(0);
+
+      // WAL-only mutation on secondDb updates only gemini-3.8-flash-n while leaving synthetic-conversation.db intact
+      secondDb.prepare("UPDATE steps SET metadata = ? WHERE idx = 2").run(metadata(150, 200, 1_759_320_080, 1319, "turn-1"));
+      const third = await multiSync();
+      expect(third.dbsScanned.antigravity).toBe(2);
+      const updatedRecords = await records();
+      expect(updatedRecords.find((r) => r.model === "gemini-3.1-pro")?.total_tokens).toBe(150);
+      expect(updatedRecords.find((r) => r.model === "gemini-3.8-flash-n")?.total_tokens).toBe(460);
+      // Uploads 1 updated token bucket + 1 updated accounting detail record for gemini-3.8-flash-n
+      expect((await remote.upload()).uploaded).toBe(2);
+      expect(remote.usage.get('["synthetic-device","antigravity","gemini-3.8-flash-n","2025-10-01T12:00:00.000Z"]')?.total_tokens).toBe(460);
+      expect(remote.usage.get('["synthetic-device","antigravity","gemini-3.1-pro","2025-10-01T12:00:00.000Z"]')?.total_tokens).toBe(150);
+    } finally {
+      secondDb.close();
+    }
   });
 });

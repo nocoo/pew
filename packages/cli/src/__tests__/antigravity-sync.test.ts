@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { AntigravityDbCache } from "@pew/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ParsedDelta } from "../parsers/claude.js";
 import { executeSync } from "../commands/sync.js";
@@ -8,13 +9,16 @@ import { executeSessionSync } from "../commands/session-sync.js";
 import { executeReset } from "../commands/reset.js";
 import { executeUpload } from "../commands/upload.js";
 import { ConfigManager } from "../config/manager.js";
-import { readAntigravitySource } from "../parsers/antigravity.js";
+import { ANTIGRAVITY_CACHE_VERSION, readAntigravitySource } from "../parsers/antigravity.js";
 import { AccountingQueue } from "../storage/accounting-queue.js";
 import { CursorStore } from "../storage/cursor-store.js";
 import { LocalQueue } from "../storage/local-queue.js";
 import { inclusiveAccounting } from "../utils/accounting.js";
 
-vi.mock("../parsers/antigravity.js", () => ({ readAntigravitySource: vi.fn() }));
+vi.mock("../parsers/antigravity.js", () => ({
+  ANTIGRAVITY_CACHE_VERSION: 1,
+  readAntigravitySource: vi.fn(),
+}));
 const reader = vi.mocked(readAntigravitySource);
 const time = "2026-10-01T12:01:00.000Z";
 function delta(input = 100, read = 900, model = "test-model", timestamp = time): ParsedDelta {
@@ -24,24 +28,36 @@ function delta(input = 100, read = 900, model = "test-model", timestamp = time):
       { origin: "antigravity:step", model }) };
 }
 
+function sourceSnapshot(overrides: Partial<Awaited<ReturnType<typeof readAntigravitySource>>> = {}) {
+  const deltas = overrides.deltas ?? [delta()];
+  return {
+    deltas,
+    snapshots: overrides.snapshots ?? [],
+    dbCount: overrides.dbCount ?? 1,
+    stepCount: overrides.stepCount ?? deltas.length,
+    dbs: overrides.dbs ?? {},
+    warnings: overrides.warnings ?? [],
+  };
+}
+
 describe("Antigravity source-isolated sync", () => {
   let dir: string;
   beforeEach(async () => {
     dir = await mkdtemp(join(tmpdir(), "pew-agy-sync-"));
     reader.mockReset();
-    reader.mockResolvedValue({ deltas: [delta()], snapshots: [], dbCount: 1 });
+    reader.mockResolvedValue(sourceSnapshot());
   });
   afterEach(async () => { vi.restoreAllMocks(); await rm(dir, { recursive: true, force: true }); });
-  const sync = (deviceId = "device") => executeSync({ stateDir: dir, deviceId, antigravityDir: "/synthetic" });
+  const sync = (deviceId = "device") => executeSync({ stateDir: dir, deviceId, antigravityDirs: ["/synthetic"] });
   const records = async () => (await new LocalQueue(dir).readFromOffset(0)).records;
   const accounting = async () => (await new AccountingQueue(dir).readFromOffset(0)).records;
 
   it("does not warn about an uninstalled optional source on the first sync", async () => {
     reader.mockRejectedValue(Object.assign(new Error("not installed"), { code: "ENOENT" }));
     const progress = vi.fn();
-    await executeSync({ stateDir: dir, deviceId: "device", antigravityDir: "/synthetic", onProgress: progress });
+    await executeSync({ stateDir: dir, deviceId: "device", antigravityDirs: ["/synthetic"], onProgress: progress });
     expect(progress.mock.calls.some(([event]) => event.source === "antigravity" && event.phase === "warn")).toBe(false);
-    await executeSessionSync({ stateDir: dir, antigravityDir: "/synthetic", onProgress: progress });
+    await executeSessionSync({ stateDir: dir, antigravityDirs: ["/synthetic"], onProgress: progress });
     expect(progress.mock.calls.some(([event]) => event.source === "antigravity" && event.phase === "warn")).toBe(false);
   });
 
@@ -61,11 +77,98 @@ describe("Antigravity source-isolated sync", () => {
     expect(await accounting()).toEqual(details);
     expect(await new LocalQueue(dir).loadDirtyKeys()).toEqual([]);
     expect(await new AccountingQueue(dir).loadDirtyKeys()).toEqual([]);
-    reader.mockResolvedValue({ deltas: [delta(9000, 0)], snapshots: [], dbCount: 1 });
+    reader.mockResolvedValue(sourceSnapshot({ deltas: [delta(9000, 0)] }));
     await sync();
     expect((await accounting())[0].groups[0].counts?.cache_read_input_tokens).toBe(0);
     expect((await records())[0].input_tokens).toBe(9000);
     expect((await new CursorStore(dir).load()).antigravity?.dbCount).toBe(1);
+  });
+
+  it("persists per-DB cache state and forwards cache/skip flags and warnings across sync phases", async () => {
+    const d = delta();
+    const cachedDb: AntigravityDbCache = {
+      dbStat: "1:2:3:4:5",
+      walStat: null,
+      stepCount: 7,
+      deltas: [{
+        model: d.model,
+        hourStart: "2026-10-01T12:00:00.000Z",
+        tokens: d.tokens,
+        accounting: d.accounting!,
+      }],
+      snapshot: null,
+    };
+    const dbs = { "/synthetic/conv.db": cachedDb };
+    reader.mockResolvedValueOnce(sourceSnapshot({
+      deltas: [d],
+      stepCount: 7,
+      dbs,
+      warnings: ["Skipped 1 busy Antigravity database(s); will retry next sync"],
+    }));
+
+    const syncWarnings: string[] = [];
+    const first = await executeSync({
+      stateDir: dir,
+      deviceId: "device",
+      antigravityDirs: ["/synthetic"],
+      onProgress: (event) => {
+        if (event.source === "antigravity" && event.phase === "warn") syncWarnings.push(event.message ?? "");
+      },
+    });
+    // First sync with no prior baseline allows skipping an uncached busy DB
+    expect(reader).toHaveBeenNthCalledWith(1, ["/synthetic"], {
+      cache: undefined,
+      allowSkipUncachedUnstable: true,
+    });
+    expect(first.sources.antigravity).toBe(7);
+    expect(first.totalDeltas).toBe(7);
+    expect(syncWarnings).toEqual(["Skipped 1 busy Antigravity database(s); will retry next sync"]);
+
+    const savedCursor = (await new CursorStore(dir).load()).antigravity;
+    expect(savedCursor).toMatchObject({
+      dbCount: 1,
+      cacheVersion: ANTIGRAVITY_CACHE_VERSION,
+      dbs,
+    });
+
+    // Steady-state sync passes saved cache and allowSkipUncachedUnstable: true
+    reader.mockResolvedValueOnce(sourceSnapshot({ deltas: [d], stepCount: 7, dbs }));
+    await sync();
+    expect(reader).toHaveBeenNthCalledWith(2, ["/synthetic"], {
+      cache: dbs,
+      allowSkipUncachedUnstable: true,
+    });
+
+    // Session sync loads token cache read-only and forwards warnings
+    reader.mockResolvedValueOnce(sourceSnapshot({
+      deltas: [],
+      snapshots: [],
+      dbCount: 1,
+      dbs,
+      warnings: ["Retained cached snapshot for 1 busy Antigravity database(s)"],
+    }));
+    const sessionWarnings: string[] = [];
+    await executeSessionSync({
+      stateDir: dir,
+      antigravityDirs: ["/synthetic"],
+      onProgress: (event) => {
+        if (event.source === "antigravity" && event.phase === "warn") sessionWarnings.push(event.message ?? "");
+      },
+    });
+    expect(reader).toHaveBeenNthCalledWith(3, ["/synthetic"], {
+      cache: dbs,
+      allowSkipUncachedUnstable: true,
+    });
+    expect(sessionWarnings).toEqual(["Retained cached snapshot for 1 busy Antigravity database(s)"]);
+
+    // Post-reset sync has prior records but no cursor -> cache: undefined & allowSkipUncachedUnstable: false
+    await executeReset({ stateDir: dir });
+    reader.mockResolvedValueOnce(sourceSnapshot({ deltas: [d], stepCount: 7, dbs }));
+    await sync();
+    expect(reader).toHaveBeenNthCalledWith(4, ["/synthetic"], {
+      cache: undefined,
+      allowSkipUncachedUnstable: false,
+    });
   });
 
   it("survives cursor deletion and preserves other sources and other devices", async () => {
@@ -83,11 +186,11 @@ describe("Antigravity source-isolated sync", () => {
 
   it("corrects model/time moves and step deletions with usage and detail tombstones", async () => {
     await sync();
-    reader.mockResolvedValue({ deltas: [delta(50, 900, "corrected-model", "2026-10-01T12:31:00.000Z")], snapshots: [], dbCount: 1 });
+    reader.mockResolvedValue(sourceSnapshot({ deltas: [delta(50, 900, "corrected-model", "2026-10-01T12:31:00.000Z")] }));
     await sync();
     expect((await records()).map((r) => [r.model, r.total_tokens])).toEqual([["corrected-model", 1050], ["test-model", 0]]);
     expect((await accounting()).find((r) => r.model === "test-model")?.basis.total_tokens).toBe(0);
-    reader.mockResolvedValue({ deltas: [], snapshots: [], dbCount: 1 });
+    reader.mockResolvedValue(sourceSnapshot({ deltas: [] }));
     await sync();
     expect((await records()).every((r) => r.total_tokens === 0)).toBe(true);
     expect((await accounting()).every((r) => r.basis.total_tokens === 0)).toBe(true);
@@ -109,14 +212,14 @@ describe("Antigravity source-isolated sync", () => {
     const upload = () => executeUpload({ stateDir: dir, apiUrl: "https://synthetic.invalid", fetch });
     await sync();
     expect((await upload()).success).toBe(true);
-    reader.mockResolvedValue({ deltas: [delta(50, 900, "corrected-model", "2026-10-01T12:31:00.000Z")], snapshots: [], dbCount: 1 });
+    reader.mockResolvedValue(sourceSnapshot({ deltas: [delta(50, 900, "corrected-model", "2026-10-01T12:31:00.000Z")] }));
     await executeReset({ stateDir: dir });
     await sync();
     expect((await upload()).success).toBe(true);
     expect(remote.get("test-model|2026-10-01T12:00:00.000Z")).toBe(0);
     expect(remote.get("corrected-model|2026-10-01T12:30:00.000Z")).toBe(1050);
     expect((await accounting()).find((r) => r.model === "test-model")?.basis.total_tokens).toBe(0);
-    reader.mockResolvedValue({ deltas: [], snapshots: [], dbCount: 1 });
+    reader.mockResolvedValue(sourceSnapshot({ deltas: [] }));
     await executeReset({ stateDir: dir });
     await sync();
     expect((await upload()).success).toBe(true);
@@ -148,7 +251,7 @@ describe("Antigravity source-isolated sync", () => {
     await rm(join(dir, "cursors.json"));
     reader.mockRejectedValue(new Error(reason));
     const warnings: string[] = [];
-    await executeSync({ stateDir: dir, deviceId: "device", antigravityDir: "/synthetic",
+    await executeSync({ stateDir: dir, deviceId: "device", antigravityDirs: ["/synthetic"],
       onProgress: (event) => { if (event.phase === "warn") warnings.push(event.message ?? ""); } });
     expect(await records()).toEqual(before);
     expect(await accounting()).toEqual(details);
@@ -163,7 +266,7 @@ describe("Antigravity source-isolated sync", () => {
     const before = await records();
     for (const deltas of [[delta(600_000_000), delta(600_000_000)],
       [{ ...delta(), accounting: { ...delta().accounting!, basis: { ...delta().accounting!.basis, total_tokens: 1 } } }]]) {
-      reader.mockResolvedValue({ deltas, snapshots: [], dbCount: 1 });
+      reader.mockResolvedValue(sourceSnapshot({ deltas }));
       await sync();
       expect(await records()).toEqual(before);
     }
@@ -205,7 +308,7 @@ describe("Antigravity source-isolated sync", () => {
     await writeFile(join(claudeDir, "projects", "synthetic", "conversation.jsonl"), `${JSON.stringify({
       type: "assistant", timestamp: time, message: { model: "test-model", usage: { input_tokens: 10, output_tokens: 2 } },
     })}\n`);
-    await executeSync({ stateDir: dir, deviceId: "device", antigravityDir: "/synthetic", claudeDir });
+    await executeSync({ stateDir: dir, deviceId: "device", antigravityDirs: ["/synthetic"], claudeDir });
     expect(await new LocalQueue(dir).loadDirtyKeys()).toEqual(expect.arrayContaining([...before, pi].map((r) =>
       `${r.source}|${r.model}|${r.hour_start}|${r.device_id}`)));
     expect((await records()).filter((r) => r.source === "antigravity")).toEqual(expect.arrayContaining(before));
@@ -215,8 +318,8 @@ describe("Antigravity source-isolated sync", () => {
     const snapshot = { sessionKey: "antigravity:synthetic", source: "antigravity" as const, kind: "human" as const,
       startedAt: time, lastMessageAt: time, durationSeconds: 0, userMessages: 1, assistantMessages: 1,
       totalMessages: 2, projectRef: null, model: "test-model", snapshotAt: time };
-    reader.mockResolvedValue({ deltas: [], snapshots: [snapshot], dbCount: 1 });
-    const opts = { stateDir: dir, antigravityDir: "/synthetic" };
+    reader.mockResolvedValue(sourceSnapshot({ deltas: [], snapshots: [snapshot] }));
+    const opts = { stateDir: dir, antigravityDirs: ["/synthetic"] };
     expect((await executeSessionSync(opts)).sources.antigravity).toBe(1);
     const content = await readFile(join(dir, "session-queue.jsonl"), "utf8");
     reader.mockRejectedValue(new Error("failed"));

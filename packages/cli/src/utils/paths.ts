@@ -129,6 +129,20 @@ export function resolveDefaultPaths(home = homedir()) {
     ...(process.env.PEW_COPILOT_OTEL_PATHS?.split(delimiter) ?? []),
   ].filter((path): path is string => typeof path === "string" && path.trim().length > 0)
     .map((path) => path.trim());
+  const envAntigravityDirs = [
+    ...new Set(
+      (process.env.PEW_ANTIGRAVITY_DIRS?.split(delimiter) ?? [])
+        .map((path) => path.trim())
+        .filter((path) => path.length > 0),
+    ),
+  ];
+  const antigravityDirs =
+    envAntigravityDirs.length > 0
+      ? envAntigravityDirs
+      : [
+          join(home, ".gemini", "antigravity-cli", "conversations"),
+          join(home, ".gemini", "antigravity", "conversations"),
+        ];
   return {
     /** pew state directory: ~/.config/pew/ */
     stateDir: join(home, ".config", "pew"),
@@ -140,8 +154,8 @@ export function resolveDefaultPaths(home = homedir()) {
     claudeDir: join(home, ".claude"),
     /** Codex CLI sessions: ~/.codex/sessions (or $CODEX_HOME/sessions) */
     codexSessionsDir: join(codexHome, "sessions"),
-    /** Antigravity CLI conversation databases */
-    antigravityDir: join(home, ".gemini", "antigravity-cli", "conversations"),
+    /** Antigravity conversation databases (CLI + IDE/App) */
+    antigravityDirs,
     /** OpenCode message storage: ~/.local/share/opencode/storage/message */
     openCodeMessageDir: join(
       home,

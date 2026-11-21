@@ -11,6 +11,7 @@ describe("resolveDefaultPaths", () => {
   let savedMulticaWorkspaces: string | undefined;
   let savedCopilotOtelPath: string | undefined;
   let savedPewCopilotOtelPaths: string | undefined;
+  let savedPewAntigravityDirs: string | undefined;
   let tempDir: string | null = null;
 
   beforeEach(() => {
@@ -19,11 +20,13 @@ describe("resolveDefaultPaths", () => {
     savedMulticaWorkspaces = process.env.MULTICA_WORKSPACES;
     savedCopilotOtelPath = process.env.COPILOT_OTEL_FILE_EXPORTER_PATH;
     savedPewCopilotOtelPaths = process.env.PEW_COPILOT_OTEL_PATHS;
+    savedPewAntigravityDirs = process.env.PEW_ANTIGRAVITY_DIRS;
     delete process.env.HERMES_HOME;
     delete process.env.CODEX_HOME;
     delete process.env.MULTICA_WORKSPACES;
     delete process.env.COPILOT_OTEL_FILE_EXPORTER_PATH;
     delete process.env.PEW_COPILOT_OTEL_PATHS;
+    delete process.env.PEW_ANTIGRAVITY_DIRS;
   });
 
   afterEach(() => {
@@ -52,6 +55,11 @@ describe("resolveDefaultPaths", () => {
     } else {
       delete process.env.PEW_COPILOT_OTEL_PATHS;
     }
+    if (savedPewAntigravityDirs !== undefined) {
+      process.env.PEW_ANTIGRAVITY_DIRS = savedPewAntigravityDirs;
+    } else {
+      delete process.env.PEW_ANTIGRAVITY_DIRS;
+    }
     if (tempDir) {
       rmSync(tempDir, { recursive: true, force: true });
       tempDir = null;
@@ -67,7 +75,10 @@ describe("resolveDefaultPaths", () => {
     );
     expect(paths.claudeDir).toBe(join("/fakehome", ".claude"));
 
-    expect(paths.antigravityDir).toBe(join("/fakehome", ".gemini", "antigravity-cli", "conversations"));
+    expect(paths.antigravityDirs).toEqual([
+      join("/fakehome", ".gemini", "antigravity-cli", "conversations"),
+      join("/fakehome", ".gemini", "antigravity", "conversations"),
+    ]);
     expect(paths.openCodeMessageDir).toBe(
       join("/fakehome", ".local", "share", "opencode", "storage", "message"),
     );
@@ -138,7 +149,7 @@ describe("resolveDefaultPaths", () => {
 
   it("should return exactly 18 path properties", () => {
     const keys = [
-      "antigravityDir",
+      "antigravityDirs",
       "stateDir",
       "binDir",
       "notifyPath",
@@ -262,5 +273,19 @@ describe("resolveDefaultPaths", () => {
     const paths = resolveDefaultPaths("/fakehome");
     expect(paths.multicaCodexDirs).toHaveLength(1);
     expect(paths.multicaCodexDirs[0]).toBe(sessionDir);
+  });
+
+  it("should override antigravityDirs with PEW_ANTIGRAVITY_DIRS", () => {
+    process.env.PEW_ANTIGRAVITY_DIRS = [
+      " /custom/antigravity/a ",
+      "",
+      "/custom/antigravity/b",
+      "/custom/antigravity/a",
+    ].join(delimiter);
+    const paths = resolveDefaultPaths("/fakehome");
+    expect(paths.antigravityDirs).toEqual([
+      "/custom/antigravity/a",
+      "/custom/antigravity/b",
+    ]);
   });
 });

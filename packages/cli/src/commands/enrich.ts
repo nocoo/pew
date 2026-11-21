@@ -19,7 +19,7 @@ export interface EnrichOptions extends SyncOptions {
 }
 
 const sourceOptions: Partial<Record<Source, Array<keyof SyncOptions>>> = {
-  antigravity: ["antigravityDir"],
+  antigravity: ["antigravityDirs"],
   "claude-code": ["claudeDir"], codex: ["codexSessionsDir", "multicaCodexDirs"],
   "copilot-cli": ["copilotCliLogsDir", "copilotCliOtelPaths"], grok: ["grokLogsPath", "grokSessionsDir"],
   hermes: ["hermesDbPath", "hermesProfileDbPaths", "openHermesDb"],

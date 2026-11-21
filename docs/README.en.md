@@ -55,7 +55,7 @@ Automatic synchronization supports Claude Code, Codex, OpenClaw, OpenCode, and P
 
 Set `COPILOT_OTEL_FILE_EXPORTER_PATH` for a Copilot CLI OTel file. Use `PEW_COPILOT_OTEL_PATHS` for multiple files or directories separated by the operating system's path delimiter. Default source paths are defined in [paths.ts](../packages/cli/src/utils/paths.ts).
 
-Antigravity CLI usage and sessions come from `~/.gemini/antigravity-cli/conversations/*.db`, without upstream login or running `agy`. It has no automatic sync integration; use `pew sync`. Uncached input and cache reads are disjoint. Visible output and reasoning are split without double-counting. Cache hit rate is cache reads / total input, including reported zero-hit calls. See [Antigravity accounting](51-antigravity-support.md).
+Antigravity usage and sessions come from `~/.gemini/antigravity-cli/conversations/*.db` and `~/.gemini/antigravity/conversations/*.db` (overridable via `PEW_ANTIGRAVITY_DIRS`), without upstream login or running `agy`. It has no automatic sync integration; use `pew sync`. Uncached input and cache reads are disjoint. Visible output and reasoning are split without double-counting. Cache hit rate is cache reads / total input, including reported zero-hit calls. See [Antigravity accounting](51-antigravity-support.md).
 
 ## Development
 

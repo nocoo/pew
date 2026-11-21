@@ -48,7 +48,7 @@ import {
   snapshotJsonlSharedState,
 } from "../utils/jsonl-shared-state.js";
 import { aggregateRecords } from "./upload.js";
-import { readAntigravitySource } from "../parsers/antigravity.js";
+import { ANTIGRAVITY_CACHE_VERSION, readAntigravitySource } from "../parsers/antigravity.js";
 import { antigravityRecords, readAntigravityBaseline, replaceAntigravityPartition, tokenRecordKey } from "../utils/antigravity-snapshot.js";
 import { inclusiveAccounting } from "../utils/accounting.js";
 import { isRetiredCursorPath, RETIRED_SOURCES, isRetiredSource, readRetainedQueueState } from "../utils/retired-sources.js";
@@ -59,7 +59,7 @@ export interface SyncOptions {
   stateDir: string;
   /** Stable device identifier (from ConfigManager.ensureDeviceId()) */
   deviceId: string;
-  antigravityDir?: string;
+  antigravityDirs?: string[];
   /** Override: Claude data directory (~/.claude) */
   claudeDir?: string;
   /** Override: Codex CLI sessions directory (~/.codex/sessions) */
@@ -226,9 +226,19 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
     internal.previousRetiredRecords = retained.filter((r) => isRetiredSource(r.source));
     if (internal.previousRetiredRecords.length) await readRetainedQueueState(opts.stateDir, "queue.state.json");
     internal.previousAntigravityCursor = (await new CursorStore(opts.stateDir).load()).antigravity;
-    if (opts.antigravityDir) {
+    if (opts.antigravityDirs?.length) {
       try {
-        const snapshot = await readAntigravitySource(opts.antigravityDir);
+        const validCache =
+          internal.previousAntigravityCursor?.cacheVersion === ANTIGRAVITY_CACHE_VERSION
+            ? internal.previousAntigravityCursor.dbs
+            : undefined;
+        const allowSkipUncachedUnstable =
+          Boolean(validCache) ||
+          (internal.previousAntigravityRecords.length === 0 && !internal.previousAntigravityCursor);
+        const snapshot = await readAntigravitySource(opts.antigravityDirs, {
+          cache: validCache,
+          allowSkipUncachedUnstable,
+        });
         const records = antigravityRecords(snapshot.deltas, opts.deviceId);
         let invalid = false;
         const verified = new Set<string>();
@@ -236,6 +246,9 @@ export async function executeSync(opts: SyncOptions): Promise<SyncResult> {
           replay: true, deviceId: opts.deviceId, onWarning: () => { invalid = true; },
           onVerified: (key) => { verified.add(key); } });
         if (invalid || verified.size !== records.length) throw new Error("Invalid Antigravity accounting snapshot");
+        for (const message of snapshot.warnings) {
+          opts.onProgress?.({ source: "antigravity", phase: "warn", message });
+        }
         internal.antigravitySnapshot = snapshot;
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT" || internal.previousAntigravityRecords.length ||
@@ -393,7 +406,7 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   let replayDetected = false;
 
   const allDeltas: ParsedDelta[] = [];
-  const sourceCounts = { antigravity: opts.antigravitySnapshot?.deltas.length ?? 0, claude: 0, codex: 0, copilotCli: 0,  grok: 0, hermes: 0,   opencode: 0, openclaw: 0, pi: 0,  };
+  const sourceCounts = { antigravity: opts.antigravitySnapshot?.stepCount ?? 0, claude: 0, codex: 0, copilotCli: 0,  grok: 0, hermes: 0,   opencode: 0, openclaw: 0, pi: 0,  };
   const filesScanned = { antigravity: opts.antigravitySnapshot?.dbCount ?? 0, claude: 0, codex: 0, copilotCli: 0,  grok: 0, hermes: 0,   opencode: 0, openclaw: 0, pi: 0,  };
   const dbsScanned = { antigravity: opts.antigravitySnapshot?.dbCount ?? 0, opencode: 0, hermes: 0 };
 
@@ -1242,7 +1255,12 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
     finalRecords = undefined;
   }
   cursors.antigravity = opts.antigravitySnapshot
-    ? { dbCount: opts.antigravitySnapshot.dbCount, updatedAt: new Date().toISOString() }
+    ? {
+        dbCount: opts.antigravitySnapshot.dbCount,
+        updatedAt: new Date().toISOString(),
+        cacheVersion: ANTIGRAVITY_CACHE_VERSION,
+        dbs: opts.antigravitySnapshot.dbs,
+      }
     : opts.previousAntigravityCursor;
   const accountingWarnings = new Set<string>();
   const verifiedAccountingKeys = new Set<string>();
@@ -1330,12 +1348,12 @@ async function executeSyncInternal(opts: InternalSyncOptions): Promise<SyncResul
   onProgress?.({
     source: "all",
     phase: "done",
-    message: `Synced ${allDeltas.length + (opts.antigravitySnapshot?.deltas.length ?? 0)} events → ${records.length} records`,
+    message: `Synced ${allDeltas.length + (opts.antigravitySnapshot?.stepCount ?? 0)} events → ${records.length} records`,
   });
 
   return {
     accountingKeys: [...verifiedAccountingKeys].sort(),
-    totalDeltas: allDeltas.length + (opts.antigravitySnapshot?.deltas.length ?? 0),
+    totalDeltas: allDeltas.length + (opts.antigravitySnapshot?.stepCount ?? 0),
     totalRecords: records.length + evidenceRecords.length + (freshAntigravity?.length ?? 0),
     sources: sourceCounts,
     filesScanned,
