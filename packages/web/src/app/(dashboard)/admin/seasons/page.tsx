@@ -29,7 +29,7 @@ import { Field } from "@nocoo/basalt/components/field";
 import { Input } from "@nocoo/basalt/components/input";
 import { rowIconClassName } from "@/lib/ghost-icon";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
-import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { Skeleton } from "@nocoo/basalt/components/skeleton";
 import { RowListSkeleton } from "@/components/row-list-skeleton";
 import { MessageBanner, type MessageBannerMsg } from "@/components/message-banner";
 import { ConfirmDialog, useConfirm } from "@nocoo/basalt/components/confirm-dialog";
@@ -230,7 +230,7 @@ function CreateSeasonForm({
         Create Season
       </h3>
       {error && (
-        <Banner variant="error" size="sm" className="mb-3" description={error} />
+        <Banner tone="danger" size="sm" className="mb-3" description={error} />
       )}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="Name" htmlFor={nameId}>
@@ -388,7 +388,7 @@ function EditSeasonRow({
     <tr className="border-b border-basalt-border/50">
       <td colSpan={6} className="px-4 py-3">
         {error && (
-          <Banner variant="error" size="sm" className="mb-2" description={error} />
+          <Banner tone="danger" size="sm" className="mb-2" description={error} />
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Name" htmlFor={nameId}>
@@ -667,8 +667,8 @@ export default function AdminSeasonsPage() {
     return (
       <div className="space-y-4 md:space-y-6">
         <div>
-          <SkeletonLine style={{ width: undefined }} className="h-8 w-48" />
-          <SkeletonLine style={{ width: undefined }} className="h-4 w-80 mt-2" />
+          <Skeleton style={{ width: undefined }} className="h-8 w-48" />
+          <Skeleton style={{ width: undefined }} className="h-4 w-80 mt-2" />
         </div>
         <SeasonsSkeleton />
       </div>
@@ -927,7 +927,7 @@ function SeasonTableRow({
               <div className="space-y-2">
                 {Array.from({ length: 3 }).map((_, i) => (
                   // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-                  <SkeletonLine style={{ width: undefined }} key={`slot-${i}`} className="h-4 w-48" />
+                  <Skeleton style={{ width: undefined }} key={`slot-${i}`} className="h-4 w-48" />
                 ))}
               </div>
             ) : expandedTeams.length === 0 ? (

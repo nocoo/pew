@@ -17,7 +17,7 @@ import { cn, formatTokens } from "@/lib/utils";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { usePricingMap, formatCost } from "@/hooks/use-pricing";
 import { computeTotalCost } from "@/lib/cost-helpers";
-import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { Skeleton } from "@nocoo/basalt/components/skeleton";
 import { StatCard, StatGrid } from "@/components/dashboard/stat-card";
 import { UsageTrendChart } from "@/components/dashboard/usage-trend-chart";
 import { SourceDonutChart } from "@/components/dashboard/source-donut-chart";
@@ -60,8 +60,8 @@ function ContentSkeleton() {
               key={`slot-${i}`}
               className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5 space-y-2"
             >
-              <SkeletonLine style={{ width: undefined }} className="h-4 w-16" />
-              <SkeletonLine style={{ width: undefined }} className="h-8 w-24" />
+              <Skeleton style={{ width: undefined }} className="h-4 w-16" />
+              <Skeleton style={{ width: undefined }} className="h-8 w-24" />
             </div>
           ))}
         </StatGrid>
@@ -70,21 +70,21 @@ function ContentSkeleton() {
       {/* Charts skeleton */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-3">
         <div className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5">
-          <SkeletonLine style={{ width: undefined }} className="h-4 w-24 mb-3" />
-          <SkeletonLine style={{ width: undefined }} className="h-[220px] w-full" />
+          <Skeleton style={{ width: undefined }} className="h-4 w-24 mb-3" />
+          <Skeleton style={{ width: undefined }} className="h-[220px] w-full" />
         </div>
         <div className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5 flex flex-col">
-          <SkeletonLine style={{ width: undefined }} className="h-4 w-20 mb-3" />
+          <Skeleton style={{ width: undefined }} className="h-4 w-20 mb-3" />
           <div className="flex flex-1 items-center justify-center">
-            <SkeletonLine style={{ width: undefined }} className="h-[180px] w-[180px] rounded-full" />
+            <Skeleton style={{ width: undefined }} className="h-[180px] w-[180px] rounded-full" />
           </div>
         </div>
       </div>
 
       {/* Model breakdown skeleton */}
       <div className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5">
-        <SkeletonLine style={{ width: undefined }} className="h-4 w-20 mb-4" />
-        <SkeletonLine style={{ width: undefined }} className="h-[200px] w-full" />
+        <Skeleton style={{ width: undefined }} className="h-4 w-20 mb-4" />
+        <Skeleton style={{ width: undefined }} className="h-[200px] w-full" />
       </div>
     </div>
   );
@@ -230,7 +230,7 @@ export function ProfileContent({
 
       {/* Error state */}
       {error && (
-        <Banner variant="error" className="mb-4" description={error} />
+        <Banner tone="danger" className="mb-4" description={error} />
       )}
 
       {/* Not found state */}
@@ -316,7 +316,7 @@ export function ProfileContent({
                 {currentYear} Activity
               </p>
               {yearData.loading ? (
-                <SkeletonLine style={{ width: undefined }} className="h-[120px] w-full" />
+                <Skeleton style={{ width: undefined }} className="h-[120px] w-full" />
               ) : (
                 <HeatmapCalendar
                   data={yearData.heatmap}

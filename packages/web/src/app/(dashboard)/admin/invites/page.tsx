@@ -8,7 +8,7 @@ import { Plus, Trash2 } from "@nocoo/basalt/icons";
 
 import { useAdmin } from "@/hooks/use-admin";
 import { ErrorBanner } from "@/components/error-banner";
-import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { Skeleton } from "@nocoo/basalt/components/skeleton";
 import { RowListSkeleton } from "@/components/row-list-skeleton";
 import { MessageBanner, type MessageBannerMsg } from "@/components/message-banner";
 import { ConfirmDialog, useConfirm } from "@nocoo/basalt/components/confirm-dialog";
@@ -54,12 +54,12 @@ function InvitesSkeleton() {
 
 function StatusBadge({ usedBy }: { usedBy: string | null }) {
   if (!usedBy) {
-    return <Badge variant="success">unused</Badge>;
+    return <Badge tone="success">unused</Badge>;
   }
   if (usedBy.startsWith("pending:")) {
-    return <Badge variant="warning">pending</Badge>;
+    return <Badge tone="warning">pending</Badge>;
   }
-  return <Badge variant="secondary">used</Badge>;
+  return <Badge tone="neutral">used</Badge>;
 }
 
 // ---------------------------------------------------------------------------
@@ -278,8 +278,8 @@ export default function AdminInvitesPage() {
     return (
       <div className="space-y-4 md:space-y-6">
         <div>
-          <SkeletonLine style={{ width: undefined }} className="h-8 w-48" />
-          <SkeletonLine style={{ width: undefined }} className="h-4 w-80 mt-2" />
+          <Skeleton style={{ width: undefined }} className="h-8 w-48" />
+          <Skeleton style={{ width: undefined }} className="h-4 w-80 mt-2" />
         </div>
         <InvitesSkeleton />
       </div>

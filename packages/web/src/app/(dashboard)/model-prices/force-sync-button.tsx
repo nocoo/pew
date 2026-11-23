@@ -61,20 +61,20 @@ export function ForceSyncButton({ onComplete }: Props) {
       </Button>
       {state.kind === "ok" && (
         <Banner
-          variant="secondary"
+          tone="neutral"
           size="sm"
           description="Prices updated"
         />
       )}
       {state.kind === "partial" && (
         <Banner
-          variant="alert"
+          tone="warning"
           size="sm"
           description="Some prices could not be refreshed"
         />
       )}
       {state.kind === "error" && (
-        <Banner variant="error" size="sm" description={state.message} />
+        <Banner tone="danger" size="sm" description={state.message} />
       )}
     </span>
   );

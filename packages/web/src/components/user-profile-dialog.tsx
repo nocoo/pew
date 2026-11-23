@@ -16,7 +16,7 @@ import { useAdmin } from "@/hooks/use-admin";
 import { useSeasons } from "@/hooks/use-seasons";
 import { useUserProfile } from "@/hooks/use-user-profile";
 import { Avatar, AvatarFallback, AvatarImage } from "@nocoo/basalt/components/avatar";
-import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { Skeleton } from "@nocoo/basalt/components/skeleton";
 import {
   ProfileContent,
   type ProfileTab,
@@ -95,7 +95,7 @@ function ConfigLoadingSkeleton({
             <DialogTitle className="text-xl font-semibold text-basalt-foreground">
               {displayName}
             </DialogTitle>
-            <SkeletonLine style={{ width: undefined }} className="h-4 w-32 mt-1" />
+            <Skeleton style={{ width: undefined }} className="h-4 w-32 mt-1" />
           </div>
         </div>
         <DialogClose asChild>
@@ -110,7 +110,7 @@ function ConfigLoadingSkeleton({
         {Array.from({ length: 3 }).map((_, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
           <div key={`tab-${i}`} className="flex-1 rounded-md px-3 py-2">
-            <SkeletonLine style={{ width: undefined }} className="h-4 w-full" />
+            <Skeleton style={{ width: undefined }} className="h-4 w-full" />
           </div>
         ))}
       </div>
@@ -124,20 +124,20 @@ function ConfigLoadingSkeleton({
               key={`stat-${i}`}
               className="rounded-card bg-basalt-secondary p-4 md:p-5 space-y-2"
             >
-              <SkeletonLine style={{ width: undefined }} className="h-4 w-16" />
-              <SkeletonLine style={{ width: undefined }} className="h-8 w-24" />
+              <Skeleton style={{ width: undefined }} className="h-4 w-16" />
+              <Skeleton style={{ width: undefined }} className="h-8 w-24" />
             </div>
           ))}
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-3">
           <div className="rounded-card bg-basalt-secondary p-4 md:p-5">
-            <SkeletonLine style={{ width: undefined }} className="h-4 w-24 mb-3" />
-            <SkeletonLine style={{ width: undefined }} className="h-[220px] w-full" />
+            <Skeleton style={{ width: undefined }} className="h-4 w-24 mb-3" />
+            <Skeleton style={{ width: undefined }} className="h-[220px] w-full" />
           </div>
           <div className="rounded-card bg-basalt-secondary p-4 md:p-5 flex flex-col">
-            <SkeletonLine style={{ width: undefined }} className="h-4 w-20 mb-3" />
+            <Skeleton style={{ width: undefined }} className="h-4 w-20 mb-3" />
             <div className="flex flex-1 items-center justify-center">
-              <SkeletonLine style={{ width: undefined }} className="h-[180px] w-[180px] rounded-full" />
+              <Skeleton style={{ width: undefined }} className="h-[180px] w-[180px] rounded-full" />
             </div>
           </div>
         </div>
@@ -185,7 +185,7 @@ function ProfileDialogHeader({
         <div>
           <DialogTitle className="text-xl font-semibold text-basalt-foreground">
             {isFirstLoad ? (
-              <SkeletonLine style={{ width: undefined }} className="h-6 w-40" />
+              <Skeleton style={{ width: undefined }} className="h-6 w-40" />
             ) : (
               displayName
             )}

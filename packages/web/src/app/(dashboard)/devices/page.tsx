@@ -10,7 +10,7 @@ import { formatCost, usePricingMap } from "@/hooks/use-pricing";
 import { sourceLabel } from "@/hooks/use-usage-data";
 import { deviceLabel, shortDeviceId, toDeviceAgentBreakdown, toDeviceModelBreakdown } from "@/lib/device-helpers";
 import { toSourceTrendPoints } from "@/lib/usage-helpers";
-import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { Skeleton } from "@nocoo/basalt/components/skeleton";
 import { ChartCardSkeleton } from "@/components/dashboard/chart-card-skeleton";
 import { Empty } from "@nocoo/basalt/components/empty";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
@@ -42,8 +42,8 @@ function DevicesSkeleton() {
         {Array.from({ length: 3 }).map((_, i) => (
           // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
           <div key={`slot-${i}`} className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 space-y-2">
-            <SkeletonLine style={{ width: undefined }} className="h-3 w-20" />
-            <SkeletonLine style={{ width: undefined }} className="h-7 w-24" />
+            <Skeleton style={{ width: undefined }} className="h-3 w-20" />
+            <Skeleton style={{ width: undefined }} className="h-7 w-24" />
           </div>
         ))}
       </div>
@@ -63,30 +63,30 @@ function DevicesSkeleton() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-basalt-border">
-              <th className="px-4 py-3 text-left"><SkeletonLine style={{ width: undefined }} className="h-3 w-14" /></th>
-              <th className="px-4 py-3 text-left hidden lg:table-cell"><SkeletonLine style={{ width: undefined }} className="h-3 w-10" /></th>
-              <th className="px-4 py-3 text-left hidden xl:table-cell"><SkeletonLine style={{ width: undefined }} className="h-3 w-12" /></th>
-              <th className="px-4 py-3 text-right"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right hidden md:table-cell"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right hidden sm:table-cell"><SkeletonLine style={{ width: undefined }} className="h-3 w-14 ml-auto" /></th>
-              <th className="px-4 py-3 text-right hidden md:table-cell"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-left"><Skeleton style={{ width: undefined }} className="h-3 w-14" /></th>
+              <th className="px-4 py-3 text-left hidden lg:table-cell"><Skeleton style={{ width: undefined }} className="h-3 w-10" /></th>
+              <th className="px-4 py-3 text-left hidden xl:table-cell"><Skeleton style={{ width: undefined }} className="h-3 w-12" /></th>
+              <th className="px-4 py-3 text-right"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-right"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-right hidden md:table-cell"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-right"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-right hidden sm:table-cell"><Skeleton style={{ width: undefined }} className="h-3 w-14 ml-auto" /></th>
+              <th className="px-4 py-3 text-right hidden md:table-cell"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
             </tr>
           </thead>
           <tbody>
             {Array.from({ length: 4 }).map((_, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
               <tr key={`slot-${i}`} className="border-b border-basalt-border/50 last:border-0">
-                <td className="px-4 py-3"><SkeletonLine style={{ width: undefined }} className="h-4 w-28" /></td>
-                <td className="px-4 py-3 hidden lg:table-cell"><SkeletonLine style={{ width: undefined }} className="h-4 w-16" /></td>
-                <td className="px-4 py-3 hidden xl:table-cell"><SkeletonLine style={{ width: undefined }} className="h-4 w-16" /></td>
-                <td className="px-4 py-3"><SkeletonLine style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3"><SkeletonLine style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3 hidden md:table-cell"><SkeletonLine style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3"><SkeletonLine style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3 hidden sm:table-cell"><SkeletonLine style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3 hidden md:table-cell"><SkeletonLine style={{ width: undefined }} className="h-2 w-full rounded-full" /></td>
+                <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-28" /></td>
+                <td className="px-4 py-3 hidden lg:table-cell"><Skeleton style={{ width: undefined }} className="h-4 w-16" /></td>
+                <td className="px-4 py-3 hidden xl:table-cell"><Skeleton style={{ width: undefined }} className="h-4 w-16" /></td>
+                <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3 hidden md:table-cell"><Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3 hidden sm:table-cell"><Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3 hidden md:table-cell"><Skeleton style={{ width: undefined }} className="h-2 w-full rounded-full" /></td>
               </tr>
             ))}
           </tbody>
@@ -96,9 +96,9 @@ function DevicesSkeleton() {
       {/* Deep Dive skeleton */}
       <div className="space-y-3 md:space-y-4">
         <div className="flex items-center gap-3">
-          <SkeletonLine style={{ width: undefined }} className="h-3 w-20" />
+          <Skeleton style={{ width: undefined }} className="h-3 w-20" />
           <div className="h-px flex-1 bg-basalt-border/60" />
-          <SkeletonLine style={{ width: undefined }} className="h-8 w-40" />
+          <Skeleton style={{ width: undefined }} className="h-8 w-40" />
         </div>
         <div className="grid gap-4 md:gap-6 lg:grid-cols-2">
           {Array.from({ length: 2 }).map((_, i) => (

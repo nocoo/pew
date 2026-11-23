@@ -8,7 +8,7 @@ import { formatTokens } from "@/lib/utils";
 import { usePricingMap, formatCost } from "@/hooks/use-pricing";
 import { UsageInformation } from "@/components/dashboard/usage-information";
 import { groupByModel, toSourceTrendPoints } from "@/lib/usage-helpers";
-import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { Skeleton } from "@nocoo/basalt/components/skeleton";
 import { ChartCardSkeleton } from "@/components/dashboard/chart-card-skeleton";
 import { modelColor, agentColor, withAlpha } from "@/lib/palette";
 import { ModelBreakdownChart } from "@/components/dashboard/model-breakdown-chart";
@@ -43,28 +43,28 @@ function ModelsSkeleton() {
         <table className="w-full">
           <thead>
             <tr className="border-b border-basalt-border">
-              <th className="px-4 py-3 text-left"><SkeletonLine style={{ width: undefined }} className="h-3 w-12" /></th>
-              <th className="px-4 py-3 text-left hidden lg:table-cell"><SkeletonLine style={{ width: undefined }} className="h-3 w-10" /></th>
-              <th className="px-4 py-3 text-right"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right hidden md:table-cell"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
-              <th className="px-4 py-3 text-right hidden sm:table-cell"><SkeletonLine style={{ width: undefined }} className="h-3 w-14 ml-auto" /></th>
-              <th className="px-4 py-3 text-right hidden md:table-cell"><SkeletonLine style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-left"><Skeleton style={{ width: undefined }} className="h-3 w-12" /></th>
+              <th className="px-4 py-3 text-left hidden lg:table-cell"><Skeleton style={{ width: undefined }} className="h-3 w-10" /></th>
+              <th className="px-4 py-3 text-right"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-right"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-right hidden md:table-cell"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-right"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
+              <th className="px-4 py-3 text-right hidden sm:table-cell"><Skeleton style={{ width: undefined }} className="h-3 w-14 ml-auto" /></th>
+              <th className="px-4 py-3 text-right hidden md:table-cell"><Skeleton style={{ width: undefined }} className="h-3 w-10 ml-auto" /></th>
             </tr>
           </thead>
           <tbody>
             {Array.from({ length: 5 }).map((_, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
               <tr key={`slot-${i}`} className="border-b border-basalt-border/50 last:border-0">
-                <td className="px-4 py-3"><SkeletonLine style={{ width: undefined }} className="h-4 w-32" /></td>
-                <td className="px-4 py-3 hidden lg:table-cell"><SkeletonLine style={{ width: undefined }} className="h-4 w-16" /></td>
-                <td className="px-4 py-3"><SkeletonLine style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3"><SkeletonLine style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3 hidden md:table-cell"><SkeletonLine style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3"><SkeletonLine style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3 hidden sm:table-cell"><SkeletonLine style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
-                <td className="px-4 py-3 hidden md:table-cell"><SkeletonLine style={{ width: undefined }} className="h-2 w-full rounded-full" /></td>
+                <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-32" /></td>
+                <td className="px-4 py-3 hidden lg:table-cell"><Skeleton style={{ width: undefined }} className="h-4 w-16" /></td>
+                <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3 hidden md:table-cell"><Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3"><Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3 hidden sm:table-cell"><Skeleton style={{ width: undefined }} className="h-4 w-14 ml-auto" /></td>
+                <td className="px-4 py-3 hidden md:table-cell"><Skeleton style={{ width: undefined }} className="h-2 w-full rounded-full" /></td>
               </tr>
             ))}
           </tbody>

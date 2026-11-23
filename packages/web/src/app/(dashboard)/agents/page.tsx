@@ -9,7 +9,7 @@ import { usePricingMap, formatCost } from "@/hooks/use-pricing";
 import { UsageInformation } from "@/components/dashboard/usage-information";
 import { groupByAgent, toSourceTrendPoints } from "@/lib/usage-helpers";
 import type { AgentGroup } from "@/lib/usage-helpers";
-import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { Skeleton } from "@nocoo/basalt/components/skeleton";
 import { ChartCardSkeleton } from "@/components/dashboard/chart-card-skeleton";
 import { SourceTrendChart } from "@/components/dashboard/source-trend-chart";
 import { SourceDonutChart } from "@/components/dashboard/source-donut-chart";
@@ -142,14 +142,14 @@ function AgentsSkeleton() {
         // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
         <div key={`slot-${i}`} className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-5">
           <div className="flex items-center gap-4">
-            <SkeletonLine style={{ width: undefined }} className="h-3 w-3 rounded-full" />
+            <Skeleton style={{ width: undefined }} className="h-3 w-3 rounded-full" />
             <div className="flex-1">
-              <SkeletonLine style={{ width: undefined }} className="h-4 w-24" />
-              <SkeletonLine style={{ width: undefined }} className="h-3 w-40 mt-1" />
+              <Skeleton style={{ width: undefined }} className="h-4 w-24" />
+              <Skeleton style={{ width: undefined }} className="h-3 w-40 mt-1" />
             </div>
-            <SkeletonLine style={{ width: undefined }} className="h-4 w-16" />
+            <Skeleton style={{ width: undefined }} className="h-4 w-16" />
           </div>
-          <SkeletonLine style={{ width: undefined }} className="h-2 w-full mt-3 rounded-full" />
+          <Skeleton style={{ width: undefined }} className="h-2 w-full mt-3 rounded-full" />
         </div>
       ))}
     </div>

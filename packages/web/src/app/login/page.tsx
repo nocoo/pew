@@ -122,7 +122,7 @@ function LoginContent() {
 
             {error && error !== "InviteRequired" ? (
               <Banner
-                variant="error"
+                tone="danger"
                 size="sm"
                 className="mt-3 w-full"
                 description={
@@ -155,7 +155,7 @@ function LoginContent() {
                   className="rounded-xl py-3 text-center font-mono tracking-widest placeholder:font-sans placeholder:tracking-normal"
                 />
                 {inviteError && (
-                  <Banner variant="error" size="sm" description={inviteError} />
+                  <Banner tone="danger" size="sm" description={inviteError} />
                 )}
                 <Button
                   variant="secondary"

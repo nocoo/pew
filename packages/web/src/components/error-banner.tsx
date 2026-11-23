@@ -7,5 +7,5 @@ interface ErrorBannerProps {
 
 export function ErrorBanner({ messagePrefix, error }: ErrorBannerProps) {
   if (!error) return null;
-  return <Banner variant="error" size="sm" description={`${messagePrefix}: ${error}`} />;
+  return <Banner tone="danger" size="sm" description={`${messagePrefix}: ${error}`} />;
 }

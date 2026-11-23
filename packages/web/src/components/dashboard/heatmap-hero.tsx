@@ -5,7 +5,7 @@ import { Zap, Calendar, Activity } from "@nocoo/basalt/icons";
 import { cn, formatTokens } from "@/lib/utils";
 import { HeatmapCalendar, type HeatmapDataPoint } from "./heatmap-calendar";
 import { GoalHeatmap } from "./goal-heatmap";
-import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { Skeleton } from "@nocoo/basalt/components/skeleton";
 
 export interface HeatmapHeroProps {
   data: HeatmapDataPoint[];
@@ -60,13 +60,13 @@ export function HeatmapHero({
         {["Activity", "Goal Tracker"].map((label) => (
           <section key={label} aria-label={label} aria-busy="true" className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 min-w-0">
             <div className="mb-3 flex h-12 items-center justify-between">
-              <div className="space-y-2"><SkeletonLine style={{ width: undefined }} className="h-4 w-24" /><SkeletonLine style={{ width: undefined }} className="h-3 w-32" /></div>
-              <SkeletonLine style={{ width: undefined }} className="h-8 w-16" />
+              <div className="space-y-2"><Skeleton style={{ width: undefined }} className="h-4 w-24" /><Skeleton style={{ width: undefined }} className="h-3 w-32" /></div>
+              <Skeleton style={{ width: undefined }} className="h-8 w-16" />
             </div>
-            <SkeletonLine style={{ width: undefined }} className="h-[142px] w-full" />
+            <Skeleton style={{ width: undefined }} className="h-[142px] w-full" />
             <div className="mt-3 flex gap-5 border-t border-basalt-border/50 pt-3">
-              <SkeletonLine style={{ width: undefined }} className="h-4 w-24" />
-              <SkeletonLine style={{ width: undefined }} className="h-4 w-32" />
+              <Skeleton style={{ width: undefined }} className="h-4 w-24" />
+              <Skeleton style={{ width: undefined }} className="h-4 w-32" />
             </div>
           </section>
         ))}

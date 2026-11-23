@@ -84,7 +84,7 @@ export function ModelInfoTooltip({ model, className }: Props) {
 
         {error && matches.length === 0 && (
           <Banner
-            variant="error"
+            tone="danger"
             size="sm"
             description={`Failed to load pricing: ${error}`}
           />

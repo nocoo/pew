@@ -11,7 +11,7 @@ export function MessageBanner({ message, className }: MessageBannerProps) {
   if (!message) return null;
   return (
     <Banner
-      variant={message.type === "error" ? "error" : "default"}
+      tone={message.type === "error" ? "danger" : "success"}
       size="sm"
       description={message.text}
       {...(className ? { className } : {})}

@@ -12,7 +12,7 @@ import { Empty } from "@nocoo/basalt/components/empty";
 import { Github } from "@/components/icons/github";
 import { chromeIconClassName } from "@/lib/ghost-icon";
 import { useUserProfile } from "@/hooks/use-user-profile";
-import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { Skeleton } from "@nocoo/basalt/components/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@nocoo/basalt/components/avatar";
 import { PageHeader } from "@/components/leaderboard/page-header";
 import { HeaderTooltip, HexlyLink } from "@/components/layout/hexly-link";
@@ -120,7 +120,7 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
           <PewPageHeader />
           <main className="flex-1 py-8">
             <div className="text-center space-y-4">
-              <Banner variant="error" description={`Failed to load profile: ${error}`} />
+              <Banner tone="danger" description={`Failed to load profile: ${error}`} />
               <Link
                 href="/leaderboard"
                 className="inline-flex items-center gap-2 text-sm text-basalt-primary hover:underline"
@@ -147,10 +147,10 @@ export function PublicProfileView({ slug }: PublicProfileViewProps) {
           {/* Profile header */}
           {loading && !user ? (
             <div className="flex items-center gap-4">
-              <SkeletonLine style={{ width: undefined }} className="h-16 w-16 rounded-full" />
+              <Skeleton style={{ width: undefined }} className="h-16 w-16 rounded-full" />
               <div className="space-y-2">
-                <SkeletonLine style={{ width: undefined }} className="h-6 w-40" />
-                <SkeletonLine style={{ width: undefined }} className="h-4 w-24" />
+                <Skeleton style={{ width: undefined }} className="h-6 w-40" />
+                <Skeleton style={{ width: undefined }} className="h-4 w-24" />
               </div>
             </div>
           ) : (

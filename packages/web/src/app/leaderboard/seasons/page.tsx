@@ -11,7 +11,7 @@ import {
 } from "@nocoo/basalt/icons";
 import { cn } from "@/lib/utils";
 import { TIMELINE_DOT_COLORS } from "@/lib/season-status-config";
-import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { Skeleton } from "@nocoo/basalt/components/skeleton";
 import { useSeasons, type SeasonListItem } from "@/hooks/use-seasons";
 import { formatSeasonDate } from "@/lib/seasons";
 import { CheckRuling } from "@/components/leaderboard/check-ruling";
@@ -127,15 +127,15 @@ function SeasonCardSkeleton() {
       <div className="flex items-start justify-between">
         <div className="flex-1 space-y-3">
           <div className="flex items-center gap-2">
-            <SkeletonLine style={{ width: undefined }} className="h-5 w-32" />
-            <SkeletonLine style={{ width: undefined }} className="h-5 w-16 rounded-full" />
+            <Skeleton style={{ width: undefined }} className="h-5 w-32" />
+            <Skeleton style={{ width: undefined }} className="h-5 w-16 rounded-full" />
           </div>
           <div className="flex gap-4">
-            <SkeletonLine style={{ width: undefined }} className="h-4 w-48" />
-            <SkeletonLine style={{ width: undefined }} className="h-4 w-20" />
+            <Skeleton style={{ width: undefined }} className="h-4 w-48" />
+            <Skeleton style={{ width: undefined }} className="h-4 w-20" />
           </div>
         </div>
-        <SkeletonLine style={{ width: undefined }} className="h-5 w-5 rounded" />
+        <Skeleton style={{ width: undefined }} className="h-5 w-5 rounded" />
       </div>
     </div>
   );
@@ -172,7 +172,7 @@ export default function SeasonsPage() {
 
         {/* Error */}
         {error && (
-          <Banner variant="error" description={error} />
+          <Banner tone="danger" description={error} />
         )}
 
         {/* Loading */}

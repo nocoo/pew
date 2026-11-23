@@ -28,7 +28,7 @@ import { Switch } from "@nocoo/basalt/components/switch";
 import { rowIconClassName } from "@/lib/ghost-icon";
 import { StatusBadge } from "@/components/leaderboard/status-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@nocoo/basalt/components/avatar";
-import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { Skeleton } from "@nocoo/basalt/components/skeleton";
 import { ConfirmDialog, useConfirm } from "@nocoo/basalt/components/confirm-dialog";
 import { MessageBanner, type MessageBannerMsg } from "@/components/message-banner";
 import { InviteDialog, useInviteDialog } from "@/components/teams/invite-dialog";
@@ -90,7 +90,7 @@ function SeasonRow({
             {season.name}
           </p>
           <StatusBadge status={season.status} />
-          {season.is_registered && <Badge variant="info">Registered</Badge>}
+          {season.is_registered && <Badge tone="info">Registered</Badge>}
         </div>
         <p className="mt-0.5 text-xs text-basalt-muted-foreground">
           {formatSeasonDate(season.start_date)} – {formatSeasonDate(season.end_date)}
@@ -250,8 +250,8 @@ function SeasonRegistration({
   if (loading) {
     return (
       <div className="space-y-2">
-        <SkeletonLine style={{ width: undefined }} className="h-14 w-full rounded-lg" />
-        <SkeletonLine style={{ width: undefined }} className="h-14 w-full rounded-lg" />
+        <Skeleton style={{ width: undefined }} className="h-14 w-full rounded-lg" />
+        <Skeleton style={{ width: undefined }} className="h-14 w-full rounded-lg" />
       </div>
     );
   }
@@ -546,10 +546,10 @@ export default function TeamDetailPage() {
   if (loading) {
     return (
       <div className="max-w-3xl space-y-8">
-        <SkeletonLine style={{ width: undefined }} className="h-8 w-48" />
+        <Skeleton style={{ width: undefined }} className="h-8 w-48" />
         <div className="space-y-4">
-          <SkeletonLine style={{ width: undefined }} className="h-24 w-full rounded-xl" />
-          <SkeletonLine style={{ width: undefined }} className="h-40 w-full rounded-xl" />
+          <Skeleton style={{ width: undefined }} className="h-24 w-full rounded-xl" />
+          <Skeleton style={{ width: undefined }} className="h-40 w-full rounded-xl" />
         </div>
       </div>
     );
@@ -570,7 +570,7 @@ export default function TeamDetailPage() {
           <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
           Back to Teams
         </Button>
-        <Banner variant="error" title={error ?? "Team not found"} />
+        <Banner tone="danger" title={error ?? "Team not found"} />
       </div>
     );
   }

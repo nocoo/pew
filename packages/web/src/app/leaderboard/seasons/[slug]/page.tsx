@@ -19,7 +19,7 @@ import { getSeasonEndExclusiveISO } from "@/lib/season-helpers";
 
 import { teamColor, withAlpha } from "@/lib/palette";
 import { Avatar, AvatarFallback, AvatarImage } from "@nocoo/basalt/components/avatar";
-import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { Skeleton } from "@nocoo/basalt/components/skeleton";
 import {
   useSeasonLeaderboard,
   type SeasonTeamEntry,
@@ -320,12 +320,12 @@ export default function SeasonLeaderboardPage() {
             <div className="mt-2 flex items-center gap-2 flex-wrap">
               <StatusBadge status={data.season.status} />
               {data.season.is_snapshot ? (
-                <Badge variant="secondary">
+                <Badge tone="neutral">
                   <Camera className="h-3 w-3" />
                   Final Results
                 </Badge>
               ) : data.season.status === "active" ? (
-                <Badge variant="success">
+                <Badge tone="success">
                   <Zap className="h-3 w-3" />
                   Live
                 </Badge>
@@ -339,8 +339,8 @@ export default function SeasonLeaderboardPage() {
           </>
         ) : isLoading ? (
           <div className="space-y-2">
-            <SkeletonLine style={{ width: undefined }} className="h-10 w-48" />
-            <SkeletonLine style={{ width: undefined }} className="h-4 w-56" />
+            <Skeleton style={{ width: undefined }} className="h-10 w-48" />
+            <Skeleton style={{ width: undefined }} className="h-4 w-56" />
           </div>
         ) : null}
       </PageHeader>
@@ -352,7 +352,7 @@ export default function SeasonLeaderboardPage() {
 
         {/* Error */}
         {error && (
-          <Banner variant="error" description={error} />
+          <Banner tone="danger" description={error} />
         )}
 
         {/* Loading */}

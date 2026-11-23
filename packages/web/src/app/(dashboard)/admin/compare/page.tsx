@@ -20,7 +20,7 @@ import { Empty } from "@nocoo/basalt/components/empty";
 import { Checkbox } from "@nocoo/basalt/components/checkbox";
 import { Input } from "@nocoo/basalt/components/input";
 import { PageHeader } from "@nocoo/basalt/components/page-header";
-import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { Skeleton } from "@nocoo/basalt/components/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@nocoo/basalt/components/avatar";
 import {
   Tooltip,
@@ -61,12 +61,12 @@ function SelectionSkeleton() {
         // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
         <div key={`slot-${i}`} className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
           <div className="flex items-center gap-4">
-            <SkeletonLine style={{ width: undefined }} className="h-5 w-5 rounded" />
-            <SkeletonLine style={{ width: undefined }} className="h-8 w-8 rounded-full" />
-            <SkeletonLine style={{ width: undefined }} className="h-4 w-32" />
+            <Skeleton style={{ width: undefined }} className="h-5 w-5 rounded" />
+            <Skeleton style={{ width: undefined }} className="h-8 w-8 rounded-full" />
+            <Skeleton style={{ width: undefined }} className="h-4 w-32" />
             <div className="flex-1" />
-            <SkeletonLine style={{ width: undefined }} className="h-4 w-20" />
-            <SkeletonLine style={{ width: undefined }} className="h-4 w-16 hidden md:block" />
+            <Skeleton style={{ width: undefined }} className="h-4 w-20" />
+            <Skeleton style={{ width: undefined }} className="h-4 w-16 hidden md:block" />
           </div>
         </div>
       ))}
@@ -263,8 +263,8 @@ function ComparePageContent() {
     return (
       <div className="space-y-4 md:space-y-6">
         <div>
-          <SkeletonLine style={{ width: undefined }} className="h-8 w-48" />
-          <SkeletonLine style={{ width: undefined }} className="h-4 w-80 mt-2" />
+          <Skeleton style={{ width: undefined }} className="h-8 w-48" />
+          <Skeleton style={{ width: undefined }} className="h-4 w-80 mt-2" />
         </div>
         <SelectionSkeleton />
       </div>
@@ -593,8 +593,8 @@ export default function AdminComparePage() {
       fallback={
         <div className="space-y-4 md:space-y-6">
           <div>
-            <SkeletonLine style={{ width: undefined }} className="h-8 w-48" />
-            <SkeletonLine style={{ width: undefined }} className="h-4 w-80 mt-2" />
+            <Skeleton style={{ width: undefined }} className="h-8 w-48" />
+            <Skeleton style={{ width: undefined }} className="h-4 w-80 mt-2" />
           </div>
           <SelectionSkeleton />
         </div>

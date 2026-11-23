@@ -190,7 +190,7 @@ function DeviceCard({
                 className={cn("w-full max-w-xs", aliasError && "ring-basalt-danger", saving && "opacity-50")}
               />
               {aliasError && (
-                <Banner variant="error" size="sm" description={aliasError} />
+                <Banner tone="danger" size="sm" description={aliasError} />
               )}
             </div>
           ) : (
@@ -237,7 +237,7 @@ function DeviceCard({
             {revoked && (
               <>
                 <span>·</span>
-                <Badge variant="destructive" className="rounded-full">Revoked</Badge>
+                <Badge tone="danger" variant="solid" className="rounded-full">Revoked</Badge>
               </>
             )}
           </div>
@@ -319,6 +319,7 @@ function DeviceCard({
       {/* Default device info badge */}
       {isDefault && (
         <Banner
+          tone="info"
           size="sm"
           icon={<Info className="h-3.5 w-3.5" strokeWidth={1.5} />}
           description="Records from CLI versions before device tracking was added."
@@ -351,7 +352,7 @@ function DeviceCard({
       )}
 
       {actionError && (
-        <Banner variant="error" size="sm" description={actionError} />
+        <Banner tone="danger" size="sm" description={actionError} />
       )}
 
       <ConfirmDialog
@@ -384,7 +385,7 @@ function DeviceCard({
       />
 
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent size="base" onCloseAutoFocus={restoreDetailFocus}>
+        <DialogContent size="md" onCloseAutoFocus={restoreDetailFocus}>
           <DialogClose asChild>
             <Button
               variant="ghost"
@@ -403,7 +404,7 @@ function DeviceCard({
           </DialogHeader>
 
           {revoked && (
-            <Badge variant="destructive" className="w-fit rounded-full">Revoked</Badge>
+            <Badge tone="danger" variant="solid" className="w-fit rounded-full">Revoked</Badge>
           )}
 
           <h3 className="text-sm font-medium text-basalt-foreground">Recent activity</h3>
@@ -411,7 +412,7 @@ function DeviceCard({
           {recentLoading ? (
             <p className="text-sm text-basalt-muted-foreground">Loading recent activity...</p>
           ) : recentError ? (
-            <Banner variant="error" size="sm" description="Failed to load recent device activity" />
+            <Banner tone="danger" size="sm" description="Failed to load recent device activity" />
           ) : recentUsage?.records.length ? (
             <div className="space-y-2">
               {sortRecentActivityRecords(recentUsage.records)
@@ -672,7 +673,7 @@ export default function ManageDevicesPage() {
 
       {/* Error */}
       {error && (
-        <Banner variant="error" description={error} />
+        <Banner tone="danger" description={error} />
       )}
 
       {/* Empty state */}

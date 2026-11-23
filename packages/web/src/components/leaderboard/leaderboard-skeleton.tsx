@@ -1,4 +1,4 @@
-import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { Skeleton } from "@nocoo/basalt/components/skeleton";
 import { cn } from "@/lib/utils";
 import { ROW_CLASSES, COL_RANK, COL_SESSIONS, COL_DURATION, COL_TOKENS } from "@/components/leaderboard/leaderboard-layout";
 
@@ -17,19 +17,19 @@ export function LeaderboardSkeleton({ count = 10 }: { count?: number }) {
           className={cn("flex items-center gap-3", ROW_CLASSES)}
         >
           {/* Rank */}
-          <SkeletonLine style={{ width: undefined }} className={cn(COL_RANK, "h-5")} />
+          <Skeleton style={{ width: undefined }} className={cn(COL_RANK, "h-5")} />
           {/* Avatar */}
-          <SkeletonLine style={{ width: undefined }} className="h-8 w-8 rounded-full shrink-0" />
+          <Skeleton style={{ width: undefined }} className="h-8 w-8 rounded-full shrink-0" />
           {/* Name + badge */}
           <div className="flex-1 min-w-0">
-            <SkeletonLine style={{ width: undefined }} className="h-4 w-32" />
+            <Skeleton style={{ width: undefined }} className="h-4 w-32" />
           </div>
           {/* Session count (hidden on mobile) */}
-          <SkeletonLine style={{ width: undefined }} className={cn(COL_SESSIONS, "h-3")} />
+          <Skeleton style={{ width: undefined }} className={cn(COL_SESSIONS, "h-3")} />
           {/* Duration (hidden on mobile) */}
-          <SkeletonLine style={{ width: undefined }} className={cn(COL_DURATION, "h-3")} />
+          <Skeleton style={{ width: undefined }} className={cn(COL_DURATION, "h-3")} />
           {/* Total tokens */}
-          <SkeletonLine style={{ width: undefined }} className={cn(COL_TOKENS, "h-7")} />
+          <Skeleton style={{ width: undefined }} className={cn(COL_TOKENS, "h-7")} />
         </div>
       ))}
     </div>

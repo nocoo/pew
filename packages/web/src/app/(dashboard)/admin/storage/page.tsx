@@ -27,7 +27,7 @@ import { ConfirmDialog, useConfirm } from "@nocoo/basalt/components/confirm-dial
 import { MessageBanner, type MessageBannerMsg } from "@/components/message-banner";
 import { toErrorMessage } from "@/lib/error-message";
 import { useAdmin } from "@/hooks/use-admin";
-import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { Skeleton } from "@nocoo/basalt/components/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@nocoo/basalt/components/avatar";
 import {
   Tooltip,
@@ -117,8 +117,8 @@ function StorageSkeleton() {
           {Array.from({ length: 3 }).map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
             <div key={`slot-${i}`} className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
-              <SkeletonLine style={{ width: undefined }} className="h-3 w-12 mb-2" />
-              <SkeletonLine style={{ width: undefined }} className="h-6 w-16" />
+              <Skeleton style={{ width: undefined }} className="h-3 w-12 mb-2" />
+              <Skeleton style={{ width: undefined }} className="h-6 w-16" />
             </div>
           ))}
         </div>
@@ -126,10 +126,10 @@ function StorageSkeleton() {
           {Array.from({ length: 5 }).map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
             <div key={`slot-${i}`} className="flex items-center gap-4 py-3">
-              <SkeletonLine style={{ width: undefined }} className="h-8 w-8 rounded-full" />
-              <SkeletonLine style={{ width: undefined }} className="h-4 w-32" />
+              <Skeleton style={{ width: undefined }} className="h-8 w-8 rounded-full" />
+              <Skeleton style={{ width: undefined }} className="h-4 w-32" />
               <div className="flex-1" />
-              <SkeletonLine style={{ width: undefined }} className="h-4 w-16" />
+              <Skeleton style={{ width: undefined }} className="h-4 w-16" />
             </div>
           ))}
         </div>
@@ -140,16 +140,16 @@ function StorageSkeleton() {
           {Array.from({ length: 2 }).map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
             <div key={`slot-${i}`} className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
-              <SkeletonLine style={{ width: undefined }} className="h-3 w-12 mb-2" />
-              <SkeletonLine style={{ width: undefined }} className="h-6 w-16" />
+              <Skeleton style={{ width: undefined }} className="h-3 w-12 mb-2" />
+              <Skeleton style={{ width: undefined }} className="h-6 w-16" />
             </div>
           ))}
         </div>
         <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4">
-          <SkeletonLine style={{ width: undefined }} className="h-4 w-24 mb-3" />
+          <Skeleton style={{ width: undefined }} className="h-4 w-24 mb-3" />
           {Array.from({ length: 3 }).map((_, i) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton loader; array order and length are stable within a single render pass so index is a legitimate key.
-            <SkeletonLine style={{ width: undefined }} key={`slot-${i}`} className="h-12 w-full mb-2" />
+            <Skeleton style={{ width: undefined }} key={`slot-${i}`} className="h-12 w-full mb-2" />
           ))}
         </div>
       </div>
@@ -419,8 +419,8 @@ export default function AdminStoragePage() {
     return (
       <div className="space-y-4 md:space-y-6">
         <div>
-          <SkeletonLine style={{ width: undefined }} className="h-8 w-48" />
-          <SkeletonLine style={{ width: undefined }} className="h-4 w-80 mt-2" />
+          <Skeleton style={{ width: undefined }} className="h-8 w-48" />
+          <Skeleton style={{ width: undefined }} className="h-4 w-80 mt-2" />
         </div>
         <StorageSkeleton />
       </div>
@@ -702,7 +702,7 @@ export default function AdminStoragePage() {
 
               {/* Cache error */}
               {cacheError && (
-                <Banner variant="error" size="sm" description={cacheError} className="shrink-0" />
+                <Banner tone="danger" size="sm" description={cacheError} className="shrink-0" />
               )}
 
               {/* Clear All feedback */}
@@ -747,9 +747,9 @@ export default function AdminStoragePage() {
               {/* Cache key list */}
               {cacheLoading ? (
                 <div className="rounded-xl bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 space-y-2">
-                  <SkeletonLine style={{ width: undefined }} className="h-4 w-24" />
-                  <SkeletonLine style={{ width: undefined }} className="h-12 w-full" />
-                  <SkeletonLine style={{ width: undefined }} className="h-12 w-full" />
+                  <Skeleton style={{ width: undefined }} className="h-4 w-24" />
+                  <Skeleton style={{ width: undefined }} className="h-12 w-full" />
+                  <Skeleton style={{ width: undefined }} className="h-12 w-full" />
                 </div>
               ) : cacheKeys.length === 0 ? (
                 <Empty

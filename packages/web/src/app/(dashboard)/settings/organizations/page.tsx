@@ -175,7 +175,7 @@ export default function OrganizationsPage() {
   if (error) {
     return (
       <div className="max-w-3xl">
-        <Banner variant="error" description={error} />
+        <Banner tone="danger" description={error} />
       </div>
     );
   }

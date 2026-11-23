@@ -319,7 +319,7 @@ export default function SettingsPage() {
               {deleting ? "Deleting..." : "Delete My Account"}
             </Button>
             {deleteError && (
-              <Banner variant="error" size="sm" description={deleteError} />
+              <Banner tone="danger" size="sm" description={deleteError} />
             )}
           </div>
         </div>

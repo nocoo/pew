@@ -478,7 +478,7 @@ function SliderControl({
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-basalt-foreground">{label}</span>
           <Badge
-            variant="info"
+            tone="info"
             className={cn(
               "transition-opacity",
               isDefault ? "opacity-100" : "opacity-0"

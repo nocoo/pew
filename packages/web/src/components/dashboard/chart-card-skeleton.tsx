@@ -1,4 +1,4 @@
-import { SkeletonLine } from "@nocoo/basalt/components/skeleton-line";
+import { Skeleton } from "@nocoo/basalt/components/skeleton";
 
 interface ChartCardSkeletonProps {
   /** Tailwind width class for the title bar (e.g. "w-24"). */
@@ -21,8 +21,8 @@ export function ChartCardSkeleton({
 }: ChartCardSkeletonProps) {
   return (
     <div className="rounded-card bg-basalt-secondary ring-1 ring-basalt-border/80 shadow-basalt-card p-4 md:p-5">
-      <SkeletonLine style={{ width: undefined }} className={`h-3 ${titleWidth} mb-4`} />
-      <SkeletonLine style={{ width: undefined }} className={`${chartHeight} w-full`} />
+      <Skeleton style={{ width: undefined }} className={`h-3 ${titleWidth} mb-4`} />
+      <Skeleton style={{ width: undefined }} className={`${chartHeight} w-full`} />
     </div>
   );
 }
