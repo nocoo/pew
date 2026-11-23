@@ -12,7 +12,7 @@ async function dashboard(page: Page) {
 
 test.describe("CLI upgrade notice", () => {
   for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
-    test(`shows copyable npm/Bun commands and both mirrors on a glass mask at ${viewport.width}px`, async ({ page, context }) => {
+    test(`shows copyable npm/Bun commands and both mirrors on a matte scrim at ${viewport.width}px`, async ({ page, context }) => {
       await page.setViewportSize(viewport);
       await context.grantPermissions(["clipboard-read", "clipboard-write"]);
       await dashboard(page);
@@ -39,13 +39,17 @@ test.describe("CLI upgrade notice", () => {
       }
       await expect(dialog.getByText("pew --version && pew sync", { exact: true })).toBeVisible();
       await expect(dialog).not.toContainText("pew reset");
-      const blur = await page.locator("[data-state='open']").evaluateAll((elements) =>
+      const scrim = await page.locator("[data-slot='dialog-overlay'][data-state='open']").evaluateAll((elements) =>
         elements.some((element) => {
           const style = getComputedStyle(element);
-          return style.position === "fixed" && style.backdropFilter.includes("blur(");
+          return (
+            style.position === "fixed" &&
+            style.backgroundColor !== "transparent" &&
+            style.backgroundColor !== "rgba(0, 0, 0, 0)"
+          );
         }),
       );
-      expect(blur).toBe(true);
+      expect(scrim).toBe(true);
       const box = (await dialog.boundingBox())!;
       expect(box.x).toBeGreaterThanOrEqual(0);
       expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);

@@ -583,7 +583,7 @@ export function SalaryCalculatorCard({
             </dl>
           </div>
         </section>
-        <DialogContent size="xl" className="sm:w-[72rem] p-4 sm:p-7">
+        <DialogContent size="xl" showCloseButton={false} className="sm:w-[72rem] p-4 sm:p-7">
           <div className="mb-6 flex items-start justify-between gap-3">
             <DialogHeader>
               <DialogTitle>Salary settings</DialogTitle>

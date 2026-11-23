@@ -55,6 +55,7 @@ function UpgradeDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
         size="lg"
+        showCloseButton={false}
         onCloseAutoFocus={restoreFocus}
         onOpenAutoFocus={(event) => { event.preventDefault(); titleRef.current?.focus(); }}
       >

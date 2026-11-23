@@ -272,7 +272,7 @@ export function UserProfileDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="xl" onCloseAutoFocus={restoreFocus}>
+      <DialogContent size="xl" showCloseButton={false} onCloseAutoFocus={restoreFocus}>
         {configReady ? (
           <>
             <ProfileDialogHeader

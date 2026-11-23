@@ -278,6 +278,7 @@ export default function OrganizationsPage() {
 
       <Dialog open={membersModalOrg !== null} onOpenChange={(next) => { if (!next) closeMembersModal(); }}>
         <DialogContent
+          showCloseButton={false}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             restoreFocusRef.current?.focus();

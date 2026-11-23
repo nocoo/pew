@@ -485,6 +485,7 @@ function MembersModal({
       <Dialog open onOpenChange={(next) => { if (!next) onClose(); }}>
         <DialogContent
           size="lg"
+          showCloseButton={false}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
             restoreFocusRef.current?.focus();

@@ -40,7 +40,7 @@ How to join:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent onCloseAutoFocus={restoreFocus}>
+      <DialogContent showCloseButton={false} onCloseAutoFocus={restoreFocus}>
         <DialogClose asChild>
           <Button
             variant="ghost"

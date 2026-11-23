@@ -385,7 +385,7 @@ function DeviceCard({
       />
 
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent size="md" onCloseAutoFocus={restoreDetailFocus}>
+        <DialogContent size="md" showCloseButton={false} onCloseAutoFocus={restoreDetailFocus}>
           <DialogClose asChild>
             <Button
               variant="ghost"
@@ -528,7 +528,7 @@ function AuthCodeModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent size="sm" onCloseAutoFocus={restoreFocus}>
+      <DialogContent size="sm" showCloseButton={false} onCloseAutoFocus={restoreFocus}>
           <DialogClose asChild>
             <Button
               variant="ghost"
