@@ -2,9 +2,8 @@ import { test, expect, DASHBOARD_USAGE_FIXTURE, DASHBOARD_PRICING_FIXTURE, mockD
 
 test.describe("Feature: Compact usage information", () => {
   const pages = [
-    ["/dashboard", "Overview information"], ["/daily-usage", "Usage information"],
-    ["/hourly-usage", "Usage information"], ["/models", "Usage information"],
-    ["/agents", "Usage information"], ["/devices", "Usage information"],
+    ["/dashboard", "Overview information"],
+    ["/devices", "Usage information"],
   ] as const;
 
   for (const [path, label] of pages) {

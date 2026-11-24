@@ -183,8 +183,9 @@ const checks: Record<typeof READINESS_PAGES[number]["check"], (page: Page) => Pr
 };
 
 test.describe("Seeded page and module readiness (real APIs)", () => {
-  for (const entry of READINESS_PAGES) {
-    test(entry.route, async ({ page }) => {
+  test("all readiness routes render cleanly", async ({ page }) => {
+    test.setTimeout(180_000);
+    for (const entry of READINESS_PAGES) {
       const health = watchPageReadiness(page);
       let path = resolveRoute(entry.route, entry.check === "profile");
       if (entry.check === "comparison") path += `?userIds=${fixtureEnv("E2E_TEST_USER_ID")},${fixtureEnv("E2E_READINESS_PEER_ID")}`;
@@ -193,10 +194,11 @@ test.describe("Seeded page and module readiness (real APIs)", () => {
       await health.ready(["/api/auth/session", ...entry.apis.map((api) => resolveRoute(api, entry.check === "profile"))]);
       await checks[entry.check](page);
       await health.ready([]);
+      health.dispose();
       await expect(page.getByRole("alert").and(page.locator(":not(#__next-route-announcer__)"))).toHaveCount(0);
       await expect(page.getByText(/Failed to load|Application error|Internal Server Error/)).toHaveCount(0);
-    });
-  }
+    }
+  });
 
   test("retired routes redirect exactly; settings and empty comparison load their destinations", async ({ page, request }) => {
     for (const entry of READINESS_REDIRECTS) {
