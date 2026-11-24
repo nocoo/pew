@@ -10,6 +10,8 @@ export default defineConfig({
     },
   },
   test: {
+    allowOnly: false,
+    passWithNoTests: false,
     globals: true,
     pool: "threads",
     isolate: true,
