@@ -18,7 +18,7 @@ bun run dev                       # @pew/web -> http://localhost:7020
 bun run build                     # @pew/core + @pew/web only (B1)
 bun run --cwd packages/cli build  # explicit CLI build before npm publish
 bun run typecheck                 # S1: all 5 packages + tsconfig.e2e.json
-bun run lint                      # S2: typecheck + Biome (0 warnings) + oxc-parser AST gates
+bun run lint                      # S2: Biome (0 warnings) + oxc-parser AST gates
 bun run test                      # L1: Vitest unit suite (sole test runner)
 bun run test:coverage             # L1: v8 >=95% statements/branches/functions/lines
 bun run test:e2e                  # L2: API E2E on :17020 (isolated local D1/KV)

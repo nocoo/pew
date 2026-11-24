@@ -29,8 +29,11 @@ jobs:
   s2-lint:
     name: "S2: Lint"
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: nocoo/base-ci/.github/actions/setup-js@6424d395d36a815d931f10e557762eb635d511c0 # v2026.16
         with:
           package-manager: bun
@@ -38,7 +41,6 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           install-policy: blocked
       - run: |
-          bun run build
           bunx biome check --no-errors-on-unmatched --error-on-warnings --max-diagnostics=500 .
           bun run gate:dynamic-delete
           bun run gate:ts-expect-error
