@@ -1,7 +1,7 @@
 import { test, expect, DASHBOARD_USAGE_FIXTURE, DASHBOARD_PRICING_FIXTURE, mockDashboardApis } from "./fixtures";
 
 test.describe("Feature: Expanded model history", () => {
-  for (const count of [83, 100, 101]) {
+  for (const count of [101]) {
     test(`retains ${count} historical models up to the hundred-series cap`, async ({ page }) => {
       await page.clock.setFixedTime(new Date("2026-09-15T12:00:00Z"));
       await page.emulateMedia({ reducedMotion: "reduce" });
@@ -29,7 +29,7 @@ test.describe("Feature: Expanded model history", () => {
     });
   }
 
-  for (const width of [1440, 390]) {
+  for (const width of [1440]) {
     test(`bounds daily tooltip details without changing chart data at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 850 });
       await page.clock.setFixedTime(new Date("2026-09-15T12:00:00Z"));

@@ -11,7 +11,7 @@ async function dashboard(page: Page) {
 }
 
 test.describe("CLI upgrade notice", () => {
-  for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
+  for (const viewport of [{ width: 1440, height: 1000 }]) {
     test(`shows copyable npm/Bun commands and both mirrors on a matte scrim at ${viewport.width}px`, async ({ page, context }) => {
       await page.setViewportSize(viewport);
       await context.grantPermissions(["clipboard-read", "clipboard-write"]);

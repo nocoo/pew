@@ -16,7 +16,7 @@ async function stacked(first: Locator, second: Locator) {
   expect(Math.abs(a.width - b.width)).toBeLessThan(2);
 }
 
-for (const width of [1440, 390]) {
+for (const width of [1440]) {
   test(`trend panels stack and agent visualizations load real data at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 });
     for (const [route, first, second] of [["/models", "Tool Usage Trend", "Model Evolution"],

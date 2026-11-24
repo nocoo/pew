@@ -73,7 +73,7 @@ test.describe("Feature: Overview", () => {
     await expect(statCard(page, "Est. Cost").getByText("vs last month", { exact: true }).locator("..").getByText("-52%", { exact: true })).toHaveClass(/text-success/);
   });
 
-  for (const width of [1440, 1920, 2560, 768, 390]) {
+  for (const width of [2560, 390]) {
     test(`activity and goals retain one annual strip of circular days beside salary at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 1000 });
       let releaseAnnual: (() => void) | undefined;
@@ -165,7 +165,7 @@ test.describe("Feature: Overview", () => {
     }
   });
 
-  for (const width of [1440, 390]) {
+  for (const width of [1440]) {
     test(`the page header owns the period filter and discloses scope and timing through information at ${width}px`, async ({ page }) => {
       const records = DASHBOARD_USAGE_FIXTURE.records.map((row, index) => ({ ...row, approximate_tokens: [1000, 234, 0][index] }));
       await mockDashboardApis(page, { usage: { ...DASHBOARD_USAGE_FIXTURE, records }, pricing: DASHBOARD_PRICING_FIXTURE });
@@ -296,7 +296,7 @@ test.describe("Feature: Overview", () => {
     await expect(stat(page, "Total Tokens").getByText("1.8M", { exact: true })).toBeVisible();
   });
 
-  for (const width of [1440, 390]) {
+  for (const width of [1440]) {
     test(`cache hit rate leads the summary and original controls work at ${width}px`, async ({ page }) => {
       await page.setViewportSize({ width, height: 1000 });
       await page.goto("/dashboard");

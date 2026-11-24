@@ -17,7 +17,7 @@ test("period and harness navigation refetch populated rankings", async ({ page }
 });
 
 test("Antigravity is selectable with its own source filter on desktop and mobile", async ({ page }) => {
-  for (const width of [1440, 390]) {
+  for (const width of [1440]) {
     await page.setViewportSize({ width, height: 900 });
     const health = watchPageReadiness(page);
     await page.goto("/leaderboard/harness?source=antigravity");

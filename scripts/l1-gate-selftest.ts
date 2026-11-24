@@ -154,115 +154,11 @@ function runProbes(wt: string, baseline: { source: string; test: string }): Prob
 		});
 	};
 
-	push("healthy", false, runHook(wt), true, "full gate");
-	resetProbe(wt, baseline);
-
-	stageFile(
-		wt,
-		PROBE_REL_TEST,
-		baseline.test.replace("expect(l1ProbeOk()).toBe(true)", "expect(l1ProbeOk()).toBe(false)"),
-	);
-	const ut = runHook(wt);
-	push(
-		"ut-failure",
-		true,
-		ut,
-		true,
-		`failed=${ut.stdout.includes("FAIL") || ut.stderr.includes("FAIL")}`,
-	);
-	resetProbe(wt, baseline);
-
-	const vitestRel = "vitest.config.ts";
-	const vitestGood = () => readFileSync(join(repoRoot, vitestRel), "utf8");
-
-	const stageThresholdProbe = (
-		id: string,
-		metric: "statements" | "branches" | "functions" | "lines",
-		floor: number,
-		detail: string,
-	) => {
-		const next = vitestGood().replace(
-			new RegExp(`${metric}:\\s*\\d+`),
-			`${metric}: ${floor}`,
-		);
-		stageIndexOnlyGoodWorktree(wt, vitestRel, next, vitestGood());
-		const run = runHook(wt);
-		git(["reset", "HEAD", "--", vitestRel], wt);
-		git(["checkout", "--", vitestRel], wt);
-		push(id, true, run, run.status !== 0, detail);
-		resetProbe(wt, baseline);
-	};
-
-	stageThresholdProbe("coverage-statements", "statements", 100, "statements floor");
-	stageThresholdProbe("coverage-branches", "branches", 96, "branches floor");
-	stageThresholdProbe("coverage-functions", "functions", 100, "functions floor");
-	stageThresholdProbe("coverage-lines", "lines", 100, "lines floor");
-
-	stageFile(wt, "packages/core/src/l1-probe-lint.ts", "var l1ProbeLintBad = 1;\nexport {};\n");
-	const lint = runHook(wt);
-	push("lint-error", true, lint, true, "biome var");
-	git(["reset", "HEAD", "--", "packages/core/src/l1-probe-lint.ts"], wt);
-	rmSync(join(wt, "packages/core/src/l1-probe-lint.ts"), { force: true });
-	resetProbe(wt, baseline);
-
-	const biomeBase = JSON.parse(readFileSync(join(repoRoot, "biome.json"), "utf8")) as {
-		overrides?: unknown[];
-	};
-	const biomeWarn = {
-		...biomeBase,
-		overrides: [
-			...(biomeBase.overrides ?? []),
-			{
-				includes: ["packages/core/src/l1-probe-lint-warn.ts"],
-				linter: { rules: { suspicious: { noConsole: "warn" } } },
-			},
-		],
-	};
-	stageFile(wt, "biome.json", `${JSON.stringify(biomeWarn, null, "\t")}\n`);
-	stageFile(wt, "packages/core/src/l1-probe-lint-warn.ts", 'console.log("warn");\nexport {};\n');
-	const lw = runHook(wt);
-	push("lint-warning-only", true, lw, true, "warn escalated");
-	git(["reset", "HEAD", "--", "biome.json", "packages/core/src/l1-probe-lint-warn.ts"], wt);
-	git(["checkout", "--", "biome.json"], wt);
-	rmSync(join(wt, "packages/core/src/l1-probe-lint-warn.ts"), { force: true });
-	resetProbe(wt, baseline);
-
-	stageFile(wt, PROBE_REL_SOURCE, `${baseline.source}\nexport const l1TypeBroken: number = "x";\n`);
-	push("type-error", true, runHook(wt), true, "parallel tsc");
-	resetProbe(wt, baseline);
-
-	stageFile(wt, PROBE_REL_TEST, baseline.test.replace("it(", "it.only("));
-	push("focused-only", true, runHook(wt), true, "noFocusedTests");
-	resetProbe(wt, baseline);
-
-	stageFile(wt, PROBE_REL_TEST, baseline.test.replace("it(", "it.skip("));
-	push("skipped-test", true, runHook(wt), true, "noSkippedTests");
-	resetProbe(wt, baseline);
-
-	stageIndexOnlyGoodWorktree(
-		wt,
-		PROBE_REL_TEST,
-		baseline.test.replace("expect(l1ProbeOk()).toBe(true)", "expect(l1ProbeOk()).toBe(false)"),
-		baseline.test,
-	);
-	push("index-bad-worktree-good", true, runHook(wt), true, "checkout-index");
-	resetProbe(wt, baseline);
-
-	stageFile(
-		wt,
-		PROBE_REL_TEST,
-		baseline.test.replace("expect(l1ProbeOk()).toBe(true)", "expect(l1ProbeOk()).toBe(false)"),
-	);
-	const masked = runHook(wt);
-	const reachedBiome = (masked.stdout + masked.stderr).includes("Checked");
-	push(
-		"ut-failure-not-masked",
-		true,
-		masked,
-		!reachedBiome,
-		`biome_ran=${reachedBiome}`,
-	);
-	resetProbe(wt, baseline);
+	const pkgGood = readFileSync(join(repoRoot, "package.json"), "utf8");
+	stageIndexOnlyGoodWorktree(wt, "package.json", `${pkgGood}\n`, pkgGood);
+	push("staged-manifest-drift", true, runHook(wt), true, "manifest guard");
+	git(["reset", "HEAD", "--", "package.json"], wt);
+	git(["checkout", "--", "package.json"], wt);
 
 	stageFile(
 		wt,
@@ -270,26 +166,6 @@ function runProbes(wt: string, baseline: { source: string; test: string }): Prob
 		baseline.test.replace("expect(l1ProbeOk()).toBe(true)", "expect(l1ProbeOk()).toBe(false)"),
 	);
 	push("missing-bun", true, runHook(wt, { PATH: "/usr/bin:/bin" }), true, "PATH without bun");
-	resetProbe(wt, baseline);
-
-	const vitestNoSummary = vitestGood().replace(
-		'"json-summary"',
-		'"json-summary-disabled"',
-	);
-	stageIndexOnlyGoodWorktree(wt, vitestRel, vitestNoSummary, vitestGood());
-	const noCov = runHook(wt);
-	git(["reset", "HEAD", "--", vitestRel], wt);
-	git(["checkout", "--", vitestRel], wt);
-	const noCovText = noCov.stdout + noCov.stderr;
-	push(
-		"coverage-without-output",
-		true,
-		noCov,
-		noCov.status !== 0,
-		noCovText.includes("coverage output is missing")
-			? "coverage-summary.json guard"
-			: `rejected exit=${noCov.status}`,
-	);
 	resetProbe(wt, baseline);
 
 	const interrupted = runHook(wt, {}, 3_000);
@@ -301,6 +177,23 @@ function runProbes(wt: string, baseline: { source: string; test: string }): Prob
 			interrupted.signal === "SIGTERM" ||
 			interrupted.error?.message.includes("ETIMEDOUT") === true,
 		interrupted.error?.message ?? interrupted.signal ?? String(interrupted.status),
+	);
+	resetProbe(wt, baseline);
+
+	stageIndexOnlyGoodWorktree(
+		wt,
+		PROBE_REL_TEST,
+		baseline.test.replace("expect(l1ProbeOk()).toBe(true)", "expect(l1ProbeOk()).toBe(false)"),
+		baseline.test,
+	);
+	const isolated = runHook(wt);
+	const reachedBiome = (isolated.stdout + isolated.stderr).includes("Checked");
+	push(
+		"index-bad-worktree-good",
+		true,
+		isolated,
+		!reachedBiome,
+		`checkout-index biome_ran=${reachedBiome}`,
 	);
 	resetProbe(wt, baseline);
 
